@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import * as AssetDescription from './AssetDescription';
 import * as ContentTypeDescription from './ContentTypeDescription';
@@ -104,7 +104,7 @@ export class Contentful implements INodeType {
 						responseData = await contentfulApiRequest.call(
 							this,
 							'GET',
-							`/spaces/${credentials?.spaceId}`,
+							requestPath`/spaces/${credentials?.spaceId}`,
 						);
 					}
 				}
@@ -121,7 +121,7 @@ export class Contentful implements INodeType {
 						responseData = await contentfulApiRequest.call(
 							this,
 							'GET',
-							`/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`,
+							requestPath`/spaces/${credentials?.spaceId}/environments/${env}/content_types/${id}`,
 						);
 
 						if (!additionalFields.rawData) {
@@ -142,7 +142,7 @@ export class Contentful implements INodeType {
 						responseData = await contentfulApiRequest.call(
 							this,
 							'GET',
-							`/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`,
+							requestPath`/spaces/${credentials?.spaceId}/environments/${env}/entries/${id}`,
 							{},
 							qs,
 						);
@@ -192,7 +192,7 @@ export class Contentful implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
 								{},
 								qs,
 							);
@@ -211,7 +211,7 @@ export class Contentful implements INodeType {
 							responseData = await contentfulApiRequest.call(
 								this,
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/entries`,
 								{},
 								qs,
 							);
@@ -241,7 +241,7 @@ export class Contentful implements INodeType {
 						responseData = await contentfulApiRequest.call(
 							this,
 							'GET',
-							`/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`,
+							requestPath`/spaces/${credentials?.spaceId}/environments/${env}/assets/${id}`,
 							{},
 							qs,
 						);
@@ -291,7 +291,7 @@ export class Contentful implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
 								{},
 								qs,
 							);
@@ -310,7 +310,7 @@ export class Contentful implements INodeType {
 							responseData = await contentfulApiRequest.call(
 								this,
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/assets`,
 								{},
 								qs,
 							);
@@ -340,7 +340,7 @@ export class Contentful implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
 								{},
 								qs,
 							);
@@ -350,7 +350,7 @@ export class Contentful implements INodeType {
 							responseData = await contentfulApiRequest.call(
 								this,
 								'GET',
-								`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
+								requestPath`/spaces/${credentials?.spaceId}/environments/${env}/locales`,
 								{},
 								qs,
 							);

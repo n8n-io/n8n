@@ -57,7 +57,7 @@ function isError(status: ExecutionStatus): boolean {
 type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
-	projectCustomAttributes: Record<string, string>;
+	customAttributes: CustomAttributes;
 	baggage?: Baggage;
 };
 
@@ -65,6 +65,7 @@ type TrackedWorkflowSpan = TrackedSpan & {
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedWorkflowSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
+	private readonly warnedDroppedKeys = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -84,14 +85,13 @@ export class ExecutionLevelTracer {
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
-			const projectCustomAttributes = this.buildCustomAttributes(
-				'project',
-				params.project?.customAttributes,
-			);
+			const customAttributes = {
+				...this.buildCustomAttributes('project', params.project?.customAttributes),
+				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+			};
 
 			const attributes = {
-				...projectCustomAttributes,
-				...this.buildCustomAttributes('workflow', params.workflow?.customAttributes),
+				...customAttributes,
 				[ATTR.WORKFLOW_NAME]: params.workflow.name,
 				[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 				[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
@@ -106,7 +106,7 @@ export class ExecutionLevelTracer {
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
 				context: workflowContext,
-				projectCustomAttributes,
+				customAttributes,
 				baggage,
 			});
 
@@ -230,7 +230,7 @@ export class ExecutionLevelTracer {
 				[ATTR.NODE_NAME]: params.node.name,
 				[ATTR.NODE_TYPE]: params.node.type,
 				[ATTR.NODE_TYPE_VERSION]: params.node.typeVersion,
-				...tracked.projectCustomAttributes,
+				...tracked.customAttributes,
 			};
 
 			const span = this.tracer.startSpan('node.execute', { attributes }, tracked.context);
@@ -403,7 +403,21 @@ export class ExecutionLevelTracer {
 		return Object.fromEntries(
 			Object.entries(attributes)
 				.map(([key, value]): [string, string] => [`${prefix}${key}`, value])
-				.filter(([key]) => !BUILT_IN_ATTRIBUTE_KEYS.has(key)),
+				.filter(([key]) => {
+					if (!BUILT_IN_ATTRIBUTE_KEYS.has(key)) return true;
+					this.warnDroppedKeyOnce(level, key);
+					return false;
+				}),
+		);
+	}
+
+	private warnDroppedKeyOnce(level: keyof CustomAttributePrefixes, key: string): void {
+		const levelAndKey = `${level}:${key}`;
+		if (this.warnedDroppedKeys.has(levelAndKey)) return;
+		this.warnedDroppedKeys.add(levelAndKey);
+		this.logger.warn(
+			`Dropped the ${level} custom telemetry tag "${key}" because the key matches a built-in attribute key. n8n keeps the built-in value.`,
+			{ level, key },
 		);
 	}
 }

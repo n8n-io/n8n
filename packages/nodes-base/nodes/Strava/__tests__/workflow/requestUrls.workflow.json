@@ -1,0 +1,250 @@
+{
+	"name": "Strava Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"activityId": "1234567890"
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"id": "node-0",
+			"name": "Get",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getLaps",
+				"activityId": "1234567890",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 200],
+			"id": "node-1",
+			"name": "Get Laps",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "2",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getZones",
+				"activityId": "1234567890",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 400],
+			"id": "node-2",
+			"name": "Get Zones",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "3",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getKudos",
+				"activityId": "1234567890",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 600],
+			"id": "node-3",
+			"name": "Get Kudos",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "4",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getComments",
+				"activityId": "1234567890",
+				"returnAll": false,
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 800],
+			"id": "node-4",
+			"name": "Get Comments",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getStreams",
+				"activityId": "1234567890",
+				"keys": ["time"]
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 1000],
+			"id": "node-5",
+			"name": "Get Streams",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "6",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"activityId": "1234567890",
+				"updateFields": {
+					"name": "Morning Run"
+				}
+			},
+			"type": "n8n-nodes-base.strava",
+			"typeVersion": 1.1,
+			"position": [400, 1200],
+			"id": "node-6",
+			"name": "Update",
+			"credentials": {
+				"stravaOAuth2Api": {
+					"id": "7",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get": [
+			{
+				"json": {
+					"id": 1234567890,
+					"name": "Morning Run"
+				}
+			}
+		],
+		"Get Laps": [
+			{
+				"json": {
+					"id": 4479306946,
+					"lap_index": 1
+				}
+			},
+			{
+				"json": {
+					"id": 4479306947,
+					"lap_index": 2
+				}
+			}
+		],
+		"Get Zones": [
+			{
+				"json": {
+					"type": "heartrate"
+				}
+			}
+		],
+		"Get Kudos": [
+			{
+				"json": {
+					"firstname": "Jan"
+				}
+			}
+		],
+		"Get Comments": [
+			{
+				"json": {
+					"id": 1,
+					"text": "Nice run"
+				}
+			}
+		],
+		"Get Streams": [
+			{
+				"json": {
+					"type": "time",
+					"data": [0, 1]
+				}
+			}
+		],
+		"Update": [
+			{
+				"json": {
+					"id": 1234567890,
+					"name": "Morning Run"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Laps",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Zones",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Kudos",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Comments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Streams",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

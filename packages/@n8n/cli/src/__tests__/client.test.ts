@@ -518,18 +518,16 @@ describe('N8nClient packages', () => {
 			);
 		});
 
-		it('sends includeArchivedWorkflows only when true', async () => {
+		it('sends includeArchived only when true', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
-			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: false });
-			await client.exportPackage({ workflowIds: ['a'], includeArchivedWorkflows: true });
+			await client.exportPackage({ workflowIds: ['a'], includeArchived: false });
+			await client.exportPackage({ workflowIds: ['a'], includeArchived: true });
 
 			const [, first] = fetchMock.mock.calls[0] as [string, RequestInit];
 			const [, second] = fetchMock.mock.calls[1] as [string, RequestInit];
 			expect(first.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
-			expect(second.body).toBe(
-				JSON.stringify({ workflowIds: ['a'], includeArchivedWorkflows: true }),
-			);
+			expect(second.body).toBe(JSON.stringify({ workflowIds: ['a'], includeArchived: true }));
 		});
 	});
 

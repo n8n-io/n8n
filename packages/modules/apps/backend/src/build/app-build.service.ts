@@ -162,10 +162,18 @@ export class AppBuildService {
 					signal,
 					aborted,
 				);
-				checkBuildSource(source);
+				const dependencyKey = checkBuildSource(source);
 				stage = 'sandbox';
 				const files = await raceAbort(
-					this.workspaces.build(projectId, appId, versionId, attempt, source, signal),
+					this.workspaces.build(
+						projectId,
+						appId,
+						versionId,
+						attempt,
+						source,
+						dependencyKey,
+						signal,
+					),
 					signal,
 					aborted,
 				);

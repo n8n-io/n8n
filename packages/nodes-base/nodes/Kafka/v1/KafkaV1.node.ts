@@ -13,7 +13,8 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { generatePairedItemData } from '@utils/utilities';
 

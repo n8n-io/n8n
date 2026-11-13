@@ -179,17 +179,15 @@ export class SkillSyncService {
 		const links = await this.sourceRepository.findLinksBySource(sourceId);
 		if (!links.some((link) => link.pendingRevision === revision)) throw staleUpdate();
 		const fallback = this.commitFallback(source, client, revision);
-		if (
-			!client.describeRevision ||
-			(this.backoff.get(accessKey(source))?.until ?? 0) > Date.now()
-		) {
+		const metadataKey = `metadata:${accessKey(source)}`;
+		if (!client.describeRevision || (this.backoff.get(metadataKey)?.until ?? 0) > Date.now()) {
 			return fallback;
 		}
 		try {
 			const auth = await this.authOf(source, client);
 			return { ...fallback, ...(await client.describeRevision(source.locator, revision, auth)) };
 		} catch (error) {
-			this.recordBackoff(source, error);
+			this.recordBackoff(metadataKey, error);
 			this.logger.debug('Could not read skill update commit details', {
 				sourceId,
 				reason: skillSourceReasonOf(error),
@@ -325,9 +323,17 @@ export class SkillSyncService {
 			);
 		}
 		// Permission reads use a separate connection, so they must run after commit.
+		let impact: SkillUpdateAgents = { agents: [], hiddenAgentCount: result.followers.length };
+		try {
+			impact = await this.visibleAgents(user, result.followers);
+		} catch (error) {
+			this.logger.warn('Could not read agent names after skill updates', {
+				error: ensureError(error).message,
+			});
+		}
 		return {
 			updatedCount: result.saved.length,
-			...(await this.visibleAgents(user, result.followers)),
+			...impact,
 		};
 	}
 
@@ -439,7 +445,12 @@ export class SkillSyncService {
 	async stopSyncing(user: User, skillId: string): Promise<void> {
 		const { link, source } = await this.requireSource(user, skillId, 'stopSyncing');
 		// A stop at the same time removed the link first. The skill is not synced either way.
-		if (!(await this.sourceRepository.deleteLink(skillId))) return;
+		const stopped = await this.txRunner.run({}, async (ctx) => {
+			// Source deletion takes the same lock before it reads which skills are still synced.
+			await this.skillRepository.lockForEdit([skillId], ctx);
+			return await this.sourceRepository.deleteLink(skillId, ctx);
+		});
+		if (!stopped) return;
 		await this.skillsTelemetry.stoppedSync(
 			{ provider: source.type, had_pending_update: link.pendingContentHash !== null },
 			user.id,
@@ -618,7 +629,7 @@ export class SkillSyncService {
 				});
 			}
 		} catch (error) {
-			this.recordBackoff(source, error);
+			this.recordBackoff(accessKey(source), error);
 			await this.sourceRepository.recordCheck(source.id, {
 				checkedAt,
 				errorReason: skillSourceReasonOf(error) ?? 'unexpected',
@@ -627,9 +638,8 @@ export class SkillSyncService {
 		}
 	}
 
-	private recordBackoff(source: SkillSourceConnection, error: unknown): void {
+	private recordBackoff(key: string, error: unknown): void {
 		if (!(error instanceof SkillSourceReadError) || error.reason !== 'rate_limited') return;
-		const key = accessKey(source);
 		const current = this.backoff.get(key);
 		const attempts = (current?.attempts ?? 0) + 1;
 		const seconds = skillSourceBackoffSeconds(attempts, error.retryAfterSeconds);

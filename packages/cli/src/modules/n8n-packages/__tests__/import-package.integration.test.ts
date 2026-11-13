@@ -988,6 +988,64 @@ describe('Package import workflow conflict policy', () => {
 	});
 });
 
+describe('Package import workflow description', () => {
+	const importDescription = async (
+		description: string | null | undefined,
+		conflictPolicy: ImportConflictPolicy = ImportConflictPolicy.NewVersion,
+	) => {
+		const owner = await createOwner();
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-desc', name: 'Described', description: 'Old description' }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-desc', name: 'Described', description }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+			conflictPolicy,
+		});
+		return await Container.get(WorkflowRepository).findOneByOrFail({ id: 'wf-desc' });
+	};
+
+	it('gives a created workflow the package description', async () => {
+		const owner = await createOwner();
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-new', name: 'New', description: 'From the source' }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'wf-new' });
+		expect(stored.description).toBe('From the source');
+	});
+
+	it('gives an updated workflow the package description', async () => {
+		const stored = await importDescription('New description');
+
+		expect(stored.description).toBe('New description');
+	});
+
+	it('clears the description of an updated workflow when the package has none', async () => {
+		const stored = await importDescription(undefined);
+
+		expect(stored.description).toBeNull();
+	});
+
+	it('keeps the description of a workflow that the import skips', async () => {
+		const stored = await importDescription('New description', ImportConflictPolicy.Skip);
+
+		expect(stored.description).toBe('Old description');
+	});
+});
+
 describe('Package import rejection cases', () => {
 	async function singleWorkflowPackage(): Promise<Buffer> {
 		return await buildImportPackageBuffer([serializedWorkflow({ id: 'wf-x', name: 'X' })]);
@@ -1135,7 +1193,7 @@ describe('Package import rejection cases', () => {
 });
 
 describe('Package import event emission', () => {
-	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
+	it("emits workflow-created per workflow with the request's public API client, plus one n8n-package-imported on success", async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -1143,6 +1201,7 @@ describe('Package import event emission', () => {
 		try {
 			await importPackage({
 				user: owner,
+				publicApi: 'editor_ui',
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-event-1', name: 'Event One' }),
 					serializedWorkflow({ id: 'wf-event-2', name: 'Event Two' }),
@@ -1152,10 +1211,10 @@ describe('Package import event emission', () => {
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
 			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
-			expect(createdEvents).toHaveLength(2);
-			expect(
-				createdEvents.every(([, payload]) => (payload as { source: string }).source === 'import'),
-			).toBe(true);
+			expect(createdEvents.map(([, payload]) => payload)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(importedEvents).toHaveLength(1);
 
 			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];

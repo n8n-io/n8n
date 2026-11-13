@@ -105,7 +105,7 @@ const expectLimit = (f: LedgerFact) =>
 	f.event === 'started' &&
 	f.outcome === 'none' &&
 	f.source !== 'instance_ai' &&
-	['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'internal', 'agent'].includes(f.mode);
+	['cli', 'retry', 'trigger', 'webhook', 'evaluation', 'agent'].includes(f.mode);
 
 const expectDelta = (f: LedgerFact) => {
 	if (expectLimit(f)) return 1;
@@ -173,6 +173,15 @@ describe('countsTowardExecutionLimit', () => {
 	test('a sub-workflow start does not count toward the limit', () => {
 		const start = fact({ mode: 'integrated', event: 'started', outcome: 'none' });
 		expect(countsTowardExecutionLimit(start)).toBe(false);
+	});
+
+	// Agent messages count toward the limit by design, but are not billed.
+	const workflowModes = allModes.filter((mode) => mode !== 'agent');
+
+	test.each(workflowModes)('a workflow run in %s mode counts only if billing counts it', (mode) => {
+		const started = fact({ mode, event: 'started', outcome: 'none' });
+		const ended = fact({ mode, event: 'ended', outcome: 'success' });
+		expect(countsTowardExecutionLimit(started)).toBe(isBillableExecution(ended));
 	});
 });
 

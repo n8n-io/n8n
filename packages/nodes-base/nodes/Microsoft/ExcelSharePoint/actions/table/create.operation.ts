@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -70,7 +76,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	return await runPerItem.call(this, items, async (i) => {
@@ -80,7 +86,7 @@ export async function execute(
 			'Sheet',
 			this.getNodeParameter('worksheet', i, '', { extractValue: true }) as string,
 		);
-		const worksheetEndpoint = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}`;
+		const worksheetEndpoint = requestPath`${workbookRoot}/workbook/worksheets/${worksheetId}`;
 		const hasHeaders = this.getNodeParameter('hasHeaders', i) as boolean;
 
 		let range: string;
@@ -88,7 +94,7 @@ export async function execute(
 			const usedRange = await microsoftApiRequest.call(
 				this,
 				'GET',
-				`${worksheetEndpoint}/usedRange`,
+				requestPath`${worksheetEndpoint}/usedRange`,
 				{},
 				{ $select: 'address' },
 			);
@@ -97,9 +103,14 @@ export async function execute(
 			range = this.getNodeParameter('range', i) as string;
 		}
 
-		return await microsoftApiRequest.call(this, 'POST', `${worksheetEndpoint}/tables/add`, {
-			address: range,
-			hasHeaders,
-		});
+		return await microsoftApiRequest.call(
+			this,
+			'POST',
+			requestPath`${worksheetEndpoint}/tables/add`,
+			{
+				address: range,
+				hasHeaders,
+			},
+		);
 	});
 }

@@ -1,3 +1,4 @@
+import { PUBLIC_API_IGNORED_NODE_FIELDS } from '../base-workflow-public.dto';
 import { CreateWorkflowPublicDto } from '../create-workflow-public.dto';
 
 const validPayload = {
@@ -98,6 +99,24 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data.nodes[0]).not.toHaveProperty('extendsCredential');
+		}
+	});
+
+	test('drops every node field listed in PUBLIC_API_IGNORED_NODE_FIELDS', () => {
+		const ignoredFields = Object.fromEntries(
+			PUBLIC_API_IGNORED_NODE_FIELDS.map((field) => [field, 'ignored']),
+		);
+
+		const result = CreateWorkflowPublicDto.safeParse({
+			...validPayload,
+			nodes: [{ ...validPayload.nodes[0], ...ignoredFields }],
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			for (const field of PUBLIC_API_IGNORED_NODE_FIELDS) {
+				expect(result.data.nodes[0]).not.toHaveProperty(field);
+			}
 		}
 	});
 

@@ -183,7 +183,20 @@ export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nSlider } from './N8nSlider';
 export type * from './N8nSlider/Slider.types';
-export { default as N8nTabs } from './N8nTabs';
+export {
+	N8nTabs,
+	N8nTabsContent,
+	N8nTabsList,
+	N8nTabsRoot,
+	N8nTabsTrigger,
+} from './N8nTabs';
+export type {
+	N8nTabsContentProps,
+	N8nTabsListProps,
+	N8nTabsRootEmits,
+	N8nTabsRootProps,
+	N8nTabsTriggerProps,
+} from './N8nTabs/Tabs.types';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';

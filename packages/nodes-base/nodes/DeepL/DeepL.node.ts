@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { deepLApiRequest } from './GenericFunctions';
 import { textOperations } from './TextDescription';
@@ -78,7 +78,7 @@ export class DeepL implements INodeType {
 				const languages = await deepLApiRequest.call(
 					this,
 					'GET',
-					'/languages',
+					requestPath`/languages`,
 					{},
 					{ type: 'target' },
 				);
@@ -128,7 +128,12 @@ export class DeepL implements INodeType {
 								: additionalFields.sourceLang;
 						}
 
-						const { translations } = await deepLApiRequest.call(this, 'GET', '/translate', body);
+						const { translations } = await deepLApiRequest.call(
+							this,
+							'GET',
+							requestPath`/translate`,
+							body,
+						);
 						const [translation] = translations;
 						const translationJsonArray = this.helpers.returnJsonArray(translation as IDataObject[]);
 						const executionData = this.helpers.constructExecutionMetaData(translationJsonArray, {

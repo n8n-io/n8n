@@ -18,7 +18,7 @@ const NODES = {
 test.describe(
 	'Logs',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should populate logs as manual execution progresses', async ({

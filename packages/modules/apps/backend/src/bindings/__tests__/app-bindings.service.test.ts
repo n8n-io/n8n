@@ -276,6 +276,238 @@ describe('AppBindingsService', () => {
 		expect(warnings).toEqual([expect.objectContaining({ code: 'resource_unpublished' })]);
 	});
 
+	describe('publishing resources', () => {
+		type State = { published: boolean; hasChanges?: boolean };
+
+		function setupPublish(workflowState: State, agentState: State) {
+			const context = setup({ bindings: [tableRead, workflow, agentChat] });
+			context.workflows.getPublishState.mockResolvedValue({
+				name: 'Flow',
+				hasChanges: false,
+				...workflowState,
+			});
+			context.agents.getPublishState.mockResolvedValue({
+				name: 'Support',
+				hasChanges: false,
+				...agentState,
+			});
+			context.workflows.canPublish.mockResolvedValue(true);
+			context.agents.canPublish.mockResolvedValue(true);
+			return context;
+		}
+
+		const unpublished: State = { published: false };
+		const published: State = { published: true };
+		const changed: State = { published: true, hasChanges: true };
+
+		it('previews the workflows and agents of the version and skips data tables', async () => {
+			const { service, versions, dataTables } = setupPublish(unpublished, published);
+
+			const preview = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
+			expect(preview.resources).toEqual([
+				{
+					key: 'submit',
+					kind: 'workflow',
+					resourceId: 'w1',
+					name: 'Flow',
+					published: false,
+					hasChanges: false,
+					canPublish: true,
+				},
+				{
+					key: 'support',
+					kind: 'agent',
+					resourceId: 'a1',
+					name: 'Support',
+					published: true,
+					hasChanges: false,
+					canPublish: true,
+				},
+			]);
+			expect(dataTables.describe).not.toHaveBeenCalled();
+		});
+
+		it('previews a published resource with a changed draft as changed', async () => {
+			const { service, workflows, agents } = setupPublish(changed, published);
+
+			const { resources } = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(resources.map(({ key, hasChanges }) => [key, hasChanges])).toEqual([
+				['submit', true],
+				['support', false],
+			]);
+			expect(workflows.getPublishState).toHaveBeenCalledWith('p1', workflow);
+			expect(agents.getPublishState).toHaveBeenCalledWith('p1', agentChat);
+		});
+
+		it('previews a resource without the publish permission as not publishable', async () => {
+			const { service, workflows } = setupPublish(unpublished, unpublished);
+			workflows.canPublish.mockResolvedValue(false);
+
+			const { resources } = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(resources.map(({ key, canPublish }) => [key, canPublish])).toEqual([
+				['submit', false],
+				['support', true],
+			]);
+		});
+
+		it('skips a resource that is not in the project in the preview', async () => {
+			const { service, workflows } = setupPublish(unpublished, unpublished);
+			workflows.getPublishState.mockResolvedValue(null);
+
+			const { resources } = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(resources.map(({ key }) => key)).toEqual(['support']);
+		});
+
+		it('rejects a version of another app', async () => {
+			const { service, versions } = setupPublish(unpublished, unpublished);
+			versions.findVersionById.mockResolvedValue({
+				id: DRAFT_ID,
+				appId: 'other-app',
+				bindings: [workflow],
+			} as AppVersion);
+
+			await expect(service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		describe('order', () => {
+			const bindings: AppBinding[] = [
+				{ key: 'zeta', kind: 'agent', agentId: 'a-zeta', permissions: ['chat'] },
+				{ key: 'beta', kind: 'workflow', workflowId: 'w-beta' },
+				{ key: 'alpha', kind: 'agent', agentId: 'a-alpha', permissions: ['chat'] },
+				{ key: 'gamma', kind: 'workflow', workflowId: 'w-gamma' },
+			];
+			const names: Record<string, string> = {
+				'a-zeta': 'Zeta agent',
+				'w-beta': 'Beta flow',
+				'a-alpha': 'Alpha agent',
+				'w-gamma': 'Gamma flow',
+			};
+
+			function setupOrder() {
+				const context = setup({ bindings });
+				context.workflows.getPublishState.mockImplementation(async (_p, { workflowId }) => ({
+					name: names[workflowId],
+					published: false,
+					hasChanges: false,
+				}));
+				context.agents.getPublishState.mockImplementation(async (_p, { agentId }) => ({
+					name: names[agentId],
+					published: false,
+					hasChanges: false,
+				}));
+				context.workflows.canPublish.mockResolvedValue(true);
+				context.agents.canPublish.mockResolvedValue(true);
+				return context;
+			}
+
+			it('sorts the preview by type, then by name', async () => {
+				const { service } = setupOrder();
+
+				const { resources } = await service.getPublishPreview(user, 'p1', APP_ID, DRAFT_ID);
+
+				expect(resources.map(({ name }) => name)).toEqual([
+					'Beta flow',
+					'Gamma flow',
+					'Alpha agent',
+					'Zeta agent',
+				]);
+			});
+
+			it('publishes all workflows before the agents, sorted by name', async () => {
+				const { service, workflows, agents } = setupOrder();
+				const order: string[] = [];
+				workflows.publish.mockImplementation(async (_u, _p, { workflowId }) => {
+					order.push(workflowId);
+				});
+				agents.publish.mockImplementation(async (_u, _p, { agentId }) => {
+					order.push(agentId);
+				});
+
+				await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+				expect(order).toEqual(['w-beta', 'w-gamma', 'a-alpha', 'a-zeta']);
+			});
+		});
+
+		it('publishes nothing when all resources are published and unchanged', async () => {
+			const { service, workflows, agents } = setupPublish(published, published);
+
+			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(workflows.publish).not.toHaveBeenCalled();
+			expect(agents.publish).not.toHaveBeenCalled();
+		});
+
+		it('publishes the unpublished resources as the acting user', async () => {
+			const { service, workflows, agents } = setupPublish(unpublished, unpublished);
+
+			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(workflows.publish).toHaveBeenCalledWith(user, 'p1', workflow);
+			expect(agents.publish).toHaveBeenCalledWith(user, 'p1', agentChat);
+		});
+
+		it('publishes a published resource whose draft changed and skips an unchanged one', async () => {
+			const { service, workflows, agents } = setupPublish(changed, published);
+
+			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(workflows.publish).toHaveBeenCalledWith(user, 'p1', workflow);
+			expect(agents.publish).not.toHaveBeenCalled();
+		});
+
+		it('stops at the first failure and names the resource and the reason', async () => {
+			const { service, workflows, agents } = setupPublish(unpublished, unpublished);
+			workflows.publish.mockRejectedValue(new Error('Credential "Slack" is missing'));
+
+			await expect(service.publishResources(user, 'p1', APP_ID, DRAFT_ID)).rejects.toThrow(
+				'Could not publish "Flow": Credential "Slack" is missing',
+			);
+
+			expect(agents.publish).not.toHaveBeenCalled();
+		});
+
+		it('masks token values in the reason of a failed publish', async () => {
+			const { service, workflows } = setupPublish(unpublished, unpublished);
+			workflows.publish.mockRejectedValue(
+				new Error('Request failed with header Authorization: Bearer abc123def456ghi789'),
+			);
+
+			const failure = service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+			await expect(failure).rejects.toThrow('Could not publish "Flow": Request failed');
+			await expect(failure).rejects.not.toThrow('abc123def456ghi789');
+		});
+
+		it('skips a resource that the user cannot publish and publishes the rest', async () => {
+			const { service, workflows, agents } = setupPublish(changed, unpublished);
+			workflows.canPublish.mockResolvedValue(false);
+
+			await service.publishResources(user, 'p1', APP_ID, DRAFT_ID);
+
+			expect(workflows.publish).not.toHaveBeenCalled();
+			expect(agents.publish).toHaveBeenCalledWith(user, 'p1', agentChat);
+		});
+
+		it('does not fail when the user cannot publish any resource', async () => {
+			const { service, workflows, agents } = setupPublish(unpublished, unpublished);
+			workflows.canPublish.mockResolvedValue(false);
+			agents.canPublish.mockResolvedValue(false);
+
+			await expect(service.publishResources(user, 'p1', APP_ID, DRAFT_ID)).resolves.toBeUndefined();
+
+			expect(workflows.publish).not.toHaveBeenCalled();
+			expect(agents.publish).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('restoreVersion', () => {
 		const OLD_ID = '0190a8d6-4a2e-7000-8000-0000000000d0';
 

@@ -1,0 +1,168 @@
+{
+	"name": "Google Docs request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "d0c5a1b2-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"folderId": "1AbCdEfGhIjKlMnOpQrStUvWxYz012345",
+				"title": "Release notes"
+			},
+			"type": "n8n-nodes-base.googleDocs",
+			"typeVersion": 2,
+			"position": [300, 0],
+			"id": "d0c5a1b2-0000-4000-8000-000000000001",
+			"name": "Create Document",
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "d0c5a1b2-cred",
+					"name": "Google Docs account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "get",
+				"documentURL": "https://docs.google.com/document/d/1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk/edit",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.googleDocs",
+			"typeVersion": 2,
+			"position": [300, 200],
+			"id": "d0c5a1b2-0000-4000-8000-000000000002",
+			"name": "Get Document",
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "d0c5a1b2-cred",
+					"name": "Google Docs account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "get",
+				"documentURL": "1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk",
+				"simple": false
+			},
+			"type": "n8n-nodes-base.googleDocs",
+			"typeVersion": 2,
+			"position": [300, 400],
+			"id": "d0c5a1b2-0000-4000-8000-000000000003",
+			"name": "Get Document By ID",
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "d0c5a1b2-cred",
+					"name": "Google Docs account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"operation": "update",
+				"documentURL": "https://docs.google.com/document/d/1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk/edit",
+				"simple": false,
+				"actionsUi": {
+					"actionFields": [
+						{
+							"action": "insert",
+							"object": "text",
+							"text": "Hello",
+							"locationChoice": "endOfSegmentLocation"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.googleDocs",
+			"typeVersion": 2,
+			"position": [300, 600],
+			"id": "d0c5a1b2-0000-4000-8000-000000000004",
+			"name": "Update Document",
+			"credentials": {
+				"googleDocsOAuth2Api": {
+					"id": "d0c5a1b2-cred",
+					"name": "Google Docs account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Document": [
+			{
+				"json": {
+					"id": "1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk",
+					"name": "Release notes",
+					"mimeType": "application/vnd.google-apps.document"
+				}
+			}
+		],
+		"Get Document": [
+			{
+				"json": {
+					"documentId": "1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk",
+					"title": "Release notes"
+				}
+			}
+		],
+		"Get Document By ID": [
+			{
+				"json": {
+					"documentId": "1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk",
+					"title": "Release notes"
+				}
+			}
+		],
+		"Update Document": [
+			{
+				"json": {
+					"documentId": "1Xk7cR2mPq9sT4vW6yZ8bD0fH3jL5nQ7rU9wA2cE4gIk",
+					"replies": [{}],
+					"writeControl": {
+						"requiredRevisionId": "ALm37BW"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Document By ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

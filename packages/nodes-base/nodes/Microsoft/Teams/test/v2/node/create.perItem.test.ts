@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -19,8 +19,8 @@ vi.mock('../../../v2/transport', async () => {
 });
 
 const USERS: Record<string, IDataObject> = {
-	'/v1.0/users/jane%40example.com': { id: 'guid-1', displayName: 'Jane Smith' },
-	'/v1.0/users/bob%40example.com': { id: 'guid-2', displayName: 'Bob Jones' },
+	'/v1.0/users/jane@example.com': { id: 'guid-1', displayName: 'Jane Smith' },
+	'/v1.0/users/bob@example.com': { id: 'guid-2', displayName: 'Bob Jones' },
 };
 
 const TAGS: Record<string, IDataObject> = {
@@ -118,7 +118,7 @@ describe('Microsoft Teams V2, create per item', () => {
 	});
 
 	const janeLookups = () =>
-		apiRequest.mock.calls.filter((call) => call[1] === '/v1.0/users/jane%40example.com');
+		apiRequest.mock.calls.filter((call) => String(call[1]) === '/v1.0/users/jane@example.com');
 
 	it.each(RESOURCES)(
 		'%s create resolves a repeated mention once for the whole run',
@@ -154,7 +154,7 @@ describe('Microsoft Teams V2, create per item', () => {
 				['jane@example.com', 'jane@example.com'],
 				{ includeLinkToWorkflow: false },
 				async (_method: string, resourcePath: string) => {
-					if (resourcePath === '/v1.0/users/jane%40example.com' && attempt++ === 0) {
+					if (String(resourcePath) === '/v1.0/users/jane@example.com' && attempt++ === 0) {
 						throw new NodeApiError(
 							mock<INode>(),
 							{ message: 'Too many requests' },
@@ -207,7 +207,10 @@ describe('Microsoft Teams V2, create per item', () => {
 		const resolved = apiRequest.mock.calls
 			.filter((call) => call[0] === 'GET')
 			.map((call) => call[1] as string);
-		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-b/tags/tag-b']);
+		expect(resolved).toEqual([
+			requestPath`/v1.0/teams/team-a/tags/tag-a`,
+			requestPath`/v1.0/teams/team-b/tags/tag-b`,
+		]);
 	});
 
 	// The per-run cache keys a tag on its team as well as its ID. A tag name can be reused across
@@ -248,7 +251,10 @@ describe('Microsoft Teams V2, create per item', () => {
 		const resolved = apiRequest.mock.calls
 			.filter((call) => call[0] === 'GET')
 			.map((call) => call[1] as string);
-		expect(resolved).toEqual(['/v1.0/teams/team-a/tags/tag-a', '/v1.0/teams/team-c/tags/tag-a']);
+		expect(resolved).toEqual([
+			requestPath`/v1.0/teams/team-a/tags/tag-a`,
+			requestPath`/v1.0/teams/team-c/tags/tag-a`,
+		]);
 
 		const sent = apiRequest.mock.calls
 			.filter((call) => call[0] === 'POST')
@@ -262,8 +268,8 @@ describe('Microsoft Teams V2, create per item', () => {
 	it('chat create resolves a separate participant per item and binds it on the credential host', async () => {
 		const CALLER = '00000000-1111-2222-3333-444444444444';
 		const CHAT_USERS: Record<string, IDataObject> = {
-			'/v1.0/users/jane%40contoso.com': { id: '714c1202-cbac-40ff-9160-53ab5c4df9b8' },
-			'/v1.0/users/bob%40contoso.com': { id: '22222222-3333-4444-5555-666666666666' },
+			'/v1.0/users/jane@contoso.com': { id: '714c1202-cbac-40ff-9160-53ab5c4df9b8' },
+			'/v1.0/users/bob@contoso.com': { id: '22222222-3333-4444-5555-666666666666' },
 		};
 		ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
 		const participantPerItem = ['jane@contoso.com', 'bob@contoso.com'];
@@ -283,7 +289,8 @@ describe('Microsoft Teams V2, create per item', () => {
 			},
 		);
 		apiRequest.mockImplementation(async (_method: string, resourcePath: string) => {
-			if (resourcePath === '/v1.0/me') return { id: CALLER, userPrincipalName: 'me@contoso.com' };
+			if (String(resourcePath) === '/v1.0/me')
+				return { id: CALLER, userPrincipalName: 'me@contoso.com' };
 			return resourcePath in CHAT_USERS ? CHAT_USERS[resourcePath] : { id: 'created' };
 		});
 

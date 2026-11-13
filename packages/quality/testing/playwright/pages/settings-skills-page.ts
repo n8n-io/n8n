@@ -14,13 +14,21 @@ export class SettingsSkillsPage extends BasePage {
 		await this.page.getByTestId('skill-source-import').click();
 	}
 
-	async checkForUpdates() {
-		await this.page.getByTestId('skill-group-actions').getByRole('button').click();
+	async checkForUpdates(sourceId: string) {
+		await this.page
+			.getByRole('row')
+			.filter({ has: this.page.locator(`#skill-source-${sourceId}`) })
+			.getByTestId('skill-group-actions')
+			.getByRole('button')
+			.click();
 		await this.page.getByTestId('action-checkNow').click();
 	}
 
-	getUpdateBadge() {
-		return this.page.getByTestId('skill-group-updates');
+	getUpdateBadge(sourceId: string) {
+		return this.page
+			.getByRole('row')
+			.filter({ has: this.page.locator(`#skill-source-${sourceId}`) })
+			.getByTestId('skill-group-updates');
 	}
 
 	getUpdateDialog() {

@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { parseJsonParameter } from '@utils/helpers';
 
@@ -49,9 +49,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	body.metadata = parseJsonParameter(metadata, 'Invalid JSON in metadata field');
 
-	const response = await apiRequest.call(this, 'POST', `/conversations/${conversationId}`, {
-		body,
-	});
+	const response = await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/conversations/${conversationId}`,
+		{
+			body,
+		},
+	);
 
 	return [
 		{

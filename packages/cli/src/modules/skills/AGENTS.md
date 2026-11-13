@@ -74,7 +74,6 @@ Two checks enforce two rules. The code-health rule `skills-module-boundary` reso
 
 | Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
 | ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `PostHogClient` (`@/posthog`)                     | `AssistantSkillsFlagGate`, `SkillSyncFlagGate` | A shared package, or a contract that cli implements                    |
 | `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.
@@ -120,7 +119,7 @@ Say "skills" or "skills module". Do not say "skills hub". Do not use "provider" 
 
 Skill Sync adds sources such as GitHub and GitLab. It uses the Strategy pattern with a registry. The abstract class `SkillSourceClient` in `sources/` is the contract. A client parses a link, gives the identity of a source, lists its skills and fetches one skill. It knows nothing else. The locator and the skill refs are opaque JSON that only the client reads.
 
-1. Add one client for each source type in `sources/`, such as `GitHubSkillSourceClient` in `sources/github/`. It reads public repository content with `ls-refs` over git smart HTTP and the tarball of the head commit. Optional commit metadata uses the GitHub REST API.
+1. Add one client for each source type in `sources/`, such as `GitHubSkillSourceClient` in `sources/github/`. It reads branches with `ls-refs` over git smart HTTP. Public tarballs come from codeload. Private tarballs use the REST API with the credential's token. Optional commit metadata also uses the GitHub REST API.
 2. Run `describeSkillSourceClientContract` from `__tests__/test-utils/` on it. `__tests__/in-memory-skill-source-client.test.ts` runs the same cases on `InMemorySkillSourceClient`, which reads an `InMemoryPagesStore`: a pages source with no files and no branches. The test sets up the store, and the client only reads it. If the fake cannot pass a new case, the case has a git-only assumption.
 3. Register each client on `SkillSourceClientRegistry`, keyed by its type, in `SkillsModule.init()`.
 4. Keep the shared logic in `SkillSyncService`: compare hashes, build the diff, find conflicts, and write through `createTrusted` and `saveTrusted`. A source never writes skills itself.

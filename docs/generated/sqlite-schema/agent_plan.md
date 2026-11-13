@@ -86,6 +86,7 @@ erDiagram
   datetime_3_ timeoutAt
   varchar_255_ title
   datetime_3_ updatedAt
+  varchar wakeAttemptId
   varchar_36_ workflowId
 }
 "agent_plan_history" {

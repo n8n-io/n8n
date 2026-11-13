@@ -1,3 +1,4 @@
+import { EMBEDDED_SETTINGS_GLOBAL } from '@n8n/constants';
 import type { BrowserContext } from '@playwright/test';
 
 import { setContextModuleSettings, setContextSettings } from '../config/intercepts';
@@ -23,6 +24,7 @@ export async function setupTestRequirements(
 	if (requirements.config?.settings) {
 		// Store settings for this context
 		setContextSettings(context, requirements.config.settings);
+		await mergeIntoEmbeddedSettings(context, requirements.config.settings);
 	}
 
 	// 1b. Setup module settings override
@@ -72,4 +74,39 @@ export async function setupTestRequirements(
 			}
 		}
 	}
+}
+
+/**
+ * The backend embeds the public settings in the page, so the `/rest/settings` intercept
+ * does not see them. This deep-merges the overrides into them when the page assigns them,
+ * the same way the intercept merges them into a fetched payload.
+ */
+async function mergeIntoEmbeddedSettings(
+	context: BrowserContext,
+	overrides: Partial<Record<string, unknown>>,
+) {
+	await context.addInitScript(
+		({ key, overrides: settingsOverrides }) => {
+			const isObject = (value: unknown): value is Record<string, unknown> =>
+				typeof value === 'object' && value !== null;
+			const merge = (target: unknown, source: unknown): unknown => {
+				if (source === undefined) return target;
+				if (!isObject(target) || !isObject(source)) return source;
+				for (const [name, value] of Object.entries(source)) {
+					target[name] = merge(target[name], value);
+				}
+				return target;
+			};
+
+			let settings: unknown;
+			Object.defineProperty(window, key, {
+				configurable: true,
+				get: () => settings,
+				set: (embedded: unknown) => {
+					settings = merge(embedded, structuredClone(settingsOverrides));
+				},
+			});
+		},
+		{ key: EMBEDDED_SETTINGS_GLOBAL, overrides },
+	);
 }

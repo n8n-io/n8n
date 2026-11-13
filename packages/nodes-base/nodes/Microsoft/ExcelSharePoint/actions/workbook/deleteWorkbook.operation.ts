@@ -1,4 +1,9 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -25,7 +30,7 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
 	// so a multi-item run resolves each distinct address/site only once.
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {

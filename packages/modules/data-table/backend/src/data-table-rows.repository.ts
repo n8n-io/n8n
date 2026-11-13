@@ -15,15 +15,14 @@ import {
 	DataTableColumnJsType,
 	DataTableRows,
 	DataTableRowReturn,
-	UnexpectedError,
 	DataTableRowsReturn,
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DataTableInsertRowsReturnType,
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
 	DataTableRawRowReturn,
-	UserError,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTable } from './data-table.entity';
@@ -310,6 +309,22 @@ export class DataTableRowsRepository {
 
 			return inserted;
 		});
+	}
+
+	async insertRowsInContext<T extends DataTableInsertRowsReturnType>(
+		dataTableId: string,
+		rows: DataTableRows,
+		columns: DataTableColumn[],
+		returnType: T,
+		ctx: OperationContext,
+	): Promise<DataTableInsertRowsResult<T>> {
+		return await this.insertRows(
+			dataTableId,
+			rows,
+			columns,
+			returnType,
+			this.table.managerFor(ctx),
+		);
 	}
 
 	async updateRows<T extends boolean | undefined>(

@@ -1,7 +1,7 @@
 import type { JsonValue, StepExecutionRequest } from '@n8n/engine';
 import { encodeBufferBody, ExecutionLifecycleHooks } from 'n8n-core';
 import type { IBinaryData, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { toV1ExecuteMode } from './v1-adapters';
 

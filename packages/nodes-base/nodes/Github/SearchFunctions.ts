@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 
@@ -47,7 +48,7 @@ export async function getUsers(
 		responseData = await githubApiRequest.call(
 			this,
 			'GET',
-			'/search/users',
+			requestPath`/search/users`,
 			{},
 			{ q: filter, page, per_page },
 		);
@@ -84,7 +85,7 @@ export async function getRepositories(
 		responseData = await githubApiRequest.call(
 			this,
 			'GET',
-			'/search/repositories',
+			requestPath`/search/repositories`,
 			{},
 			{ q, page, per_page },
 		);
@@ -111,7 +112,7 @@ export async function getWorkflows(
 	const repository = this.getCurrentNodeParameter('repository', { extractValue: true });
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
-	const endpoint = `/repos/${owner}/${repository}/actions/workflows`;
+	const endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows`;
 	let responseData: { workflows: Array<{ id: string; name: string }>; total_count: number } = {
 		workflows: [],
 		total_count: 0,
@@ -146,7 +147,7 @@ export async function getRefs(
 	const responseData: RefItem[] = await githubApiRequest.call(
 		this,
 		'GET',
-		`/repos/${owner}/${repository}/git/refs`,
+		requestPath`/repos/${owner}/${repository}/git/refs`,
 		{},
 		{ page, per_page },
 	);

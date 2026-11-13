@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope. The key needs the same scope as the preview for that direction.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
 x-required-scope: promotions:promote,promotions:apply
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

@@ -1,4 +1,5 @@
-import type { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestMethods, RequestPath } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { DEFAULT_GRAPH_BASE_URL } from './constants';
 
@@ -49,7 +50,7 @@ export function toPermissionKey(resource: string, operation: string): string {
 
 export type RequestOptionsParams = {
 	method: IHttpRequestMethods;
-	resource: string;
+	resource: RequestPath;
 	body: IDataObject;
 	qs: IDataObject;
 	uri?: string;
@@ -58,18 +59,18 @@ export type RequestOptionsParams = {
 };
 
 /** Shapes the raw call args into Graph request options, resolving the base URL and merging in any extra headers. */
-export function buildRequestOptions(params: RequestOptionsParams): IHttpRequestOptions {
+export function buildRequestOptions(params: RequestOptionsParams) {
 	const baseUrl = toGraphBaseUrl(params.graphApiBaseUrl);
-	const options: IHttpRequestOptions = {
-		headers: {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			'Content-Type': 'application/json',
-		},
+	const headers: IDataObject = {
+		'Content-Type': 'application/json',
+	};
+	const options = {
+		headers,
 		method: params.method,
 		body: params.body,
 		qs: params.qs,
 		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim
-		url: params.uri ?? `${baseUrl}${params.resource}`,
+		...(params.uri ? { url: params.uri } : { url: requestUrl`${baseUrl}${params.resource}` }),
 		json: true,
 	};
 	if (Object.keys(params.headers).length !== 0) {

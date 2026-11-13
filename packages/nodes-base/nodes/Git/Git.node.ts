@@ -10,11 +10,10 @@ import type {
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
-	UnexpectedError,
-	UserError,
 	assertParamIsBoolean,
 	assertParamIsString,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { randomBytes } from 'node:crypto';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

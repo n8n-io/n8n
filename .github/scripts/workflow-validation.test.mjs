@@ -447,7 +447,7 @@ describe('trusted publishing setup workflows', () => {
 		);
 		assert.equal(
 			orchestrator.jobs['detect-new-packages'].outputs.packages,
-			'${{ steps.detect.outputs.packages-json }}',
+			"${{ steps.detect.outputs.packages-json || '[]' }}",
 		);
 		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
 		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
@@ -475,12 +475,30 @@ describe('trusted publishing setup workflows', () => {
 		);
 	});
 
-	it('runs setup only for minor releases and blocks publishing when setup fails', () => {
+	it('finishes setup as a no-op outside minor releases and blocks publishing when setup fails', () => {
 		const setup = releasePublish.jobs['setup-trusted-publishing'];
 		const publish = releasePublish.jobs['publish-to-npm'];
+		const detectJob = orchestrator.jobs['detect-new-packages'];
+		const setupInputs = resolveInputs(orchestrator, { setup_required: false });
+		const skip = stepNamed(orchestrator, 'detect-new-packages', 'Skip setup for non-minor release');
 
 		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
-		assert.match(setup.if, /needs\.determine-version-info\.outputs\.bump == 'minor'/);
+		assert.equal(setup.if, 'github.event.pull_request.merged == true');
+		assert.equal(
+			setup.with.setup_required,
+			"${{ needs.determine-version-info.outputs.bump == 'minor' }}",
+		);
+		assert.equal(detectJob.outputs.packages, "${{ steps.detect.outputs.packages-json || '[]' }}");
+		assert.equal(evaluateStepCondition(skip.if, { inputs: setupInputs }), true);
+		for (const name of [
+			'Checkout',
+			'Setup Node.js',
+			'Find unpublished packages',
+			'Summarize unpublished packages',
+		]) {
+			const step = stepNamed(orchestrator, 'detect-new-packages', name);
+			assert.equal(evaluateStepCondition(step.if, { inputs: setupInputs }), false);
+		}
 		assert.ok(publish.needs.includes('setup-trusted-publishing'));
 		assert.match(publish.if, /always\(\)/);
 		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);

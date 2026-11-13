@@ -6,7 +6,6 @@ import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } f
 import {
 	AllowAllAdmittance,
 	createDataSource,
-	createEngineHttpServer,
 	createEngineRuntime,
 	mintApprovalCallback,
 	mintResumeToken,
@@ -30,7 +29,7 @@ import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { EngineCredentialsClient } from './engine-credentials-client';
 import { EngineSubWorkflowClient } from './engine-sub-workflow-client';
-import { EngineTlsMaterial } from './engine-tls-material';
+import { EngineMtls } from './engine-mtls';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
@@ -69,7 +68,7 @@ export class EngineV2Runtime {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly tlsMaterial: EngineTlsMaterial,
+		private readonly mtls: EngineMtls,
 		private readonly nodeTypes: NodeTypesProxy,
 		private readonly logger: Logger,
 		private readonly credentialsClient: EngineCredentialsClient,
@@ -196,19 +195,24 @@ export class EngineV2Runtime {
 
 	private async initServer(): Promise<void> {
 		const { host, port } = this.engineConfig;
-		const { tls } = this.tlsMaterial;
 
 		this.server = await new Promise<Server>((resolve, reject) => {
 			assert(this.engine, 'Engine v2 cannot start without an engine runtime');
 
-			const listener = createEngineHttpServer(this.engine.app, tls).listen(port, host);
+			const listener = this.mtls.createServer(this.engine.app).listen(port, host);
 			listener.once('listening', () => resolve(listener));
-			listener.once('error', reject);
+			listener.once('error', (error) => {
+				// A failed bind: closing also ends its subscription to TLS reloads.
+				if (!listener.listening) listener.close();
+				reject(error);
+			});
 		});
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine v2 listening on ${tls ? 'https' : 'http'}://${shownHost}:${port}`);
+		this.logger.info(
+			`Engine v2 listening on ${this.mtls.enabled ? 'https' : 'http'}://${shownHost}:${port}`,
+		);
 	}
 
 	/**

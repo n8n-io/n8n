@@ -46,6 +46,7 @@ test.describe(
 				health: 'connected',
 				lastCheckedAt: null,
 				canReview: true,
+				canDelete: true,
 			};
 			const skill: SkillListItem = {
 				id: 'skill-docx',
@@ -69,6 +70,13 @@ test.describe(
 				createdAt: '2026-11-11T10:00:00Z',
 				updatedAt: '2026-11-11T10:00:00Z',
 			};
+			const otherSource = {
+				...source,
+				id: 'second-source',
+				label: 'acme/other',
+				updatesAvailable: 1,
+			};
+			const otherSkill = { ...skill, id: 'other-skill', name: 'other', sourceId: otherSource.id };
 			const discovery: SkillSourceDiscovery = {
 				source: { type: 'github', label: source.label, ref: 'main', path: '', webUrl: url },
 				duplicate: { kind: 'none' },
@@ -122,7 +130,7 @@ test.describe(
 						imported: [{ key: 'docx', skillId: skill.id, name: skill.name }],
 						failed: [],
 					};
-				} else if (path === '') data = connected ? [source] : [];
+				} else if (path === '') data = connected ? [source, otherSource] : [otherSource];
 				else if (path === `/${sourceId}/check`) {
 					source.updatesAvailable = 1;
 					skill.syncState = 'update_available';
@@ -158,8 +166,8 @@ test.describe(
 				const data =
 					path === '/rest/skills'
 						? {
-								data: connected ? [skill] : [],
-								count: connected ? 1 : 0,
+								data: connected ? [skill, otherSkill] : [otherSkill],
+								count: connected ? 2 : 1,
 								page: 0,
 								pageCount: 1,
 								collapsedSources: [],
@@ -172,10 +180,10 @@ test.describe(
 			await skills.goto();
 			await skills.connect(url);
 			await n8n.notifications.waitForNotificationAndClose('Added 1 skill');
-			await skills.checkForUpdates();
+			await skills.checkForUpdates(sourceId);
 			await n8n.notifications.waitForNotificationAndClose('Checked acme/skills');
-			await expect(skills.getUpdateBadge()).toHaveText('1 update');
-			await skills.getUpdateBadge().click();
+			await expect(skills.getUpdateBadge(sourceId)).toHaveText('1 update');
+			await skills.getUpdateBadge(sourceId).click();
 			await expect(skills.getDiff()).toContainText('Use plain text.');
 			await expect(skills.getDiff()).toContainText('Use Markdown headings.');
 			await testInfo.attach('source-update-review', {
@@ -184,7 +192,8 @@ test.describe(
 			});
 			await skills.getAcceptButton().click();
 			await expect(skills.getUpdateDialog()).toBeHidden();
-			await expect(skills.getUpdateBadge()).toBeHidden();
+			await expect(skills.getUpdateBadge(sourceId)).toBeHidden();
+			await expect(skills.getUpdateBadge(otherSource.id)).toHaveText('1 update');
 			await expect(n8n.notifications.getNotificationByTitle('Updated 1 skill')).toContainText(
 				'No agents follow these skills yet.',
 			);

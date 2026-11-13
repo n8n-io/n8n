@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { gristApiRequest } from '../GenericFunctions';
@@ -26,13 +26,15 @@ describe('gristApiRequest', () => {
 			url: 'https://api.getgrist.com',
 		});
 
-		await gristApiRequest.call(ctx, 'GET', '/docs/abc/tables/People/records');
+		await gristApiRequest.call(ctx, 'GET', requestPath`/docs/abc/tables/People/records`);
 
 		expect(ctx.getCredentials).toHaveBeenCalledWith('gristApi');
 		expect(requestOAuth2).not.toHaveBeenCalled();
 		expect(request).toHaveBeenCalledWith(
 			expect.objectContaining({
-				uri: 'https://api.getgrist.com/api/docs/abc/tables/People/records',
+				uri: expect.objectContaining({
+					value: 'https://api.getgrist.com/api/docs/abc/tables/People/records',
+				}),
 				headers: { Authorization: 'Bearer k' },
 			}),
 		);
@@ -45,17 +47,34 @@ describe('gristApiRequest', () => {
 			url: 'https://grist.example.com/api/',
 		});
 
-		await gristApiRequest.call(ctx, 'GET', '/orgs');
+		await gristApiRequest.call(ctx, 'GET', requestPath`/orgs`);
 
 		expect(ctx.getCredentials).toHaveBeenCalledWith('gristOAuth2Api');
 		expect(request).not.toHaveBeenCalled();
 		expect(requestOAuth2).toHaveBeenCalledWith(
 			'gristOAuth2Api',
-			expect.objectContaining({ uri: 'https://grist.example.com/api/orgs' }),
+			expect.objectContaining({
+				uri: expect.objectContaining({ value: 'https://grist.example.com/api/orgs' }),
+			}),
 		);
 		// The OAuth helper attaches the token itself, so nothing sets an Authorization header here.
 		const [, options] = requestOAuth2.mock.calls[0] as [string, IRequestOptions];
 		expect(options.headers).toBeUndefined();
+	});
+
+	it('should encode path values', async () => {
+		const { ctx, request } = setup('apiKey', { apiKey: 'k', url: 'https://api.getgrist.com' });
+
+		const docId = 'abc/orgs';
+		await gristApiRequest.call(ctx, 'GET', requestPath`/docs/${docId}/tables/People/records`);
+
+		expect(request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value: 'https://api.getgrist.com/api/docs/abc%2Forgs/tables/People/records',
+				}),
+			}),
+		);
 	});
 
 	it.each(['apiKey', 'oAuth2'])(
@@ -69,7 +88,9 @@ describe('gristApiRequest', () => {
 			request.mockRejectedValue(failure);
 			requestOAuth2.mockRejectedValue(failure);
 
-			await expect(gristApiRequest.call(ctx, 'GET', '/orgs')).rejects.toBeInstanceOf(NodeApiError);
+			await expect(gristApiRequest.call(ctx, 'GET', requestPath`/orgs`)).rejects.toBeInstanceOf(
+				NodeApiError,
+			);
 		},
 	);
 });

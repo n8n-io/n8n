@@ -11,7 +11,7 @@ import type {
 import { aiClientFetch } from '@n8n/ai-utilities';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
+import { getConnectedTools, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
@@ -279,7 +279,7 @@ export class OpenAiAssistant implements INodeType {
 			},
 			{
 				displayName:
-					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+					'Upload files for retrieval using the <a href="https://platform.openai.com/storage/files" target="_blank">OpenAI website<a/>',
 				name: 'noticeTools',
 				type: 'notice',
 				typeOptions: {
@@ -357,7 +357,7 @@ export class OpenAiAssistant implements INodeType {
 
 				const client = new OpenAIClient({
 					fetch: aiClientFetch,
-					apiKey: credentials.apiKey as string,
+					apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,
 					baseURL: options.baseURL,

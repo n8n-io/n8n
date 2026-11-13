@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { confluenceApiRequestUpload } from '../../transport';
 import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
@@ -72,7 +73,7 @@ export const execute: ConfluenceOperation = async function (
 	formData.append('minorEdit', String(minorEdit));
 	if (comment !== '') formData.append('comment', comment);
 
-	const endpoint = `/wiki/rest/api/content/${encodeURIComponent(pageId)}/child/attachment`;
+	const endpoint = requestPath`/wiki/rest/api/content/${pageId}/child/attachment`;
 	const response = await confluenceApiRequestUpload.call(this, endpoint, formData);
 	const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 	return results[0] ?? response;

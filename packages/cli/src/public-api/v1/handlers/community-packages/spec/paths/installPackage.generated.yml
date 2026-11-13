@@ -2,7 +2,10 @@ operationId: installPackage
 tags:
   - CommunityPackage
 summary: Install a community package
-description: Install a community package by npm name and optional version.
+description: |-
+  Install a community package by npm name and optional version.
+
+  Requires the `communityPackage:install` API key scope.
 x-required-scope: communityPackage:install
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

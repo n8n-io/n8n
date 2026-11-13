@@ -153,8 +153,8 @@ async function loadPreview() {
 	const request = ++previewRequest;
 	detail.value = null;
 	detailError.value = '';
+	detailLoading.value = false;
 	if (!update) return;
-	detailLoading.value = true;
 	commit.value = {
 		revision: update.revision,
 		webUrl: update.revisionUrl,
@@ -169,6 +169,8 @@ async function loadPreview() {
 			if (!closed && request === previewRequest) commit.value = result;
 		})
 		.catch(() => undefined);
+	if (update.check.verdict === 'blocked') return;
+	detailLoading.value = true;
 	try {
 		const result = await store.fetchSourceUpdate(props.source.id, update.skillId, {
 			contentHash: update.contentHash,

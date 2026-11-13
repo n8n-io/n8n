@@ -10,6 +10,7 @@ import {
 	AiPreferenceService,
 	CredentialsFinderService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -24,7 +25,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -60,6 +60,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
 import type { McpAuthContext } from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof permissions>()),
@@ -158,6 +159,7 @@ describe('install_community_node registration', () => {
 			mockInstance(McpConfig, { communityNodeDiscoveryEnabled: true }),
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
+			mockInstance(McpPreferencesNoteService),
 		);
 
 	beforeEach(() => {

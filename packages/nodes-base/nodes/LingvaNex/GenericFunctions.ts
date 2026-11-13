@@ -6,33 +6,31 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function lingvaNexApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('lingvaNexApi');
-		let options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			headers: {
 				Authorization: `Bearer ${credentials.apiKey}`,
 			},
 			method,
 			qs,
 			body,
-			uri: uri || `https://api-b2b.backenster.com/b1/api/v3${resource}`,
+			uri: requestUrl`https://api-b2b.backenster.com/b1/api/v3${resource}`,
 			json: true,
 		};
-
-		options = Object.assign({}, options, option);
 
 		const response = await this.helpers.request(options);
 

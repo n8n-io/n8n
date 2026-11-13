@@ -159,6 +159,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
+	/** Deletes a source and its synced skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	}
+
 	/** Check for updates on one source. The caller reloads the lists. */
 	async function checkSource(sourceId: string) {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
@@ -211,5 +216,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSourceUpdate,
 		fetchSourceCommit,
 		acceptSourceUpdates,
+		deleteSource,
 	};
 });

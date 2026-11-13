@@ -217,6 +217,8 @@ export type SkillSyncedFrom = {
 	type: 'github';
 	/** Such as `owner/repository`. */
 	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
 	/** The page of the skill in the source. */
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
@@ -228,6 +230,20 @@ export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope
 
 /** A credential that a source in the scope accepts and that the user can use. */
 export type SkillSourceCredentialOption = { id: string; name: string; type: string };
+
+/** The n8n credential types that read a private GitHub source. */
+export const GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES = [
+	'githubApi',
+	'githubAppApi',
+	'githubOAuth2Api',
+] as const;
+export type GitHubSkillSourceCredentialType = (typeof GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES)[number];
+
+export function isGitHubSkillSourceCredentialType(
+	type: string,
+): type is GitHubSkillSourceCredentialType {
+	return GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES.some((known) => known === type);
+}
 
 /** The repositories that a credential can read, to pick one in place of a link. */
 export class ListSkillSourceRepositoriesQueryDto extends Z.class({
@@ -285,6 +301,8 @@ export type SkillSourceListItem = {
 	lastCheckedAt: string | null;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
+	/** Whether the user may delete the source and its synced skills. */
+	canDelete: boolean;
 };
 
 const reviewedUpdate = {
@@ -359,3 +377,19 @@ export type SkillUpdateAgents = {
 
 export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
 export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
+
+/** A refused source delete names only the agents that the user may read. */
+export const skillSourceDeleteBlockSchema = z.object({
+	reason: z.literal('skills_in_use'),
+	agents: z.array(
+		z.object({
+			agentId: z.string(),
+			agentName: z.string(),
+			projectId: z.string(),
+			projectName: z.string(),
+		}),
+	),
+	hiddenAgents: z.number().int().nonnegative(),
+});
+
+export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;

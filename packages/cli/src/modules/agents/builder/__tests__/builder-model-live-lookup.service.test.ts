@@ -178,7 +178,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'curated',
-				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+				models: [{ name: 'gpt-6.1-terra', value: 'gpt-6.1-terra' }],
 			});
 			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
 			expect(getBaseMock).not.toHaveBeenCalled();
@@ -201,7 +201,7 @@ describe('BuilderModelLiveLookupService', () => {
 			expect(result).toEqual({
 				status: 'success',
 				policy: 'managed',
-				models: [{ name: 'gpt-5.6-terra', value: 'gpt-5.6-terra' }],
+				models: [{ name: 'gpt-6.1-terra', value: 'gpt-6.1-terra' }],
 			});
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();

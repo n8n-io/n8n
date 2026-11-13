@@ -6,6 +6,9 @@ paths:
   /audit:
     post:
       $ref: ./handlers/audit/spec/paths/generateAudit.generated.yml
+  /agents/{agentId}:
+    delete:
+      $ref: ./handlers/agents/spec/paths/deleteAgent.generated.yml
   /community-packages:
     get:
       $ref: ./handlers/community-packages/spec/paths/getInstalledPackages.generated.yml

@@ -57,10 +57,13 @@ describe('DiscoverSkillSourceDto', () => {
 
 describe('AcceptSkillSourceUpdatesDto', () => {
 	const update = { skillId: 'skill-1', contentHash: 'a'.repeat(64), baseVersionId: 'version-1' };
-	it('requires both the pending hash and saved version', () => {
+	it.each(['contentHash', 'baseVersionId'])('requires %s independently', (field) => {
 		expect(
-			AcceptSkillSourceUpdatesDto.safeParse({ updates: [{ skillId: update.skillId }] }).success,
+			AcceptSkillSourceUpdatesDto.safeParse({ updates: [{ ...update, [field]: undefined }] })
+				.success,
 		).toBe(false);
+	});
+	it('requires warning acknowledgment by default', () => {
 		expect(
 			AcceptSkillSourceUpdatesDto.safeParse({ updates: [update] }).data?.reviewedWarnings,
 		).toBe(false);

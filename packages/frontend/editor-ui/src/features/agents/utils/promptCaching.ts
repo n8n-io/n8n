@@ -5,9 +5,9 @@ import type { AgentJsonConfig } from '../types';
 type ConfigObj = NonNullable<AgentJsonConfig['config']>;
 
 /**
- * Prompt caching is mandatory for supported providers (OpenAI/Anthropic): it
- * always resolves to `{ enabled: true }` for a newly selected supported
- * provider (the user cannot disable it), preserves an explicit Anthropic TTL
+ * Prompt caching is on by default for supported providers (OpenAI/Anthropic):
+ * it resolves to `{ enabled: true }` for a newly selected supported provider
+ * unless the user turned it off, preserves an explicit Anthropic TTL
  * across the switch, and strips the field entirely when the newly selected
  * provider doesn't support it.
  *

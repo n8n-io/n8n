@@ -1,0 +1,475 @@
+{
+	"name": "Keap request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "1234",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Get Contact",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "1234"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Delete Contact",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactNote",
+				"operation": "get",
+				"noteId": "5678"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Note",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactNote",
+				"operation": "update",
+				"noteId": "5678",
+				"additionalFields": {
+					"title": "Call notes"
+				}
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Update Note",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactNote",
+				"operation": "delete",
+				"noteId": "5678"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Delete Note",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactTag",
+				"operation": "create",
+				"contactId": "1234",
+				"tagIds": [91]
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Add Contact Tags",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactTag",
+				"operation": "delete",
+				"contactId": "1234",
+				"tagIds": "91"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Remove Contact Tags",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactTag",
+				"operation": "getAll",
+				"contactId": "1234",
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Get Contact Tags",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactTag",
+				"operation": "getAll",
+				"contactId": "1234",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get All Contact Tags",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ecommerceOrder",
+				"operation": "get",
+				"orderId": "4321"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Order",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ecommerceOrder",
+				"operation": "delete",
+				"orderId": "4321"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Delete Order",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ecommerceProduct",
+				"operation": "get",
+				"productId": "8765"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Get Product",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ecommerceProduct",
+				"operation": "delete",
+				"productId": "8765"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Delete Product",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"fileId": "1357"
+			},
+			"type": "n8n-nodes-base.keap",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Delete File",
+			"credentials": {
+				"keapOAuth2Api": {
+					"id": "cred1",
+					"name": "Keap account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Contact": [
+			{
+				"json": {
+					"id": 1234,
+					"given_name": "Nathan"
+				}
+			}
+		],
+		"Delete Contact": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Note": [
+			{
+				"json": {
+					"id": 5678,
+					"title": "Call notes"
+				}
+			}
+		],
+		"Update Note": [
+			{
+				"json": {
+					"id": 5678,
+					"title": "Call notes"
+				}
+			}
+		],
+		"Delete Note": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Add Contact Tags": [
+			{
+				"json": {
+					"91": "SUCCESS"
+				}
+			}
+		],
+		"Remove Contact Tags": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Contact Tags": [
+			{
+				"json": {
+					"tag": {
+						"id": 91,
+						"name": "Customer"
+					}
+				}
+			}
+		],
+		"Get All Contact Tags": [
+			{
+				"json": {
+					"tag": {
+						"id": 91,
+						"name": "Customer"
+					}
+				}
+			},
+			{
+				"json": {
+					"tag": {
+						"id": 92,
+						"name": "Lead"
+					}
+				}
+			}
+		],
+		"Get Order": [
+			{
+				"json": {
+					"id": 4321,
+					"title": "Order"
+				}
+			}
+		],
+		"Delete Order": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Product": [
+			{
+				"json": {
+					"id": 8765,
+					"product_name": "Widget"
+				}
+			}
+		],
+		"Delete Product": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Delete File": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Contact",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Contact",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Contact Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Contact Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Contact Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Contact Tags",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Order",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Order",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Product",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Product",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

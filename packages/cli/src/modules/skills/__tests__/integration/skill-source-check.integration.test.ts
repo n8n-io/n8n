@@ -6,6 +6,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -36,7 +37,6 @@ import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.er
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
-import { PostHogClient } from '@/posthog';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -436,6 +436,56 @@ describe('Skill source checks', () => {
 			});
 			expect(failure.isDone()).toBe(true);
 			await accept(sourceId, reviewed);
+		});
+
+		it('keeps content checks available during commit metadata backoff', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const describe = vi.spyOn(Container.get(GitHubSkillSourceClient), 'describeRevision');
+			const revision = reviewed.updates[0].revision;
+			const metadata = nock('https://api.github.com')
+				.get(`/repos/acme/skills/git/commits/${revision}`)
+				.once()
+				.reply(429, {}, { 'retry-after': '300' });
+			for (let attempt = 0; attempt < 2; attempt++) {
+				const response = await editor
+					.get(`/skill-sources/${sourceId}/commit`)
+					.query({ revision })
+					.expect(200);
+				expect(response.body.data).toMatchObject({ revision, message: null });
+			}
+			expect(metadata.isDone()).toBe(true);
+			expect(describe).toHaveBeenCalledTimes(1);
+			const nextRevision = pushChange({
+				'skills/docx/SKILL.md': skillMd('docx', 'Follow docx, v3.'),
+			});
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({ pendingRevision: nextRevision });
+		});
+
+		it('reports a committed update when agent names cannot be read', async () => {
+			const { sourceId, docx, reviewed } = await changed();
+			const proxy = Container.get(SkillUsageProxy);
+			const original = Reflect.get(proxy, 'impl') as SkillUsage;
+			const usage = new FakeSkillUsage();
+			await usage.seed({
+				agents: [{ key: 'follower', name: 'Following agent', project: team.id }],
+				skills: [{ key: docx, versions: ['docx'] }],
+				drafts: [{ agent: 'follower', skill: docx }],
+			});
+			proxy.register(usage);
+			vi.spyOn(usage, 'findAgents').mockRejectedValue(new Error('Lookup unavailable'));
+			try {
+				const response = await accept(sourceId, reviewed);
+				expect(response.body.data).toMatchObject({
+					updatedCount: 2,
+					agents: [],
+					hiddenAgentCount: 1,
+				});
+				expect((await findLatestSkillVersion(docx))?.version).toBe(2);
+				expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContent: null });
+			} finally {
+				proxy.register(original);
+			}
 		});
 
 		it('requires update permission on every review route', async () => {

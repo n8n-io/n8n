@@ -637,7 +637,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let parsedToolCalls: CapturedToolCall[] | undefined;
 	const foreignReadFields = () => {
 		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
-		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, [
+			...restoredWorkflowIds,
+			...restoredAgentIds,
+		]);
 		if (foreignWorkflowReads.length === 0) return {};
 		logger.warn(
 			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,

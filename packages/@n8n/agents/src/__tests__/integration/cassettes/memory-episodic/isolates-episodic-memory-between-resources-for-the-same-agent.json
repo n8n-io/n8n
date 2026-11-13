@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -61,6 +61,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -68,31 +96,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUn423XBGvBKhF38QzAN\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01SQEo1MiyfCGrPbtqkYusb5\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha's exact deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1487,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":99,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgvoWUxDbQTEGBL6pjYWg\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01Uf2J765d6FmnVtYTQxjbwz\",\"name\":\"flag_memory\",\"input\":{\"content\":\"Resource Alpha's exact deployment codename is QUARTZ-RIVER-91.\",\"evidence\":\"the exact deployment codename is QUARTZ-RIVER-91\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1745,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":99,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "15000000",
-			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:16:44Z",
-			"anthropic-ratelimit-output-tokens-limit": "3000000",
-			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:16:45Z",
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-11T08:11:17Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-11T08:11:17Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T14:16:43Z",
-			"anthropic-ratelimit-tokens-limit": "18000000",
-			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:16:44Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-11T08:11:16Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-11T08:11:17Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f56da71c219-VIE",
+			"cf-ray": "a58bd3410e2a6a73-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:45 GMT",
-			"request-id": "req_011CgUn41qNMdJ8xXW5eVgND",
+			"date": "Wed, 11 Nov 2026 08:11:17 GMT",
+			"request-id": "req_011CgvoWUkKWJuN44ifvh4Ve",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=2202",
+			"server-timing": "x-originResponse;dur=1720",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-a5347ac8b45741cfa1947eb18f7e13b3-a0b8ab4135e76b7f-01",
+			"traceresponse": "00-9177d8cab1a6a68d016a5c527582f993-db97d97211d112bf-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -108,7 +136,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -126,7 +154,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01SQEo1MiyfCGrPbtqkYusb5",
+							"id": "toolu_01Uf2J765d6FmnVtYTQxjbwz",
 							"name": "flag_memory",
 							"input": {
 								"content": "Resource Alpha's exact deployment codename is QUARTZ-RIVER-91.",
@@ -143,7 +171,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01SQEo1MiyfCGrPbtqkYusb5",
+							"tool_use_id": "toolu_01Uf2J765d6FmnVtYTQxjbwz",
 							"content": "{\"status\":\"noted\"}"
 						}
 					]
@@ -187,6 +215,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -194,31 +250,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUn4CCy3BDwQpmBate2t\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted for future conversations. The exact deployment codename for Resource Alpha is **QUARTZ-RIVER-91**.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1603,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":28,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgvoWdEoSuBnEjtVBrFy2\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Noted for future conversations. The exact deployment codename for Resource Alpha is **QUARTZ-RIVER-91**.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1861,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":28,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "15000000",
-			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:16:46Z",
-			"anthropic-ratelimit-output-tokens-limit": "3000000",
-			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:16:47Z",
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-11T08:11:18Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-11T08:11:19Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T14:16:45Z",
-			"anthropic-ratelimit-tokens-limit": "18000000",
-			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:16:46Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-11T08:11:18Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-11T08:11:18Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f65a939c219-VIE",
+			"cf-ray": "a58bd34d3d5d6a73-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:47 GMT",
-			"request-id": "req_011CgUn4Bzotnwu6R9dYfSgJ",
+			"date": "Wed, 11 Nov 2026 08:11:19 GMT",
+			"request-id": "req_011CgvoWcxRWPS11Mhc9pN26",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=1426",
+			"server-timing": "x-originResponse;dur=1262",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-1fc7801700ec1ac66151d32595f18d1f-4e3bf4fdac96013b-01",
+			"traceresponse": "00-e309ec88ebeb52ee7c56bedb0a21428a-bfe8d3c29418c1fc-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -239,11 +295,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f6fea4b5b19-VIE",
+			"cf-ray": "a58bd3565d9b6dcb-TXL",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:47 GMT",
-			"openai-processing-ms": "59",
+			"date": "Wed, 11 Nov 2026 08:11:19 GMT",
+			"openai-processing-ms": "65",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -255,7 +311,7 @@
 			"x-ratelimit-remaining-tokens": "9999985",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_3a4f3e58085f4bf08d2a400d578fb66f"
+			"x-request-id": "req_37c4688a7b91468691283ec8e005cc69"
 		},
 		"responseIsBinary": false
 	},
@@ -274,11 +330,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f748e3a5b19-VIE",
+			"cf-ray": "a58bd35a9dae6dcb-TXL",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:48 GMT",
-			"openai-processing-ms": "75",
+			"date": "Wed, 11 Nov 2026 08:11:20 GMT",
+			"openai-processing-ms": "63",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -290,7 +346,7 @@
 			"x-ratelimit-remaining-tokens": "9999988",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_6bd244a5ae9d4da78de57108cbcdd97c"
+			"x-request-id": "req_4eeef783ca134387aebb716ef3637dad"
 		},
 		"responseIsBinary": false
 	},
@@ -309,11 +365,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f763f855b19-VIE",
+			"cf-ray": "a58bd35bc8086dcb-TXL",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:48 GMT",
-			"openai-processing-ms": "64",
+			"date": "Wed, 11 Nov 2026 08:11:20 GMT",
+			"openai-processing-ms": "59",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -325,7 +381,7 @@
 			"x-ratelimit-remaining-tokens": "9999988",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_1e859a4220f949aab9b34c76f571e758"
+			"x-request-id": "req_f9113f830d6043ccaf5e3c4110aa3320"
 		},
 		"responseIsBinary": false
 	},
@@ -339,7 +395,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -391,6 +447,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -398,31 +482,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUn4QSBHuqzukmYusH2h\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01LCEugegrDZUGWNy1HcrMDN\",\"name\":\"recall_memory\",\"input\":{\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1468,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgvoWpDqTEvDmYYQ2ksRN\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01SdkwdvnH15wRHZmgD1xmrp\",\"name\":\"recall_memory\",\"input\":{\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1726,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "15000000",
-			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:16:49Z",
-			"anthropic-ratelimit-output-tokens-limit": "3000000",
-			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:16:49Z",
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-11T08:11:21Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-11T08:11:21Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T14:16:48Z",
-			"anthropic-ratelimit-tokens-limit": "18000000",
-			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:16:49Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-11T08:11:20Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-11T08:11:21Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f777c08c219-VIE",
+			"cf-ray": "a58bd35d598a6a73-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:49 GMT",
-			"request-id": "req_011CgUn4QCmy56aRWyj7nCf6",
+			"date": "Wed, 11 Nov 2026 08:11:21 GMT",
+			"request-id": "req_011CgvoWoxDbsM7eyDHbdh6A",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=723",
+			"server-timing": "x-originResponse;dur=1272",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-d425c5cf0f044587d852a4a21cc28ce6-be182fe2e95aedeb-01",
+			"traceresponse": "00-0df5c2f3d58c58294cd86883a4ddbbbc-c877183430320b4c-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -443,11 +527,11 @@
 			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
 			"alt-svc": "h3=\":443\"; ma=86400",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f7cfd385b19-VIE",
+			"cf-ray": "a58bd366bc386dcb-TXL",
 			"connection": "keep-alive",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:49 GMT",
-			"openai-processing-ms": "69",
+			"date": "Wed, 11 Nov 2026 08:11:22 GMT",
+			"openai-processing-ms": "84",
 			"openai-version": "2020-10-01",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
@@ -459,7 +543,7 @@
 			"x-ratelimit-remaining-tokens": "9999996",
 			"x-ratelimit-reset-requests": "6ms",
 			"x-ratelimit-reset-tokens": "0s",
-			"x-request-id": "req_bed89bf134a04fb2adb987b56abba203"
+			"x-request-id": "req_aab1e92836264ab98e51af21fbb03b14"
 		},
 		"responseIsBinary": false
 	},
@@ -473,7 +557,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Write the query with the concrete names, identifiers, and topic words involved (person, company, account, ticket subject), not a generic paraphrase. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context. The runtime limits recall to the memory scope available for this turn. Use returned results when the user asks; do not ask the source author for consent first.\n- Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.\n- Earlier parts of this conversation can be replaced by an observation log. When you need an exact detail the log left out (an id, a value, a tool result), call read_history instead of guessing.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, call flag_memory before answering. Use an exact quote from the user message as evidence. After flag_memory resolves, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -491,7 +575,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01LCEugegrDZUGWNy1HcrMDN",
+							"id": "toolu_01SdkwdvnH15wRHZmgD1xmrp",
 							"name": "recall_memory",
 							"input": {
 								"query": "deployment codename"
@@ -507,7 +591,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LCEugegrDZUGWNy1HcrMDN",
+							"tool_use_id": "toolu_01SdkwdvnH15wRHZmgD1xmrp",
 							"content": "{\"entries\":[]}"
 						}
 					]
@@ -551,6 +635,34 @@
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
+				},
+				{
+					"name": "read_history",
+					"description": "Read earlier messages of this conversation, including ones replaced by the observation log. Search by text or page back by time.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Case-insensitive text to find. Omit to read the latest messages."
+							},
+							"before": {
+								"type": "string",
+								"description": "ISO timestamp. Return only messages created before it, to page back."
+							},
+							"beforeId": {
+								"type": "string",
+								"description": "Id of the oldest message you already have. Pass it with `before` (that message's createdAt) so messages with the same timestamp are not skipped."
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 50
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
 				}
 			],
 			"tool_choice": {
@@ -558,31 +670,31 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgUn4VPpmfh1dFSNjxiCM\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I don't have any saved prior memory of a deployment codename you gave me. It's possible it was never saved, or it may be outside the available memory scope. If you share it again, I can remember it for future conversations!\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1540,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":52,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_011CgvoWwYsQ4chn87HirMve\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I don't have any saved prior memory of a deployment codename you gave me. No relevant entries were found. You may want to share it again, and I can remember it for future conversations!\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1798,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":43,\"service_tier\":\"standard\",\"inference_geo\":\"global\",\"speed\":\"standard\"},\"diagnostics\":null}",
 		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "15000000",
-			"anthropic-ratelimit-input-tokens-remaining": "14999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-10-28T14:16:50Z",
-			"anthropic-ratelimit-output-tokens-limit": "3000000",
-			"anthropic-ratelimit-output-tokens-remaining": "3000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-10-28T14:16:51Z",
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-11-11T08:11:23Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-11-11T08:11:24Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-10-28T14:16:49Z",
-			"anthropic-ratelimit-tokens-limit": "18000000",
-			"anthropic-ratelimit-tokens-remaining": "17999000",
-			"anthropic-ratelimit-tokens-reset": "2026-10-28T14:16:50Z",
+			"anthropic-ratelimit-requests-reset": "2026-11-11T08:11:22Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-11-11T08:11:23Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a51a8f7e8ae2c219-VIE",
+			"cf-ray": "a58bd368191f6a73-TXL",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Wed, 28 Oct 2026 14:16:51 GMT",
-			"request-id": "req_011CgUn4V1FQpniHzQLjBbQq",
+			"date": "Wed, 11 Nov 2026 08:11:24 GMT",
+			"request-id": "req_011CgvoWwMiRGQ5Xx1URKdaP",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=1679",
+			"server-timing": "x-originResponse;dur=1727",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-9fc25b42601123b3a718594d541546b5-28a2dfb320586134-01",
+			"traceresponse": "00-3d2deb03d25e0cd2c84b032e5de70838-4eb475cd14fb3f1a-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -382,7 +382,11 @@ export class ApiTemplateIo implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					try {
-						responseData = await apiTemplateIoApiRequest.call(this, 'GET', '/account-information');
+						responseData = await apiTemplateIoApiRequest.call(
+							this,
+							'GET',
+							requestPath`/account-information`,
+						);
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
@@ -453,7 +457,13 @@ export class ApiTemplateIo implements INodeType {
 							}
 						}
 
-						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, body);
+						responseData = await apiTemplateIoApiRequest.call(
+							this,
+							'POST',
+							requestPath`/create`,
+							qs,
+							body,
+						);
 
 						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
@@ -540,7 +550,7 @@ export class ApiTemplateIo implements INodeType {
 						responseData = await apiTemplateIoApiRequest.call(
 							this,
 							'POST',
-							'/create',
+							requestPath`/create`,
 							qs,
 							data as IDataObject,
 						);

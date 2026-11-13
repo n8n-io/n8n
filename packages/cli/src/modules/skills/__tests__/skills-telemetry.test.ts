@@ -143,6 +143,8 @@ describe('SkillsTelemetry', () => {
 			blocked: 1,
 			needs_review: 1,
 			skipped_files: 4,
+			skipped_file_extensions: { '.py': 2, '.png': 1, none: 1 },
+			skipped_script_files: 2,
 			status: 'success' as const,
 		};
 

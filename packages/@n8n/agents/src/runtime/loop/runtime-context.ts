@@ -32,6 +32,7 @@ import {
 	FLAG_MEMORY_TOOL_NAME,
 	resolveEpisodicMemoryCapture,
 } from '../memory/episodic-memory-capture';
+import { createReadHistoryTool, READ_HISTORY_TOOL_NAME } from '../memory/history-recall-tool';
 import { getGoogleVertexQuirksProvider } from '../model/google-vertex';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
@@ -368,6 +369,8 @@ export class RuntimeContextBuilder {
 			list,
 		);
 		if (flagTool) memoryTools.push(flagTool);
+		const historyTool = this.createReadHistoryToolForRun(persistence, [...tools, ...memoryTools]);
+		if (historyTool) memoryTools.push(historyTool);
 		return { tools: [...tools, ...memoryTools], memoryTools };
 	}
 
@@ -427,6 +430,20 @@ export class RuntimeContextBuilder {
 			executionCounter,
 			agentName: this.config.name,
 		});
+	}
+
+	private createReadHistoryToolForRun(
+		persistence: AgentPersistenceOptions | undefined,
+		existingTools: BuiltTool[],
+	): BuiltTool | undefined {
+		const { memory, observationalMemory } = this.config;
+		if (!persistence || !memory || !observationalMemory?.historyRecall) return undefined;
+		if (existingTools.some((tool) => tool.name === READ_HISTORY_TOOL_NAME)) {
+			throw new Error(
+				`Tool name "${READ_HISTORY_TOOL_NAME}" is reserved while history recall is enabled.`,
+			);
+		}
+		return createReadHistoryTool({ memory, persistence });
 	}
 
 	private createFlagMemoryToolForRun(

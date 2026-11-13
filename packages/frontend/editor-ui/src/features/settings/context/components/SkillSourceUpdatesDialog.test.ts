@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -33,6 +34,7 @@ const source: SkillSourceListItem = {
 	projectType: null,
 	projectIcon: null,
 	canReview: true,
+	canDelete: true,
 	health: 'connected',
 	lastCheckedAt: null,
 	path: '',
@@ -191,6 +193,7 @@ it('keeps review usable when commit metadata fails', async () => {
 });
 
 it('does not select blocked updates or name clashes', async () => {
+	vi.mocked(store.fetchSourceUpdate).mockRejectedValue(new Error('Unavailable'));
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [
 			update('blocked', 'blocked'),
@@ -200,6 +203,9 @@ it('does not select blocked updates or name clashes', async () => {
 	});
 	const view = render();
 	await view.findByTestId('skill-update-blocked');
+	await flushPromises();
+	expect(store.fetchSourceUpdate).not.toHaveBeenCalled();
+	expect(view.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	for (const checkbox of view.getAllByRole('checkbox')) expect(checkbox).toBeDisabled();
 });
@@ -225,7 +231,10 @@ it('reloads the selection after a stale accept and clears the warning acknowledg
 	await userEvent.click(view.getByTestId('skill-update-reviewed-warnings'));
 	await userEvent.click(view.getByTestId('skill-updates-accept'));
 	await waitFor(() => expect(store.fetchSourceUpdates).toHaveBeenCalledTimes(2));
-	await waitFor(() => expect(view.getByTestId('skill-updates-accept')).toBeDisabled());
+	await flushPromises();
+	expect(view.getByTestId('skill-update-reviewed-warnings')).not.toBeChecked();
+	expect(view.getByTestId('skill-update-reviewed-warnings')).toBeEnabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(view.getByTestId('skill-updates-error')).toHaveTextContent(
 		'No selected updates were applied',
 	);
@@ -249,5 +258,7 @@ it('ignores a late diff after the reviewer selects another skill', async () => {
 		hiddenAgentCount: 0,
 	});
 	await pending.promise;
+	await flushPromises();
+	expect(view.getByTestId('skill-source-file')).toHaveTextContent('SKILL.md');
 	expect(view.queryByText('Late content')).not.toBeInTheDocument();
 });

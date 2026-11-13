@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { accountOperations } from './AccountDescription';
 import { eventFields, eventOperations } from './EventDescription';
@@ -24,7 +24,8 @@ export class Matrix implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:matrix.png',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Consume Matrix API',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -92,7 +93,11 @@ export class Matrix implements INodeType {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const joinedRoomsResponse = await matrixApiRequest.call(this, 'GET', '/joined_rooms');
+				const joinedRoomsResponse = await matrixApiRequest.call(
+					this,
+					'GET',
+					requestPath`/joined_rooms`,
+				);
 
 				await Promise.all(
 					joinedRoomsResponse.joined_rooms.map(async (roomId: string) => {
@@ -100,7 +105,7 @@ export class Matrix implements INodeType {
 							const roomNameResponse = await matrixApiRequest.call(
 								this,
 								'GET',
-								`/rooms/${roomId}/state/m.room.name`,
+								requestPath`/rooms/${roomId}/state/m.room.name`,
 							);
 							returnData.push({
 								name: roomNameResponse.name,

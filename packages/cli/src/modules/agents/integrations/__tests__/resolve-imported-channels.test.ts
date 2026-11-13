@@ -76,4 +76,19 @@ describe('resolveImportedChannels', () => {
 			channels: [],
 		});
 	});
+
+	describe('webhook channel', () => {
+		const sourceWebhook = {
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		} satisfies AgentIntegrationConfig;
+
+		it('arrives as a draft without an authentication, also with authentication none', () => {
+			expect(resolveImportedChannels([], [sourceWebhook])).toEqual({
+				integrations: [{ type: 'webhook', credentialId: '' }],
+				channels: [{ type: 'webhook', status: 'setup-required', reason: 'new-channel' }],
+			});
+		});
+	});
 });

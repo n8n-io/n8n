@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { DataToSendOption, RowCreateUpdateOptions } from './create_update.description';
 import { JSONSafeParse } from '../../helpers';
@@ -70,7 +71,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	const qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
@@ -84,7 +85,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	for (let i = 0; i < items.length; i++) {
 		try {
 			requestMethod = 'PATCH';
-			endPoint = `/api/v3/data/${baseId}/${table}/records`;
+			endPoint = requestPath`/api/v3/data/${baseId}/${table}/records`;
 
 			const id = this.getNodeParameter('id', i, undefined, {
 				extractValue: true,

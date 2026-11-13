@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	FreshworksConfigResponse,
@@ -20,17 +22,17 @@ import type {
 export async function freshworksCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const { domain } = await this.getCredentials<FreshworksCrmApiCredentials>('freshworksCrmApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `https://${domain}.myfreshworks.com/crm/sales/api${endpoint}`,
+		uri: requestUrl`https://${domain}.myfreshworks.com/crm/sales/api${endpoint}`,
 		json: true,
 	};
 
@@ -67,7 +69,7 @@ export async function getAllItemsViewId(
 	const response = (await freshworksCrmApiRequest.call(
 		this,
 		'GET',
-		`/${resource}s/filters`,
+		requestPath`/${resource}s/filters`,
 	)) as ViewsResponse;
 
 	const view = response.filters.find((v) => v.name.includes(keyword));
@@ -82,7 +84,7 @@ export async function getAllItemsViewId(
 export async function freshworksCrmApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -104,7 +106,7 @@ export async function freshworksCrmApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -131,7 +133,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 	const response = (await freshworksCrmApiRequest.call(
 		this,
 		'GET',
-		`/selector/${resource}`,
+		requestPath`/selector/${resource}`,
 	)) as FreshworksConfigResponse<LoadedResource>;
 
 	const key = Object.keys(response)[0];

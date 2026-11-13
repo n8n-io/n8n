@@ -1,11 +1,11 @@
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
-import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type PostHogClient,
 } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,

@@ -91,18 +91,36 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 		const persistence = { threadId: THREAD_ID, resourceId: RESOURCE_ID };
 		const list = new AgentMessageList();
 		await buildOrchestrator(store).loadInto(list, { persistence });
-		expect(list.messages()).toEqual([]);
-		list.addInput([{ role: 'user', content: [{ type: 'text', text: 'A new request.' }] }]);
-		const newMessage = list.messages()[0];
-		expect(newMessage.createdAt.getTime()).toBeGreaterThan(reviewed.createdAt.getTime());
+		// No resume point yet, and the thread is too small to be worth resuming.
+		expect(list.messages().map(({ id }) => id)).toEqual(['reviewed']);
+		const newMessage = message('new', 'A new request.', new Date('2099-01-01T00:00:01Z'));
 
 		const resumed = new AgentMessageList();
 		resumed.addHistory([reviewed, newMessage]);
 		await buildOrchestrator(store).applyObservationMask(resumed, persistence);
-		expect(resumed.llmVisibleMessages().map(({ id }) => id)).toEqual([newMessage.id]);
+		// Without a resume point, a restored run keeps the same full view.
+		expect(resumed.llmVisibleMessages().map(({ id }) => id)).toEqual(['reviewed', newMessage.id]);
 	});
 
-	it('honors the cursor (loads only post-cursor messages) when an observation log exists', async () => {
+	it('replays full history when a cursor exists but no resume point', async () => {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m1.id,
+			lastObservedAt: m1.createdAt,
+			updatedAt: m1.createdAt,
+		});
+
+		const loaded = await buildOrchestrator(store).loadHistoryMessages({
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+
+	it('loads only messages after the resume point', async () => {
 		const store = new InMemoryMemory();
 		await seedThread(store, [m1, m2, m3]);
 		await store.setCursor({
@@ -120,6 +138,13 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 				createdAt: m1.createdAt,
 			},
 		]);
+		await store.saveResumeState({
+			observationScopeId: THREAD_ID,
+			resumeFrom: { lastObservedMessageId: m1.id, lastObservedAt: m1.createdAt },
+			resumeNotes: 'User context captured.',
+			lastRequestTokens: null,
+			lastModelId: null,
+		});
 
 		const loaded = await buildOrchestrator(store).loadHistoryMessages({
 			threadId: THREAD_ID,
@@ -134,6 +159,56 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 			resourceId: RESOURCE_ID,
 		});
 		expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m2', 'm3']);
+	});
+
+	it('ignores a stale resume point that has no cursor behind it', async () => {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		// The log was reset, but the resume state still points at m2.
+		await store.saveResumeState({
+			observationScopeId: THREAD_ID,
+			resumeFrom: { lastObservedMessageId: m2.id, lastObservedAt: m2.createdAt },
+			resumeNotes: 'Old notes.',
+			lastRequestTokens: null,
+			lastModelId: null,
+		});
+		const persistence = { threadId: THREAD_ID, resourceId: RESOURCE_ID };
+
+		const loaded = await buildOrchestrator(store).loadHistoryMessages(persistence);
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+
+		const list = new AgentMessageList();
+		await buildOrchestrator(store).loadInto(list, { persistence });
+		expect(list.messages().map(({ id }) => id)).toEqual(['m1', 'm2', 'm3']);
+
+		const resumed = new AgentMessageList();
+		resumed.addHistory([m1, m2, m3]);
+		await buildOrchestrator(store).applyObservationMask(resumed, persistence);
+		expect(resumed.llmVisibleMessages().map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+
+	it('ignores a resume point ahead of the cursor', async () => {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2, m3]);
+		await store.setCursor({
+			observationScopeId: THREAD_ID,
+			lastObservedMessageId: m1.id,
+			lastObservedAt: m1.createdAt,
+			updatedAt: m1.createdAt,
+		});
+		await store.saveResumeState({
+			observationScopeId: THREAD_ID,
+			resumeFrom: { lastObservedMessageId: m3.id, lastObservedAt: m3.createdAt },
+			resumeNotes: 'Old notes.',
+			lastRequestTokens: null,
+			lastModelId: null,
+		});
+
+		const loaded = await buildOrchestrator(store).loadHistoryMessages({
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
 	});
 
 	it('loads full history when no cursor exists yet', async () => {
@@ -242,10 +317,17 @@ describe('loadReplayedMessages', () => {
 			lastObservedAt: m1.createdAt,
 			updatedAt: m1.createdAt,
 		});
+		await store.saveResumeState({
+			observationScopeId: THREAD_ID,
+			resumeFrom: { lastObservedMessageId: m1.id, lastObservedAt: m1.createdAt },
+			resumeNotes: 'The user said first.',
+			lastRequestTokens: null,
+			lastModelId: null,
+		});
 		return store;
 	}
 
-	it('returns the messages after the cursor with observational memory', async () => {
+	it('returns the messages after the resume point with observational memory', async () => {
 		const store = await seedObservedThread();
 
 		const loaded = await loadReplayedMessages(

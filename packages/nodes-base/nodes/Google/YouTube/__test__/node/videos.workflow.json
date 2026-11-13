@@ -1,0 +1,295 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "3fdce826-fb12-4326-934f-05c974d7f0f1",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "get",
+				"videoId": "dQw4w9WgXcQ",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "cc0d20d2-be94-4126-922b-1017f39aad77",
+			"name": "YouTube Video Get",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "a0c7fd0d-36e4-4159-9b9b-6f60661bfb14",
+			"name": "Video Get"
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"limit": 2,
+				"filters": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "1244a73e-a699-4aca-a249-72ba27bbc46d",
+			"name": "YouTube Video Get Many",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 200],
+			"id": "4619f872-f181-431c-8ca7-b01509940b79",
+			"name": "Video Get Many"
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "update",
+				"videoId": "dQw4w9WgXcQ",
+				"title": "Updated Title",
+				"regionCode": "GB",
+				"categoryId": "22",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "c6fa300e-f258-4279-9dea-8f9c8db24830",
+			"name": "YouTube Video Update",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 400],
+			"id": "c82ff680-268b-493f-b914-a8cafb6cc135",
+			"name": "Video Update"
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "rate",
+				"videoId": "dQw4w9WgXcQ",
+				"rating": "like"
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "02c0df79-9ae9-453a-97e0-48805ed594d7",
+			"name": "YouTube Video Rate",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 600],
+			"id": "d1d6e671-0204-4082-a78b-b52eb0966255",
+			"name": "Video Rate"
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "delete",
+				"videoId": "dQw4w9WgXcQ",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "c5252d25-19f9-4452-8c33-617fe2512097",
+			"name": "YouTube Video Delete",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 800],
+			"id": "ee8c3c1b-d50e-4f9a-b00e-904ef95c5afe",
+			"name": "Video Delete"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "YouTube Video Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube Video Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube Video Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube Video Rate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "YouTube Video Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube Video Get": {
+			"main": [
+				[
+					{
+						"node": "Video Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube Video Get Many": {
+			"main": [
+				[
+					{
+						"node": "Video Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube Video Update": {
+			"main": [
+				[
+					{
+						"node": "Video Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube Video Rate": {
+			"main": [
+				[
+					{
+						"node": "Video Rate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube Video Delete": {
+			"main": [
+				[
+					{
+						"node": "Video Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Video Get": [
+			{
+				"json": {
+					"kind": "youtube#video",
+					"etag": "fakeEtagVideo1",
+					"id": "dQw4w9WgXcQ",
+					"snippet": {
+						"title": "Test Video",
+						"categoryId": "22"
+					}
+				}
+			}
+		],
+		"Video Get Many": [
+			{
+				"json": {
+					"kind": "youtube#searchResult",
+					"etag": "fakeEtagSearch1",
+					"id": {
+						"kind": "youtube#video",
+						"videoId": "dQw4w9WgXcQ"
+					}
+				}
+			}
+		],
+		"Video Update": [
+			{
+				"json": {
+					"kind": "youtube#video",
+					"etag": "fakeEtagVideo1",
+					"id": "dQw4w9WgXcQ",
+					"snippet": {
+						"title": "Test Video",
+						"categoryId": "22"
+					}
+				}
+			}
+		],
+		"Video Rate": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Video Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true
+	}
+}

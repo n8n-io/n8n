@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
@@ -45,7 +46,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			const personId = this.getNodeParameter('personId', i) as number;
 
-			const responseData = await pipedriveApiRequest.call(this, 'GET', `/persons/${personId}`, {});
+			const responseData = await pipedriveApiRequest.call(
+				this,
+				'GET',
+				requestPath`/persons/${personId}`,
+				{},
+			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData.data as IDataObject),

@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { accumulateTokenUsage, jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, jsonParse, requestPath, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -264,7 +264,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tools = tools;
 	}
 
-	let response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/v1/chat/completions`, {
 		body,
 	})) as ChatCompletionResponse;
 
@@ -308,7 +308,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		await handleToolUse.call(this, choice.message.tool_calls, messages, connectedTools);
 		currentIteration++;
 
-		response = (await apiRequest.call(this, 'POST', '/v1/chat/completions', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/v1/chat/completions`, {
 			body,
 		})) as ChatCompletionResponse;
 

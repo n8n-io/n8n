@@ -36,14 +36,16 @@ function commonPairs<T>(a: T[], b: T[]): Array<[number, number]> {
 		for (let k = 0; endA + k < a.length; k++) pairs.push([endA + k, endB + k]);
 		return pairs;
 	};
-	if (rows * cols > MAX_TABLE_CELLS) return tail();
-	const table = Array.from({ length: rows + 1 }, () => new Uint32Array(cols + 1));
+	const stride = cols + 1;
+	const cells = (rows + 1) * stride;
+	if (rows === 0 || cols === 0 || cells > MAX_TABLE_CELLS) return tail();
+	const table = new Uint32Array(cells);
 	for (let i = rows - 1; i >= 0; i--) {
 		for (let j = cols - 1; j >= 0; j--) {
-			table[i][j] =
+			table[i * stride + j] =
 				a[start + i] === b[start + j]
-					? table[i + 1][j + 1] + 1
-					: Math.max(table[i + 1][j], table[i][j + 1]);
+					? table[(i + 1) * stride + j + 1] + 1
+					: Math.max(table[(i + 1) * stride + j], table[i * stride + j + 1]);
 		}
 	}
 	let i = 0;
@@ -53,7 +55,7 @@ function commonPairs<T>(a: T[], b: T[]): Array<[number, number]> {
 			pairs.push([start + i, start + j]);
 			i++;
 			j++;
-		} else if (table[i + 1][j] >= table[i][j + 1]) {
+		} else if (table[(i + 1) * stride + j] >= table[i * stride + j + 1]) {
 			i++;
 		} else {
 			j++;

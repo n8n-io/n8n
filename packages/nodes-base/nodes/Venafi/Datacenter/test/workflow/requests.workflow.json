@@ -1,0 +1,113 @@
+{
+	"name": "Venafi TLS Protect Datacenter requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 200],
+			"id": "c6a1e0b2-0f43-4d39-9a8e-1d2b3c4d5e01"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"certificateId": "{7d6ab2c8-1f4b-4a4f-8e0c-ecbd28a9d3f2}"
+			},
+			"name": "Get Certificate",
+			"type": "n8n-nodes-base.venafiTlsProtectDatacenter",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "c6a1e0b2-0f43-4d39-9a8e-1d2b3c4d5e02",
+			"credentials": {
+				"venafiTlsProtectDatacenterApi": {
+					"id": "1",
+					"name": "Venafi TLS Protect Datacenter account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"certificateId": "{7d6ab2c8-1f4b-4a4f-8e0c-ecbd28a9d3f2}"
+			},
+			"name": "Delete Certificate",
+			"type": "n8n-nodes-base.venafiTlsProtectDatacenter",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "c6a1e0b2-0f43-4d39-9a8e-1d2b3c4d5e03",
+			"credentials": {
+				"venafiTlsProtectDatacenterApi": {
+					"id": "1",
+					"name": "Venafi TLS Protect Datacenter account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getMany",
+				"returnAll": true,
+				"options": {}
+			},
+			"name": "Get Many Certificates",
+			"type": "n8n-nodes-base.venafiTlsProtectDatacenter",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "c6a1e0b2-0f43-4d39-9a8e-1d2b3c4d5e04",
+			"credentials": {
+				"venafiTlsProtectDatacenterApi": {
+					"id": "1",
+					"name": "Venafi TLS Protect Datacenter account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Certificate": [
+			{
+				"json": {
+					"Guid": "{7d6ab2c8-1f4b-4a4f-8e0c-ecbd28a9d3f2}",
+					"Name": "www.example.com"
+				}
+			}
+		],
+		"Delete Certificate": [
+			{
+				"json": {
+					"Success": true
+				}
+			}
+		],
+		"Get Many Certificates": [
+			{
+				"json": {
+					"Guid": "{7d6ab2c8-1f4b-4a4f-8e0c-ecbd28a9d3f2}",
+					"Name": "www.example.com"
+				}
+			},
+			{
+				"json": {
+					"Guid": "{a3f1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b}",
+					"Name": "api.example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Get Certificate", "type": "main", "index": 0 },
+					{ "node": "Delete Certificate", "type": "main", "index": 0 },
+					{ "node": "Get Many Certificates", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "c6a1e0b2-0f43-4d39-9a8e-1d2b3c4d5e05",
+	"meta": { "instanceId": "test" },
+	"id": "venafiDatacenterRequests",
+	"tags": []
+}

@@ -18,7 +18,7 @@ test.use({
 test.describe(
 	'$env in the inline expression preview',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n, n8nContainer }) => {

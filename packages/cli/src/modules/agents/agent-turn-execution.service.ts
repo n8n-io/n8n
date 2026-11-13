@@ -54,6 +54,8 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 interface ExecuteTurnConfig {
 	admittedExecution?: AgentExecutionAdmission;
 	onAdmitted?: () => Promise<void>;
+	/** Runs when the agent runtime starts. An abort before it means the agent did not run. */
+	onRuntimeStarted?: () => void;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	mcpServerAttributions: Map<string, string>;
@@ -258,6 +260,7 @@ export class AgentTurnExecutionService {
 		turn.options.abortSignal?.throwIfAborted();
 		if (turn.type === 'start') {
 			state.executionStarted = true;
+			config.onRuntimeStarted?.();
 			const started = await config.agentInstance.stream(turn.input, turn.options);
 			state.runId = started.runId;
 			return started.stream;
@@ -268,6 +271,7 @@ export class AgentTurnExecutionService {
 			...options,
 			onResumeClaimed: async () => {
 				state.executionStarted = true;
+				config.onRuntimeStarted?.();
 				recorder.recordHitlResponse(options.toolCallId, resumeData);
 				await options.onResumeClaimed?.();
 			},

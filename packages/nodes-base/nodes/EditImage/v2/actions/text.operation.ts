@@ -1,6 +1,6 @@
 import type { Canvas } from '@napi-rs/canvas';
 import getSystemFonts from 'get-system-fonts';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { parse as pathParse } from 'path';
 
 import {

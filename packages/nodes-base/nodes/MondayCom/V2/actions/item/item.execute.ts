@@ -3,11 +3,11 @@ import type { Readable } from 'stream';
 import { sleep } from '@n8n/utils/sleep';
 import {
 	NodeOperationError,
-	UserError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	buildAccountSearchPlan,

@@ -1,9 +1,8 @@
 import { GROUPS_WITH_MANY_BOUNDARIES_FLAG, GROUPS_WITH_TRIGGERS_FLAG } from '@n8n/api-types';
+import type { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { PostHogClient } from '@/posthog';
 
 import { NodeGroupRulesFlagGate } from '../node-group-rules-flag-gate';
 
