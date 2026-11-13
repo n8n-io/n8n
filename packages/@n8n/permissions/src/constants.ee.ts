@@ -142,6 +142,7 @@ export const API_KEY_RESOURCES = {
 	] as const,
 	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
+	annotationTag: ['create', 'list'] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
