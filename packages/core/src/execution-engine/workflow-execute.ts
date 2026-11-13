@@ -52,11 +52,7 @@ import {
 	WorkflowDataProxy,
 	NodeConnectionTypes,
 	ApplicationError,
-	BaseError,
 	isNodeClassInstance,
-	UnexpectedError,
-	UserError,
-	OperationalError,
 	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
@@ -66,6 +62,7 @@ import {
 	isExecutionOutputRedacted,
 	redactErrorReport,
 } from 'n8n-workflow';
+import { BaseError, UnexpectedError, UserError, OperationalError } from '@n8n/errors';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
@@ -2615,6 +2612,7 @@ export class WorkflowExecute {
 										this.additionalData,
 										this.mode,
 										this.abortController.signal,
+										subNodeExecutionResults,
 									);
 
 									nodeFailed = checkFailure(runNodeData);

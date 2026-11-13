@@ -5,7 +5,7 @@ import {
 	type IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { apiRequest, getImageBySize } from '../GenericFunctions';
+import { apiRequest, fileUrl, getImageBySize } from '../GenericFunctions';
 import { type IEvent } from '../IEvent';
 
 export const downloadFile = async (
@@ -52,7 +52,7 @@ export const downloadFile = async (
 
 		const {
 			result: { file_path },
-		} = await apiRequest.call(webhookFunctions, 'GET', `getFile?file_id=${fileId}`, {});
+		} = await apiRequest.call(webhookFunctions, 'GET', 'getFile', {}, { file_id: fileId });
 
 		const file = await apiRequest.call(
 			webhookFunctions,
@@ -63,9 +63,9 @@ export const downloadFile = async (
 			{
 				json: false,
 				encoding: null,
-				uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${file_path}`,
 				resolveWithFullResponse: true,
 			},
+			fileUrl(credentials.baseUrl, credentials.accessToken, file_path),
 		);
 
 		const data = Buffer.from(file.body as string);

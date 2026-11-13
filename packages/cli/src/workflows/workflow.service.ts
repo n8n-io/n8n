@@ -83,6 +83,7 @@ import { WorkflowActivationBadRequestError } from '@/errors/response-errors/work
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -1068,6 +1069,8 @@ export class WorkflowService {
 		try {
 			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
 				actor: { kind: 'user', user },
+				// The publish record for this user is written only after `add` succeeds.
+				publisherId: user.id,
 			});
 			didPublish = true;
 		} catch (error) {
@@ -1075,19 +1078,22 @@ export class WorkflowService {
 			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
 			// which otherwise may cause them to start unintended executions.
 			// Done before the rollback below so the active version is still
-			// resolvable by `clearWebhooks`.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
+			// resolvable by `clearWebhooks`. A credential refusal registers nothing,
+			// and the teardown would call the trigger nodes with the refused credentials.
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
 
-				this.logger.warn(
-					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
-					{ workflowId },
-				);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+					this.logger.warn(
+						`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+						{ workflowId },
+					);
+				} catch (cleanupError) {
+					this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+						workflowId,
+						error: cleanupError,
+					});
+				}
 			}
 
 			const rollbackPayload = {

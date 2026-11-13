@@ -2,10 +2,12 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	JsonObject,
-	IRequestOptions,
 	IHttpRequestMethods,
+	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export type GraphSecurityCredentialType = 'microsoftGraphSecurityOAuth2Api' | 'microsoftOAuth2Api';
 
@@ -27,7 +29,7 @@ export function getGraphSecurityCredentialType(
 export async function msGraphSecurityApiRequest(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	headers: IDataObject = {},
@@ -58,14 +60,14 @@ export async function msGraphSecurityApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${access_token}`,
 		},
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}/v1.0/security${endpoint}`,
+		uri: requestUrl`${baseUrl}/v1.0/security${endpoint}`,
 		json: true,
 	};
 

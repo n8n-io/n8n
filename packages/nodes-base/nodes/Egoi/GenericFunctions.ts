@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 interface IContact {
 	tags: [];
@@ -22,7 +24,7 @@ const fieldCache: {
 export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -30,7 +32,7 @@ export async function egoiApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		headers: {
 			accept: 'application/json',
 			Apikey: `${credentials.apiKey}`,
@@ -38,7 +40,7 @@ export async function egoiApiRequest(
 		method,
 		qs,
 		body,
-		url: `https://api.egoiapp.com${endpoint}`,
+		url: requestUrl`https://api.egoiapp.com${endpoint}`,
 		json: true,
 	};
 
@@ -57,7 +59,7 @@ export async function getFields(this: IExecuteFunctions, listId: string) {
 	if (fieldCache[listId]) {
 		return fieldCache[listId];
 	}
-	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', requestPath`/lists/${listId}/fields`);
 	return fieldCache[listId];
 }
 
@@ -65,7 +67,7 @@ export async function egoiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

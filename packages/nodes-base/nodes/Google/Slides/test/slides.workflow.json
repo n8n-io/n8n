@@ -1,0 +1,198 @@
+{
+	"name": "Google Slides request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"title": "Quarterly review"
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b02",
+			"name": "Create Presentation",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc"
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [440, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b03",
+			"name": "Get Presentation",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getSlides",
+				"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [660, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b04",
+			"name": "Get Slides",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "replaceText",
+				"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+				"textUi": {
+					"textValues": [
+						{
+							"text": "{{quarter}}",
+							"replaceText": "Q3"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [880, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b05",
+			"name": "Replace Text",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+				"pageObjectId": "g2a1b3c4d5e6_0_0"
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [1100, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b06",
+			"name": "Get Page",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "getThumbnail",
+				"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+				"pageObjectId": "g2a1b3c4d5e6_0_0"
+			},
+			"type": "n8n-nodes-base.googleSlides",
+			"typeVersion": 2,
+			"position": [1320, 0],
+			"id": "3c8b2e41-6f0a-4d7e-9b15-8a2c4e6f0b07",
+			"name": "Get Thumbnail",
+			"credentials": {
+				"googleSlidesOAuth2Api": {
+					"id": "gslides-cred-1",
+					"name": "Google Slides account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Create Presentation", "type": "main", "index": 0 }]]
+		},
+		"Create Presentation": {
+			"main": [[{ "node": "Get Presentation", "type": "main", "index": 0 }]]
+		},
+		"Get Presentation": {
+			"main": [[{ "node": "Get Slides", "type": "main", "index": 0 }]]
+		},
+		"Get Slides": {
+			"main": [[{ "node": "Replace Text", "type": "main", "index": 0 }]]
+		},
+		"Replace Text": {
+			"main": [[{ "node": "Get Page", "type": "main", "index": 0 }]]
+		},
+		"Get Page": {
+			"main": [[{ "node": "Get Thumbnail", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Create Presentation": [
+			{
+				"json": {
+					"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+					"title": "Quarterly review"
+				}
+			}
+		],
+		"Get Presentation": [
+			{
+				"json": {
+					"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+					"title": "Quarterly review"
+				}
+			}
+		],
+		"Get Slides": [
+			{
+				"json": {
+					"objectId": "g2a1b3c4d5e6_0_0",
+					"pageType": "SLIDE"
+				}
+			}
+		],
+		"Replace Text": [
+			{
+				"json": {
+					"presentationId": "1EAYk18WDjIG-zp_0vLm3CsfQh_i8eXc67Jo2O9C6Vuc",
+					"replies": [{ "replaceAllText": { "occurrencesChanged": 1 } }]
+				}
+			}
+		],
+		"Get Page": [
+			{
+				"json": {
+					"objectId": "g2a1b3c4d5e6_0_0",
+					"pageType": "SLIDE"
+				}
+			}
+		],
+		"Get Thumbnail": [
+			{
+				"json": {
+					"width": 1600,
+					"height": 900,
+					"contentUrl": "https://lh7-us.googleusercontent.com/thumb"
+				}
+			}
+		]
+	}
+}

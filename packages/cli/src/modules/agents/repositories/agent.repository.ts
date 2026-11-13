@@ -6,6 +6,7 @@ import type {
 	ListAgentsQueryDto,
 } from '@n8n/api-types';
 import {
+	AgentTagMapping,
 	BaseRepository,
 	chunkIds,
 	escapeLike,
@@ -81,6 +82,24 @@ export class AgentRepository extends BaseRepository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	/**
+	 * Replaces the tag mappings of one agent with the given tag ids, in a
+	 * single transaction: a delete followed by the inserts, so a failure
+	 * leaves the previous mappings in place. An empty list clears the tags.
+	 */
+	async overwriteTagMappings(agentId: string, tagIds: string[], ctx: OperationContext = {}) {
+		// Duplicates would collide on the composite primary key.
+		const uniqueTagIds = [...new Set(tagIds)];
+		return await this.runInTransaction(ctx, async (tx) => {
+			await tx.delete(AgentTagMapping, { agentId });
+			if (uniqueTagIds.length === 0) return;
+			await tx.insert(
+				AgentTagMapping,
+				uniqueTagIds.map((tagId) => ({ agentId, tagId })),
+			);
+		});
 	}
 
 	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
@@ -252,6 +271,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			'activeVersion',
 		);
 
+		query.leftJoinAndSelect('agent.tags', 'tags');
+
 		// Only cross-project consumers (MCP settings) label each agent by its home
 		// project; the overview lists don't read it, so they skip the extra join.
 		if (withProject) {
@@ -387,6 +408,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 		if (filter?.ids) {
 			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
 		}
+		if (filter?.tags && filter.tags.length > 0) {
+			this.applyTagsFilter(query, filter.tags);
+		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
 				availableInMCP: filter.availableInMCP,
@@ -398,6 +422,30 @@ export class AgentRepository extends BaseRepository<Agent> {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
 		}
+	}
+
+	/**
+	 * Keeps only the agents that carry **all** the given tag ids. The mapping
+	 * rows are grouped per agent and the distinct tag count must match, so a
+	 * partial overlap drops the agent — the same semantics as the workflow
+	 * list's tag filter.
+	 */
+	private applyTagsFilter(query: SelectQueryBuilder<Agent>, tagIds: string[]): void {
+		// Duplicates would demand more distinct mappings than a tag pair can
+		// hold, so count the deduped list.
+		const uniqueTagIds = [...new Set(tagIds)];
+		const subQuery = query
+			.subQuery()
+			.select('atm.agentId')
+			.from(AgentTagMapping, 'atm')
+			.where('atm.tagId IN (:...tagIds)', { tagIds: uniqueTagIds })
+			.groupBy('atm.agentId')
+			.having('COUNT(DISTINCT atm.tagId) = :tagCount', { tagCount: uniqueTagIds.length });
+
+		query.andWhere(`agent.id IN (${subQuery.getQuery()})`).setParameters({
+			tagIds: uniqueTagIds,
+			tagCount: uniqueTagIds.length,
+		});
 	}
 
 	// Reachability is a property of the **published** config, not the draft:
@@ -489,7 +537,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return projectAgentOrNull(
 			await this.findOne({
 				where: { id, projectId, scope: projectScope },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			}),
 		);
 	}
@@ -508,7 +556,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return projectAgentOrNull(
 			await this.managerFor(ctx).findOne(Agent, {
 				where: { id, scope: projectScope },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			}),
 		);
 	}

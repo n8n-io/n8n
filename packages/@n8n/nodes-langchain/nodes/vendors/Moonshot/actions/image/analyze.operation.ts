@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ChatCompletionResponse, ContentBlock } from '../../helpers/interfaces';
 import { prepareBinaryPropertyList } from '../../helpers/utils';
@@ -98,7 +98,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		],
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/chat/completions`, {
 		body,
 	})) as ChatCompletionResponse;
 

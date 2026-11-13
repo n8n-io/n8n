@@ -1,5 +1,6 @@
 import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import chardet from 'chardet';
 import { IncomingMessage } from 'http';
 import get from 'lodash/get';
@@ -16,7 +17,6 @@ import type {
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,

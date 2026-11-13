@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceBodyFormat } from '../common';
@@ -117,7 +118,7 @@ async function collectDescendantPageIds(
 				const response = await confluenceApiRequest.call(
 					this,
 					'GET',
-					`/wiki/api/v2/pages/${encodeURIComponent(nodeId)}/descendants`,
+					requestPath`/wiki/api/v2/pages/${nodeId}/descendants`,
 					{},
 					qs,
 				);
@@ -160,7 +161,7 @@ async function fetchPagesByIds(
 		const response = await confluenceApiRequest.call(
 			this,
 			'GET',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{},
 			{ id: chunk.join(','), 'body-format': requestedFormat, limit: PAGE_LIMIT },
 		);
@@ -178,7 +179,7 @@ async function fetchPage(
 	return await confluenceApiRequest.call(
 		this,
 		'GET',
-		`/wiki/api/v2/pages/${encodeURIComponent(pageId)}`,
+		requestPath`/wiki/api/v2/pages/${pageId}`,
 		{},
 		{ 'body-format': requestedFormat },
 	);

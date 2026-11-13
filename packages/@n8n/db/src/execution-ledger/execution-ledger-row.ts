@@ -18,6 +18,8 @@ export const EXECUTION_LEDGER_BLOCKED_BY = [
 ] as const;
 export const EXECUTION_LEDGER_ORIGINS = ['v1', 'v2'] as const;
 
+export const EXECUTION_LEDGER_ENTITY_NAME_MAX_LENGTH = 128;
+
 export type ExecutionLedgerEntityType = (typeof EXECUTION_LEDGER_ENTITY_TYPES)[number];
 export type ExecutionLedgerEvent = (typeof EXECUTION_LEDGER_EVENTS)[number];
 export type ExecutionLedgerOutcome = (typeof EXECUTION_LEDGER_OUTCOMES)[number];

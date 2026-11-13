@@ -1,4 +1,5 @@
 import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -23,7 +24,6 @@ vi.mock('../../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FOLDER_ID = '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA';
 const FILE_BYTES = Buffer.from('col1,col2\n1,2\n');
 
@@ -75,8 +75,8 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		const [method, resource, body, , , headers] = apiRequest.mock.calls[0];
 		expect(method).toBe('PUT');
-		expect(resource).toBe(
-			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FOLDER_ID}:/report.csv:/content`,
+		expect(resource).toEqual(
+			requestPath`/v1.0/sites/${SITE_ID}/drive/items/${FOLDER_ID}:/report.csv:/content`,
 		);
 		expect(Buffer.isBuffer(body)).toBe(true);
 		expect((body as Buffer).equals(FILE_BYTES)).toBe(true);
@@ -90,8 +90,10 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 		await execute.call(ctx, 0);
 
 		const [, resource] = apiRequest.mock.calls[0];
-		expect(resource).toBe(
-			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items/weird%20folder%23id:/Q1%20report%20%23final.csv:/content`,
+		expect(resource).toEqual(
+			expect.objectContaining({
+				value: `/v1.0/sites/${SITE_ID}/drive/items/weird%20folder%23id:/Q1%20report%20%23final.csv:/content`,
+			}),
 		);
 	});
 
@@ -199,7 +201,7 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 			site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' },
 		});
 		apiRequest.mockImplementation(async (_method: string, resource: string) =>
-			resource.startsWith('/v1.0/sites/contoso.sharepoint.com:')
+			String(resource).startsWith('/v1.0/sites/contoso.sharepoint.com:')
 				? { id: SITE_ID }
 				: DRIVE_ITEM_REPLY,
 		);
@@ -208,7 +210,7 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/mysite' }),
 			{},
 			{ $select: 'id' },
 		);

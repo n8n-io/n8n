@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { LifecycleEvent, UnsubscribeFromExecutionChannel } from '@n8n/engine';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 

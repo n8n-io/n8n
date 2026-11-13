@@ -36,18 +36,17 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	createRunExecutionData,
 	Expression,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
 	NodeOperationError,
-	UserError,
 	Workflow,
 	WorkflowDataProxy,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';

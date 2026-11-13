@@ -1,0 +1,181 @@
+{
+	"name": "SharePoint v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "29e84e74-9049-4df4-8648-6cf9417b1c5e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"data\": {\n    \"status\": \"final\"\n  }\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "0d7a9554-7f14-4122-b47a-e44826954581",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {}
+			},
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"id": "f728bb42-e98a-4533-9274-5107cd804103"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"site": {
+					"__rl": true,
+					"value": "mydomain.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "01BYE5RZ2KXWOZ3HJCZVA2XJEFBJCB4WXT",
+					"mode": "id"
+				},
+				"file": {
+					"__rl": true,
+					"value": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"mode": "id"
+				},
+				"fileName": "report-final.json",
+				"changeFileContent": true,
+				"fileContents": "data",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "80fdebcf-47c1-4835-8419-b25a2f74c347",
+			"name": "File Update",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "upsert",
+				"site": {
+					"__rl": true,
+					"value": "mydomain.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Title": "Budget 2027"
+					},
+					"matchingColumns": ["Title"],
+					"schema": [
+						{
+							"id": "Title",
+							"canBeUsedToMatch": true,
+							"defaultMatch": false,
+							"display": true,
+							"displayName": "Title",
+							"readOnly": false,
+							"required": true,
+							"type": "string",
+							"removed": false
+						}
+					],
+					"attemptToConvertTypes": false,
+					"convertFieldsToString": false
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "e56585a3-f790-4cb6-af3f-bd5d3bcabb9f",
+			"name": "Item Upsert",
+			"credentials": {
+				"microsoftSharePointOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft SharePoint account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Upsert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Convert to File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Convert to File": {
+			"main": [
+				[
+					{
+						"node": "File Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"File Update": [
+			{
+				"json": {
+					"id": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"name": "report-final.json"
+				}
+			}
+		],
+		"Item Upsert": [
+			{
+				"json": {
+					"id": "7",
+					"fields": {
+						"Title": "Budget 2027"
+					}
+				}
+			}
+		]
+	}
+}

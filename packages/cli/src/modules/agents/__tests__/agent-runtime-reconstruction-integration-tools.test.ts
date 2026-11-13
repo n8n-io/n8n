@@ -34,6 +34,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
+import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -300,6 +301,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentTaskRepository,
 				skillRefs,
 				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
@@ -407,6 +411,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
+			mock<TagService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

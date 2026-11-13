@@ -7,9 +7,11 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { TagService } from '@/services/tag.service';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsService } from '@/modules/agents/agents.service';
@@ -204,11 +206,15 @@ describe('AgentRepository', () => {
 					taskRepo,
 					skillRefs,
 					policy,
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
+				mock<TagService>(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();
@@ -300,6 +306,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					Container.get(AgentSkillRefsService),
 					mock<AgentPolicyService>(),
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				setup,
 				transactionRunner,

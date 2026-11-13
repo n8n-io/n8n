@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -63,7 +63,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		query,
 	};
 
-	responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', body);
+	responseData = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body);
 
 	if (typeof responseData !== 'object') {
 		responseData = { queryResult: responseData };

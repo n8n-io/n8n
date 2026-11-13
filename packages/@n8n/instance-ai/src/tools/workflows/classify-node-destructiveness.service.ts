@@ -116,19 +116,6 @@ const CODE_NODE_TYPES = new Set(['n8n-nodes-base.code']);
 const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 
-/**
- * A real wait this short is harmless during verification and — unlike a
- * simulated one — preserves pass-through data for downstream expressions.
- */
-const MAX_EXECUTABLE_WAIT_SECONDS = 60;
-
-const WAIT_UNIT_SECONDS: Record<string, number> = {
-	seconds: 1,
-	minutes: 60,
-	hours: 3600,
-	days: 86_400,
-};
-
 const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 
 /** Operation/mode values that unambiguously read. */
@@ -257,27 +244,21 @@ function deterministicVerdict(
 	}
 
 	if (nodeType === WAIT_NODE_TYPE) {
-		// Wait node defaults: resume='timeInterval', amount=1, unit='hours'.
+		// Wait node defaults: resume='timeInterval'. A verification run removes the
+		// delay of time-based waits, so they run for real and keep pass-through data.
 		const params = isRecord(node.parameters) ? node.parameters : {};
 		const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';
-		if (resume === 'timeInterval') {
-			const amount = typeof params.amount === 'number' ? params.amount : 1;
-			const unit = typeof params.unit === 'string' ? params.unit : 'hours';
-			const seconds = amount * (WAIT_UNIT_SECONDS[unit] ?? 3600);
-			if (seconds <= MAX_EXECUTABLE_WAIT_SECONDS) {
-				return deterministic(
-					node.name,
-					'execute',
-					`Short wait (${seconds}s) — runs for real to preserve pass-through data`,
-				);
-			}
+		if (resume === 'timeInterval' || resume === 'specificTime') {
+			return deterministic(
+				node.name,
+				'execute',
+				'Time-based wait — verification runs it without the delay',
+			);
 		}
 		return deterministic(
 			node.name,
 			'simulate',
-			resume === 'timeInterval' || resume === 'specificTime'
-				? 'Pauses the workflow for longer than verification can wait'
-				: 'Pauses the workflow until a user or external system resumes it',
+			'Pauses the workflow until a user or external system resumes it',
 		);
 	}
 

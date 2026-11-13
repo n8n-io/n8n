@@ -1,4 +1,5 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as upload from '../../../../v2/actions/file/upload.operation';
 import * as utils from '../../../../v2/helpers/utils';
@@ -19,6 +20,7 @@ vi.mock('../../../../v2/transport', async () => {
 		googleApiRequest: vi.fn(async function (method: IHttpRequestMethods) {
 			if (method === 'POST') {
 				return {
+					id: 'uploadIDxxxxxx',
 					headers: { location: 'someLocation' },
 				};
 			}
@@ -72,7 +74,7 @@ describe('test GoogleDriveV2: file upload', () => {
 
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			expect.any(Buffer),
 			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
@@ -85,7 +87,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/undefined',
+			requestPath`/drive/v3/files/uploadIDxxxxxx`,
 			{ mimeType, name, originalFilename },
 			{
 				addParents: parent,
@@ -120,7 +122,9 @@ describe('test GoogleDriveV2: file upload', () => {
 		};
 
 		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
-		const httpRequestSpy = vi.spyOn(fakeExecuteFunction.helpers, 'httpRequest');
+		const httpRequestSpy = vi
+			.spyOn(fakeExecuteFunction.helpers, 'httpRequest')
+			.mockResolvedValue({ id: 'uploadIDxxxxxx' });
 
 		const fileSize = 7 * 1024 * 1024; // 7MB
 		vi.mocked(utils.getItemBinaryData).mockResolvedValue({
@@ -140,7 +144,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			{ name, parents: [parent] },
 			{ uploadType: 'resumable', supportsAllDrives: true },
 			undefined,
@@ -148,7 +152,7 @@ describe('test GoogleDriveV2: file upload', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/undefined',
+			requestPath`/drive/v3/files/uploadIDxxxxxx`,
 			{ mimeType, name, originalFilename },
 			{
 				addParents: parent,

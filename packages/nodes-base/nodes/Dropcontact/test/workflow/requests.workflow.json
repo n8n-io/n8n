@@ -1,0 +1,76 @@
+{
+	"name": "Dropcontact request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 150],
+			"id": "a2a6f0a4-6f7a-4c55-9d43-4b5a1d6e0001"
+		},
+		{
+			"parameters": {
+				"email": "nathan@example.com",
+				"simplify": true,
+				"additionalFields": {},
+				"options": {}
+			},
+			"name": "Enrich Simplified",
+			"type": "n8n-nodes-base.dropcontact",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "a2a6f0a4-6f7a-4c55-9d43-4b5a1d6e0002",
+			"credentials": { "dropcontactApi": { "id": "1", "name": "Dropcontact account" } }
+		},
+		{
+			"parameters": {
+				"email": "jan@example.com",
+				"additionalFields": {},
+				"options": { "waitTime": 0 }
+			},
+			"name": "Enrich",
+			"type": "n8n-nodes-base.dropcontact",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"id": "a2a6f0a4-6f7a-4c55-9d43-4b5a1d6e0003",
+			"credentials": { "dropcontactApi": { "id": "1", "name": "Dropcontact account" } }
+		},
+		{
+			"parameters": {
+				"operation": "fetchRequest",
+				"requestId": "kd8Fj2Lq9Xz"
+			},
+			"name": "Fetch Request",
+			"type": "n8n-nodes-base.dropcontact",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"id": "a2a6f0a4-6f7a-4c55-9d43-4b5a1d6e0004",
+			"credentials": { "dropcontactApi": { "id": "1", "name": "Dropcontact account" } }
+		}
+	],
+	"pinData": {
+		"Enrich Simplified": [
+			{ "json": { "request_id": "Rq7Pz3Mn5Yt", "success": true, "error": false } }
+		],
+		"Enrich": [{ "json": { "email": [{ "email": "jan@example.com" }] } }],
+		"Fetch Request": [{ "json": { "email": [{ "email": "anna@example.com" }] } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Enrich Simplified", "type": "main", "index": 0 },
+					{ "node": "Enrich", "type": "main", "index": 0 },
+					{ "node": "Fetch Request", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "a2a6f0a4-6f7a-4c55-9d43-4b5a1d6e00ff",
+	"meta": { "instanceId": "test" },
+	"id": "DropcontactRequests",
+	"tags": []
+}

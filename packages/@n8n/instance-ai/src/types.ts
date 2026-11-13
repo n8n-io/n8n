@@ -44,7 +44,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	IDisplayOptions,
@@ -183,6 +183,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -855,6 +860,14 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Why AI Gateway cannot serve a credential type it covers on this node, or
+	 *  undefined when it can or does not cover the type. Applies the rule the
+	 *  engine applies when the workflow runs: node type, type version, action
+	 *  (with node defaults applied) and hidden properties. */
+	getAiGatewayNodeRejection?(
+		node: Pick<NodeJSON, 'type' | 'typeVersion' | 'parameters'>,
+		credType: string,
+	): Promise<string | undefined>;
 	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
 	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */

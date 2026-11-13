@@ -19,6 +19,7 @@ import {
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
 import { settleAbandonedToolCallsInMemory } from '../memory/strip-orphaned-tool-messages';
+import { estimateObservationTokens } from '../model/model-token-counter';
 import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
@@ -534,13 +535,13 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
-	it.each(['document', 'media'] as const)(
+	it.each(['document', 'media', 'uninterrupted'] as const)(
 		'bounds oversized %s results before observation',
 		async (kind) => {
 			const store = new InMemoryMemory();
-			const document = `DOCUMENT_START ${'Document text. '.repeat(6_000)} DOCUMENT_END`;
+			const document = `DOCUMENT_START ${kind === 'uninterrupted' ? 'x'.repeat(400_000) : 'Document text. '.repeat(6_000)} DOCUMENT_END`;
 			const output =
-				kind === 'document'
+				kind !== 'media'
 					? { content: document }
 					: {
 							type: 'content',
@@ -585,6 +586,74 @@ describe('runObservationLogObserver', () => {
 			});
 		},
 	);
+
+	it.each([
+		{ name: 'uniform-space', output: ' '.repeat(5_200_000), truncated: false },
+		{ name: 'prose', output: 'word '.repeat(100_000), truncated: true },
+	])('uses the token budget for a large $name result', async ({ output, truncated }) => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				{
+					id: 'm1',
+					createdAt: new Date(0),
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc1',
+							toolName: 'fetch_report',
+							input: {},
+							state: 'resolved',
+							output,
+						},
+					],
+				},
+			],
+		});
+		const observe = vi.fn(async ({ transcript }: ObservationLogObserverInput) => {
+			const serializedResult =
+				/<untrusted_tool_data source="fetch_report">(.*)<\/untrusted_tool_data>/u.exec(
+					transcript,
+				)?.[1];
+			if (!serializedResult) throw new Error('Expected a tool result in the transcript');
+			expect(await estimateObservationTokens(serializedResult)).toBeLessThanOrEqual(
+				MAX_MODEL_TOOL_RESULT_TOKENS,
+			);
+			if (truncated) {
+				const envelope = JSON.parse(serializedResult) as {
+					head: string;
+					tail: string;
+				};
+				const serialized = JSON.stringify(output);
+				expect(envelope).toMatchObject({
+					_truncated: true,
+					originalCharCount: serialized.length,
+				});
+				expect(serialized.startsWith(envelope.head)).toBe(true);
+				expect(serialized.endsWith(envelope.tail)).toBe(true);
+				expect(envelope.head.length + envelope.tail.length).toBeGreaterThan(200_000);
+			} else {
+				const observedOutput: unknown = JSON.parse(serializedResult);
+				expect(typeof observedOutput).toBe('string');
+				expect(observedOutput).toBe(output);
+			}
+			return 'NO_OBSERVATIONS';
+		});
+
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observationLogTailLimit: 20,
+			observe,
+		});
+
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(result).toMatchObject({ status: 'ran', cursorAdvanced: true });
+	});
 
 	it('counts observer-serialized tool results without another JSON encoding layer', async () => {
 		const store = new InMemoryMemory();

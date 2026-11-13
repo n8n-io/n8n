@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -13,7 +13,7 @@ export async function updateTicket(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
-	const endpoint = `tickets/${id}`;
+	const endpoint = requestPath`tickets/${id}`;
 	let body = {} as IDataObject;
 
 	body = {

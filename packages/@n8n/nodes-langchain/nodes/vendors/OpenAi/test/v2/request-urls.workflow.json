@@ -1,0 +1,175 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "deleteFile",
+				"fileId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "file-XjGxS3KTG0uNmNOK362iJua3"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [220, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c02",
+			"name": "Delete File",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "get",
+				"conversationId": "conv_689667905b048191b4740501625afd940c7533ace33a2dab"
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [440, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c03",
+			"name": "Get Conversation",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "update",
+				"conversationId": "conv_689667905b048191b4740501625afd940c7533ace33a2dab",
+				"metadata": "{\"topic\": \"billing\"}"
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [660, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c04",
+			"name": "Update Conversation",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "remove",
+				"conversationId": "conv_689667905b048191b4740501625afd940c7533ace33a2dab"
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [880, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c05",
+			"name": "Remove Conversation",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "video",
+				"operation": "generate",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "sora-2"
+				},
+				"prompt": "A calico cat playing a piano on stage",
+				"seconds": 4,
+				"size": "1280x720",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [1100, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c06",
+			"name": "Generate Video",
+			"continueOnFail": true,
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "text",
+				"operation": "response",
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4.1-mini"
+				},
+				"responses": {
+					"values": [
+						{
+							"role": "user",
+							"content": "Write a haiku about the sea"
+						}
+					]
+				},
+				"options": {
+					"backgroundMode": {
+						"values": {
+							"enabled": true,
+							"timeout": 60
+						}
+					}
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2.1,
+			"position": [1320, 0],
+			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c07",
+			"name": "Message a Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Delete File", "type": "main", "index": 0 }]]
+		},
+		"Delete File": {
+			"main": [[{ "node": "Get Conversation", "type": "main", "index": 0 }]]
+		},
+		"Get Conversation": {
+			"main": [[{ "node": "Update Conversation", "type": "main", "index": 0 }]]
+		},
+		"Update Conversation": {
+			"main": [[{ "node": "Remove Conversation", "type": "main", "index": 0 }]]
+		},
+		"Remove Conversation": {
+			"main": [[{ "node": "Generate Video", "type": "main", "index": 0 }]]
+		},
+		"Generate Video": {
+			"main": [[{ "node": "Message a Model", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

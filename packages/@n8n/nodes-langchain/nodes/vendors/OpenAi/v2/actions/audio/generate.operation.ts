@@ -4,7 +4,7 @@ import type {
 	IDataObject,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -163,7 +163,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		json: false,
 	};
 
-	const response = await apiRequest.call(this, 'POST', '/audio/speech', { body, option });
+	const response = await apiRequest.call(this, 'POST', requestPath`/audio/speech`, {
+		body,
+		option,
+	});
 
 	const binaryData = await this.helpers.prepareBinaryData(
 		response,

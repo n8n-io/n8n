@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
+import { AgentTagMapping, LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -29,7 +29,7 @@ describe('AgentRepository', () => {
 
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			});
 			expect(result).toBe(agent);
 		});
@@ -52,7 +52,7 @@ describe('AgentRepository', () => {
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(Agent, {
 				where: { id: 'agent-1', scope: 'project' },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			});
 			expect(result).toBe(agent);
 		});
@@ -196,6 +196,15 @@ describe('AgentRepository', () => {
 			skip: vi.fn().mockReturnThis(),
 			take: vi.fn().mockReturnThis(),
 			getManyAndCount: vi.fn().mockResolvedValue(result),
+			subQuery: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				having: vi.fn().mockReturnThis(),
+				getQuery: vi.fn().mockReturnValue('SUBQUERY_SQL'),
+			}),
+			setParameters: vi.fn().mockReturnThis(),
 		});
 
 		it('returns { count: 0, data: [] } immediately when projectIds is empty', async () => {
@@ -256,6 +265,64 @@ describe('AgentRepository', () => {
 			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
 				query: '%support%',
 			});
+		});
+
+		it('always joins the tags relation', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], { skip: 0, take: 10 } as never);
+
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.tags', 'tags');
+		});
+
+		it('filters agents that carry all the requested tag ids', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { tags: ['tag-1', 'tag-2'] },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id IN (SUBQUERY_SQL)');
+			expect(mockQb.setParameters).toHaveBeenCalledWith({
+				tagIds: ['tag-1', 'tag-2'],
+				tagCount: 2,
+			});
+		});
+
+		it('dedupes repeated tag ids before counting distinct mappings', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { tags: ['tag-1', 'tag-1', 'tag-2'] },
+			} as never);
+
+			expect(mockQb.setParameters).toHaveBeenCalledWith({
+				tagIds: ['tag-1', 'tag-2'],
+				tagCount: 2,
+			});
+		});
+
+		it('adds no tag filter clause when no tags are requested', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { query: 'support' },
+			} as never);
+
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.id IN (SUBQUERY_SQL)',
+				expect.anything(),
+			);
 		});
 
 		describe('availableInChat filter', () => {
@@ -327,6 +394,45 @@ describe('AgentRepository', () => {
 					expect.anything(),
 				);
 			});
+		});
+	});
+
+	describe('overwriteTagMappings', () => {
+		// `managerFor` falls back to the repository's manager when the ctx the
+		// runner hands back carries no transaction, so the writes land on the
+		// mocked entity manager this test asserts against.
+		const makeTransactionRunner = () => {
+			const transactionRunner = mock<TransactionRunner>();
+			transactionRunner.run.mockImplementation(async (_ctx, cb) => await cb({ trx: undefined }));
+			return transactionRunner;
+		};
+
+		it('replaces the mappings in one runner transaction, deduping ids', async () => {
+			const transactionRunner = makeTransactionRunner();
+			const repository = new AgentRepository(mockDataSource as never, transactionRunner);
+
+			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
+
+			// The delete and the inserts share one transaction.
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentTagMapping, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.insert).toHaveBeenCalledWith(AgentTagMapping, [
+				{ agentId: 'agent-1', tagId: 'tag-1' },
+				{ agentId: 'agent-1', tagId: 'tag-2' },
+			]);
+		});
+
+		it('only deletes when the new tag list is empty', async () => {
+			const repository = new AgentRepository(mockDataSource as never, makeTransactionRunner());
+
+			await repository.overwriteTagMappings('agent-1', []);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentTagMapping, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.insert).not.toHaveBeenCalled();
 		});
 	});
 

@@ -7,9 +7,6 @@
 	<a href="https://badge.fury.io/js/typeorm">
 		<img src="https://badge.fury.io/js/typeorm.svg">
 	</a>
-	<a href="https://join.slack.com/t/typeorm/shared_invite/zt-uu12ljeb-OH_0086I379fUDApYJHNuw">
-		<img src="https://img.shields.io/badge/chat-on%20slack-blue.svg">
-	</a>
   <br>
   <br>
 </div>
@@ -1205,7 +1202,7 @@ Learn more about QueryBuilder [here](./docs/select-query-builder.md).
 
 ## Samples
 
-Take a look at the samples in [sample](https://github.com/typeorm/typeorm/tree/master/sample) for examples of usage.
+Take a look at the samples in [sample](https://github.com/typeorm/typeorm/tree/0.3.28/sample) for examples of usage.
 
 There are a few repositories that you can clone and start with:
 

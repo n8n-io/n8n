@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { decodePathValue, NodeOperationError } from 'n8n-workflow';
 
 import { type DataverseHeaders } from '../GenericFunctions';
 import {
@@ -29,6 +29,9 @@ import {
 	forOperation,
 } from './sharedProperties';
 import type { OperationDefinition } from './types';
+
+const toAlternateKeyValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 /**
  * dv connector — "Upsert a row" (`PATCH /{entitySet}({recordId})`).
@@ -133,7 +136,15 @@ export const upsertRow: OperationDefinition = {
 		const identifierType = ctx.getNodeParameter('identifierType', i, 'guid') as string;
 		const identifier =
 			identifierType === 'alternateKey'
-				? assertValidAlternateKey(ctx, i, ctx.getNodeParameter('alternateKey', i), 'alternateKey')
+				? toAlternateKeyValue(
+						ctx.getNode().typeVersion,
+						assertValidAlternateKey(
+							ctx,
+							i,
+							ctx.getNodeParameter('alternateKey', i),
+							'alternateKey',
+						),
+					)
 				: assertValidRecordId(ctx, i, ctx.getNodeParameter('recordId', i));
 
 		const rawBody = parseItemInput(ctx, i);

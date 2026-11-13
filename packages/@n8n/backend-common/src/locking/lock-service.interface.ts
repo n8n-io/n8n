@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * Lock namespaces. A `const` object rather than an `enum`: `const enum` erases

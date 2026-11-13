@@ -1,6 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { execute } from '../../../../v2/actions/messageAttachment/add.operation';
 
 import * as transport from '../../../../v2/transport';
@@ -89,7 +89,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93AAA=/attachments',
+				requestPath`/messages/AAMkAGI2TG93AAA=/attachments`,
 				0,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
@@ -139,7 +139,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93AAA=/attachments',
+				requestPath`/messages/AAMkAGI2TG93AAA=/attachments`,
 				2,
 				{
 					'@odata.type': '#microsoft.graph.fileAttachment',
@@ -225,7 +225,7 @@ describe('Microsoft Outlook V2 - MessageAttachment:add', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession',
+				requestPath`/messages/AAMkAGI2TG93BBB=/attachments/createUploadSession`,
 				0,
 				{
 					AttachmentItem: {

@@ -1,0 +1,53 @@
+{
+	"name": "Bubble self-hosted request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "42756262-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"typeName": "Customer",
+				"objectId": "1696851234567x123456789012345678"
+			},
+			"type": "n8n-nodes-base.bubble",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "42756262-0000-4000-8000-000000000001",
+			"name": "Object > Get",
+			"credentials": {
+				"bubbleApi": {
+					"id": "1",
+					"name": "Bubble account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Object > Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Object > Get": [
+			{
+				"json": {
+					"_id": "1696851234567x123456789012345678",
+					"name": "Nathan"
+				}
+			}
+		]
+	}
+}
