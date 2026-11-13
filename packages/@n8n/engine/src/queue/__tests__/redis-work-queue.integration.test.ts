@@ -100,16 +100,21 @@ describe('RedisWorkQueue (integration)', () => {
 		const first = startProcess(key, 1);
 		const firstReceived: number[] = [];
 		let releaseFirst!: () => void;
+		const firstGate = new Promise<void>((resolve) => (releaseFirst = resolve));
 		first.queue.start(async ({ n }) => {
 			firstReceived.push(n);
-			await new Promise<void>((resolve) => (releaseFirst = resolve));
+			await firstGate;
 		});
-		for (const n of [1, 2, 3]) await first.queue.publish({ n });
-		await vi.waitFor(() => expect(firstReceived).toHaveLength(1));
+		try {
+			for (const n of [1, 2, 3]) await first.queue.publish({ n });
+			await vi.waitFor(() => expect(firstReceived).toHaveLength(1));
 
-		const stopping = first.queue.stop();
-		releaseFirst();
-		await stopping;
+			const stopping = first.queue.stop();
+			releaseFirst();
+			await stopping;
+		} finally {
+			releaseFirst();
+		}
 
 		const next = startProcess(key, 1);
 		const nextReceived: number[] = [];

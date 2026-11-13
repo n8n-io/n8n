@@ -39,6 +39,11 @@ const RETRY_DELAY_MS = 1_000;
 /** How much longer than one fetch `stop()` waits for that fetch to return. */
 const STOP_MARGIN_MS = 1_000;
 
+/** Node fires a longer timer after 1 ms, so `stop()` would not wait for the fetch. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+const MAX_BLOCK_TIMEOUT_SECONDS = (MAX_TIMER_DELAY_MS - STOP_MARGIN_MS) / 1000;
+
 /** Resolves after `ms`, or immediately when `signal` aborts. */
 async function delay(ms: number, signal: AbortSignal): Promise<void> {
 	if (signal.aborted) return;
@@ -80,9 +85,13 @@ export class RedisWorkQueue<TMessage> implements WorkQueue<TMessage> {
 	constructor(options: RedisWorkQueueOptions<TMessage>) {
 		const { blockTimeoutSeconds = 1 } = options;
 		// Zero makes BRPOP wait forever, so `stop()` could not end the fetch loop.
-		if (!Number.isFinite(blockTimeoutSeconds) || blockTimeoutSeconds <= 0) {
+		if (
+			!Number.isFinite(blockTimeoutSeconds) ||
+			blockTimeoutSeconds <= 0 ||
+			blockTimeoutSeconds > MAX_BLOCK_TIMEOUT_SECONDS
+		) {
 			throw new UnexpectedError(
-				`work queue block timeout is ${blockTimeoutSeconds}; it must be a positive number of seconds`,
+				`work queue block timeout is ${blockTimeoutSeconds}; it must be a positive number of seconds, at most ${MAX_BLOCK_TIMEOUT_SECONDS}`,
 			);
 		}
 		this.publisher = options.publisher;

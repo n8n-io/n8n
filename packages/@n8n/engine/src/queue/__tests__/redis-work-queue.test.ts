@@ -250,15 +250,20 @@ describe('RedisWorkQueue', () => {
 		const queue = createQueue(redis, { concurrency: 2 });
 
 		queue.start(async () => await new Promise<void>((resolve) => releases.push(resolve)));
-		await vi.waitFor(() => expect(releases).toHaveLength(2));
-		await new Promise((resolve) => setTimeout(resolve, 50));
+		try {
+			await vi.waitFor(() => expect(releases).toHaveLength(2));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 
-		expect(redis.brpop).toHaveBeenCalledTimes(2);
-		expect(redis.items).toHaveLength(1);
+			expect(redis.brpop).toHaveBeenCalledTimes(2);
+			expect(redis.items).toHaveLength(1);
 
-		releases[0]();
-		await vi.waitFor(() => expect(releases).toHaveLength(3));
-		for (const release of releases) release();
+			releases[0]();
+			await vi.waitFor(() => expect(releases).toHaveLength(3));
+		} finally {
+			const stopping = queue.stop();
+			for (const release of releases) release();
+			await stopping;
+		}
 	});
 
 	it('logs a handler that throws synchronously and keeps delivering', async () => {
@@ -300,7 +305,14 @@ describe('RedisWorkQueue', () => {
 		['blockTimeoutSeconds', -1],
 		['blockTimeoutSeconds', Number.POSITIVE_INFINITY],
 		['blockTimeoutSeconds', Number.NaN],
+		['blockTimeoutSeconds', 2_147_483],
 	])('refuses a %s of %s', (option, value) => {
 		expect(() => createQueue(new FakeRedisList(), { [option]: value })).toThrow(UnexpectedError);
+	});
+
+	it('accepts a blockTimeoutSeconds for which the stop wait still fits in a Node timer', () => {
+		expect(() =>
+			createQueue(new FakeRedisList(), { blockTimeoutSeconds: 2_147_482 }),
+		).not.toThrow();
 	});
 });
