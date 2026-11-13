@@ -148,9 +148,29 @@ const filteredProjects = computed(() => {
 	return list;
 });
 
-const sortedProjects = computed((): ProjectListItem[] => {
-	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
-		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+const selectedSingleProject = computed(() =>
+	Array.isArray(model.value) ? null : (model.value ?? null),
+);
+
+// The select shows a name only when an option matches its value. Search results
+// can miss the selected project (it is past the first page, or the request is in
+// flight), so list it while no search term is entered. Element Plus keeps the
+// label of a selected option after the option is removed, so it stays while typing.
+const selectedProjectOption = computed((): ProjectSharingData[] => {
+	const selected = selectedSingleProject.value;
+	if (
+		!selected ||
+		filter.value !== '' ||
+		filteredProjects.value.some((p) => p.id === selected.id)
+	) {
+		return [];
+	}
+	return [selected];
+});
+
+const sortedProjects = computed((): ProjectSharingData[] => {
+	const projects = [...filteredProjects.value, ...selectedProjectOption.value].sort(
+		(projectA, projectB) => (projectA.name ?? '').localeCompare(projectB.name ?? ''),
 	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
@@ -167,7 +187,11 @@ const showSearchHint = computed(
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
-	const project = searchResults.value.find((p) => p.id === selectedProject.value);
+	const project =
+		searchResults.value.find((p) => p.id === selectedProject.value) ??
+		(selectedSingleProject.value?.id === selectedProject.value
+			? selectedSingleProject.value
+			: undefined);
 
 	if (project?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
