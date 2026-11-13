@@ -1,0 +1,932 @@
+# rig: local n8n environments
+
+`rig` is a CLI that creates and runs local n8n environments for testing. An
+environment has a fixed topology: database, queue mode, number of mains and
+workers, task runners, and engine v2. `rig` runs the services (Postgres,
+Redis) in containers. It runs the n8n components as local processes from the
+monorepo.
+
+Status: phase 1 (MVP) implemented. Phases 2 to 4 are open.
+
+## Goals
+
+- Create an environment from one command or a short wizard.
+- Support every topology: SQLite or Postgres, regular or queue mode, single or
+  multi-main, external task runners, and engine v2.
+- Run one component in a terminal, or run all components in one terminal.
+- Change env vars for the whole stack, for one role, or for one component.
+  Show which processes the change affects and restart only those processes.
+- Derive all ports, URLs, and wiring from the topology. The user never sets
+  them by hand.
+
+## Non-goals
+
+- `rig` does not replace `pnpm services` or the `n8n-containers` stacks for
+  Playwright. They stay. See [Relation to n8n-containers](#relation-to-n8n-containers).
+- `rig` is not published to a registry. It is a private package.
+- `rig` does not use a background daemon in phase 1.
+
+## Decisions
+
+| Topic | Decision |
+|---|---|
+| Name | `rig`. Package `@n8n/rig`, private |
+| Location | `packages/quality/environments/rig` |
+| Distribution | No publishing. Phase 1 runs as `pnpm rig`. Phase 2 adds a global install that copies a bundled build from a checkout |
+| Task runners | The launcher is the default (`runners.via: launcher`). Go is an accepted dependency on macOS |
+| `pnpm services` | Stays. `rig` reads the same image tags. Containers, ports, and files stay separate |
+| Service containers | Generated `docker compose` file per environment. No testcontainers, because environments must persist |
+| Env var files | Dotenv files, one file per layer |
+| Topology file | `env.yaml` |
+| Prompts | `@clack/prompts` 1.x, for `autocomplete`. `@n8n/node-cli` keeps 0.11 |
+| TypeScript | `typescript-tooling` catalog: TS 7 for typecheck, TS 6 JavaScript API at runtime for the env var catalog (same as `packages/cli`) |
+| Catalog extraction | Deferred to phase 4. Phase 1 imports the pure modules directly |
+| Restarts across terminals | Any terminal stops and starts a component with signals. The owner terminal follows the log file, so no control files are necessary |
+| Reused pid detection | Compare the process start time from `ps -o lstart`. n8n changes its own command line (`n8n start`), so a command line check does not work |
+
+## Concepts
+
+```mermaid
+flowchart TD
+  E[Environment] --> T[Topology: env.yaml]
+  E --> L[Env layers: env/*.env]
+  T --> S[Services: postgres, redis]
+  T --> C[Components]
+  C --> M[main-N]
+  C --> W[worker-N]
+  C --> G[engine]
+  C --> R[launcher@host]
+  L --> C
+```
+
+- **Environment**: a named directory that holds the topology, the env layers,
+  the data, the logs, and the runtime state.
+- **Topology**: the declared shape of the environment. It is the only source
+  of truth for components, ports, and wiring.
+- **Service**: a container that a component needs (Postgres, Redis).
+- **Component**: one local process. Each component has a name and a role.
+- **Role**: a group of components with the same function: `main`, `worker`,
+  `engine`, `launcher`, `runner-js`, `runner-py`.
+
+## File layout
+
+`rig` uses XDG directories from phase 1.
+
+```
+~/.config/rig/
+  config.yaml                # global settings
+  profiles/<name>.env        # reusable env snippets (phase 3)
+  secrets.env                # global secrets, mode 0600 (phase 3)
+
+~/.local/share/rig/
+  current                    # name of the default environment
+  envs/<name>/
+    env.yaml                 # topology
+    env/
+      shared.env
+      main.env  worker.env  engine.env
+      launcher.env  runner-js.env  runner-py.env
+      <component>.env        # for example worker-2.env, launcher@worker-1.env
+    secrets.env              # generated secrets, mode 0600
+    compose.yaml             # generated, do not edit
+    launcher/<host>.json     # generated launcher configs, do not edit
+    data/<component>/        # N8N_USER_FOLDER of each n8n process
+    data/storage/            # shared binary data path (engine remote mode)
+    logs/<component>.log     # current run
+    logs/<component>.1.log   # previous run
+    state/<component>.json   # runtime state of a running component
+    postgres-init.sql        # generated, creates the engine database
+
+~/.cache/rig/
+  launcher/<version>/        # launcher builds (phase 2)
+```
+
+### Public URL
+
+```yaml
+tunnel:
+  provider: cloudflare      # `tunnel: cloudflare` is the short form
+  target: main-1            # the main that the tunnel exposes
+  hostname: n8n.example.com # optional: a named tunnel, needs CLOUDFLARE_TUNNEL_TOKEN in secrets.env
+  image: auto               # auto = TEST_CONTAINER_IMAGES.cloudflared
+  metricsPort: 20241        # cloudflared metrics, on 127.0.0.1
+```
+
+- **Quick tunnel** (no `hostname`): cloudflared runs
+  `tunnel --url http://host.docker.internal:<target port>`. Cloudflare gives it
+  a random `trycloudflare.com` hostname. No account.
+- **Named tunnel** (`hostname`): cloudflared runs `tunnel run` with the token.
+  The routes come from the Cloudflare dashboard. The public hostname must point
+  at `http://host.docker.internal:<target port>`. `rig` passes the token in the
+  environment of `docker compose`, so the compose file does not contain it.
+- The tunnel is a compose service, not a component. A component restart does
+  not change the URL. A quick tunnel keeps its URL while its container runs, so
+  also across `rig up` sessions. `rig stop` and `rig services down` remove it.
+- `rig` waits up to 60 seconds for `/ready` on the metrics port. For a quick
+  tunnel it reads the hostname from `/quicktunnel`. It stores the URL in
+  `state/tunnel.json`. `services down` deletes the file.
+- Managed vars when the tunnel has a URL: `N8N_WEBHOOK_URL=<url>/` on every
+  n8n process, and `N8N_PROXY_HOPS=1` on mains. `N8N_EDITOR_BASE_URL` stays
+  unset: n8n builds OAuth callback URLs from the webhook URL, and the local
+  editor keeps working. `WEBHOOK_URL` is deprecated, so `rig` does not set it.
+- `rig up` and `rig run` watch `state/tunnel.json`. A new URL is drift.
+- Interface: `rig create --tunnel`, a wizard question, `rig status` (the
+  address column shows the URL), `rig open --public`, and the `p` key.
+
+### Global config
+
+Change it with `rig config set <key> <value>` and read it with
+`rig config get`. `RIG_LAUNCHER_PATH` overrides `launcher.path`.
+`RIG_CONFIG_DIR` and `RIG_DATA_DIR` move the two directories (tests use them).
+
+```yaml
+# ~/.config/rig/config.yaml
+launcher:
+  path: ~/work/task-runner-launcher   # local launcher checkout (phase 1: required)
+  version: 1.6.0                      # used when path is not set (phase 2)
+repo: ~/work/n8n                      # default source outside a checkout (phase 2)
+```
+
+### Topology file
+
+```yaml
+# ~/.local/share/rig/envs/<name>/env.yaml
+name: mm
+source: auto                # phase 1: auto only. Phase 2: repo:<path>. Phase 4: image:<tag>, npm:<version>
+db: postgres                # sqlite | postgres
+queue: true
+mains: 2
+workers: 2
+runners:
+  mode: external            # internal | external
+  via: launcher             # launcher | direct (direct: phase 3)
+  languages: [js, python]
+engine: off                 # off | in-process | remote
+tunnel: off                 # off | cloudflare, or the long form (see Public URL)
+services:
+  postgres:
+    image: auto             # auto = TEST_CONTAINER_IMAGES.postgres
+    port: 5432
+  redis:
+    image: auto
+    port: 6379
+profiles: []                # phase 3
+```
+
+Validate `env.yaml` with a Zod schema. Report errors with the file path, the
+key, and a fix.
+
+## Commands
+
+Phase numbers show when a command or flag arrives. Commands without a number
+are in phase 1.
+
+### Lifecycle
+
+| Command | Function |
+|---|---|
+| `rig create [name]` | Create an environment. Without topology flags, in a terminal, start the wizard (see below) |
+| `rig create <name> --preset <preset>` | Create from a preset |
+| `rig create <name> --db postgres --queue --mains 2 --workers 2 --runners external --engine remote` | Create from flags |
+| `rig ls` | List environments. Show the default environment and the running components |
+| `rig use <name>` | Set the default environment |
+| `rig reset [name] [--db] [--data]` | Delete data. Keep the configuration |
+| `rig destroy <name>` | Stop everything. Delete containers, volumes, and the directory |
+| `rig clone <src> <dst>` (phase 3) | Copy the configuration with fresh data |
+| `rig import <dir>` (phase 3) | Create an environment from a directory of shell scripts that use `export` |
+
+The environment is selected in this order: the `--env <name>` flag, the
+`RIG_ENV` env var, the `current` file, then the only environment if there is
+one. Put `--env` after the command name: citty takes the first word that does
+not start with `-` as the command.
+
+### Running
+
+| Command | Function |
+|---|---|
+| `rig up` | Start services and all components. Show merged, prefixed logs |
+| `rig run <component\|role>…` | Run components or roles in the foreground. A process also runs its launcher. `--no-launcher` skips it |
+| `rig run <component> -e KEY=VAL` | Run with a one-off override. Do not save it |
+| `rig services up\|down` | Start or stop only the containers |
+| `rig stop [component]` | Stop one component, or all components and services |
+| `rig restart <component\|role>` | Restart components in the terminal that owns them |
+| `rig status` | Show a table: component, pid, port, health, owner terminal, env drift |
+| `rig logs [component] [-f]` | Show or follow log files |
+| `rig open [main-N] [--public]` | Open the editor, or the public URL of the tunnel, in the browser |
+| `rig psql`, `rig redis-cli` | Open a shell in the service container |
+| `rig up --split` (phase 3) | Open one tmux pane for each component. Each pane runs `rig run` |
+| `rig run <component> --inspect` (phase 3) | Start Node with the inspector on an allocated port |
+
+### Env vars
+
+| Command | Function |
+|---|---|
+| `rig env browse [--on <layer>] [--refresh]` | Interactive editor with every env var that n8n declares (see [Env var catalog](#env-var-catalog)) |
+| `rig env set KEY=VAL [--on <role\|component>]` | Write to `shared.env`, a role file, or a component file |
+| `rig env unset KEY [--on …]` | Remove a key from a layer file |
+| `rig env edit [--on …]` | Open the layer file in `$EDITOR` |
+| `rig env ls [component]` | Show the resolved env and the layer of each key |
+| `rig env explain KEY --on <component>` | Show every layer that sets the key, and which layer wins |
+| `rig env diff <a> <b>` (phase 3) | Compare the resolved env of two components |
+| `rig env set KEY=VAL --secret` (phase 3) | Write to `secrets.env` |
+| `rig profile on\|off\|ls <name>` (phase 3) | Turn profiles on or off |
+
+### Integrations
+
+| Command | Function |
+|---|---|
+| `rig exec <component> -- <cmd…>` | Run a command with the resolved env of a component |
+| `rig print <component> --format shell\|dotenv\|json` | Print the resolved env |
+| `rig print <component> --format vscode` (phase 3) | Print a VS Code launch configuration |
+| `rig config get [key]`, `rig config set <key> <value>` | Read and change the global config |
+| `rig doctor` (phase 2) | Check Docker, Node, Go, `uv`, ports, build state, and the launcher |
+
+### Wizard
+
+The wizard uses arrow-key prompts from `@clack/prompts` (the version that
+`@n8n/node-cli` uses).
+
+1. **Topology**: one of the presets, or `custom`.
+2. For `custom`, the questions depend on the previous answers:
+   - Database: SQLite or Postgres.
+   - Postgres only: execution mode, regular or queue.
+   - Queue only: mains (1 to 4, more than 1 needs a license) and workers (0 to 4).
+   - Postgres in regular mode only: engine v2, off, in-process, or remote.
+   - Task runners: external (launcher) or internal. For external, the
+     languages (space bar toggles).
+3. **Public HTTPS URL**: no, or a Cloudflare quick tunnel.
+4. **Name**: the default is the preset name, or `local`, with a number when
+   the name exists. An existing name is rejected.
+5. **Summary**: the topology and the components with their ports, then a
+   confirmation.
+
+Ctrl+C cancels without changes. A name argument skips the name question.
+
+### Presets
+
+| Preset | Topology |
+|---|---|
+| `sqlite` | SQLite, regular mode, 1 main |
+| `postgres` | Postgres, regular mode, 1 main |
+| `queue` | Postgres, queue mode, 1 main, 1 worker |
+| `multi-main` | Postgres, queue mode, 2 mains, 1 worker |
+| `engine` | Postgres, 1 main, `engine: in-process` |
+| `engine-remote` | Postgres, Redis, 1 main, `engine: remote` |
+
+All presets use `runners: { mode: external, via: launcher, languages: [js, python] }`.
+Flags after `--preset` override the preset values.
+
+## Env var catalog
+
+`rig env browse` needs every env var that n8n reads. `@n8n/config` keeps its
+metadata in a private map, and the docs exporter is not in this repository, so
+`rig` reads the source.
+
+- `git grep` finds the files with `@Env('` under `packages/`, without tests and
+  `packages/quality`. About 90 files.
+- The TypeScript compiler API (TS 6 from the `typescript-tooling` catalog,
+  because TS 7 has no JavaScript API) builds a program from them. The type
+  checker resolves aliases and schemas, so `mode: EngineMode` becomes an enum.
+- For each `@Env` property: name, JSDoc description, kind, options, separator,
+  default (as written), config class (the group), and `path:line`.
+
+| Property type | Kind | Editor input |
+|---|---|---|
+| `boolean` | `boolean` | List: `true`, `false` |
+| `number` | `number` | Text, checked as a number |
+| Union of string literals | `enum` | List of the options, plus a custom value |
+| Array of a string literal union (`CommaSeparatedStringArray<'a' \| 'b'>`) | `enum-list` | Checkboxes, joined with the separator |
+| Other array (`ColonSeparatedStringArray<string>`) | `list` | Text |
+| `string` | `string` | Text |
+| Anything else (records, JSON arrays) | `json` | Text, checked as JSON |
+
+A name that is declared more than once keeps the declaration with a
+description. The first run takes about 3 seconds for about 690 vars. The result
+is cached in `~/.cache/rig/env-catalog/<checkout hash>.json` with the commit and
+the modification times of the scanned files. A new file with `@Env` that is not
+committed needs `--refresh`. The compiler API loads only when the cache is
+stale.
+
+The editor:
+
+- Search: words match in any order in the name, group, and description.
+  Results rank as exact name, name prefix, name segment, name, then the rest.
+  The focus moves to the best match when the search text changes.
+- Vars set in the layer come first, with their values. Empty search also
+  shows `✓ Done`, `⇄ Change layer`, and `+ Other variable…`. A search that
+  looks like a new name offers `+ <NAME>`.
+- Details: description, kind, options, default, the value in the layer, and the
+  value that up to four affected components run with, with its source.
+- The guardrails of `rig env set` apply. In the editor they ask instead of
+  failing.
+- At the end, `rig` offers to restart the components with drift, the same as
+  `rig env set`.
+
+## Components
+
+| Component | Role | Command | Working directory |
+|---|---|---|---|
+| `main-N` | `main` | `node bin/n8n start` | `packages/cli` |
+| `worker-N` | `worker` | `node bin/n8n worker` | `packages/cli` |
+| `engine` | `engine` | `node bin/n8n engine` | `packages/cli` |
+| `launcher@<host>` | `launcher` | `<launcher-binary> javascript python` | env directory |
+| `runner-js@<host>` (phase 3, `via: direct`) | `runner-js` | `node dist/start.js` | `packages/@n8n/task-runner` |
+| `runner-py@<host>` (phase 3, `via: direct`) | `runner-py` | `uv run python src/main.py` | `packages/@n8n/task-runner-python` |
+
+`<host>` is the n8n process that owns the broker, for example
+`launcher@worker-1`.
+
+### Which processes get a launcher
+
+When `runners.mode` is `external`, a launcher attaches to each n8n process
+that runs tasks:
+
+- In regular mode: each main.
+- In queue mode: each worker.
+- In queue mode: each main too, unless the resolved env of the main sets
+  `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`.
+- With `engine: remote`: the engine. The engine hosts its own task broker.
+
+The launcher list is derived from the resolved env, so a change of
+`OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS` adds or removes launchers.
+
+### Role arguments
+
+`rig run <role>` runs all components of the role in one terminal with
+prefixed logs. Examples: `rig run worker`, `rig run launcher`.
+
+`rig run` adds the launcher of each selected process, because a process
+without its launcher cannot run Code nodes. `rig run worker` runs the workers
+and their launchers.
+
+## Ports
+
+Phase 1 uses fixed ports. Only one environment can run at a time.
+
+Each n8n process gets a block of 10 ports:
+
+| Offset | Use |
+|---|---|
+| +0 | HTTP (`N8N_PORT` for mains, `QUEUE_HEALTH_CHECK_PORT` for workers) |
+| +1 | Task broker (`N8N_RUNNERS_BROKER_PORT`) |
+| +2 | Launcher health (`N8N_RUNNERS_LAUNCHER_HEALTH_CHECK_PORT`) |
+| +3 | JS runner health |
+| +4 | Python runner health |
+| +5 | Node inspector (phase 3) |
+
+| Process | Block base |
+|---|---|
+| `main-N` | `5678 + 10 * (N - 1)` |
+| `worker-N` | `5778 + 10 * (N - 1)` |
+| `engine` | `N8N_ENGINE_PORT=3000`, `N8N_ENGINE_CONTROL_PLANE_PORT=3001`. Launcher block base `5878` |
+
+Limit: 10 mains and 10 workers.
+
+Phase 3 adds slots. Slot `k` adds `1000 * k` to every n8n port, and `k` to
+the Postgres and Redis ports. `rig ls` shows the slot of each environment.
+
+Before a component starts, `rig` checks that its ports are free. If a port is
+in use, `rig` names the process that holds it.
+
+## Env resolution
+
+The resolved env of a component merges these layers. A later layer wins.
+
+| # | Layer | Source |
+|---|---|---|
+| 0 | Shell | Safe keys from the parent shell (see below) |
+| 1a | Default | Developer defaults from `rig`. Layer files override them without a warning |
+| 1b | Managed | Wiring derived from the topology by `rig`. `rig env set` warns before it overrides a key |
+| 2 | Profiles (phase 3) | `~/.config/rig/profiles/<name>.env`, in the order of `profiles` |
+| 3 | Shared | `env/shared.env` |
+| 4 | Role | `env/<role>.env` |
+| 5 | Component | `env/<component>.env` |
+| 6 | Secrets | `~/.config/rig/secrets.env` (phase 3), then `secrets.env` |
+| 7 | One-off | `rig run -e KEY=VAL` |
+
+The resolved env starts from an empty object plus `PATH`, `HOME`, `TERM`,
+`LANG`, and `NODE_OPTIONS` from the parent shell. Other parent shell vars do
+not leak into components. `rig run --inherit-env` turns this off.
+
+The runner `env-overrides` of a launcher use their own layers: default,
+managed, `env/runner-js.env` (or `runner-py.env`), then
+`env/runner-js@<host>.env`. They do not get `shared.env` or secrets.
+
+The engine does not get control-plane-only keys (`DB_*`,
+`N8N_ENCRYPTION_KEY`) from `shared.env` and secrets. A main in engine remote
+mode does not get `N8N_ENGINE_DATABASE_URL` and `N8N_ENGINE_RESUME_SECRET`.
+Without engine v2, components do not get `N8N_ENGINE_*` secrets. When a layer
+sets `N8N_ENABLED_MODULES`, `rig` adds `engine-v2` to it if the topology uses
+engine v2.
+
+Dotenv parsing follows the `dotenv` rules. A line that starts with `#` is a
+comment. A leading `export ` is allowed, so lines from shell scripts can be
+pasted.
+
+### Managed vars
+
+`rig create` generates these secrets once and writes them to `secrets.env`:
+`N8N_ENCRYPTION_KEY`, `N8N_RUNNERS_AUTH_TOKEN`, `N8N_ENGINE_AUTH_SECRET`, and
+`N8N_ENGINE_RESUME_SECRET`. The engine secrets are 32 characters or longer.
+
+| Condition | Vars |
+|---|---|
+| Always (default) | `N8N_DIAGNOSTICS_ENABLED=false`, `N8N_LOG_LEVEL=info` |
+| Always | `N8N_USER_FOLDER=data/<component>`, `N8N_RUNNERS_BROKER_PORT`, `N8N_RUNNERS_MODE` |
+| `main-N` | `N8N_PORT` |
+| `worker-N` | `QUEUE_HEALTH_CHECK_ACTIVE=true`, `QUEUE_HEALTH_CHECK_PORT` |
+| `db: sqlite` | `DB_TYPE=sqlite` |
+| `db: postgres` | `DB_TYPE=postgresdb`, `DB_POSTGRESDB_HOST=127.0.0.1`, `DB_POSTGRESDB_PORT`, `DB_POSTGRESDB_USER`, `DB_POSTGRESDB_PASSWORD`, `DB_POSTGRESDB_DATABASE=n8n` |
+| `queue: true` | `EXECUTIONS_MODE=queue`, `QUEUE_BULL_REDIS_HOST=127.0.0.1`, `QUEUE_BULL_REDIS_PORT` |
+| `queue: false` | `EXECUTIONS_MODE=regular` |
+| `mains > 1` | `N8N_MULTI_MAIN_SETUP_ENABLED=true` |
+| `runners.mode: external` | `N8N_RUNNERS_BROKER_LISTEN_ADDRESS=127.0.0.1` |
+| `engine: in-process` | `engine-v2` added to `N8N_ENABLED_MODULES`, `N8N_ENGINE_MODE=in-process`, `N8N_ENGINE_DATABASE_URL`, `N8N_ENGINE_DEFAULT_TYPE=v2` |
+| `engine: remote`, main | As in-process, plus `N8N_ENGINE_MODE=remote`, `N8N_ENGINE_BASE_URL=http://127.0.0.1:3000`, `N8N_ENGINE_CONTROL_PLANE_PORT=3001`, `N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true`, `N8N_STORAGE_PATH=data/storage`, `N8N_DEFAULT_BINARY_DATA_MODE=filesystem`, Redis vars |
+| `engine: remote`, engine | `engine-v2` in `N8N_ENABLED_MODULES`, `N8N_ENGINE_PORT=3000`, `N8N_ENGINE_HOST=127.0.0.1`, `N8N_ENGINE_DATABASE_URL`, `N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://127.0.0.1:3001`, `N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP=true`, the shared storage vars, Redis vars. No control-plane-only keys (same rule as `engineContainerEnv` in `n8n-containers`) |
+| Launcher | `N8N_RUNNERS_TASK_BROKER_URI=http://127.0.0.1:<broker>`, `N8N_RUNNERS_LAUNCHER_HEALTH_CHECK_PORT`, `N8N_RUNNERS_CONFIG_PATH` |
+| Launcher (default) | `N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT=0`, `N8N_RUNNERS_LAUNCHER_LOG_LEVEL=info`, `N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT=2`, `N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN=1` |
+| `runner-js` (default) | `NODE_FUNCTION_ALLOW_BUILTIN=crypto`, `NODE_FUNCTION_ALLOW_EXTERNAL=moment` |
+| `runner-py` (default) | `N8N_RUNNERS_STDLIB_ALLOW=`, `N8N_RUNNERS_EXTERNAL_ALLOW=` |
+| `runner-py` | `PYTHONPATH=<repo>/packages/@n8n/task-runner-python` |
+
+The launcher keeps a stopping runner available until the runner grace period
+ends (30 seconds by default). The short launcher defaults make a restart take
+seconds.
+
+`N8N_ENGINE_DATABASE_URL` points to the `n8n_engine` database
+(`ENGINE_DATABASE` in `n8n-containers`) on the environment's Postgres. The
+compose file creates this database with an init script.
+
+Paths in managed vars are absolute. The table shows them relative to the
+environment directory.
+
+TLS between the engine planes is off in phase 1. Phase 3 can add
+`engine.tls: true` and reuse `helpers/tls-certs.ts`.
+
+### Guardrails
+
+- `rig env set` warns when a key overrides a managed var, for example
+  `N8N_PORT` on `main-2`. It names the managed value and asks for
+  confirmation. Without a terminal, it needs `--force`. Defaults do not cause
+  a warning.
+- `rig env set` rejects a value that breaks the topology, for example
+  `EXECUTIONS_MODE=regular` in a queue environment. `--force` writes it
+  anyway.
+- `rig env set --on <x>` rejects an unknown role or component name and
+  suggests the closest match.
+
+### `rig env explain` output
+
+```
+$ rig env explain N8N_LOG_LEVEL --on worker-2
+N8N_LOG_LEVEL = debug
+  ✓ component  env/worker-2.env:3     debug
+  ✗ role       env/worker.env:1       info
+  ✗ managed    (rig)                  info
+```
+
+## Launcher
+
+### Binary resolution
+
+| Order | Source | Phase |
+|---|---|---|
+| 1 | `launcher.path` in the global config. `rig` runs `make build` when `bin/main` is older than the Go sources | 1 |
+| 2 | Cached build in `~/.cache/rig/launcher/<version>/`. `rig` downloads the release source tarball and runs `go build -o … cmd/launcher/main.go` | 2 |
+| 3 | Release binary from GitHub, checked against the `.sha256` asset. Linux only, because releases have no darwin builds | 2 |
+| 4 | `n8nio/runners:<version>` container, for `image:` sources | 4 |
+
+Note: the launcher Go module is `task-runner-launcher`, not a GitHub path. So
+`go install <module>@<version>` does not work. Build from the source tarball.
+
+### Generated config
+
+`rig` writes `launcher/<host>.json` before it starts `launcher@<host>`:
+
+- `command` for the JS runner is the real path of the Node binary
+  (`realpath(process.execPath)`). Do not use version manager shim paths, such
+  as `fnm_multishells`, because they belong to one shell session.
+- `args` point to `packages/@n8n/task-runner/dist/start.js` in the source
+  repo, with `--disallow-code-generation-from-strings` and
+  `--disable-proto=delete`.
+- The Python runner uses `uv --directory packages/@n8n/task-runner-python run python src/main.py`.
+- `health-check-server-port` comes from the port block of the host.
+- `env-overrides` holds the resolved env of the `runner-js` or `runner-py`
+  layers. The user does not manage `allowed-env`. `rig` sets a minimal list
+  (`PATH`, `HOME`, `NODE_OPTIONS`, `GENERIC_TIMEZONE`).
+- `languages` controls which runner types are in the config and which
+  arguments the launcher gets.
+
+A change to `runner-js.env` or `runner-py.env` regenerates the config and
+restarts the affected launchers.
+
+## Services
+
+`rig services up` writes `compose.yaml` and runs
+`docker compose -p rig-<name> -f compose.yaml up -d --wait`.
+
+- Images come from `TEST_CONTAINER_IMAGES` in
+  `packages/quality/environments/containers/test-containers.ts`, unless
+  `env.yaml` sets an image.
+- Postgres data uses the named volume `rig-<name>-pgdata`. Postgres 18 and
+  later images mount it at `/var/lib/postgresql`. Older images mount it at
+  `/var/lib/postgresql/data`.
+- Ports bind to `127.0.0.1`.
+- Redis has no volume.
+- Containers have the label `n8n-rig=<name>`.
+- Each service has a healthcheck, so `--wait` returns only when it is ready.
+- The Postgres init script creates the `n8n` and `n8n_engine` databases.
+
+`rig run` and `rig up` start the services that the topology needs, if they
+are not running.
+
+## Process supervision
+
+There is no daemon. Terminals coordinate through files in `state/`.
+
+### Start order
+
+1. Services are healthy.
+2. `main-1` is ready. It runs the database migrations. Other n8n processes
+   wait for it, so migrations do not race.
+3. Other mains, workers, and the engine start.
+4. Each launcher starts when its host is ready.
+
+Readiness checks:
+
+| Component | Check |
+|---|---|
+| `main-N` | `GET /healthz/readiness` on `N8N_PORT` returns 200 |
+| `worker-N` | `GET /healthz/readiness` on `QUEUE_HEALTH_CHECK_PORT` returns 200 |
+| `engine` | `GET /healthz` on `N8N_ENGINE_PORT` returns 200 |
+| `launcher@<host>` | The launcher health port answers |
+
+### `rig run` and dependencies
+
+When a dependency of the component is not running, `rig run` asks:
+
+```
+main-1 is not running.
+  › Start it in the background (logs: rig logs main-1 -f)
+    Wait for it (start it in another terminal)
+    Abort
+```
+
+`--yes` picks the first option. `--no-deps` skips the check.
+
+### Runtime state
+
+`state/<component>.json` holds: `pid`, `ownerPid` (the `rig` process that
+shows the logs and stops the component on exit, or `null` in the background),
+`ownerTty`, `startedAt`, `processStart`, `ports`, `source`, and `envHash` (a
+hash of the resolved env and, for launchers, the launcher config).
+
+- A component writes its output to its log file, not to a terminal. Each
+  component runs in its own process group (`detached`).
+- `rig` detects stale state: the pid is dead, or the start time from
+  `ps -o lstart` differs.
+- `rig stop` sends `SIGTERM` to the group. After the grace period it sends
+  `SIGKILL`. The grace period is `N8N_GRACEFUL_SHUTDOWN_TIMEOUT` plus 5
+  seconds. For a launcher it is the launcher's own formula
+  (`N8N_RUNNERS_LAUNCHER_GRACEFUL_SHUTDOWN_TIMEOUT`, else grace plus two
+  margins) plus 5 seconds.
+- Ctrl+C or `q` in an owner terminal stops the components that it owns, in
+  reverse start order. The containers keep running.
+
+### Restarts from other terminals
+
+Any terminal can stop and start a component with signals. The new process
+keeps the owner of the old one. The owner terminal follows the log file by
+name, so it shows the output of the new process.
+
+- A terminal that shows a component takes ownership when the component has
+  no live owner, for example after a background start.
+- The owner terminal checks the state files every second. It reports
+  `restarted by another terminal` or `exited`.
+
+### Logs
+
+- Each component writes to `logs/<component>.log`. The previous run moves to
+  `logs/<component>.1.log`.
+- The terminal follows the log files with file events (`fs.watch`: kqueue on
+  macOS, inotify on Linux), so a line shows within about 1 ms. A poll every
+  second catches missed events. The follower reads once after it arms a watch,
+  because a watch only reports writes from the next event loop turn. It writes
+  the lines of one read with one terminal write, and decodes UTF-8 across reads.
+- The monitor checks components every second with `kill(pid, 0)`. It runs `ps`
+  only once for each new pid, to confirm the start time.
+- The owner terminal also prints the output with a colored prefix.
+- Phase 3: when `N8N_LOG_FORMAT=json`, the terminal shows a readable form.
+  The file keeps the raw lines.
+
+### Env drift and restarts
+
+- The owner terminal watches the environment's `env/` directory, `env.yaml`,
+  and `secrets.env`.
+- On a change, it resolves the env of each running component and compares the
+  hash with `envHash`.
+- It prints the components with drift and waits for a key:
+
+```
+⟳ env changed for worker-1, worker-2: press r to restart, R to restart all
+```
+
+- `--auto-restart` restarts without the prompt.
+- `rig env set` prints the affected components and asks whether to restart
+  them now. `--restart` and `--no-restart` skip the question.
+- `rig status` shows a `drift` column.
+- A change in `env.yaml` that changes the component list (for example,
+  `workers: 3`) is not a restart. `rig` prints the components to start or stop.
+
+### `rig up` screen
+
+```
+ rig · mm · postgres+queue · 2 mains · 2 workers · launcher
+ ● postgres :5432  ● redis :6379  ● main-1 :5678  ● main-2 :5688  ● worker-1  ◌ worker-2
+──────────────────────────────────────────────────────────────────────────────
+main-1    │ Editor is now accessible via: http://localhost:5678
+worker-1  │ n8n worker is now ready
+launcher@worker-1 │ Registered runner "javascript"
+──────────────────────────────────────────────────────────────────────────────
+ [o] open http://localhost:5678/  [r] restart drifted  [R] restart all  [q] quit
+```
+
+Phase 1 has the prefixed logs and the keys `o`, `p` (public URL), `r`, `R`, and `q`. `o` opens
+the editor URL of `main-1` in the browser, the same as `rig open`. The URL is
+`N8N_EDITOR_BASE_URL` when a layer sets it. Otherwise `rig` builds it from
+`N8N_PROTOCOL`, `N8N_PORT`, and `N8N_PATH`. The status line and a log filter
+key are phase 3.
+
+When the terminal closes during a shutdown, writes to it fail. `rig` ignores
+these errors, so the shutdown still stops every component.
+
+## Validation
+
+`rig create`, `rig up`, and `rig run` check the topology before they start
+anything.
+
+| Rule | Message |
+|---|---|
+| `mains > 1` requires `queue: true` | `Multi-main needs queue mode. Add --queue.` |
+| `queue: true` requires `db: postgres` | `Queue mode needs Postgres. Add --db postgres.` |
+| `queue: true` adds Redis | (no error) |
+| `mains > 1` without a license var | Warning: `Multi-main needs a license. Set N8N_LICENSE_ACTIVATION_KEY or N8N_LICENSE_CERT.` |
+| `engine` rules | Call `assertEngineSupported` from `n8n-containers`. Map `remote` to `container` |
+| `engine: remote` adds Redis | (no error) |
+| `workers > 0` requires `queue: true` | `Workers need queue mode. Add --queue.` |
+| `runners.via: launcher` requires a launcher binary | `Set launcher.path in ~/.config/rig/config.yaml.` |
+| `runners.languages` has `python` | Check that `uv` is on `PATH` |
+| Source has no build | `packages/cli/dist is missing. Run pnpm build.` |
+| `dist` is older than the last commit | Warning only |
+
+## Source resolution
+
+| Source | Phase | Rule |
+|---|---|---|
+| `auto` | 1 | Walk up from the current directory to the `package.json` with `"name": "n8n-monorepo"`. Use `INIT_CWD` when `pnpm` changed the directory |
+| `repo:<path>` | 2 | Use the given checkout |
+| `npm:<version>` | 4 | Install `n8n@<version>` into `~/.cache/rig/n8n/<version>` and run from there |
+| `image:<tag>` | 4 | Run n8n components as containers with the same layers, ports, and logs |
+
+An environment does not store the repo path in phase 1. The same environment
+runs against any worktree you start it from. `rig status` shows the source
+path of each running component.
+
+## Global install (phase 2)
+
+`pnpm rig install-global`:
+
+1. Bundles `rig` into one `rig.mjs` file with `tsdown`. The imports from
+   `n8n-containers` have no testcontainers dependency, so they bundle.
+2. Copies the file to `~/.local/share/rig/versions/<version>+<sha>/rig.mjs`.
+3. Writes the `~/.local/bin/rig` shim. The shim points to the current version.
+4. Checks that `~/.local/bin` is on `PATH`.
+
+Do not use `pnpm link --global`. It ties the binary to one working tree, so a
+branch switch or a deleted worktree changes or breaks the global binary.
+
+- `rig self-update` rebuilds from the current checkout, or from `repo` in the
+  global config.
+- `rig self-update --rollback` points the shim to the previous version.
+- **Hand-off**: when the global `rig` runs inside a checkout that contains
+  `packages/quality/environments/rig`, it runs that version. `RIG_NO_DELEGATE=1`
+  turns this off. `rig --version` shows both versions.
+
+## Relation to n8n-containers
+
+| Shared | Separate |
+|---|---|
+| `TEST_CONTAINER_IMAGES` (image tags, `postgres-versions.json`) | Containers: `n8n-svc-*` and `n8n-stack-*` (testcontainers) vs `rig-<name>-*` (compose) |
+| `assertEngineSupported`, `ENGINE_DATABASE` | Files: `pnpm services` writes `packages/cli/bin/.env`. `rig` never writes into the repo |
+| | Ports: testcontainers maps random host ports. `rig` uses fixed ports |
+
+Phase 1 imports these files directly:
+
+- `packages/quality/environments/containers/test-containers.ts`
+- `packages/quality/environments/containers/services/engine.ts`
+
+They import only Node built-ins, `postgres-versions.json`, and
+`helpers/tls-certs.ts`. Do not import other `n8n-containers` modules, because
+they pull in testcontainers. Add a lint rule or a test that fails when a
+`rig` import reaches `testcontainers`.
+
+Phase 4 moves the service catalog into a module without testcontainers imports.
+Both tools then read images and env builders from that module.
+
+Add a link to `rig` in the `n8n-containers` README, and a link back.
+
+## Package structure
+
+```
+packages/quality/environments/rig/
+  package.json              # @n8n/rig, private, bin: rig
+  README.md
+  bin/rig.mjs               # starts src/cli.ts with tsx, forwards signals
+  src/
+    cli.ts                  # citty entry point, error and usage output
+    environment.ts          # RigEnv: loads an environment, components, resolution
+    errors.ts               # RigError: message and hint for the user
+    source.ts               # monorepo detection, build checks
+    commands/
+      common.ts             # shared flags, stop and restart helpers, drift prompt
+      lifecycle.ts          # create, ls, use, reset, destroy
+      running.ts            # up, run, stop, restart, services, status, logs, open
+      env.ts                # env set, unset, edit, ls, explain
+      env-browse.ts         # env browse, the interactive editor
+      layers.ts             # layer names, layer files, managed key conflicts
+      tools.ts              # exec, print, psql, redis-cli, config
+      wizard.ts             # interactive rig create
+    config/
+      paths.ts              # XDG paths, EnvPaths
+      global-config.ts
+      env-yaml.ts           # Zod schema for env.yaml
+      presets.ts
+    topology/
+      components.ts         # components, port blocks, start stages
+      validate.ts
+    env-catalog/
+      extract.ts            # @Env discovery with the TypeScript compiler API
+      catalog.ts            # cache, lazy load of the extractor
+      search.ts             # ranking and short descriptions
+    env/
+      dotenv.ts             # parse and edit while keeping comments and order
+      managed.ts            # defaults and wiring
+      resolve.ts            # layer merge, explain traces, hashes
+      secrets.ts
+    services/
+      compose.ts            # compose.yaml generation, docker compose calls
+    runtime/
+      preflight.ts          # validation, build checks, launcher build, services
+      session.ts            # foreground session: start order, keys, drift, monitor
+      supervisor.ts         # spawn, stop, restart, adopt, log followers
+      state.ts              # state files, stale detection
+      health.ts             # readiness probes, port checks
+      logs.ts               # log rotation, tail, file follower
+    launcher/
+      binary.ts             # build from launcher.path
+      config.ts             # launcher-config.json generation
+    ui/
+      output.ts             # messages, prefixed lines, tables
+      prompt.ts             # @clack/prompts wrappers (select, multiselect, text, confirm)
+  test/
+```
+
+Root `package.json` script:
+
+```json
+"rig": "node packages/quality/environments/rig/bin/rig.mjs"
+```
+
+In a package directory, `pnpm rig` looks for a script in that package. Use
+`pnpm -w rig` there. `bin/rig.mjs` keeps `INIT_CWD`, so `rig` finds the
+checkout or worktree you run it from.
+
+Dependencies: `citty`, `zod`, `yaml`, `picocolors`, `chokidar`, and `tsx` from
+the pnpm catalog, `typescript` from the `typescript-tooling` catalog,
+`@clack/prompts` 1.x for prompts, plus `@n8n/utils` (`sleep`) and
+`n8n-containers` from the workspace. `tsdown` comes in phase 2.
+
+`dotenv.ts` edits files in place. `rig env set` changes one line and keeps
+comments, order, and commented-out keys. When a commented-out line has the
+same key, `rig env set` uncomments and updates that line.
+
+## Testing
+
+- Unit tests (Vitest, `test/`): env-yaml schema, presets, validation, port
+  blocks, launcher selection, start stages, layer resolution and traces,
+  engine key filters, dotenv parsing and in-place edits, compose generation,
+  launcher config generation.
+- Env var catalog (`test/env-catalog.test.ts`): extraction from a fixture
+  through the real compiler API (enums through aliases, enum lists, lists,
+  numbers, booleans, JSON, duplicates), and search ranking.
+- Guard test (`test/imports.test.ts`): runtime imports from `n8n-containers`
+  must not reach `testcontainers`. Type-only imports do not count.
+- Manual end-to-end checks for phase 1: `sqlite` (JS runner only), `queue`,
+  and `engine-remote` presets with `rig up`; `rig run` in two terminals with a
+  background dependency; `rig env set --restart` and `rig restart` from another
+  terminal; quit with Ctrl+C. The `multi-main` preset needs a license: without
+  one, `main-1` exits with `FeatureNotLicensedError`, and `rig` warns before
+  the start.
+- The wizard (preset and custom flows, name validation, Ctrl+C) and the `o`
+  and `q` keys were tested in a pseudo-terminal.
+- `rig env browse` was tested in a pseudo-terminal: search and ranking, an
+  enum, an enum list, a number with a guardrail, a layer change, a boolean,
+  and Ctrl+C in a value prompt and in the search.
+- Log follower (`test/logs.test.ts`): latency without the fallback poll, a
+  log file that a restart replaces, a UTF-8 character split across reads, and
+  batches for a burst of lines.
+- Tunnel (`test/tunnel.test.ts`): the short form, validation, compose output
+  for quick and named tunnels (the token stays out of the file), URL storage,
+  and the managed vars. Manual: a real quick tunnel served `/healthz/readiness`
+  and the editor over HTTPS, kept its URL across two `rig up` sessions, and
+  `p` opened it.
+- Not done: an automated integration test with Docker.
+
+## Implementation TODO
+
+### Phase 1: MVP (`pnpm rig`, inside a checkout)
+
+- [x] Package scaffold `@n8n/rig`, root `rig` script, lint, typecheck, Vitest config
+- [x] XDG paths and global config with `launcher.path`
+- [x] `env.yaml` Zod schema and presets
+- [x] Topology validation, with `assertEngineSupported` reused
+- [x] Monorepo detection (`source: auto`, `INIT_CWD`)
+- [x] Component list and port allocation
+- [x] Managed vars for SQLite, Postgres, queue, multi-main, engine in-process, engine remote
+- [x] Secret generation in `secrets.env`
+- [x] Dotenv parse and in-place edit
+- [x] Layer resolution with explain traces
+- [x] Compose generation, Postgres init script, `rig services up|down`
+- [x] Launcher binary from `launcher.path` and generated launcher configs
+- [x] Process spawn with process groups, state files, stale detection
+- [x] Start order and readiness checks
+- [x] Log files and prefixed terminal output
+- [x] `rig create` with flags, presets, and an arrow-key wizard with a custom topology flow
+- [x] `rig ls`, `use`, `reset`, `destroy`
+- [x] `rig run` with dependency prompt, `-e`, `--yes`, `--no-deps`
+- [x] `rig up` with `o`, `r`, `R`, `q` (`o` and `q` tested in a pseudo-terminal)
+- [x] `rig stop`, `restart` (with signals, not control files), `status`, `logs`, `open`
+- [x] `rig env set|unset|edit|ls|explain` with guardrails
+- [x] Env drift detection and restart prompt, `--auto-restart` (`--auto-restart` not tested yet)
+- [x] `rig exec`, `rig print --format shell|dotenv|json`, `rig psql`, `rig redis-cli`
+- [x] Port-in-use check
+- [x] README and links to and from the `n8n-containers` README
+- [x] Guard test: no `rig` import reaches `testcontainers`
+- [x] `rig config get|set` (added during implementation)
+- [x] `rig run` also runs the launchers of its processes, `--no-launcher` (added during implementation)
+- [x] Owner adoption of components without a live owner (added during implementation)
+- [x] `rig env browse`: interactive editor with the env var catalog from `@Env` (added after the MVP)
+- [ ] Readable output for `N8N_LOG_FORMAT=json` in the terminal (moved to phase 3)
+
+### Phase 2: global install
+
+- [ ] `tsdown` bundle. Keep `typescript` external or load it from the checkout: it is large, and the catalog needs a checkout anyway
+- [ ] `rig install-global`, shim, `PATH` check
+- [ ] `rig self-update`, `--rollback`
+- [ ] Hand-off to the repo version, `RIG_NO_DELEGATE`, `--version` output
+- [ ] `source: repo:<path>` and `repo` in the global config
+- [ ] Launcher build from the release source tarball into `~/.cache/rig/launcher`
+- [ ] Launcher release download on Linux with SHA-256 check
+- [ ] `rig doctor`
+
+### Phase 3: developer experience
+
+- [ ] `rig up` status line and the other keys
+- [ ] Readable output for `N8N_LOG_FORMAT=json`
+- [ ] `rig up --split` with tmux
+- [ ] `--inspect` with allocated ports
+- [ ] `runners.via: direct` with `runner-js@<host>` and `runner-py@<host>`
+- [ ] `rig print --format vscode`
+- [ ] Profiles and `rig profile on|off|ls`
+- [ ] Global secrets and `rig env set --secret`
+- [ ] `rig env diff`
+- [ ] `rig clone`
+- [ ] `rig import` for shell scripts
+- [ ] Port slots for parallel environments
+- [ ] Optional TLS between engine planes
+
+### Phase 4: more sources and services
+
+- [ ] Service catalog without testcontainers imports in `n8n-containers`
+- [x] Cloudflare tunnel for a public HTTPS URL: quick and named tunnels (added early)
+- [ ] Optional services: mailpit, ngrok, observability
+- [ ] `source: npm:<version>`
+- [ ] `source: image:<tag>` and minimum-version checks for topology rules
+- [ ] `n8nio/runners` launcher containers
+- [ ] Webhook processors (`webhook-N`)
+
+### Optional
+
+- [ ] Ask the launcher team for darwin release builds
+
+## Open questions
+
+Resolved:
+
+- The engine data plane hosts its own task broker, so it gets a launcher.
+  Runners register with it (checked with the `engine-remote` preset).
+- The engine exposes `GET /healthz` on its HTTP port
+  (`packages/@n8n/engine/src/server/create-engine-server.ts`).
+- The worker server listens on `QUEUE_HEALTH_CHECK_PORT`
+  (`packages/cli/src/scaling/worker-server.ts`).
