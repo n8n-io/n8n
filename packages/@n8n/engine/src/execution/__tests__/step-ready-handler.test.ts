@@ -877,12 +877,14 @@ describe('StepReadyHandler waits', () => {
 		const stepStore = makeStepStore();
 		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
 		const onStepSuspended = vi.fn();
+		const executionStore = makeExecutionStore();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ wait: timeWait }) },
-			makeLifecycleEventPublisher(),
+			lifecycleEventPublisher,
 			noopExecutionResponseSender,
 			onStepSuspended,
 		);
@@ -890,6 +892,10 @@ describe('StepReadyHandler waits', () => {
 		await handler.handle(event);
 
 		expect(onStepSuspended).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:waiting' }),
+		);
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('suspends a wait that only a resume request ends', async () => {
@@ -1177,8 +1183,9 @@ describe('StepReadyHandler sub-executions', () => {
 	it('starts no sub-execution when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
+		const executionStore = makeExecutionStore();
 		const handler = makeHandler(
-			makeExecutionStore(),
+			executionStore,
 			stepStore,
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ subExecution }) },
@@ -1191,6 +1198,7 @@ describe('StepReadyHandler sub-executions', () => {
 		await handler.handle(event);
 
 		expect(subExecutionStarter.start).not.toHaveBeenCalled();
+		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalled();
 	});
 
 	it('announces no step:waiting while the step waits on an awaited sub-execution', async () => {

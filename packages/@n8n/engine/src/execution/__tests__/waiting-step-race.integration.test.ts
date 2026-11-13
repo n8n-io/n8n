@@ -39,9 +39,11 @@ const wait = { resumeBinding: 'step' as const };
 function resolveAfterSuspend(stepStore: StepStore, suspended: { resolve: () => void }) {
 	const suspendStep = stepStore.suspendStep.bind(stepStore);
 	vi.spyOn(stepStore, 'suspendStep').mockImplementation(async (id, declaration) => {
-		const recorded = await suspendStep(id, declaration);
-		suspended.resolve();
-		return recorded;
+		try {
+			return await suspendStep(id, declaration);
+		} finally {
+			suspended.resolve();
+		}
 	});
 }
 
@@ -93,12 +95,18 @@ describe('a step that starts to wait after its execution ended (integration)', (
 
 	/**
 	 * Runs `scenario` against a started runtime and stops the runtime afterwards.
-	 * Stopping flushes the lifecycle events.
+	 * Stopping flushes the lifecycle events and waits for the running steps, so
+	 * `gate` opens first: a step that blocks on it would hang a failed scenario.
 	 */
-	async function runThenStop<T>(runtime: EngineRuntime, scenario: () => Promise<T>) {
+	async function runThenStop<T>(
+		runtime: EngineRuntime,
+		gate: { resolve: () => void },
+		scenario: () => Promise<T>,
+	) {
 		try {
 			return await scenario();
 		} finally {
+			gate.resolve();
 			await runtime.stop();
 		}
 	}
@@ -158,7 +166,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			executor,
 			spyOn: (stepStore) => resolveAfterSuspend(stepStore, suspended),
 		});
-		const executionId = await runThenStop(runtime, async () => {
+		const executionId = await runThenStop(runtime, cancelled, async () => {
 			const id = await startExecution(runtime, {
 				nodes: [trigger, nodeA],
 				edges: [edgeFromTrigger(nodeA.id)],
@@ -210,7 +218,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 				resolveAfterSuspend(stepStore, aSuspended);
 			},
 		});
-		const executionId = await runThenStop(runtime, async () => {
+		const executionId = await runThenStop(runtime, pendingStepsCancelled, async () => {
 			const id = await startExecution(runtime, {
 				nodes: [trigger, nodeA, nodeB],
 				edges: [edgeFromTrigger(nodeA.id), edgeFromTrigger(nodeB.id)],
