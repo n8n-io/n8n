@@ -11,7 +11,7 @@ export function promotionEnvironmentLockKey(environmentId: string): string {
 export class PromotionLockLostError extends ServiceUnavailableError {
 	constructor() {
 		super(
-			'The promotion operation stopped because n8n lost its lock on this environment. Try again.',
+			"The operation stopped before it made any changes. n8n couldn't confirm that no other operation is running on this environment. Try again.",
 		);
 	}
 }

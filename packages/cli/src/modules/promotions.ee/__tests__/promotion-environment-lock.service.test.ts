@@ -168,7 +168,7 @@ describe('throwIfLockLost', () => {
 		expect(thrown).toMatchObject({
 			httpStatusCode: 503,
 			message:
-				'The promotion operation stopped because n8n lost its lock on this environment. Try again.',
+				"The operation stopped before it made any changes. n8n couldn't confirm that no other operation is running on this environment. Try again.",
 		});
 	});
 });
