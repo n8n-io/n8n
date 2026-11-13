@@ -142,9 +142,9 @@ describe('isDomainAllowed', () => {
 
 	describe('with internationalised domain names', () => {
 		it('should allow an exact match against a non-ASCII allowlist entry', () => {
-			expect(
-				isDomainAllowed({ url: 'https://münchen.de/api', allowedDomains: 'münchen.de' }),
-			).toBe(true);
+			expect(isDomainAllowed({ url: 'https://münchen.de/api', allowedDomains: 'münchen.de' })).toBe(
+				true,
+			);
 		});
 
 		it('should allow a wildcard match against a non-ASCII allowlist entry', () => {
@@ -160,9 +160,7 @@ describe('isDomainAllowed', () => {
 		});
 
 		it('should still block a different IDN host', () => {
-			expect(isDomainAllowed({ url: 'https://köln.de', allowedDomains: 'münchen.de' })).toBe(
-				false,
-			);
+			expect(isDomainAllowed({ url: 'https://köln.de', allowedDomains: 'münchen.de' })).toBe(false);
 		});
 	});
 
