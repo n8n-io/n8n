@@ -83,3 +83,12 @@ Screenshots: [popular catalog](evidence/rich-discover-desktop.png), [skill detai
 - Database row counts stayed unchanged for skills, source connections, agents, executions, messages, and checkpoints across two model runs. Only the existing budget accounting tables gained records.
 - The trial dialog was checked at 375 × 667 and the desktop viewport. The prompt, model picker, result, and footer remain usable. Light mode was checked. A separate dark-mode browser pass remains for review.
 - This update runs locally at `http://127.0.0.1:5681/settings/context/skills`. The hosted preview still runs the previous import-and-create-draft flow.
+
+## Temporary skill chat — November 13, 2026
+
+- 33 focused tests passed: trial service (9), route access and history validation (3), chat dialog (8), and discovery actions (13). Tests cover follow-up context, pending replies, retry without duplicate messages, and New chat.
+- API types built. The backend compiled with `build:unchecked`. Changed-file Biome, Prettier, type-aware backend Oxlint, frontend Oxlint, ESLint, Stylelint, and whitespace checks passed. Full frontend typechecks and the full suite remain for CI.
+- A real two-turn chat used the copywriting skill with Claude Sonnet 5.5. The first message supplied the fictional product name Lumen Desk and requested a headline. The follow-up asked for the earlier product name without repeating it. The model replied with Lumen Desk.
+- The browser shows both user messages and both replies. Model selection, instructions, and Save are under Details. The composer stays available below the scrolling conversation at 375 × 667 and at the desktop viewport.
+- Database row counts stayed unchanged for skills, sources, agents, executions, messages, and checkpoints. Only the existing budget tables gained records: two spend records and four model-call records.
+- The chat runs locally. Closing or refreshing clears its text history. The hosted preview has not received this update. Light mode was checked. A dark-mode browser pass remains for review.

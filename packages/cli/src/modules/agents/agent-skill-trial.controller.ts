@@ -19,7 +19,7 @@ export class AgentSkillTrialController {
 		return await this.trials.prepare(req.user, req.params.projectId, query.catalogId);
 	}
 
-	@Post('/', { keyedRateLimit: { source: 'user', limit: 5, windowMs: 60_000 } })
+	@Post('/', { keyedRateLimit: { source: 'user', limit: 20, windowMs: 60_000 } })
 	@ProjectScope('agent:execute')
 	async run(
 		req: AuthenticatedRequest<{ projectId: string }>,

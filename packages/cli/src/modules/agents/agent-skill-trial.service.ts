@@ -1,4 +1,10 @@
-import type { RunSkillTrialDto, SkillTrialPreview, SkillTrialResult } from '@n8n/api-types';
+import type {
+	RunSkillTrialDto,
+	SkillTrialPreview,
+	SkillTrialResult,
+	SkillTrialMessage,
+} from '@n8n/api-types';
+import type { AgentMessage } from '@n8n/agents';
 import { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -17,7 +23,7 @@ import { AgentsSettingsService } from './agents-settings.service';
 import { withBudgetGuardrail } from './budget-guardrail';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
-/** One text-only trial. No skill, source connection, agent, or conversation is saved. */
+/** Runs a temporary skill chat. The caller keeps the text history for follow-up messages. */
 @Service()
 export class AgentSkillTrialService {
 	private readonly runningUsers = new Set<string>();
@@ -99,7 +105,8 @@ export class AgentSkillTrialService {
 					credential: payload.credential,
 					instructions:
 						'Call load_skill with skillId "trial" before answering. Use it to perform the user task. ' +
-						'This is a text-only trial. You can read the skill and its references, but you have no ' +
+						'Continue the conversation using its previous messages. ' +
+						'This is a text-only chat. You can read the skill and its references, but you have no ' +
 						'connected apps, shell, browser, or user files. Explain missing capabilities when needed. ' +
 						'Do not claim to have performed external actions.',
 					skills: [{ type: 'skill', id: 'trial' }],
@@ -117,8 +124,16 @@ export class AgentSkillTrialService {
 			});
 		const startedAt = Date.now();
 		try {
+			const conversation: SkillTrialMessage[] = [
+				...(payload.history ?? []),
+				{ role: 'user', content: payload.message },
+			];
+			const messages: AgentMessage[] = conversation.map(({ role, content }) => ({
+				role,
+				content: [{ type: 'text', text: content }],
+			}));
 			const result = await agent.generate(
-				payload.message,
+				messages,
 				withBudgetGuardrail(
 					{
 						abortSignal,

@@ -33,4 +33,30 @@ describe('Skill trial routes', () => {
 			false,
 		);
 	});
+
+	it('accepts complete text turns and bounds the conversation history', () => {
+		const valid = {
+			catalogId: 'acme/skills/writing',
+			contentHash: 'a'.repeat(64),
+			message: 'Shorter',
+			model: 'openai/gpt-5-mini',
+			credential: 'credential-1',
+		};
+		const pair = [
+			{ role: 'user', content: 'Hello' },
+			{ role: 'assistant', content: 'Hi there' },
+		];
+		expect(RunSkillTrialDto.safeParse({ ...valid, history: pair }).success).toBe(true);
+		for (const history of [
+			[{ role: 'system', content: 'Instructions' }],
+			[{ role: 'user', content: 'Unanswered' }],
+			[...pair].reverse(),
+			Array.from({ length: 21 }, () => pair).flat(),
+			Array.from({ length: 4 }, () =>
+				pair.map((message) => ({ ...message, content: 'x'.repeat(8_000) })),
+			).flat(),
+		]) {
+			expect(RunSkillTrialDto.safeParse({ ...valid, history }).success).toBe(false);
+		}
+	});
 });

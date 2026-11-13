@@ -136,10 +136,38 @@ describe('AgentSkillTrialService', () => {
 			}),
 		);
 		expect(agent.generate).toHaveBeenCalledWith(
-			payload.message,
+			[{ role: 'user', content: [{ type: 'text', text: payload.message }] }],
 			expect.objectContaining({ maxIterations: 6, maxOutputTokens: 2048 }),
 		);
 		expect(agent.close).toHaveBeenCalledOnce();
+	});
+
+	it('passes earlier user and assistant messages to the model for a follow-up', async () => {
+		const { service, agent } = setup();
+		await service.run(
+			user,
+			'project-1',
+			{
+				...payload,
+				history: [
+					{ role: 'user', content: 'Our product is named Pine.' },
+					{ role: 'assistant', content: 'Pine helps you organize your work.' },
+				],
+				message: 'Make that shorter.',
+			},
+			new AbortController().signal,
+		);
+		expect(agent.generate).toHaveBeenCalledWith(
+			[
+				{ role: 'user', content: [{ type: 'text', text: 'Our product is named Pine.' }] },
+				{
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Pine helps you organize your work.' }],
+				},
+				{ role: 'user', content: [{ type: 'text', text: 'Make that shorter.' }] },
+			],
+			expect.anything(),
+		);
 	});
 
 	it('does not mark a failed skill load as successful', async () => {
