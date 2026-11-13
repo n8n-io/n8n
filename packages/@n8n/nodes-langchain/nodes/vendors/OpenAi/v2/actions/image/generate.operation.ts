@@ -49,7 +49,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		placeholder: 'e.g. A cute cat eating a dinosaur',
 		description:
-			'A text description of the desired image(s). The maximum length is 1000 characters for dall-e-2 and 4000 characters for dall-e-3.',
+			'A text description of the desired image(s). The maximum length depends on the model.',
 		default: '',
 		typeOptions: {
 			rows: 2,
