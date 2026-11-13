@@ -105,7 +105,9 @@ describe('Ftp', () => {
 		);
 	});
 
-	const setupSftpList = (typeVersion: number) => {
+	const setupSftpList = (typeVersion: number, options: { timeout?: number } = {}) => {
+		const connect = vi.fn<sftp['connect']>();
+		const end = vi.fn();
 		const list = vi.fn().mockResolvedValue([
 			{
 				name: 'file.txt',
@@ -116,7 +118,7 @@ describe('Ftp', () => {
 			},
 		]);
 		vi.spyOn(sftpModule, 'default').mockImplementation(function () {
-			return { connect: vi.fn(), list, end: vi.fn() } as unknown as sftp;
+			return { connect, list, end } as unknown as sftp;
 		});
 		executeFunctions.getNode.mockReturnValue({ typeVersion } as never);
 		executeFunctions.getCredentials.mockResolvedValue({
@@ -134,16 +136,19 @@ describe('Ftp', () => {
 					return 'list';
 				case 'protocol':
 					return 'sftp';
+				case 'options.timeout':
+					return options.timeout ?? defaultValue;
 				case 'path':
 					return '/test';
 				case 'recursive':
 					return false;
 				case 'options':
-					return {};
+					return options;
 				default:
 					return defaultValue;
 			}
 		});
+		return { connect, list, end };
 	};
 
 	it('should return sftp list timestamps as ISO strings on version 1.1', async () => {
@@ -164,6 +169,65 @@ describe('Ftp', () => {
 		const item = result[0][0].json;
 		expect(item.accessTime).toBeInstanceOf(Date);
 		expect(item.modifyTime).toBeInstanceOf(Date);
+	});
+
+	describe('SFTP handshake timeout', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.clearAllTimers();
+			vi.useRealTimers();
+		});
+
+		it.each([
+			{ scenario: 'a fast handshake with default options', handshakeDuration: 100, options: {} },
+			{
+				scenario: 'a 30-second handshake with a 40-second timeout',
+				handshakeDuration: 30_000,
+				options: { timeout: 40_000 },
+			},
+			{
+				scenario: 'a 30-second handshake with default options',
+				handshakeDuration: 30_000,
+				options: {},
+			},
+		])('should list files after $scenario', async ({ handshakeDuration, options }) => {
+			const { connect, list, end } = setupSftpList(1.1, options);
+			// NODE-6082: Model the measured group-exchange handshake duration, not its cause.
+			connect.mockImplementation(
+				async ({ readyTimeout = 20_000 }) =>
+					await new Promise((resolve, reject) => {
+						const readyTimer = setTimeout(() => {
+							clearTimeout(timeoutTimer);
+							resolve(mockDeep<Awaited<ReturnType<sftp['connect']>>>());
+						}, handshakeDuration);
+						const timeoutTimer = setTimeout(() => {
+							clearTimeout(readyTimer);
+							reject(new Error('getConnection: Timed out while waiting for handshake'));
+						}, readyTimeout);
+					}),
+			);
+
+			const outcome = new Ftp().execute.call(executeFunctions).then(
+				(items) => ({ items }),
+				(error: unknown) => ({ error }),
+			);
+			await vi.advanceTimersByTimeAsync(handshakeDuration);
+
+			expect(await outcome).toEqual({
+				items: [
+					[
+						expect.objectContaining({
+							json: expect.objectContaining({ name: 'file.txt', path: '/test/file.txt' }),
+						}),
+					],
+				],
+			});
+			expect(list).toHaveBeenCalledWith('/test');
+			expect(end).toHaveBeenCalledOnce();
+		});
 	});
 
 	it('should add timeout option with sftp with private key', async () => {
