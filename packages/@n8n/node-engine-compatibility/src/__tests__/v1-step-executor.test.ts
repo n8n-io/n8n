@@ -1,4 +1,10 @@
-import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	JsonValue,
+	StepExecutionResult,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
@@ -449,6 +455,81 @@ describe('V1StepExecutor', () => {
 			const graph = expressionWorkflow({ message: '={{ $prevNode.name }}' });
 			const result = await testStepExecutor(graph).execute(stepRequest(graph, 'b', items({})));
 			expect(result.outputs).toEqual([[{ json: { message: 'A' } }]]);
+		});
+
+		describe('a slot fed by two edges', () => {
+			// Manual fans out to A and B, which both feed N's only input.
+			const convergingWorkflow = (nType: string, nParameters: IDataObject = {}) =>
+				converter.convert(
+					v1Workflow(
+						[
+							{ id: 't', name: 'Manual', type: 'n8n-nodes-base.manualTrigger' },
+							{ id: 'a', name: 'A', type: 'test.echoParam' },
+							{ id: 'b', name: 'B', type: 'test.echoParam' },
+							{ id: 'n', name: 'N', type: nType, parameters: nParameters },
+						],
+						{
+							Manual: {
+								main: [
+									[
+										{ node: 'A', type: 'main', index: 0 },
+										{ node: 'B', type: 'main', index: 0 },
+									],
+								],
+							},
+							A: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+							B: { main: [[{ node: 'N', type: 'main', index: 0 }]] },
+						},
+					),
+				);
+			// A's item links to the trigger's first item, B's to its second.
+			const outputsByNodeId: Record<string, StepSlots> = {
+				t: items({ seed: 1 }, { seed: 2 }),
+				a: [[{ json: { message: 'from-A' }, pairedItem: { item: 0 } }]],
+				b: [[{ json: { message: 'from-B' }, pairedItem: { item: 1 } }]],
+			};
+			const inputs: StepSlots = [
+				[{ json: { message: 'from-A' } }, { json: { message: 'from-B' } }],
+			];
+			const inputSources: StepInputSources = [
+				[
+					{ nodeId: 'a', outputIndex: 0, iteration: 0, itemCount: 1 },
+					{ nodeId: 'b', outputIndex: 0, iteration: 0, itemCount: 1 },
+				],
+			];
+
+			it('resolves $(...).item through the edge that fed each item', async () => {
+				const graph = convergingWorkflow('test.echoParam', {
+					message: "={{ $('Manual').item.json.seed }}",
+				});
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([[{ json: { message: 1 } }, { json: { message: 2 } }]]);
+			});
+
+			it('links output items from the second edge to their own source', async () => {
+				const graph = convergingWorkflow('test.linksToInput');
+
+				const result = await testStepExecutor(graph, outputsByNodeId).execute(
+					stepRequest(graph, 'n', inputs, inputSources),
+				);
+
+				expect(result.outputs).toEqual([
+					[
+						{ json: { message: 'from-A' }, pairedItem: { item: 0 } },
+						{
+							json: { message: 'from-B' },
+							pairedItem: {
+								item: 0,
+								sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0 },
+							},
+						},
+					],
+				]);
+			});
 		});
 
 		it('rejects a reference to an unexecuted node', async () => {

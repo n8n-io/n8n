@@ -101,7 +101,8 @@ export function toSourceSlots(
 
 		const inputIndex = edge.inputIndex ?? 0;
 		while (sources.length <= inputIndex) sources.push(null);
-		// First edge into a slot wins.
+		// The first edge into a slot is the slot's recorded source. Items that
+		// another edge delivers carry their own source in `pairedItem` (`item-links.ts`).
 		if (sources[inputIndex] !== null) continue;
 
 		const run = previousNodeRun?.(edge) ?? 0;

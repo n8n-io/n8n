@@ -28,6 +28,7 @@ import {
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { relinkOutputItems } from './item-links';
 import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
@@ -140,6 +141,7 @@ export class V1StepExecutor implements IStepExecutor {
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			inputSources: request.inputSources,
 			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
 			subExecutionResume: request.resume,
@@ -151,7 +153,7 @@ export class V1StepExecutor implements IStepExecutor {
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, nodeResult);
+			return toStepResult(context, relinkOutputItems(nodeResult, context.itemLinks));
 		});
 	}
 

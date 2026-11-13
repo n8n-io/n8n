@@ -192,15 +192,6 @@ export const engineRefusals: EngineRefusal[] = [
 		engineError: 'leaves the loop from the loop slot',
 		check: { plannedIn: 'CET-678' },
 	},
-	{
-		name: 'two edges feed the same input of a node',
-		workflow: fromTrigger('A', [noOp('A'), noOp('B'), noOp('C')], {
-			A: outputs([to('B'), to('C')]),
-			B: outputs([to('C')]),
-		}),
-		engineError: 'more than one edge into input slot 0',
-		check: { plannedIn: 'CET-678' },
-	},
 ];
 
 /*
