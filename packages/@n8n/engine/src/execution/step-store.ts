@@ -72,6 +72,13 @@ export interface DueStep {
 	executionId: string;
 }
 
+/** A step that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedStep {
+	id: string;
+	executionId: string;
+	staleAfter: Date;
+}
+
 /**
  * Persistence interface for step records.
  *
@@ -174,6 +181,22 @@ export interface StepStore {
 	 * resume, so a stale or lost answer costs precision and nothing else.
 	 */
 	nextWaitDeadline(): Promise<Date | null>;
+
+	/**
+	 * The steps that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 *
+	 * A step of an execution that has a failed step is not returned: `claimStep`
+	 * refuses such a step, so a new `step:ready` event for it has no effect.
+	 */
+	findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]>;
+
+	/**
+	 * Gives a `queued` step a new `stale_after` time. A compare-and-set on the
+	 * status and on the `staleAfter` value that the caller read, so only one of
+	 * several concurrent callers gets `true`.
+	 */
+	renewQueuedStep(id: string, staleAfter: Date): Promise<boolean>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;

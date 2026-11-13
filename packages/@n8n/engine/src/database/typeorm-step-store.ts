@@ -19,6 +19,7 @@ import {
 	StepNotFoundError,
 	type DueStep,
 	type NewStepRecord,
+	type StaleQueuedStep,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -266,6 +267,37 @@ export class TypeOrmStepStore implements StepStore {
 			.getRawMany<{ next: Date | null }>();
 
 		return row?.next ?? null;
+	}
+
+	async findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]> {
+		// Served by the partial index on `status` and `stale_after`.
+		const rows = await this.repo
+			.createQueryBuilder('step')
+			.select(['step.id', 'step.executionId', 'step.staleAfter'])
+			.where("step.status = 'queued'")
+			.andWhere('step.staleAfter <= :at', { at })
+			// `claimStep` refuses a step that has a failed sibling, so a new event
+			// for it has no effect. Served by the partial index on failed steps.
+			.andWhere(
+				`NOT EXISTS (
+					SELECT 1 FROM workflow_step_execution sibling
+					WHERE sibling.execution_id = step.execution_id AND sibling.status = 'failed'
+				)`,
+			)
+			.orderBy('step.staleAfter', 'ASC')
+			.limit(limit)
+			.getMany();
+		return rows.flatMap(({ id, executionId, staleAfter }) =>
+			staleAfter ? [{ id, executionId, staleAfter }] : [],
+		);
+	}
+
+	async renewQueuedStep(id: string, staleAfter: Date): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'queued', staleAfter },
+			{ staleAfter: this.staleAfterFor('queued') },
+		);
+		return result.affected === 1;
 	}
 
 	async cancelPendingSteps(executionId: string): Promise<void> {
