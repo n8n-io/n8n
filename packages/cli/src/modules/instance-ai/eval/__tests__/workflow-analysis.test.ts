@@ -1407,10 +1407,45 @@ describe('generateMockHints', () => {
 			const timeout = vi.spyOn(AbortSignal, 'timeout');
 			mockAgentResponses('Monthly', 'Monthly', 'Monthly', hintsAnswer);
 
+			try {
+				await generateMockHints(options);
+
+				expect(timeout).toHaveBeenCalledWith(30_000);
+			} finally {
+				timeout.mockRestore();
+			}
+		});
+
+		it('counts a vote whose agent cannot be created as no vote', async () => {
+			mockAgentResponses('Monthly', 'Monthly', hintsAnswer);
+			mockedCreateEvalAgent.mockImplementationOnce(() => {
+				throw new Error('no model');
+			});
+
+			const result = await generateMockHints(options);
+
+			expect(result.startNodeName).toBe('Monthly');
+		});
+
+		it('aborts the vote calls still running once two votes agree', async () => {
+			let pending: AbortSignal | undefined;
+			const generate = vi
+				.fn()
+				.mockResolvedValueOnce({ __raw: 'Monthly' })
+				.mockResolvedValueOnce({ __raw: 'Monthly' })
+				.mockImplementationOnce(async (_prompt: string, opts: { abortSignal: AbortSignal }) => {
+					pending = opts.abortSignal;
+					return await new Promise(() => {});
+				})
+				.mockResolvedValueOnce({ __raw: hintsAnswer });
+			mockedCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+				typeof createEvalAgent
+			>);
+			mockedExtractText.mockImplementation((r: unknown) => (r as { __raw: string }).__raw);
+
 			await generateMockHints(options);
 
-			expect(timeout.mock.calls[0][0]).toBeLessThanOrEqual(60_000);
-			timeout.mockRestore();
+			expect(pending?.aborted).toBe(true);
 		});
 
 		it('counts the longer name when one trigger name ends another', async () => {

@@ -729,6 +729,7 @@ async function voteStartTrigger(
 	].join('\n');
 
 	const votes = new Map<string, number>();
+	const stop = new AbortController();
 	const majority = await new Promise<string | undefined>((resolve) => {
 		let settled = 0;
 		const count = (name: string | undefined) => {
@@ -736,14 +737,24 @@ async function voteStartTrigger(
 			if (name && votes.get(name)! * 2 > START_TRIGGER_VOTES) resolve(name);
 			if (++settled === START_TRIGGER_VOTES) resolve(undefined);
 		};
+		const abortSignal = AbortSignal.any([
+			stop.signal,
+			AbortSignal.timeout(START_TRIGGER_TIMEOUT_MS),
+		]);
 		for (let i = 0; i < START_TRIGGER_VOTES; i++) {
-			const agent = createEvalAgent('eval-start-trigger', { instructions: START_TRIGGER_PROMPT });
-			agent
-				.generate(prompt, { abortSignal: AbortSignal.timeout(START_TRIGGER_TIMEOUT_MS) })
+			Promise.resolve()
+				.then(
+					async () =>
+						await createEvalAgent('eval-start-trigger', {
+							instructions: START_TRIGGER_PROMPT,
+						}).generate(prompt, { abortSignal }),
+				)
 				.then((result) => count(triggerInAnswer(extractText(result), triggerNodeNames)))
 				.catch(() => count(undefined));
 		}
 	});
+	// A vote still running cannot change the result.
+	stop.abort();
 	Container.get(Logger).debug(
 		`[EvalMock] Start trigger votes: ${JSON.stringify(Object.fromEntries(votes))}`,
 	);
