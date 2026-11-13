@@ -696,6 +696,7 @@ file at start (`wfrt serve --credentials <file>`,
     "data": { "accessToken": "xoxb-…" },
     "inject": {
       "headers": { "Authorization": "Bearer {{$credentials.accessToken}}" },
+      "defaultHeaders": { "Notion-Version": "2022-02-22" },
       "qs": { "api_key": "{{$credentials.apiKey}}" },
       "basicAuth": { "user": "{{$credentials.user}}", "password": "{{$credentials.password}}" }
     }
@@ -710,6 +711,14 @@ file at start (`wfrt serve --credentials <file>`,
   adds the query parameters, sets `Authorization: Basic …`, and adds the
   members of `body` (string templates) to a JSON object body (for the few
   credential types that authenticate in the body, for example `beeminderApi`).
+* `defaultHeaders` holds headers with the same template rules as `headers`.
+  The runtime sets one only when the request has no header of that name,
+  ignoring case. The headers of `inject.headers` count as present, because
+  n8n v1 `authenticate` checks the request after it sets them. For example,
+  `notionApi` sends `Notion-Version: 2022-02-22` unless the node sends a
+  version of its own. A header of the effect with a `null` value is not sent,
+  so the default header applies. A `defaultHeaders` name that the client
+  writes itself (`host`, `content-length`, …) is dropped, as for `headers`.
 * Template: `{{$credentials.<path>}}` is replaced with the string value of
   `data.<path>`. A path is field names joined by dots, for example
   `oauthTokenData.access_token`. A number or boolean is written as JSON text. There is no other template syntax. The runtime also replaces

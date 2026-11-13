@@ -143,14 +143,14 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
     const multipart: ?[]const u8 = if (fa.multipart) |r| (if (std.mem.eql(u8, r, "null")) null else r) else null;
 
     // Header lines.
-    var have: struct { ct: bool = false, ua: bool = false, accept: bool = false } = .{};
+    var have: Have = .{};
     if (fa.headers) |h_raw| {
         if (http.Members.init(h_raw)) |it_| {
             var it = it_;
             while (it.next()) |mem| {
-                var nb: [256]u8 = undefined;
+                var nb: [max_header_name]u8 = undefined;
                 var no: Out = .{ .buf = &nb };
-                http.unescape(mem.key, &no) catch return invalid(diag, "http: a header name is longer than 256 bytes", .{});
+                http.unescape(mem.key, &no) catch return invalid(diag, "http: a header name is longer than {d} bytes", .{max_header_name});
                 const name = no.written();
                 if (managed(name) or injected(slot, name)) continue;
                 if (std.mem.eql(u8, mem.value, "null")) continue;
@@ -186,6 +186,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
                 try out.put("\r\n");
             }
         }
+        try defaultHeaders(s, fa.headers, &have, &out, diag);
         if (s.basic) try basicAuth(s, slot, &out, diag);
     }
     if (!have.ua) try out.put("user-agent: n8n-wfrt\r\n");
@@ -555,6 +556,67 @@ fn managed(name: []const u8) bool {
     return false;
 }
 
+/// Header names that are set: a default header is written only when the
+/// request has none of that name.
+const Have = struct { ct: bool = false, ua: bool = false, accept: bool = false };
+
+/// `inject.defaultHeaders`: a header that v1 `authenticate` sets only when
+/// the request has no header of that name, ignoring case. The headers of
+/// `inject.headers` count too: v1 checks the request after it set them.
+fn defaultHeaders(s: creds.Slot, args_headers: ?[]const u8, have: *Have, out: *Out, diag: *Diag) Error!void {
+    const hs = s.default_headers orelse return;
+    var it = hs.iterator();
+    // One entry per pass, so the member count bounds the loop.
+    var left = hs.count();
+    while (it.next()) |e| {
+        std.debug.assert(left > 0);
+        left -= 1;
+        const v = e.value_ptr.*;
+        if (v != .string) continue;
+        const name = e.key_ptr.*;
+        if (managed(name)) continue;
+        if (hasHeader(s, args_headers, name)) continue;
+        if (std.ascii.eqlIgnoreCase(name, "content-type")) have.ct = true;
+        try headerName(out, name, diag);
+        const start = out.len;
+        try templated(v.string, s, .none, out, diag);
+        try checkValue(out.written()[start..], name, diag);
+        try out.put("\r\n");
+    }
+}
+
+/// True when the request has a header named `name`, ignoring case, in the
+/// injected headers, the basic auth or the args of the effect.
+fn hasHeader(s: creds.Slot, args_headers: ?[]const u8, name: []const u8) bool {
+    if (s.basic and std.ascii.eqlIgnoreCase(name, "authorization")) return true;
+    if (s.headers) |hs| {
+        var it = hs.iterator();
+        while (it.next()) |e| if (std.ascii.eqlIgnoreCase(e.key_ptr.*, name)) return true;
+    }
+    const raw = args_headers orelse return false;
+    var it = http.Members.init(raw) orelse return false;
+    // Each step moves past one member, so the text length bounds the loop.
+    var left = raw.len;
+    while (it.next()) |m| : (left -= 1) {
+        std.debug.assert(left > 0);
+        // A member with a null value is no header, as the header loop drops it.
+        if (std.mem.eql(u8, m.value, "null")) continue;
+        // A name without escapes compares as it is; an escaped name that does
+        // not fit is treated as absent, as the args header loop rejects it.
+        if (std.mem.indexOfScalar(u8, m.key, '\\') == null) {
+            std.debug.assert(m.key.len >= 2);
+            const plain = m.key[1 .. m.key.len - 1];
+            if (std.ascii.eqlIgnoreCase(plain, name)) return true;
+            continue;
+        }
+        var nb: [max_header_name]u8 = undefined;
+        var no: Out = .{ .buf = &nb };
+        http.unescape(m.key, &no) catch continue;
+        if (std.ascii.eqlIgnoreCase(no.written(), name)) return true;
+    }
+    return false;
+}
+
 /// A header the credential sets wins over the same header in args.
 fn injected(slot: ?creds.Slot, name: []const u8) bool {
     const s = slot orelse return false;
@@ -564,6 +626,9 @@ fn injected(slot: ?creds.Slot, name: []const u8) bool {
     while (it.next()) |e| if (std.ascii.eqlIgnoreCase(e.key_ptr.*, name)) return true;
     return false;
 }
+
+/// The longest accepted header name of the effect args.
+const max_header_name = 256;
 
 fn headerName(out: *Out, name: []const u8, diag: *Diag) Error!void {
     if (name.len == 0) return invalid(diag, "http: a header name is empty", .{});
@@ -857,6 +922,42 @@ test "a credentials file that wfc credentials wrote" {
     try std.testing.expect(std.mem.indexOf(u8, buf[g.url_len..g.hdr_end], "Authorization: token fake-gh\r\n") != null);
     const b = try build("{\"method\":\"POST\",\"url\":\"https://www.beeminder.com/api/v1/users/u/goals/g/datapoints.json\",\"credential\":\"bm\",\"body\":{\"value\":1}}", &store, null, &buf, &diag);
     try std.testing.expectEqualStrings("{\"value\":1,\"auth_token\":\"fake-bm\"}", buf[b.hdr_end..b.body_end]);
+}
+
+test "inject.defaultHeaders sets a header only when the request has none" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const store = try creds.Store.parse(arena.allocator(),
+        \\{"notion":{"type":"notionApi","data":{"apiKey":"k","version":"v2"},
+        \\ "inject":{"headers":{"Authorization":"Bearer {{$credentials.apiKey}}"},
+        \\ "defaultHeaders":{"Notion-Version":"{{$credentials.version}}","X-Y":"y"}}}}
+    );
+    var buf: [2048]u8 = undefined;
+    var diag: Diag = .{};
+    // No header of that name: both defaults go out, with the template filled.
+    var b = try build("{\"url\":\"http://h/\",\"credential\":\"notion\"}", &store, null, &buf, &diag);
+    var hdrs = buf[b.url_len..b.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "Notion-Version: v2\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "X-Y: y\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "Authorization: Bearer k\r\n") != null);
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, hdrs, "Notion-Version: "));
+    // The request has the header in another case: the default stays out.
+    b = try build("{\"url\":\"http://h/\",\"credential\":\"notion\",\"headers\":{\"notion-VERSION\":\"2021-05-13\"}}", &store, null, &buf, &diag);
+    hdrs = buf[b.url_len..b.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "notion-VERSION: 2021-05-13\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "Notion-Version: ") == null);
+    // Another default header of the slot is still written.
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "X-Y: y\r\n") != null);
+    // An escaped name in the request counts too.
+    b = try build("{\"url\":\"http://h/\",\"credential\":\"notion\",\"headers\":{\"X\\u002dY\":\"other\"}}", &store, null, &buf, &diag);
+    hdrs = buf[b.url_len..b.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "X-Y: other\r\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "X-Y: y\r\n") == null);
+    // A null header value sends no header, so the default still applies.
+    b = try build("{\"url\":\"http://h/\",\"credential\":\"notion\",\"headers\":{\"notion-version\":null}}", &store, null, &buf, &diag);
+    hdrs = buf[b.url_len..b.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, hdrs, "Notion-Version: v2\r\n") != null);
+    try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, hdrs, "otion-Version: "));
 }
 
 test "binary body: base64, the file store, multipart, and a retry in a larger buffer" {

@@ -8,6 +8,12 @@ import { parentTypes } from './types.ts';
 
 export interface Inject {
 	headers?: Record<string, string>;
+	/**
+	 * Headers that the runtime sets only when the request has no header of
+	 * that name. v1 code sets them in its `authenticate` after it sets the
+	 * other headers, so those count too.
+	 */
+	defaultHeaders?: Record<string, string>;
 	qs?: Record<string, string>;
 	/** Fields that the runtime merges into a JSON object body. */
 	body?: Record<string, string>;
@@ -78,10 +84,14 @@ const isSet = (value: unknown) => value !== undefined && value !== null && value
  * With credential data, a rule leaves out headers that the data does not set.
  */
 const MANUAL_RULES: Record<string, ManualRule> = {
-	// NotionApi.authenticate. It also sets `Notion-Version` when the request has
-	// none; the Notion library node always sends one.
-	notionApi: () => ({ headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' } }),
-	// OpenAiApi.authenticate.
+	// NotionApi.authenticate. It also sets `Notion-Version` unless the request
+	// has that header in any case, so the request keeps a version it sent.
+	notionApi: () => ({
+		headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' },
+		defaultHeaders: { 'Notion-Version': '2022-02-22' },
+	}),
+	// OpenAiApi.authenticate. v1 also sets `OpenAI-Organization` when the field
+	// is empty, as an empty header, which carries no data: the rule leaves it out.
 	openAiApi: (data) => {
 		const headers: Record<string, string> = { Authorization: 'Bearer {{$credentials.apiKey}}' };
 		if (!data || isSet(data.organizationId)) {
