@@ -32,8 +32,8 @@ For each, explain why it doesn't validate real behaviour and what a meaningful t
 
 **Mutation check** for the two or three most load-bearing tests:
 - Name the one-line production change that would make each fail. If you cannot, the test is decorative; flag it.
-- Where cheap, make that change, watch the test fail, then revert it.
-- Revert check on the diff itself: for each behaviour change, put the old behaviour back (edit the hunk, or stash it), run the suite, and report the count.
+- Only when the orchestrator has said mutation checks are allowed: make that change as a patch you can undo with `git apply -R`, watch the test fail, then reverse the patch. Otherwise list the change you would try and stay read-only.
+- Revert check on the diff itself (only when mutation checks are allowed): for each behaviour change, put the old behaviour back with a patch you can undo with `git apply -R`, run the suite, reverse your patch, and report the count.
 - A suite that stays green has no test of that change. Name the reason with file:line (usually a test mocks the function under test outright, so the real implementation never runs). The author needs the location of the mock, not the verdict.
 - Three patterns that pass review and prove nothing: a negative assertion on a string that no longer exists (often left by a rename); asserting a config key is absent (passes whether or not the value is set elsewhere); asserting a function was called when what matters is what it did.
 
@@ -52,5 +52,5 @@ For each, explain why it doesn't validate real behaviour and what a meaningful t
 - Start with a prioritized list of missing high-value tests, then findings on the strategy (plan) or the tests (diff).
 - For each change you propose to production code, name the existing test that flips with it (the one that pins the old behaviour).
 - Phrase the consequence as "if the production code did X wrong, this suite would still pass".
-- Mutation and revert runs are your one exception to read-only. Revert immediately; if the tree does not restore cleanly, run `git checkout -- .` and report it.
+- Mutation and revert runs are your one exception to read-only, and only when the orchestrator says mutation checks are allowed. It says so after the other reviewers have returned, because these runs change files in the shared checkout. Record `git diff | shasum` before the first run. Make every change as a patch and reverse it with `git apply -R` right after the run. Never use `git checkout -- .`, `git stash` or `git reset`: they would discard uncommitted work. After the last run, check that the checksum matches, and report it if it does not.
 - If coverage is genuinely solid, say so.

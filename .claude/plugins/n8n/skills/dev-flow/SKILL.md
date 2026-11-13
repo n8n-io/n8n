@@ -249,6 +249,9 @@ skip it rather than dispatch a no-op reviewer:
 4. **Testing** — identify high-value tests that are missing, and review existing/changed tests for
    whether they actually assert behavior. (`n8n:autodev-test-reviewer`; fallback
    `expert-test-developer`.)
+   Dispatch it read-only with the other lenses. Mutation and revert checks change the shared
+   checkout, so for logic-heavy changes send it back once, after all lenses have returned, with
+   "mutation checks allowed".
 5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
