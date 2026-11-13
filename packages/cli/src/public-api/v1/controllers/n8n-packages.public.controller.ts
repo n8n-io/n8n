@@ -36,6 +36,7 @@ import {
 	IMPORT_PACKAGE_MAX_PARTS,
 	IMPORT_PACKAGE_SELECTION_MAX_PARTS,
 } from '@/modules/n8n-packages/utils/import-package-upload';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 import {
 	EXPORT_200_DESCRIPTION,
@@ -114,7 +115,7 @@ export class N8nPackagesPublicController {
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
 	@ApiErrorResponse(422, { dto: ImportBlockedErrorDto, description: IMPORT_422_DESCRIPTION })
 	async importPackage(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body({
 			mediaType: 'multipart/form-data',
@@ -128,6 +129,7 @@ export class N8nPackagesPublicController {
 			return await this.n8nPackagesService.importPackage({
 				user: req.user,
 				apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+				publicApi: req.publicApiClient,
 				projectId,
 				folderId,
 				bindings: {
@@ -163,7 +165,7 @@ export class N8nPackagesPublicController {
 		description: IMPORT_SELECTION_422_DESCRIPTION,
 	})
 	async importPackageSelection(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body({
 			mediaType: 'multipart/form-data',
@@ -184,6 +186,7 @@ export class N8nPackagesPublicController {
 				{
 					user: req.user,
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+					publicApi: req.publicApiClient,
 					packageBuffer: Buffer.from(file.buffer),
 					...policies,
 				},

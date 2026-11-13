@@ -56,6 +56,9 @@ const initSourceControlPreferences = async (api: ApiHelpers) => {
 			initRepo: false, // Don't initialize repo - this would set connected=true
 		},
 	});
+	await api.request.patch('/rest/source-control/preferences', {
+		data: { environmentsVersion: 'v1' },
+	});
 };
 
 const initSourceControlSSHKey = async ({ api, gitea }: { api: ApiHelpers; gitea: GiteaHelper }) => {

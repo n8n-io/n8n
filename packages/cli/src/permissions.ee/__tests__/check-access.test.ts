@@ -15,7 +15,10 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import { ModuleRegistry } from '@n8n/backend-common';
 import { NotFoundError } from '@n8n/errors';
+
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { userHasScopes } from '../check-access';
 
@@ -28,6 +31,8 @@ describe('userHasScopes', () => {
 	let hasGlobalReadOnlyAccessMock: Mock;
 	let hasGlobalConnectAccessMock: Mock;
 	let roleServiceMock: Mock;
+	let agentFindByIdMock: Mock;
+	let moduleIsActiveMock: Mock;
 	let mockQueryBuilder: any;
 	const roleRepository = mock<RoleRepository>();
 
@@ -96,6 +101,22 @@ describe('userHasScopes', () => {
 			}),
 		);
 		Container.set(RoleRepository, roleRepository);
+
+		agentFindByIdMock = vi.fn();
+		moduleIsActiveMock = vi.fn().mockImplementation(() => true);
+
+		Container.set(
+			AgentRepository,
+			mock<AgentRepository>({
+				findById: agentFindByIdMock,
+			}),
+		);
+		Container.set(
+			ModuleRegistry,
+			mock<ModuleRegistry>({
+				isActive: moduleIsActiveMock,
+			}),
+		);
 	});
 
 	beforeEach(() => {
@@ -111,6 +132,8 @@ describe('userHasScopes', () => {
 
 		// Default mock responses
 		mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'projectId' }]);
+		moduleIsActiveMock.mockImplementation(() => true);
+		agentFindByIdMock.mockReset();
 	});
 
 	describe('instance credential management', () => {
@@ -169,6 +192,58 @@ describe('userHasScopes', () => {
 			}
 
 			await expect(userHasScopes(user, scopes, false, params)).rejects.toThrow(NotFoundError);
+		});
+	});
+
+	describe('agents', () => {
+		const agent = {
+			id: 'agent123',
+			projectId: 'projectId',
+			scope: 'project',
+		};
+
+		it('should grant access when the agent belongs to a project the user can access', async () => {
+			agentFindByIdMock.mockResolvedValue(agent);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+			const scopes = ['agent:delete'] as Scope[];
+
+			const result = await userHasScopes(user, scopes, false, { agentId: 'agent123' });
+
+			expect(result).toBe(true);
+		});
+
+		it('should deny access when the agent belongs to another project', async () => {
+			agentFindByIdMock.mockResolvedValue({ ...agent, projectId: 'otherProjectId' });
+			mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'projectId' }]);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+			const scopes = ['agent:delete'] as Scope[];
+
+			const result = await userHasScopes(user, scopes, false, { agentId: 'agent123' });
+
+			expect(result).toBe(false);
+		});
+
+		it('should throw NotFoundError when the agents module is inactive', async () => {
+			moduleIsActiveMock.mockImplementation(() => false);
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['agent:delete'], false, { agentId: 'agent123' }),
+			).rejects.toThrow(NotFoundError);
+			expect(agentFindByIdMock).not.toHaveBeenCalled();
+		});
+
+		it('should throw NotFoundError when the agent does not exist or is an instance agent', async () => {
+			agentFindByIdMock.mockResolvedValue(null); // instance agents resolve to null too
+
+			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['agent:delete'], false, { agentId: 'agent123' }),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 
