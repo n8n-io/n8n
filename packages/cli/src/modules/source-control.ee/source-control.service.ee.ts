@@ -280,11 +280,25 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
+		const previousBranch = this.sourceControlPreferencesService.getPreferences().branchName;
 		const result = await this.gitService.setBranch(branch);
-		await this.sourceControlPreferencesService.setPreferences({
-			branchName: result.currentBranch,
-			connected: result.currentBranch?.length > 0,
-		});
+		try {
+			await this.sourceControlPreferencesService.setPreferences({
+				branchName: result.currentBranch,
+				connected: result.currentBranch?.length > 0,
+			});
+		} catch (error) {
+			if (previousBranch && previousBranch !== result.currentBranch) {
+				try {
+					await this.gitService.setBranch(previousBranch);
+				} catch (rollbackError) {
+					this.logger.error(
+						`Failed to roll back to branch "${previousBranch}": ${(rollbackError as Error).message}`,
+					);
+				}
+			}
+			throw error;
+		}
 		return result;
 	}
 

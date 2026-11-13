@@ -108,6 +108,23 @@ describe('SourceControlService', () => {
 
 			expect(setPreferences).not.toHaveBeenCalled();
 		});
+
+		it('rolls back the checkout when storing the preference fails', async () => {
+			vi.spyOn(preferencesService, 'getPreferences').mockReturnValue({
+				branchName: 'main',
+			} as never);
+			gitService.setBranch.mockResolvedValueOnce({
+				branches: ['main', 'next'],
+				currentBranch: 'next',
+			});
+			const setPreferences = vi.fn().mockRejectedValue(new Error('DB down'));
+			preferencesService.setPreferences = setPreferences;
+
+			await expect(sourceControlService.setBranch('next')).rejects.toThrow('DB down');
+
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(1, 'next');
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
+		});
 	});
 
 	describe('pushWorkfolder', () => {
