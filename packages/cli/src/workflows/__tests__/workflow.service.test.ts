@@ -2524,6 +2524,17 @@ describe('WorkflowService', () => {
 			});
 		});
 
+		test('calls the workflow.deactivate hook with the workflow and the hook context only', async () => {
+			workflowRepositoryMock.findOne.mockResolvedValue(makeWorkflowEntity());
+
+			await workflowService.deactivateWorkflowAsSystem(WORKFLOW_ID, 'memory-guard');
+
+			expect(externalHooksMock.run).toHaveBeenCalledExactlyOnceWith('workflow.deactivate', [
+				expect.objectContaining({ id: WORKFLOW_ID }),
+				expect.anything(),
+			]);
+		});
+
 		test('does nothing when the workflow does not exist', async () => {
 			workflowRepositoryMock.findOne.mockResolvedValue(null);
 
