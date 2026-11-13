@@ -974,9 +974,11 @@ describe('UserService', () => {
 
 			it('invites users under SSO while SCIM provisioning is on', async () => {
 				await expect(userService.inviteUser(inviter, payload)).resolves.toEqual([]);
-				expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
-					{ email: 'valid@email.com', role: 'global:member' },
-				]);
+				expect(userService.inviteUsers).toHaveBeenCalledWith(
+					inviter,
+					[{ email: 'valid@email.com', role: 'global:member' }],
+					false,
+				);
 			});
 
 			it('rejects a role other than member while single sign-on assigns the instance roles', async () => {
@@ -1045,9 +1047,11 @@ describe('UserService', () => {
 			await expect(userService.inviteUser(inviter, payload)).resolves.toEqual(
 				inviteUsersResult.usersInvited,
 			);
-			expect(userService.inviteUsers).toHaveBeenCalledWith(inviter, [
-				{ email: 'valid@email.com', role: 'global:member' },
-			]);
+			expect(userService.inviteUsers).toHaveBeenCalledWith(
+				inviter,
+				[{ email: 'valid@email.com', role: 'global:member' }],
+				false,
+			);
 			expect(externalHooks.run).toHaveBeenCalledWith('user.invited', [
 				inviteUsersResult.usersCreated,
 			]);

@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -58,7 +58,7 @@ describe('Job -> Get', () => {
 	const getRequest = (pageToken?: string) =>
 		expect.objectContaining({
 			method: 'GET',
-			url: `${HOST}/api/2.2/jobs/get`,
+			url: requestUrl`${HOST}/api/2.2/jobs/get`,
 			qs: {
 				job_id: JOB_ID,
 				include_trigger_state: true,

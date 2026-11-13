@@ -10,8 +10,10 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 	IDataObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an authenticated REST API request to Emelia, used for trigger node.
@@ -19,20 +21,20 @@ import { NodeApiError } from 'n8n-workflow';
 export async function emeliaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object = {},
 	qs: IDataObject = {},
 ) {
 	const { apiKey } = await this.getCredentials<{ apiKey: string }>('emeliaApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: apiKey,
 		},
 		method,
 		body,
 		qs,
-		uri: `https://graphql.emelia.io${endpoint}`,
+		uri: requestUrl`https://graphql.emelia.io${endpoint}`,
 		json: true,
 	};
 
@@ -50,7 +52,7 @@ export async function emeliaGraphqlRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	body: object = {},
 ) {
-	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
+	const response = await emeliaApiRequest.call(this, 'POST', requestPath`/graphql`, body);
 
 	if (response.errors) {
 		throw new NodeApiError(this.getNode(), response as JsonObject);

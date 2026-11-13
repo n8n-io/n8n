@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as helpers from '../../../actions/file/helpers';
 import * as GenericFunctions from '../../../GenericFunctions';
 import * as transport from '../../../transport';
@@ -67,14 +68,14 @@ describe('Test Airtop file helpers', () => {
 			expect(apiRequestMock).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files',
+				requestPath`/files`,
 				{},
 				{ offset: 0, limit: 100, sessionIds: 'session-123' },
 			);
 			expect(apiRequestMock).toHaveBeenNthCalledWith(
 				2,
 				'GET',
-				'/files',
+				requestPath`/files`,
 				{},
 				{ offset: 100, limit: 100, sessionIds: 'session-123' },
 			);
@@ -130,7 +131,7 @@ describe('Test Airtop file helpers', () => {
 			const result = await pollPromise;
 
 			expect(apiRequestMock).toHaveBeenCalledTimes(2);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/files/file-123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/files/file-123`);
 			expect(result).toBe('file-123');
 		});
 
@@ -168,7 +169,7 @@ describe('Test Airtop file helpers', () => {
 				pollingFunctionMock,
 			);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/files`, {
 				fileName: 'test.png',
 				fileType: 'customer_upload',
 			});
@@ -293,7 +294,7 @@ describe('Test Airtop file helpers', () => {
 				waitForFileInSessionMock,
 			);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', `/files/${mockFileId}/push`, {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/files/${mockFileId}/push`, {
 				sessionIds: [mockSessionId],
 			});
 
@@ -319,7 +320,7 @@ describe('Test Airtop file helpers', () => {
 
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				`/sessions/${mockSessionId}/windows/${mockWindowId}/file-input`,
+				requestPath`/sessions/${mockSessionId}/windows/${mockWindowId}/file-input`,
 				{
 					fileId: mockFileId,
 					elementDescription: 'test',

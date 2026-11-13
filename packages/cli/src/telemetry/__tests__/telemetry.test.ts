@@ -1682,6 +1682,29 @@ describe('Telemetry', () => {
 			expect(spyTrack).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('stopTracking', () => {
+		test('should send the buffered events before it drains the queue', async () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			await telemetry.stopTracking();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+			);
+			expect(mockRudderStack.track.mock.invocationCallOrder.at(-1)).toBeLessThan(
+				mockRudderStack.flush.mock.invocationCallOrder.at(-1)!,
+			);
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+	});
 });
 
 /** Registers the services the pulse packet reads its counters from. */

@@ -4,8 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { IRecord } from './GenericFunction';
 import { apiRequest, apiRequestAllItems } from './GenericFunction';
@@ -184,10 +185,16 @@ export class Stackby implements INodeType {
 			for (let i = 0; i < length; i++) {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
-					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const table = this.getNodeParameter('table', i) as string;
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
-					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
+					responseData = await apiRequest.call(
+						this,
+						'GET',
+						requestPath`/rowlist/${stackId}/${table}`,
+						{},
+						qs,
+					);
 					returnData.push.apply(
 						returnData,
 						responseData.map((data: any) => data.field) as INodeExecutionData[],
@@ -209,14 +216,14 @@ export class Stackby implements INodeType {
 			for (let i = 0; i < length; i++) {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
-					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const table = this.getNodeParameter('table', i) as string;
 					const rowIds = this.getNodeParameter('id', i) as string;
 					qs.rowIds = [rowIds];
 
 					responseData = await apiRequest.call(
 						this,
 						'DELETE',
-						`/rowdelete/${stackId}/${table}`,
+						requestPath`/rowdelete/${stackId}/${table}`,
 						{},
 						qs,
 					);
@@ -244,11 +251,11 @@ export class Stackby implements INodeType {
 
 		if (operation === 'append') {
 			try {
-				const records: { [key: string]: IRecord[] } = {};
+				const records: { [key: string]: { path: RequestPath; records: IRecord[] } } = {};
 				let key = '';
 				for (let i = 0; i < length; i++) {
 					const stackId = this.getNodeParameter('stackId', i) as string;
-					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const table = this.getNodeParameter('table', i) as string;
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map((column) => column.trim());
 
@@ -264,17 +271,18 @@ export class Stackby implements INodeType {
 							record[column] = items[i].json[column];
 						}
 					}
-					key = `${stackId}/${table}`;
+					const path = requestPath`/rowcreate/${stackId}/${table}`;
+					key = path.value;
 
 					if (records[key] === undefined) {
-						records[key] = [];
+						records[key] = { path, records: [] };
 					}
-					records[key].push({ field: record });
+					records[key].records.push({ field: record });
 				}
 
 				for (const recordKey of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${recordKey}`, {
-						records: records[recordKey],
+					responseData = await apiRequest.call(this, 'POST', records[recordKey].path, {
+						records: records[recordKey].records,
 					});
 				}
 
@@ -300,7 +308,7 @@ export class Stackby implements INodeType {
 			for (let i = 0; i < length; i++) {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
-					const table = encodeURI(this.getNodeParameter('table', i) as string);
+					const table = this.getNodeParameter('table', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', 0);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i, {});
@@ -313,7 +321,7 @@ export class Stackby implements INodeType {
 						responseData = await apiRequestAllItems.call(
 							this,
 							'GET',
-							`/rowlist/${stackId}/${table}`,
+							requestPath`/rowlist/${stackId}/${table}`,
 							{},
 							qs,
 						);
@@ -322,7 +330,7 @@ export class Stackby implements INodeType {
 						responseData = await apiRequest.call(
 							this,
 							'GET',
-							`/rowlist/${stackId}/${table}`,
+							requestPath`/rowlist/${stackId}/${table}`,
 							{},
 							qs,
 						);

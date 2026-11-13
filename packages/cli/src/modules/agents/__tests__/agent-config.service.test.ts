@@ -1,6 +1,6 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore a type-only EventService import; keep the import.
-import type { EventService } from '@n8n/backend-services';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
 import {
 	DEFAULT_AGENT_PERSONALISATION,
@@ -8,7 +8,12 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type User,
+	type WorkflowRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -106,6 +111,10 @@ function makeService() {
 	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	const agentPolicyService = mock<AgentPolicyService>();
 	const chatIntegrationRegistry = mock<ChatIntegrationRegistry>();
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
 
 	agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 		status: 'valid',
@@ -131,6 +140,7 @@ function makeService() {
 		agentTaskRepository,
 		skillRefs,
 		agentPolicyService,
+		credentialsFinderService,
 	);
 	const service = new AgentConfigService(
 		mockLogger(),
@@ -157,6 +167,7 @@ function makeService() {
 	return {
 		service,
 		configPreparation,
+		credentialsFinderService,
 		chatIntegrationRegistry,
 		agentPolicyService,
 		agentRepository,
@@ -2040,6 +2051,121 @@ describe('AgentConfigService', () => {
 				changed_parts: ['triggers'],
 				trigger_count: 1,
 			});
+		});
+	});
+	describe('credential usage on save', () => {
+		const member = { id: 'user-1', role: GLOBAL_MEMBER_ROLE } as User;
+		const server = {
+			name: 'docs',
+			url: 'https://mcp.example.test/mcp',
+			transport: 'streamableHttp',
+			authentication: 'headerAuth',
+			credential: 'credential-1',
+		} as const;
+		const withServer = (entry: object = server): AgentJsonConfig =>
+			({ ...baseConfig, mcpServers: [entry] }) as AgentJsonConfig;
+
+		/** The user can read `credential-1`; `connect` and `isGlobal` decide its use. */
+		function setup(grant: { connect: boolean; isGlobal?: boolean }, stored = baseConfig) {
+			const context = makeService();
+			const agent = makeAgent({ schema: stored });
+			context.agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			context.credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'credential-1', name: 'Header', type: 'httpHeaderAuth' },
+			] as never);
+			context.credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					scopes.includes('credential:connect') && !grant.connect
+						? null
+						: ({ id, isGlobal: grant.isGlobal ?? false, isResolvable: false } as never),
+			);
+			return { ...context, options: fencedOn(agent) };
+		}
+
+		it('rejects a new credential that the user can only read', async () => {
+			const { service, agentRepository, options } = setup({ connect: false });
+
+			await expect(
+				service.updateConfig(agentId, projectId, withServer(), member, options),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		});
+
+		it('rejects a changed entry that holds a credential the user can only read', async () => {
+			const { service, options } = setup({ connect: false }, withServer());
+
+			await expect(
+				service.updateConfig(
+					agentId,
+					projectId,
+					withServer({ ...server, url: 'https://other.example.test/mcp' }),
+					member,
+					options,
+				),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
+		});
+
+		it('keeps an unchanged credential that the user can only read', async () => {
+			const { service, options } = setup({ connect: false }, withServer());
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...withServer(), instructions: 'Updated instructions' },
+				member,
+				options,
+			);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('keeps an unchanged credential in a stored entry that omits default fields', async () => {
+			const { url, name, authentication, credential } = server;
+			const { service, options } = setup(
+				{ connect: false },
+				withServer({ name, url, authentication, credential }),
+			);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...withServer(), instructions: 'Updated instructions' },
+				member,
+				options,
+			);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('accepts a new credential that the user can connect', async () => {
+			const { service, options } = setup({ connect: true });
+
+			const result = await service.updateConfig(agentId, projectId, withServer(), member, options);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('accepts a new global credential that the user can read', async () => {
+			const { service, options } = setup({ connect: false, isGlobal: true });
+
+			const result = await service.updateConfig(agentId, projectId, withServer(), member, options);
+
+			expect(result.config.mcpServers?.[0]?.credential).toBe('credential-1');
+		});
+
+		it('rejects a new credential that the user can only read in a complete definition', async () => {
+			const { configPreparation } = setup({ connect: false });
+			const definition: CompleteAgentDefinition = {
+				name: baseConfig.name,
+				config: withServer(),
+				tools: {},
+				tasks: new Map(),
+			};
+			vi.spyOn(configPreparation, 'validateDefinition').mockResolvedValue(definition);
+
+			await expect(
+				configPreparation.prepareDefinition(agentId, definition, projectId, member),
+			).rejects.toThrow('Credential "credential-1" is missing or inaccessible.');
 		});
 	});
 });

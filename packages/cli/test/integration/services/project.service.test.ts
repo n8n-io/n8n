@@ -297,11 +297,11 @@ describe('ProjectService', () => {
 			//
 			// ACT
 			//
-			await projectService.addUsersToProject(
-				members[0],
-				project.id,
-				members.map((member) => ({ userId: member.id, role: 'project:editor' })),
-			);
+			await projectService.addUsersToProject({
+				user: members[0],
+				projectId: project.id,
+				relations: members.map((member) => ({ userId: member.id, role: 'project:editor' })),
+			});
 
 			//
 			// ASSERT
@@ -329,9 +329,11 @@ describe('ProjectService', () => {
 			// ACT
 			//
 			await expect(
-				projectService.addUsersToProject(member, project.id, [
-					{ userId: member.id, role: 'custom:non-existing' },
-				]),
+				projectService.addUsersToProject({
+					user: member,
+					projectId: project.id,
+					relations: [{ userId: member.id, role: 'custom:non-existing' }],
+				}),
 			).rejects.toThrowError('Role custom:non-existing does not exist');
 		});
 	});

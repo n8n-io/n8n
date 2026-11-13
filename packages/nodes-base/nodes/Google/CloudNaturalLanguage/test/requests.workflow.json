@@ -1,0 +1,59 @@
+{
+	"name": "Google Cloud Natural Language request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c1d2e3f4-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"content": "The new release works well."
+			},
+			"type": "n8n-nodes-base.googleCloudNaturalLanguage",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "c1d2e3f4-0000-4000-8000-000000000001",
+			"name": "Analyze Sentiment",
+			"credentials": {
+				"googleCloudNaturalLanguageOAuth2Api": {
+					"id": "c1d2e3f4-cred",
+					"name": "Google Cloud Natural Language account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Analyze Sentiment": [
+			{
+				"json": {
+					"documentSentiment": {
+						"magnitude": 0.8,
+						"score": 0.8
+					},
+					"language": "en"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Analyze Sentiment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

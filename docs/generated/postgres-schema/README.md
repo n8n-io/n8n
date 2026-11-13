@@ -48,6 +48,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agents_observation_locks](public.agents_observation_locks.md) | 7 |  | BASE TABLE |
 | [public.agents_observations](public.agents_observations.md) | 11 |  | BASE TABLE |
 | [public.agents_resources](public.agents_resources.md) | 4 |  | BASE TABLE |
+| [public.agents_tags](public.agents_tags.md) | 2 |  | BASE TABLE |
 | [public.agents_threads](public.agents_threads.md) | 6 |  | BASE TABLE |
 | [public.ai_builder_temporary_workflow](public.ai_builder_temporary_workflow.md) | 4 |  | BASE TABLE |
 | [public.ai_preference](public.ai_preference.md) | 8 |  | BASE TABLE |
@@ -119,6 +120,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
 | [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project_execution_limit](public.project_execution_limit.md) | 4 |  | BASE TABLE |
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
 | [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
@@ -168,7 +170,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
-| [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
+| [public.workflow_history](public.workflow_history.md) | 12 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
 | [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
@@ -285,6 +287,8 @@ erDiagram
 "public.agents_observations" }o--o| "public.agents_observations" : "FOREIGN KEY (#quot;supersededBy#quot;) REFERENCES agents_observations(id)"
 "public.agents_observations" }o--o| "public.agents_observations" : "FOREIGN KEY (#quot;parentId#quot;) REFERENCES agents_observations(id)"
 "public.agents_observations" }o--|| "public.agents_threads" : "FOREIGN KEY (#quot;observationScopeId#quot;) REFERENCES agents_threads(id) ON DELETE CASCADE"
+"public.agents_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
+"public.agents_tags" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.ai_builder_temporary_workflow" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.ai_preference" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -380,6 +384,7 @@ erDiagram
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.project_execution_limit" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -951,6 +956,10 @@ erDiagram
   varchar_255_ id
   text metadata
   timestamp_3__with_time_zone updatedAt
+}
+"public.agents_tags" {
+  varchar_36_ agentId FK
+  varchar_36_ tagId FK
 }
 "public.agents_threads" {
   timestamp_3__with_time_zone createdAt
@@ -1640,6 +1649,12 @@ erDiagram
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
+"public.project_execution_limit" {
+  timestamp_3__with_time_zone createdAt
+  integer maxExecutions
+  varchar_36_ projectId FK
+  timestamp_3__with_time_zone updatedAt
+}
 "public.project_pool_settings" {
   timestamp_3__with_time_zone createdAt
   varchar_63_ defaultPool
@@ -2156,6 +2171,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  json settings
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK

@@ -83,6 +83,18 @@ describe('LmChatGroq', () => {
 			expect(result).toEqual({ response: expect.any(Object) });
 		});
 
+		it.each([
+			['empty', { apiKey: '' }],
+			['blank', { apiKey: '   ' }],
+			['missing', {}],
+		])('should throw when the API key is %s', async (_, credentials) => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = vi.fn().mockResolvedValue(credentials);
+
+			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('The credential has no API key');
+			expect(MockedChatGroq).not.toHaveBeenCalled();
+		});
+
 		it('should pass options to ChatGroq', async () => {
 			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {

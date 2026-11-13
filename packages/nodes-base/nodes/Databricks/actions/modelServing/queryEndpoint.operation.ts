@@ -1,4 +1,4 @@
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -25,16 +25,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	// Step 1: Fetch the OpenAPI schema for this endpoint
 	let detectedFormat = 'generic';
-	let invocationUrl = `${host}/serving-endpoints/${endpointName}/invocations`; // Default fallback
+	let invocationUrl = requestUrl`${host}/serving-endpoints/${endpointName}/invocations`; // Default fallback
 	let exampleRequestBody = '';
 
 	try {
-		const openApiResponse = (await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: `${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		})) as OpenAPISchema[];
+		const openApiResponse = (await databricksApiRequest(
+			this,
+			credentialType,
+			requestUrl`${host}/api/2.0/serving-endpoints/${endpointName}/openapi`,
+			{
+				method: 'GET',
+				headers: { Accept: 'application/json' },
+				json: true,
+			},
+		)) as OpenAPISchema[];
 
 		if (openApiResponse?.length > 0) {
 			const schemaInfo = detectInputFormat(openApiResponse[0]);
@@ -58,7 +62,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				);
 			}
 
-			invocationUrl = schemaUrl;
+			invocationUrl = requestUrl`${schemaUrl}`;
 			exampleRequestBody = generateExampleFromSchema(schemaInfo.schema, detectedFormat);
 
 			try {
@@ -78,7 +82,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		this.logger.warn('Could not fetch or parse endpoint schema, using default URL', {
 			endpointName,
 			error: (error as Error).message,
-			defaultUrl: invocationUrl,
+			defaultUrl: String(invocationUrl),
 		});
 
 		if (!exampleRequestBody) {
@@ -88,9 +92,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	// Step 2: Make the request using the URL from schema
 	try {
-		const response = await databricksApiRequest(this, credentialType, {
+		const response = await databricksApiRequest(this, credentialType, invocationUrl, {
 			method: 'POST',
-			url: invocationUrl,
 			body: requestBody,
 			headers: { 'Content-Type': 'application/json' },
 			json: true,
@@ -100,7 +103,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			{
 				json: {
 					...(response as Record<string, unknown>),
-					_metadata: { endpoint: endpointName, detectedFormat, invocationUrl },
+					_metadata: {
+						endpoint: endpointName,
+						detectedFormat,
+						invocationUrl: String(invocationUrl),
+					},
 				},
 				pairedItem: { item: i },
 			},

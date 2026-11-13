@@ -1,4 +1,5 @@
 import type { INodeExecutionData, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -34,7 +35,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
 	const status = this.getNodeParameter('status', i) as string;
 
-	await theHiveApiRequest.call(this, 'PATCH', `/v1/alert/${alertId}`, { status });
+	await theHiveApiRequest.call(this, 'PATCH', requestPath`/v1/alert/${alertId}`, { status });
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
 		itemData: { item: i },

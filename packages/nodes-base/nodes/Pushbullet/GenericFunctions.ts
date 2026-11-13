@@ -5,24 +5,28 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function pushbulletApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option = {},
+	option: Pick<IRequestOptions, 'formData' | 'json'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.pushbullet.com/v2${path}`,
 		json: true,
 	};
 	try {
@@ -32,7 +36,13 @@ export async function pushbulletApiRequest(
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
 		}
-		return await this.helpers.requestOAuth2.call(this, 'pushbulletOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(
+			this,
+			'pushbulletOAuth2Api',
+			uri
+				? { ...options, uri }
+				: { ...options, uri: requestUrl`https://api.pushbullet.com/v2${path}` },
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -42,7 +52,7 @@ export async function pushbulletApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

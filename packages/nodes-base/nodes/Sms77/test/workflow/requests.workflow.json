@@ -1,0 +1,96 @@
+{
+	"name": "Sms77 Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"from": "Acme",
+				"to": "+49876543210",
+				"message": "Hello",
+				"options": {}
+			},
+			"id": "sms77-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.sms77",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"sms77Api": {
+					"id": "1",
+					"name": "seven account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "voice",
+				"operation": "send",
+				"to": "+49876543210",
+				"message": "Hello",
+				"options": {}
+			},
+			"id": "sms77-1",
+			"name": "Voice Send",
+			"type": "n8n-nodes-base.sms77",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"sms77Api": {
+					"id": "1",
+					"name": "seven account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"success": "100",
+					"total_price": 0.075,
+					"balance": 9.925
+				}
+			}
+		],
+		"Voice Send": [
+			{
+				"json": {
+					"success": "100",
+					"total_price": 0.075,
+					"balance": 9.925
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Voice Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

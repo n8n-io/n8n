@@ -28,6 +28,7 @@ import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -152,7 +153,7 @@ export class WorkflowCreationService {
 			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
-			publicApi?: boolean;
+			publicApi?: PublicApiCaller;
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;

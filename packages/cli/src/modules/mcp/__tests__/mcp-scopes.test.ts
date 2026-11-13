@@ -82,6 +82,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
@@ -302,6 +303,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
+			mockInstance(McpPreferencesNoteService),
 		);
 
 	beforeEach(() => {

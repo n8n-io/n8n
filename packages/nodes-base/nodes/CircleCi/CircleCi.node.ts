@@ -5,10 +5,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, decodePathValue, requestPath } from 'n8n-workflow';
 
 import { circleciApiRequest, circleciApiRequestAllItems } from './GenericFunctions';
 import { pipelineFields, pipelineOperations } from './PipelineDescription';
+
+const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 export class CircleCi implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,7 +20,8 @@ export class CircleCi implements INodeType {
 
 		icon: { light: 'file:circleCi.svg', dark: 'file:circleCi.dark.svg' },
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume CircleCI API',
 		defaults: {
@@ -57,6 +61,7 @@ export class CircleCi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
+		const version = this.getNode().typeVersion;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -65,12 +70,10 @@ export class CircleCi implements INodeType {
 				if (resource === 'pipeline') {
 					if (operation === 'get') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						const slug = toPathValue(version, this.getNodeParameter('projectSlug', i) as string);
 						const pipelineNumber = this.getNodeParameter('pipelineNumber', i) as number;
 
-						slug = slug.replace(new RegExp(/\//g), '%2F');
-
-						const endpoint = `/project/${vcs}/${slug}/pipeline/${pipelineNumber}`;
+						const endpoint = requestPath`/project/${vcs}/${slug}/pipeline/${pipelineNumber}`;
 
 						responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = this.helpers.constructExecutionMetaData(
@@ -82,15 +85,13 @@ export class CircleCi implements INodeType {
 						const vcs = this.getNodeParameter('vcs', i) as string;
 						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
-						let slug = this.getNodeParameter('projectSlug', i) as string;
-
-						slug = slug.replace(new RegExp(/\//g), '%2F');
+						const slug = toPathValue(version, this.getNodeParameter('projectSlug', i) as string);
 
 						if (filters.branch) {
 							qs.branch = filters.branch;
 						}
 
-						const endpoint = `/project/${vcs}/${slug}/pipeline`;
+						const endpoint = requestPath`/project/${vcs}/${slug}/pipeline`;
 
 						if (returnAll) {
 							responseData = await circleciApiRequestAllItems.call(
@@ -115,13 +116,11 @@ export class CircleCi implements INodeType {
 
 					if (operation === 'trigger') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						const slug = toPathValue(version, this.getNodeParameter('projectSlug', i) as string);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						slug = slug.replace(new RegExp(/\//g), '%2F');
-
-						const endpoint = `/project/${vcs}/${slug}/pipeline`;
+						const endpoint = requestPath`/project/${vcs}/${slug}/pipeline`;
 
 						const body: IDataObject = {};
 

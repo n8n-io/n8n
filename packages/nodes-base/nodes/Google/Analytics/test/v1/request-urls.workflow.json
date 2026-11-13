@@ -1,0 +1,100 @@
+{
+	"name": "Google Analytics V1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8d0c6a3e-2f1b-4c55-9a51-1f7e0b2c3d01",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"viewId": "184392765",
+				"returnAll": false,
+				"limit": 10,
+				"simple": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"id": "8d0c6a3e-2f1b-4c55-9a51-1f7e0b2c3d02",
+			"name": "Report Get",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "ga-oauth-cred-id",
+					"name": "Google Analytics OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "userActivity",
+				"operation": "search",
+				"viewId": "184392765",
+				"userId": "1029384756.1712345678",
+				"returnAll": false,
+				"limit": 10,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"id": "8d0c6a3e-2f1b-4c55-9a51-1f7e0b2c3d03",
+			"name": "UserActivity Search",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "ga-oauth-cred-id",
+					"name": "Google Analytics OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Report Get": [
+			{
+				"json": {
+					"ga:date": "20240101",
+					"ga:users": "100"
+				}
+			}
+		],
+		"UserActivity Search": [
+			{
+				"json": {
+					"sessionId": "1712345678",
+					"deviceCategory": "desktop",
+					"platform": "Windows",
+					"dataSource": "web",
+					"activities": []
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Report Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "UserActivity Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

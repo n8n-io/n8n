@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { fileRLC } from '../../file';
@@ -86,7 +86,7 @@ export async function execute(
 	const metadata = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/drive/items/${encodeURIComponent(fileId)}`,
+		requestPath`/v1.0/sites/${siteId}/drive/items/${fileId}`,
 	)) as DriveItemReply;
 
 	if (metadata.file === undefined) {

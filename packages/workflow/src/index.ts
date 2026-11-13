@@ -121,9 +121,12 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export type * from './workflow-settings-scope';
 export * from './connections-diff';
 export * from './workflow-environments-helper';
 export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
+export { decodePathValue, requestPath, requestUrl } from './request-target';
+export type { RequestPath, RequestUrl } from './request-target';
 
 export type {
 	DocMetadata,

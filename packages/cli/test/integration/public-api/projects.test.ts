@@ -1,6 +1,7 @@
 import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
+	createWorkflow,
 	getProjectByNameOrFail,
 	linkUserToProject,
 	getAllProjectRelations,
@@ -20,6 +21,7 @@ import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
@@ -490,6 +492,7 @@ describe('Projects in Public API', () => {
 			testServer.license.enable('feat:projectRole:admin');
 			const owner = await createOwnerWithApiKey();
 			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
 
 			/**
 			 * Act
@@ -508,6 +511,10 @@ describe('Projects in Public API', () => {
 				removalType: 'delete',
 				targetProjectId: undefined,
 			});
+			expect(emitSpy).toHaveBeenCalledWith(
+				'workflow-deleted',
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+			);
 
 			const list = await testServer.publicApiAgentFor(owner).get('/projects');
 			expect(list.body.data).not.toContainEqual(expect.objectContaining({ id: project.id }));
@@ -1147,6 +1154,8 @@ describe('Projects in Public API', () => {
 					],
 				};
 
+				const addUsers = vi.spyOn(Container.get(ProjectService), 'addUsersToProject');
+
 				const response = await testServer
 					.publicApiAgentFor(owner)
 					.post(`/projects/${project.id}/users`)
@@ -1157,6 +1166,13 @@ describe('Projects in Public API', () => {
 				});
 
 				expect(response.status).toBe(201);
+				expect(addUsers).toHaveBeenCalledWith({
+					user: expect.objectContaining({ id: owner.id }),
+					projectId: project.id,
+					relations: payload.relations,
+					publicApi: 'other',
+				});
+				addUsers.mockRestore();
 				expect(response.text).toBe('');
 				expect(response.headers['content-type']).toBeUndefined();
 				expect(projectBefore.length).toEqual(1);

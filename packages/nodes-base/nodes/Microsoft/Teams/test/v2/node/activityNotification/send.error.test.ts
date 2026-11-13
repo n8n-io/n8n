@@ -4,6 +4,7 @@ import {
 	type IExecuteFunctions,
 	type INode,
 	type JsonObject,
+	requestPath,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -28,7 +29,7 @@ const CHANNELS_ROLE_TEXT =
 	"Missing role permissions on the request. API requires one of 'Channel.ReadBasic.All, ChannelSettings.Read.All, ChannelSettings.ReadWrite.All'. Roles on the request 'TeamsActivity.Send, User.Read.All'. Resource specific consent grants on the request ''.";
 const CHANNELS_SCOPE_TEXT =
 	"Missing scope permissions on the request. API requires one of 'Channel.ReadBasic.All, ChannelSettings.Read.All, ChannelSettings.ReadWrite.All'. Scopes on the request 'TeamsActivity.Send, User.Read, offline_access'.";
-const CHANNELS_PATH = '/v1.0/teams/11111111-2222-3333-4444-555555555555/channels';
+const CHANNELS_PATH = requestPath`/v1.0/teams/11111111-2222-3333-4444-555555555555/channels`;
 const OTHER_TEXT = 'Insufficient privileges to complete the operation.';
 const GENERIC_APP_ONLY_403 =
 	'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';

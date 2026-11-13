@@ -9,7 +9,7 @@ import { FolderRemover } from '../folder-remover';
 import type { ImportContext } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
-const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
+const context: ImportContext = { user, projectId: 'proj-1', folderId: null, publicApi: false };
 
 type Placement = { id: string; name: string; parentFolderId: string | null };
 

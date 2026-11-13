@@ -280,7 +280,7 @@ describe('AgentsListView — project page', () => {
 	});
 
 	it('informs the user when duplicating an unconfigured agent instead of opening the modal', async () => {
-		// The factory omits `schema`, so this agent is unconfigured.
+		// The factory omits `hasConfig`, so this agent is unconfigured.
 		mocks.listAgentsPage.mockResolvedValueOnce({
 			count: 1,
 			data: [agent('agent-1', 'Draft Agent')],
@@ -296,8 +296,8 @@ describe('AgentsListView — project page', () => {
 	});
 
 	it('duplicates a configured agent: opens the modal with existing names, then copies, caches, and navigates to the clone', async () => {
-		// A configured agent carries a `schema`, so it passes the guard.
-		const source = { ...agent('agent-1', 'Support Agent'), schema: { name: 'Support Agent' } };
+		// A configured agent sets `hasConfig`, so it passes the guard.
+		const source = { ...agent('agent-1', 'Support Agent'), hasConfig: true };
 		const copy = { ...source, id: 'agent-2', name: 'Support Agent Copy' };
 		mocks.listAgentsPage.mockResolvedValueOnce({ count: 1, data: [source] });
 		mocks.duplicateAgent.mockResolvedValueOnce(copy);

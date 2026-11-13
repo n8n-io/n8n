@@ -1,0 +1,512 @@
+{
+	"name": "Raindrop request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "bookmark",
+				"operation": "create",
+				"collectionId": "45678",
+				"link": "https://docs.n8n.io",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Bookmark",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bookmark",
+				"operation": "delete",
+				"bookmarkId": "123456"
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 160],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Delete Bookmark",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bookmark",
+				"operation": "get",
+				"bookmarkId": "123456"
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 320],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Bookmark",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bookmark",
+				"operation": "getAll",
+				"collectionId": "45678",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get Many Bookmarks",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bookmark",
+				"operation": "update",
+				"bookmarkId": "123456",
+				"updateFields": {
+					"title": "n8n docs"
+				}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 640],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Update Bookmark",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "create",
+				"title": "Reading list",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Create Collection",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "delete",
+				"collectionId": "45678"
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Delete Collection",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "get",
+				"collectionId": "45678"
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1120],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Get Collection",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "getAll",
+				"type": "parent",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1280],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Many Parent Collections",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "getAll",
+				"type": "children",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Many Child Collections",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "update",
+				"collectionId": "45678",
+				"updateFields": {
+					"title": "Reading list"
+				}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Update Collection",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"self": true
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1760],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Get Self",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"self": false,
+				"userId": "1002"
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 1920],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Get User",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "delete",
+				"tags": "news",
+				"additionalFields": {
+					"collectionId": "45678"
+				}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 2080],
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Delete Tag",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {
+					"collectionId": "45678"
+				}
+			},
+			"type": "n8n-nodes-base.raindrop",
+			"typeVersion": 1,
+			"position": [220, 2240],
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "Get Many Tags",
+			"credentials": {
+				"raindropOAuth2Api": {
+					"id": "cred1",
+					"name": "Raindrop account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Bookmark": [
+			{
+				"json": {
+					"_id": 123456,
+					"title": "n8n docs",
+					"link": "https://docs.n8n.io"
+				}
+			}
+		],
+		"Delete Bookmark": [
+			{
+				"json": {
+					"result": true
+				}
+			}
+		],
+		"Get Bookmark": [
+			{
+				"json": {
+					"_id": 123456,
+					"title": "n8n docs",
+					"link": "https://docs.n8n.io"
+				}
+			}
+		],
+		"Get Many Bookmarks": [
+			{
+				"json": {
+					"_id": 123456,
+					"title": "n8n docs",
+					"link": "https://docs.n8n.io"
+				}
+			}
+		],
+		"Update Bookmark": [
+			{
+				"json": {
+					"_id": 123456,
+					"title": "n8n docs",
+					"link": "https://docs.n8n.io"
+				}
+			}
+		],
+		"Create Collection": [
+			{
+				"json": {
+					"_id": 45678,
+					"title": "Reading list"
+				}
+			}
+		],
+		"Delete Collection": [
+			{
+				"json": {
+					"result": true
+				}
+			}
+		],
+		"Get Collection": [
+			{
+				"json": {
+					"_id": 45678,
+					"title": "Reading list"
+				}
+			}
+		],
+		"Get Many Parent Collections": [
+			{
+				"json": {
+					"_id": 45678,
+					"title": "Reading list"
+				}
+			}
+		],
+		"Get Many Child Collections": [
+			{
+				"json": {
+					"_id": 45678,
+					"title": "Reading list"
+				}
+			}
+		],
+		"Update Collection": [
+			{
+				"json": {
+					"_id": 45678,
+					"title": "Reading list"
+				}
+			}
+		],
+		"Get Self": [
+			{
+				"json": {
+					"_id": 1001,
+					"fullName": "Nathan"
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"_id": 1002,
+					"fullName": "Jan"
+				}
+			}
+		],
+		"Delete Tag": [
+			{
+				"json": {
+					"result": true
+				}
+			}
+		],
+		"Get Many Tags": [
+			{
+				"json": {
+					"_id": "news",
+					"count": 3
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Bookmark",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Bookmark",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Bookmark",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Bookmarks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Bookmark",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Collection",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Collection",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Collection",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Parent Collections",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Child Collections",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Collection",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Self",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Tag",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Tags",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

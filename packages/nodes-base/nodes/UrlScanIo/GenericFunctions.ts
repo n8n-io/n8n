@@ -1,17 +1,24 @@
-import type { IExecuteFunctions, IDataObject, IRequestOptions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
+} from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function urlScanIoApiRequest(
 	this: IExecuteFunctions,
 	method: 'GET' | 'POST',
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `https://urlscan.io/api/v1${endpoint}`,
+		uri: requestUrl`https://urlscan.io/api/v1${endpoint}`,
 		json: true,
 	};
 
@@ -28,7 +35,7 @@ export async function urlScanIoApiRequest(
 
 export async function handleListing(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject = {},
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
