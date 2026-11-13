@@ -1,5 +1,6 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { createHash } from 'node:crypto';
 
 import type { AgentSessionThread, AgentSessionTurn } from './agent-context.contracts';
 
@@ -9,7 +10,10 @@ type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 export const PREVIEW_CONTEXT_OPEN_TAG = '<preview_session_context>';
 export const PREVIEW_CONTEXT_CLOSE_TAG = '</preview_session_context>';
 
-/** Maximum transcript characters in one page of the full output. */
+const ESCAPED_PREVIEW_CONTEXT_OPEN_TAG = '&lt;preview_session_context&gt;';
+const ESCAPED_PREVIEW_CONTEXT_CLOSE_TAG = '&lt;/preview_session_context&gt;';
+
+/** Maximum characters in one page of the full output, wrapper included. */
 export const FULL_TRANSCRIPT_PAGE_CHARS = 50_000;
 
 const MAX_TEXT_CHARS = 4_000;
@@ -27,6 +31,13 @@ const FULL_LIMITS: ValueLimits = {
 	text: Number.POSITIVE_INFINITY,
 	toolValue: Number.POSITIVE_INFINITY,
 };
+
+/** Stored values must not close the context block early. */
+function escapeContextDelimiters(value: string): string {
+	return value
+		.replaceAll(PREVIEW_CONTEXT_OPEN_TAG, ESCAPED_PREVIEW_CONTEXT_OPEN_TAG)
+		.replaceAll(PREVIEW_CONTEXT_CLOSE_TAG, ESCAPED_PREVIEW_CONTEXT_CLOSE_TAG);
+}
 
 function truncate(value: string, max: number): string {
 	if (value.length <= max) return value;
@@ -107,14 +118,22 @@ function formatTimelineEvent(
 	].join('\n');
 }
 
-function formatExecution(execution: AgentSessionTurn, limits: ValueLimits): string {
+interface FormattedTurn {
+	/** Status, model, duration, tokens, and error. Changes while the turn runs. */
+	header: string;
+	/** Input and timeline. Grows while the turn runs. */
+	body: string;
+}
+
+/** Each part starts with a newline, so `header + body` is the complete turn. */
+function formatTurn(execution: AgentSessionTurn, limits: ValueLimits): FormattedTurn {
 	const headerParts = [`status=${execution.status}`];
 	if (execution.model) headerParts.push(`model=${execution.model}`);
 	headerParts.push(`duration=${execution.duration}ms`);
 	if (execution.totalTokens !== null) headerParts.push(`tokens=${execution.totalTokens}`);
 	if (execution.error) headerParts.push(`error=${execution.error}`);
 
-	const lines = [`## Turn (${headerParts.join(', ')})`];
+	const lines: string[] = [];
 	if (execution.inputMessages !== undefined) {
 		const steeredIds = new Set(
 			execution.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
@@ -129,7 +148,15 @@ function formatExecution(execution: AgentSessionTurn, limits: ValueLimits): stri
 		const line = formatTimelineEvent(event, execution, limits);
 		if (line) lines.push(line);
 	}
-	return lines.join('\n');
+	return {
+		header: `\n${escapeContextDelimiters(`## Turn (${headerParts.join(', ')})`)}`,
+		body: lines.map((line) => `\n${escapeContextDelimiters(line)}`).join(''),
+	};
+}
+
+function formatExecution(execution: AgentSessionTurn, limits: ValueLimits): string {
+	const { header, body } = formatTurn(execution, limits);
+	return header + body;
 }
 
 function selectTurnExecutions(
@@ -186,7 +213,7 @@ function formatPrefix(
 ): string {
 	const scopeLabel = executionId === undefined ? 'whole session' : 'single turn';
 	const header =
-		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
+		`Preview session transcript — title: ${escapeContextDelimiters(thread.title ?? '(untitled)')}, ` +
 		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${turnCount}${headerSuffix}`;
 
 	return [
@@ -220,7 +247,7 @@ export function formatPreviewSessionContext(
 	let omittedEarlierTurns = 0;
 
 	for (let i = scoped.length - 1; i >= 0; i--) {
-		const formatted = `\n${formatExecution(scoped[i], COMPACT_LIMITS)}`;
+		const formatted = formatExecution(scoped[i], COMPACT_LIMITS);
 		const projectedLength = prefix.length + includedLength + formatted.length + closing.length;
 		if (projectedLength > MAX_BLOCK_CHARS) {
 			boundaryTurn = formatted;
@@ -279,6 +306,7 @@ export interface PreviewSessionContextPageOptions {
 	executionId?: string;
 	/** `nextCursor` from the previous page. Omit it to read the first page. */
 	cursor?: string;
+	/** Maximum characters in the returned transcript, wrapper included. */
 	pageSize?: number;
 }
 
@@ -286,15 +314,29 @@ export type PreviewSessionContextPage =
 	| { ok: true; transcript: string; nextCursor: string | null }
 	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' };
 
+type TurnPart = keyof FormattedTurn;
+
 interface TranscriptCursor {
 	executionId: string | null;
 	turnId: string;
+	part: TurnPart;
 	offset: number;
+	/** Digest of the part text before `offset`. */
+	digest: string;
 }
 
 const INVALID_CURSOR: PreviewSessionContextPage = { ok: false, reason: 'invalid_cursor' };
+const PAGE_END_MARKER = '\n[transcript continues on the next page]';
+/** Each page carries at least this much transcript, so that reading always advances. */
+const MIN_PAGE_BODY_CHARS = 2;
 
-// A turn ID and an offset in its formatted text stay valid when later turns are appended.
+function digestPrefix(text: string, end: number): string {
+	return createHash('sha256').update(text.slice(0, end)).digest('base64url');
+}
+
+// A cursor points into the header or the body of one turn, so it stays valid when later turns
+// are appended. A turn that runs can still change, for example when a tool call completes. The
+// digest detects a change before the offset, and the next page then starts that turn again.
 function encodeCursor(cursor: TranscriptCursor): string {
 	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
 }
@@ -306,11 +348,19 @@ function decodeCursor(cursor: string): TranscriptCursor | null {
 			isRecord(parsed) &&
 			(parsed.executionId === null || typeof parsed.executionId === 'string') &&
 			typeof parsed.turnId === 'string' &&
+			(parsed.part === 'header' || parsed.part === 'body') &&
 			typeof parsed.offset === 'number' &&
 			Number.isSafeInteger(parsed.offset) &&
-			parsed.offset >= 0
+			parsed.offset >= 0 &&
+			typeof parsed.digest === 'string'
 		) {
-			return { executionId: parsed.executionId, turnId: parsed.turnId, offset: parsed.offset };
+			return {
+				executionId: parsed.executionId,
+				turnId: parsed.turnId,
+				part: parsed.part,
+				offset: parsed.offset,
+				digest: parsed.digest,
+			};
 		}
 	} catch {
 		// Reported to the caller as an invalid cursor.
@@ -328,10 +378,11 @@ function pageEnd(text: string, start: number, end: number): number {
 /**
  * Format one page of the complete preview session transcript. Unlike
  * `formatPreviewSessionContext`, no value is truncated and no turn is left out:
- * the transcript is split into pages of at most `pageSize` characters, and a
- * single value larger than a page continues on the next page. `nextCursor` is
- * `null` on the last page. Values in the timeline are already removed of
- * secrets at record time.
+ * the transcript is split into pages of at most `pageSize` characters, wrapper
+ * included, and a single value larger than a page continues on the next page.
+ * `nextCursor` is `null` on the last page. When a turn changed before the
+ * cursor position, the next page starts that turn again. Values in the
+ * timeline are already removed of secrets at record time.
  */
 export function formatPreviewSessionContextPage(
 	thread: AgentSessionThread,
@@ -346,48 +397,79 @@ export function formatPreviewSessionContextPage(
 	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
 
 	let turnIndex = 0;
+	let part: TurnPart = 'header';
 	let offset = 0;
+	let turn: FormattedTurn | undefined;
+	let startMarker = '';
 	if (cursor !== undefined) {
 		const position = decodeCursor(cursor);
 		if (!position || position.executionId !== (executionId ?? null)) return INVALID_CURSOR;
 		turnIndex = scoped.findIndex(({ id }) => id === position.turnId);
 		if (turnIndex === -1) return INVALID_CURSOR;
-		offset = position.offset;
+
+		turn = formatTurn(scoped[turnIndex], FULL_LIMITS);
+		const text = turn[position.part];
+		const unchanged =
+			position.offset <= text.length && digestPrefix(text, position.offset) === position.digest;
+		if (unchanged) {
+			part = position.part;
+			offset = position.offset;
+		}
+		const turnLabel = `turn ${turnIndex + 1}`;
+		if (!unchanged) {
+			startMarker = `\n[continued from the previous page. ${turnLabel} changed after the previous page, so it starts again here]`;
+		} else if (part === 'body' || offset > 0) {
+			startMarker = `\n[continued from the previous page, inside ${turnLabel}]`;
+		} else {
+			startMarker = '\n[continued from the previous page]';
+		}
 	}
 
-	const startMarker =
-		cursor === undefined
-			? ''
-			: `\n[continued from the previous page${offset > 0 ? `, inside turn ${turnIndex + 1}` : ''}]`;
+	const prefix = formatPrefix(thread, scoped.length, executionId, ', output: full');
+	const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+	// Reserve the end marker on every page, because the last page is known only after the loop.
+	let budget = Math.max(
+		MIN_PAGE_BODY_CHARS,
+		pageSize - prefix.length - startMarker.length - PAGE_END_MARKER.length - closing.length,
+	);
 	const parts: string[] = [];
-	let budget = Math.max(1, pageSize);
-	while (turnIndex < scoped.length && budget > 0) {
-		const text = `\n${formatExecution(scoped[turnIndex], FULL_LIMITS)}`;
-		if (offset > text.length) return INVALID_CURSOR;
+	while (turnIndex < scoped.length) {
+		turn ??= formatTurn(scoped[turnIndex], FULL_LIMITS);
+		const text = turn[part];
 		const remaining = text.length - offset;
 		if (remaining <= budget) {
 			parts.push(text.slice(offset));
 			budget -= remaining;
-			turnIndex++;
 			offset = 0;
+			if (part === 'header') {
+				part = 'body';
+			} else {
+				part = 'header';
+				turnIndex++;
+				turn = undefined;
+			}
 			continue;
 		}
-		const end = pageEnd(text, offset, offset + budget);
-		parts.push(text.slice(offset, end));
-		offset = end;
-		budget = 0;
+		if (budget > 0) {
+			const end = pageEnd(text, offset, offset + budget);
+			parts.push(text.slice(offset, end));
+			offset = end;
+		}
+		break;
 	}
 
-	const nextCursor =
-		turnIndex < scoped.length
-			? encodeCursor({ executionId: executionId ?? null, turnId: scoped[turnIndex].id, offset })
-			: null;
-	const endMarker = nextCursor === null ? '' : '\n[transcript continues on the next page]';
-	const transcript =
-		formatPrefix(thread, scoped.length, executionId, ', output: full') +
-		startMarker +
-		parts.join('') +
-		endMarker +
-		`\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+	let nextCursor: string | null = null;
+	if (turnIndex < scoped.length) {
+		turn ??= formatTurn(scoped[turnIndex], FULL_LIMITS);
+		nextCursor = encodeCursor({
+			executionId: executionId ?? null,
+			turnId: scoped[turnIndex].id,
+			part,
+			offset,
+			digest: digestPrefix(turn[part], offset),
+		});
+	}
+	const endMarker = nextCursor === null ? '' : PAGE_END_MARKER;
+	const transcript = prefix + startMarker + parts.join('') + endMarker + closing;
 	return { ok: true, transcript, nextCursor };
 }
