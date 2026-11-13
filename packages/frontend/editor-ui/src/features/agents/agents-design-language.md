@@ -432,6 +432,10 @@ and returns to the upload screen.
 Existing skills open in the editor. Keep the body field order: When to use this
 skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 
+Show the selected scope in the skill header. The Change scope menu lists only
+other scopes. After a new selection, keep the previous scope available so the
+user can undo the selection before they save.
+
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.

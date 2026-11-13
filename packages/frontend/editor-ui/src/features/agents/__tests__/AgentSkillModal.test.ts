@@ -1886,7 +1886,6 @@ describe('AgentSkillModal from Settings', () => {
 
 		const iconOf = (value: string) =>
 			getByTestId(`agent-skill-menu-scope-option-${value}`).getAttribute('data-item-icon');
-		expect(iconOf('instance')).toBe('globe');
 		expect(iconOf('project:team-1')).toBe('🚀');
 		expect(iconOf('project:team-2')).toBe('briefcase');
 		expect(iconOf('project:team-3')).toBe('layers');
@@ -2023,6 +2022,35 @@ describe('AgentSkillModal from Settings', () => {
 			expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ scope: 'instance' }));
 		});
 	});
+
+	it.each(['project:p1', 'project:personal', 'instance'])(
+		'omits the current scope %s from a saved skill menu and permits undoing a pending choice',
+		async (initialScope) => {
+			const scopeOptions = [
+				{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+				{ value: 'project:personal', label: 'Personal project', icon: 'user' as const },
+				{ value: 'instance', label: 'Global', icon: 'globe' as const },
+			];
+			const { getByTestId, queryByTestId } = renderModal({
+				skillId: 's1',
+				skill: SAVED_SKILL,
+				settings: { scopeOptions, initialScope },
+			});
+			expect(
+				queryByTestId(`agent-skill-menu-scope-option-${initialScope}`),
+			).not.toBeInTheDocument();
+			const destination = scopeOptions.find(({ value }) => value !== initialScope)!;
+			await chooseScopeOption(destination.label);
+			expect(
+				queryByTestId(`agent-skill-menu-scope-option-${destination.value}`),
+			).not.toBeInTheDocument();
+			const original = getByTestId(`agent-skill-menu-scope-option-${initialScope}`);
+			await fireEvent.click(original);
+			expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent(
+				scopeOptions.find(({ value }) => value === initialScope)!.label,
+			);
+		},
+	);
 
 	it('asks the server for a free default name when a skill is started by hand', async () => {
 		const getDefaultName = vi.fn().mockResolvedValue('New skill 3');
@@ -2466,9 +2494,7 @@ describe('header and footer', () => {
 		await userEvent.click(getByTestId('agent-skill-header-menu'));
 		getByRole('menuitem', { name: 'agents.builder.skills.menu.changeScope' }).focus();
 		await userEvent.keyboard('{ArrowRight}');
-		const global = await findByRole('menuitem', { name: 'Global' });
-		expect(global.querySelectorAll('[data-icon="check"]')).toHaveLength(1);
-		await userEvent.click(getByRole('menuitem', { name: 'Marketing' }));
+		await userEvent.click(await findByRole('menuitem', { name: 'Marketing' }));
 
 		expect(getByTestId('agent-skill-scope-badge')).toHaveTextContent('Marketing');
 		await userEvent.click(getByTestId('agent-skill-create-save'));

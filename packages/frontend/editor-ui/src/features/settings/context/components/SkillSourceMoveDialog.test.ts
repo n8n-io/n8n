@@ -10,6 +10,7 @@ import { useSkillsStore } from '../skills.store';
 import SkillSourceMoveDialog from './SkillSourceMoveDialog.vue';
 
 vi.mock('vue-router', () => ({
+	useRoute: () => ({ params: {}, query: {} }),
 	useRouter: () => ({
 		resolve: ({ query }: { query: { skillId: string } }) => ({
 			href: `/settings/context/skills?skillId=${query.skillId}`,
@@ -266,9 +267,9 @@ it('sends the destination credential in both preview and move', async () => {
 it.each([
 	[
 		'global',
-		'This repository is already connected in Global. Resolve the duplicate source before moving this one.',
+		'acme/skills is already connected in Global. Resolve the duplicate source before moving this one.',
 	],
-	['scope', 'This repository is already connected in the destination. Choose another scope.'],
+	['scope', 'acme/skills is already connected in Target. Choose another scope.'],
 ] as const)('shows a duplicate in %s and blocks submission', async (where, message) => {
 	const view = setup();
 	view.store.previewSourceMove.mockResolvedValue({
@@ -279,4 +280,34 @@ it.each([
 	await select(view, 'source-move-scope', 'Target');
 	expect(await view.findByText(message)).toBeVisible();
 	expect(view.getByTestId('source-move-submit')).toBeDisabled();
+});
+
+it.each([
+	['project', source, 'Origin'],
+	['global', { ...source, projectId: null, projectName: null, projectType: null }, 'Global'],
+] as const)(
+	'shows the current %s scope without offering it as a destination',
+	async (_kind, currentSource, label) => {
+		const pinia = createTestingPinia();
+		const view = render({ pinia, props: { source: currentSource } });
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(label);
+		await userEvent.click(view.getByTestId('source-move-scope'));
+		expect(view.queryByRole('option', { name: label, exact: true })).not.toBeInTheDocument();
+		expect(view.getByRole('option', { name: 'Target', exact: true })).toBeVisible();
+	},
+);
+
+it('labels moving and destination skills separately without disclosing hidden skill details', async () => {
+	const view = setup();
+	view.store.previewSourceMove.mockResolvedValue({
+		...conflictPreview(),
+		nameConflicts: [{ moving: { id: 'hidden-id', name: null }, existing: null }],
+	});
+	await select(view, 'source-move-scope', 'Target');
+	const conflicts = await view.findByTestId('source-move-name-conflicts');
+	expect(conflicts).toHaveTextContent('Moving skill');
+	expect(conflicts).toHaveTextContent('Already in Target');
+	expect(view.getAllByText('A skill you cannot view')).toHaveLength(2);
+	expect(conflicts).not.toHaveTextContent('hidden-id');
+	expect(view.queryByTestId('source-move-existing-skill')).not.toBeInTheDocument();
 });

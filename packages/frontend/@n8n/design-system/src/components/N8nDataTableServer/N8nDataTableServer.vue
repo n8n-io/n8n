@@ -590,9 +590,12 @@ const table = useVueTable({
 											:render="header.column.columnDef.header"
 											:props="header.getContext()"
 										/>
-										<template v-if="header.column.getCanSort()">
+										<span
+											v-if="header.column.getCanSort() && header.column.getIsSorted()"
+											class="sort-indicator"
+										>
 											{{ { asc: '↑', desc: '↓' }[header.column.getIsSorted() as string] }}
-										</template>
+										</span>
 									</div>
 
 									<div
@@ -722,6 +725,10 @@ const table = useVueTable({
 .n8n-data-table-server {
 	height: 100%;
 	font-size: var(--font-size--sm);
+
+	.sort-indicator {
+		margin-inline-start: var(--spacing--4xs);
+	}
 
 	table {
 		width: 100%;

@@ -4,6 +4,7 @@ import {
 	type MoveSkillSourceDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceListItem,
+	type SkillListItem,
 	type SkillSourceMovePreview,
 } from '@n8n/api-types';
 import { computed, ref, useId, watch } from 'vue';
@@ -13,17 +14,20 @@ import { useRouter } from 'vue-router';
 import { useEventListener } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nIcon,
 	N8nSelect2,
 	N8nText,
 } from '@n8n/design-system';
 
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 import { useSkillsStore } from '../skills.store';
+import SkillScopeBadge from './SkillScopeBadge.vue';
 import { parseScope, PROJECT_SCOPE_PREFIX } from '../skills.utils';
 
 const props = defineProps<{
@@ -57,6 +61,18 @@ const scopeItems = computed(() =>
 			(props.source.projectId ? `${PROJECT_SCOPE_PREFIX}${props.source.projectId}` : 'instance'),
 	),
 );
+const destinationLabel = computed(
+	() => scopeItems.value.find(({ value }) => value === scope.value)?.label ?? scope.value,
+);
+const currentScope = computed<
+	Pick<SkillListItem, 'scope' | 'projectId' | 'projectName' | 'projectType' | 'projectIcon'>
+>(() => ({
+	scope: props.source.projectId ? 'project' : 'instance',
+	projectId: props.source.projectId,
+	projectName: props.source.projectName,
+	projectType: props.source.projectType,
+	projectIcon: props.source.projectIcon,
+}));
 const credentialItems = computed(() => [
 	{ value: NONE, label: i18n.baseText('settings.context.skills.moveSource.credential.none') },
 	...credentials.value.map(({ id, name }) => ({ value: id, label: name })),
@@ -147,24 +163,6 @@ function recheck() {
 }
 useEventListener(window, 'focus', recheck);
 
-function agentConflictText(conflict: SkillSourceMovePreview['usageConflicts'][number]) {
-	const agents = conflict.agents.map(({ name }) => name);
-	if (conflict.hiddenAgents) {
-		agents.push(
-			i18n.baseText('settings.context.skills.moveSource.hiddenAgents', {
-				interpolate: { count: conflict.hiddenAgents },
-				adjustToNumber: conflict.hiddenAgents,
-			}),
-		);
-	}
-	return i18n.baseText('settings.context.skills.moveSource.agentConflict', {
-		interpolate: {
-			skill: conflict.skill.name ?? i18n.baseText('settings.context.skills.moveSource.hiddenSkill'),
-			agents: agents.join(i18n.baseText('settings.context.skills.moveSource.listSeparator')),
-		},
-	});
-}
-
 function skillHref(skillId: string) {
 	return router.resolve({ query: { skillId } }).href;
 }
@@ -216,10 +214,20 @@ function close(open: boolean) {
 		@update:open="close"
 	>
 		<N8nDialogBody :class="$style.body">
-			<N8nText>{{
-				i18n.baseText('settings.context.skills.moveSource.description', {
-					interpolate: { source: source.label },
-				})
+			<div :class="$style.sourceSummary">
+				<div :class="$style.entity">
+					<N8nIcon icon="git-branch" size="medium" />
+					<N8nText :bold="true" :class="$style.entityName">{{ source.label }}</N8nText>
+				</div>
+				<div :class="$style.currentScope">
+					<N8nText size="small" color="text-light">{{
+						i18n.baseText('settings.context.skills.moveSource.currentScope')
+					}}</N8nText>
+					<SkillScopeBadge :skill="currentScope" />
+				</div>
+			</div>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('settings.context.skills.moveSource.description')
 			}}</N8nText>
 			<div :class="$style.field">
 				<label
@@ -273,78 +281,169 @@ function close(open: boolean) {
 					i18n.baseText('settings.context.skills.moveSource.credential.error')
 				}}</N8nCallout>
 				<div v-if="preview" aria-live="polite" :class="$style.results">
-					<N8nCallout v-if="preview.credential.reason" theme="warning">
-						{{
-							i18n.baseText(
-								preview.credential.reason === 'credential_missing'
-									? 'settings.context.skills.moveSource.credential.required'
-									: 'settings.context.skills.moveSource.credential.ineligible',
-							)
-						}}
+					<N8nCallout v-if="preview.credential.reason" theme="warning" icon="key-round">
+						<div :class="$style.message">
+							<strong>{{
+								i18n.baseText('settings.context.skills.moveSource.credential.title')
+							}}</strong>
+							<span>{{
+								i18n.baseText(
+									preview.credential.reason === 'credential_missing'
+										? 'settings.context.skills.moveSource.credential.required'
+										: 'settings.context.skills.moveSource.credential.ineligible',
+								)
+							}}</span>
+						</div>
 					</N8nCallout>
-					<N8nCallout v-if="preview.duplicate.kind === 'blocked'" theme="danger">
-						{{
-							i18n.baseText(
-								preview.duplicate.where === 'global'
-									? 'settings.context.skills.moveSource.duplicateGlobal'
-									: 'settings.context.skills.moveSource.duplicateScope',
-							)
-						}}
+					<N8nCallout v-if="preview.duplicate.kind === 'blocked'" theme="danger" icon="git-branch">
+						<div :class="$style.message">
+							<strong>{{
+								i18n.baseText('settings.context.skills.moveSource.duplicateTitle')
+							}}</strong>
+							<span>{{
+								i18n.baseText(
+									preview.duplicate.where === 'global'
+										? 'settings.context.skills.moveSource.duplicateGlobal'
+										: 'settings.context.skills.moveSource.duplicate',
+									{
+										interpolate: {
+											source: source.label,
+											scope:
+												preview.duplicate.where === 'global'
+													? i18n.baseText('settings.context.skills.scope.instance')
+													: destinationLabel,
+										},
+									},
+								)
+							}}</span>
+						</div>
 					</N8nCallout>
-					<N8nCallout v-if="preview.duplicate.kind === 'warning'" theme="warning">
-						{{
-							i18n.baseText('settings.context.skills.moveSource.duplicateWarning', {
-								interpolate: {
-									projects: preview.duplicate.projects
-										.map(({ name }) => name)
-										.join(i18n.baseText('settings.context.skills.moveSource.listSeparator')),
-								},
-							})
-						}}
+					<N8nCallout v-if="preview.duplicate.kind === 'warning'" theme="warning" icon="git-branch">
+						<div :class="$style.message">
+							<strong>{{
+								i18n.baseText('settings.context.skills.moveSource.duplicateWarning')
+							}}</strong>
+							<div :class="$style.entities">
+								<N8nBadge
+									v-for="project in preview.duplicate.projects"
+									:key="project.id"
+									leading-icon="layers"
+									>{{ project.name }}</N8nBadge
+								>
+							</div>
+						</div>
 					</N8nCallout>
-					<N8nCallout
+					<section
 						v-if="preview.nameConflicts.length"
-						theme="danger"
+						:class="$style.conflict"
 						data-test-id="source-move-name-conflicts"
 					>
-						<p>{{ i18n.baseText('settings.context.skills.moveSource.nameConflicts') }}</p>
-						<ul :class="$style.list">
-							<li v-for="(conflict, index) in preview.nameConflicts" :key="index">
-								{{
-									i18n.baseText('settings.context.skills.moveSource.namePair', {
-										interpolate: {
-											incoming:
-												conflict.moving.name ??
-												i18n.baseText('settings.context.skills.moveSource.hiddenSkill'),
-										},
-									})
-								}}
-								<a
-									v-if="conflict.existing"
-									:href="skillHref(conflict.existing.id)"
-									target="_blank"
-									rel="noopener noreferrer"
-									data-test-id="source-move-existing-skill"
-									>{{ conflict.existing.name }}</a
-								>
-								<span v-else>{{
-									i18n.baseText('settings.context.skills.moveSource.hiddenSkill')
-								}}</span>
+						<N8nCallout theme="danger" :round-corners="false" only-bottom-border>
+							<div :class="$style.message">
+								<strong>{{
+									i18n.baseText('settings.context.skills.moveSource.nameConflicts.title')
+								}}</strong>
+								<span>{{ i18n.baseText('settings.context.skills.moveSource.nameConflicts') }}</span>
+							</div>
+						</N8nCallout>
+						<ul :class="$style.conflictList">
+							<li
+								v-for="(conflict, index) in preview.nameConflicts"
+								:key="index"
+								:class="$style.conflictRow"
+							>
+								<div :class="$style.conflictEntity">
+									<N8nText size="small" color="text-light">{{
+										i18n.baseText('settings.context.skills.moveSource.movingSkill')
+									}}</N8nText>
+									<div :class="$style.entity">
+										<N8nIcon icon="book-open" size="small" />
+										<N8nText :class="$style.entityName">{{
+											conflict.moving.name ??
+											i18n.baseText('settings.context.skills.moveSource.hiddenSkill')
+										}}</N8nText>
+									</div>
+								</div>
+								<div :class="$style.conflictEntity">
+									<N8nText size="small" color="text-light">{{
+										i18n.baseText('settings.context.skills.moveSource.existingSkill', {
+											interpolate: { scope: destinationLabel },
+										})
+									}}</N8nText>
+									<a
+										v-if="conflict.existing"
+										:href="skillHref(conflict.existing.id)"
+										target="_blank"
+										rel="noopener noreferrer"
+										:class="[$style.entity, $style.skillLink]"
+										data-test-id="source-move-existing-skill"
+									>
+										<N8nIcon icon="book-open" size="small" />
+										<span :class="$style.entityName">{{ conflict.existing.name }}</span>
+										<N8nIcon icon="external-link" size="small" />
+									</a>
+									<N8nText v-else>{{
+										i18n.baseText('settings.context.skills.moveSource.hiddenSkill')
+									}}</N8nText>
+								</div>
 							</li>
 						</ul>
-					</N8nCallout>
-					<N8nCallout
+						<N8nText :class="$style.conflictHint" size="small" color="text-light">{{
+							i18n.baseText('settings.context.skills.moveSource.syncedNames')
+						}}</N8nText>
+					</section>
+					<section
 						v-if="preview.usageConflicts.length"
-						theme="danger"
+						:class="$style.conflict"
 						data-test-id="source-move-agent-conflicts"
 					>
-						<p>{{ i18n.baseText('settings.context.skills.moveSource.agentConflicts') }}</p>
-						<ul :class="$style.list">
-							<li v-for="conflict in preview.usageConflicts" :key="conflict.skill.id">
-								{{ agentConflictText(conflict) }}
+						<N8nCallout theme="danger" :round-corners="false" only-bottom-border>
+							<div :class="$style.message">
+								<strong>{{
+									i18n.baseText('settings.context.skills.moveSource.agentConflicts.title')
+								}}</strong>
+								<span>{{
+									i18n.baseText('settings.context.skills.moveSource.agentConflicts')
+								}}</span>
+							</div>
+						</N8nCallout>
+						<ul :class="$style.conflictList">
+							<li
+								v-for="conflict in preview.usageConflicts"
+								:key="conflict.skill.id"
+								:class="$style.conflictRow"
+							>
+								<div :class="$style.conflictEntity">
+									<N8nText size="small" color="text-light">{{
+										i18n.baseText('settings.context.skills.moveSource.movingSkill')
+									}}</N8nText>
+									<div :class="$style.entity">
+										<N8nIcon icon="book-open" size="small" />
+										<N8nText :class="$style.entityName">{{
+											conflict.skill.name ??
+											i18n.baseText('settings.context.skills.moveSource.hiddenSkill')
+										}}</N8nText>
+									</div>
+								</div>
+								<div :class="$style.conflictEntity">
+									<N8nText size="small" color="text-light">{{
+										i18n.baseText('settings.context.skills.moveSource.usedBy')
+									}}</N8nText>
+									<div :class="$style.entities">
+										<N8nBadge v-for="agent in conflict.agents" :key="agent.id" leading-icon="bot">{{
+											agent.name
+										}}</N8nBadge>
+										<N8nText v-if="conflict.hiddenAgents" size="small" color="text-light">{{
+											i18n.baseText('settings.context.skills.moveSource.hiddenAgents', {
+												interpolate: { count: conflict.hiddenAgents },
+												adjustToNumber: conflict.hiddenAgents,
+											})
+										}}</N8nText>
+									</div>
+								</div>
 							</li>
 						</ul>
-					</N8nCallout>
+					</section>
 				</div>
 			</template>
 			<N8nCallout v-if="error" theme="danger" role="alert">{{ error }}</N8nCallout>
@@ -374,6 +473,8 @@ function close(open: boolean) {
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .body,
 .results {
 	display: flex;
@@ -385,13 +486,77 @@ function close(open: boolean) {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 }
-.list {
-	padding-left: var(--spacing--lg);
-	li + li {
-		margin-top: var(--spacing--xs);
+.sourceSummary,
+.conflict {
+	flex-shrink: 0;
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--surface);
+	overflow: hidden;
+}
+.sourceSummary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs);
+}
+.currentScope,
+.entity,
+.entities {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+.currentScope,
+.entities {
+	flex-wrap: wrap;
+}
+.entities > * {
+	max-width: 100%;
+}
+.entity > svg {
+	flex-shrink: 0;
+}
+.entityName {
+	overflow-wrap: anywhere;
+	min-width: 0;
+}
+.message,
+.conflictEntity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+.conflictList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.conflictRow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--xs);
+	& + & {
+		border-top: var(--border);
 	}
-	a {
-		text-decoration: underline;
+}
+.conflictEntity {
+	flex: 1 1 40%;
+
+	@include breakpoints.breakpoint('xs-only') {
+		flex-basis: 100%;
 	}
+}
+.skillLink {
+	color: var(--link--color--secondary);
+	text-decoration: underline;
+	text-underline-offset: var(--spacing--5xs);
+}
+.conflictHint {
+	display: block;
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 </style>
