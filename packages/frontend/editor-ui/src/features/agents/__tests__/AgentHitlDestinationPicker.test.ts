@@ -13,6 +13,7 @@ function render(
 	icon: 'hash' | 'user' | 'server' = 'hash',
 ) {
 	return mount(AgentHitlDestinationPicker, {
+		attrs: { class: 'destination-field' },
 		props: { label: 'Destination', load, icon },
 		attachTo: document.body,
 		global: {
@@ -98,6 +99,7 @@ it.each(['hash', 'user', 'server'] as const)(
 		const destination = { id: 'review', name: 'Review destination' };
 		const wrapper = render(vi.fn().mockResolvedValue({ options: [destination] }), icon);
 		const trigger = wrapper.get('[data-testid="agent-hitl-destination-picker"]');
+		expect(trigger.classes()).toContain('destination-field');
 		expect(trigger.find(`[data-icon="${icon}"]`).exists()).toBe(true);
 		expect(trigger.attributes('aria-expanded')).toBe('false');
 		await trigger.trigger('click');

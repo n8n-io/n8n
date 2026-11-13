@@ -23,6 +23,7 @@ import { hasApprovalExpired } from './approval-expiry';
 import { AgentHitlWorkflowRepository } from '../repositories/agent-hitl-workflow.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import type { ChannelHitlAdapter } from '../integrations/channel-hitl';
 import { AgentCredentialLookupService } from '../integrations/agent-credential-lookup.service';
 
 @Service()
@@ -150,18 +151,19 @@ export class AgentChannelHitlService {
 	async listOptions(user: User, projectId: string, agentId: string, query: AgentHitlOptionsQuery) {
 		const agent = await this.agents.findByIdAndProjectId(agentId, projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
-		this.requireConnection(query.channel, query.credentialId, agent.integrations ?? []);
-		const platform = this.registry.require(query.channel);
-		if (!platform.hitl.supported)
-			throw new UserError('This channel does not support approval requests');
+		const hitl = this.requireConnection(
+			query.channel,
+			query.credentialId,
+			agent.integrations ?? [],
+		);
 		const credential = await this.credentials.decryptForUser(
 			user,
 			projectId,
 			query.credentialId,
-			platform.hitl.credentialType,
+			hitl.credentialType,
 		);
 		if (!credential) throw new UserError('The channel credential is unavailable');
-		return await platform.hitl.listOptions({
+		return await hitl.listOptions({
 			credential,
 			query,
 			httpClient: this.outboundHttp.requests(),
@@ -187,11 +189,12 @@ export class AgentChannelHitlService {
 		integrations: AgentIntegrationConfig[],
 		ownerId: string,
 	): IWorkflowBase {
-		this.requireConnection(configuration.channel, configuration.credentialId, integrations);
-		const platform = this.registry.require(configuration.channel);
-		if (!platform.hitl.supported)
-			throw new UserError('This channel does not support approval requests');
-		const node = platform.hitl.createNode(configuration);
+		const hitl = this.requireConnection(
+			configuration.channel,
+			configuration.credentialId,
+			integrations,
+		);
+		const node = hitl.createNode(configuration);
 		const now = new Date();
 		// The execution stores the generated graph. Its private owner has no editable graph.
 		return {
@@ -226,12 +229,15 @@ export class AgentChannelHitlService {
 		channel: string,
 		credentialId: string,
 		integrations: AgentIntegrationConfig[],
-	) {
+	): ChannelHitlAdapter {
 		if (
 			!integrations.some(
 				(integration) => integration.type === channel && integration.credentialId === credentialId,
 			)
 		)
 			throw new UserError('The approval channel is no longer connected to this Agent');
+		const { hitl } = this.registry.require(channel);
+		if (!hitl.supported) throw new UserError('This channel does not support approval requests');
+		return hitl;
 	}
 }

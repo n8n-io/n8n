@@ -123,7 +123,6 @@ describe('Agent channel approval', () => {
 		expect(() => service.buildWorkflow(configuration, [], 'caller')).toThrow('no longer connected');
 	});
 	it('uses Telegram numeric IDs and rejects usernames', () => {
-		if (!telegramHitl.supported) throw new Error('Expected Telegram support');
 		const createNode = telegramHitl.createNode;
 		const telegram = {
 			...configuration,
@@ -139,7 +138,6 @@ describe('Agent channel approval', () => {
 		);
 	});
 	it.each(['channel', 'user'] as const)('uses Discord %s destinations', (kind) => {
-		if (!discordHitl.supported) throw new Error('Expected Discord support');
 		expect(
 			discordHitl.createNode({
 				...configuration,

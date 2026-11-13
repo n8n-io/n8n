@@ -4,7 +4,6 @@ import { slackHitl } from '../../integrations/platforms/slack/slack-hitl';
 import { discordHitl } from '../../integrations/platforms/discord/discord-hitl';
 
 it('combines Slack channels and users and pages only unfinished lists', async () => {
-	if (!slackHitl.supported) throw new Error('Expected Slack support');
 	const httpClient = mock<HttpRequestClient>();
 	httpClient.request.mockImplementation(async (request) => {
 		const url = String(request.url);
@@ -61,7 +60,6 @@ it('combines Slack channels and users and pages only unfinished lists', async ()
 });
 
 it('preserves a continuation when neither Slack list matches on this page', async () => {
-	if (!slackHitl.supported) throw new Error('Expected Slack support');
 	const httpClient = mock<HttpRequestClient>();
 	httpClient.request.mockImplementation(async ({ url }) =>
 		String(url).includes('users.list')
@@ -82,7 +80,6 @@ it('preserves a continuation when neither Slack list matches on this page', asyn
 });
 
 it('combines Discord text channels and people from the selected server', async () => {
-	if (!discordHitl.supported) throw new Error('Expected Discord support');
 	const httpClient = mock<HttpRequestClient>();
 	httpClient.request.mockImplementation(async ({ url }) =>
 		String(url).includes('/members?')
@@ -120,7 +117,6 @@ it('combines Discord text channels and people from the selected server', async (
 });
 
 it('rejects malformed destination cursors before contacting a platform', async () => {
-	if (!slackHitl.supported) throw new Error('Expected Slack support');
 	const httpClient = mock<HttpRequestClient>();
 	await expect(
 		slackHitl.listOptions({

@@ -631,6 +631,8 @@ override state in the Agent JSON.
 Use the two-option switch for Approval method. Keep the no-channel reason beside
 the Connected channel label in smaller, muted text.
 Group Human review destination fields in a Settings Row Group below the method switch.
+Use `AgentFormSettingRow` for each field. Its horizontal and vertical layouts
+share the Agent label and subtitle styles.
 Use a flat setting row for the method. Align it with section headings and leave
 `--spacing--xs` before the destination group.
 Keep the decision workflow in its own group in workflow mode. Group Review expiry

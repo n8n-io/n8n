@@ -18,18 +18,18 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
-export type ChannelHitlDefinition =
-	| { supported: false }
-	| {
-			supported: true;
-			channel: AgentHitlChannel;
-			nodeType: string;
-			credentialType: string;
-			matchesResponse: (node: INode, event: ActionEvent) => boolean;
-			fields: AgentHitlChannelDescriptor['fields'];
-			listOptions: (context: ChannelHitlOptionsContext) => Promise<AgentHitlOptionsPage>;
-			createNode: (configuration: AgentHitlChannelConfiguration) => INode;
-	  };
+export type ChannelHitlDefinition = { supported: false } | ChannelHitlAdapter;
+
+export interface ChannelHitlAdapter {
+	supported: true;
+	channel: AgentHitlChannel;
+	nodeType: string;
+	credentialType: string;
+	matchesResponse: (node: INode, event: ActionEvent) => boolean;
+	fields: AgentHitlChannelDescriptor['fields'];
+	listOptions: (context: ChannelHitlOptionsContext) => Promise<AgentHitlOptionsPage>;
+	createNode: (configuration: AgentHitlChannelConfiguration) => INode;
+}
 
 export function approvalNode(
 	type: string,

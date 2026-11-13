@@ -21,7 +21,8 @@ wait for an Agent's approval request.
 | Teams, WhatsApp, Linear | Unsupported destination | Existing Agent conversations keep their approval behavior. |
 | n8n Chat | No separately targeted destination | Existing conversational approvals remain available. |
 
-Each platform declares its capability in `integrations/channel-hitl.ts`. It owns
+Each platform declares its capability in `integrations/channel-hitl.ts`. Supported
+platforms implement `ChannelHitlAdapter`. Other platforms use `{ supported: false }`. It owns
 its destination fields, paginated lookup, send-and-wait node, and response matching.
 The coordinator does not read platform-specific node parameters.
 

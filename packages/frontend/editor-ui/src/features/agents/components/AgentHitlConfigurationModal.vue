@@ -11,7 +11,6 @@ import {
 	N8nIconButton,
 	type ComboboxItem,
 	N8nInput,
-	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSelect2,
 	N8nSwitch,
@@ -123,6 +122,30 @@ const telegramId = ref(
 		? props.configuration.recipient.id
 		: '',
 );
+const recipientHelp = {
+	slack: 'agents.hitl.slackChannelHelp',
+	telegram: 'agents.hitl.telegramHelp',
+	discord: 'agents.hitl.discordUserHelp',
+} as const;
+const channelFields = computed(() => {
+	const selectedChannel = channel.value;
+	if (!selectedChannel) return [];
+	const requiresGuild = selectedChannel.fields.some((field) => field.name === 'guild');
+	return selectedChannel.fields
+		.filter((field) => field.name !== 'recipient' || !requiresGuild || guild.value)
+		.map((field) => ({
+			...field,
+			label: i18n.baseText(field.name === 'guild' ? 'agents.hitl.server' : 'agents.hitl.recipient'),
+			description:
+				field.name === 'recipient'
+					? i18n.baseText(recipientHelp[selectedChannel.channel])
+					: undefined,
+		}));
+});
+function updateDestination(field: 'guild' | 'recipient', value: AgentHitlOption | undefined) {
+	if (field === 'guild') guild.value = value;
+	else recipient.value = value;
+}
 const generatedName = computed(() => {
 	const defaultName = i18n.baseText('agents.hitl.defaultName', {
 		interpolate: { number: String(props.nextNumber) },
@@ -386,127 +409,90 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 					:class="$style.settingsGroup"
 					data-testid="agent-hitl-destination-section"
 				>
-					<N8nSettingsRow
+					<AgentFormSettingRow
 						v-if="method === 'workflow'"
 						:title="i18n.baseText('agents.hitl.workflow')"
 						:description="i18n.baseText('agents.hitl.workflowDescription')"
 						:layout="rowLayout"
 						action-max-width="66.666%"
-						:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
+						:class="$style.sectionRow"
 					>
-						<template #action>
-							<div :class="$style.workflowRow">
-								<N8nCombobox2
-									size="large"
-									:model-value="workflowId || undefined"
-									v-model:open="workflowSelectOpen"
-									:items="workflowItems"
-									:loading="loading || creating"
-									:disabled="creating"
-									:teleported="false"
-									:aria-label="i18n.baseText('agents.hitl.workflow')"
-									:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
-									:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
-									data-testid="agent-hitl-workflow"
-									@update:model-value="updateWorkflow"
-								/>
-								<N8nIconButton
-									v-if="workflowHref"
-									icon="external-link"
-									variant="ghost"
-									size="small"
-									:href="workflowHref"
-									target="_blank"
-									rel="noopener noreferrer"
-									:title="i18n.baseText('agents.toolConfig.workflow.target.open')"
-									:aria-label="i18n.baseText('agents.toolConfig.workflow.target.open')"
-									data-testid="agent-hitl-workflow-open"
-								/>
-							</div>
-						</template>
-					</N8nSettingsRow>
+						<div :class="$style.workflowRow">
+							<N8nCombobox2
+								size="large"
+								:model-value="workflowId || undefined"
+								v-model:open="workflowSelectOpen"
+								:items="workflowItems"
+								:loading="loading || creating"
+								:disabled="creating"
+								:teleported="false"
+								:aria-label="i18n.baseText('agents.hitl.workflow')"
+								:placeholder="i18n.baseText('agents.hitl.selectWorkflow')"
+								:empty-text="i18n.baseText('agents.tools.workflow.empty.noResults')"
+								data-testid="agent-hitl-workflow"
+								@update:model-value="updateWorkflow"
+							/>
+							<N8nIconButton
+								v-if="workflowHref"
+								icon="external-link"
+								variant="ghost"
+								size="small"
+								:href="workflowHref"
+								target="_blank"
+								rel="noopener noreferrer"
+								:title="i18n.baseText('agents.toolConfig.workflow.target.open')"
+								:aria-label="i18n.baseText('agents.toolConfig.workflow.target.open')"
+								data-testid="agent-hitl-workflow-open"
+							/>
+						</div>
+					</AgentFormSettingRow>
 					<template v-else>
-						<N8nSettingsRow
+						<AgentFormSettingRow
 							:title="i18n.baseText('agents.hitl.channel')"
 							:description="i18n.baseText('agents.hitl.channelDescription')"
 							:layout="rowLayout"
 							action-max-width="66.666%"
-							:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
+							:class="$style.sectionRow"
 						>
-							<template #action>
-								<N8nSelect2
-									:model-value="channelKey || undefined"
-									:items="channelItems"
-									:disabled="loading"
-									size="large"
-									:aria-label="i18n.baseText('agents.hitl.channel')"
-									:class="$style.control"
-									data-testid="agent-hitl-channel"
-									@update:model-value="updateChannel"
-								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							v-if="channel?.fields.some((field) => field.name === 'guild')"
-							:title="i18n.baseText('agents.hitl.server')"
+							<N8nSelect2
+								:model-value="channelKey || undefined"
+								:items="channelItems"
+								:disabled="loading"
+								size="large"
+								:aria-label="i18n.baseText('agents.hitl.channel')"
+								:class="$style.control"
+								data-testid="agent-hitl-channel"
+								@update:model-value="updateChannel"
+							/>
+						</AgentFormSettingRow>
+						<AgentFormSettingRow
+							v-for="field in channelFields"
+							:key="field.name"
+							:title="field.label"
+							:description="field.description"
 							:layout="rowLayout"
 							action-max-width="66.666%"
-							:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
+							:class="$style.sectionRow"
 						>
-							<template #action>
-								<AgentHitlDestinationPicker
-									:class="$style.control"
-									:key="`${channelKey}:guild`"
-									v-model="guild"
-									icon="server"
-									:label="i18n.baseText('agents.hitl.server')"
-									:load="(query, cursor) => loadOptions('guild', query, cursor)"
-								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							v-if="channel?.channel === 'telegram'"
-							:title="i18n.baseText('agents.hitl.recipient')"
-							:description="i18n.baseText('agents.hitl.telegramHelp')"
-							:layout="rowLayout"
-							action-max-width="66.666%"
-							:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
-						>
-							<template #action>
-								<N8nInput
-									v-model="telegramId"
-									size="large"
-									inputmode="numeric"
-									:class="$style.control"
-									data-testid="agent-hitl-telegram-user"
-								/>
-							</template>
-						</N8nSettingsRow>
-						<N8nSettingsRow
-							v-else-if="channel && (channel.channel !== 'discord' || guild)"
-							:title="i18n.baseText('agents.hitl.recipient')"
-							:description="
-								i18n.baseText(
-									channel.channel === 'slack'
-										? 'agents.hitl.slackChannelHelp'
-										: 'agents.hitl.discordUserHelp',
-								)
-							"
-							:layout="rowLayout"
-							action-max-width="66.666%"
-							:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
-						>
-							<template #action>
-								<AgentHitlDestinationPicker
-									:class="$style.control"
-									:key="`${channelKey}:${guild?.id}`"
-									v-model="recipient"
-									icon="hash"
-									:label="i18n.baseText('agents.hitl.recipient')"
-									:load="(query, cursor) => loadOptions('recipient', query, cursor)"
-								/>
-							</template>
-						</N8nSettingsRow>
+							<N8nInput
+								v-if="field.type === 'text'"
+								v-model="telegramId"
+								size="large"
+								inputmode="numeric"
+								:class="$style.control"
+								data-testid="agent-hitl-telegram-user"
+							/>
+							<AgentHitlDestinationPicker
+								v-else
+								:key="`${channelKey}:${field.name}:${field.name === 'recipient' ? guild?.id : ''}`"
+								:model-value="field.name === 'guild' ? guild : recipient"
+								:class="$style.control"
+								:icon="field.name === 'guild' ? 'server' : 'hash'"
+								:label="field.label"
+								:load="(query, cursor) => loadOptions(field.name, query, cursor)"
+								@update:model-value="updateDestination(field.name, $event)"
+							/>
+						</AgentFormSettingRow>
 					</template>
 				</N8nSettingsRowGroup>
 			</div>
@@ -517,32 +503,30 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 			>
 				<N8nText size="medium" bold>{{ i18n.baseText('agents.hitl.options') }}</N8nText>
 				<N8nSettingsRowGroup :class="$style.settingsGroup">
-					<N8nSettingsRow
+					<AgentFormSettingRow
 						:title="i18n.baseText('agents.hitl.expiry')"
 						:description="i18n.baseText('agents.hitl.expiryDescription')"
 						:layout="rowLayout"
 						action-max-width="66.666%"
-						:class="{ [$style.stackedRow]: rowLayout === 'vertical' }"
+						:class="$style.sectionRow"
 					>
-						<template #action>
-							<N8nSelect2
-								:model-value="String(expirySeconds)"
-								@update:model-value="updateExpiry"
-								size="large"
-								:teleported="false"
-								:items="[
-									{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
-									{ value: '3600', label: i18n.baseText('agents.hitl.expiry.hour') },
-									{ value: '86400', label: i18n.baseText('agents.hitl.expiry.day') },
-									{ value: '604800', label: i18n.baseText('agents.hitl.expiry.week') },
-								]"
-								:aria-label="i18n.baseText('agents.hitl.expiry')"
-								:class="$style.control"
-								data-testid="agent-hitl-expiry"
-							/>
-						</template>
-					</N8nSettingsRow>
-					<N8nSettingsRow layout="custom">
+						<N8nSelect2
+							:model-value="String(expirySeconds)"
+							@update:model-value="updateExpiry"
+							size="large"
+							:teleported="false"
+							:items="[
+								{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
+								{ value: '3600', label: i18n.baseText('agents.hitl.expiry.hour') },
+								{ value: '86400', label: i18n.baseText('agents.hitl.expiry.day') },
+								{ value: '604800', label: i18n.baseText('agents.hitl.expiry.week') },
+							]"
+							:aria-label="i18n.baseText('agents.hitl.expiry')"
+							:class="$style.control"
+							data-testid="agent-hitl-expiry"
+						/>
+					</AgentFormSettingRow>
+					<div :class="$style.sectionRow">
 						<AgentHitlToolsSelect
 							embedded
 							:model-value="selectedToolKeys"
@@ -550,7 +534,7 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 							:get-custom-tool-name="context.getCustomToolName"
 							@update:model-value="updateTools"
 						/>
-					</N8nSettingsRow>
+					</div>
 				</N8nSettingsRowGroup>
 			</section>
 		</div>
@@ -636,48 +620,24 @@ const rowLayout = computed(() => (fieldsWidth.value < 480 ? 'vertical' : 'horizo
 .settingsGroup {
 	background: transparent;
 	overflow: visible;
+}
+.sectionRow {
+	padding: var(--spacing--sm) var(--spacing--md);
+	column-gap: var(--spacing--2xs);
+	border-bottom: var(--border);
 
-	> :global([data-layout]) {
-		padding: var(--spacing--sm) var(--spacing--md);
-		min-height: 0;
-	}
-
-	> :global([data-layout='horizontal']),
-	> :global([data-layout='vertical']) {
-		> :first-child {
-			min-height: 0;
-
-			> :last-child {
-				padding-block: 0;
-
-				> :first-child {
-					font-size: var(--font-size--sm);
-				}
-
-				> :not(:first-child),
-				> :not(:first-child) :global(.n8n-text) {
-					font-size: var(--font-size--2xs);
-					color: var(--text-color--subtler);
-				}
-			}
-		}
-	}
-
-	> :global([data-layout='vertical']) > :first-child {
-		flex: 0 0 auto;
-	}
-
-	:global([data-test-id='settings-row-divider']) {
-		inset-inline: 0;
+	&:last-child {
+		border-bottom: 0;
 	}
 }
+
 .control,
 .workflowRow {
 	width: max-content;
 	min-width: calc((100cqi - 2 * var(--spacing--md)) / 3);
 	max-width: 100%;
 }
-.stackedRow {
+.sectionRow[data-layout='vertical'] {
 	.control,
 	.workflowRow {
 		width: 100%;

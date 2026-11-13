@@ -22,7 +22,7 @@ const membersSchema = z.array(
 		}),
 	}),
 );
-export const discordHitl: ChannelHitlDefinition = {
+export const discordHitl = {
 	supported: true,
 	channel: 'discord',
 	nodeType: 'n8n-nodes-base.discord',
@@ -59,7 +59,7 @@ export const discordHitl: ChannelHitlDefinition = {
 			},
 		});
 	},
-};
+} satisfies ChannelHitlDefinition;
 
 async function listDiscordPage(
 	{ credential, httpClient, query }: ChannelHitlOptionsContext,

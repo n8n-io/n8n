@@ -198,8 +198,7 @@ it('names a new workflow from the Agent and the next available number', async ()
 			},
 		}),
 	);
-	const save = wrapper.findAll('button').find((button) => button.text() === 'Save');
-	await save?.trigger('click');
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ name: 'Finance approvals', method: 'workflow', workflowId: 'new' }),
 	]);
@@ -318,10 +317,7 @@ it('preserves an existing channel configuration and queries its selected connect
 			cursor: 'next',
 		}),
 	);
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Save')
-		?.trigger('click');
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({
 			id: 'existing',
@@ -366,10 +362,7 @@ it.each(['none', 3600, 86400, 604800] as const)('saves the request expiry %s', a
 	expect(selector.props('modelValue')).toBe('none');
 	selector.vm.$emit('update:modelValue', String(expiry));
 	await wrapper.vm.$nextTick();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Save')
-		?.trigger('click');
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ expirySeconds: expiry === 'none' ? undefined : expiry }),
 	]);
@@ -388,10 +381,7 @@ it('opens a saved expiry and allows requests with no expiry again', async () => 
 	expect(selector.props('modelValue')).toBe('86400');
 	selector.vm.$emit('update:modelValue', 'none');
 	await wrapper.vm.$nextTick();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Save')
-		?.trigger('click');
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ expirySeconds: undefined }),
 	]);

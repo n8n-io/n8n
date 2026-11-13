@@ -31,7 +31,7 @@ const resultSchema = z.object({
 		.optional(),
 	response_metadata: z.object({ next_cursor: z.string().optional() }).optional(),
 });
-export const slackHitl: ChannelHitlDefinition = {
+export const slackHitl = {
 	supported: true,
 	channel: 'slack',
 	nodeType: 'n8n-nodes-base.slack',
@@ -61,7 +61,7 @@ export const slackHitl: ChannelHitlDefinition = {
 			},
 		});
 	},
-};
+} satisfies ChannelHitlDefinition;
 
 async function listSlackPage(
 	{ credential, httpClient, query }: ChannelHitlOptionsContext,

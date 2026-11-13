@@ -2,7 +2,7 @@ import type { ChannelHitlDefinition } from '../../channel-hitl';
 import { approvalNode, matchesApprovalUser } from '../../channel-hitl';
 import { UserError } from '@n8n/errors';
 
-export const telegramHitl: ChannelHitlDefinition = {
+export const telegramHitl = {
 	supported: true,
 	channel: 'telegram',
 	nodeType: 'n8n-nodes-base.telegram',
@@ -22,4 +22,4 @@ export const telegramHitl: ChannelHitlDefinition = {
 			message: "={{ $json.message.replace(/([_*`\\[\\]])/g, '\\\\$1') }}",
 		});
 	},
-};
+} satisfies ChannelHitlDefinition;

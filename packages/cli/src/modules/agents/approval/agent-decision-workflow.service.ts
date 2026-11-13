@@ -82,11 +82,10 @@ export class AgentDecisionWorkflowService {
 		identity: ApprovalRunIdentity,
 		toolCodeByName: Record<string, string> = {},
 	): BuiltTool {
-		const effective = route;
-		if (!effective || effective.type === 'conversation') {
+		if (!route || route.type === 'conversation') {
 			return wrapToolForApproval(tool, { requireApproval: true });
 		}
-		const configurations = effective.configurationIds.map((id) =>
+		const configurations = route.configurationIds.map((id) =>
 			agentConfig.hitlConfigurations?.find((entry) => entry.id === id),
 		);
 		const definitionHash = getAgentRuntimeDefinitionHash(
@@ -234,6 +233,7 @@ export class AgentDecisionWorkflowService {
 		reviewedWorkflowVersionId?: string,
 	): Promise<unknown> {
 		const pending = DECISION_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
+		const argumentsRedacted = ctx.persistence?.hostMetadata?.approvalArgumentsRedacted === true;
 		let executionId: string;
 		let workflowVersionId = pending.success
 			? pending.data.workflowVersionId
@@ -298,6 +298,7 @@ export class AgentDecisionWorkflowService {
 			if (!scope) throw new OperationalError('Approval execution scope is unavailable');
 			const { WorkflowRunner } = await import('@/workflow-runner.js');
 			const requestedAt = new Date();
+			const args = argumentsRedacted ? undefined : buildApprovalArgs(input);
 			const timeoutAt = configuration.expirySeconds
 				? new Date(
 						requestedAt.getTime() + configuration.expirySeconds * Time.seconds.toMilliseconds,
@@ -315,23 +316,16 @@ export class AgentDecisionWorkflowService {
 				{
 					...(configuration.method === 'channel'
 						? {
-								message: this.approvalMessage(
-									tool,
-									ctx.approvalDescription,
-									ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true,
-								),
+								message: this.approvalMessage(tool, ctx.approvalDescription, argumentsRedacted),
 							}
 						: {}),
 					requestId: `${ctx.runId}:${ctx.toolCallId}`,
 					agentId: identity.agentId,
 					toolName: tool.name,
-					...(ctx.approvalDescription &&
-					ctx.persistence.hostMetadata?.approvalArgumentsRedacted !== true
+					...(ctx.approvalDescription && !argumentsRedacted
 						? { description: ctx.approvalDescription }
 						: {}),
-					...(ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true
-						? { argumentsRedacted: true }
-						: { arguments: buildApprovalArgs(input) }),
+					...(argumentsRedacted ? { argumentsRedacted: true } : { arguments: args }),
 					requestedAt: requestedAt.toISOString(),
 					...(timeoutAt ? { expiresAt: timeoutAt.toISOString() } : {}),
 				},
@@ -393,9 +387,9 @@ export class AgentDecisionWorkflowService {
 				request: {
 					type: 'approval',
 					displayName: getToolApprovalDisplayName(tool),
-					...(ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true
+					...(argumentsRedacted
 						? { argumentsRedacted: true }
-						: { args: buildApprovalArgs(input), description: ctx.approvalDescription }),
+						: { args, description: ctx.approvalDescription }),
 					...(configuration.method === 'workflow'
 						? { workflowId: workflow.id, workflowExecutionId: executionId }
 						: {}),
@@ -448,8 +442,7 @@ export class AgentDecisionWorkflowService {
 						: {}),
 					title: `Waiting for approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`,
 					components: [
-						...(ctx.approvalDescription &&
-						ctx.persistence?.hostMetadata?.approvalArgumentsRedacted !== true
+						...(ctx.approvalDescription && !argumentsRedacted
 							? [{ type: 'section', text: ctx.approvalDescription }]
 							: []),
 						{

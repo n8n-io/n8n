@@ -11,6 +11,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { AgentHitlOption, AgentHitlOptionsPage } from '@n8n/api-types';
 
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modelValue?: AgentHitlOption;
 	label: string;
@@ -146,6 +148,7 @@ function move(event: KeyboardEvent) {
 	>
 		<template #trigger>
 			<button
+				v-bind="$attrs"
 				type="button"
 				:class="$style.trigger"
 				:aria-label="label"

@@ -2,14 +2,16 @@
 import { N8nText } from '@n8n/design-system';
 
 defineProps<{
-	controlId: string;
+	controlId?: string;
+	layout?: 'horizontal' | 'vertical';
+	actionMaxWidth?: string;
 	title: string;
 	description?: string;
 }>();
 </script>
 
 <template>
-	<div :class="$style.row">
+	<div :class="[$style.row, { [$style.vertical]: layout === 'vertical' }]" :data-layout="layout">
 		<div :class="$style.info">
 			<label :for="controlId">
 				<N8nText size="medium" color="text-dark" bold :class="$style.label">{{ title }}</N8nText>
@@ -18,7 +20,10 @@ defineProps<{
 				{{ description }}
 			</N8nText>
 		</div>
-		<div :class="$style.action">
+		<div
+			:class="$style.action"
+			:style="{ maxWidth: layout === 'vertical' ? undefined : actionMaxWidth }"
+		>
 			<slot />
 		</div>
 	</div>
@@ -30,6 +35,16 @@ defineProps<{
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+}
+
+.row.vertical {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--4xs);
+
+	.action {
+		width: 100%;
+	}
 }
 
 .info {

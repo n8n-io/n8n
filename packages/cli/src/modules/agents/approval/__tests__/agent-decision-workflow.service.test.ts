@@ -37,6 +37,30 @@ beforeAll(() => {
 	definitionHash = getAgentRuntimeDefinitionHash(configuration);
 });
 
+afterEach(() => {
+	vi.restoreAllMocks();
+	Container.reset();
+});
+
+function workflowPersistence(approvalArgumentsRedacted?: boolean) {
+	return {
+		threadId: 'thread',
+		resourceId: 'resource',
+		hostMetadata: {
+			...encodeAgentSandboxHostMetadata({
+				projectId: 'project',
+				principalHash: hashAgentSandboxPrincipal({
+					type: 'workflow-execution',
+					workflowId: 'caller',
+					executionId: 'parent',
+				}),
+			}),
+			workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
+			...(approvalArgumentsRedacted === undefined ? {} : { approvalArgumentsRedacted }),
+		},
+	};
+}
+
 function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = ['review']) {
 	const jobs = mock<AgentBackgroundJobRepository>();
 	const executions = mock<ExecutionPersistence>();
@@ -94,11 +118,6 @@ function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = 
 }
 
 describe('Agent review workflow approval', () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-		Container.reset();
-	});
-
 	it('stops the child when request registration fails', async () => {
 		const { loader, jobService, wrapped, handler, context } = setup();
 		Container.set(WorkflowRunner, mock<WorkflowRunner>());
@@ -122,21 +141,7 @@ describe('Agent review workflow approval', () => {
 					continuation: undefined,
 					suspendPayload: undefined,
 					runId: 'run',
-					persistence: {
-						threadId: 'thread',
-						resourceId: 'resource',
-						hostMetadata: {
-							...encodeAgentSandboxHostMetadata({
-								projectId: 'project',
-								principalHash: hashAgentSandboxPrincipal({
-									type: 'workflow-execution',
-									workflowId: 'caller',
-									executionId: 'parent',
-								}),
-							}),
-							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-						},
-					},
+					persistence: workflowPersistence(),
 				},
 			),
 		).rejects.toThrow('Receipt write failed');
@@ -188,22 +193,7 @@ describe('Agent review workflow approval', () => {
 				suspendPayload: undefined,
 				runId: 'run',
 				toolCallId: 'call',
-				persistence: {
-					threadId: 'thread',
-					resourceId: 'resource',
-					hostMetadata: {
-						...encodeAgentSandboxHostMetadata({
-							projectId: 'project',
-							principalHash: hashAgentSandboxPrincipal({
-								type: 'workflow-execution',
-								workflowId: 'caller',
-								executionId: 'parent',
-							}),
-						}),
-						workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-						approvalArgumentsRedacted: redacted,
-					},
-				},
+				persistence: workflowPersistence(redacted),
 			});
 			expect(context.emitEvent).toHaveBeenCalledWith({
 				type: AgentEvent.ToolApproval,
@@ -328,22 +318,7 @@ describe('Agent review workflow approval', () => {
 					runId: 'run',
 					toolCallId: 'call',
 					approvalDescription: 'Update the selected record.',
-					persistence: {
-						threadId: 'thread',
-						resourceId: 'resource',
-						hostMetadata: {
-							...encodeAgentSandboxHostMetadata({
-								projectId: 'project',
-								principalHash: hashAgentSandboxPrincipal({
-									type: 'workflow-execution',
-									workflowId: 'caller',
-									executionId: 'parent',
-								}),
-							}),
-							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-							approvalArgumentsRedacted: redacted,
-						},
-					},
+					persistence: workflowPersistence(redacted),
 				},
 			),
 		).toBe('waiting');
@@ -830,30 +805,12 @@ function sequenceFixture() {
 		continuation: undefined,
 		suspendPayload: undefined,
 		runId: 'run',
-		persistence: {
-			threadId: 'thread',
-			resourceId: 'resource',
-			hostMetadata: {
-				...encodeAgentSandboxHostMetadata({
-					projectId: 'project',
-					principalHash: hashAgentSandboxPrincipal({
-						type: 'workflow-execution',
-						workflowId: 'caller',
-						executionId: 'parent',
-					}),
-				}),
-				workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-			},
-		},
+		persistence: workflowPersistence(),
 	};
 	return { ...fixture, config, context, execute };
 }
 
 describe('ordered human reviews', () => {
-	afterEach(() => {
-		vi.restoreAllMocks();
-		Container.reset();
-	});
 	it.each([true, false])(
 		'runs in assignment order and stops when the last review approves=%s',
 		async (approved) => {
