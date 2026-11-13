@@ -1370,6 +1370,54 @@ describe('GET /workflows', () => {
 		});
 	});
 
+	test('should return workflow connections requested by the agent workflow picker', async () => {
+		const teamProject = await createTeamProject(undefined, member);
+		const folder = await createFolder(teamProject, { name: 'Agent tools' });
+		const triggerName = 'When Executed by Another Workflow';
+		const workflow = await createActiveWorkflow(
+			{
+				name: 'Nested agent workflow',
+				parentFolder: folder,
+				nodes: [
+					{
+						id: uuid(),
+						name: triggerName,
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						parameters: {},
+						typeVersion: 1.1,
+						position: [0, 0],
+					},
+				],
+				connections: { [triggerName]: { main: [[]] } },
+			},
+			teamProject,
+		);
+
+		const response = await authMemberAgent
+			.get('/workflows')
+			.query({
+				filter: JSON.stringify({ projectId: teamProject.id }),
+				select: JSON.stringify([
+					'id',
+					'name',
+					'description',
+					'isArchived',
+					'activeVersionId',
+					'nodes',
+					'connections',
+					'updatedAt',
+				]),
+			})
+			.expect(200);
+
+		expect(response.body.data).toEqual([
+			expect.objectContaining({
+				id: workflow.id,
+				connections: { [triggerName]: { main: [[]] } },
+			}),
+		]);
+	});
+
 	test('should return workflows', async () => {
 		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
