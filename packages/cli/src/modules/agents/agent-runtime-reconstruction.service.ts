@@ -14,6 +14,7 @@ import {
 	ModelConfig,
 	type Workspace,
 } from '@n8n/agents';
+import { withLinearGuard } from '../mcp-guard/linear-guard-fetch';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -895,7 +896,11 @@ export class AgentRuntimeReconstructionService {
 				nonInterrupting: runtimeProfile === 'inline',
 				oauthService: this.oauthService,
 				projectId,
-				proxyFetch: aiMcpFetch,
+				// Test chat only: Linear MCP goes through the read-only guard.
+				proxyFetch:
+					options.runType === 'test'
+						? withLinearGuard(aiMcpFetch, memoryOwnerAgentId)
+						: aiMcpFetch,
 				resolveRegistryConnection: async (nodeTypeName) => {
 					const connection = await this.mcpRegistryService.getConnection(nodeTypeName);
 					if (connection?.attribution) {
