@@ -3095,7 +3095,7 @@ export interface IDeclarativeWebhookTrigger {
 	handler?: DeclarativeWebhookHandler;
 }
 
-/** A vendor request that confirms the endpoint. It starts no workflow. */
+/** A vendor request that confirms the endpoint. It starts no workflow. Expressions can use `$webhookRequest`, but not `$staticData`. */
 export interface DeclarativeWebhookHandshake {
 	/** On `default`, a truthy result makes the request a handshake. On `setup`, a falsy result replies 401. */
 	when?: string;
@@ -3110,10 +3110,36 @@ export interface DeclarativeWebhookHandshake {
 	};
 }
 
+/** A signature check of each delivery. A failed check replies 401 and starts no workflow. */
+export interface DeclarativeWebhookVerification {
+	/** `hmac-sha256` and `hmac-sha1` sign `signedPayload` with `secret`. `token` compares `secret` with the header. */
+	algorithm: 'hmac-sha256' | 'hmac-sha1' | 'token';
+	/** The header that contains the signature or token, for example `x-hub-signature-256`. */
+	signatureHeader: string;
+	/** Expression for the secret. It can use `$staticData`, and `$credentials` when `credentialType` is set. */
+	secret: string;
+	/** The credential to load as `$credentials`, for example for `={{ $credentials.signingSecret }}`. */
+	credentialType?: string;
+	/** Text in front of the digest or token, for example `sha256=`. */
+	prefix?: string;
+	/** Encoding of the HMAC digest. Default `hex`. */
+	encoding?: 'hex' | 'base64';
+	/** The signed text. `{body}` is the raw request body, the other parts can be expressions. Default `{body}`. */
+	signedPayload?: string;
+	/** The header with a Unix timestamp in seconds or milliseconds. A missing or old value fails the check. Put the timestamp in `signedPayload`, or the signature does not cover it. */
+	timestampHeader?: string;
+	/** The maximum difference to the current time, in the past or the future. Default 300. */
+	maxTimestampAgeSeconds?: number;
+	/** Accept the delivery when no secret is available. Default false. */
+	skipIfNoSecret?: boolean;
+}
+
 /** The request stages of a declarative webhook trigger, in run order. Expressions can use `$webhookRequest`. A body with a `+json` content type is parsed as JSON. */
 export interface DeclarativeWebhookHandler {
 	/** Runs first. On a `setup` endpoint, every request is a handshake. */
 	handshake?: DeclarativeWebhookHandshake;
+	/** Runs after the handshake. A `setup` endpoint is not verified. */
+	verification?: DeclarativeWebhookVerification;
 	/** If `when` is truthy, reply with `response` (default `OK`) and start no workflow. */
 	ping?: { when: string; response?: string };
 	/** Start the workflow only if `actual` is in `allowed` (a string is one item). A `wildcard` in `allowed` accepts all. */
