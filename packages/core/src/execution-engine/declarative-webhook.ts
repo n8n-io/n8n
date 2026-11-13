@@ -1,5 +1,6 @@
 import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
+import { verifySignature } from '@n8n/utils/webhook-signature';
 import get from 'lodash/get';
 import type {
 	DeclarativeSecretGenerator,
@@ -7,6 +8,7 @@ import type {
 	DeclarativeWebhookCreate,
 	DeclarativeWebhookDelete,
 	DeclarativeWebhookHandshake,
+	DeclarativeWebhookVerification,
 	IDataObject,
 	IDeclarativeWebhookTrigger,
 	IHookFunctions,
@@ -19,8 +21,8 @@ import type {
 	PostReceiveAction,
 } from 'n8n-workflow';
 import { createRunExecutionData, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { randomBytes, randomInt, randomUUID } from 'node:crypto';
-import { validateHeaderValue } from 'node:http';
+import { createHmac, randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { validateHeaderValue, type IncomingHttpHeaders } from 'node:http';
 
 import { ExecuteSingleContext, HookContext, WebhookContext } from './node-execution-context';
 import type { NodeExecutionContext } from './node-execution-context/node-execution-context';
@@ -346,6 +348,92 @@ function respondToHandshake(
 	return { noWebhookResponse: true };
 }
 
+/** Builds the signed bytes. The raw body is added after the template resolves, so it is never an expression. */
+function signedPayload(
+	context: WebhookContext,
+	template: string,
+	extraKeys: IWorkflowDataProxyAdditionalKeys,
+) {
+	const { rawBody } = context.getRequestObject();
+	if (!Buffer.isBuffer(rawBody)) return null;
+	const isExpression = template.startsWith('=');
+	const parts: Buffer[] = [];
+	const texts = (isExpression ? template.slice(1) : template).split('{body}');
+	for (const [index, part] of texts.entries()) {
+		if (index > 0) parts.push(rawBody);
+		const value = isExpression && part ? resolve(context, `=${part}`, extraKeys) : part;
+		const text = typeof value === 'number' ? String(value) : value;
+		if (typeof text !== 'string') return null;
+		parts.push(Buffer.from(text));
+	}
+	return Buffer.concat(parts);
+}
+
+const headerValue = (headers: IncomingHttpHeaders, name: string) => {
+	// Node gives header names in lowercase.
+	const value = headers[name.toLowerCase()];
+	return typeof value === 'string' ? value : null;
+};
+
+/** Checks the signature of a delivery. No secret fails the check, unless `skipIfNoSecret` is set. */
+async function verifyDelivery(
+	context: WebhookContext,
+	config: DeclarativeWebhookVerification | undefined,
+	extraKeys: IWorkflowDataProxyAdditionalKeys,
+) {
+	if (!config) return true;
+	const headers = context.getHeaderData();
+	const { credentialType } = config;
+	let secret: unknown;
+	try {
+		// Only a credential that is not set counts as no secret. A credential that does not load fails the check.
+		const credentials =
+			credentialType && context.node.credentials?.[credentialType]
+				? await context.getCredentials(credentialType)
+				: undefined;
+		// No request data: a secret that the request decides would accept any request.
+		secret = resolve(context, config.secret, {
+			$staticData: context.getWorkflowStaticData('node'),
+			$credentials: credentials,
+		});
+	} catch {
+		// The error can contain the secret, so the log has only the node name.
+		context.logger.warn(
+			`Webhook trigger "${context.node.name}" rejected a delivery because its signature secret could not be loaded`,
+			{ workflowId: context.workflow.id },
+		);
+		return false;
+	}
+	if (secret === undefined || secret === null || secret === '') {
+		if (config.skipIfNoSecret) return true;
+		context.logger.warn(
+			`Webhook trigger "${context.node.name}" rejected a delivery because no signature secret is available`,
+			{ workflowId: context.workflow.id },
+		);
+		return false;
+	}
+	if (typeof secret !== 'string') return false;
+
+	const { algorithm, prefix = '', timestampHeader } = config;
+	const req = context.getRequestObject();
+	// The server reads the body only for some content types. A multipart body is already consumed.
+	if (algorithm !== 'token' && !req.rawBody && !req.contentType?.startsWith('multipart/')) {
+		await req.readRawBody();
+	}
+	return verifySignature({
+		getExpectedSignature: () => {
+			if (algorithm === 'token') return prefix + secret;
+			const payload = signedPayload(context, config.signedPayload ?? '{body}', extraKeys);
+			if (!payload) return null;
+			const hmac = createHmac(algorithm === 'hmac-sha1' ? 'sha1' : 'sha256', secret);
+			return prefix + hmac.update(payload).digest(config.encoding ?? 'hex');
+		},
+		getActualSignature: () => headerValue(headers, config.signatureHeader),
+		getTimestamp: timestampHeader ? () => headerValue(headers, timestampHeader) : undefined,
+		maxTimestampAgeSeconds: config.maxTimestampAgeSeconds,
+	});
+}
+
 /** The server parses only `application/json`, so a vendor type such as `application/vnd.api+json` arrives unparsed. */
 async function readBody(context: WebhookContext) {
 	const req = context.getRequestObject();
@@ -363,9 +451,9 @@ async function readBody(context: WebhookContext) {
 	return context.getBodyData();
 }
 
-/** Builds the default `webhook()` of a declarative webhook trigger. Stage order: handshake, ping, filter, output. */
+/** Builds the default `webhook()` of a declarative webhook trigger. Stage order: handshake, verification, ping, filter, output. */
 export function createDeclarativeWebhook(trigger: IDeclarativeWebhookTrigger) {
-	const { handshake, ping, filter, output } = trigger.handler ?? {};
+	const { handshake, verification, ping, filter, output } = trigger.handler ?? {};
 	return async function (this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		if (!(this instanceof WebhookContext)) {
 			throw new UnexpectedError('Declarative webhook trigger needs a WebhookContext');
@@ -386,6 +474,11 @@ export function createDeclarativeWebhook(trigger: IDeclarativeWebhookTrigger) {
 
 		if (handshake?.when !== undefined && resolve(this, handshake.when, extraKeys)) {
 			return respondToHandshake(this, handshake, extraKeys);
+		}
+
+		if (!(await verifyDelivery(this, verification, extraKeys))) {
+			this.getResponseObject().status(401).send('Unauthorized');
+			return { noWebhookResponse: true };
 		}
 
 		if (ping && resolve(this, ping.when, extraKeys)) {

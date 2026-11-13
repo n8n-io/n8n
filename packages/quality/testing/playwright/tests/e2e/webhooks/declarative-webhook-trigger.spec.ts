@@ -1,5 +1,6 @@
 import { workflow, trigger, node } from '@n8n/workflow-sdk';
 import flatted from 'flatted';
+import { createHmac } from 'node:crypto';
 import { nanoid } from 'nanoid';
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
@@ -45,13 +46,13 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('should register the hook on activation, answer a handshake, run only on an allowed delivery, and remove the hook on deactivation', async ({
+		test('should register the hook on activation, answer a handshake, run only on a signed and allowed delivery, and remove the hook on deactivation', async ({
 			api,
 			services,
 		}) => {
 			const base = `/${nanoid()}`;
 			await mockRegistryRoute(services.proxy, 'GET', `${base}/hooks`, { hooks: [] });
-			await mockRegistryRoute(services.proxy, 'POST', `${base}/hooks`, { id: 'h1' });
+			await mockRegistryRoute(services.proxy, 'POST', `${base}/hooks`, { id: 'h1', secret: 's1' });
 			await mockRegistryRoute(services.proxy, 'DELETE', `${base}/hooks/h1`, {});
 
 			const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
@@ -59,10 +60,10 @@ test.describe(
 			);
 			await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
-			// checkExists finds no hook, so create registers one and stores its ID.
+			// checkExists finds no hook, so create registers one and stores its ID and secret.
 			await expect
 				.poll(async () => await readTriggerStaticData(api, workflowId))
-				.toEqual({ webhookId: 'h1' });
+				.toEqual({ webhookId: 'h1', webhookSecret: 's1' });
 			expect(await services.proxy.wasRequestMade({ method: 'GET', path: `${base}/hooks` })).toBe(
 				true,
 			);
@@ -72,27 +73,43 @@ test.describe(
 			const hook = registration.body as { target_url: string; events: string[] };
 			expect(hook.events).toEqual(['created']);
 
-			const deliver = async (data: object, headers?: Record<string, string>) =>
+			// Sends the JSON text that the signature covers.
+			const deliver = async (data: object, headers: Record<string, string> = {}) =>
 				await api.webhooks.trigger(new URL(hook.target_url).pathname, {
 					method: 'POST',
-					data,
-					headers,
+					data: JSON.stringify(data),
+					headers: { 'Content-Type': 'application/json', ...headers },
+				});
+			const deliverSigned = async (data: object, secret = 's1') =>
+				await deliver(data, {
+					'X-Hook-Signature': createHmac('sha256', secret)
+						.update(JSON.stringify(data))
+						.digest('hex'),
 				});
 
-			// A handshake echoes the secret as plain text and starts no execution.
-			const handshake = await deliver({}, { 'X-Hook-Secret': 's1' });
+			// A handshake echoes its value as plain text, writes no static data and starts no execution.
+			const handshake = await deliver({}, { 'X-Hook-Secret': 'challenge-1' });
 			expect(handshake.status()).toBe(200);
-			expect(await handshake.text()).toBe('s1');
+			expect(await handshake.text()).toBe('challenge-1');
 			expect(handshake.headers()['content-type']).toContain('text/plain');
-			expect(handshake.headers()['x-hook-secret']).toBe('s1');
+			expect(handshake.headers()['x-hook-secret']).toBe('challenge-1');
+			expect(await readTriggerStaticData(api, workflowId)).toEqual({
+				webhookId: 'h1',
+				webhookSecret: 's1',
+			});
+
+			// A delivery without a valid signature gets 401 and starts no execution.
+			expect((await deliver({ event: 'created', data: { id: 0 } })).status()).toBe(401);
+			expect((await deliverSigned({ event: 'created', data: { id: 0 } }, 's2')).status()).toBe(401);
+			expect((await deliver({ type: 'ping' })).status()).toBe(401);
 
 			// A ping and an event that the node does not listen to start no execution.
-			const ping = await deliver({ type: 'ping' });
+			const ping = await deliverSigned({ type: 'ping' });
 			expect(ping.status()).toBe(200);
 			expect(await ping.text()).toBe('pong');
-			expect((await deliver({ event: 'deleted', data: { id: 0 } })).status()).toBe(200);
+			expect((await deliverSigned({ event: 'deleted', data: { id: 0 } })).status()).toBe(200);
 
-			expect((await deliver({ event: 'created', data: { id: 1 } })).status()).toBe(200);
+			expect((await deliverSigned({ event: 'created', data: { id: 1 } })).status()).toBe(200);
 
 			const execution = await api.workflows.waitForExecution(workflowId, 30_000, 'webhook');
 			expect(execution.status).toBe('success');

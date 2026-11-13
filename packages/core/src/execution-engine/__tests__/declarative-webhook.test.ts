@@ -1,11 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@test/utils';
 import type { Request, Response } from 'express';
+import { createHmac } from 'node:crypto';
 import type {
+	DeclarativeWebhookVerification,
 	IDataObject,
 	IDeclarativeWebhookTrigger,
 	IHttpRequestOptions,
 	INode,
+	INodeCredentials,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -689,6 +692,7 @@ describe('createDeclarativeWebhook', () => {
 			rawBody,
 			unreadBody,
 			contentType,
+			credentials,
 		}: {
 			headers?: IDataObject;
 			query?: IDataObject;
@@ -699,6 +703,7 @@ describe('createDeclarativeWebhook', () => {
 			/** The body that `readRawBody` reads, for a request that the server did not read. */
 			unreadBody?: Buffer;
 			contentType?: string;
+			credentials?: INodeCredentials;
 		} = {},
 	) {
 		const trigger = { ...registryTrigger, handler };
@@ -709,6 +714,7 @@ describe('createDeclarativeWebhook', () => {
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: { event: 'created' },
+			credentials,
 		};
 		const nodeType = makeNodeType(trigger);
 		const workflow = new Workflow({
@@ -1077,6 +1083,434 @@ describe('createDeclarativeWebhook', () => {
 			);
 
 			expect(await run()).toStrictEqual({ webhookResponse: '={{ 1 + 1 }}' });
+		});
+	});
+
+	describe('verification', () => {
+		const rawBody = Buffer.from('{ "event": "created" }');
+		const body = { event: 'created' };
+		const hmac = (payload: string | Buffer, secret = 's3cret') =>
+			createHmac('sha256', secret).update(payload).digest('hex');
+		const now = () => String(Math.floor(Date.now() / 1000));
+		const verification: DeclarativeWebhookVerification = {
+			algorithm: 'hmac-sha256',
+			signatureHeader: 'x-signature',
+			secret: '={{ $staticData.secret }}',
+			prefix: 'sha256=',
+		};
+
+		/** Runs a delivery and returns the result and the response. */
+		async function deliver(
+			config: Partial<DeclarativeWebhookVerification>,
+			headers: IDataObject,
+			{
+				raw = rawBody,
+				nodeData = { secret: 's3cret' },
+				handler = {},
+				webhookName = 'default',
+				credentials,
+				unreadBody,
+				contentType,
+			}: {
+				raw?: Buffer | null;
+				nodeData?: IDataObject;
+				handler?: IDeclarativeWebhookTrigger['handler'];
+				webhookName?: string;
+				credentials?: INodeCredentials;
+				unreadBody?: Buffer;
+				contentType?: string;
+			} = {},
+		) {
+			const res = mockResponse();
+			const run = webhookSetup({ ...handler, verification: { ...verification, ...config } }, body, {
+				headers,
+				rawBody: raw ?? undefined,
+				staticData: { 'node:Hook': nodeData },
+				res,
+				webhookName,
+				credentials,
+				unreadBody,
+				contentType,
+			});
+			return { result: await run(), res };
+		}
+
+		const accepted = { workflowData: [[{ json: body }]] };
+
+		async function expectRejected(delivery: ReturnType<typeof deliver>) {
+			const { result, res } = await delivery;
+			expect(result).toStrictEqual({ noWebhookResponse: true });
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalledWith('Unauthorized');
+		}
+
+		test('accepts an HMAC-SHA256 signature of the raw body', async () => {
+			const { result } = await deliver({}, { 'x-signature': `sha256=${hmac(rawBody)}` });
+
+			expect(result).toEqual(accepted);
+		});
+
+		test('signs the raw bytes, not the parsed body', async () => {
+			await expectRejected(deliver({}, { 'x-signature': `sha256=${hmac(JSON.stringify(body))}` }));
+		});
+
+		test('rejects a changed body', async () => {
+			await expectRejected(
+				deliver(
+					{},
+					{ 'x-signature': `sha256=${hmac(rawBody)}` },
+					{ raw: Buffer.from('{ "event": "deleted" }') },
+				),
+			);
+		});
+
+		test('rejects a request without a raw body', async () => {
+			await expectRejected(
+				deliver({}, { 'x-signature': `sha256=${hmac(rawBody)}` }, { raw: null }),
+			);
+		});
+
+		test('reads the raw body when the server did not', async () => {
+			const { result } = await deliver(
+				{},
+				{ 'x-signature': `sha256=${hmac(rawBody)}` },
+				{ raw: null, unreadBody: rawBody, contentType: 'application/octet-stream' },
+			);
+
+			expect(result).toEqual(accepted);
+		});
+
+		test('does not read a multipart body', async () => {
+			await expectRejected(
+				deliver(
+					{},
+					{ 'x-signature': `sha256=${hmac(rawBody)}` },
+					{ raw: null, unreadBody: rawBody, contentType: 'multipart/form-data; boundary=x' },
+				),
+			);
+		});
+
+		test('the secret cannot use request data', async () => {
+			await expectRejected(
+				deliver(
+					{ secret: '={{ $webhookRequest.headers["x-key"] }}' },
+					{ 'x-key': 'chosen', 'x-signature': `sha256=${hmac(rawBody, 'chosen')}` },
+				),
+			);
+		});
+
+		test('rejects a request without the signature header', async () => {
+			await expectRejected(deliver({}, {}));
+		});
+
+		test('rejects a signature of a different length', async () => {
+			await expectRejected(deliver({}, { 'x-signature': 'sha256=abc' }));
+		});
+
+		test('rejects a signature that has no prefix', async () => {
+			await expectRejected(deliver({}, { 'x-signature': hmac(rawBody) }));
+		});
+
+		test('rejects a signature with a different secret', async () => {
+			await expectRejected(deliver({}, { 'x-signature': `sha256=${hmac(rawBody, 'other')}` }));
+		});
+
+		test('accepts an HMAC-SHA1 signature in base64', async () => {
+			const signature = createHmac('sha1', 's3cret').update(rawBody).digest('base64');
+
+			const { result } = await deliver(
+				{ algorithm: 'hmac-sha1', encoding: 'base64', prefix: undefined },
+				{ 'x-signature': signature },
+			);
+
+			expect(result).toEqual(accepted);
+		});
+
+		test('reads the signature header case-insensitively', async () => {
+			const { result } = await deliver(
+				{ signatureHeader: 'X-Signature' },
+				{ 'x-signature': `sha256=${hmac(rawBody)}` },
+			);
+
+			expect(result).toEqual(accepted);
+		});
+
+		describe('token', () => {
+			const token = { algorithm: 'token' as const, prefix: undefined };
+
+			test('accepts the secret in the header', async () => {
+				const { result } = await deliver(token, { 'x-signature': 's3cret' }, { raw: null });
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('rejects a different token', async () => {
+				await expectRejected(deliver(token, { 'x-signature': 's3creT' }));
+			});
+
+			test('rejects a token of a different length', async () => {
+				await expectRejected(deliver(token, { 'x-signature': 's3cret-longer' }));
+			});
+
+			test('adds the prefix to the secret', async () => {
+				const { result } = await deliver(
+					{ ...token, prefix: 'Bearer ' },
+					{ 'x-signature': 'Bearer s3cret' },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+		});
+
+		describe('signedPayload', () => {
+			const template = '=v0:{{ $webhookRequest.headers["x-timestamp"] }}:{body}';
+
+			test('signs the resolved template with the raw body', async () => {
+				const timestamp = now();
+				const signature = hmac(Buffer.concat([Buffer.from(`v0:${timestamp}:`), rawBody]));
+
+				const { result } = await deliver(
+					{ signedPayload: template, timestampHeader: 'x-timestamp' },
+					{ 'x-signature': `sha256=${signature}`, 'x-timestamp': timestamp },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('accepts a template without expressions', async () => {
+				const signature = hmac(Buffer.concat([rawBody, Buffer.from('.'), rawBody]));
+
+				const { result } = await deliver(
+					{ signedPayload: '{body}.{body}' },
+					{ 'x-signature': `sha256=${signature}` },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('uses request values as literal text', async () => {
+				const raw = Buffer.from('{{ 1 + 1 }}');
+				const signature = hmac(Buffer.from('={{ 1 + 1 }}.{{ 1 + 1 }}'));
+
+				const { result } = await deliver(
+					{ signedPayload: '={{ $webhookRequest.headers["x-id"] }}.{body}' },
+					{ 'x-signature': `sha256=${signature}`, 'x-id': '={{ 1 + 1 }}' },
+					{ raw },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('signs a number part as text', async () => {
+				const signature = hmac(Buffer.concat([Buffer.from('123.'), rawBody]));
+
+				const { result } = await deliver(
+					{ signedPayload: '={{ 120 + 3 }}.{body}' },
+					{ 'x-signature': `sha256=${signature}` },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('signs a header value that contains `{body}` as literal text', async () => {
+				const signature = hmac(Buffer.concat([Buffer.from('{body}.'), rawBody]));
+
+				const { result } = await deliver(
+					{ signedPayload: '={{ $webhookRequest.headers["x-id"] }}.{body}' },
+					{ 'x-signature': `sha256=${signature}`, 'x-id': '{body}' },
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('rejects a template part that does not resolve to text', async () => {
+				await expectRejected(
+					deliver(
+						{ signedPayload: '={{ $webhookRequest.headers["x-missing"] }}{body}' },
+						{ 'x-signature': `sha256=${hmac(rawBody)}` },
+					),
+				);
+			});
+		});
+
+		describe('timestamp', () => {
+			const signed = (timestamp: string) => ({
+				'x-signature': `sha256=${hmac(rawBody)}`,
+				'x-timestamp': timestamp,
+			});
+
+			test('accepts a current timestamp', async () => {
+				const { result } = await deliver({ timestampHeader: 'x-timestamp' }, signed(now()));
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('accepts a current timestamp in milliseconds', async () => {
+				const { result } = await deliver(
+					{ timestampHeader: 'x-timestamp' },
+					signed(String(Date.now())),
+				);
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('rejects a timestamp older than 300 seconds', async () => {
+				const old = String(Math.floor(Date.now() / 1000) - 301);
+
+				await expectRejected(deliver({ timestampHeader: 'x-timestamp' }, signed(old)));
+			});
+
+			test('rejects a timestamp more than 300 seconds in the future', async () => {
+				const future = String(Math.floor(Date.now() / 1000) + 301);
+
+				await expectRejected(deliver({ timestampHeader: 'x-timestamp' }, signed(future)));
+			});
+
+			test('uses maxTimestampAgeSeconds', async () => {
+				const age = String(Math.floor(Date.now() / 1000) - 30);
+
+				await expectRejected(
+					deliver({ timestampHeader: 'x-timestamp', maxTimestampAgeSeconds: 10 }, signed(age)),
+				);
+			});
+
+			test('rejects a request without the timestamp header', async () => {
+				await expectRejected(
+					deliver({ timestampHeader: 'x-timestamp' }, { 'x-signature': `sha256=${hmac(rawBody)}` }),
+				);
+			});
+
+			test('rejects a timestamp that is not a number', async () => {
+				await expectRejected(deliver({ timestampHeader: 'x-timestamp' }, signed('abc')));
+			});
+		});
+
+		describe('no secret', () => {
+			test.each([
+				['no stored value', {}],
+				['an empty stored value', { secret: '' }],
+			])('rejects a delivery and logs a warning for %s', async (_, nodeData) => {
+				await expectRejected(
+					deliver({}, { 'x-signature': `sha256=${hmac(rawBody, '')}` }, { nodeData }),
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Webhook trigger "Hook" rejected a delivery because no signature secret is available',
+					{ workflowId: 'w1' },
+				);
+			});
+
+			test('accepts an unsigned delivery with skipIfNoSecret', async () => {
+				const { result } = await deliver({ skipIfNoSecret: true }, {}, { nodeData: {} });
+
+				expect(result).toEqual(accepted);
+				expect(logger.warn).not.toHaveBeenCalled();
+			});
+
+			test('checks the signature with skipIfNoSecret when a secret is available', async () => {
+				await expectRejected(deliver({ skipIfNoSecret: true }, {}));
+			});
+
+			test.each([
+				['a number', '={{ 123 }}'],
+				['an object', '={{ { key: "s3cret" } }}'],
+			])('rejects a secret that resolves to %s, also with skipIfNoSecret', async (_, secret) => {
+				await expectRejected(deliver({ secret, skipIfNoSecret: true }, {}));
+			});
+
+			test('rejects a delivery and logs a warning when the secret expression fails', async () => {
+				await expectRejected(
+					deliver({ secret: '={{ $staticData.secret.( }}', skipIfNoSecret: true }, {}),
+				);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Webhook trigger "Hook" rejected a delivery because its signature secret could not be loaded',
+					{ workflowId: 'w1' },
+				);
+			});
+		});
+
+		test('does not log a failed check', async () => {
+			await expectRejected(deliver({}, { 'x-signature': 'sha256=bad' }));
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		describe('credentialType', () => {
+			const fromCredential = {
+				credentialType: 'testApi',
+				secret: '={{ $credentials.signingSecret }}',
+			};
+
+			const credentials = { testApi: { id: 'c1', name: 'Test' } };
+
+			test('reads the secret from the credential', async () => {
+				const getCredentials = vi
+					.spyOn(WebhookContext.prototype, 'getCredentials')
+					.mockResolvedValueOnce({ signingSecret: 'from-credential' });
+
+				const { result } = await deliver(
+					fromCredential,
+					{ 'x-signature': `sha256=${hmac(rawBody, 'from-credential')}` },
+					{ credentials },
+				);
+
+				expect(result).toEqual(accepted);
+				expect(getCredentials).toHaveBeenCalledWith('testApi');
+			});
+
+			test('rejects a delivery and logs a warning when no credential is set', async () => {
+				await expectRejected(deliver(fromCredential, { 'x-signature': 'sha256=abc' }));
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Webhook trigger "Hook" rejected a delivery because no signature secret is available',
+					{ workflowId: 'w1' },
+				);
+			});
+
+			test('accepts an unsigned delivery with skipIfNoSecret when no credential is set', async () => {
+				const { result } = await deliver({ ...fromCredential, skipIfNoSecret: true }, {});
+
+				expect(result).toEqual(accepted);
+			});
+
+			test('rejects a delivery with skipIfNoSecret when the set credential does not load', async () => {
+				vi.spyOn(WebhookContext.prototype, 'getCredentials').mockRejectedValueOnce(
+					new Error('Could not load the credential'),
+				);
+
+				await expectRejected(
+					deliver({ ...fromCredential, skipIfNoSecret: true }, {}, { credentials }),
+				);
+			});
+		});
+
+		describe('stage order', () => {
+			test('answers a handshake without a signature', async () => {
+				const { result } = await deliver(
+					{},
+					{ 'x-hook-secret': 'h1' },
+					{
+						handler: {
+							handshake: { when: '={{ $webhookRequest.headers["x-hook-secret"] !== undefined }}' },
+						},
+					},
+				);
+
+				expect(result).toStrictEqual({ webhookResponse: 'OK' });
+			});
+
+			test('does not verify a setup endpoint', async () => {
+				const { result } = await deliver({}, {}, { webhookName: 'setup' });
+
+				expect(result).toStrictEqual({ webhookResponse: 'OK' });
+			});
+
+			test('verifies a ping', async () => {
+				await expectRejected(deliver({}, {}, { handler: { ping: { when: '={{ true }}' } } }));
+			});
+
+			test('verifies before the filter', async () => {
+				const filter = { allowed: '={{ "other" }}', actual: '={{ $webhookRequest.body.event }}' };
+
+				await expectRejected(deliver({}, {}, { handler: { filter } }));
+			});
 		});
 	});
 
