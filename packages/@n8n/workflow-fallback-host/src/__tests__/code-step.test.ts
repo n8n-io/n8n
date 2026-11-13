@@ -7,6 +7,23 @@ const run = (
 	timeoutMs?: number,
 ) => runCodeStep({ name: 'test', code, items }, { timeoutMs });
 
+/** A local server that answers each request with its path and method as JSON. */
+async function withServer(check: (port: number) => Promise<void>): Promise<void> {
+	const { createServer } = await import('node:http');
+	const server = createServer((request, response) => {
+		response.setHeader('content-type', 'application/json');
+		response.end(JSON.stringify({ path: request.url, method: request.method }));
+	});
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	const address = server.address();
+	const port = typeof address === 'object' && address ? address.port : 0;
+	try {
+		await check(port);
+	} finally {
+		server.close();
+	}
+}
+
 describe('runCodeStep', () => {
 	it('returns the array that the code returns', () => {
 		expect(run('return items.map((i) => ({ n: i.n * 2 }));', [{ n: 1 }, { n: 2 }])).toEqual([
@@ -39,15 +56,7 @@ describe('runCodeStep', () => {
 	});
 
 	it("gives this.helpers.httpRequest, as n8n's Code node does", async () => {
-		const { createServer } = await import('node:http');
-		const server = createServer((request, response) => {
-			response.setHeader('content-type', 'application/json');
-			response.end(JSON.stringify({ path: request.url, method: request.method }));
-		});
-		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-		const address = server.address();
-		const port = typeof address === 'object' && address ? address.port : 0;
-		try {
+		await withServer(async (port) => {
 			const out = await runCodeStepAsync(
 				{
 					name: 'test',
@@ -58,9 +67,48 @@ return [await req({ method: 'POST', url: 'http://127.0.0.1:${port}/x', qs: { a: 
 				{ timeoutMs: 5000 },
 			);
 			expect(out).toEqual([{ path: '/x?a=1', method: 'POST' }]);
-		} finally {
-			server.close();
-		}
+		});
+	});
+
+	it("gives a nested plain function the this of n8n's Code node", async () => {
+		await withServer(async (port) => {
+			const out = await runCodeStepAsync(
+				{
+					name: 'test',
+					code: `return await (async function () {
+  const self = this;
+  const r = await self.helpers.httpRequest({ method: 'GET', url: 'http://127.0.0.1:${port}/x', json: true });
+  return [{ json: { ok: true, r } }];
+})();`,
+					items: [],
+				},
+				{ timeoutMs: 5000 },
+			);
+			expect(out).toEqual([{ ok: true, r: { path: '/x', method: 'GET' } }]);
+		});
+	});
+
+	it('makes this the context global, at the top level and in a nested plain function', () => {
+		expect(
+			run(
+				'const nested = (function () { return this === globalThis; })(); return { top: this === globalThis, nested };',
+			),
+		).toEqual([{ top: true, nested: true }]);
+	});
+
+	it("gives helpers without this, as n8n's Code node does", async () => {
+		await withServer(async (port) => {
+			const out = await runCodeStepAsync(
+				{
+					name: 'test',
+					code: `const r = await helpers.httpRequest({ method: 'GET', url: 'http://127.0.0.1:${port}/x', json: true });
+return [{ json: r }];`,
+					items: [],
+				},
+				{ timeoutMs: 5000 },
+			);
+			expect(out).toEqual([{ path: '/x', method: 'GET' }]);
+		});
 	});
 
 	it('gives Luxon the time zone of the workflow, as v1 does', () => {

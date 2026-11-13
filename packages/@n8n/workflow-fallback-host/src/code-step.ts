@@ -62,8 +62,9 @@ export function parseCodeStepArgs(args: JsonObject): CodeStepArgs {
 /**
  * The script that runs in the context. It parses the items in the context, so
  * no object of the host realm reaches the code. The code runs as the body of
- * an async function, with `this` as in n8n's Code node (`this.helpers`). The
- * script records the outcome as text in `out`.
+ * an async function. A plain call in sloppy mode makes `this` the context
+ * global, as in n8n's Code node, so `this.helpers` works and equals
+ * `globalThis.helpers`. The script records the outcome as text in `out`.
  */
 function wrap(code: string): string {
 	// Sloppy mode, as in n8n's task runner: code can assign a name that it does not declare.
@@ -71,7 +72,7 @@ function wrap(code: string): string {
 		'const __wfOut = { done: false, json: undefined, error: undefined };',
 		'(async function (items) {',
 		code,
-		'\n}).call(__wfThis, JSON.parse(__wfItems)).then(',
+		'\n})(JSON.parse(__wfItems)).then(',
 		'  (value) => {',
 		'    try { __wfOut.json = JSON.stringify(value === undefined ? null : value); }',
 		'    catch (error) { __wfOut.error = "Code returned a value that is not JSON: " + String(error && error.message); }',
@@ -99,7 +100,7 @@ const hostRequire = createRequire(__filename);
 /** Luxon, as n8n's Code node gives it: `DateTime`, `Duration`, `Interval`, `$now`, `$today`. */
 const USES_LUXON = /\b(DateTime|Duration|Interval)\b|\$now\b|\$today\b/;
 
-/** `Buffer` and `this.helpers` need the host's `Buffer` in the context. */
+/** `Buffer` and `helpers` in the context need the host's `Buffer`. */
 const USES_BUFFER = /\bBuffer\b|\bhelpers\b/;
 
 const USES_REQUIRE = /\brequire\s*\(/;
@@ -140,41 +141,40 @@ function luxon(): Script {
 }
 
 /**
- * `this.helpers` of n8n's Code node, for the helpers that need no n8n
- * instance. Binary data has the in-memory form of `binary.ts`.
+ * `helpers` of n8n's Code node, on the context global, for the helpers that
+ * need no n8n instance. `this.helpers` and `helpers` both find it, as in v1.
+ * Binary data has the in-memory form of `binary.ts`.
  */
 const HELPERS = new Script(
-	`globalThis.__wfThis = {
-	helpers: {
-		prepareBinaryData(data, fileName, mimeType) {
-			const buffer = typeof data === 'string' ? Buffer.from(data) : data;
-			const type = mimeType || (fileName && __wfMime.lookup(fileName)) || 'text/plain';
-			const extension = fileName && fileName.includes('.') ? fileName.split('.').pop() : __wfMime.extension(type);
-			const out = { mimeType: type };
-			const fileType = __wfMime.fileType(type);
-			if (fileType) out.fileType = fileType;
-			if (extension) out.fileExtension = extension;
-			if (fileName) out.fileName = fileName;
-			out.data = buffer.toString('base64');
-			out.fileSize = __wfMime.size(buffer.length);
-			out.bytes = buffer.length;
-			return out;
-		},
-		getBinaryDataBuffer(itemIndex, propertyName) {
-			const list = JSON.parse(__wfItems);
-			const entry = (list[itemIndex] || {}).$binary || {};
-			const binary = entry[propertyName];
-			if (!binary) throw new Error('This item has no binary property "' + propertyName + '"');
-			return Buffer.from(binary.data, 'base64');
-		},
-		binaryToString(buffer, encoding) {
-			return buffer.toString(encoding || 'utf8');
-		},
-		// n8n's \`httpRequest\` helper (no credential). Options and result cross the realm as JSON.
-		async httpRequest(options) {
-			if (typeof __wfHttpRequest !== 'function') throw new Error('httpRequest is not available here');
-			return JSON.parse(await __wfHttpRequest(JSON.stringify(options || {})));
-		},
+	`globalThis.helpers = {
+	prepareBinaryData(data, fileName, mimeType) {
+		const buffer = typeof data === 'string' ? Buffer.from(data) : data;
+		const type = mimeType || (fileName && __wfMime.lookup(fileName)) || 'text/plain';
+		const extension = fileName && fileName.includes('.') ? fileName.split('.').pop() : __wfMime.extension(type);
+		const out = { mimeType: type };
+		const fileType = __wfMime.fileType(type);
+		if (fileType) out.fileType = fileType;
+		if (extension) out.fileExtension = extension;
+		if (fileName) out.fileName = fileName;
+		out.data = buffer.toString('base64');
+		out.fileSize = __wfMime.size(buffer.length);
+		out.bytes = buffer.length;
+		return out;
+	},
+	getBinaryDataBuffer(itemIndex, propertyName) {
+		const list = JSON.parse(__wfItems);
+		const entry = (list[itemIndex] || {}).$binary || {};
+		const binary = entry[propertyName];
+		if (!binary) throw new Error('This item has no binary property "' + propertyName + '"');
+		return Buffer.from(binary.data, 'base64');
+	},
+	binaryToString(buffer, encoding) {
+		return buffer.toString(encoding || 'utf8');
+	},
+	// n8n's \`httpRequest\` helper (no credential). Options and result cross the realm as JSON.
+	async httpRequest(options) {
+		if (typeof __wfHttpRequest !== 'function') throw new Error('httpRequest is not available here');
+		return JSON.parse(await __wfHttpRequest(JSON.stringify(options || {})));
 	},
 };
 // $jmespath of n8n (jmespath.ts). Data and result cross the context as JSON.
@@ -416,7 +416,7 @@ export function runCodeStep(args: CodeStepArgs, options: CodeStepOptions = {}): 
 
 /**
  * Code that needs the event loop: timers (`setTimeout`, …), which n8n's JavaScript
- * runner gives, or `this.helpers.httpRequest`.
+ * runner gives, or `helpers.httpRequest` (`this.helpers` too).
  */
 const USES_TIMERS = /\b(?:setTimeout|setInterval|setImmediate)\s*\(|\bhttpRequest\b/;
 
