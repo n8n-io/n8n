@@ -4,10 +4,11 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
-import { nodeNameToToolName } from 'n8n-workflow';
+import { isDeepStrictEqual } from 'node:util';
+import { jsonParse, nodeNameToToolName } from 'n8n-workflow';
 
 import { TtlMap } from '@/utils/ttl-map';
 
@@ -15,6 +16,7 @@ import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { summarizeTools } from '../evaluation/evaluation-config';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 import { toAgentDocument } from '../json-config/agent-document';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
@@ -23,7 +25,12 @@ import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
-import type { SimulatedAgent, SimulatedTool, SimulationWorld } from './tool-simulation.contracts';
+import type {
+	SimulatedAgent,
+	SimulatedTool,
+	SimulationWorld,
+	StoredTestChat,
+} from './tool-simulation.contracts';
 
 export interface OpenSimulationInput {
 	user: User;
@@ -40,7 +47,7 @@ export interface OpenSimulationInput {
 	testRunRequested?: boolean;
 }
 
-/** Decides whether a draft run is a test run, and gives it its test chat's session. */
+/** Decides whether a draft run is a test run. A marked test chat stays one, also with the flag off. */
 @Service()
 export class SimulationSessionService {
 	private readonly sessions = new TtlMap<string, SimulationSession>(
@@ -49,6 +56,11 @@ export class SimulationSessionService {
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
 
+	/** What each cached session last read from or wrote to its thread. */
+	private readonly knownStored = new WeakMap<SimulationSession, StoredTestChat | null>();
+
+	private readonly sessionKeys = new WeakMap<SimulationSession, string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly flagGate: SafeTestingFlagGate,
@@ -56,6 +68,7 @@ export class SimulationSessionService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRefs: AgentSkillRefsService,
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
@@ -64,7 +77,9 @@ export class SimulationSessionService {
 		// A chat that is already a test run stays one, even if the flag reads off for a moment.
 		const key = sessionKey(input);
 		const cached = this.sessions.get(key);
-		if (cached) {
+		// Another main may have run a turn since, and its world is newer than the cached one.
+		if (cached && (await this.storedChanged(cached))) this.sessions.delete(key);
+		else if (cached) {
 			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
 			cached.updateCapabilities(
@@ -81,7 +96,13 @@ export class SimulationSessionService {
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		if (!input.testRunRequested || !(await this.flagGate.isEnabled(input.user))) return undefined;
+		const thread = await this.threadRepository.findOneBy({ id: input.testChatId });
+		const stored = thread?.simulation ?? undefined;
+		// A test chat stays one. A new chat is a test run only when asked for, with the flag on.
+		if (!stored && (!input.testRunRequested || !(await this.flagGate.isEnabled(input.user)))) {
+			return undefined;
+		}
+		const savedWorld = stored?.world;
 
 		const described = await this.describeAgent(input.agentId, input.projectId);
 		const capabilities = await this.capabilitiesFor(described);
@@ -97,6 +118,7 @@ export class SimulationSessionService {
 					testChatId: input.testChatId,
 					agent,
 					firstMessage: input.message,
+					...(savedWorld?.backend === backend.id ? { saved: savedWorld.state } : {}),
 				});
 			} catch (error) {
 				unavailableDetail = 'The simulator could not start.';
@@ -111,10 +133,65 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
+			recordTestChat: async (current, executionId) => {
+				await this.saveTestChat(current);
+				// Before the agent runs, so the execution is a test run even if the turn never ends.
+				if (executionId) await this.markExecutionSimulated(executionId);
+			},
 			queueMode: this.executionsConfig.mode === 'queue',
+			previousWorld: savedWorld,
 		});
+		this.knownStored.set(session, asStored(stored ?? null));
+		this.sessionKeys.set(session, sessionKey(input));
 		this.sessions.set(sessionKey(input), session);
 		return session;
+	}
+
+	/**
+	 * Store the test chat marker and the world on the thread, so later turns,
+	 * restarts and other mains continue the same test run. A failed write fails
+	 * the turn rather than letting a later turn run live.
+	 */
+	/**
+	 * `onConflict: 'skip'` keeps the newer world another main stored since this session
+	 * last saw it; `'throw'` (before a turn runs) fails the turn instead of overwriting it.
+	 */
+	async saveTestChat(
+		session: SimulationSession,
+		{ onConflict = 'throw' }: { onConflict?: 'throw' | 'skip' } = {},
+	): Promise<void> {
+		if (await this.storedChanged(session)) {
+			this.dropSession(session);
+			if (onConflict === 'skip') {
+				this.logger.warn('[SafeTesting] Kept a newer simulated world stored by another turn', {
+					testChatId: session.testChatId,
+				});
+				return;
+			}
+			throw new UnexpectedError(
+				'This test chat changed somewhere else while this message was starting. Send it again.',
+			);
+		}
+		const stored = session.storedTestChat();
+		const result = await this.threadRepository.update(
+			{ id: session.testChatId },
+			{ simulation: stored },
+		);
+		// Without a stored marker a later turn could run live, so the turn must not go on.
+		if (result?.affected === 0) {
+			throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
+		}
+		this.knownStored.set(session, asStored(stored));
+	}
+
+	private dropSession(session: SimulationSession): void {
+		const key = this.sessionKeys.get(session);
+		if (key !== undefined && this.sessions.get(key) === session) this.sessions.delete(key);
+	}
+
+	private async storedChanged(session: SimulationSession): Promise<boolean> {
+		const thread = await this.threadRepository.findOneBy({ id: session.testChatId });
+		return !isDeepStrictEqual(thread?.simulation ?? null, this.knownStored.get(session) ?? null);
 	}
 
 	async markExecutionSimulated(executionId: string): Promise<void> {
@@ -290,4 +367,9 @@ function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInpu
 function withBlockReason(tool: ToolTestCapability): ToolTestCapability {
 	if (tool.testability !== 'blocked' || tool.reason) return tool;
 	return { ...tool, reason: 'unsupported_by_simulator' };
+}
+
+/** As the thread column stores it: JSON drops `undefined` fields, so compare that form. */
+function asStored(stored: StoredTestChat | null): StoredTestChat | null {
+	return stored === null ? null : jsonParse<StoredTestChat>(JSON.stringify(stored));
 }

@@ -356,6 +356,22 @@ describe('executeWorkflow → eval instrumentation', () => {
 		});
 	});
 
+	it('marks the workflow execution as simulated in its custom data when instrumented', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.resultData.metadata).toEqual({ simulated: 'true' });
+	});
+
 	it('leaves the run data untouched when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
@@ -363,6 +379,7 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+		expect(runData.executionData?.resultData.metadata).toBeUndefined();
 	});
 
 	it('leaves the run data untouched when instrumented but no tool name is bound', async () => {

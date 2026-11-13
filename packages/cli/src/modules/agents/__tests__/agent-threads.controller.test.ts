@@ -50,7 +50,7 @@ describe('AgentThreadsController route access scopes', () => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
 
-	it('omits internal ownership fields from a thread response', async () => {
+	it('omits internal ownership and test run fields from a thread response', async () => {
 		const agentExecutionService = mock<AgentExecutionService>();
 		const memoryTraceService = mock<AgentMemoryTraceService>();
 		const memory = { recalls: {}, flags: {} };
@@ -69,6 +69,7 @@ describe('AgentThreadsController route access scopes', () => {
 				ownerId: 'user-1',
 				accessScope: 'user',
 				owner: null,
+				simulation: { testRun: true },
 			}),
 			executions: [],
 		});
@@ -82,6 +83,7 @@ describe('AgentThreadsController route access scopes', () => {
 		expect(result.thread).not.toHaveProperty('ownerId');
 		expect(result.thread).not.toHaveProperty('accessScope');
 		expect(result.thread).not.toHaveProperty('owner');
+		expect(result.thread).not.toHaveProperty('simulation');
 		expect(result.memory).toBe(memory);
 		expect(memoryTraceService.getThreadMemory).toHaveBeenCalledWith({
 			agentId: 'agent-1',

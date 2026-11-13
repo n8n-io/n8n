@@ -70,6 +70,7 @@ import {
 	assertInstrumentedRunStaysOnMain,
 	InstrumentedRunUnsupportedError,
 	PAUSED_INSTRUMENTED_RUN_MESSAGE,
+	SIMULATED_RUN_METADATA,
 } from './instrumented-run-guard';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -329,6 +330,9 @@ export async function executeWorkflow(
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
 
+	const instrument = context.instrumentToolAdditionalData;
+	const instrumented = Boolean(instrument && instrumentedToolName);
+
 	// Build execution data following Instance AI adapter's pattern
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: context.executionMode,
@@ -338,7 +342,12 @@ export async function executeWorkflow(
 		executionData: createRunExecutionData({
 			...(context.agentRun ? { parentAgentRun: context.agentRun } : {}),
 			startData: {},
-			resultData: { pinData: triggerPinData, runData: {} },
+			resultData: {
+				pinData: triggerPinData,
+				runData: {},
+				// Saved as the execution's custom data: its requests went to a simulation or mock.
+				...(instrumented ? { metadata: { ...SIMULATED_RUN_METADATA } } : {}),
+			},
 			executionData: {
 				contextData: {},
 				metadata: {},
@@ -359,8 +368,6 @@ export async function executeWorkflow(
 	// handler, node guard, credentials helper). The closure only applies in this
 	// main process, so a run that would go to a queue worker or Engine v2 is
 	// refused here, before it starts.
-	const instrument = context.instrumentToolAdditionalData;
-	const instrumented = Boolean(instrument && instrumentedToolName);
 	if (instrument && instrumentedToolName) {
 		assertInstrumentedRunStaysOnMain(workflow, context.executionMode);
 		runData.configureAdditionalData = (additionalData) => {

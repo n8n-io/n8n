@@ -2338,8 +2338,55 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(simulation).toHaveBeenCalledWith('thread-1');
+		expect(session.markTestChat).toHaveBeenCalled();
 		expect(runtimeCacheService.getRuntime).toHaveBeenCalledWith(
 			expect.objectContaining({ simulation: session, allowBackgroundTasks: false }),
+		);
+	});
+
+	it('does not run the agent when the test chat marker cannot be stored', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const session = mock<SimulationSession>();
+		session.markTestChat.mockRejectedValue(new Error('Could not mark the test chat'));
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				message: 'hello',
+				user,
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				simulation: vi.fn().mockResolvedValue(session),
+			}),
+		).catch(() => undefined);
+
+		expect(session.markTestChat).toHaveBeenCalled();
+		expect(runtime.agent.stream).not.toHaveBeenCalled();
+	});
+
+	it('marks the test chat with the admitted execution before the agent runs', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		const session = mock<SimulationSession>();
+		session.markTestChat.mockResolvedValue(undefined);
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				message: 'hello',
+				user,
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				simulation: vi.fn().mockResolvedValue(session),
+			}),
+		);
+
+		expect(session.markTestChat).toHaveBeenCalledExactlyOnceWith('execution-1');
+		expect(session.markTestChat.mock.invocationCallOrder[0]).toBeLessThan(
+			runtime.agent.stream.mock.invocationCallOrder[0],
 		);
 	});
 

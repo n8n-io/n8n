@@ -27,6 +27,8 @@ import type {
 	SimulatedReply,
 	SimulationBackendId,
 	SimulationWorld,
+	StoredSimulationWorld,
+	StoredTestChat,
 } from './tool-simulation.contracts';
 
 // Built-ins that only touch n8n or the sandbox: they run and get no route. `call_tool` is
@@ -104,8 +106,12 @@ export interface SimulationSessionInit {
 	unavailableDetail?: string;
 	/** Keyed by tool name (MCP: server name). */
 	capabilities: ToolTestCapability[];
+	/** Stores the test chat marker. Runs before each turn starts. */
+	recordTestChat?: (session: SimulationSession, executionId?: string) => Promise<void>;
 	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
 	queueMode?: boolean;
+	/** The world stored earlier, kept when a new one fails to open. */
+	previousWorld?: StoredSimulationWorld;
 }
 
 /** Guards every tool call of one test chat and records each call's route. Fails closed. */
@@ -122,7 +128,11 @@ export class SimulationSession {
 
 	private capabilities: Map<string, ToolTestCapability>;
 
+	private readonly recordTestChat: SimulationSessionInit['recordTestChat'];
+
 	private readonly queueMode: boolean;
+
+	private readonly previousWorld: StoredSimulationWorld | undefined;
 
 	// A cached runtime keeps this session's hooks, so a replacement session needs its own runtime.
 	private readonly instanceId = randomUUID();
@@ -140,7 +150,31 @@ export class SimulationSession {
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
+		this.recordTestChat = init.recordTestChat;
 		this.queueMode = init.queueMode ?? false;
+		this.previousWorld = init.previousWorld;
+	}
+
+	/**
+	 * Store that this chat is a test chat before the turn runs, so that a later
+	 * turn never runs live, even after a restart or with the flag off. Marks the
+	 * turn's execution as simulated too, before the agent starts.
+	 */
+	async markTestChat(executionId?: string): Promise<void> {
+		await this.recordTestChat?.(this, executionId);
+	}
+
+	/** The marker and world to store on the test chat's thread. */
+	storedTestChat(): StoredTestChat {
+		// After an outage, keep the earlier world so the chat can continue it later.
+		const world = this.storedWorld() ?? this.previousWorld;
+		return { testRun: true, ...(world ? { world } : {}) };
+	}
+
+	/** What to store on the test chat's thread. `undefined` when no world is open. */
+	storedWorld(): StoredSimulationWorld | undefined {
+		if (!this.world) return undefined;
+		return { backend: this.world.backend, worldId: this.world.worldId, state: this.world.save() };
 	}
 
 	get runtimeCacheKey(): string {

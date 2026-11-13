@@ -603,6 +603,7 @@ describe('AgentTestRunService', () => {
 				testRunRequested: false,
 			});
 			expect(simulationSessions.markExecutionSimulated).not.toHaveBeenCalled();
+			expect(simulationSessions.saveTestChat).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -632,7 +633,7 @@ describe('AgentTestRunService', () => {
 			},
 		);
 
-		it('streams each tool result with its route and marks the execution', async () => {
+		it('streams each tool result with its route, marks the execution and saves the world', async () => {
 			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
 			const session = mock<SimulationSession>({ worldId: 'world-1' });
 			session.takeDecision.mockImplementation((toolCallId) =>
@@ -670,6 +671,7 @@ describe('AgentTestRunService', () => {
 				},
 			});
 			expect(simulationSessions.markExecutionSimulated).toHaveBeenCalledWith('execution-1');
+			expect(simulationSessions.saveTestChat).toHaveBeenCalledWith(session, { onConflict: 'skip' });
 		});
 
 		it('resolves the session for a resumed draft run too', async () => {

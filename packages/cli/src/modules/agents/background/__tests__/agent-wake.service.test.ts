@@ -994,7 +994,7 @@ describe('AgentWakeService', () => {
 			error: Error,
 		) {
 			orchestrator.executeForWake.mockImplementation(async (config) => {
-				await config.onAdmitted?.();
+				await config.onAdmitted?.('execution-1');
 				throw error;
 			});
 		}
@@ -1003,7 +1003,7 @@ describe('AgentWakeService', () => {
 			const { service, orchestrator, jobRepository } = setup();
 			orchestrator.executeForWake.mockImplementation(async (config) => {
 				expect(jobRepository.claimForWake).not.toHaveBeenCalled();
-				await config.onAdmitted?.();
+				await config.onAdmitted?.('execution-1');
 			});
 
 			await service.attemptWake('thread-1');
@@ -1091,7 +1091,7 @@ describe('AgentWakeService', () => {
 				return await callback(controller.signal);
 			});
 			orchestrator.executeForWake.mockImplementation(async (config) => {
-				await config.onAdmitted?.();
+				await config.onAdmitted?.('execution-1');
 				if (runtimeStarted) config.onRuntimeStarted?.();
 				controller.abort();
 				throw new Error('aborted');

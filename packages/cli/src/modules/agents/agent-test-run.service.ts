@@ -511,12 +511,17 @@ export class AgentTestRunService {
 		return { ...chunk, simulation };
 	}
 
+	/** Marks the execution and stores the world on the test chat. */
 	private async recordSimulation(
 		session: SimulationSession | undefined,
 		executionId: string | undefined,
 	): Promise<void> {
-		if (!session || !executionId) return;
-		await this.simulationSessions.markExecutionSimulated(executionId);
+		if (!session) return;
+		await Promise.all([
+			executionId ? this.simulationSessions.markExecutionSimulated(executionId) : undefined,
+			// The turn already ran; a newer world stored by another turn is kept.
+			this.simulationSessions.saveTestChat(session, { onConflict: 'skip' }),
+		]);
 	}
 
 	private observeDraftChunk(

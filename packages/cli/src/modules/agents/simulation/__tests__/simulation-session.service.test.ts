@@ -5,7 +5,9 @@ import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
+import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { ProjectAgent } from '../../entities/agent.entity';
+import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { SafeTestingFlagGate } from '../safe-testing-flag-gate';
@@ -49,10 +51,12 @@ const world: SimulationWorld = {
 	worldId: 'world-1',
 	backend: 'llm-mock',
 	handleRequest: vi.fn(),
+	save: () => ({ seed: 'abc' }),
 };
 
 function setup({
 	flagOn = true,
+	stored,
 	backend,
 	queueMode = false,
 	engineV2 = false,
@@ -60,6 +64,7 @@ function setup({
 	integrations = [],
 }: {
 	flagOn?: boolean;
+	stored?: AgentExecutionThread['simulation'];
 	backend?: SimulationBackend;
 	queueMode?: boolean;
 	engineV2?: boolean;
@@ -79,6 +84,10 @@ function setup({
 	} as unknown as ProjectAgent);
 	const skillRefs = mock<AgentSkillRefsService>();
 	skillRefs.refsForDraft.mockResolvedValue([] as never);
+	const threadRepository = mock<AgentExecutionThreadRepository>();
+	threadRepository.findOneBy.mockResolvedValue(
+		stored === undefined ? null : ({ simulation: stored } as AgentExecutionThread),
+	);
 	const executionRepository = mock<AgentExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
 	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
@@ -95,10 +104,11 @@ function setup({
 		mock<ExecutionsConfig>({ mode: queueMode ? 'queue' : 'regular' }),
 		agentRepository,
 		skillRefs,
+		threadRepository,
 		executionRepository,
 		workflowRepository,
 	);
-	return { service, executionRepository, flagGate, workflowRepository };
+	return { service, threadRepository, executionRepository, flagGate, workflowRepository };
 }
 
 function llmBackend(): SimulationBackend {
@@ -144,6 +154,22 @@ describe('SimulationSessionService', () => {
 		expect(backend.openWorld).not.toHaveBeenCalled();
 	});
 
+	it('keeps a test chat simulated after the flag turns off', async () => {
+		const backend = llmBackend();
+		const stored = {
+			testRun: true as const,
+			world: { backend: 'llm-mock' as const, worldId: 'world-1', state: { seed: 'abc' } },
+		};
+		const { service } = setup({ flagOn: false, stored, backend });
+
+		const session = await service.openForDraftRun(openInput);
+
+		expect(session?.worldId).toBe('world-1');
+		expect(backend.openWorld).toHaveBeenCalledWith(
+			expect.objectContaining({ testChatId: 'chat-1', saved: { seed: 'abc' } }),
+		);
+	});
+
 	it('opens one world for each test chat and reuses it on the next turn', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ backend });
@@ -166,6 +192,7 @@ describe('SimulationSessionService', () => {
 		const session = await service.openForDraftRun(openInput);
 
 		expect(session?.worldId).toBeUndefined();
+		expect(session?.storedWorld()).toBeUndefined();
 	});
 
 	it('blocks every call when the world fails to open, without falling back', async () => {
@@ -340,15 +367,55 @@ describe('SimulationSessionService', () => {
 		});
 	});
 
-	it('marks the execution as a test run', async () => {
-		const { service, executionRepository } = setup({ backend: llmBackend() });
+	it('stores the world on the test chat and marks the execution', async () => {
+		const { service, threadRepository, executionRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
 
+		await session!.markTestChat();
 		await service.markExecutionSimulated('execution-1');
 
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{
+				simulation: {
+					testRun: true,
+					world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'abc' } },
+				},
+			},
+		);
 		expect(executionRepository.update).toHaveBeenCalledWith(
 			{ id: 'execution-1' },
 			{ simulated: true },
 		);
+	});
+
+	it('keeps a chat that started without a simulator a test chat', async () => {
+		const { service, threadRepository } = setup();
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat();
+
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{ simulation: { testRun: true } },
+		);
+	});
+
+	it('keeps a marked chat a test run when a later message does not ask for one', async () => {
+		const { service } = setup({ stored: { testRun: true } });
+
+		const session = await service.openForDraftRun({ ...openInput, testRunRequested: false });
+
+		expect(session).toBeDefined();
+	});
+
+	it('keeps a marked chat a test run with the flag off, even without a stored world', async () => {
+		const { service } = setup({ flagOn: false, stored: { testRun: true } });
+
+		const session = await service.openForDraftRun(openInput);
+
+		expect(session).toBeDefined();
+		expect(session?.worldId).toBeUndefined();
 	});
 
 	it('blocks a workflow tool in queue mode, also after the tool list refreshes', async () => {
@@ -375,6 +442,39 @@ describe('SimulationSessionService', () => {
 		});
 	});
 
+	it('marks the execution as simulated when the turn is admitted, after the marker', async () => {
+		const { service, threadRepository, executionRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat('execution-7');
+
+		expect(threadRepository.update).toHaveBeenCalledOnce();
+		expect(executionRepository.update).toHaveBeenCalledExactlyOnceWith(
+			{ id: 'execution-7' },
+			{ simulated: true },
+		);
+		expect(threadRepository.update.mock.invocationCallOrder[0]).toBeLessThan(
+			executionRepository.update.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not mark the execution when the test chat marker fails', async () => {
+		const { service, threadRepository, executionRepository } = setup();
+		threadRepository.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+		const session = await service.openForDraftRun(openInput);
+
+		await expect(session!.markTestChat('execution-7')).rejects.toThrow();
+		expect(executionRepository.update).not.toHaveBeenCalled();
+	});
+
+	it('fails the turn when the test chat marker matches no thread', async () => {
+		const { service, threadRepository } = setup();
+		threadRepository.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+		const session = await service.openForDraftRun(openInput);
+
+		await expect(session!.markTestChat()).rejects.toThrow('Could not mark the test chat');
+	});
+
 	it('keeps a running test chat a test run when the flag reads off on a later turn', async () => {
 		const backend = llmBackend();
 		const { service, flagGate } = setup({ backend });
@@ -385,6 +485,68 @@ describe('SimulationSessionService', () => {
 		await expect(
 			service.openForDraftRun({ ...openInput, testChatId: 'other-chat' }),
 		).resolves.toBeUndefined();
+	});
+
+	it('reopens a cached chat whose stored world another main changed since', async () => {
+		const backend = llmBackend();
+		const { service, threadRepository } = setup({ backend });
+		const first = await service.openForDraftRun(openInput);
+		await first!.markTestChat();
+		const saved = vi.mocked(threadRepository.update).mock.calls[0][1].simulation;
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({ simulation: saved } as never);
+
+		await expect(service.openForDraftRun(openInput)).resolves.toBe(first);
+
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({
+			simulation: {
+				testRun: true,
+				world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'newer' } },
+			},
+		} as never);
+		const reopened = await service.openForDraftRun(openInput);
+
+		expect(reopened).not.toBe(first);
+		expect(backend.openWorld).toHaveBeenLastCalledWith(
+			expect.objectContaining({ saved: { seed: 'newer' } }),
+		);
+	});
+
+	it('does not overwrite a world another main stored after this session opened', async () => {
+		const { service, threadRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+		const newer = {
+			testRun: true,
+			world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'newer' } },
+		};
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({ simulation: newer } as never);
+
+		await expect(session!.markTestChat()).rejects.toThrow('changed somewhere else');
+		await expect(service.saveTestChat(session!, { onConflict: 'skip' })).resolves.toBeUndefined();
+
+		expect(threadRepository.update).not.toHaveBeenCalled();
+	});
+
+	it('keeps the stored world when the simulator is down on a later turn', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.openWorld).mockRejectedValue(new Error('down'));
+		const storedWorld = {
+			backend: 'llm-mock' as const,
+			worldId: 'world-1',
+			state: { seed: 'abc' },
+		};
+		const { service, threadRepository } = setup({
+			backend,
+			stored: { testRun: true, world: storedWorld },
+		});
+
+		const session = await service.openForDraftRun(openInput);
+		await session!.markTestChat();
+
+		expect(session?.worldId).toBeUndefined();
+		expect(threadRepository.update).toHaveBeenCalledWith(
+			{ id: 'chat-1' },
+			{ simulation: { testRun: true, world: storedWorld } },
+		);
 	});
 
 	it('opens one world when two turns of a new chat start together', async () => {

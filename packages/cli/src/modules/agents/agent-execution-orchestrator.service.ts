@@ -251,7 +251,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
 	/** Runs after the execution record exists and before the agent starts. */
-	onAdmitted?: () => Promise<void>;
+	onAdmitted?: (executionId: string) => Promise<void>;
 	/** Runs when the agent runtime starts. */
 	onRuntimeStarted?: () => void;
 	identity:
@@ -264,7 +264,7 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 }
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
-	onAdmitted?: () => Promise<void>;
+	onAdmitted?: (executionId: string) => Promise<void>;
 	/**
 	 * A test run. Background jobs left on the thread must not wake when it settles:
 	 * a wake run is not simulated, so it would call real services.
@@ -1498,6 +1498,12 @@ export class AgentExecutionOrchestratorService {
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
 			chatSurface: config.chatSurface,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
+			...(config.simulationSession
+				? {
+						onAdmitted: async (executionId: string) =>
+							await config.simulationSession?.markTestChat(executionId),
+					}
+				: {}),
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
@@ -1817,12 +1823,16 @@ export class AgentExecutionOrchestratorService {
 			pauseReport: config.pauseReport,
 			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
-			onAdmitted: async () =>
+			onAdmitted: async (executionId) => {
 				await this.integrationMessageContextService.setLatest(
 					memory.threadId,
 					memory.resourceId,
 					messageContext,
-				),
+				);
+				// Before the agent runs: a later turn of this chat must never run live, and the
+				// execution is a test run even if this process stops before the turn ends.
+				await config.simulationSession?.markTestChat(executionId);
+			},
 			access: setup.access,
 			messageContext,
 			agentInstance: runtime.agent,

@@ -3,10 +3,11 @@ import { randomUUID } from 'node:crypto';
 import type { InstanceAiEvalAgentScenarioSeed, ToolTestCapability } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
-import type { IHttpRequestMethods, INode } from 'n8n-workflow';
+import type { IHttpRequestMethods, INode, JsonObject } from 'n8n-workflow';
 
 import type {
 	OpenWorldInput,
+	SavedSimulationWorld,
 	SimulatedAgent,
 	SimulatedReply,
 	SimulationBackend,
@@ -14,7 +15,7 @@ import type {
 } from '@/modules/agents/simulation/tool-simulation.contracts';
 
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
-import { createLlmMockHandler } from './mock-handler';
+import { createLlmMockHandler, type WriteLedgerEntry } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
@@ -47,34 +48,53 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 		);
 	}
 
-	async openWorld({ agent, firstMessage }: OpenWorldInput): Promise<SimulationWorld> {
+	async openWorld({ agent, firstMessage, saved }: OpenWorldInput): Promise<SimulationWorld> {
+		const restored = parseSaved(saved);
 		const scenarioHints = truncateForLlm(
 			redactSecretValuePatterns(firstMessage),
 			MAX_SCENARIO_HINT_CHARS,
 		);
-		const seed = await generateAgentScenarioSeed({
-			agentName: agent.name,
-			instructions: agent.instructions,
-			tools: seedTools(agent),
-			scenarioHints,
-		});
-		return this.buildWorld(`llm-mock-${randomUUID()}`, seed, scenarioHints);
+		const seed =
+			restored?.seed ??
+			(await generateAgentScenarioSeed({
+				agentName: agent.name,
+				instructions: agent.instructions,
+				tools: seedTools(agent),
+				scenarioHints,
+			}));
+		const worldId = restored?.worldId ?? `llm-mock-${randomUUID()}`;
+		return this.buildWorld(
+			worldId,
+			seed,
+			restored?.scenarioHints ?? scenarioHints,
+			restored?.writeLedger ?? [],
+		);
 	}
 
 	private buildWorld(
 		worldId: string,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioHints: string,
+		writeLedger: WriteLedgerEntry[],
 	): SimulationWorld {
+		// Shared with the handler, which appends each simulated write, so it can be saved.
 		const httpMock: EvalLlmMockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+			writeLedger,
 		});
 
 		return {
 			worldId,
 			backend: this.id,
+			save: (): SavedSimulationWorld => ({
+				worldId,
+				scenarioHints,
+				seed: seed as unknown as JsonObject,
+				// A later turn, after a restart too, must still see what earlier turns wrote.
+				writeLedger: writeLedger.slice(-MAX_SAVED_WRITES) as unknown as JsonObject[],
+			}),
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
 				const node: INode = {
 					id: call.toolCallId ?? call.toolName,
@@ -121,6 +141,45 @@ function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
 			...(tool.description ? { description: tool.description } : {}),
 			...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
 		}));
+}
+
+/** Writes kept with a saved world: enough for later reads, small enough for the thread row. */
+const MAX_SAVED_WRITES = 50;
+
+function parseSaved(saved: SavedSimulationWorld | undefined):
+	| {
+			worldId: string;
+			scenarioHints: string;
+			seed: InstanceAiEvalAgentScenarioSeed;
+			writeLedger: WriteLedgerEntry[];
+	  }
+	| undefined {
+	if (!saved) return undefined;
+	const { worldId, scenarioHints, seed } = saved;
+	if (typeof worldId !== 'string' || typeof scenarioHints !== 'string') return undefined;
+	if (typeof seed !== 'object' || seed === null || Array.isArray(seed)) return undefined;
+	if (typeof seed.globalContext !== 'string' || typeof seed.openingMessage !== 'string') {
+		return undefined;
+	}
+	return {
+		worldId,
+		scenarioHints,
+		seed: seed as unknown as InstanceAiEvalAgentScenarioSeed,
+		writeLedger: parseWriteLedger(saved.writeLedger),
+	};
+}
+
+function parseWriteLedger(value: unknown): WriteLedgerEntry[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(entry): entry is WriteLedgerEntry =>
+			typeof entry === 'object' &&
+			entry !== null &&
+			typeof (entry as WriteLedgerEntry).hostname === 'string' &&
+			typeof (entry as WriteLedgerEntry).method === 'string' &&
+			typeof (entry as WriteLedgerEntry).endpoint === 'string' &&
+			typeof (entry as WriteLedgerEntry).nodeName === 'string',
+	);
 }
 
 function isMockGenerationError(body: unknown): boolean {

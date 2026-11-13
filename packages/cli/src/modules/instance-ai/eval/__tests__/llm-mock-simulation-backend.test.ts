@@ -125,4 +125,44 @@ describe('LlmMockSimulationBackend', () => {
 			),
 		).resolves.toMatchObject({ outcome: 'unsupported' });
 	});
+
+	it('continues a saved world without generating a new seed', async () => {
+		const { backend } = setup();
+		const first = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		vi.mocked(generateAgentScenarioSeed).mockClear();
+
+		const second = await backend.openWorld({
+			testChatId: 'chat-1',
+			agent,
+			firstMessage: 'a later turn',
+			saved: first.save(),
+		});
+
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(second.worldId).toBe(first.worldId);
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ scenarioHints: 'hi', globalContext: seed.globalContext }),
+		);
+	});
+
+	it('keeps the simulated writes of earlier turns in a saved world', async () => {
+		const { backend } = setup();
+		const first = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const firstOptions = vi.mocked(createLlmMockHandler).mock.calls[0][0];
+		const write = {
+			hostname: 'slack.com',
+			method: 'POST',
+			endpoint: '/api/chat.postMessage',
+			nodeName: 'Send_Slack',
+			body: '{"text":"v2"}',
+		};
+		firstOptions?.writeLedger?.push(write);
+
+		const saved = structuredClone(first.save());
+		await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'later', saved });
+
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ writeLedger: [write] }),
+		);
+	});
 });

@@ -4,6 +4,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from '@n8
 
 import { AgentHistory } from './agent-history.entity';
 import { Agent } from './agent.entity';
+import type { StoredTestChat } from '../simulation/tool-simulation.contracts';
 import type { StoredAgentTaskStop } from '../types/agent-task-stop';
 
 /**
@@ -23,6 +24,10 @@ import type { StoredAgentTaskStop } from '../types/agent-task-stop';
 export class AgentExecutionThread extends WithTimestampsAndStringId {
 	@JsonColumn({ nullable: true, comment: 'Latest task stop boundary' })
 	taskStop: StoredAgentTaskStop | null;
+
+	/** Marks a test chat and keeps its simulated world. Null for a live chat. */
+	@JsonColumn({ nullable: true, comment: 'Test chat marker and simulated world' })
+	simulation: StoredTestChat | null;
 
 	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'ownerId', foreignKeyConstraintName: 'FK_agent_execution_threads_owner' })

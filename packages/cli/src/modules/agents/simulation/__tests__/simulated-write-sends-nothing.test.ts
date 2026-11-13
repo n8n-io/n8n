@@ -103,6 +103,7 @@ describe('a write tool in a test run', () => {
 			worldId: 'world-1',
 			backend: 'llm-mock',
 			handleRequest: vi.fn(async () => await Promise.resolve(reply)),
+			save: () => ({}),
 		};
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
