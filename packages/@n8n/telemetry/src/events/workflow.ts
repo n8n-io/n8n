@@ -1,7 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { publicApiClientSchema } from '../schemas';
+import { assistantRuntimeSchema, publicApiClientSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
@@ -154,6 +154,8 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 			request_id: z.string().optional(),
 			items: z.array(z.object({ ...setupItemProperties, completed: z.boolean() })),
 			setup_complete: z.boolean(),
+			// Optional: the setup panel sends this event outside an Assistant thread runtime.
+			runtime: assistantRuntimeSchema.optional(),
 		}),
 	},
 	MULTIPLE_NODES_SELECTED: {

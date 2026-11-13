@@ -47,9 +47,11 @@ import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vu
 import type {
 	WorkflowSetupApplyPayload,
 	WorkflowSetupOutcome,
+	WorkflowSetupSection,
 } from '../workflowSetup/workflowSetup.types';
 import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
+import { ASSISTANT_AGENT_SETUP_SAVED } from './useAssistantAgentSetupSavedTelemetry';
 
 const props = defineProps<{
 	input: AssistantConfirmationInput;
@@ -66,6 +68,7 @@ const approvalLabels = useApprovalCardLabels();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
+const expectSetupResult = inject(ASSISTANT_AGENT_SETUP_SAVED, undefined);
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -130,12 +133,23 @@ function trackAnswer(inputs: ConfirmationInputs) {
 
 /**
  * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
- * that the backend settles has none.
+ * that the backend settles has none. `onAccepted` also runs once the server accepts it.
  */
-function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
+function submit(
+	body: InstanceAiConfirmRequest,
+	inputs?: ConfirmationInputs,
+	onAccepted?: () => void,
+) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
+	const accepted =
+		inputs || onAccepted
+			? () => {
+					if (inputs) trackAnswer(inputs);
+					onAccepted?.();
+				}
+			: undefined;
+	emit('submit', body, accepted);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
@@ -146,8 +160,15 @@ function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 // The chat shows the tool result, so the setup card settles as soon as the answer is sent.
 const workflowSetupOutcome = ref<WorkflowSetupOutcome>();
 
-function onWorkflowSetupApply(payload: WorkflowSetupApplyPayload) {
-	submit({ kind: 'setupWorkflowApply', ...payload });
+function onWorkflowSetupApply(
+	payload: WorkflowSetupApplyPayload,
+	sections: WorkflowSetupSection[],
+) {
+	const { requestId, workflowId } = props.input;
+	// The chat shows the tool result after this card unmounts, so the thread view sends the event.
+	submit({ kind: 'setupWorkflowApply', ...payload }, undefined, () =>
+		expectSetupResult?.({ requestId, workflowId, sections }),
+	);
 	workflowSetupOutcome.value = { state: 'applied' };
 }
 

@@ -168,6 +168,49 @@ describe('useWorkflowSetupActions', () => {
 		},
 	);
 
+	it('tracks the saved setup with the setup tool result of the current runtime', async () => {
+		const h = setupHarness();
+		h.completedSet.add(h.sectionA.id);
+		h.apply.mockResolvedValue({
+			success: true,
+			completedNodes: [{ nodeName: 'A', credentialType: 'typeA' }],
+		});
+
+		await h.actions.apply();
+
+		expect(getTelemetryCalls(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED)).toEqual([
+			[
+				TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED,
+				{
+					instance_id: 'instance-1',
+					workflow_id: 'workflow-1',
+					thread_id: 'thread-1',
+					session_id: 'session-1',
+					source: 'instance_ai_setup_wizard',
+					request_id: 'req-1',
+					items: [
+						{
+							node_id: 'node-a',
+							node_type: 'n8n-nodes-base.httpRequest',
+							kind: 'credential',
+							credential_type: 'typeA',
+							completed: true,
+						},
+						{
+							node_id: 'node-b',
+							node_type: 'n8n-nodes-base.httpRequest',
+							kind: 'credential',
+							credential_type: 'typeB',
+							completed: false,
+						},
+					],
+					setup_complete: false,
+					runtime: 'instance-ai',
+				},
+			],
+		]);
+	});
+
 	it('tracks the active setup step when it is shown', () => {
 		setupHarness();
 		const shownPayload = getTelemetryCalls('Instance AI workflow setup step shown')[0]?.[1];
