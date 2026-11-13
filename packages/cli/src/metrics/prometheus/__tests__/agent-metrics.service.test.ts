@@ -104,8 +104,8 @@ describe('PrometheusAgentMetricsService', () => {
 		const duration = await promClient.register.getSingleMetricAsString(
 			'n8n_agent_execution_duration_seconds',
 		);
-		expect(duration).toContain(
-			'n8n_agent_execution_duration_seconds_sum{agent="assistant",kind="turn"} 2',
+		expect(duration).toMatch(
+			/^n8n_agent_execution_duration_seconds_sum\{agent="assistant",kind="turn"\} 2$/m,
 		);
 		expect(await value('n8n_agent_tokens_total', { ...scope, type: 'input' })).toBe(100);
 		expect(await value('n8n_agent_tokens_total', { ...scope, type: 'output' })).toBe(20);
