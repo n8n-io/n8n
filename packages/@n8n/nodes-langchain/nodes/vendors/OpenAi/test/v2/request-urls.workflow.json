@@ -104,6 +104,7 @@
 			"position": [1100, 0],
 			"id": "7c1d6a52-3f4e-4c1b-9b2a-6e0f1a2b3c06",
 			"name": "Generate Video",
+			"continueOnFail": true,
 			"credentials": {
 				"openAiApi": {
 					"id": "123",
