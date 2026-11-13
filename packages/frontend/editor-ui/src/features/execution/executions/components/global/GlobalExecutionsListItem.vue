@@ -24,7 +24,7 @@ import {
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import ExecutionEngineBadge from '../ExecutionEngineBadge.vue';
-import { getExecutionEngineLabel } from '../../executions.utils';
+import { getExecutionEngine } from '../../executions.utils';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -62,7 +62,7 @@ const settingsStore = useSettingsStore();
 const isEngineV2Active = computed(() => settingsStore.isModuleActive('engine-v2'));
 const engineTooltip = computed(() =>
 	locale.baseText('executionsList.engine.tooltip', {
-		interpolate: { version: getExecutionEngineLabel(props.execution.id) },
+		interpolate: { version: getExecutionEngine(props.execution.id) },
 	}),
 );
 
@@ -299,10 +299,10 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<template v-if="execution.id && isEngineV2Active">
+				<ExecutionEngineBadge :execution-id="execution.id" class="mr-3xs" />
 				<N8nTooltip :content="engineTooltip" placement="top">
 					<span data-test-id="execution-id">{{ execution.id }}</span>
 				</N8nTooltip>
-				<ExecutionEngineBadge :execution-id="execution.id" class="ml-3xs" />
 			</template>
 			<span v-else-if="execution.id">{{ execution.id }}</span>
 			<span v-if="execution.retryOf">

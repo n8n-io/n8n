@@ -347,8 +347,8 @@ describe('WorkflowExecutionsCard', () => {
 			});
 
 		test.each([
-			['123', 'v1'],
-			['019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b', 'v2'],
+			['123', 'Engine v1'],
+			['019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b', 'Engine v2'],
 		])('shows the engine of execution %s with the engine-v2 module active', (id, label) => {
 			mockedStore(useSettingsStore).isModuleActive.mockImplementation(
 				(name) => name === 'engine-v2',
@@ -356,7 +356,7 @@ describe('WorkflowExecutionsCard', () => {
 
 			const { getByTestId } = renderWithId(id);
 
-			expect(getByTestId('execution-engine-badge')).toHaveTextContent(label);
+			expect(getByTestId('execution-engine-badge')).toHaveTextContent(new RegExp(`^${label}$`));
 		});
 
 		test('shows no engine with the engine-v2 module inactive', () => {

@@ -243,12 +243,21 @@ describe('GlobalExecutionsListItem', () => {
 			});
 
 			it.each([
-				[v1Id, 'v1'],
-				[v2Id, 'v2'],
+				[v1Id, 'Engine v1'],
+				[v2Id, 'Engine v2'],
 			])('shows the engine badge for execution %s', (id, label) => {
 				const { getByTestId } = renderWithId(id);
 
-				expect(getByTestId('execution-engine-badge')).toHaveTextContent(label);
+				expect(getByTestId('execution-engine-badge')).toHaveTextContent(new RegExp(`^${label}$`));
+			});
+
+			it('shows the engine badge in front of the execution ID', () => {
+				const { getByTestId } = renderWithId(v2Id);
+
+				const badge = getByTestId('execution-engine-badge');
+				const id = getByTestId('execution-id');
+
+				expect(badge.compareDocumentPosition(id) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 			});
 
 			it.each([
@@ -259,7 +268,7 @@ describe('GlobalExecutionsListItem', () => {
 
 				await hoverTooltipTrigger(getByTestId('execution-id'));
 
-				await waitFor(() => expect(getTooltip()).toHaveTextContent(text));
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(new RegExp(`^${text}$`)));
 			});
 		});
 

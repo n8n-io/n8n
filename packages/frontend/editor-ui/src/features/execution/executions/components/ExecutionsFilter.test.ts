@@ -208,8 +208,8 @@ describe('ExecutionsFilter', () => {
 
 			expect(options.map((option) => option.textContent?.trim())).toEqual([
 				'Any engine',
-				'v1',
-				'v2',
+				'Engine v1',
+				'Engine v2',
 			]);
 
 			await userEvent.click(options[2]);

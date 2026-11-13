@@ -4,6 +4,7 @@ import {
 	displayForm,
 	executionFilterToQueryFilter,
 	getDefaultExecutionFilters,
+	getExecutionEngine,
 	getExecutionEngineLabel,
 	hasCancellableExecutions,
 	isEngineV2ExecutionId,
@@ -929,6 +930,15 @@ describe('isEngineV2ExecutionId', () => {
 		['an empty string', ''],
 	])('returns false for %s', (_label, executionId) => {
 		expect(isEngineV2ExecutionId(executionId)).toBe(false);
+	});
+});
+
+describe('getExecutionEngine', () => {
+	it.each([
+		['v1', '123'],
+		['v2', '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b'],
+	])('returns %s for execution %s', (engine, executionId) => {
+		expect(getExecutionEngine(executionId)).toBe(engine);
 	});
 });
 
