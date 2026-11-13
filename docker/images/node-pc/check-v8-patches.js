@@ -1,10 +1,19 @@
-// Proves that the compiled Node carries the V8 patches of ./patches. Runs in
-// the node-pc image build after `make install`.
+// Proves that the compiled Node has the expected configure flags and carries
+// the V8 patches of ./patches. Runs in the image build after `make install`.
 'use strict';
 
 const { v8 } = process.versions;
 if (!/-n8n\.\d+$/.test(v8)) {
 	throw new Error(`V8 ${v8} has no n8n patch suffix, the patches did not apply`);
+}
+
+// ENABLE_POINTER_COMPRESSION is the Dockerfile build arg, 'true' or 'false'.
+const expectPc = process.env.ENABLE_POINTER_COMPRESSION === 'true';
+const hasPc = Boolean(process.config.variables.v8_enable_pointer_compression);
+if (expectPc !== hasPc) {
+	throw new Error(
+		`pointer compression is ${hasPc ? 'on' : 'off'}, expected ${expectPc ? 'on' : 'off'}`,
+	);
 }
 
 // patches/0001: an object literal whose key is a long numeric index that
@@ -24,4 +33,4 @@ for (const last of [48, 49]) {
 	}
 }
 
-console.log(`V8 ${v8}: patches verified`);
+console.log(`V8 ${v8}, pointer compression ${hasPc ? 'on' : 'off'}: patches verified`);
