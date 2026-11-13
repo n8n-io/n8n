@@ -70,9 +70,9 @@
 	"frontend/no-restricted-syntax": {
 		"layer": "frontend",
 		"native": null,
-		"reason": "editor-ui uses package-specific AST selectors for workflow-store and modal-migration ratchets. The frontend keeps ESLint for these selectors.",
-		"impact": "None for the backend migration.",
-		"replacement": "Replace each selector with a focused rule before an Oxlint-only frontend migration."
+		"reason": "editor-ui used package-specific AST selectors for its workflow-store and modal-key ratchets. They were `off`, and Oxlint has no `no-restricted-syntax` rule, so the move to Oxlint dropped them. The selectors are in the git history of `packages/frontend/editor-ui/eslint.config.mjs`.",
+		"impact": "None now: no ratchet was on.",
+		"replacement": "Write a focused rule for each selector before you turn its ratchet on."
 	},
 	"frontend/vue-template-rules": {
 		"layer": "frontend",

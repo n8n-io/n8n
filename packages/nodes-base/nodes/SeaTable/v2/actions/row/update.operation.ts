@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -165,7 +166,7 @@ export async function execute(
 		this,
 		{},
 		'PUT',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 		body,
 	);
 

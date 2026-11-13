@@ -2,6 +2,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type { IHttpRequestOptions, ISupplyDataFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -160,7 +161,7 @@ describe('getPineconeVectorStore', () => {
 
 		expect(request).toHaveBeenCalledWith('pineconeApi', {
 			method: 'GET',
-			url: `https://api.pinecone.io/indexes/${indexName}`,
+			url: requestUrl`https://api.pinecone.io/indexes/${indexName}`,
 			headers: { 'X-Pinecone-API-Version': '2026-07' },
 			json: true,
 		});
@@ -225,7 +226,7 @@ describe('getPineconeVectorStore', () => {
 		expect(embeddings.embedQuery).toHaveBeenCalledWith('hi');
 		expect(searchCall()).toEqual({
 			method: 'POST',
-			url: `https://${indexName}-abc.svc.pinecone.io/namespaces/my%20ns/documents/search`,
+			url: requestUrl`https://${indexName}-abc.svc.pinecone.io/namespaces/${'my ns'}/documents/search`,
 			headers: { 'X-Pinecone-API-Version': '2026-07' },
 			json: true,
 			body: {
@@ -254,8 +255,8 @@ describe('getPineconeVectorStore', () => {
 		});
 		await store.similaritySearchVectorWithScore([1, 1, 1], 2, { b: 2 });
 
-		expect(searchCall()?.url).toBe(
-			`https://${indexName}-abc.svc.pinecone.io/namespaces/__default__/documents/search`,
+		expect(searchCall()?.url).toEqual(
+			requestUrl`https://${indexName}-abc.svc.pinecone.io/namespaces/__default__/documents/search`,
 		);
 		expect(searchCall()?.body).toEqual(expect.objectContaining({ top_k: 2, filter: { b: 2 } }));
 	});

@@ -3,9 +3,11 @@ import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
+	RequestUrl,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import type { AgentsListResponse } from '../actions/agent/agent.types';
 import { getAgentDetails } from '../actions/agent/agent.utils';
@@ -45,9 +47,9 @@ export async function listSearchAgents(
 
 	const response = await apiRequest.call<
 		ILoadOptionsFunctions,
-		['GET', string, IDataObject, IDataObject],
+		['GET', RequestUrl, IDataObject, IDataObject],
 		Promise<AgentsListResponse>
-	>(this, 'GET', `${BASE_URL_V2}/agents`, {}, qs);
+	>(this, 'GET', requestUrl`${BASE_URL_V2}/agents`, {}, qs);
 
 	const agents = response.agents ?? [];
 

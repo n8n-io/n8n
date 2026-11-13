@@ -1,0 +1,1673 @@
+{
+	"name": "QuickBooks Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "bill",
+				"operation": "get",
+				"billId": "145"
+			},
+			"id": "node-0",
+			"name": "Bill get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bill",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-1",
+			"name": "Bill getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "58"
+			},
+			"id": "node-2",
+			"name": "Customer get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-3",
+			"name": "Customer getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "get",
+				"employeeId": "55"
+			},
+			"id": "node-4",
+			"name": "Employee get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-5",
+			"name": "Employee getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "get",
+				"estimateId": "101"
+			},
+			"id": "node-6",
+			"name": "Estimate get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-7",
+			"name": "Estimate getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "get",
+				"invoiceId": "130"
+			},
+			"id": "node-8",
+			"name": "Invoice get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-9",
+			"name": "Invoice getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "get",
+				"itemId": "19"
+			},
+			"id": "node-10",
+			"name": "Item get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-11",
+			"name": "Item getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "get",
+				"paymentId": "163"
+			},
+			"id": "node-12",
+			"name": "Payment get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-13",
+			"name": "Payment getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "purchase",
+				"operation": "get",
+				"purchaseId": "252"
+			},
+			"id": "node-14",
+			"name": "Purchase get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "purchase",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-15",
+			"name": "Purchase getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2250],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vendor",
+				"operation": "get",
+				"vendorId": "56"
+			},
+			"id": "node-16",
+			"name": "Vendor get",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vendor",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"id": "node-17",
+			"name": "Vendor getAll",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2550],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bill",
+				"operation": "create",
+				"VendorRef": "56",
+				"Line": [
+					{
+						"DetailType": "AccountBasedExpenseLineDetail",
+						"Amount": 100,
+						"Description": "Office chairs",
+						"accountId": "7"
+					}
+				],
+				"additionalFields": {}
+			},
+			"id": "node-18",
+			"name": "Bill create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2700],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bill",
+				"operation": "delete",
+				"billId": "145"
+			},
+			"id": "node-19",
+			"name": "Bill delete",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 2850],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bill",
+				"operation": "update",
+				"billId": "145",
+				"updateFields": {
+					"TxnDate": "2024-01-05"
+				}
+			},
+			"id": "node-20",
+			"name": "Bill update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "create",
+				"displayName": "Amy Lauterbach",
+				"additionalFields": {}
+			},
+			"id": "node-21",
+			"name": "Customer create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3150],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "58",
+				"updateFields": {
+					"Balance": 10
+				}
+			},
+			"id": "node-22",
+			"name": "Customer update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3300],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "create",
+				"FamilyName": "Lovelace",
+				"GivenName": "Ada",
+				"additionalFields": {}
+			},
+			"id": "node-23",
+			"name": "Employee create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3450],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "employee",
+				"operation": "update",
+				"employeeId": "55",
+				"updateFields": {
+					"Active": true
+				}
+			},
+			"id": "node-24",
+			"name": "Employee update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "create",
+				"CustomerRef": "58",
+				"Line": [
+					{
+						"DetailType": "SalesItemLineDetail",
+						"Amount": 100,
+						"Description": "Office chairs",
+						"itemId": "19"
+					}
+				],
+				"additionalFields": {}
+			},
+			"id": "node-25",
+			"name": "Estimate create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3750],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "delete",
+				"estimateId": "101"
+			},
+			"id": "node-26",
+			"name": "Estimate delete",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 3900],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "send",
+				"estimateId": "101",
+				"email": "amy@example.com"
+			},
+			"id": "node-27",
+			"name": "Estimate send",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4050],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "estimate",
+				"operation": "update",
+				"estimateId": "101",
+				"updateFields": {
+					"TxnDate": "2024-01-05"
+				}
+			},
+			"id": "node-28",
+			"name": "Estimate update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "create",
+				"CustomerRef": "58",
+				"Line": [
+					{
+						"DetailType": "SalesItemLineDetail",
+						"Amount": 100,
+						"Description": "Office chairs",
+						"itemId": "19"
+					}
+				],
+				"additionalFields": {}
+			},
+			"id": "node-29",
+			"name": "Invoice create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4350],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "delete",
+				"invoiceId": "130"
+			},
+			"id": "node-30",
+			"name": "Invoice delete",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4500],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "send",
+				"invoiceId": "130",
+				"email": "amy@example.com"
+			},
+			"id": "node-31",
+			"name": "Invoice send",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4650],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "update",
+				"invoiceId": "130",
+				"updateFields": {
+					"TxnDate": "2024-01-05"
+				}
+			},
+			"id": "node-32",
+			"name": "Invoice update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "void",
+				"invoiceId": "130"
+			},
+			"id": "node-33",
+			"name": "Invoice void",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 4950],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "create",
+				"CustomerRef": "58",
+				"TotalAmt": 10,
+				"additionalFields": {}
+			},
+			"id": "node-34",
+			"name": "Payment create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5100],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "delete",
+				"paymentId": "163"
+			},
+			"id": "node-35",
+			"name": "Payment delete",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5250],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "send",
+				"paymentId": "163",
+				"email": "amy@example.com"
+			},
+			"id": "node-36",
+			"name": "Payment send",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5400],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "update",
+				"paymentId": "163",
+				"updateFields": {
+					"TxnDate": "2024-01-05"
+				}
+			},
+			"id": "node-37",
+			"name": "Payment update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5550],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "void",
+				"paymentId": "163"
+			},
+			"id": "node-38",
+			"name": "Payment void",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5700],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vendor",
+				"operation": "create",
+				"displayName": "Acme Supplies",
+				"additionalFields": {}
+			},
+			"id": "node-39",
+			"name": "Vendor create",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 5850],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "vendor",
+				"operation": "update",
+				"vendorId": "56",
+				"updateFields": {
+					"Balance": 10
+				}
+			},
+			"id": "node-40",
+			"name": "Vendor update",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 6000],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "invoice",
+				"operation": "get",
+				"invoiceId": "130",
+				"download": true,
+				"binaryProperty": "data",
+				"fileName": "invoice.pdf"
+			},
+			"id": "node-41",
+			"name": "Invoice get download",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 6150],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transaction",
+				"operation": "getReport",
+				"filters": {}
+			},
+			"id": "node-42",
+			"name": "Transaction getReport",
+			"type": "n8n-nodes-base.quickbooks",
+			"typeVersion": 1,
+			"position": [300, 6300],
+			"credentials": {
+				"quickBooksOAuth2Api": {
+					"id": "1",
+					"name": "QuickBooks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Bill get": [
+			{
+				"json": {
+					"Id": "145",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Bill getAll": [
+			{
+				"json": {
+					"Id": "145"
+				}
+			}
+		],
+		"Customer get": [
+			{
+				"json": {
+					"Id": "58",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Customer getAll": [
+			{
+				"json": {
+					"Id": "58"
+				}
+			}
+		],
+		"Employee get": [
+			{
+				"json": {
+					"Id": "55",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Employee getAll": [
+			{
+				"json": {
+					"Id": "55"
+				}
+			}
+		],
+		"Estimate get": [
+			{
+				"json": {
+					"Id": "101",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Estimate getAll": [
+			{
+				"json": {
+					"Id": "101"
+				}
+			}
+		],
+		"Invoice get": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice getAll": [
+			{
+				"json": {
+					"Id": "130"
+				}
+			}
+		],
+		"Item get": [
+			{
+				"json": {
+					"Id": "19",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Item getAll": [
+			{
+				"json": {
+					"Id": "19"
+				}
+			}
+		],
+		"Payment get": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment getAll": [
+			{
+				"json": {
+					"Id": "163"
+				}
+			}
+		],
+		"Purchase get": [
+			{
+				"json": {
+					"Id": "252",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Purchase getAll": [
+			{
+				"json": {
+					"Id": "252"
+				}
+			}
+		],
+		"Vendor get": [
+			{
+				"json": {
+					"Id": "56",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Vendor getAll": [
+			{
+				"json": {
+					"Id": "56"
+				}
+			}
+		],
+		"Bill create": [
+			{
+				"json": {
+					"Id": "145",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Bill delete": [
+			{
+				"json": {
+					"Id": "145",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Bill update": [
+			{
+				"json": {
+					"Id": "145",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Customer create": [
+			{
+				"json": {
+					"Id": "58",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Customer update": [
+			{
+				"json": {
+					"Id": "58",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Employee create": [
+			{
+				"json": {
+					"Id": "55",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Employee update": [
+			{
+				"json": {
+					"Id": "55",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Estimate create": [
+			{
+				"json": {
+					"Id": "101",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Estimate delete": [
+			{
+				"json": {
+					"Id": "101",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Estimate send": [
+			{
+				"json": {
+					"Id": "101",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Estimate update": [
+			{
+				"json": {
+					"Id": "101",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice create": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice delete": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice send": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice update": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice void": [
+			{
+				"json": {
+					"Id": "130",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment create": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment delete": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment send": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment update": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Payment void": [
+			{
+				"json": {
+					"Id": "163",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Vendor create": [
+			{
+				"json": {
+					"Id": "56",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Vendor update": [
+			{
+				"json": {
+					"Id": "56",
+					"SyncToken": "2",
+					"VendorRef": {
+						"name": "Acme Supplies",
+						"value": "56"
+					},
+					"CustomerRef": {
+						"name": "Amy Lauterbach",
+						"value": "58"
+					}
+				}
+			}
+		],
+		"Invoice get download": [
+			{
+				"json": {}
+			}
+		],
+		"Transaction getReport": [
+			{
+				"json": {
+					"tx_date": "2024-01-05",
+					"txn_type": "Invoice"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Bill get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Bill getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Purchase get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Purchase getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Vendor get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Vendor getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Bill create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Bill delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Bill update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Employee update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Estimate update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice void",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payment void",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Vendor create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Vendor update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice get download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transaction getReport",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

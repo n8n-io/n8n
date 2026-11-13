@@ -421,6 +421,7 @@ async function createLaunchedThread(
 			projectId,
 			source: launch.source,
 			origin: launch.origin,
+			sourceContext: launch.sourceContext,
 			...(typeof templateId === 'string' ? { templateId } : {}),
 		});
 	} else {

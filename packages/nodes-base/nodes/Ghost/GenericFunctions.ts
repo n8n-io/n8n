@@ -5,16 +5,18 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function ghostApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
 ): Promise<any> {
 	const source = this.getNodeParameter('source', 0) as string;
 
@@ -32,10 +34,10 @@ export async function ghostApiRequest(
 
 	const credentials = await this.getCredentials(credentialType);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/ghost/api/${version}${endpoint}`,
+		uri: requestUrl`${credentials.url}/ghost/api/${version}${endpoint}`,
 		body,
 		json: true,
 	};
@@ -47,7 +49,7 @@ export async function ghostApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

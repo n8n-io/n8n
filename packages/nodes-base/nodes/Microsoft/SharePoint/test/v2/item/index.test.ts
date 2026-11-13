@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -19,9 +20,8 @@ vi.mock('../../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = 'list1';
-const ITEMS_ENDPOINT = `/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items`;
+const ITEMS_ENDPOINT = requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
 const ITEMS_QS = { $expand: 'fields($select=Title,FileLeafRef)', $select: 'id,fields' };
 
 describe('Microsoft SharePoint v2 — item search', () => {
@@ -144,7 +144,7 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		const result = await getItems.call(ctx, 'trash');
 
 		// Second page is fetched with the next-page link verbatim.
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', expect.anything(), {}, {}, nextLink);
 		expect(result.results).toEqual([{ name: 'trash.txt', value: '2' }]);
 	});
 
@@ -169,7 +169,7 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		const secondPage = await getItems.call(ctx, undefined, nextLink);
 
 		// The link is a complete address — passed through verbatim, never rebuilt.
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(secondPage.results).toEqual([{ name: 'Three', value: '3' }]);
 		expect(secondPage.paginationToken).toBeUndefined();
 	});
@@ -188,7 +188,7 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/site1',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/site1' }),
 			{},
 			{ $select: 'id' },
 		);

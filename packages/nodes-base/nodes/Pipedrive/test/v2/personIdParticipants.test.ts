@@ -56,7 +56,7 @@ describe('Pipedrive v2 maps activity person_id to a primary participant on outgo
 		const [, method, endpoint] = mockApiRequest.call.mock.calls[0] as [unknown, string, string];
 		const body = getRequestBody();
 		expect(method).toBe('POST');
-		expect(endpoint).toBe('/activities');
+		expect(String(endpoint)).toBe('/activities');
 		expect(body.participants).toEqual([{ person_id: 42, primary: true }]);
 		expect(body).not.toHaveProperty('person_id');
 	});
@@ -73,7 +73,7 @@ describe('Pipedrive v2 maps activity person_id to a primary participant on outgo
 		const [, method, endpoint] = mockApiRequest.call.mock.calls[0] as [unknown, string, string];
 		const body = getRequestBody();
 		expect(method).toBe('PATCH');
-		expect(endpoint).toBe('/activities/10');
+		expect(String(endpoint)).toBe('/activities/10');
 		expect(body.participants).toEqual([{ person_id: 42, primary: true }]);
 		expect(body).not.toHaveProperty('person_id');
 	});

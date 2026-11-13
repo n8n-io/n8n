@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { fileRLC } from '../../file';
@@ -109,7 +109,7 @@ export async function execute(
 
 	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
-	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/drive/items/${encodeURIComponent(fileId)}`;
+	const itemPath = requestPath`/v1.0/sites/${siteId}/drive/items/${fileId}`;
 
 	let response: IDataObject = {};
 	if (wantRename) {
@@ -121,7 +121,7 @@ export async function execute(
 			response = await microsoftApiRequest.call(
 				this,
 				'PUT',
-				`${itemPath}/content`,
+				requestPath`${itemPath}/content`,
 				content.body,
 				{},
 				undefined,

@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -83,9 +84,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (location === 'case') {
 		const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
-		endpoint = `/v1/case/${caseId}/page`;
+		endpoint = requestPath`/v1/case/${caseId}/page`;
 	} else {
-		endpoint = '/v1/page';
+		endpoint = requestPath`/v1/page`;
 	}
 
 	const body: IDataObject = {

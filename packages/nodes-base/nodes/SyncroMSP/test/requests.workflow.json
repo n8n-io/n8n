@@ -1,0 +1,431 @@
+{
+	"name": "SyncroMSP Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "1234567"
+			},
+			"id": "node-0",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"id": "node-1",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "1234567",
+				"updateFields": {
+					"name": "Nathan"
+				}
+			},
+			"id": "node-2",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "1234567"
+			},
+			"id": "node-3",
+			"name": "Contact Delete",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "2345678"
+			},
+			"id": "node-4",
+			"name": "Customer Get",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "2345678",
+				"updateFields": {
+					"businessName": "Acme Corp"
+				}
+			},
+			"id": "node-5",
+			"name": "Customer Update",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"customerId": "2345678"
+			},
+			"id": "node-6",
+			"name": "Customer Delete",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "rmm",
+				"operation": "get",
+				"alertId": "3456789"
+			},
+			"id": "node-7",
+			"name": "RMM Get",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "rmm",
+				"operation": "mute",
+				"alertId": "3456789",
+				"muteFor": "1-hour"
+			},
+			"id": "node-8",
+			"name": "RMM Mute",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "rmm",
+				"operation": "delete",
+				"alertId": "3456789"
+			},
+			"id": "node-9",
+			"name": "RMM Delete",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": "4567890"
+			},
+			"id": "node-10",
+			"name": "Ticket Get",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": "4567890",
+				"updateFields": {
+					"subject": "Printer is broken"
+				}
+			},
+			"id": "node-11",
+			"name": "Ticket Update",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": "4567890"
+			},
+			"id": "node-12",
+			"name": "Ticket Delete",
+			"type": "n8n-nodes-base.syncroMsp",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"syncroMspApi": {
+					"id": "1",
+					"name": "SyncroMSP account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RMM Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RMM Mute",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RMM Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Contact Get": [
+			{
+				"json": {
+					"id": 1234567,
+					"name": "Nathan"
+				}
+			}
+		],
+		"Contact Get Many": [
+			{
+				"json": {
+					"id": 1234567,
+					"name": "Nathan"
+				}
+			}
+		],
+		"Contact Update": [
+			{
+				"json": {
+					"id": 1234567,
+					"name": "Nathan"
+				}
+			}
+		],
+		"Contact Delete": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		],
+		"Customer Get": [
+			{
+				"json": {
+					"id": 2345678,
+					"business_name": "Acme Corp"
+				}
+			}
+		],
+		"Customer Update": [
+			{
+				"json": {
+					"id": 2345678,
+					"business_name": "Acme Corp"
+				}
+			}
+		],
+		"Customer Delete": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		],
+		"RMM Get": [
+			{
+				"json": {
+					"id": 3456789,
+					"status": "active"
+				}
+			}
+		],
+		"RMM Mute": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		],
+		"RMM Delete": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		],
+		"Ticket Get": [
+			{
+				"json": {
+					"id": 4567890,
+					"subject": "Printer is broken"
+				}
+			}
+		],
+		"Ticket Update": [
+			{
+				"json": {
+					"id": 4567890,
+					"subject": "Printer is broken"
+				}
+			}
+		],
+		"Ticket Delete": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		]
+	}
+}

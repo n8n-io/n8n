@@ -1,0 +1,554 @@
+{
+	"name": "Microsoft Teams v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "80afb596-f793-546f-a705-d695f2a03fac",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "create",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"name": "General Updates",
+				"options": {
+					"description": "Team updates"
+				}
+			},
+			"id": "93c74ecb-0e7f-5a30-bc1d-998cbb880bc3",
+			"name": "Channel Create",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 0],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "delete",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2"
+			},
+			"id": "f30997bf-d6a8-5be8-802d-df4cfaafac97",
+			"name": "Channel Delete",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 120],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "get",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2"
+			},
+			"id": "7df51ebe-137f-5391-8229-891f19a232a5",
+			"name": "Channel Get",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 240],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "getAll",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"returnAll": false,
+				"limit": 1
+			},
+			"id": "c0f77fae-fb63-515b-b673-f6a383982a8e",
+			"name": "Channel Get Many",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 360],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "update",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+				"updateFields": {
+					"name": "General"
+				}
+			},
+			"id": "1879fcd8-c821-5277-9002-282196807041",
+			"name": "Channel Update",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 480],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channelMessage",
+				"operation": "create",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+				"messageType": "text",
+				"message": "Hello",
+				"options": {
+					"includeLinkToWorkflow": false
+				}
+			},
+			"id": "fd541f29-8f03-5e80-aa48-c2dd66ff86f6",
+			"name": "Channel Message Create",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 600],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channelMessage",
+				"operation": "create",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+				"messageType": "text",
+				"message": "Thanks",
+				"options": {
+					"makeReply": "1616990032035",
+					"includeLinkToWorkflow": false
+				}
+			},
+			"id": "10b2cf6b-17e9-5255-b0d0-ce0fd358a734",
+			"name": "Channel Message Reply",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 720],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "channelMessage",
+				"operation": "getAll",
+				"teamId": "fbe2bf47-16c8-47cf-b4a5-4b9b187c508b",
+				"channelId": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+				"returnAll": false,
+				"limit": 1
+			},
+			"id": "560cdeeb-f2a3-5031-8de1-1a0a85ce75a9",
+			"name": "Channel Message Get Many",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 840],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chatMessage",
+				"operation": "create",
+				"chatId": "19:8ea0e38b-efb3-4757-924a-5f94061cf8c2_97f62344-57dc-409c-88ad-c4af14158ff5@unq.gbl.spaces",
+				"messageType": "text",
+				"message": "Hello",
+				"options": {
+					"includeLinkToWorkflow": false
+				}
+			},
+			"id": "8680c230-f068-5a98-96a7-baa060cc38c8",
+			"name": "Chat Message Create",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 960],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chatMessage",
+				"operation": "get",
+				"chatId": "19:8ea0e38b-efb3-4757-924a-5f94061cf8c2_97f62344-57dc-409c-88ad-c4af14158ff5@unq.gbl.spaces",
+				"messageId": "1616990032035"
+			},
+			"id": "fb7cf785-537f-5dee-8858-3edd317e3d56",
+			"name": "Chat Message Get",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1080],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chatMessage",
+				"operation": "getAll",
+				"chatId": "19:8ea0e38b-efb3-4757-924a-5f94061cf8c2_97f62344-57dc-409c-88ad-c4af14158ff5@unq.gbl.spaces",
+				"returnAll": true
+			},
+			"id": "f69e7fbd-e0a1-5406-839d-59787e5c6947",
+			"name": "Chat Message Get Many",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1200],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"taskId": "01gzSlKkIUSUl6DF_EilrmQAKDhh"
+			},
+			"id": "95ca74e1-c336-53f1-a51f-b25d9eb720db",
+			"name": "Task Delete",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1320],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"taskId": "01gzSlKkIUSUl6DF_EilrmQAKDhh"
+			},
+			"id": "eba95428-cde9-5834-823a-c70b92fbd582",
+			"name": "Task Get",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1440],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"tasksFor": "member",
+				"groupId": "02bd9fd6-8f93-4758-87c3-1fb73740a315",
+				"memberId": "6463a5ce-2119-4198-9f2a-628761df4a62",
+				"returnAll": false,
+				"limit": 1
+			},
+			"id": "743b2c65-281f-5f84-81e4-2336cff6b434",
+			"name": "Task Get Many Member",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1560],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"tasksFor": "plan",
+				"groupId": "02bd9fd6-8f93-4758-87c3-1fb73740a315",
+				"planId": "xqQg5FS2LkCp935s-FIFm2QAFkHM",
+				"returnAll": true
+			},
+			"id": "3a4b58c9-f4da-5a44-bfd6-8a27db983c98",
+			"name": "Task Get Many Plan",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1680],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"taskId": "01gzSlKkIUSUl6DF_EilrmQAKDhh",
+				"updateFields": {
+					"title": "Review Q3 budget"
+				}
+			},
+			"id": "f06535b5-ecec-577f-8198-f91b42e6274b",
+			"name": "Task Update",
+			"type": "n8n-nodes-base.microsoftTeams",
+			"typeVersion": 1.1,
+			"position": [300, 1800],
+			"credentials": {
+				"microsoftTeamsOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft Teams account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Channel Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Message Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Message Reply",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Channel Message Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat Message Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat Message Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat Message Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get Many Member",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get Many Plan",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Channel Create": [
+			{
+				"json": {
+					"id": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+					"displayName": "General Updates"
+				}
+			}
+		],
+		"Channel Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Channel Get": [
+			{
+				"json": {
+					"id": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+					"displayName": "General Updates"
+				}
+			}
+		],
+		"Channel Get Many": [
+			{
+				"json": {
+					"id": "19:4a95f7d8db4c4e7fae857bcebe0623e6@thread.tacv2",
+					"displayName": "General Updates"
+				}
+			}
+		],
+		"Channel Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Channel Message Create": [
+			{
+				"json": {
+					"id": "1616990032035"
+				}
+			}
+		],
+		"Channel Message Reply": [
+			{
+				"json": {
+					"id": "1616990171266"
+				}
+			}
+		],
+		"Channel Message Get Many": [
+			{
+				"json": {
+					"id": "1616990032035"
+				}
+			}
+		],
+		"Chat Message Create": [
+			{
+				"json": {
+					"id": "1616990032035"
+				}
+			}
+		],
+		"Chat Message Get": [
+			{
+				"json": {
+					"id": "1616990032035"
+				}
+			}
+		],
+		"Chat Message Get Many": [
+			{
+				"json": {
+					"id": "1616990032035"
+				}
+			}
+		],
+		"Task Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task Get": [
+			{
+				"json": {
+					"id": "01gzSlKkIUSUl6DF_EilrmQAKDhh",
+					"title": "Review budget"
+				}
+			}
+		],
+		"Task Get Many Member": [
+			{
+				"json": {
+					"id": "01gzSlKkIUSUl6DF_EilrmQAKDhh",
+					"title": "Review budget"
+				}
+			}
+		],
+		"Task Get Many Plan": [
+			{
+				"json": {
+					"id": "01gzSlKkIUSUl6DF_EilrmQAKDhh",
+					"title": "Review budget"
+				}
+			}
+		],
+		"Task Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	}
+}

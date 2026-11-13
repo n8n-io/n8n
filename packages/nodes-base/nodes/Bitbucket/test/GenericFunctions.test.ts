@@ -6,8 +6,9 @@ import type {
 	INode,
 	IHttpRequestOptions,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from '../GenericFunctions';
 
@@ -47,7 +48,7 @@ describe('Bitbucket GenericFunctions', () => {
 				const result = await bitbucketApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/repositories',
+					requestPath`/repositories`,
 					{},
 					{},
 				);
@@ -57,11 +58,28 @@ describe('Bitbucket GenericFunctions', () => {
 					{
 						method: 'GET',
 						qs: {},
-						url: 'https://api.bitbucket.org/2.0/repositories',
+						url: requestUrl`https://api.bitbucket.org/2.0/repositories`,
 						json: true,
 					},
 				);
 				expect(result).toEqual(mockResponse);
+			});
+
+			it('should encode a path value that contains a slash', async () => {
+				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+				const workspace = 'acme-corp/billing-service?x=1';
+
+				await bitbucketApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/workspaces/${workspace}/hooks`,
+				);
+
+				const [, options] =
+					mockExecuteFunctions.helpers.httpRequestWithAuthentication.mock.calls[0];
+				expect(String(options.url)).toBe(
+					'https://api.bitbucket.org/2.0/workspaces/acme-corp%2Fbilling-service%3Fx=1/hooks',
+				);
 			});
 
 			it('should handle custom URI with access token', async () => {
@@ -72,7 +90,7 @@ describe('Bitbucket GenericFunctions', () => {
 				await bitbucketApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/repositories',
+					requestPath`/repositories`,
 					{ name: 'test' },
 					{ page: 1 },
 					customUri,
@@ -94,12 +112,12 @@ describe('Bitbucket GenericFunctions', () => {
 				const mockResponse = { data: 'test response' };
 				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
-				await bitbucketApiRequest.call(mockExecuteFunctions, 'GET', '/repositories');
+				await bitbucketApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/repositories`);
 
-				const expectedOptions: IHttpRequestOptions = {
+				const expectedOptions: WithRequestTarget<IHttpRequestOptions> = {
 					method: 'GET',
 					qs: {},
-					url: 'https://api.bitbucket.org/2.0/repositories',
+					url: requestUrl`https://api.bitbucket.org/2.0/repositories`,
 					json: true,
 				};
 
@@ -113,14 +131,18 @@ describe('Bitbucket GenericFunctions', () => {
 				const mockResponse = { values: [] };
 				mockHookFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
-				const result = await bitbucketApiRequest.call(mockHookFunctions, 'GET', '/workspaces');
+				const result = await bitbucketApiRequest.call(
+					mockHookFunctions,
+					'GET',
+					requestPath`/workspaces`,
+				);
 
 				expect(mockHookFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 					'bitbucketAccessTokenApi',
 					{
 						method: 'GET',
 						qs: {},
-						url: 'https://api.bitbucket.org/2.0/workspaces',
+						url: requestUrl`https://api.bitbucket.org/2.0/workspaces`,
 						json: true,
 					},
 				);
@@ -136,7 +158,7 @@ describe('Bitbucket GenericFunctions', () => {
 				const result = await bitbucketApiRequest.call(
 					mockLoadOptionsFunctions,
 					'GET',
-					'/hook_events/workspace',
+					requestPath`/hook_events/workspace`,
 				);
 
 				expect(mockLoadOptionsFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
@@ -144,7 +166,7 @@ describe('Bitbucket GenericFunctions', () => {
 					{
 						method: 'GET',
 						qs: {},
-						url: 'https://api.bitbucket.org/2.0/hook_events/workspace',
+						url: requestUrl`https://api.bitbucket.org/2.0/hook_events/workspace`,
 						json: true,
 					},
 				);
@@ -172,7 +194,7 @@ describe('Bitbucket GenericFunctions', () => {
 				const result = await bitbucketApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/repositories',
+					requestPath`/repositories`,
 					{},
 					{},
 				);
@@ -185,7 +207,7 @@ describe('Bitbucket GenericFunctions', () => {
 						password: 'testpassword',
 					},
 					qs: {},
-					uri: 'https://api.bitbucket.org/2.0/repositories',
+					uri: requestUrl`https://api.bitbucket.org/2.0/repositories`,
 					json: true,
 				});
 				expect(result).toEqual(mockResponse);
@@ -205,7 +227,7 @@ describe('Bitbucket GenericFunctions', () => {
 				await bitbucketApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/repositories',
+					requestPath`/repositories`,
 					{ name: 'test' },
 					{ page: 1 },
 					customUri,
@@ -234,16 +256,16 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
 				mockExecuteFunctions.helpers.request.mockResolvedValue(mockResponse);
 
-				await bitbucketApiRequest.call(mockExecuteFunctions, 'GET', '/repositories');
+				await bitbucketApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/repositories`);
 
-				const expectedOptions: IRequestOptions = {
+				const expectedOptions: WithRequestTarget<IRequestOptions, 'uri'> = {
 					method: 'GET',
 					auth: {
 						user: 'testuser',
 						password: 'testpassword',
 					},
 					qs: {},
-					uri: 'https://api.bitbucket.org/2.0/repositories',
+					uri: requestUrl`https://api.bitbucket.org/2.0/repositories`,
 					json: true,
 				};
 
@@ -261,7 +283,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockRejectedValue(mockError);
 
 				await expect(
-					bitbucketApiRequest.call(mockExecuteFunctions, 'GET', '/repositories'),
+					bitbucketApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/repositories`),
 				).rejects.toThrow(NodeApiError);
 
 				expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
@@ -276,7 +298,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockRejectedValue(mockError);
 
 				await expect(
-					bitbucketApiRequest.call(mockExecuteFunctions, 'GET', '/repositories'),
+					bitbucketApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/repositories`),
 				).rejects.toThrow(NodeApiError);
 			});
 		});
@@ -311,7 +333,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions,
 				'values',
 				'GET',
-				'/repositories',
+				requestPath`/repositories`,
 			);
 
 			expect(result).toEqual([{ id: 1 }, { id: 2 }]);
@@ -343,7 +365,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions,
 				'values',
 				'GET',
-				'/repositories',
+				requestPath`/repositories`,
 			);
 
 			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }]);
@@ -384,7 +406,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions,
 				'values',
 				'GET',
-				'/repositories',
+				requestPath`/repositories`,
 			);
 
 			expect(result).toEqual([]);
@@ -405,7 +427,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions,
 				'values',
 				'POST',
-				'/repositories',
+				requestPath`/repositories`,
 				body,
 				query,
 			);
@@ -416,7 +438,7 @@ describe('Bitbucket GenericFunctions', () => {
 					method: 'POST',
 					qs: query,
 					body,
-					url: 'https://api.bitbucket.org/2.0/repositories',
+					url: requestUrl`https://api.bitbucket.org/2.0/repositories`,
 					json: true,
 				},
 			);
@@ -433,7 +455,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockExecuteFunctions,
 				'items',
 				'GET',
-				'/custom-endpoint',
+				requestPath`/custom-endpoint`,
 			);
 
 			expect(result).toEqual([{ id: 1 }, { id: 2 }]);
@@ -452,7 +474,12 @@ describe('Bitbucket GenericFunctions', () => {
 				.mockRejectedValueOnce(mockError);
 
 			await expect(
-				bitbucketApiRequestAllItems.call(mockExecuteFunctions, 'values', 'GET', '/repositories'),
+				bitbucketApiRequestAllItems.call(
+					mockExecuteFunctions,
+					'values',
+					'GET',
+					requestPath`/repositories`,
+				),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -471,7 +498,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockHookFunctions,
 				'values',
 				'GET',
-				'/hook_events/repository',
+				requestPath`/hook_events/repository`,
 			);
 
 			expect(result).toEqual([{ event: 'repo:push' }]);
@@ -494,7 +521,7 @@ describe('Bitbucket GenericFunctions', () => {
 				mockLoadOptionsFunctions,
 				'values',
 				'GET',
-				'/workspaces',
+				requestPath`/workspaces`,
 			);
 
 			expect(result).toEqual([{ slug: 'workspace1' }]);

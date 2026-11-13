@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -113,7 +114,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const document = await googleApiRequest.call(
 			this,
 			'POST',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			bodyParameters,
 			qs,
 		);
@@ -136,10 +137,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const updateResponse = await googleApiRequest.call(
 			this,
 			'POST',
-			'',
+			requestPath``,
 			body,
 			undefined,
-			`https://docs.googleapis.com/v1/documents/${document.id}:batchUpdate`,
+			requestUrl`https://docs.googleapis.com/v1/documents/${document.id}:batchUpdate`,
 		);
 
 		response = { id: updateResponse.documentId };
@@ -159,7 +160,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const uploadData = await googleApiRequest.call(
 			this,
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			multiPartBody.getBuffer(),
 			{
 				uploadType: 'multipart',
@@ -182,7 +183,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const responseData = await googleApiRequest.call(
 			this,
 			'PATCH',
-			`/drive/v3/files/${uploadId}`,
+			requestPath`/drive/v3/files/${uploadId}`,
 			bodyParameters,
 			qs,
 		);

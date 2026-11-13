@@ -19,7 +19,7 @@ export const alertsOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/api/alert/" + $parameter.alertId}}',
+						url: '=/api/alert/{{ toPathSegment($parameter.alertId) }}',
 					},
 				},
 				action: 'Get an alert',

@@ -28,7 +28,8 @@ export class Onfleet implements INodeType {
 		name: 'onfleet',
 		icon: 'file:Onfleet.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Onfleet API',
 		defaults: {

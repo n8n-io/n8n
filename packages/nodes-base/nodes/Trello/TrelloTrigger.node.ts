@@ -4,7 +4,9 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IWebhookResponseData,
+	type RequestPath,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
@@ -92,7 +94,7 @@ export class TrelloTrigger implements INodeType {
 						const webhook = await apiRequest.call(
 							this,
 							'GET',
-							`webhooks/${webhookData.webhookId}`,
+							requestPath`webhooks/${webhookData.webhookId}`,
 							{},
 						);
 
@@ -103,7 +105,12 @@ export class TrelloTrigger implements INodeType {
 						// The stored webhook no longer matches the current configuration, so
 						// remove the stale registration and report it as missing to trigger
 						// a fresh creation.
-						await apiRequest.call(this, 'DELETE', `webhooks/${webhookData.webhookId}`, {});
+						await apiRequest.call(
+							this,
+							'DELETE',
+							requestPath`webhooks/${webhookData.webhookId}`,
+							{},
+						);
 						delete webhookData.webhookId;
 						return false;
 					} catch (error) {
@@ -116,7 +123,7 @@ export class TrelloTrigger implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
+				const endpoint = requestPath`tokens/${credentials.apiToken}/webhooks`;
 
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -143,12 +150,12 @@ export class TrelloTrigger implements INodeType {
 					idModel,
 				};
 
-				let endpoint: string;
+				let endpoint: RequestPath;
 				if (authentication === 'oAuth1') {
-					endpoint = 'webhooks';
+					endpoint = requestPath`webhooks`;
 				} else {
 					const credentials = await this.getCredentials('trelloApi');
-					endpoint = `tokens/${credentials.apiToken}/webhooks`;
+					endpoint = requestPath`tokens/${credentials.apiToken}/webhooks`;
 				}
 
 				const responseData = await apiRequest.call(this, 'POST', endpoint, body);
@@ -171,12 +178,12 @@ export class TrelloTrigger implements INodeType {
 						| 'apiKey'
 						| 'oAuth1';
 
-					let endpoint: string;
+					let endpoint: RequestPath;
 					if (authentication === 'oAuth1') {
-						endpoint = `webhooks/${webhookData.webhookId}`;
+						endpoint = requestPath`webhooks/${webhookData.webhookId}`;
 					} else {
 						const credentials = await this.getCredentials('trelloApi');
-						endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
+						endpoint = requestPath`tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
 					}
 
 					try {

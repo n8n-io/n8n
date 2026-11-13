@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import type * as awsUtils from '../../../../credentials/common/aws/utils';
 
@@ -46,7 +46,7 @@ describe('AWS Transcribe Generic Functions', () => {
 				const { context, helpers } = buildContext(region);
 				helpers.request.mockResolvedValue('{}');
 
-				await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+				await awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`);
 
 				expect(mockSign).toHaveBeenCalledTimes(1);
 				expect(helpers.request).toHaveBeenCalledTimes(1);
@@ -66,12 +66,12 @@ describe('AWS Transcribe Generic Functions', () => {
 		])('rejects unsupported region value %s without signing or sending', async (region) => {
 			const { context, helpers } = buildContext(region);
 
-			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				UserError,
-			);
-			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				'Unsupported AWS region',
-			);
+			await expect(
+				awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`),
+			).rejects.toThrow(UserError);
+			await expect(
+				awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`),
+			).rejects.toThrow('Unsupported AWS region');
 
 			expect(mockSign).not.toHaveBeenCalled();
 			expect(helpers.request).not.toHaveBeenCalled();
@@ -98,7 +98,7 @@ describe('AWS Transcribe Generic Functions', () => {
 				secretAccessKey: 'secret-test',
 			});
 
-			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+			await awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`);
 
 			expect(context.getCredentials).toHaveBeenCalledWith('aws');
 			expect(mockAssumeRole).not.toHaveBeenCalled();
@@ -118,7 +118,7 @@ describe('AWS Transcribe Generic Functions', () => {
 				sessionToken: 'session-token-test',
 			});
 
-			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+			await awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`);
 
 			expect(context.getCredentials).toHaveBeenCalledWith('aws');
 			expect(mockAssumeRole).not.toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe('AWS Transcribe Generic Functions', () => {
 			};
 			const { context, helpers } = buildContext('assumeRole', assumeRoleCredentials);
 
-			await awsApiRequest.call(context, 'transcribe', 'POST', '/');
+			await awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`);
 
 			expect(context.getCredentials).toHaveBeenCalledWith('awsAssumeRole');
 			expect(mockAssumeRole).toHaveBeenCalledWith(assumeRoleCredentials, 'us-east-1');
@@ -170,9 +170,9 @@ describe('AWS Transcribe Generic Functions', () => {
 			};
 			const { context, helpers } = buildContext('assumeRole', assumeRoleCredentials);
 
-			await expect(awsApiRequest.call(context, 'transcribe', 'POST', '/')).rejects.toThrow(
-				NodeApiError,
-			);
+			await expect(
+				awsApiRequest.call(context, 'transcribe', 'POST', requestPath`/`),
+			).rejects.toThrow(NodeApiError);
 
 			expect(mockSign).not.toHaveBeenCalled();
 			expect(helpers.request).not.toHaveBeenCalled();

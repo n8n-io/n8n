@@ -60,6 +60,7 @@ import type {
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { OwnershipService } from '@/services/ownership.service';
 import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
 import { detectDbVendor, detectRedisVendor } from '@/utils/detect-managed-services';
@@ -209,6 +210,16 @@ function getExecutionTelemetryProperties(
 		...(mockDataSources?.length ? { mock_data_sources: mockDataSources.join(',') } : {}),
 		...personalCredentials,
 	};
+}
+
+/**
+ * `public_api` keeps its meaning: the call came through a public API route.
+ * `public_api_client` tells the editor UI apart from other API clients.
+ */
+function toPublicApiProperties(publicApi: PublicApiCaller) {
+	return publicApi === false
+		? { public_api: false }
+		: { public_api: true, public_api_client: publicApi };
 }
 
 @Service()
@@ -536,7 +547,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_updates: workflowUpdates,
 			workflow_conflicts: workflowConflicts,
 			cred_conflicts: credConflicts,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -576,7 +587,7 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_eligible: credsEligible,
 			creds_eligible_with_conflicts: credsEligibleWithConflicts,
 			variables_eligible: variablesEligible,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -594,7 +605,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_pushed: workflowsPushed,
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1111,7 +1122,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		this.telemetry.track('API key created', {
 			user_id: user.id,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1120,7 +1131,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		this.telemetry.track('API key deleted', {
 			user_id: user.id,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			is_own: isOwn,
 		});
 	}
@@ -1130,7 +1141,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		this.telemetry.track('API key rotated', {
 			user_id: user.id,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1223,7 +1234,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && {
 				source: 'backend',
-				public_api: publicApi,
+				...toPublicApiProperties(publicApi),
 			}),
 			user_id: user.id,
 			user_role: user.role?.slug,
@@ -1535,7 +1546,7 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: user.id,
 			workflow_id: workflow.id,
 			node_graph_string: limitNodeGraphStringSize(JSON.stringify(nodeGraph)),
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			project_id: projectId,
 			project_type: projectType,
 			meta: JSON.stringify(workflow.meta),
@@ -1551,7 +1562,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User archived workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1563,7 +1574,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User unarchived workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1571,7 +1582,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User deleted workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -1642,7 +1653,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW, {
 			user_id: user.id,
 			workflow_id: workflowId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			source,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
@@ -1661,7 +1672,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User deactivated workflow', {
 			user_id: user.id,
 			workflow_id: workflowId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			deactivated_version_id: deactivatedVersionId,
 			source,
 		});
@@ -1867,7 +1878,7 @@ export class TelemetryEventRelay extends EventRelay {
 			notes_count_non_overlapping: notesCount - overlappingCount,
 			version_cli: N8N_VERSION,
 			num_tags: workflow.tags?.length ?? 0,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			sharing_role: userRole,
 			meta: JSON.stringify(workflow.meta),
 			workflow_edited_no_pos: workflowEditedNoPos,
@@ -2509,28 +2520,28 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: userId,
 			target_user_id: targetUserId,
 			target_user_new_role: targetUserNewRole,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
 	private userRetrievedUser({ userId, publicApi }: RelayEventMap['user-retrieved-user']) {
 		this.telemetry.track('User retrieved user', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
 	private userRetrievedAllUsers({ userId, publicApi }: RelayEventMap['user-retrieved-all-users']) {
 		this.telemetry.track('User retrieved all users', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
 	private userRetrievedExecution({ userId, publicApi }: RelayEventMap['user-retrieved-execution']) {
 		this.telemetry.track('User retrieved execution', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -2540,14 +2551,14 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['user-retrieved-all-executions']) {
 		this.telemetry.track('User retrieved all executions', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
 	private userRetrievedWorkflow({ userId, publicApi }: RelayEventMap['user-retrieved-workflow']) {
 		this.telemetry.track('User retrieved workflow', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -2557,7 +2568,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['user-retrieved-workflow-version']) {
 		this.telemetry.track('User retrieved workflow version', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -2567,7 +2578,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['user-retrieved-all-workflows']) {
 		this.telemetry.track('User retrieved all workflows', {
 			user_id: userId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -2601,7 +2612,7 @@ export class TelemetryEventRelay extends EventRelay {
 			// drops it, and `source` names the system.
 			user_id: user?.id,
 			...(source && { source }),
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			target_user_old_status: targetUserOldStatus,
 			migration_strategy: migrationStrategy,
 			target_user_id: targetUserId,
@@ -2626,7 +2637,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User invited new user', {
 			user_id: user.id,
 			target_user_id: targetUserId,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 			email_sent: emailSent,
 			invitee_role: inviteeRole,
 		});
@@ -2688,7 +2699,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Instance failed to send transactional email to user', {
 			user_id: user.id,
 			message_type: messageType,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 
@@ -2700,7 +2711,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User sent transactional email', {
 			user_id: userId,
 			message_type: messageType,
-			public_api: publicApi,
+			...toPublicApiProperties(publicApi),
 		});
 	}
 

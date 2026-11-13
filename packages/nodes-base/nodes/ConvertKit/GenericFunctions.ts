@@ -6,30 +6,28 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function convertKitApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	url?: string,
-	option: IDataObject = {},
 ): Promise<any> {
-	let options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		url: url || `https://api.convertkit.com/v3${endpoint}`,
+		url: requestUrl`https://api.convertkit.com/v3${endpoint}`,
 		json: true,
 	};
-
-	options = Object.assign({}, options, option);
 
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;

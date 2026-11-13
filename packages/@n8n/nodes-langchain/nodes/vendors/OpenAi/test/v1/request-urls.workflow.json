@@ -1,0 +1,93 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "2f8e4b10-6a7d-4e2c-8f31-9d0c1b2a3e01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "assistant",
+				"operation": "update",
+				"assistantId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "asst_abc123"
+				},
+				"options": {
+					"name": "Math Tutor"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 1.8,
+			"position": [220, 0],
+			"id": "2f8e4b10-6a7d-4e2c-8f31-9d0c1b2a3e02",
+			"name": "Update Assistant",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assistant",
+				"operation": "deleteAssistant",
+				"assistantId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "asst_abc123"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 1.8,
+			"position": [440, 0],
+			"id": "2f8e4b10-6a7d-4e2c-8f31-9d0c1b2a3e03",
+			"name": "Delete Assistant",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "deleteFile",
+				"fileId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "file-XjGxS3KTG0uNmNOK362iJua3"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 1.8,
+			"position": [660, 0],
+			"id": "2f8e4b10-6a7d-4e2c-8f31-9d0c1b2a3e04",
+			"name": "Delete File",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Update Assistant", "type": "main", "index": 0 }]]
+		},
+		"Update Assistant": {
+			"main": [[{ "node": "Delete Assistant", "type": "main", "index": 0 }]]
+		},
+		"Delete Assistant": {
+			"main": [[{ "node": "Delete File", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

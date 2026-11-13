@@ -3,6 +3,8 @@ import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 
+import type { PublicApiCaller } from '@/public-api/public-api-client';
+
 import type {
 	CredentialConflict,
 	CredentialNotFoundReason,
@@ -293,6 +295,7 @@ export type ImportRequest = {
 	folderId?: string;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
@@ -337,6 +340,7 @@ export interface ImportSelection {
 export type ImportSelectionRequest = {
 	user: User;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	conflictPolicy?: ImportConflictPolicy;
 	idPolicy?: WorkflowIdPolicy;
@@ -452,6 +456,7 @@ export interface ImportContext {
 	user: User;
 	projectId: string;
 	folderId: string | null;
+	publicApi: PublicApiCaller;
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &

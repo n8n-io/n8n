@@ -21,11 +21,21 @@ export async function initializeExpressionEngine(
 ): Promise<void> {
 	if (engine !== 'quickjs') return;
 
-	// Called once when the app boots and again from the login hook, because an
-	// unauthenticated boot cannot see the engine yet. Loading the bundle twice
-	// would be wasted work.
+	// Called once when the app boots and again from the login hook, because a
+	// boot that could not read the settings cannot see the engine. Loading the
+	// bundle twice would be wasted work.
 	if (Expression.getActiveImplementation() === 'quickjs') return;
 
+	// The login hook can call this while the start from the boot still runs.
+	quickJsEngineStart ??= startQuickJsEngine().finally(() => {
+		quickJsEngineStart = undefined;
+	});
+	await quickJsEngineStart;
+}
+
+let quickJsEngineStart: Promise<void> | undefined;
+
+async function startQuickJsEngine(): Promise<void> {
 	// The bridge needs the runtime bundle as a string: the browser has no
 	// node:fs to read it from disk. Imported here rather than at module scope so
 	// the ~470KB asset is only fetched when the engine is enabled. The

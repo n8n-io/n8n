@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { venafiApiRequest } from './GenericFunctions';
@@ -62,7 +63,7 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 		const { Certificates: certificates } = await venafiApiRequest.call(
 			this,
 			'GET',
-			'/vedsdk/certificates',
+			requestPath`/vedsdk/certificates`,
 			{},
 			qs,
 		);

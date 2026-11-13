@@ -1,3 +1,5 @@
+import { requestPath, requestUrl } from 'n8n-workflow';
+
 import {
 	buildRequestOptions,
 	toGraphBaseUrl,
@@ -91,7 +93,7 @@ describe('Microsoft Excel (SharePoint) Converters', () => {
 		it('builds the url from the base URL and resource with the default Content-Type header', () => {
 			const options = buildRequestOptions({
 				method: 'GET',
-				resource: '/v1.0/sites/s',
+				resource: requestPath`/v1.0/sites/s`,
 				body: {},
 				qs: {},
 				headers: {},
@@ -103,7 +105,7 @@ describe('Microsoft Excel (SharePoint) Converters', () => {
 				method: 'GET',
 				body: {},
 				qs: {},
-				url: 'https://graph.microsoft.com/v1.0/sites/s',
+				url: requestUrl`https://graph.microsoft.com/v1.0/sites/s`,
 				json: true,
 			});
 		});
@@ -111,7 +113,7 @@ describe('Microsoft Excel (SharePoint) Converters', () => {
 		it('uses an explicit uri verbatim over the base URL and resource', () => {
 			const options = buildRequestOptions({
 				method: 'GET',
-				resource: '/ignored',
+				resource: requestPath`/ignored`,
 				body: {},
 				qs: {},
 				uri: 'https://graph.microsoft.com/v1.0/sites?$skiptoken=abc',
@@ -125,7 +127,7 @@ describe('Microsoft Excel (SharePoint) Converters', () => {
 		it('merges extra headers into the default Content-Type header', () => {
 			const options = buildRequestOptions({
 				method: 'GET',
-				resource: '/v1.0/sites/s',
+				resource: requestPath`/v1.0/sites/s`,
 				body: {},
 				qs: {},
 				headers: { 'If-Match': '*' },

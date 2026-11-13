@@ -1,6 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { accumulateTokenUsage, updateDisplayOptions } from 'n8n-workflow';
+import { accumulateTokenUsage, requestPath, updateDisplayOptions } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -408,7 +408,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		think,
 	};
 
-	let response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
+	let response: OllamaChatResponse = await apiRequest.call(this, 'POST', requestPath`/api/chat`, {
 		body,
 	});
 
@@ -458,7 +458,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			messages,
 		};
 
-		response = await apiRequest.call(this, 'POST', '/api/chat', {
+		response = await apiRequest.call(this, 'POST', requestPath`/api/chat`, {
 			body: updatedBody,
 		});
 

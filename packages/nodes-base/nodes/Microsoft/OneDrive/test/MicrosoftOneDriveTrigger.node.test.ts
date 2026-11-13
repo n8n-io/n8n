@@ -1,4 +1,5 @@
 import type { IDataObject, IPollFunctions, INode, NodeParameterValueType } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { microsoftApiRequest, microsoftApiRequestAllItemsDelta } from '../GenericFunctions';
@@ -106,10 +107,10 @@ describe('MicrosoftOneDriveTrigger', () => {
 		// context (not an argument) — the recorded args start at the method.
 		expect(microsoftApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'',
+			requestPath``,
 			{},
 			{},
-			'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+			'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta',
 		);
 	});
 
@@ -141,7 +142,7 @@ describe('MicrosoftOneDriveTrigger', () => {
 		pollFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 		vi.mocked(microsoftApiRequestAllItemsDelta).mockResolvedValue({
 			deltaLink:
-				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta?token=NEW',
+				'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta?token=NEW',
 			returnData: [],
 		});
 
@@ -149,7 +150,7 @@ describe('MicrosoftOneDriveTrigger', () => {
 
 		// the stale /me link must be discarded and re-initialised to the scoped feed
 		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
-			'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta?token=latest',
+			'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta?token=latest',
 			expect.anything(),
 			expect.anything(),
 		);
@@ -203,6 +204,80 @@ describe('MicrosoftOneDriveTrigger', () => {
 
 		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
 			stillValid,
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta?token=KEEP',
+		'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta?token=KEEP',
+	])('keeps a scoped LastLink when only the encoding of @ differs (%s)', async (stored) => {
+		params.authentication = 'microsoftEntraServicePrincipalApi';
+		params.resourceTarget = 'user';
+		rlcValues.userTarget = 'jane@contoso.com';
+		pollFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-access-token' });
+		pollFunctions.getMode.mockReturnValue('trigger');
+		pollFunctions.getWorkflowStaticData.mockReturnValue({
+			LastLink: stored,
+			lastTimeChecked: '2020-01-01T00:00:00.000Z',
+		});
+		vi.mocked(microsoftApiRequestAllItemsDelta).mockResolvedValue({
+			deltaLink: '',
+			returnData: [],
+		});
+
+		await trigger.poll.call(pollFunctions);
+
+		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
+			stored,
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('resets a malformed LastLink to the scoped feed', async () => {
+		params.authentication = 'microsoftEntraServicePrincipalApi';
+		params.resourceTarget = 'user';
+		rlcValues.userTarget = 'jane@contoso.com';
+		pollFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-access-token' });
+		pollFunctions.getMode.mockReturnValue('trigger');
+		pollFunctions.getWorkflowStaticData.mockReturnValue({
+			LastLink: 'https://graph.microsoft.com/v1.0/users/jane%E0%A4%A/drive/root/delta?token=BAD',
+			lastTimeChecked: '2020-01-01T00:00:00.000Z',
+		});
+		vi.mocked(microsoftApiRequestAllItemsDelta).mockResolvedValue({
+			deltaLink: '',
+			returnData: [],
+		});
+
+		await trigger.poll.call(pollFunctions);
+
+		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
+			'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta?token=latest',
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		'https://example.com/v1.0/me/drive/root/delta?token=PREV',
+		'https://graph.microsoft.com%2Fv1.0%2Fme%2Fdrive%2Froot%2Fdelta@example.com/?token=PREV',
+	])('resets a LastLink with a different origin (%s)', async (stored) => {
+		pollFunctions.getMode.mockReturnValue('trigger');
+		pollFunctions.getWorkflowStaticData.mockReturnValue({
+			LastLink: stored,
+			lastTimeChecked: '2020-01-01T00:00:00.000Z',
+		});
+		vi.mocked(microsoftApiRequestAllItemsDelta).mockResolvedValue({
+			deltaLink: '',
+			returnData: [],
+		});
+
+		await trigger.poll.call(pollFunctions);
+
+		expect(microsoftApiRequestAllItemsDelta).toHaveBeenCalledWith(
+			'https://graph.microsoft.com/v1.0/me/drive/root/delta?token=latest',
 			expect.anything(),
 			expect.anything(),
 		);

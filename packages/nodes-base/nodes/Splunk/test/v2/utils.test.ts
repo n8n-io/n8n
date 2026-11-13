@@ -5,6 +5,8 @@ import { SPLUNK } from '../../v1/types';
 import {
 	formatEntry,
 	extractErrorDescription,
+	toListValue,
+	toPathValue,
 	getId,
 	populate,
 	formatFeed,
@@ -137,6 +139,26 @@ describe('Splunk, getId', () => {
 		const id = getId.call(executeFunctionsMock, 0, 'searchConfigurationId', 'endpoint');
 
 		expect(id).toBe('123');
+	});
+});
+
+describe('Splunk, toPathValue', () => {
+	test('should decode the value in version 2', () => {
+		expect(toPathValue(2, 'Errors%20%2F%20hour')).toBe('Errors / hour');
+	});
+
+	test('should keep the value unchanged from version 2.1', () => {
+		expect(toPathValue(2.1, 'Errors%20%2F%20hour')).toBe('Errors%20%2F%20hour');
+	});
+});
+
+describe('Splunk, toListValue', () => {
+	test('should keep the encoded id in version 2', () => {
+		expect(toListValue(2, 'Errors%20in%20hour')).toBe('Errors%20in%20hour');
+	});
+
+	test('should decode the id from version 2.1', () => {
+		expect(toListValue(2.1, 'Errors%20in%20hour')).toBe('Errors in hour');
 	});
 });
 

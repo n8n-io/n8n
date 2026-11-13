@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 
@@ -10,7 +11,7 @@ export async function create(this: IExecuteFunctions, i: number): Promise<INodeE
 		entity,
 	};
 
-	const responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
+	const responseData = await lonescaleApiRequest.call(this, 'POST', requestPath`/lists`, body);
 	return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
 		itemData: { item: i },
 	});

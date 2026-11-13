@@ -61,6 +61,18 @@ export class WorkflowPublisherService {
 		);
 	}
 
+	/**
+	 * The publisher of the given version, for a caller that grants access with it.
+	 * A failed lookup throws, so the caller can retry instead of deciding without
+	 * an identity.
+	 */
+	async findPublisherUserIdForAccessCheck(
+		workflowId: string,
+		versionId: string,
+	): Promise<string | undefined> {
+		return await this.publishHistoryRepository.findPublisherUserId(workflowId, versionId);
+	}
+
 	async findPublisherUserId(
 		workflowId: string,
 		executedVersionId: string | null | undefined,

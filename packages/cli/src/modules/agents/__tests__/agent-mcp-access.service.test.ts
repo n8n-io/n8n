@@ -36,7 +36,7 @@ describe('AgentMcpAccessService', () => {
 		it('lists non-exposed agents from projects where the user holds agent:update', async () => {
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 
-			await service.getAgents(user, { skip: 0, take: 10 } as never);
+			await service.getAgents(user, { offset: 0, limit: 10 });
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:update']);
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
@@ -50,7 +50,7 @@ describe('AgentMcpAccessService', () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 
-			await service.getAgents(user, { skip: 0, take: 10 } as never);
+			await service.getAgents(user, { offset: 0, limit: 10 });
 
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				null,
@@ -64,10 +64,10 @@ describe('AgentMcpAccessService', () => {
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 
 			await service.getAgents(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInMCP: true },
-			} as never);
+			});
 
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1'],
@@ -81,10 +81,10 @@ describe('AgentMcpAccessService', () => {
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
 
 			await service.getAgents(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInMCP: true },
-			} as never);
+			});
 
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				null,
