@@ -70,6 +70,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@typescript/native": "catalog:typescript-tooling",
+    "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript-tooling",

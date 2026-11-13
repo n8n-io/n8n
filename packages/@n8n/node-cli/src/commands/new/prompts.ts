@@ -27,7 +27,7 @@ export const nodeTypePrompt = async () =>
 				{
 					label: 'Programmatic',
 					value: 'programmatic',
-					hint: 'For triggers, non-REST APIs, or custom data handling',
+					hint: 'For non-REST APIs, custom trigger logic, or custom data handling',
 				},
 			],
 			initialValue: 'declarative',

@@ -66,7 +66,7 @@ n8n-node new [NAME] [OPTIONS]
 |------|-------------|
 | `-f, --force` | Overwrite destination folder if it already exists |
 | `--skip-install` | Skip installing dependencies |
-| `--template <template>` | Choose template: `declarative/custom`, `declarative/github-issues`, `programmatic/example` |
+| `--template <template>` | Choose template: `declarative/custom`, `declarative/github-issues`, `declarative/polling-trigger`, `declarative/webhook-trigger`, `programmatic/example` |
 
 **Examples:**
 ```bash

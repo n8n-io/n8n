@@ -3718,6 +3718,9 @@ importers:
       '@typescript/native':
         specifier: catalog:typescript-tooling
         version: typescript@7.0.2
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
