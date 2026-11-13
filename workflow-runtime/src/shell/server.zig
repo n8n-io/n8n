@@ -483,6 +483,9 @@ pub const Runner = struct {
     /// numbered in memory and kept in the ring.
     seq_mem: u64 = 0,
     acked_mem: u64 = 0,
+    /// The seq of the last durable event published: the floor of the
+    /// best-effort lines that follow it (spec 9.2).
+    dur_seq: u64 = 0,
     /// The stream has more durable lines than one pass sent: the loop does
     /// not wait.
     stream_more: bool = false,
@@ -540,6 +543,7 @@ pub const Runner = struct {
         r.ob = null;
         r.seq_mem = 0;
         r.acked_mem = 0;
+        r.dur_seq = 0;
         r.stream_more = false;
         var log: ?shard_mod.LogSink = null;
         var existing: []u8 = &.{};
@@ -1918,7 +1922,9 @@ pub const Runner = struct {
     // ---- event stream (spec 9.2) ----------------------------------------------
 
     /// A best-effort line into the ring. A counting pass gives its length,
-    /// so nothing is allocated.
+    /// so nothing is allocated. Its floor is the seq of the durable event
+    /// published just before it: the stream sends the line after that event,
+    /// so the order of publication holds (spec 9.2).
     fn publish(r: *Runner, ev: admin.Event) void {
         r.publishSeq(ev, null);
     }
@@ -1933,7 +1939,7 @@ pub const Runner = struct {
         } else {
             admin.encode(&cnt, ev, now) catch unreachable; // Counting has no limit.
         }
-        const dst = r.queue.push(cnt.len, ev.droppable() and seq == null) orelse return;
+        const dst = r.queue.push(cnt.len, ev.droppable() and seq == null, r.dur_seq) orelse return;
         var out: creds.Out = .{ .buf = dst };
         if (seq) |sq| {
             admin.encodeDurable(creds.Out, &out, ev, now, r.id, sq) catch unreachable;
@@ -1950,6 +1956,7 @@ pub const Runner = struct {
         const now = sys.nowMs();
         const ob = if (r.ob) |*ob| ob else {
             r.seq_mem += 1;
+            r.dur_seq = r.seq_mem;
             r.publishSeq(ev, r.seq_mem);
             return;
         };
@@ -1966,6 +1973,7 @@ pub const Runner = struct {
             error.OutboxWrite => return error.OutboxWrite,
         };
         try rec.finish(sync);
+        r.dur_seq = seq;
     }
 
     /// The sync policy of a record: the durability tier of its workflow.
@@ -2027,41 +2035,90 @@ pub const Runner = struct {
         }
     }
 
-    /// Send lines to the stream client until its socket is full: the durable
-    /// ones first, from the outbox and in seq order, then the best-effort
-    /// ones from the ring, up to 64 lines in each system call.
+    /// Send lines to the stream client in the order in which they were
+    /// published: a durable record goes after the best-effort lines that
+    /// came before it, and a best-effort line after the durable records up
+    /// to its floor. Each pass writes with one system call per source.
     fn flushStream(r: *Runner) void {
         const idx = r.stream orelse return;
         const cn = &r.admin_conns[idx];
         if (cn.wsent < cn.wlen) return; // The response head is not out yet.
-        // A slow client makes the outbox cursor fall behind: nothing is lost.
         if (r.ob) |*ob| {
-            r.stream_more = false;
-            switch (ob.flushStream(cn.fd)) {
-                .done => r.stream_more = ob.pending(),
-                .again => {
-                    r.poller.wantWrite(cn.fd, r.adminToken(idx)) catch r.closeAdmin(idx);
-                    return;
-                },
-                .closed => return r.closeAdmin(idx),
-            }
+            // The replay of a reconnect goes before the live lines.
+            r.queue.noteDropped(sys.nowMs(), r.queue.frontFloor() orelse ob.rd.sent_seq);
+        } else {
+            r.queue.noteDropped(sys.nowMs(), 0);
         }
-        r.queue.noteDropped(sys.nowMs());
+        var moved: usize = 0;
         var guard: u32 = 0;
         while (guard < 1 << 20) : (guard += 1) {
-            var bufs: [64][]const u8 = undefined;
-            const n = r.queue.frontSlices(&bufs);
-            if (n == 0) break;
-            switch (sys.writevSome(cn.fd, bufs[0..n])) {
-                .n => |k| r.queue.consume(k),
-                .again => {
-                    r.poller.wantWrite(cn.fd, r.adminToken(idx)) catch r.closeAdmin(idx);
-                    return;
-                },
-                .closed => return r.closeAdmin(idx),
+            var step: usize = 0;
+            // The stored records of the replay, else the durable records that
+            // the next best-effort line waits for.
+            if (r.ob) |*ob| {
+                const replaying = ob.rd.sent_seq < ob.rd.replay_until;
+                const upto = if (replaying) std.math.maxInt(u64) else if (r.queue.frontFloor()) |f| f else std.math.maxInt(u64);
+                if (upto > ob.rd.sent_seq) switch (ob.flushTo(cn.fd, upto)) {
+                    .sent => |k| step += k,
+                    .empty => {},
+                    .blocked => return r.streamBlocked(idx),
+                    .closed => return r.closeAdmin(idx),
+                };
+                // The best-effort lines whose durable floor the client has. A
+                // replay of stored records that is not done goes first.
+                if (!replaying) if (r.queue.frontFloor()) |f| {
+                    if (f <= ob.rd.sent_seq) switch (r.sendRing(cn.fd, ob.rd.sent_seq)) {
+                        .sent => |k| step += k,
+                        .empty => {},
+                        .blocked => return r.streamBlocked(idx),
+                        .closed => return r.closeAdmin(idx),
+                    };
+                };
+            } else if (r.queue.frontFloor() != null) {
+                // No outbox: the ring is the whole stream, in order.
+                switch (r.sendRing(cn.fd, std.math.maxInt(u64))) {
+                    .sent => |k| step += k,
+                    .empty => {},
+                    .blocked => return r.streamBlocked(idx),
+                    .closed => return r.closeAdmin(idx),
+                }
             }
+            if (step == 0) break;
+            moved += step;
         }
+        // A slow client makes the outbox cursor fall behind: nothing is lost.
+        r.stream_more = moved > 0 and r.streamPending();
         r.poller.doneWrite(cn.fd, r.adminToken(idx));
+    }
+
+    /// One write of the best-effort lines whose floor the client has.
+    fn sendRing(r: *Runner, fd: c_int, limit: u64) outbox.Step {
+        var bufs: [64][]const u8 = undefined;
+        const n = r.queue.frontSlicesUpTo(&bufs, limit);
+        if (n == 0) return .empty;
+        switch (sys.writevSome(fd, bufs[0..n])) {
+            .n => |k| {
+                if (k == 0) return .empty;
+                r.queue.consume(k);
+                return .{ .sent = k };
+            },
+            .again => return .blocked,
+            .closed => return .closed,
+        }
+    }
+
+    /// True when a line of either source still waits for the client.
+    fn streamPending(r: *const Runner) bool {
+        if (r.queue.bytes > 0 or r.queue.notice_len > 0) return true;
+        const ob = if (r.ob) |*o| o else return false;
+        return ob.pending();
+    }
+
+    /// The socket is full: write interest goes back on, and the loop waits.
+    fn streamBlocked(r: *Runner, idx: u32) void {
+        r.stream_more = false;
+        const cn = &r.admin_conns[idx];
+        r.poller.wantWrite(cn.fd, r.adminToken(idx)) catch r.closeAdmin(idx);
     }
 
     // ---- fallback host ----------------------------------------------------------

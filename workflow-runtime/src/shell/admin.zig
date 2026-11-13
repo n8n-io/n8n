@@ -523,8 +523,18 @@ pub const Queue = struct {
     notice: [96]u8 = undefined,
     notice_len: usize = 0,
     notice_sent: usize = 0,
+    /// The durable seq that must reach the client before the notice.
+    notice_floor: u64 = 0,
 
-    const Entry = struct { off: usize, len: u32, droppable: bool, gone: bool };
+    const Entry = struct {
+        off: usize,
+        len: u32,
+        droppable: bool,
+        gone: bool,
+        /// The seq of the last durable event published before this line: the
+        /// stream sends the line only after that event (spec 9.2).
+        floor: u64,
+    };
 
     /// Reserve the rings: `hard_bytes` (4 x `max_bytes`) of lines and
     /// 4 x `max_entries` entries. Pages are touched on use.
@@ -552,7 +562,7 @@ pub const Queue = struct {
 
     /// Room for a line of `len` bytes: a new entry whose bytes the caller
     /// writes now, before any other call. Null when the line is dropped.
-    pub fn push(q: *Queue, len: usize, droppable: bool) ?[]u8 {
+    pub fn push(q: *Queue, len: usize, droppable: bool, floor: u64) ?[]u8 {
         std.debug.assert(q.tail - q.head <= q.entries.len);
         if (len == 0 or len > q.buf.len or len > std.math.maxInt(u32)) return q.dropNew();
         q.bytes += len;
@@ -573,7 +583,7 @@ pub const Queue = struct {
                 return q.dropNew();
             }
         };
-        q.at(q.tail).* = .{ .off = off, .len = @intCast(len), .droppable = droppable, .gone = false };
+        q.at(q.tail).* = .{ .off = off, .len = @intCast(len), .droppable = droppable, .gone = false, .floor = floor };
         q.tail += 1;
         std.debug.assert(q.tail - q.head <= q.entries.len and q.bytes <= q.buf.len);
         return q.buf[off..][0..len];
@@ -642,14 +652,25 @@ pub const Queue = struct {
     }
 
     /// Put a `dropped` line before the front line, if lines were dropped
-    /// and the front line is not half sent.
-    pub fn noteDropped(q: *Queue, at_ms: i64) void {
+    /// and the front line is not half sent. `floor` is the durable seq that
+    /// the notice waits for, as a line of the front does.
+    pub fn noteDropped(q: *Queue, at_ms: i64, floor: u64) void {
         if (q.unreported == 0 or q.front_sent > 0 or q.notice_len > 0) return;
         var out: Out = .{ .buf = &q.notice };
         encode(&out, .{ .dropped = .{ .count = q.unreported } }, at_ms) catch return;
         q.notice_len = out.len;
         q.notice_sent = 0;
+        q.notice_floor = floor;
         q.unreported = 0;
+    }
+
+    /// The durable seq that must reach the client before its next line: the
+    /// notice goes first, then the front line. Null when no line waits.
+    pub fn frontFloor(q: *Queue) ?u64 {
+        if (q.notice_len > 0) return q.notice_floor;
+        q.reclaim();
+        if (q.head == q.tail) return null;
+        return q.at(q.head).floor;
     }
 
     /// The bytes that wait, oldest first, as up to `out.len` slices.
@@ -665,6 +686,29 @@ pub const Queue = struct {
         while (i < q.tail and n < out.len) : (i += 1) {
             const e = q.at(i);
             if (e.gone) continue;
+            out[n] = q.buf[e.off + skip ..][0 .. e.len - skip];
+            skip = 0;
+            n += 1;
+        }
+        return n;
+    }
+
+    /// The bytes that wait and whose durable floor the client has (a floor at
+    /// or below `limit`), oldest first. A line with a higher floor holds back
+    /// the lines after it: the order of publication stays.
+    pub fn frontSlicesUpTo(q: *Queue, out: [][]const u8, limit: u64) usize {
+        q.reclaim();
+        var n: usize = 0;
+        if (q.notice_len > 0 and q.notice_floor <= limit and n < out.len) {
+            out[n] = q.notice[q.notice_sent..q.notice_len];
+            n += 1;
+        }
+        var i = q.head;
+        var skip = q.front_sent;
+        while (i < q.tail and n < out.len) : (i += 1) {
+            const e = q.at(i);
+            if (e.gone) continue;
+            if (e.floor > limit) break;
             out[n] = q.buf[e.off + skip ..][0 .. e.len - skip];
             skip = 0;
             n += 1;
@@ -899,7 +943,11 @@ test "event encoder" {
 }
 
 fn pushLine(q: *Queue, line: []const u8, droppable: bool) void {
-    const dst = q.push(line.len, droppable) orelse return;
+    pushFloor(q, line, droppable, 0);
+}
+
+fn pushFloor(q: *Queue, line: []const u8, droppable: bool, floor: u64) void {
+    const dst = q.push(line.len, droppable, floor) orelse return;
     @memcpy(dst, line);
 }
 
@@ -922,7 +970,7 @@ test "queue drops step and trace lines first" {
     try std.testing.expectEqualStrings("ted-1\n", q.front().?);
     q.consume(6);
     try std.testing.expectEqualStrings("finished1\n", q.front().?);
-    q.noteDropped(7);
+    q.noteDropped(7, 0);
     try std.testing.expectEqualStrings("{\"type\":\"dropped\",\"count\":2,\"at\":7}\n", q.front().?);
     // One consume can span the notice and the lines after it.
     var sl: [8][]const u8 = undefined;
@@ -944,6 +992,41 @@ test "queue hard bound drops the oldest line" {
     // hard_bytes is 40: four lines of 9 bytes stay.
     try std.testing.expect(q.bytes <= 40);
     try std.testing.expectEqual(@as(u64, 6), q.dropped);
+}
+
+test "queue sends a line only after its durable floor" {
+    const gpa = std.testing.allocator;
+    var q = try Queue.init(gpa, 4096, 1000);
+    defer q.deinit();
+    // Published: durable 1, a line after 1, a line after 2, a line after 3.
+    pushFloor(&q, "best-1\n", true, 1);
+    pushFloor(&q, "best-2\n", true, 2);
+    pushFloor(&q, "best-3\n", true, 3);
+    try std.testing.expectEqual(@as(?u64, 1), q.frontFloor());
+    var sl: [8][]const u8 = undefined;
+    // Nothing may go while the client has no durable event.
+    try std.testing.expectEqual(@as(usize, 0), q.frontSlicesUpTo(&sl, 0));
+    // With seq 1 the client gets the first line, and no more.
+    try std.testing.expectEqual(@as(usize, 1), q.frontSlicesUpTo(&sl, 1));
+    try std.testing.expectEqualStrings("best-1\n", sl[0]);
+    try std.testing.expectEqual(@as(usize, 2), q.frontSlicesUpTo(&sl, 2));
+    try std.testing.expectEqual(@as(usize, 3), q.frontSlicesUpTo(&sl, 3));
+    // A dropped line only skips itself: the line after it still goes.
+    for (sl[0..3]) |l| q.consume(l.len);
+    pushFloor(&q, "gone\n", true, 1);
+    pushFloor(&q, "kept\n", true, 1);
+    try std.testing.expect(q.dropOldest(true));
+    q.reclaim();
+    try std.testing.expectEqual(@as(?u64, 1), q.frontFloor());
+    try std.testing.expectEqual(@as(usize, 1), q.frontSlicesUpTo(&sl, 1));
+    try std.testing.expectEqualStrings("kept\n", sl[0]);
+    // The dropped notice carries its floor too.
+    q.noteDropped(7, 4);
+    try std.testing.expectEqual(@as(?u64, 4), q.frontFloor());
+    try std.testing.expectEqual(@as(usize, 1), q.frontSlicesUpTo(&sl, 1));
+    try std.testing.expectEqualStrings("kept\n", sl[0]);
+    try std.testing.expectEqual(@as(usize, 2), q.frontSlicesUpTo(&sl, 4));
+    try std.testing.expect(std.mem.indexOf(u8, sl[0], "\"dropped\"") != null);
 }
 
 test "queue ring wraps and never grows" {

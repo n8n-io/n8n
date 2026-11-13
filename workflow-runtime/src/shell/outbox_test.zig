@@ -22,6 +22,29 @@ fn effect(a: *Asm, kind: EK, step: u16, dst: u16, args: u16, tmp: u16) !void {
     try a.emit(.@"suspend", @backingInt(kind), dst, tmp, args);
 }
 
+/// A workflow with `ctx.trace` and an explicit `ctx.respond` step: a manual
+/// run with `trace: true` publishes `started`, `trace`, two `step` lines and
+/// `finished`, in that order.
+fn tracedProgram(gpa: std.mem.Allocator) ![]u8 {
+    var a: Asm = .{ .gpa = gpa, .meta = "{\"durability\":\"batched\"}" };
+    defer a.deinit();
+    const step = try a.step("Respond", .respond);
+    a.beginFunc();
+    try a.emitBc(.loads, 1, try a.str("Node"));
+    try a.emit(.newobj, 0, 2, 0, 0);
+    try a.emit(.trace, 0, 1, 2, 0);
+    try a.emit(.newobj, 0, 4, 0, 0);
+    try a.emitBc(.loadi, 5, 200);
+    try a.emit(.setprop, 0, 4, try a.str("status"), 5);
+    try effect(&a, .respond, step, 6, 4, 7);
+    try a.emit(.newobj, 0, 8, 0, 0);
+    try a.emitBc(.loadi, 5, 1);
+    try a.emit(.setprop, 0, 8, try a.str("ok"), 5);
+    try a.emit(.ret, 0, 8, 0, 0);
+    try a.endFunc("run", 1, 9, 0);
+    return a.finish();
+}
+
 /// A webhook workflow with an explicit `ctx.respond` step, so its step lines
 /// go out when the execution has data, and the webhook is answered at once.
 fn respondProgram(gpa: std.mem.Allocator) ![]u8 {
@@ -205,22 +228,34 @@ const Bed = struct {
     /// Open the event stream and take the lines that follow, up to `want`
     /// lines or a deadline of 5 s.
     fn openStream(b: *Bed, after: ?u64, want: usize) ![]const u8 {
+        try b.streamFirst(after, null, 5_000);
+        return b.readStream(want, 5_000);
+    }
+
+    /// Connect the stream client before the events happen: its lines then
+    /// arrive as the shard publishes them. With `rcvbuf` its receive buffer
+    /// is small, so the socket fills and the shard's write returns EAGAIN
+    /// part way through the stream.
+    fn streamFirst(b: *Bed, after: ?u64, rcvbuf: ?c_int, ms: u32) !void {
         b.closeStream();
         var tail: [64]u8 = undefined;
         const query = if (after) |n| try std.fmt.bufPrint(&tail, "?after=0:{d}", .{n}) else "";
         var head: [256]u8 = undefined;
         const req = try std.fmt.bufPrint(&head, "GET /_admin/events{s} HTTP/1.1\r\nhost: a\r\nauthorization: Bearer {s}\r\n\r\n", .{ query, secret });
-        const c = try Conn.open(b.admin);
-        b.stream = c;
+        b.stream = if (rcvbuf) |rb| try Conn.openSlow(b.admin, rb) else try Conn.open(b.admin);
         try b.stream.?.send(req);
         // The response head goes first.
         var head_buf: [1024]u8 = undefined;
-        const resp = try b.stream.?.readUntil("\r\n\r\n", &head_buf, 5_000);
+        const resp = try b.stream.?.readUntil("\r\n\r\n", &head_buf, ms);
         if (!std.mem.startsWith(u8, resp, "HTTP/1.1 200")) {
             std.debug.print("stream head: {s}\n", .{resp});
             return error.NotStreaming;
         }
-        try b.stream.?.readLines(b.a, want, 5_000);
+    }
+
+    /// The lines that wait, up to `want` of them or a deadline of `ms`.
+    fn readStream(b: *Bed, want: usize, ms: u32) ![]const u8 {
+        try b.stream.?.readLines(b.a, want, ms);
         return b.stream.?.lines(b.a);
     }
 };
@@ -272,6 +307,26 @@ const Conn = struct {
 
     fn open(port: u16) !Conn {
         return .{ .fd = try sys.connectTcp(.{ 127, 0, 0, 1 }, port) };
+    }
+
+    /// A client whose receive buffer is small, so the shard's socket fills
+    /// and its write returns EAGAIN part way through the stream.
+    fn openSlow(port: u16, rcvbuf: c_int) !Conn {
+        const fd = std.c.socket(std.c.AF.INET, std.c.SOCK.STREAM, 0);
+        if (fd < 0) return error.Socket;
+        _ = std.c.setsockopt(fd, std.c.SOL.SOCKET, std.c.SO.RCVBUF, &rcvbuf, @sizeOf(c_int));
+        sys.setNonBlocking(fd);
+        var sa = std.mem.zeroes(std.c.sockaddr.in);
+        sa.family = std.c.AF.INET;
+        sa.port = std.mem.nativeToBig(u16, port);
+        sa.addr = @bitCast(@as([4]u8, .{ 127, 0, 0, 1 }));
+        if (std.c.connect(fd, @ptrCast(&sa), @sizeOf(std.c.sockaddr.in)) != 0) {
+            if (std.c.errno(@as(c_int, -1)) != .INPROGRESS) {
+                _ = std.c.close(fd);
+                return error.Connect;
+            }
+        }
+        return .{ .fd = fd };
     }
 
     fn close(c: Conn) void {
@@ -364,6 +419,7 @@ const Conn = struct {
                 try c.got.appendSlice(a, c.buf[0 .. at + 1]);
                 take(c, at + 1);
                 have += 1;
+                waited = 0;
                 continue;
             }
             if (c.len == c.buf.len) return error.TooLong;
@@ -390,6 +446,188 @@ fn nap(ms: u32) void {
 }
 
 // ---- tests ------------------------------------------------------------------------
+
+/// The `"type"` and `"status"` of a stream line, for an order check.
+fn kindOf(line: []const u8) []const u8 {
+    const at = std.mem.indexOf(u8, line, "\"type\":\"") orelse return "";
+    const rest = line[at + "\"type\":\"".len ..];
+    return rest[0 .. std.mem.indexOfScalar(u8, rest, '"') orelse 0];
+}
+
+fn statusOf(line: []const u8) []const u8 {
+    const at = std.mem.indexOf(u8, line, "\"status\":\"") orelse return "";
+    const rest = line[at + "\"status\":\"".len ..];
+    return rest[0 .. std.mem.indexOfScalar(u8, rest, '"') orelse 0];
+}
+
+fn execOf(line: []const u8) []const u8 {
+    const at = std.mem.indexOf(u8, line, "\"executionId\":\"") orelse return "";
+    const rest = line[at + "\"executionId\":\"".len ..];
+    return rest[0 .. std.mem.indexOfScalar(u8, rest, '"') orelse 0];
+}
+
+test "outbox: the live stream keeps the order in which the events were published" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    const wfm = try tracedProgram(a);
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    // The client connects first: it then sees the lines as they are made.
+    try bed.streamFirst(null, null, 5_000);
+    // One manual run with tracing: started, trace, step started, step
+    // completed, finished.
+    const run = try bed.adminCall("POST", "/_admin/executions", "{\"workflowId\":\"w1\",\"executionId\":\"77\",\"trigger\":{},\"trace\":true}");
+    try std.testing.expectEqual(@as(u16, 202), run.status);
+    const text = try bed.readStream(5, 5_000);
+    var types: [8][]const u8 = undefined;
+    var statuses: [8][]const u8 = undefined;
+    var n: usize = 0;
+    var it = std.mem.splitScalar(u8, text, '\n');
+    while (it.next()) |line| {
+        if (line.len == 0 or n == types.len) continue;
+        types[n] = kindOf(line);
+        statuses[n] = statusOf(line);
+        n += 1;
+    }
+    const t = std.testing;
+    try t.expectEqual(@as(usize, 5), n);
+    try t.expectEqualStrings("started", types[0]);
+    try t.expectEqualStrings("trace", types[1]);
+    try t.expectEqualStrings("step", types[2]);
+    try t.expectEqualStrings("started", statuses[2]);
+    try t.expectEqualStrings("step", types[3]);
+    try t.expectEqualStrings("completed", statuses[3]);
+    try t.expectEqualStrings("finished", types[4]);
+}
+
+test "outbox: a slow client still gets the lines in publication order" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    const runs: u32 = 24;
+    const wfm = try respondProgram(a);
+    // The 40 KB trigger lines of the runs must fit the outbox.
+    bed.outbox_bytes = 8 << 20;
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    bed.hook_path = "/w/hook";
+    // A client with a 1 KB receive buffer that reads nothing yet, and runs
+    // whose `started` lines are 40 KB each: the shard's write fills the socket
+    // and returns EAGAIN part way through the stream.
+    try bed.streamFirst(0, 1024, 5_000);
+    const pad = try a.alloc(u8, 40 << 10);
+    @memset(pad, 'p');
+    const body = try std.fmt.allocPrint(a, "{{\"id\":7,\"pad\":\"{s}\"}}", .{pad});
+    var i: u32 = 0;
+    while (i < runs) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook(body)).status);
+    try std.testing.expectEqual(@as(u64, 2 * runs), bed.lastSeq());
+    const text = try bed.readStream(4 * runs, 10_000);
+    const t = std.testing;
+    // For each execution: started, then its step lines, then finished.
+    var it = std.mem.splitScalar(u8, text, '\n');
+    var saw_started: u32 = 0;
+    var saw_finished: u32 = 0;
+    var open: [64][]const u8 = @splat("");
+    while (it.next()) |line| {
+        if (line.len == 0) continue;
+        const kind = kindOf(line);
+        const exec = execOf(line);
+        if (std.mem.eql(u8, kind, "started")) {
+            saw_started += 1;
+            for (&open) |*o| if (o.len == 0) {
+                o.* = exec;
+                break;
+            };
+            continue;
+        }
+        if (std.mem.eql(u8, kind, "finished")) {
+            saw_finished += 1;
+            // The run is over: no line of it may come later.
+            var still: usize = 0;
+            for (open) |o| {
+                if (o.len > 0 and !std.mem.eql(u8, o, exec)) {
+                    open[still] = o;
+                    still += 1;
+                }
+            }
+            @memset(open[still..], "");
+            continue;
+        }
+        // A step line: its execution must not be finished yet.
+        try t.expect(std.mem.eql(u8, kind, "step"));
+        var open_run = false;
+        for (open) |o| {
+            if (o.len > 0 and std.mem.eql(u8, o, exec)) open_run = true;
+        }
+        try t.expect(open_run);
+    }
+    try t.expectEqual(runs, saw_started);
+    try t.expectEqual(runs, saw_finished);
+}
+
+test "outbox: a dropped best-effort line does not hold back the durable lines after it" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    // A ring smaller than one step line: each one drops at once.
+    bed.queue_bytes = 64;
+    const runs: u32 = 12;
+    const wfm = try respondProgram(a);
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    bed.hook_path = "/w/hook";
+    try bed.streamFirst(null, null, 5_000);
+    var i: u32 = 0;
+    while (i < runs) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
+    try std.testing.expectEqual(@as(u64, 2 * runs), bed.lastSeq());
+    // Read until the stream goes quiet: the ring keeps only a few lines, so
+    // the count of lines is not known in advance.
+    const text = try bed.readStream(1000, 500);
+    const t = std.testing;
+    // Every durable line is there, in seq order.
+    var seq: u64 = 0;
+    var durable: u32 = 0;
+    var steps: u32 = 0;
+    var dropped: u32 = 0;
+    var finished: [64][]const u8 = @splat("");
+    var it = std.mem.splitScalar(u8, text, '\n');
+    while (it.next()) |line| {
+        if (line.len == 0) continue;
+        const kind = kindOf(line);
+        if (std.mem.eql(u8, kind, "dropped")) {
+            dropped += 1;
+            continue;
+        }
+        if (std.mem.indexOf(u8, line, "\"seq\":")) |at| {
+            seq += 1;
+            try t.expectEqual(seq, std.fmt.parseInt(u64, digitsAt(line, at + 6), 10) catch 0);
+            durable += 1;
+            if (std.mem.eql(u8, kind, "finished")) {
+                for (&finished) |*f| if (f.len == 0) {
+                    f.* = execOf(line);
+                    break;
+                };
+            }
+            continue;
+        }
+        // A step line: none may come after the finished line of its run.
+        try t.expect(std.mem.eql(u8, kind, "step"));
+        steps += 1;
+        for (finished) |f| try t.expect(f.len == 0 or !std.mem.eql(u8, f, execOf(line)));
+    }
+    try t.expectEqual(2 * runs, durable);
+    try t.expect(dropped >= 1);
+    // Some step lines dropped, and the durable lines of the runs went out
+    // regardless, in order.
+    try t.expect(steps > 0 and steps < 2 * runs);
+}
 
 test "outbox: a slow stream client gets every durable line, and only best-effort lines drop" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);

@@ -22,8 +22,6 @@ const chunk_bytes: usize = 64 << 10;
 const read_bytes: usize = 128 << 10;
 /// Slices the stream reader holds for one write.
 pub const max_slices: usize = 64;
-/// Bound of one `flushStream` call.
-const flush_slices: u32 = 1 << 15;
 /// Bound of one pass of the read loop.
 const fill_bound: u32 = 1 << 16;
 /// Bound of the records of one segment at startup.
@@ -82,8 +80,17 @@ pub const Status = struct {
     max_bytes: u64,
 };
 
-/// The result of one `flushStream` call.
-pub const Drain = enum { done, again, closed };
+/// The result of one write of the stream.
+pub const Step = union(enum) {
+    /// `n` bytes went out; the cursor moved.
+    sent: usize,
+    /// Nothing waits within the limit now.
+    empty,
+    /// The socket is full: write interest goes back on.
+    blocked,
+    /// The client went.
+    closed,
+};
 
 pub const Options = struct {
     dir: []const u8,
@@ -225,14 +232,19 @@ pub const Outbox = struct {
     }
 
     /// The first stored record with a seq greater than `after` goes next.
+    /// The client has the records up to `after`, and the stored records that
+    /// follow are its replay: they go out before any live best-effort line.
     pub fn startStream(ob: *Outbox, after: u64) void {
         ob.rd.closeFd();
         ob.rd.nspans = 0;
         ob.rd.cur = 0;
         ob.rd.sent = 0;
+        ob.rd.used = 0;
         ob.rd.in_line = false;
         ob.rd.line_left = 0;
         ob.rd.skip = after;
+        ob.rd.sent_seq = after;
+        ob.rd.replay_until = ob.next_seq - 1;
         // The last segment that starts at or before `after` holds the first
         // record that the client does not have.
         var seg: u32 = 0;
@@ -244,24 +256,23 @@ pub const Outbox = struct {
         ob.rd.off = 0;
     }
 
-    /// Send the stored lines to `fd`, in seq order, until the socket is full.
-    /// The cursor keeps its place: a slow client reads less, nothing is lost.
-    pub fn flushStream(ob: *Outbox, fd: c_int) Drain {
-        var guard: u32 = 0;
-        while (guard < flush_slices) : (guard += 1) {
-            if (ob.rd.nspans == 0) {
-                if (ob.rd.fill(ob) == 0) return .done;
-            }
-            var bufs: [max_slices][]const u8 = undefined;
-            const n = ob.rd.slices(&bufs);
-            std.debug.assert(n > 0);
-            switch (sys.writevSome(fd, bufs[0..n])) {
-                .n => |k| ob.rd.consume(k),
-                .again => return .again,
-                .closed => return .closed,
-            }
+    /// Send the stored lines of the records up to `upto` to `fd`, in one
+    /// write. The cursor keeps its place: a slow client reads less, nothing
+    /// is lost.
+    pub fn flushTo(ob: *Outbox, fd: c_int, upto: u64) Step {
+        if (ob.rd.nspans == 0 and ob.rd.fill(ob) == 0) return .empty;
+        var bufs: [max_slices][]const u8 = undefined;
+        const n = ob.rd.slicesUpTo(&bufs, upto);
+        if (n == 0) return .empty;
+        switch (sys.writevSome(fd, bufs[0..n])) {
+            .n => |k| {
+                if (k == 0) return .empty;
+                ob.rd.consume(k);
+                return .{ .sent = k };
+            },
+            .again => return .blocked,
+            .closed => return .closed,
         }
-        return .done;
     }
 
     /// True when the stream cursor has not reached the last stored record:
@@ -572,15 +583,26 @@ pub const Reader = struct {
     skip: u64 = 0,
     /// Bytes that are left of the line that is being sent.
     line_left: u32 = 0,
+    /// The seq of the record of that line.
+    line_seq: u64 = 0,
     in_line: bool = false,
     buf: []u8,
     /// Bytes of `buf` that the spans of this pass hold.
     used: usize = 0,
     spans: [max_slices][]const u8 = undefined,
+    /// The seq of the record that each span belongs to.
+    span_seq: [max_slices]u64 = undefined,
+    /// The span ends its record.
+    span_last: [max_slices]bool = undefined,
     nspans: usize = 0,
     cur: usize = 0,
     /// Bytes of `spans[cur]` that the client has.
     sent: usize = 0,
+    /// The last record that the client has in full: the stream sends the
+    /// best-effort lines after it (spec 9.2).
+    sent_seq: u64 = 0,
+    /// The last stored seq when the client connected: its replay goes first.
+    replay_until: u64 = 0,
     fd: c_int = -1,
     /// The first seq of the segment that `fd` reads.
     fd_first: u64 = 0,
@@ -642,11 +664,13 @@ pub const Reader = struct {
                 const k = readAt(fd, rd.buf[rd.used..][0..want], rd.off);
                 if (k == 0) return rd.nspans;
                 rd.spans[rd.nspans] = rd.buf[rd.used..][0..k];
+                rd.span_seq[rd.nspans] = rd.line_seq;
                 rd.used += k;
                 rd.nspans += 1;
                 rd.off += k;
                 rd.line_left -= @intCast(k);
                 if (rd.line_left == 0) rd.in_line = false;
+                rd.span_last[rd.nspans - 1] = !rd.in_line;
                 if (k < want) return rd.nspans;
                 continue;
             }
@@ -663,6 +687,7 @@ pub const Reader = struct {
                 continue;
             }
             rd.line_left = h.len;
+            rd.line_seq = h.seq;
             rd.in_line = h.len > 0;
         }
         return rd.nspans;
@@ -695,6 +720,21 @@ pub const Reader = struct {
         return n;
     }
 
+    /// The lines that wait and belong to records up to `upto`, oldest first,
+    /// as up to `out.len` slices. A record stays whole: the order holds.
+    pub fn slicesUpTo(rd: *Reader, out: [][]const u8, upto: u64) usize {
+        var n: usize = 0;
+        var i = rd.cur;
+        var skip = rd.sent;
+        while (i < rd.nspans and n < out.len) : (i += 1) {
+            if (rd.span_seq[i] > upto) break;
+            out[n] = rd.spans[i][skip..];
+            skip = 0;
+            n += 1;
+        }
+        return n;
+    }
+
     /// The client took `n` bytes.
     pub fn consume(rd: *Reader, n_in: usize) void {
         var n = n_in;
@@ -706,6 +746,7 @@ pub const Reader = struct {
             rd.sent += k;
             n -= k;
             if (rd.sent == s.len) {
+                if (rd.span_last[rd.cur]) rd.sent_seq = rd.span_seq[rd.cur];
                 rd.cur += 1;
                 rd.sent = 0;
             }
