@@ -1,0 +1,106 @@
+{
+	"name": "Set conversion errors",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "convert",
+				"responseMode": "onReceived",
+				"options": {}
+			}
+		},
+		{
+			"id": "keep",
+			"name": "Keep",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a1",
+							"name": "body",
+							"value": "={{ $json.body.list }}",
+							"type": "array"
+						},
+						{
+							"id": "a2",
+							"name": "params",
+							"value": "={{ $json.body.numText }}",
+							"type": "object"
+						},
+						{
+							"id": "a3",
+							"name": "count",
+							"value": "={{ $json.body.badNumber }}",
+							"type": "number"
+						},
+						{
+							"id": "a4",
+							"name": "active",
+							"value": "={{ $json.body.flag }}",
+							"type": "boolean"
+						},
+						{
+							"id": "a5",
+							"name": "label",
+							"value": "={{ $json.body.name }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {
+					"ignoreConversionErrors": true
+				}
+			}
+		},
+		{
+			"id": "fail",
+			"name": "Fail",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b1",
+							"name": "count",
+							"value": "={{ $json.body.badNumber }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"onError": "continueRegularOutput"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Keep",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Fail",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

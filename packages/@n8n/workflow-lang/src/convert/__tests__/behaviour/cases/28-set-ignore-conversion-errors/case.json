@@ -1,0 +1,15 @@
+{
+	"description": "Edit Fields (Set) 3.4 with \"Ignore Type Conversion Errors\" keeps a value that fails conversion; without the option the node fails and continues with the error",
+	"trigger": {
+		"body": {
+			"list": {
+				"a": 1
+			},
+			"numText": "12x",
+			"badNumber": "abc",
+			"flag": "maybe",
+			"name": "Ada"
+		}
+	},
+	"compare": ["Keep", "Fail"]
+}
