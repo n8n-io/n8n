@@ -15,12 +15,17 @@ import { Container } from '@n8n/di';
 export class CompiledEngineModule implements ModuleInterface {
 	async init() {
 		await import('./compiled-engine.controller.js');
+		// The disk service goes first: it makes the folders before the processes use them.
+		const { CompiledEngineDiskService } = await import('./compiled-engine-disk.service.js');
+		await Container.get(CompiledEngineDiskService).start();
 		const { CompiledEngineService } = await import('./compiled-engine.service.js');
 		await Container.get(CompiledEngineService).start();
 	}
 
 	@OnShutdown()
 	async shutdown() {
+		const { CompiledEngineDiskService } = await import('./compiled-engine-disk.service.js');
+		Container.get(CompiledEngineDiskService).stop();
 		const { CompiledEngineService } = await import('./compiled-engine.service.js');
 		await Container.get(CompiledEngineService).shutdown();
 	}

@@ -121,4 +121,12 @@ export class CompiledEngineConfig {
 	 */
 	@Env('N8N_COMPILED_ENGINE_DATA_DIR')
 	dataDir: string = '';
+
+	/**
+	 * Size limit in megabytes for the compiled workflows that n8n keeps on disk.
+	 * When the compiled workflows reach the limit, n8n removes the ones that it
+	 * used least recently. Set to 0 to keep no compiled workflows on disk.
+	 */
+	@Env('N8N_COMPILED_ENGINE_ARTIFACT_CACHE_MB', z.number({ coerce: true }).int().min(0))
+	artifactCacheMb: number = 256;
 }
