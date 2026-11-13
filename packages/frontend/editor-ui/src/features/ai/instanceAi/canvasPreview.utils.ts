@@ -3,10 +3,12 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	appPlanSchema,
 	getDataTableCallAction,
 	getExecutionCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
+	type AppPlan,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -449,6 +451,38 @@ export function getLatestAppArtifactResult(
 	turns: readonly ArtifactTurn[],
 ): ToolArtifactResult<AppArtifact> | undefined {
 	return getLatestToolArtifactResult(turns, getAppArtifactFromToolCall);
+}
+
+export interface PendingAppPlan {
+	toolCallId: string;
+	name: string;
+	plan: AppPlan;
+}
+
+/**
+ * The plan of the latest app blueprint that is not an app yet: it waits for
+ * approval, or the user asked for a change and the agent revises it.
+ */
+export function getPendingAppPlan(turns: readonly ArtifactTurn[]): PendingAppPlan | undefined {
+	return (
+		findLatestInTurns(turns, (tc): PendingAppPlan | null | undefined => {
+			if (tc.toolName !== APPS_TOOL_NAME || tc.args?.action !== 'create') return undefined;
+			const blueprint = tc.args.blueprint;
+			const parsed = isRecord(blueprint) ? appPlanSchema.safeParse(blueprint.plan) : undefined;
+			// The latest create decides: a create without a plan, or a finished one, ends the plan view.
+			if (!parsed?.success || !isRecord(blueprint)) return null;
+			const result = unwrapUntrustedToolResult(tc.result);
+			const settled =
+				isRecord(result) &&
+				(isRecord(result.app) || (result.approved === false && !result.revisionRequested));
+			if (settled || tc.error) return null;
+			return {
+				toolCallId: tc.toolCallId,
+				name: typeof blueprint.name === 'string' ? blueprint.name : 'App',
+				plan: parsed.data,
+			};
+		}) ?? undefined
+	);
 }
 
 function getAgentArtifactResult(tc: ArtifactToolCall): AgentArtifactResult | undefined {

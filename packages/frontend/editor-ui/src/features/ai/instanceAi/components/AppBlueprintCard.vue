@@ -60,6 +60,7 @@ const editedBlueprint = computed<AppBlueprint>(() => ({
 	description: props.blueprint.description,
 	theme: theme.value,
 	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
+	...(props.blueprint.plan ? { plan: props.blueprint.plan } : {}),
 	...(additionalInstructions.value.trim()
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),

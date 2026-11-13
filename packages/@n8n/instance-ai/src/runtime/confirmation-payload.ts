@@ -1,5 +1,6 @@
 import type {
 	AppBlueprint,
+	AppBlueprintResume,
 	InstanceAiConfirmRequest,
 	InstanceAiCredentialDestinationDecision,
 } from '@n8n/api-types';
@@ -52,6 +53,7 @@ export interface ConfirmationData {
 	credentialDestination?: InstanceAiCredentialDestinationDecision;
 	connectedSlugs?: string[];
 	blueprint?: AppBlueprint;
+	revise?: AppBlueprintResume['revise'];
 }
 
 /** Collapse the frontend's typed confirmation union into the flat payload
@@ -91,6 +93,7 @@ export function toConfirmationData(request: InstanceAiConfirmRequest): Confirmat
 			return {
 				approved: request.approved,
 				blueprint: request.blueprint,
+				...(request.revise ? { revise: request.revise } : {}),
 			};
 		case 'setupWorkflowApply':
 			return {
@@ -135,5 +138,6 @@ export function buildResumeData(data: ConfirmationData): Record<string, unknown>
 		...(data.credentialDestination ? { credentialDestination: data.credentialDestination } : {}),
 		...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
 		...(data.blueprint ? { blueprint: data.blueprint } : {}),
+		...(data.revise ? { revise: data.revise } : {}),
 	};
 }

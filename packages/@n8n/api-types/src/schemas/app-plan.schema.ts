@@ -55,15 +55,15 @@ export const appPlanComponentSchema = z.object({
 	id: planIdSchema,
 	kind: appPlanComponentKindSchema,
 	label: z.string().trim().min(1).max(80),
-	/** Where the component sits on its screen. */
-	region: z.enum(['main', 'aside']).default('main'),
-	/** Columns of a 12-column grid. */
-	span: z.number().int().min(1).max(12).default(12),
+	/** Where the component sits on its screen. Defaults to `main`. */
+	region: z.enum(['main', 'aside']).optional(),
+	/** Columns of a 12-column grid. Defaults to 12. */
+	span: z.number().int().min(1).max(12).optional(),
 	/** Short hints the wireframe draws, e.g. table columns or form fields. */
 	items: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
 	data: appPlanDataSchema.optional(),
 	action: appPlanActionSchema.optional(),
-	status: appPlanComponentStatusSchema.default('planned'),
+	status: appPlanComponentStatusSchema.optional(),
 });
 export type AppPlanComponent = z.infer<typeof appPlanComponentSchema>;
 
@@ -76,12 +76,12 @@ export type AppPlanScreen = z.infer<typeof appPlanScreenSchema>;
 
 export const appPlanSchema = z
 	.object({
-		layout: z.enum(['topbar', 'sidebar']).default('topbar'),
+		layout: z.enum(['topbar', 'sidebar']).optional(),
 		/** The nav lists the screens. Omit it for a single-screen app without a nav. */
 		nav: appPlanComponentSchema.extend({ kind: z.literal('nav') }).optional(),
 		screens: z.array(appPlanScreenSchema).min(1).max(8),
 		/** The build steps from the outside in: `shell` first, then component ids. */
-		buildOrder: z.array(planIdSchema).max(60),
+		buildOrder: z.array(planIdSchema).max(60).optional(),
 	})
 	.superRefine((plan, ctx) => {
 		const ids = new Set<string>([APP_PLAN_SHELL_ID]);
@@ -95,7 +95,7 @@ export const appPlanSchema = z
 		plan.screens.forEach((screen, s) =>
 			screen.components.forEach((c, i) => add(c.id, ['screens', s, 'components', i, 'id'])),
 		);
-		plan.buildOrder.forEach((id, i) => {
+		plan.buildOrder?.forEach((id, i) => {
 			if (!ids.has(id)) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
@@ -106,7 +106,6 @@ export const appPlanSchema = z
 		});
 	});
 export type AppPlan = z.infer<typeof appPlanSchema>;
-export type AppPlanInput = z.input<typeof appPlanSchema>;
 
 /** All components of a plan, nav first, in screen order. */
 export function listPlanComponents(plan: AppPlan): AppPlanComponent[] {

@@ -721,6 +721,37 @@ function restoreFailedSubmission(restoreDraft: () => boolean) {
 }
 
 // --- Message handlers ---
+/** A pending app blueprint. While it waits, a chat message revises its plan instead. */
+const pendingAppBlueprint = computed(() => {
+	const item = thread.actionableConfirmations.find(
+		(pending) => pending.toolCall.confirmation.appBlueprint !== undefined,
+	);
+	const blueprint = item?.toolCall.confirmation.appBlueprint;
+	return item && blueprint ? { requestId: item.toolCall.confirmation.requestId, blueprint } : null;
+});
+
+async function reviseAppBlueprint(
+	message: string,
+	attachments: InstanceAiAttachment[] | undefined,
+	restoreDraft: () => boolean,
+) {
+	const pending = pendingAppBlueprint.value;
+	if (!pending) return;
+	const elements = (attachments ?? []).flatMap((attachment) =>
+		attachment.type === 'element' ? [attachment] : [],
+	);
+	const planIds = elements.flatMap((element) => (element.planId ? [element.planId] : []));
+	const selected = elements.map((element) => element.text ?? element.tagName).join(', ');
+	const feedback = selected ? `${message}\n(Selected in the wireframe: ${selected})` : message;
+	const ok = await thread.confirmAction(pending.requestId, {
+		kind: 'appBlueprint',
+		approved: false,
+		blueprint: pending.blueprint,
+		revise: { feedback: feedback.slice(0, 4000), ...(planIds.length ? { planIds } : {}) },
+	});
+	if (!ok) restoreFailedSubmission(restoreDraft);
+}
+
 async function handleSubmit(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
@@ -731,6 +762,11 @@ async function handleSubmit(
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
+	if (pendingAppBlueprint.value) {
+		await reviseAppBlueprint(message, attachments, restoreDraft);
 		return;
 	}
 
@@ -1112,14 +1148,16 @@ defineExpose({
 										v-if="greetingPhase === null && !awaitingOnboardingGreeting"
 										v-show="!hasFloatingConfirmation"
 										ref="chatInputRef"
-										:is-streaming="thread.isStreaming"
+										:is-streaming="thread.isStreaming && !pendingAppBlueprint"
 										:is-out-of-credits="isOutOfCredits"
 										:is-submitting="
 											thread.isSendingMessage ||
 											thread.hydrationStatus === 'idle' ||
 											thread.isHydratingThread
 										"
-										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+										:is-awaiting-confirmation="
+											thread.isAwaitingConfirmation && !pendingAppBlueprint
+										"
 										:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"

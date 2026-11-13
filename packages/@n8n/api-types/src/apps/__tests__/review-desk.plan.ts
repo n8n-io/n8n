@@ -1,6 +1,6 @@
-import type { AppPlanInput } from '../../schemas/app-plan.schema';
+import type { AppPlan } from '../../schemas/app-plan.schema';
 
-export const reviewDeskPlan: AppPlanInput = {
+export const reviewDeskPlan: AppPlan = {
 	layout: 'topbar',
 	nav: { id: 'nav', kind: 'nav', label: 'Review desk' },
 	screens: [

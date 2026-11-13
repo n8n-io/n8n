@@ -12,8 +12,7 @@ const plan = appPlanSchema.parse(reviewDeskPlan);
 const byId = (id: string) => listPlanComponents(plan).find((c) => c.id === id)!;
 
 describe('appPlanSchema', () => {
-	it('parses the review desk plan and fills defaults', () => {
-		expect(plan.screens[0].components[0]).toMatchObject({ region: 'main', status: 'planned' });
+	it('parses the review desk plan', () => {
 		expect(listPlanComponents(plan)).toHaveLength(8);
 	});
 

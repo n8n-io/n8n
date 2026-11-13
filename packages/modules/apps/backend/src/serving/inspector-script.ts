@@ -124,7 +124,14 @@ const INSPECTOR_SOURCE = String.raw`function (editorOrigin, messageSource) {
 			text: shortText(element, 200) || undefined,
 			selector: selectorOf(element),
 			route: (location.pathname + hash).slice(0, 500),
+			planId: planIdOf(element),
 		};
+	}
+
+	function planIdOf(element) {
+		var planned = element.closest('[data-plan-id]');
+		var id = planned ? planned.getAttribute('data-plan-id') : null;
+		return id && id.length <= 40 ? id : undefined;
 	}
 
 	function swallow(event) {

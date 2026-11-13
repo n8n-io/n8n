@@ -70,7 +70,7 @@ export function describePlanComponent(
 		linkTo(action);
 	}
 	if (!data && !action) lines.push('No data or workflow behind this part');
-	return { title: component.label, lines, status: component.status, link };
+	return { title: component.label, lines, status: component.status ?? 'planned', link };
 }
 
 function escapeHtml(text: string): string {
@@ -123,7 +123,7 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 		case 'filter':
 			return `<div class="wf-pills">${(items.length ? items : ['All', 'Open', 'Done']).map((i, n) => `<span class="wf-pill${n === 0 ? ' active' : ''}">${i}</span>`).join('')}</div>`;
 		case 'button':
-			return `<span class="wf-btn">${escapeHtml(component.label)}</span>`;
+			return `<span class="wf-btn">${escapeHtml(component.label)}${component.action ? ' <span class="wf-mark">⚡</span>' : ''}</span>`;
 		case 'text':
 			return SKETCH_LINE.repeat(3);
 	}
@@ -145,12 +145,13 @@ export function renderWireframeBlock(
 		component.action ? '<span class="wf-mark" title="Workflow">⚡</span>' : '',
 	].join('');
 	const showLabel = component.kind !== 'button' && component.kind !== 'nav';
+	const showHead = component.kind !== 'button' && (showLabel || markers);
 	return [
-		`<div class="wf-block wf-${component.kind}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
-		component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span}"`,
+		`<div class="wf-block wf-k-${component.kind}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+		component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
 		options.vue ? ' v-pre' : '',
 		'>',
-		showLabel || markers
+		showHead
 			? `<div class="wf-head">${showLabel ? `<span class="wf-label">${escapeHtml(component.label)}</span>` : ''}${markers}</div>`
 			: '',
 		`<div class="wf-body">${blockBody(component, plan)}</div>`,
@@ -164,7 +165,7 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 	const screens = plan.screens
 		.map((screen, i) => {
 			const main = screen.components
-				.filter((c) => c.region === 'main')
+				.filter((c) => c.region !== 'aside')
 				.map((c) => renderWireframeBlock(c, plan, options))
 				.join('\n      ');
 			const aside = screen.components
@@ -185,7 +186,7 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 		})
 		.join('\n');
 	return [
-		`<div class="wf-app wf-layout-${plan.layout}" data-plan-id="${APP_PLAN_SHELL_ID}">`,
+		`<div class="wf-app wf-layout-${plan.layout ?? 'topbar'}" data-plan-id="${APP_PLAN_SHELL_ID}">`,
 		nav ? `  <div class="wf-nav-slot">${nav}</div>` : '',
 		'  <div class="wf-content">',
 		screens,
@@ -224,10 +225,10 @@ export const WIREFRAME_CSS = `
 .wf-label { font-weight: 400; font-size: 14px; flex: 1; }
 .wf-mark { font-size: 11px; color: var(--wf-ink-soft); border: 1.5px solid var(--wf-line-soft); border-radius: 6px; padding: 0 4px; }
 .wf-line { display: block; height: 8px; border-radius: 4px; background: var(--wf-wash); margin: 5px 0; }
-.wf-nav { border-radius: 0; border-width: 0 0 2px; box-shadow: none; display: flex; align-items: center; gap: 18px; padding: 12px 24px; }
-.wf-nav .wf-body { display: flex; align-items: center; gap: 18px; flex: 1; }
-.wf-layout-sidebar .wf-nav { border-width: 0 2px 0 0; flex-direction: column; align-items: stretch; width: 200px; min-height: 100vh; }
-.wf-layout-sidebar .wf-nav .wf-body, .wf-layout-sidebar .wf-nav-items { flex-direction: column; align-items: stretch; }
+.wf-k-nav { border-radius: 0; border-width: 0 0 2px; box-shadow: none; display: flex; align-items: center; gap: 18px; padding: 12px 24px; }
+.wf-k-nav .wf-body { display: flex; align-items: center; gap: 18px; flex: 1; }
+.wf-layout-sidebar .wf-k-nav { border-width: 0 2px 0 0; flex-direction: column; align-items: stretch; width: 200px; min-height: 100vh; }
+.wf-layout-sidebar .wf-k-nav .wf-body, .wf-layout-sidebar .wf-nav-items { flex-direction: column; align-items: stretch; }
 .wf-logo { font-weight: 700; font-size: 16px; }
 .wf-nav-items { display: flex; gap: 6px; }
 .wf-nav-item { padding: 3px 10px; border-radius: 999px; cursor: pointer; color: var(--wf-ink-soft); }
@@ -247,7 +248,7 @@ export const WIREFRAME_CSS = `
 .wf-k { display: block; font-size: 11px; color: var(--wf-ink-soft); }
 .wf-input { display: block; height: 28px; border: 1.5px solid var(--wf-line-soft); border-radius: 7px; }
 .wf-btn { display: inline-block; border: 2px solid var(--wf-line); border-radius: 8px; padding: 4px 14px; font-weight: 400; }
-.wf-button { border: 0; box-shadow: none; padding: 0; background: transparent; }
+.wf-k-button { border: 0; box-shadow: none; padding: 0; background: transparent; }
 .wf-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .wf-pill { border: 1.5px solid var(--wf-line-soft); border-radius: 999px; padding: 1px 10px; color: var(--wf-ink-soft); }
 .wf-pill.active { background: var(--wf-wash); color: var(--wf-ink); }
@@ -262,6 +263,8 @@ export const PLAN_OVERLAY_CSS = `
 .plan-ov-tip .st.built { background: #2e7d4f; } .plan-ov-tip .st.building { background: #b26b00; }
 .plan-ov-tip a { color: #ffb4a8; }
 .plan-ov-hl { outline: 2px dashed #ff6d5a !important; outline-offset: 2px; }
+.plan-ov-selecting [data-plan-id] { cursor: crosshair; }
+.plan-ov-selected { outline: 2px solid #ff6d5a !important; outline-offset: 2px; }
 .plan-ov-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483645; display: flex; align-items: center; gap: 10px;
   padding: 5px 12px; background: rgba(255,255,255,.94); border-bottom: 1px solid #e3e3e3; color: #333; font: 12px system-ui, sans-serif; backdrop-filter: blur(4px); }
 .plan-ov-bar .track { flex: 0 0 140px; height: 5px; border-radius: 3px; background: #eee; overflow: hidden; }
@@ -282,7 +285,12 @@ export interface PlanOverlayConfig {
 	projectId?: string;
 	/** Shows the build progress bar. */
 	progress?: boolean;
+	/** Lets the parent page turn on block selection with `postMessage`. */
+	selectable?: boolean;
 }
+
+/** `postMessage` source of the plan overlay. */
+export const PLAN_OVERLAY_MESSAGE_SOURCE = 'n8n-app-plan';
 
 /** Runs in the page. Self-contained: it is embedded with `toString()`. */
 export function planOverlayMain(
@@ -305,7 +313,7 @@ export function planOverlayMain(
 		byId = {};
 		const all = [...(plan.nav ? [plan.nav] : []), ...plan.screens.flatMap((s) => s.components)];
 		all.forEach((c) => (byId[c.id] = c));
-		order = plan.buildOrder.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
+		order = plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
 	}
 
 	function isBuilt(id: string): boolean {
@@ -327,11 +335,7 @@ export function planOverlayMain(
 	function showTip(el: Element, comp: AppPlanComponent) {
 		if (tipFor === el) return;
 		hideTip();
-		const status = isBuilt(comp.id)
-			? 'built'
-			: comp.status === 'building'
-				? 'building'
-				: comp.status;
+		const status = isBuilt(comp.id) ? 'built' : (comp.status ?? 'planned');
 		const info = describe(
 			{ ...comp, status },
 			{ editorUrl: config.editorUrl, projectId: config.projectId },
@@ -399,6 +403,48 @@ export function planOverlayMain(
 			l.classList.toggle('active', l === link);
 		});
 	});
+
+	// Selection for comments: the parent turns it on, a click on a block reports its plan id.
+	let selecting = false;
+	if (config.selectable) {
+		const source = 'n8n-app-plan';
+		window.addEventListener('message', (event) => {
+			if (event.source !== window.parent) return;
+			const data: unknown = event.data;
+			if (
+				typeof data !== 'object' ||
+				data === null ||
+				!('source' in data) ||
+				data.source !== source
+			)
+				return;
+			const type = 'type' in data ? data.type : undefined;
+			if (type === 'select:enable' || type === 'select:disable') {
+				selecting = type === 'select:enable';
+				doc.documentElement.classList.toggle('plan-ov-selecting', selecting);
+			} else if (type === 'select:clear') {
+				doc
+					.querySelectorAll('.plan-ov-selected')
+					.forEach((el) => el.classList.remove('plan-ov-selected'));
+			}
+		});
+		doc.addEventListener(
+			'click',
+			(event) => {
+				if (!selecting) return;
+				const el = event.target instanceof Element ? event.target.closest('[data-plan-id]') : null;
+				const id = el?.getAttribute('data-plan-id');
+				if (!el || !id) return;
+				event.preventDefault();
+				event.stopPropagation();
+				el.classList.add('plan-ov-selected');
+				selecting = false;
+				doc.documentElement.classList.remove('plan-ov-selecting');
+				window.parent.postMessage({ source, type: 'selected', planId: id }, '*');
+			},
+			true,
+		);
+	}
 
 	let bar: HTMLElement | null = null;
 	function renderProgress() {
@@ -486,7 +532,7 @@ export function renderWireframeDocument(
 
 /** Component ids in build order, with the shell first. */
 export function planBuildOrder(plan: AppPlan): string[] {
-	return plan.buildOrder.length
+	return plan.buildOrder?.length
 		? plan.buildOrder
 		: [APP_PLAN_SHELL_ID, ...listPlanComponents(plan).map((c) => c.id)];
 }

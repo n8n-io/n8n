@@ -1875,6 +1875,7 @@ export function createThreadRuntime(
 		setupItemsByWorkflowId,
 		latestSetupWorkflowId,
 		contextualSuggestion,
+		actionableConfirmations,
 		pendingConfirmations,
 		isAwaitingConfirmation,
 

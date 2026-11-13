@@ -12,6 +12,7 @@ import {
 	getLatestAgentArtifactResult,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
+	getPendingAppPlan,
 	getExecutionResultsByWorkflow,
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
@@ -440,6 +441,9 @@ export function useCanvasPreview({
 
 	const latestBuildResult = computed(() => getLatestBuildResult(thread.artifactTurns) ?? null);
 
+	// An app plan waiting for approval takes over the preview panel as a wireframe.
+	const pendingAppPlan = computed(() => getPendingAppPlan(thread.artifactTurns) ?? null);
+
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - During hydration (loading past conversations from the server) → skip,
@@ -625,6 +629,7 @@ export function useCanvasPreview({
 		activeAgentPending,
 		activeSkillId,
 		activeApp,
+		pendingAppPlan,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		skillRefreshKey,

@@ -60,6 +60,8 @@ export const appPreviewElementSchema = z.object({
 	tagName: z.string().min(1).max(50),
 	text: z.string().max(200).optional(),
 	selector: z.string().max(500).optional(),
+	/** The plan component the element belongs to, from the nearest `data-plan-id`. */
+	planId: z.string().max(40).optional(),
 });
 export type AppPreviewElement = z.infer<typeof appPreviewElementSchema>;
 

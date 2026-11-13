@@ -63,6 +63,7 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
+import InstanceAiPlanPreview from './components/InstanceAiPlanPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
@@ -363,7 +364,11 @@ const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
 // Wait for the stored tabs: a resource opened before they load replaces them.
 const showOpenResourcePicker = computed(
-	() => preview.tabsLoaded.value && !preview.isPreviewVisible.value && !hasPreviewTabs.value,
+	() =>
+		preview.tabsLoaded.value &&
+		!preview.isPreviewVisible.value &&
+		!hasPreviewTabs.value &&
+		preview.pendingAppPlan.value === null,
 );
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
@@ -412,13 +417,16 @@ const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
 	useArtifactsPanelToggle({
 		isInLayout: () => isArtifactsPanelInLayout.value,
 		canShow: () => canShowArtifactsPanel.value,
-		isPreviewVisible: () => preview.isPreviewVisible.value,
+		isPreviewVisible: () => preview.isPreviewVisible.value || preview.pendingAppPlan.value !== null,
 		isHidden: () => isOnboardingChromeHidden.value,
 		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
 		toggleSelector: '[data-test-id="instance-ai-artifacts-panel-toggle"]',
 	});
 const showArtifactsPanelToggle = computed(
-	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
+	() =>
+		canShowArtifactsPanel.value &&
+		!preview.isPreviewVisible.value &&
+		preview.pendingAppPlan.value === null,
 );
 const reserveArtifactsPanelLayout = computed(
 	() => showArtifactsPanel.value && isArtifactsPanelInLayout.value,
@@ -962,7 +970,7 @@ function handleNewThreadClick() {
 			@after-leave="handlePreviewPanelAfterLeave"
 		>
 			<div
-				v-show="preview.isPreviewVisible.value"
+				v-show="preview.isPreviewVisible.value || preview.pendingAppPlan.value"
 				:class="[
 					$style.canvasArea,
 					{
@@ -1004,65 +1012,73 @@ function handleNewThreadClick() {
 							@reorder-tab="preview.reorderTab"
 						/>
 						<div :class="$style.previewContent">
-							<InstanceAiWorkflowPreview
-								v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
-								:key="preview.activeWorkflowId.value"
-								ref="workflowPreview"
-								:class="[
-									$style.previewSlot,
-									{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
-								]"
-								:workflow-id="preview.activeWorkflowId.value"
-								:initial-node-id="
-									preview.activeWorkflowId.value === agentReturnWorkflowId
-										? agentReturnNodeId
-										: undefined
-								"
-								:refresh-key="preview.workflowRefreshKey.value"
-								:execution-result="preview.activeWorkflowExecutionResult.value"
-								@initial-node-id-consumed="consumeAgentReturnNodeId"
-								@workflow-failures="handleWorkflowFailures"
-							/>
-							<InstanceAiDataTablePreview
-								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
+							<InstanceAiPlanPreview
+								v-if="preview.pendingAppPlan.value"
 								:class="$style.previewSlot"
-								:data-table-id="preview.activeDataTableId.value"
-								:project-id="preview.activeDataTableProjectId.value"
-								:refresh-key="preview.dataTableRefreshKey.value"
+								:name="preview.pendingAppPlan.value.name"
+								:plan="preview.pendingAppPlan.value.plan"
 							/>
-							<InstanceAiAgentPreview
-								v-if="
-									preview.isPreviewVisible.value &&
-									preview.activeAgentId.value &&
-									preview.activeAgentProjectId.value
-								"
-								:class="$style.previewSlot"
-								:agent-id="preview.activeAgentId.value"
-								:project-id="preview.activeAgentProjectId.value"
-								:preview-session-id="activeAgentPreviewSessionId"
-								:preview-open="isAgentTestDockOpen"
-								:preview-chat-target="agentPreviewChatTarget"
-								:pending="preview.activeAgentPending.value"
-								@preview-open-change="handleAgentTestDockOpenChange"
-								@assistant-handoff="handleAgentPreviewAssistantHandoff"
-							/>
-							<!-- Retain each open skill's draft while another artifact is visible. -->
-							<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
-								<InstanceAiSkillPreview
-									v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
-									:class="$style.previewSlot"
-									:skill-id="tab.id"
-									:refresh-key="preview.skillRefreshKey.value"
+							<template v-else>
+								<InstanceAiWorkflowPreview
+									v-if="preview.isPreviewVisible.value && preview.activeWorkflowId.value"
+									:key="preview.activeWorkflowId.value"
+									ref="workflowPreview"
+									:class="[
+										$style.previewSlot,
+										{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
+									]"
+									:workflow-id="preview.activeWorkflowId.value"
+									:initial-node-id="
+										preview.activeWorkflowId.value === agentReturnWorkflowId
+											? agentReturnNodeId
+											: undefined
+									"
+									:refresh-key="preview.workflowRefreshKey.value"
+									:execution-result="preview.activeWorkflowExecutionResult.value"
+									@initial-node-id-consumed="consumeAgentReturnNodeId"
+									@workflow-failures="handleWorkflowFailures"
 								/>
-							</KeepAlive>
-							<InstanceAiAppPreview
-								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
-								:class="$style.previewSlot"
-								:project-id="preview.activeApp.value.projectId"
-								:app-id="preview.activeApp.value.id"
-								:refresh-key="preview.appRefreshKey.value"
-								@deleted="preview.closeTab"
-							/>
+								<InstanceAiDataTablePreview
+									v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"
+									:class="$style.previewSlot"
+									:data-table-id="preview.activeDataTableId.value"
+									:project-id="preview.activeDataTableProjectId.value"
+									:refresh-key="preview.dataTableRefreshKey.value"
+								/>
+								<InstanceAiAgentPreview
+									v-if="
+										preview.isPreviewVisible.value &&
+										preview.activeAgentId.value &&
+										preview.activeAgentProjectId.value
+									"
+									:class="$style.previewSlot"
+									:agent-id="preview.activeAgentId.value"
+									:project-id="preview.activeAgentProjectId.value"
+									:preview-session-id="activeAgentPreviewSessionId"
+									:preview-open="isAgentTestDockOpen"
+									:preview-chat-target="agentPreviewChatTarget"
+									:pending="preview.activeAgentPending.value"
+									@preview-open-change="handleAgentTestDockOpenChange"
+									@assistant-handoff="handleAgentPreviewAssistantHandoff"
+								/>
+								<!-- Retain each open skill's draft while another artifact is visible. -->
+								<KeepAlive v-for="tab in openSkillTabs" :key="tab.id">
+									<InstanceAiSkillPreview
+										v-if="preview.isPreviewVisible.value && preview.activeSkillId.value === tab.id"
+										:class="$style.previewSlot"
+										:skill-id="tab.id"
+										:refresh-key="preview.skillRefreshKey.value"
+									/>
+								</KeepAlive>
+								<InstanceAiAppPreview
+									v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+									:class="$style.previewSlot"
+									:project-id="preview.activeApp.value.projectId"
+									:app-id="preview.activeApp.value.id"
+									:refresh-key="preview.appRefreshKey.value"
+									@deleted="preview.closeTab"
+								/>
+							</template>
 						</div>
 					</N8nTabsRoot>
 				</N8nResizeWrapper>
