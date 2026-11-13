@@ -1,5 +1,9 @@
 import type { Mock } from 'vitest';
-import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
+import {
+	SandboxAcquisitionError,
+	SandboxNameConflictError,
+	SandboxNotReadyError,
+} from '@n8n/agents/sandbox';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
@@ -496,6 +500,103 @@ describe('InstanceAiSandboxService', () => {
 			await expect(
 				service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext),
 			).rejects.toBe(notReady);
+		});
+
+		describe('start after a failed start', () => {
+			const context = {} as InstanceAiContext;
+			const notReady = new SandboxNotReadyError('sandbox did not become ready (state: restoring)');
+			const quickStartArg = (call: number) =>
+				((createSandbox as Mock).mock.calls[call][0] as { quickStart?: boolean }).quickStart;
+
+			function setup(provider: 'daytona' | 'n8n-sandbox', runId: { current?: string }) {
+				const { service } = createSandboxService({
+					config: {
+						sandboxEnabled: true,
+						sandboxProvider: provider,
+						n8nSandboxServiceUrl: 'https://env.sandbox',
+					},
+					runState: { getActiveRunId: vi.fn(() => runId.current) },
+				});
+				const workspace = {
+					init: vi.fn(async (): Promise<void> => {
+						throw notReady;
+					}),
+					destroy: vi.fn(async () => {}),
+				};
+				(createSandbox as Mock).mockResolvedValue({ id: 'sandbox-1' });
+				(createWorkspace as Mock).mockReturnValue(workspace);
+				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
+				return { service, workspace };
+			}
+
+			it('does a full start first, then only a quick check later in the same run', async () => {
+				const runId = { current: 'run-1' };
+				const { service } = setup('daytona', runId);
+
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					notReady,
+				);
+				expect(quickStartArg(0)).toBeUndefined();
+
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toSatisfy(
+					(error: unknown) =>
+						error instanceof OperationalError &&
+						error.message.includes('try again shortly') &&
+						error.cause === notReady,
+				);
+				expect(quickStartArg(1)).toBe(true);
+
+				runId.current = 'run-2';
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					notReady,
+				);
+				expect(quickStartArg(2)).toBeUndefined();
+			});
+
+			it.each([
+				['a name conflict', new SandboxNameConflictError('name conflict')],
+				['an unknown error', new Error('unexpected')],
+			])('keeps %s from a quick check unchanged', async (_name, quickError) => {
+				const { service, workspace } = setup('daytona', { current: 'run-1' });
+
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					notReady,
+				);
+				workspace.init.mockRejectedValueOnce(quickError);
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					quickError,
+				);
+				expect(quickStartArg(1)).toBe(true);
+			});
+
+			it('does a full start again after the sandbox started', async () => {
+				const { service, workspace } = setup('daytona', { current: 'run-1' });
+
+				await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+					notReady,
+				);
+				workspace.init.mockResolvedValue(undefined);
+				await service.getOrCreateWorkspace('thread-1', fakeUser, context);
+				expect(quickStartArg(1)).toBe(true);
+
+				service.invalidateCachedWorkspaces();
+				await service.getOrCreateWorkspace('thread-1', fakeUser, context);
+				expect(quickStartArg(2)).toBeUndefined();
+			});
+
+			it.each([
+				['the n8n sandbox service', 'n8n-sandbox' as const, 'run-1'],
+				['a start outside a run', 'daytona' as const, undefined],
+			])('always does a full start for %s', async (_name, provider, current) => {
+				const { service } = setup(provider, { current });
+
+				for (const call of [0, 1]) {
+					await expect(service.getOrCreateWorkspace('thread-1', fakeUser, context)).rejects.toBe(
+						notReady,
+					);
+					expect(quickStartArg(call)).toBeUndefined();
+				}
+			});
 		});
 
 		it('serializes workspace creation for concurrent calls on the same thread', async () => {

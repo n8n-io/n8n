@@ -24,6 +24,7 @@ const DEFAULTS = {
 	variableConflictPolicy: 'keep-existing',
 	tagMissingMode: 'create',
 	tagConflictPolicy: 'skip',
+	publicApi: false,
 } as const satisfies Partial<ImportPackageRequest>;
 
 export function importPackageRequest(

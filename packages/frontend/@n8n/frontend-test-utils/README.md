@@ -19,7 +19,7 @@ L1 — beside `@n8n/design-system` and `@n8n/i18n`, below `@n8n/stores` and `@n8
 It may import `vue`, `pinia`, `@pinia/testing`, `@testing-library/*`, `vitest`, `lodash`,
 `@n8n/api-types`, `@n8n/i18n` and `@n8n/design-system`. It may not import `@n8n/stores`,
 `@n8n/composables`, any `@n8n/frontend-module-*`, or the shell's `@/*`. The `paths` in
-`tsconfig.json` enforce this structurally; `eslint.config.mjs` repeats it with the reason.
+`tsconfig.json` enforce this structurally; `oxlint.config.mts` repeats it with the reason.
 
 The rule runs the other way too: **no package this one imports may import it back.** Converging
 `@n8n/design-system`'s own renderer onto this package would close that cycle, so that stays a
