@@ -100,13 +100,8 @@ const props = withDefaults(
 		placeholder?: string;
 		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		composerHeight?: string;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
+		// Experiment cleanup (124_workflow_previews_above_assistant)
 		previewPromptKey?: BaseTextKey | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		fixedRows?: number | null;
-		// Experiment cleanup: remove with instanceAiSplitEmptyState.
-		submitLabel?: string;
-		submitActiveRequiresFocus?: boolean;
 		contextChip?: ContextChip | null;
 		mentionsEnabled?: boolean;
 		mentionProjectId?: string;
@@ -128,9 +123,6 @@ const props = withDefaults(
 		contextualSuggestion: null,
 		isWorkflowBuilderAvailable: true,
 		previewPromptKey: null,
-		fixedRows: null,
-		submitLabel: undefined,
-		submitActiveRequiresFocus: false,
 		contextChip: null,
 		mentionsEnabled: false,
 		mentionProjectId: undefined,
@@ -188,7 +180,7 @@ const selectedSuggestionDraft = ref<SelectedSuggestionDraft | null>(null);
  */
 const activePrefill = ref<ActivePrefill | null>(null);
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState.
+// Experiment cleanup (124_workflow_previews_above_assistant)
 const typedPreview = ref('');
 const TYPEWRITER_SPEED_MS = 9;
 let typewriterTimer: ReturnType<typeof setInterval> | null = null;
@@ -200,7 +192,7 @@ function stopTypewriter() {
 	}
 }
 
-// Only the split-empty-state preview prompt (the `previewPromptKey` prop) types
+// Only the workflow preview prompt (the `previewPromptKey` prop) types
 // out; the suggestion hover ghost (previewPrompt) stays instant.
 watch(
 	() => props.previewPromptKey,
@@ -268,7 +260,6 @@ defineExpose({
 	setTextIfEmpty,
 	clearTextIfMatches,
 	isDirty,
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
 	// Lets a host disable other controls (e.g. an agent picker) while a file
@@ -434,7 +425,7 @@ const placeholder = computed(() => {
 	if (isGatedBySetup.value) {
 		return i18n.baseText('instanceAi.input.suspendedPlaceholder');
 	}
-	// Experiment cleanup: remove with instanceAiSplitEmptyState. Split types the prompt out.
+	// Experiment cleanup (124_workflow_previews_above_assistant). Types the prompt out.
 	if (props.previewPromptKey && isInputVisuallyEmpty.value) {
 		return typedPreview.value;
 	}
@@ -599,8 +590,7 @@ function submitComposerMessage(
 	resetDraftComposer();
 }
 
-// Experiment cleanup: remove with instanceAiSplitEmptyState. A split example row
-// click sends the prompt directly — attribute the submit (unedited) without a
+// A suggestion click sends the prompt directly — attribute the submit (unedited) without a
 // separate 'selected' event, since there is no insert step.
 function submitSuggestion(payload: SuggestionSelectionPayload) {
 	const prompt = getSuggestionPrompt(payload);
@@ -846,10 +836,6 @@ async function handleSuggestionInsert(payload: SuggestionSelectionPayload) {
 }
 
 const resizable = computed(() => {
-	// Experiment cleanup: remove with instanceAiSplitEmptyState.
-	if (props.fixedRows) {
-		return { minRows: props.fixedRows, maxRows: props.fixedRows };
-	}
 	if (previewPrompt.value) {
 		return { minRows: DEFAULT_AUTOSIZE_ROWS, maxRows: DEFAULT_AUTOSIZE_ROWS };
 	}
@@ -879,8 +865,6 @@ const resizable = computed(() => {
 			:disabled="isGatedBySetup || isPreparingSubmission || props.isOutOfCredits"
 			:autosize="resizable"
 			:composer-height="props.composerHeight"
-			:button-label="props.submitLabel"
-			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="showAttach"
