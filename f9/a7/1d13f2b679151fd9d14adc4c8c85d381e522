@@ -1,0 +1,292 @@
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 10,303
+packages/@n8n/ai-utilities/src/gen-ai/attributes.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 18
+packages/cli/src/modules/otel/__tests__/otel-workflow-tracing.integration.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 472,501-502
+packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-239
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 254,269,273,282-327
+  s_a80fc07b0d4a22::t_60cd9097036673 328-329
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 63-64,66,138-199,410-423,550-554,585,602,644-653,703-704
+packages/nodes-base/nodes/N8n/v1/AuditDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-90
+packages/nodes-base/nodes/N8n/test/v1/User.operation.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-50
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1685-1707
+packages/nodes-base/nodes/N8n/v1/N8nV1.node.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-105
+packages/@n8n/utils/src/promise/with-timeout.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-22
+packages/@n8n/expression-runtime/src/extensions/to-ascii-options.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-2
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 523,531,534,570-573
+packages/@n8n/expression-runtime/src/runtime/to-ascii.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-36
+.agents/skills/community-pr-readiness-check/SKILL.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 108
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 245-269
+packages/cli/src/encryption/key-manager.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 52-55,214-215,224-239,256-261
+  s_a80fc07b0d4a22::t_8b75a8ae2c26b1 262-263
+packages/cli/src/modules/otel/gen-ai-attributes.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 12,34-42
+packages/cli/src/modules/otel/__tests__/otel-lifecycle-handler.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1306-1323
+packages/frontend/editor-ui/src/main.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 29,73-74
+packages/nodes-base/nodes/N8n/test/v1/node/user.get.workflow.json
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-107
+packages/frontend/editor-ui/src/shims-global.d.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 52-53
+packages/@n8n/api-types/src/schemas/app-binding.schema.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 122-135
+packages/cli/src/constants.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 134-136
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 190,1735
+packages/nodes-base/nodes/N8n/test/N8n.node.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 245,249,267
+packages/nodes-base/nodes/N8n/shared/WorkflowLocator.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-108
+packages/cli/src/telemetry/__tests__/telemetry-shutdown.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-106
+packages/modules/apps/frontend/src/apps.api.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 6,114-123
+  s_a80fc07b0d4a22::t_976e485bc82f8e 124-126
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceDeleteDialog.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-154
+packages/modules/apps/backend/src/publication/__tests__/app-publication.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 125-167
+packages/nodes-base/nodes/N8n/test/v1/node/N8n.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-35
+packages/@n8n/expression-runtime/src/__tests__/to-ascii.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-116
+packages/cli/src/modules/skills/services/skills-telemetry.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 42-45,164-168
+  s_a80fc07b0d4a22::t_a9a8d616104a09 169-173
+packages/cli/src/services/frontend.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 108-110,737,762
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 393,522,531-551
+packages/modules/apps/frontend/src/components/publish/AppPublishResources.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-78
+packages/nodes-base/nodes/N8n/v1/WorkflowDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-460
+packages/cli/src/modules/skills/__tests__/skill-sync.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1,9,22,24,30,36,48,55-68,79,135
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 8,304,306-311,362-363,366-367,373,380-401,403,405-408,410,415-444,450-458,586
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 28,63,183-188,201-208,214
+packages/modules/apps/backend/src/bindings/app-bindings.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 8-9,16-17,19-25,33-62,165,181-210,262-305
+  s_a80fc07b0d4a22::t_b74a42e2b9a1c9 306
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 4,16,66,73,82,334-418
+  s_a80fc07b0d4a22::t_6bda50b5ec9669 419-420
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 393-395
+packages/modules/apps/backend/src/publication/app-publication.controller.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 39-45,64-68
+packages/cli/src/encryption/__tests__/legacy-key-mismatch.integration.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-66
+packages/nodes-base/nodes/N8n/test/GenericFunctions.test.ts
+  s_a80fc07b0d4a22::t_fe4231c8d02dd7 5
+packages/@n8n/expression-runtime/src/extensions/to-ascii.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-18
+packages/cli/src/modules/skills/__tests__/integration/skill-source-delete.integration.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-332
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 19
+packages/@n8n/utils/src/promise/with-timeout.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-58
+packages/cli/src/telemetry/index.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 35-37,597-617
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 11,104-112,383-403,430-432
+packages/nodes-base/nodes/N8n/N8n.node.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-2,4,6-9,11-23
+pnpm-workspace.yaml
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 130
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 205-227
+packages/frontend/editor-ui/src/app/init/index.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 54-79,106,326
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 136-147
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 51,126,161-186
+  s_a80fc07b0d4a22::t_1f66bd888ec260 187
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 175-179
+packages/nodes-base/nodes/N8n/v1/UserDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-99
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 721,752,765-777
+  s_a80fc07b0d4a22::t_e7fc1cf687b97f 778-779
+.agents/skills/create-pr/SKILL.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 9-10,47,52-55,79-81,95-102,146-194,197-208,215-216,218-220,222,261-263,269
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 40,45,68-72,91,94,413,415,424-430,436-437,464,467-473,477-479,481-513
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 5,84,96-101
+packages/cli/test/integration/server-static-assets.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 5,16,25,50-71,76-79,122,136,175,195-200,457-553
+  s_a80fc07b0d4a22::t_094968fa1c28a8 554-555
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 160-164,196
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 67,117,799-805,1065,1112-1116
+  s_a80fc07b0d4a22::t_5a92580658f406 1117
+packages/nodes-base/nodes/N8n/v1/ProjectDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-124
+packages/cli/src/modules/apps/bindings/__tests__/app-agent.adapter.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 4,6,10,18,27-28,121-207
+  s_a80fc07b0d4a22::t_6a3b1d1cd87973 208-209
+packages/nodes-base/nodes/N8n/test/v1/node/N8n.getWorkflow.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-100
+.github/backport_conventions.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-36
+packages/cli/src/modules/apps/bindings/app-agent.adapter.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 18,61-65,107-133
+  s_a80fc07b0d4a22::t_d0ba822e4ce16d 134
+packages/cli/src/server.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 5,8-9,20,90-106,499-515,543-544,546-549
+packages/cli/src/scaling/scaling.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 42,560-562,565-566,625,648,668-716
+CONTRIBUTING.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 584,602
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 16,19,22,25,65,112-113,128-129,237,241,261,266-337
+  s_a80fc07b0d4a22::t_87581e8a716be1 338-339
+packages/@n8n/expression-runtime/esbuild.config.js
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 8-31,42
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 21,23,694-798
+  s_a80fc07b0d4a22::t_338d960d12d246 799
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 4740-4778
+packages/modules/apps/backend/src/bindings/__tests__/app-bindings.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 279-510
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 96-97,652-673
+packages/nodes-base/nodes/N8n/v1/ExecutionDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-252
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 645-646
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 60,87-90,93,108,232
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 675-695
+packages/@n8n/api-types/src/dto/app/publish-app.dto.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-2,17
+packages/nodes-base/nodes/N8n/v1/CredentialDescription.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-169
+packages/modules/apps/backend/src/bindings/app-binding-ports.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 79-91,100-108,142,151-158
+  s_a80fc07b0d4a22::t_ff631db02fa14c 159
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 380-383,4134-4140
+packages/frontend/@n8n/stores/src/shims.d.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 3,18-19
+packages/@n8n/constants/src/csp.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 14-20
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 302-303,305-320
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1116,1123,1288-1363
+packages/quality/testing/playwright/pages/SignInPage.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 28-34,39-42
+  s_a80fc07b0d4a22::t_589a9dcf239cf3 43
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 146-161,219-223
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 2,15-22,25-26,30,152,221-280,289-293,295-313,316,319-324,327-429,474-476,637,639,648-649,654,656,666-667,672,674,684-685,819-857,1117
+packages/nodes-base/nodes/N8n/test/shared/WorkflowLocator.test.ts
+  s_a80fc07b0d4a22::t_03440aa9f4a8ca 51-54
+  s_a80fc07b0d4a22::t_9bdba7c03ed307 50
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-49,55-57
+packages/quality/testing/playwright/tests/e2e/app-config/embedded-settings.spec.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-103
+packages/@n8n/expression-runtime/src/runtime/host-function-names.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-2
+packages/modules/apps/backend/src/publication/__tests__/app-publication.controller.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 37-40,121-209
+  s_a80fc07b0d4a22::t_6886f40020285c 210
+packages/frontend/editor-ui/src/features/settings/context/skills.store.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 18,31,85-90
+  s_a80fc07b0d4a22::t_ef7dc0f7593c1b 91-92
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1145-1146,1148-1151,1153-1175,1177,1179,1309,1312-1314,1323-1332
+packages/nodes-base/nodes/N8n/test/v1/node/project.addUser.workflow.json
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-57
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 65-69
+packages/@n8n/telemetry/src/events/context.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 570-580
+packages/quality/testing/playwright/utils/requirements.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1,27,78-111
+  s_a80fc07b0d4a22::t_5a619c00a284bc 112
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 4,7,16-19,50,72,94-97,102-103,108-368
+  s_a80fc07b0d4a22::t_b7f4a22c86c87b 369
+.github/pull_request_template.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 2-6,9,12-20,26,28-30,41
+packages/modules/apps/backend/src/publication/app-publication.service.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 3,8,25-31,39,46,82-97
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 5,11-12,24,26,45-49,51-56,59-83,88-91,104,109-111,164-185
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 2,368-483
+  s_a80fc07b0d4a22::t_d91fcd7579aaa5 484-485
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 6-7,176-178,279
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 716,744-746,778,1682,1751-1752,1756-1757
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1380,1415-1431
+  s_a80fc07b0d4a22::t_8f22045e0313b6 1432-1433
+packages/nodes-base/nodes/N8n/test/v1/N8n.structure.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-45
+packages/cli/src/scaling/job-outcome-tracker.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 41-43,84-85
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 98,102,105,107
+packages/cli/src/modules/skills/controllers/skill-source.controller.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 8,90-94
+  s_a80fc07b0d4a22::t_73bd63937b7c2e 95-96
+packages/nodes-base/nodes/N8n/test/v1/node/workflow.n8n.workflows.json
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-649
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceDeleteDialog.vue
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-95
+packages/@n8n/expression-runtime/src/runtime/__tests__/guest-to-ascii.test.ts
+  s_a80fc07b0d4a22::t_b1e4b305eced8e 1-9
+packages/@n8n/expression-runtime/src/bridge/quickjs-bridge.ts
+  s_a80fc07b0d4a22::t_9e46b018e8ca1a 15-16,549-550,644-646,687-697,732,1565,1571,1588,1624,1627
+pnpm-lock.yaml
+  s_a80fc07b0d4a22::t_e66ce4a26f3644 363-364,5019,14704-14706,31464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9a71d13f2b679151fd9d14adc4c8c85d381e522",
+  "prompts": {},
+  "sessions": {
+    "s_a80fc07b0d4a22": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2f3ee161ffeBuQ2HdmVORjJn0",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

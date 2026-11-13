@@ -1,0 +1,28 @@
+.agents/skills/public-api-live-testing/SKILL.md
+  s_9d31531ba5c1f9::t_d8938012ecf82a 54-57
+  s_9d31531ba5c1f9::t_5b2275f6f0137a 130-131
+  s_9d31531ba5c1f9::t_d3c60878d8e044 116-117,119-120
+  s_9d31531ba5c1f9::t_1aa14cda502e55 138-141
+  s_9d31531ba5c1f9::t_6fca00cf718608 78-81
+.agents/skills/public-api-live-testing/scripts/parity/sortdiff.mjs
+  s_9d31531ba5c1f9::t_b4680b5de00491 42-54
+  s_9d31531ba5c1f9::t_5f9d93d2b12c57 100-101
+.agents/skills/public-api-live-testing/scripts/parity/run.mjs
+  s_9d31531ba5c1f9::t_33ef6f48e45800 66-69,96-102,104-111,113-118,121-147,149-151,153-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "617599ded963a585bed367662b302d1492ee59d0",
+  "prompts": {},
+  "sessions": {
+    "s_9d31531ba5c1f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0949ac3c-8f37-450f-9366-3b1368197b66",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

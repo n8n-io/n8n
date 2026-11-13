@@ -1,0 +1,24 @@
+packages/cli/src/public-api/public-api-controller.utils.ts
+  s_1002c4e88ae523::t_54c3c65352613d 1-57
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_1002c4e88ae523::t_54c3c65352613d 47-53
+  s_1002c4e88ae523::t_66f5c3a72c6726 333
+packages/cli/src/public-api/__tests__/public-api-controller.utils.test.ts
+  s_1002c4e88ae523::t_54c3c65352613d 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86b805a6294ed171a889875e3d1dee3362a664f7",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
