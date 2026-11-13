@@ -735,8 +735,14 @@ function lowerHttpLibrary(c: NodeContext): void {
 		}
 	}
 	entries.push(['version', literal(v)]);
-	// With "continue on fail", the node gives the error item of v1 for a failed status.
-	if (c.node.onError === 'continueRegularOutput' || (!c.node.onError && c.node.continueOnFail)) {
+	// With "continue on fail", the node gives the error item of v1 for a failed status: on its
+	// own output under `continueRegularOutput`, and on the error output under
+	// `continueErrorOutput`, which the converter fills from that item.
+	if (
+		c.node.onError === 'continueRegularOutput' ||
+		c.node.onError === 'continueErrorOutput' ||
+		(!c.node.onError && c.node.continueOnFail)
+	) {
 		entries.push(['errorItems', raw('true')]);
 	}
 	requireInjectable(c, credentialType);

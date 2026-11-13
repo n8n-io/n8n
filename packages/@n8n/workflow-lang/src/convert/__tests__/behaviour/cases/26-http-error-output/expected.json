@@ -1,0 +1,63 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Do Thing", "Rejected"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1",
+						"name": "bob"
+					}
+				}
+			]
+		],
+		"Do Thing": [
+			[],
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1",
+						"name": "bob"
+					},
+					"error": {
+						"message": "400 - \"{\\\"code\\\":\\\"PGRST202\\\",\\\"message\\\":\\\"Could not find the function\\\",\\\"details\\\":null,\\\"hint\\\":\\\"Perhaps you meant to call another one\\\"}\"",
+						"name": "AxiosError",
+						"stack": "AxiosError: Request failed with status code 400\n    at settle (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:2530:12)\n    at RedirectableRequest.handleResponse (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:4731:9)\n    at RedirectableRequest.emit (node:events:526:24)\n    at RedirectableRequest._processResponse (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/follow-redirects@1.16.2_debug@4.4.3_supports-color@8.1.1_/node_modules/follow-redirects/index.js:433:10)\n    at RedirectableRequest._onNativeResponse (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/follow-redirects@1.16.2_debug@4.4.3_supports-color@8.1.1_/node_modules/follow-redirects/index.js:109:12)\n    at ClientRequest.wrapper (node:events:639:12)\n    at ClientRequest.emit (node:events:514:20)\n    at HTTPParser.parserOnIncomingClient (node:_http_client:1002:27)\n    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)\n    at Socket.socketOnData (node:_http_client:837:22)\n    at Axios.request (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:6308:43)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async requestWithResponseLimit (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:45:16)\n    at async invokeWithChallengeAuth (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:26:16)\n    at async invokeAxios (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:13:16)\n    at async sendLegacyRequest (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/legacy-request.js:43:15)\n    at async executeLegacyRequest (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/legacy-request.js:15:16)\n    at async Object.requestLegacy (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/outbound-http.js:50:28)\n    at async proxyRequestToAxios (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.js:9:12)\n    at async Object.request (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/factory.js:65:20)",
+						"code": "ERR_BAD_REQUEST",
+						"status": 400
+					}
+				}
+			]
+		],
+		"Rejected": [
+			[
+				{
+					"status": "rejected",
+					"label": "row-1",
+					"errorName": "AxiosError",
+					"errorCode": "ERR_BAD_REQUEST",
+					"errorStatus": 400
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/rpc/do_thing",
+			"method": "POST",
+			"body": {
+				"label": "row-1",
+				"name": "bob"
+			}
+		}
+	],
+	"responses": []
+}

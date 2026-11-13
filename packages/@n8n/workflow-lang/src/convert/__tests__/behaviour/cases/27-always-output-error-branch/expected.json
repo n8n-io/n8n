@@ -1,0 +1,62 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Format",
+		"Format Again",
+		"Ok"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1"
+					}
+				}
+			]
+		],
+		"Format": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1"
+					},
+					"formattedDate": "2024-01-02"
+				}
+			],
+			[]
+		],
+		"Format Again": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1"
+					},
+					"formattedDate": "2025/06/07"
+				}
+			],
+			[]
+		],
+		"Ok": [
+			[
+				{
+					"status": "ok",
+					"formatted": "2025/06/07"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

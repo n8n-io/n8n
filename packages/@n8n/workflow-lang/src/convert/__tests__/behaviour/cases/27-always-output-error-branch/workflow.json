@@ -1,0 +1,122 @@
+{
+	"name": "Always output data and the error branch",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "always", "options": {} }
+		},
+		{
+			"id": "format",
+			"name": "Format",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"alwaysOutputData": true,
+			"onError": "continueErrorOutput",
+			"parameters": {
+				"operation": "formatDate",
+				"date": "2024-01-02T12:00:00.000Z",
+				"format": "yyyy-MM-dd",
+				"options": { "includeInputFields": true }
+			}
+		},
+		{
+			"id": "again",
+			"name": "Format Again",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"alwaysOutputData": true,
+			"onError": "continueErrorOutput",
+			"parameters": {
+				"operation": "formatDate",
+				"date": "2025-06-07T12:00:00.000Z",
+				"format": "yyyy/MM/dd",
+				"options": { "includeInputFields": true }
+			}
+		},
+		{
+			"id": "ok",
+			"name": "Ok",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "c1", "name": "status", "value": "ok", "type": "string" },
+						{
+							"id": "c2",
+							"name": "formatted",
+							"value": "={{ $json.formattedDate }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "failed",
+			"name": "Failed",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 200],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "d1", "name": "status", "value": "failed", "type": "string" },
+						{
+							"id": "d2",
+							"name": "keys",
+							"value": "={{ Object.keys($json) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "failed-again",
+			"name": "Failed Again",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, 200],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "e1", "name": "status", "value": "failed again", "type": "string" },
+						{
+							"id": "e2",
+							"name": "keys",
+							"value": "={{ Object.keys($json) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Format", "type": "main", "index": 0 }]] },
+		"Format": {
+			"main": [
+				[{ "node": "Format Again", "type": "main", "index": 0 }],
+				[{ "node": "Failed", "type": "main", "index": 0 }]
+			]
+		},
+		"Format Again": {
+			"main": [
+				[{ "node": "Ok", "type": "main", "index": 0 }],
+				[{ "node": "Failed Again", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" }
+}

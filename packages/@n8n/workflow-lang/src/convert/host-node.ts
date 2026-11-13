@@ -289,9 +289,9 @@ export function emitHostCall(c: NodeContext, call: HostCall, mainCount: number):
 		w.close('} catch (error) {');
 		w.depth++;
 		if (errorIndex >= 0) {
-			w.line(
-				`for (const e of ${failed}) ${outs[errorIndex]}.push({ ...e, error: error.message });`,
-			);
+			// A failure of the whole node: v1 passes the input on output 0 and records the error
+			// on the run (`handleNodeExecutionError`), also under "continue (using error output)".
+			w.line(`for (const e of ${failed}) ${outs[0]}.push(e);`);
 		} else {
 			w.line(`for (const e of ${failed}) ${outs[0]}.push({ error: error.message });`);
 		}

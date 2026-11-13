@@ -1,0 +1,103 @@
+{
+	"name": "HTTP error output",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "rpc", "options": {} }
+		},
+		{
+			"id": "call",
+			"name": "Do Thing",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.4,
+			"position": [200, 0],
+			"onError": "continueErrorOutput",
+			"parameters": {
+				"method": "POST",
+				"url": "http://127.0.0.1:47123/rpc/do_thing",
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [{ "name": "Prefer", "value": "return=representation" }]
+				},
+				"sendBody": true,
+				"specifyBody": "json",
+				"jsonBody": "={{ $json.body }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "accepted",
+			"name": "Accepted",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "a1", "name": "status", "value": "accepted", "type": "string" },
+						{
+							"id": "a2",
+							"name": "label",
+							"value": "={{ $json.body.label }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "rejected",
+			"name": "Rejected",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{ "id": "b1", "name": "status", "value": "rejected", "type": "string" },
+						{
+							"id": "b2",
+							"name": "label",
+							"value": "={{ $json.body.label }}",
+							"type": "string"
+						},
+						{
+							"id": "b3",
+							"name": "errorName",
+							"value": "={{ $json.error.name }}",
+							"type": "string"
+						},
+						{
+							"id": "b4",
+							"name": "errorCode",
+							"value": "={{ $json.error.code }}",
+							"type": "string"
+						},
+						{
+							"id": "b5",
+							"name": "errorStatus",
+							"value": "={{ $json.error.status }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Do Thing", "type": "main", "index": 0 }]] },
+		"Do Thing": {
+			"main": [
+				[{ "node": "Accepted", "type": "main", "index": 0 }],
+				[{ "node": "Rejected", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" }
+}
