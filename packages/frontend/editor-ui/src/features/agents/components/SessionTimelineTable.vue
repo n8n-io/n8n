@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { vElementSize } from '@vueuse/components';
 import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '@n8n/api-types';
-import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
+import { useI18n } from '@n8n/i18n';
 import SessionTimelineRow from './SessionTimelineRow.vue';
 import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 import type { TimelineItem } from '../session-timeline.types';
@@ -46,9 +47,11 @@ const tableRef = ref<HTMLElement | null>(null);
 const scrollerRef = ref<{
 	scrollToKey: (key: string, behavior?: ScrollBehavior) => void;
 } | null>(null);
-const canScrollUp = ref(false);
-const canScrollDown = ref(false);
-let scrollContainer: HTMLElement | null = null;
+const scrollContainerRef = ref<HTMLElement | null>(null);
+const { canScrollTop: canScrollUp, canScrollBottom: canScrollDown } = useScrollEdges(
+	scrollContainerRef,
+	{ axis: 'vertical' },
+);
 
 function labelForKey(key: string): string {
 	const backgroundJobKey = backgroundJobTimelineLabelKey(key);
@@ -176,27 +179,13 @@ function onRowKeydown(event: KeyboardEvent) {
 	if (row) emit('select', row.index);
 }
 
-function updateScrollMask() {
-	if (!scrollContainer) {
-		canScrollUp.value = false;
-		canScrollDown.value = false;
-		return;
-	}
-	canScrollUp.value = scrollContainer.scrollTop > 0;
-	canScrollDown.value =
-		scrollContainer.scrollTop + scrollContainer.clientHeight < scrollContainer.scrollHeight - 1;
-}
-
 function bindScrollContainer() {
 	const nextScrollContainer =
 		tableRef.value?.querySelector<HTMLElement>('[data-timeline-scroll-container]') ??
-		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
-	if (nextScrollContainer === scrollContainer) return;
-
-	scrollContainer?.removeEventListener('scroll', updateScrollMask);
-	scrollContainer = nextScrollContainer ?? null;
-	scrollContainer?.addEventListener('scroll', updateScrollMask, { passive: true });
-	updateScrollMask();
+		tableRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper') ??
+		null;
+	if (nextScrollContainer === scrollContainerRef.value) return;
+	scrollContainerRef.value = nextScrollContainer;
 }
 
 function scrollSelectedIntoView(): void {
@@ -217,6 +206,7 @@ function scrollSelectedIntoView(): void {
 		return;
 	}
 
+	const scrollContainer = scrollContainerRef.value;
 	if (!row || !scrollContainer) return;
 
 	const rowBounds = row.getBoundingClientRect();
@@ -232,7 +222,6 @@ function scrollSelectedIntoView(): void {
 			behavior,
 		});
 	}
-	updateScrollMask();
 }
 
 defineExpose({ scrollSelectedIntoView });
@@ -261,19 +250,12 @@ watch(
 watch(
 	() => rows.value.length,
 	() => {
-		void nextTick(() => {
-			bindScrollContainer();
-			updateScrollMask();
-		});
+		void nextTick(bindScrollContainer);
 	},
 );
 
 onMounted(() => {
 	void nextTick(bindScrollContainer);
-});
-
-onBeforeUnmount(() => {
-	scrollContainer?.removeEventListener('scroll', updateScrollMask);
 });
 </script>
 
