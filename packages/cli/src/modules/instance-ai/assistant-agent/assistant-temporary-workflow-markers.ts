@@ -38,3 +38,23 @@ export function createThreadTemporaryWorkflowMarkers(
 		list,
 	};
 }
+
+/**
+ * Keeps a copy of the markers of a deleted thread in memory. The thread
+ * metadata is gone, so the archive reads and drops the markers here.
+ */
+export function createSnapshotTemporaryWorkflowMarkers(
+	workflowIds: string[],
+): TemporaryWorkflowMarkers {
+	const ids = new Set(workflowIds);
+	return {
+		mark: async (workflowId) => {
+			ids.add(workflowId);
+		},
+		unmark: async (workflowId) => {
+			ids.delete(workflowId);
+		},
+		has: async (workflowId) => ids.has(workflowId),
+		list: async () => [...ids],
+	};
+}
