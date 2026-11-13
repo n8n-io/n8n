@@ -26,7 +26,9 @@ export class ReconciliationSweeper {
 		private readonly logger: EngineLogger,
 	) {}
 
+	/** Does nothing when the sweeper is already started, so each detector has one timer. */
 	start(): void {
+		if (!this.stopped) return;
 		this.stopped = false;
 		this.detectors.forEach((detector) => this.schedule(detector));
 	}
@@ -66,7 +68,7 @@ export class ReconciliationSweeper {
 				if (this.stopped) break;
 				counts[await this.repair(finding, at)] += 1;
 			}
-			this.logger.info('Reconciliation pass repaired stuck rows', {
+			this.logger.info('Reconciliation pass finished', {
 				detector: detector.name,
 				found: findings.length,
 				...counts,
