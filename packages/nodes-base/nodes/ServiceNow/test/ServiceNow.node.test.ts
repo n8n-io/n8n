@@ -108,7 +108,7 @@ describe('ServiceNow Node', () => {
 	});
 
 	describe('request paths', () => {
-		const sentPath = () => mockedApiRequest.mock.calls[0][1] as string;
+		const sentPath = () => String(mockedApiRequest.mock.calls[0][1]);
 		const columns = { dataToSend: 'columns', fieldsToSend: { field: [] } };
 
 		it.each([
@@ -190,8 +190,10 @@ describe('ServiceNow Node', () => {
 			);
 
 			expect(
-				(genericFunctions.serviceNowDownloadAttachment as unknown as ReturnType<typeof vi.fn>).mock
-					.calls[0][0],
+				String(
+					(genericFunctions.serviceNowDownloadAttachment as unknown as ReturnType<typeof vi.fn>)
+						.mock.calls[0][0],
+				),
 			).toBe('/now/attachment/c%2Fd');
 		});
 
@@ -274,8 +276,30 @@ describe('ServiceNow Node', () => {
 			const options = await loadOptions.getUsers.call(ctx);
 
 			expect(mockedApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockedApiRequest.mock.calls[0][1]).toBe('/now/table/sys_user/c%2Fd');
+			expect(String(mockedApiRequest.mock.calls[0][1])).toBe('/now/table/sys_user/c%2Fd');
 			expect(options).toEqual([{ name: 'Jane', value: 'abc' }]);
+		});
+
+		it('skips group members with an unusable id and keeps the rest', async () => {
+			mockedApiRequest.mockResolvedValue({ result: { user_name: 'jane', sys_id: 'abc' } });
+			(
+				genericFunctions.serviceNowRequestAllItems as unknown as ReturnType<typeof vi.fn>
+			).mockResolvedValueOnce([
+				{ user: { value: '..' } },
+				{ user: { value: '.' } },
+				{ user: { value: 'a/b' } },
+			]);
+			const ctx = createMockLoadOptionsFunction({
+				resource: 'incident',
+				operation: 'create',
+				additionalFields: { assignment_group: 'grp' },
+			});
+
+			const options = await loadOptions.getUsers.call(ctx);
+
+			expect(options.map((option) => option.value)).toEqual(['abc']);
+			expect(mockedApiRequest).toHaveBeenCalledTimes(1);
+			expect(String(mockedApiRequest.mock.calls[0][1])).toBe('/now/table/sys_user/a%2Fb');
 		});
 
 		it('rejects a category carrying a clause separator', async () => {

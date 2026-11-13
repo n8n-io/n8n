@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export const SECURITY_SCORECARD_API_BASE_URL = 'https://api.securityscorecard.io';
 const SECURITY_SCORECARD_REPORT_FILES_PATH = '/reports/files/';
@@ -39,22 +41,22 @@ export function resolveReportDownloadUrl(reportUrlOrPath: string): string {
 export async function scorecardApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('securityScorecardApi');
 
 	const headerWithAuthentication = { Authorization: `Token ${credentials.apiKey}` };
 
-	let options: IRequestOptions = {
+	let options: IRequestOptions | WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://api.securityscorecard.io/${resource}`,
+		...(uri ? { uri } : { uri: requestUrl`https://api.securityscorecard.io/${resource}` }),
 		body,
 		json: true,
 	};

@@ -4,7 +4,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
+=======
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
@@ -197,7 +202,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let tools =
 		((
-			await apiRequest.call(this, 'GET', `/assistants/${assistantId}`, {
+			await apiRequest.call(this, 'GET', requestPath`/assistants/${assistantId}`, {
 				headers: {
 					'OpenAI-Beta': 'assistants=v2',
 				},
@@ -230,7 +235,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	body.tools = tools;
 
-	const response = await apiRequest.call(this, 'POST', `/assistants/${assistantId}`, {
+	const response = await apiRequest.call(this, 'POST', requestPath`/assistants/${assistantId}`, {
 		body,
 		headers: {
 			'OpenAI-Beta': 'assistants=v2',

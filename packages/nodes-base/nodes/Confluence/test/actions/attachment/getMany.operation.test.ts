@@ -1,5 +1,5 @@
-import type { IBinaryData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IBinaryData, IDataObject } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { description, execute } from '../../../actions/attachment/getMany.operation';
 import { confluenceApiRequest, confluenceApiRequestBinary } from '../../../transport';
@@ -14,7 +14,7 @@ vi.mock('../../../transport', () => ({
 const apiRequest = vi.mocked(confluenceApiRequest);
 const binaryRequest = vi.mocked(confluenceApiRequestBinary);
 
-const ENDPOINT = '/wiki/api/v2/pages/9/attachments';
+const ENDPOINT = requestPath`/wiki/api/v2/pages/9/attachments`;
 
 const baseParams: Record<string, unknown> = {
 	resource: 'attachment',
@@ -146,7 +146,8 @@ describe('attachment:getMany', () => {
 		const result = await runGetMany({ download: true });
 
 		expect(binaryRequest).toHaveBeenCalledWith(
-			'/wiki/download/attachments/9/notes.txt?version=1&api=v2',
+			requestPath`/wiki/download/attachments/9/notes.txt`,
+			{ version: '1', api: 'v2' },
 		);
 		expect(result).toEqual([
 			{
@@ -162,22 +163,61 @@ describe('attachment:getMany', () => {
 		]);
 	});
 
-	it('percent-encodes raw filename characters while keeping the query string intact', async () => {
+	it('percent-encodes raw filename characters and sends the query string as qs', async () => {
 		apiRequest.mockResolvedValue(
 			attachmentPage([
 				{
 					id: 'a1',
-					title: 'report #3.pdf',
-					downloadLink: '/download/attachments/9/report #3.pdf?version=1&api=v2',
+					title: 'report #3?.pdf',
+					downloadLink: '/download/attachments/9/report #3?.pdf?version=1&api=v2',
 				},
 			]),
 		);
 
 		await runGetMany({ download: true });
 
-		expect(binaryRequest).toHaveBeenCalledWith(
-			'/wiki/download/attachments/9/report%20%233.pdf?version=1&api=v2',
+		const [path, qs] = binaryRequest.mock.calls[0];
+		expect(path.toString()).toBe('/wiki/download/attachments/9/report%20%233%3F.pdf');
+		expect(qs).toEqual({ version: '1', api: 'v2' });
+	});
+
+	it('keeps repeated query keys of the download link in order', async () => {
+		apiRequest.mockResolvedValue(
+			attachmentPage([
+				{
+					id: 'a1',
+					downloadLink: '/download/attachments/1/file.png?version=1&api=v2&version=2&version=3',
+				},
+			]),
 		);
+
+		await runGetMany({ download: true });
+
+		expect(binaryRequest).toHaveBeenCalledWith(requestPath`/wiki/download/attachments/1/file.png`, {
+			version: ['1', '2', '3'],
+			api: 'v2',
+		});
+	});
+
+	it('sends query keys that match object property names as plain values', async () => {
+		apiRequest.mockResolvedValue(
+			attachmentPage([
+				{
+					id: 'a1',
+					downloadLink:
+						'/download/attachments/1/file.png?constructor=1&version=2&__proto__=x&toString=a&toString=b',
+				},
+			]),
+		);
+
+		await runGetMany({ download: true });
+
+		const qs = binaryRequest.mock.calls[0][1] as IDataObject;
+		expect(Object.keys(qs)).toEqual(['constructor', 'version', '__proto__', 'toString']);
+		expect(qs.constructor).toBe('1');
+		expect(Object.getOwnPropertyDescriptor(qs, '__proto__')?.value).toBe('x');
+		expect(Object.getPrototypeOf(qs)).toBe(Object.prototype);
+		expect(qs.toString).toEqual(['a', 'b']);
 	});
 
 	it('downloads only the retained attachments after truncation, each into its own binary', async () => {
@@ -188,13 +228,13 @@ describe('attachment:getMany', () => {
 				{ id: 'a3' },
 			]),
 		);
-		binaryRequest.mockImplementation(async (endpoint) => Buffer.from(endpoint));
+		binaryRequest.mockImplementation(async (endpoint) => Buffer.from(endpoint.toString()));
 
 		const result = await runGetMany({ download: true, limit: 2 });
 
 		expect(binaryRequest).toHaveBeenCalledTimes(2);
-		expect(binaryRequest).toHaveBeenNthCalledWith(1, '/wiki/download/a1');
-		expect(binaryRequest).toHaveBeenNthCalledWith(2, '/wiki/download/a2');
+		expect(binaryRequest).toHaveBeenNthCalledWith(1, requestPath`/wiki/download/a1`, {});
+		expect(binaryRequest).toHaveBeenNthCalledWith(2, requestPath`/wiki/download/a2`, {});
 		expect(result).toHaveLength(2);
 		expect(result[0].binary?.data.data).toBe(Buffer.from('/wiki/download/a1').toString('base64'));
 		expect(result[1].binary?.data.data).toBe(Buffer.from('/wiki/download/a2').toString('base64'));

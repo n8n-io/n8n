@@ -7,7 +7,12 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { UserError } from 'n8n-workflow';
+=======
+import { UserError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 export class ZscalerZiaApi implements ICredentialType {
 	name = 'zscalerZiaApi';
@@ -99,8 +104,7 @@ export class ZscalerZiaApi implements ICredentialType {
 
 		const response = await this.helpers.httpRequest({
 			method: 'POST',
-			baseURL: `https://${url}`,
-			url: '/api/v1/authenticatedSession',
+			url: requestUrl`https://${url}/api/v1/authenticatedSession`,
 			headers: {
 				'Content-Type': 'application/json',
 				'Cache-Control': 'no-cache',

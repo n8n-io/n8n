@@ -1,10 +1,11 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 export class MetabaseApi implements ICredentialType {
@@ -52,10 +53,9 @@ export class MetabaseApi implements ICredentialType {
 	// is empty or is expired
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		// make reques to get session token
-		const url = credentials.url as string;
 		const { id } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/api/session`,
+			url: requestUrl`${credentials.url}/api/session`,
 			body: {
 				username: credentials.username,
 				password: credentials.password,

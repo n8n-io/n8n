@@ -25,7 +25,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createFolder } from '@test-integration/db/folders';
-import { createRole } from '@test-integration/db/roles';
+import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import { v4 as uuid } from 'uuid';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -917,11 +917,18 @@ describe('GET /users/:id/password-reset-link', () => {
 	let owner: User;
 	let admin: User;
 	let member: User;
+	let userManager: User;
 
 	beforeAll(async () => {
 		await testDb.truncate(['User']);
 
 		[owner, admin, member] = await Promise.all([createOwner(), createAdmin(), createMember()]);
+
+		const userManagerRole = await createCustomRoleWithScopeSlugs(
+			['user:list', 'user:read', 'user:resetPassword'],
+			{ roleType: 'global' },
+		);
+		userManager = await createUser({ role: userManagerRole });
 	});
 
 	it('should allow owners to generate password reset links for admins and members', async () => {
@@ -936,6 +943,16 @@ describe('GET /users/:id/password-reset-link', () => {
 		await adminAgent.get(`/users/${owner.id}/password-reset-link`).expect(403);
 		await adminAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
 		await adminAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
+	});
+
+	it('should allow users with a custom role to generate password reset links for admins and members, but not owners', async () => {
+		const userManagerAgent = testServer.authAgentFor(userManager);
+		const response = await userManagerAgent
+			.get(`/users/${owner.id}/password-reset-link`)
+			.expect(403);
+		expect(response.body.message).toBe('Only the owner can reset the password of the global owner');
+		await userManagerAgent.get(`/users/${admin.id}/password-reset-link`).expect(200);
+		await userManagerAgent.get(`/users/${member.id}/password-reset-link`).expect(200);
 	});
 
 	it('should not allow members to generate password reset links for anyone', async () => {
@@ -1635,6 +1652,53 @@ describe('PATCH /users/:id/role', () => {
 
 			member = await createMember();
 			memberAgent = testServer.authAgentFor(member);
+		});
+	});
+
+	describe('user with a custom role', () => {
+		let userManagerAgent: SuperAgentTest;
+
+		beforeAll(async () => {
+			const userManagerRole = await createCustomRoleWithScopeSlugs(
+				['user:list', 'user:read', 'user:changeRole'],
+				{ roleType: 'global' },
+			);
+			const userManager = await createUser({ role: userManagerRole });
+			userManagerAgent = testServer.authAgentFor(userManager);
+		});
+
+		test('should fail to demote owner to member', async () => {
+			const response = await userManagerAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:member',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_ON_OWNER);
+
+			const user = await getUserById(owner.id);
+			expect(user.role.slug).toBe(GLOBAL_OWNER_ROLE.slug);
+		});
+
+		test('should fail to demote owner to admin', async () => {
+			const response = await userManagerAgent.patch(`/users/${owner.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(response.body.message).toBe(NO_ADMIN_ON_OWNER);
+		});
+
+		test('should be able to change the role of a member', async () => {
+			const target = await createMember();
+
+			const response = await userManagerAgent.patch(`/users/${target.id}/role`).send({
+				newRoleName: 'global:admin',
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const user = await getUserById(target.id);
+			expect(user.role.slug).toBe('global:admin');
 		});
 	});
 

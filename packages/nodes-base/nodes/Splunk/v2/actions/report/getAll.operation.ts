@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { populate, setReturnAllOrLimit } from '../../helpers/utils';
@@ -73,7 +74,7 @@ export async function execute(
 	populate(options, qs);
 	setReturnAllOrLimit.call(this, qs, i);
 
-	const endpoint = '/services/saved/searches';
+	const endpoint = requestPath`/services/saved/searches`;
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);
 
 	return returnData;

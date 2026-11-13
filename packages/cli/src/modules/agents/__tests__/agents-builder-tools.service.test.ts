@@ -17,8 +17,9 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
+import type { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -27,7 +28,10 @@ import type { ZodTypeAny } from 'zod';
 import type { CredentialTypes } from '@/credential-types';
 import { ConflictError, LockedError, UserError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+<<<<<<< HEAD
 import type { NodeTypes } from '@/node-types';
+=======
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -113,6 +117,14 @@ function makeService() {
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 	const collaborationService = mock<CollaborationService>();
+<<<<<<< HEAD
+=======
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 	const service = new AgentsBuilderToolsService(
 		agentsService as unknown as AgentsService,
@@ -136,10 +148,16 @@ function makeService() {
 		telemetry,
 		collaborationService,
 		createAgentSkillRefsService(),
+<<<<<<< HEAD
+=======
+		credentialsFinderService,
+		credentialsPermissionChecker,
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 	);
 
 	return {
 		service,
+		credentialsFinderService,
 		collaborationService,
 		agentsService: purposeServices,
 		secureRuntime,
@@ -387,6 +405,35 @@ describe('AgentsBuilderToolsService', () => {
 			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+		});
+
+		it('rejects MCP verification with a credential that the user can only read', async () => {
+			const { service, credentialsFinderService, outboundHttp } = makeService();
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					scopes.includes('credential:connect')
+						? null
+						: ({ id, isGlobal: false, isResolvable: false } as never),
+			);
+			const member = { id: 'user-1', role: GLOBAL_MEMBER_ROLE } as User;
+			const tool = service
+				.getTools(agentId, projectId, credentialProvider, credentialService, member)
+				.json.find((candidate) => candidate.name === BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			const transportCalls = outboundHttp.transport.mock.calls.length;
+
+			const result = await tool!.handler!(
+				{
+					name: 'docs',
+					url: 'https://mcp.example.test/mcp',
+					authentication: 'headerAuth',
+					credential: 'credential-1',
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({ ok: false, error: 'Credential not found or not accessible' });
+			expect(credentialProvider.resolve).not.toHaveBeenCalled();
+			expect(outboundHttp.transport.mock.calls.length).toBe(transportCalls);
 		});
 
 		it('registers the agent_builder_finish_setup interactive tool in the builder toolset', () => {

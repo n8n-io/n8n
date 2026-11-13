@@ -1,0 +1,506 @@
+{
+	"name": "Mailchimp request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c0000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "listGroup",
+				"operation": "getAll",
+				"list": "a1b2c3d4e5",
+				"groupCategory": "f6e5d4c3b2",
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "c0000000-0000-4000-8000-000000000001",
+			"name": "listGroup getAll",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "create",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"status": "subscribed",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "c0000000-0000-4000-8000-000000000002",
+			"name": "member create",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "delete",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "c0000000-0000-4000-8000-000000000003",
+			"name": "member delete",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "get",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "c0000000-0000-4000-8000-000000000004",
+			"name": "member get",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "getAll",
+				"list": "a1b2c3d4e5",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "c0000000-0000-4000-8000-000000000005",
+			"name": "member getAll",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "member",
+				"operation": "update",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "c0000000-0000-4000-8000-000000000006",
+			"name": "member update",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "memberTag",
+				"operation": "create",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"tags": ["vip"],
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "c0000000-0000-4000-8000-000000000007",
+			"name": "memberTag create",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "memberTag",
+				"operation": "delete",
+				"list": "a1b2c3d4e5",
+				"email": "nathan@n8n.io",
+				"tags": ["vip"],
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "c0000000-0000-4000-8000-000000000008",
+			"name": "memberTag delete",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "c0000000-0000-4000-8000-000000000009",
+			"name": "campaign getAll",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "send",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "c0000000-0000-4000-8000-000000000010",
+			"name": "campaign send",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "get",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "c0000000-0000-4000-8000-000000000011",
+			"name": "campaign get",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "delete",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "c0000000-0000-4000-8000-000000000012",
+			"name": "campaign delete",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "replicate",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "c0000000-0000-4000-8000-000000000013",
+			"name": "campaign replicate",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "resend",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "c0000000-0000-4000-8000-000000000014",
+			"name": "campaign resend",
+			"credentials": {
+				"mailchimpApi": {
+					"id": "mcApiCred",
+					"name": "Mailchimp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "campaign",
+				"operation": "get",
+				"campaignId": "b03bfc273a"
+			},
+			"type": "n8n-nodes-base.mailchimp",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "c0000000-0000-4000-8000-000000000015",
+			"name": "campaign get (OAuth2)",
+			"credentials": {
+				"mailchimpOAuth2Api": {
+					"id": "mcOAuthCred",
+					"name": "Mailchimp OAuth2 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"listGroup getAll": [
+			{
+				"json": {
+					"id": "int1",
+					"name": "Interest"
+				}
+			}
+		],
+		"member create": [
+			{
+				"json": {
+					"id": "m1",
+					"email_address": "nathan@n8n.io"
+				}
+			}
+		],
+		"member delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"member get": [
+			{
+				"json": {
+					"id": "m1",
+					"email_address": "nathan@n8n.io"
+				}
+			}
+		],
+		"member getAll": [
+			{
+				"json": {
+					"id": "m1",
+					"email_address": "nathan@n8n.io"
+				}
+			}
+		],
+		"member update": [
+			{
+				"json": {
+					"id": "m1",
+					"email_address": "nathan@n8n.io"
+				}
+			}
+		],
+		"memberTag create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"memberTag delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"campaign getAll": [
+			{
+				"json": {
+					"id": "b03bfc273a",
+					"status": "save"
+				}
+			}
+		],
+		"campaign send": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"campaign get": [
+			{
+				"json": {
+					"id": "b03bfc273a",
+					"status": "save"
+				}
+			}
+		],
+		"campaign delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"campaign replicate": [
+			{
+				"json": {
+					"id": "c2",
+					"status": "save"
+				}
+			}
+		],
+		"campaign resend": [
+			{
+				"json": {
+					"id": "c3",
+					"status": "save"
+				}
+			}
+		],
+		"campaign get (OAuth2)": [
+			{
+				"json": {
+					"id": "b03bfc273a",
+					"status": "save"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "listGroup getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "member update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "memberTag create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "memberTag delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign replicate",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign resend",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "campaign get (OAuth2)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

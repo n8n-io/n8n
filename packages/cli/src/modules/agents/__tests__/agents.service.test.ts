@@ -10,13 +10,26 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
-import type { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+<<<<<<< HEAD
 	ProjectRelationRepository,
 	TransactionRunner,
 	User,
 	WorkflowRepository,
+=======
+	CredentialsFinderService,
+	EventService,
+	ProjectScopeService,
+} from '@n8n/backend-services';
+import { mockLogger } from '@n8n/backend-test-utils';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type ProjectRelationRepository,
+	type TagEntity,
+	type TransactionRunner,
+	type User,
+	type WorkflowRepository,
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -114,6 +127,10 @@ function makeService() {
 	const n8nChatFlag = mock<N8nChatFlagService>();
 	n8nChatFlag.isEnabledFor.mockResolvedValue(false);
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
 	const configPreparation = new AgentConfigPreparationService(
 		credentialsService,
 		workflowRepository,
@@ -122,6 +139,7 @@ function makeService() {
 		agentTaskRepository,
 		skillRefs,
 		agentPolicyService,
+		credentialsFinderService,
 	);
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
@@ -185,6 +203,7 @@ function makeService() {
 		eventService,
 		agentExecutionService,
 		credentialsService,
+		credentialsFinderService,
 		projectScopeService,
 		agentsSettingsService,
 	};
@@ -624,6 +643,50 @@ describe('AgentsService', () => {
 			expect(schema.memory?.episodicMemory?.credential).toBe('');
 			// Channels always drafted regardless of access.
 			expect(entity.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
+		});
+
+		it('blanks a credential that the user can read but not use', async () => {
+			const { service, agentRepository, credentialsService, credentialsFinderService } =
+				makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
+				{ id: 'cred-mcp-1', name: 'Header', type: 'httpHeaderAuth' } as never,
+			]);
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					id === 'cred-mcp-1' && scopes.includes('credential:connect')
+						? null
+						: ({ id, isGlobal: false, isResolvable: false } as never),
+			);
+
+			await service.create(projectId, 'Support Agent', {
+				actor,
+				schema: {
+					name: 'Support Agent',
+					model: 'openai/gpt-5-mini',
+					instructions: 'Triage tickets.',
+					credential: 'cred-model-1',
+					mcpServers: [
+						{
+							name: 'docs',
+							url: 'https://mcp.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'headerAuth',
+							credential: 'cred-mcp-1',
+						},
+					],
+				},
+				user: { ...user, role: GLOBAL_MEMBER_ROLE } as User,
+			});
+
+			const [entity] = agentRepository.create.mock.calls[0];
+			const schema = entity.schema as unknown as {
+				credential?: string;
+				mcpServers?: Array<{ credential?: string }>;
+			};
+			expect(schema.credential).toBe('cred-model-1');
+			expect(schema.mcpServers?.[0]?.credential).toBe('');
 		});
 
 		it('reports creation and indexes a duplicate', async () => {

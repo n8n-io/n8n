@@ -155,9 +155,12 @@ export class CliSkillSourceCredentials extends SkillSourceCredentials {
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<Record<string, unknown>> {
+		const { toHttpRequestOptions } = await import('n8n-core');
 		const http = this.outboundHttp.requests({ timeout: TOKEN_TIMEOUT_MS });
 		const helper: IHttpRequestHelper = {
-			helpers: { httpRequest: async (options) => await http.request(options) },
+			helpers: {
+				httpRequest: async (options) => await http.request(toHttpRequestOptions(options)),
+			},
 		};
 		const fresh = await this.credentialsHelper.runPreAuthentication(helper, data, type);
 		return fresh ? { ...data, ...fresh } : data;

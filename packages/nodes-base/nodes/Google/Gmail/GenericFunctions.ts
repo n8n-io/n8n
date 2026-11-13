@@ -13,8 +13,11 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import MailComposer from 'nodemailer/lib/mail-composer';
 
 import type { IEmail } from '../../../utils/sendAndWait/interfaces';
@@ -30,13 +33,12 @@ export interface IAttachments {
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
 ) {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -44,14 +46,12 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com${endpoint}`,
+		uri: uri ?? requestUrl`https://www.googleapis.com${endpoint}`,
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
 		json: true,
 	};
-
-	options = Object.assign({}, options, option);
 
 	try {
 		if (Object.keys(body).length === 0) {
@@ -259,7 +259,7 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -513,7 +513,11 @@ export async function simplifyOutput(
 	this: IExecuteFunctions | IPollFunctions,
 	data: IDataObject[],
 ) {
-	const labelsData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
+	const labelsData = await googleApiRequest.call(
+		this,
+		'GET',
+		requestPath`/gmail/v1/users/me/labels`,
+	);
 	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 		id,
 		name,
@@ -546,7 +550,7 @@ export async function getLabels(this: ILoadOptionsFunctions): Promise<INodePrope
 		this,
 		'labels',
 		'GET',
-		'/gmail/v1/users/me/labels',
+		requestPath`/gmail/v1/users/me/labels`,
 	);
 
 	for (const label of labels) {

@@ -8,8 +8,15 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { NodeApiError, OperationalError } from 'n8n-workflow';
+=======
+import { OperationalError } from '@n8n/errors';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 export interface IFormstackFieldDefinitionType {
 	id: string;
@@ -55,18 +62,18 @@ export type FormstackFieldFormat =
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs: query || {},
-		uri: `https://www.formstack.com/api/v2/${endpoint}`,
+		uri: requestUrl`https://www.formstack.com/api/v2/${endpoint}`,
 		json: true,
 	};
 
@@ -97,7 +104,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	dataKey: string,
 	query?: IDataObject,
@@ -133,7 +140,7 @@ export async function apiRequestAllItems(
  *
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'form.json';
+	const endpoint = requestPath`form.json`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'forms', {
 		folders: false,
 	});
@@ -159,7 +166,7 @@ export async function getFields(
 	this: IWebhookFunctions,
 	formID: string,
 ): Promise<Record<string, IFormstackFieldDefinitionType>> {
-	const endpoint = `form/${formID}.json`;
+	const endpoint = requestPath`form/${formID}.json`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'fields');
 
 	if (responseData.items === undefined) {
@@ -184,7 +191,7 @@ export async function getSubmission(
 	this: ILoadOptionsFunctions | IWebhookFunctions,
 	uniqueId: string,
 ): Promise<IFormstackSubmissionFieldContainer[]> {
-	const endpoint = `submission/${uniqueId}.json`;
+	const endpoint = requestPath`submission/${uniqueId}.json`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {}, 'data');
 
 	if (responseData.items === undefined) {

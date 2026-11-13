@@ -25,9 +25,10 @@ import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
-import type {
-	AgentExecutionAdmission,
-	QueuedIntegrationMessage,
+import {
+	queuedAccessSender,
+	type AgentExecutionAdmission,
+	type QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
@@ -438,7 +439,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author)) return;
+				if (!this.canUserAccess(message.author, message.raw)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
@@ -465,7 +466,7 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
-				if (!this.canUserAccess(event.user)) return;
+				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
@@ -483,7 +484,7 @@ export class AgentChatBridge {
 		this.chat.onSlashCommand(RESET_SESSION_COMMAND, async (event) => {
 			const thread = this.chat.thread(event.channel.id);
 			try {
-				if (!this.canUserAccess(event.user)) return;
+				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.resetSession(thread);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -503,7 +504,7 @@ export class AgentChatBridge {
 		const unaddressed =
 			!message.isMention && this.integrationImpl?.shouldHandleUnmentionedMessage !== undefined;
 		try {
-			if (!this.canUserAccess(message.author)) return;
+			if (!this.canUserAccess(message.author, message.raw)) return;
 			if (
 				unaddressed &&
 				!this.integrationImpl?.shouldHandleUnmentionedMessage?.({
@@ -534,8 +535,14 @@ export class AgentChatBridge {
 		}
 	}
 
-	private canUserAccess(author: Author): boolean {
-		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
+	private canUserAccess(author: Author, raw: unknown): boolean {
+		return (
+			this.integrationImpl?.isUserAllowed?.(
+				author,
+				this.integration,
+				this.integrationImpl.verifiedSender?.(raw),
+			) ?? true
+		);
 	}
 
 	/**
@@ -1087,6 +1094,9 @@ export class AgentChatBridge {
 					integrationOrigin,
 					episodicScope,
 					sender: { userId, userName, fullName, isBot, isMe },
+					...(this.integrationImpl?.verifiedSender
+						? { verifiedSender: this.integrationImpl.verifiedSender(message.raw) ?? null }
+						: {}),
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
 					credentialId: this.integration.credentialId,
@@ -1140,7 +1150,13 @@ export class AgentChatBridge {
 		const replyOptional = payload.messageContext.replyExpectation === 'optional';
 		let statusHandle: ReturnType<typeof onceStatusHandle>;
 		try {
-			if (this.integrationImpl?.isUserAllowed?.(payload.sender, integration) === false) {
+			if (
+				this.integrationImpl?.isUserAllowed?.(
+					payload.sender,
+					integration,
+					queuedAccessSender(payload),
+				) === false
+			) {
 				throw new UserError('You can no longer use this integration');
 			}
 			abortSignal.throwIfAborted();

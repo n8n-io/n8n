@@ -2,7 +2,12 @@ import { DateTime } from 'luxon';
 import {
 	NodeApiError,
 	NodeOperationError,
+<<<<<<< HEAD
 	OperationalError,
+=======
+	requestPath,
+	requestUrl,
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type IDataObject,
@@ -10,9 +15,14 @@ import {
 	type JsonObject,
 	type IHttpRequestMethods,
 	type IRequestOptions,
+	type LegacyRequestOptions,
 	type IPollFunctions,
+	type RequestPath,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import { validateUserTargetId } from '../GenericFunctions';
 
 /**
@@ -129,7 +139,7 @@ export function validateResourceTargetId(target: string, id: string, node: INode
 /**
  * Builds the `/drive`-free Graph resource root for an app-only request from the
  * chosen target and its id. It deliberately contains NO `/drive` and
- * `encodeURIComponent`s the id. The id shape is validated BEFORE encoding so a
+ * encodes the id. The id shape is validated BEFORE encoding so a
  * malformed id throws (and is not echoed back). ENT-123 lifted only the shared
  * user-target validator (`Microsoft/GenericFunctions.ts`); this per-node
  * `getServicePrincipalResourceRoot` stays local because it also handles the drive root.
@@ -138,15 +148,15 @@ export function getServicePrincipalResourceRoot(
 	target: string,
 	rawId: string,
 	node: INode,
-): string {
+): RequestPath {
 	const id = String(rawId ?? '').trim();
 	validateResourceTargetId(target, id, node);
 	switch (target) {
 		case 'drive':
-			return `/drives/${encodeURIComponent(id)}`;
+			return requestPath`/drives/${id}`;
 		case 'user':
 		default:
-			return `/users/${encodeURIComponent(id)}`;
+			return requestPath`/users/${id}`;
 	}
 }
 
@@ -156,8 +166,8 @@ export function getServicePrincipalResourceRoot(
  * drive via the `/drive` navigation property. Keeping this out of
  * `getServicePrincipalResourceRoot` lets that kernel stay `/drive`-free and liftable.
  */
-export function driveEndpoint(root: string): string {
-	return root.startsWith('/drives/') ? root : `${root}/drive`;
+export function driveEndpoint(root: RequestPath): RequestPath {
+	return root.value.startsWith('/drives/') ? root : requestPath`${root}/drive`;
 }
 
 /**
@@ -177,7 +187,7 @@ export function resolveDriveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	isPoll: boolean,
 	itemIndex = 0,
-): string | undefined {
+): RequestPath | undefined {
 	const credType = getOneDriveCredentialType.call(this);
 	if (credType !== 'microsoftEntraServicePrincipalApi') {
 		// OAuth2 credentials address the signed-in user's drive via `/me`.
@@ -195,12 +205,10 @@ export function resolveDriveScopeRoot(
 /**
  * Issues a Microsoft Graph request.
  *
- * The `resource` argument is a drive-relative path that MUST start with `/drive`
- * (e.g. `/drive/items/{id}`). For the default OAuth2 credentials it is appended to
- * `/v1.0/me`. When `driveScopeRoot` is supplied (app-only Service Principal), the
- * request is instead composed as `/v1.0{driveEndpoint(root)}{suffix}` (the `/drive`
- * prefix of `resource` is dropped, since `driveEndpoint` already lands on the drive)
- * and routed through the credential-aware `requestWithAuthentication` helper so the
+ * The `resource` argument is a path relative to the drive (e.g. `/items/{id}`).
+ * For the default OAuth2 credentials it is appended to `/v1.0/me/drive`. When
+ * `driveScopeRoot` is supplied (app-only Service Principal), it is appended to
+ * `/v1.0{driveEndpoint(root)}` instead, and the request is routed through the credential-aware `requestWithAuthentication` helper so the
  * token refresh / 401 retry runs once in core.
  *
  * To bypass scoping entirely (delta `@odata.nextLink`/`deltaLink`, a
@@ -210,13 +218,13 @@ export function resolveDriveScopeRoot(
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
-	driveScopeRoot?: string,
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
+	driveScopeRoot?: RequestPath,
 ): Promise<any> {
 	const credentialType = getOneDriveCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -227,28 +235,16 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
-	if (!uri && driveScopeRoot) {
-		// Every scoped caller passes a `/drive`-rooted resource. A non-`/drive`
-		// resource here means a call site built the wrong path (programmer error,
-		// not user input), so fail loudly instead of slicing the wrong prefix.
-		if (!resource.startsWith('/drive')) {
-			// Static message — never interpolate `resource`, so no id can reach a log.
-			throw new OperationalError('microsoftApiRequest: a scoped resource must start with "/drive"');
-		}
-		// `driveEndpoint` already lands on the drive (`/drives/{id}` as-is, or
-		// `/users/{id}/drive`), so drop the leading `/drive` from `resource`.
-		uriToUse = `${baseUrl}/v1.0${driveEndpoint(driveScopeRoot)}${resource.slice('/drive'.length)}`;
-	}
+	const drive = driveScopeRoot ? driveEndpoint(driveScopeRoot) : requestPath`/me/drive`;
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uriToUse,
+		...(uri ? { uri } : { uri: requestUrl`${baseUrl}/v1.0${drive}${resource}` }),
 	};
 	try {
 		Object.assign(options, option);
@@ -279,11 +275,11 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	driveScopeRoot?: string,
+	driveScopeRoot?: RequestPath,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -319,11 +315,11 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	driveScopeRoot?: string,
+	driveScopeRoot?: RequestPath,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -367,7 +363,14 @@ export async function microsoftApiRequestAllItemsDelta(
 	let uri: string = link;
 
 	do {
-		responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, uri)) as IDataObject;
+		responseData = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath``,
+			{},
+			{},
+			uri,
+		)) as IDataObject;
 		uri = responseData['@odata.nextLink'] as string;
 
 		for (const value of responseData.value as IDataObject[]) {
@@ -409,7 +412,7 @@ export async function getPath(
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${encodeURIComponent(itemId)}`,
+		requestPath`/items/${itemId}`,
 		{},
 		{},
 		undefined,

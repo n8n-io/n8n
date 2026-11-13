@@ -16,11 +16,11 @@ describe('Test MicrosoftOutlookV2, Service Principal => draft:send', () => {
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.patch('/v1.0/users/user%40example.com/messages/AAMkADlhOTA0MTc5-draft-id=', {
+			.patch('/v1.0/users/user@example.com/messages/AAMkADlhOTA0MTc5-draft-id=', {
 				toRecipients: [{ emailAddress: { address: 'michael.k@radency.com' } }],
 			})
 			.reply(200)
-			.post('/v1.0/users/user%40example.com/messages/AAMkADlhOTA0MTc5-draft-id=/send')
+			.post('/v1.0/users/user@example.com/messages/AAMkADlhOTA0MTc5-draft-id=/send')
 			.reply(200);
 	});
 

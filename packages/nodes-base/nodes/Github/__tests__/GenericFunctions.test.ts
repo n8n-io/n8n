@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IHookFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	githubApiRequest,
@@ -39,7 +39,7 @@ describe('GenericFunctions', () => {
 	describe('githubApiRequest', () => {
 		it('should make a successful API request', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo';
+			const endpoint = requestPath`/repos/test-owner/test-repo`;
 			const body = {};
 			const responseData = { id: 123, name: 'test-repo' };
 
@@ -56,15 +56,41 @@ describe('GenericFunctions', () => {
 					method: 'GET',
 					body: {},
 					qs: undefined,
-					uri: 'https://api.github.com/repos/test-owner/test-repo',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo',
+					}),
 					json: true,
 				},
 			);
 		});
 
+		it('should encode path values and join them with the credentials base URL', async () => {
+			(mockExecuteHookFunctions.getCredentials as Mock).mockResolvedValueOnce({
+				server: 'https://github.example.com/api/v3/',
+			});
+			const issueNumber = '42/lock?x=1';
+
+			await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				'GET',
+				requestPath`/repos/test-owner/test-repo/issues/${issueNumber}`,
+				{},
+			);
+
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value:
+							'https://github.example.com/api/v3/repos/test-owner/test-repo/issues/42%2Flock%3Fx=1',
+					}),
+				}),
+			);
+		});
+
 		it('should throw a NodeApiError on API failure', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo';
+			const endpoint = requestPath`/repos/test-owner/test-repo`;
 			const body = {};
 			const error = new Error('API Error');
 
@@ -103,11 +129,50 @@ describe('GenericFunctions', () => {
 					method: 'GET',
 					body: {},
 					qs: { ref: 'main' },
-					uri: 'https://api.github.com/repos/test-owner/test-repo/contents/README.md',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/contents/README.md',
+					}),
 					json: true,
 				},
 			);
 		});
+
+		it('should keep the folders of the file path and encode each segment', async () => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				sha: 'abc123',
+			});
+
+			await getFileSha.call(mockExecuteHookFunctions, 'test-owner', 'test-repo', 'docs/a?b#c.md');
+
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/contents/docs/a%3Fb%23c.md',
+					}),
+				}),
+			);
+		});
+
+		it.each(['/docs/README.md', 'docs//README.md'])(
+			'should drop empty parts of the file path %s',
+			async (filePath) => {
+				(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+					sha: 'abc123',
+				});
+
+				await getFileSha.call(mockExecuteHookFunctions, 'test-owner', 'test-repo', filePath);
+
+				expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'githubApi',
+					expect.objectContaining({
+						uri: expect.objectContaining({
+							value: 'https://api.github.com/repos/test-owner/test-repo/contents/docs/README.md',
+						}),
+					}),
+				);
+			},
+		);
 
 		it('should throw a NodeOperationError if SHA is missing', async () => {
 			const owner = 'test-owner';
@@ -128,7 +193,7 @@ describe('GenericFunctions', () => {
 	describe('githubApiRequestAllItems', () => {
 		it('should fetch all items with pagination', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo/issues';
+			const endpoint = requestPath`/repos/test-owner/test-repo/issues`;
 			const body = {};
 			const query = { state: 'open' };
 			const responseData1 = [{ id: 1, title: 'Issue 1' }];
@@ -178,4 +243,136 @@ describe('GenericFunctions', () => {
 			expect(result).toBeUndefined();
 		});
 	});
+<<<<<<< HEAD
+=======
+
+	describe('validateSecretName', () => {
+		it.each(['MY_SECRET', 'my_secret', 'Secret2', '_LEADING_UNDERSCORE', 'GITHUBBER'])(
+			'should accept %s',
+			(secretName) => {
+				expect(validateSecretName(secretName)).toBeUndefined();
+			},
+		);
+
+		it.each([
+			['spaces', 'MY SECRET'],
+			['a leading digit', '1SECRET'],
+			['hyphens', 'MY-SECRET'],
+			['dots', 'MY.SECRET'],
+			['non-ASCII characters', 'SECRÈT'],
+		])('should reject a name with %s', (_label, secretName) => {
+			expect(validateSecretName(secretName)).toContain('is invalid');
+		});
+
+		it('should reject an empty name', () => {
+			expect(validateSecretName('')).toBe('Secret name is required.');
+		});
+
+		it.each(['GITHUB_TOKEN', 'github_token', 'GitHub_Anything'])(
+			'should reject the reserved prefix in %s',
+			(secretName) => {
+				expect(validateSecretName(secretName)).toContain('GITHUB_');
+			},
+		);
+	});
+
+	describe('encryptSecret', () => {
+		// crypto_box_SEALBYTES: a 32-byte ephemeral public key plus a 16-byte MAC
+		const SEALED_BOX_OVERHEAD = 48;
+		const testPublicKey = Buffer.from(new Uint8Array(32).fill(1)).toString('base64');
+
+		it('should seal to the given public key so the matching secret key opens it', async () => {
+			const { default: naclFactory } = await import('js-nacl');
+			const nacl = await naclFactory.instantiate(() => {});
+			const keyPair = nacl.crypto_box_keypair();
+			const secretValue = 'my-secret-value';
+
+			const encrypted = await encryptSecret(
+				secretValue,
+				Buffer.from(keyPair.boxPk).toString('base64'),
+			);
+
+			const opened = nacl.crypto_box_seal_open(
+				new Uint8Array(Buffer.from(encrypted, 'base64')),
+				keyPair.boxPk,
+				keyPair.boxSk,
+			);
+			expect(nacl.decode_utf8(opened)).toBe(secretValue);
+		});
+
+		it('should return canonical base64 with the sealed-box overhead', async () => {
+			const secretValue = 'my-secret-value';
+
+			const encrypted = await encryptSecret(secretValue, testPublicKey);
+
+			expect(encrypted).toMatch(/^[A-Za-z0-9+/]+={0,2}$/);
+			expect(Buffer.from(encrypted, 'base64').toString('base64')).toBe(encrypted);
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
+		});
+
+		it('should produce different encrypted values for the same input', async () => {
+			const encrypted1 = await encryptSecret('my-secret-value', testPublicKey);
+			const encrypted2 = await encryptSecret('my-secret-value', testPublicKey);
+
+			// The sealed box uses an ephemeral key pair, so the output is never repeated
+			expect(encrypted1).not.toBe(encrypted2);
+		});
+
+		it.each([
+			['an empty value', ''],
+			['unicode characters', 'secret-with-unicode-🔐-chars'],
+			['special characters', '!@#$%^&*()_+-=[]{}|;:\'",.<>?/\\`~'],
+			['a long value', 'a'.repeat(10000)],
+		])('should encrypt %s', async (_label, secretValue) => {
+			const encrypted = await encryptSecret(secretValue, testPublicKey);
+
+			// Length is derived from the UTF-8 byte count, not the JS string length
+			expect(Buffer.from(encrypted, 'base64')).toHaveLength(
+				Buffer.byteLength(secretValue, 'utf8') + SEALED_BOX_OVERHEAD,
+			);
+		});
+	});
+
+	describe('getRepositoryPublicKey', () => {
+		it('should fetch the public key of the repository', async () => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce({
+				key_id: '012345678912345678',
+				key: 'base64-public-key',
+			});
+
+			const result = await getRepositoryPublicKey.call(
+				mockExecuteHookFunctions,
+				'owner/name',
+				'repo?name#section',
+			);
+
+			expect(result).toEqual({ key_id: '012345678912345678', key: 'base64-public-key' });
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					method: 'GET',
+					uri: expect.objectContaining({
+						value:
+							'https://api.github.com/repos/owner%2Fname/repo%3Fname%23section/actions/secrets/public-key',
+					}),
+				}),
+			);
+		});
+
+		it.each([
+			['key_id', { key: 'base64-public-key' }],
+			['key', { key_id: '012345678912345678' }],
+		])('should throw when the response has no %s', async (_field, response) => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValueOnce(
+				response,
+			);
+
+			await expect(
+				getRepositoryPublicKey.call(mockExecuteHookFunctions, 'owner', 'repo'),
+			).rejects.toThrow(NodeOperationError);
+		});
+	});
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 });

@@ -427,8 +427,8 @@ describe('VectorStoreDatabricks', () => {
 
 		const setupSearchContext = (host: string, mode = 'load') => {
 			httpRequestWithAuthentication = vi.fn(
-				async (_type: string, options: { url: string; qs: Record<string, string> }) =>
-					options.url.endsWith('/endpoints')
+				async (_type: string, options: { url: unknown; qs: Record<string, string> }) =>
+					String(options.url).endsWith('/endpoints')
 						? pages.endpoints
 						: pages[`${options.qs.endpoint_name}:${options.qs.page_token ?? ''}`],
 			);
@@ -453,9 +453,16 @@ describe('VectorStoreDatabricks', () => {
 			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 			for (const [type, options] of httpRequestWithAuthentication.mock.calls) {
 				expect(type).toBe('databricksOAuth2Api');
-				expect(options.url).toMatch(/^https:\/\/ws\.example\.com\/api\/2\.0\/vector-search\//);
 				expect(options.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 			}
+			expect(
+				httpRequestWithAuthentication.mock.calls.map(([, options]) => String(options.url)),
+			).toEqual([
+				'https://ws.example.com/api/2.0/vector-search/endpoints',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+			]);
 		});
 
 		// Only insert writes, so only insert may narrow the list; the read modes query both types.

@@ -12,8 +12,10 @@ import type {
 	IRequestOptions,
 	JsonObject,
 	PreSendAction,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
@@ -21,7 +23,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
@@ -34,6 +36,7 @@ export async function apiRequest(
 
 	const credentials = await this.getCredentials<N8nApiCredentials>('n8nApi');
 	const baseUrl = credentials.baseUrl;
+<<<<<<< HEAD:packages/nodes-base/nodes/N8n/GenericFunctions.ts
 
 	const options: IRequestOptions = {
 		method,
@@ -42,8 +45,19 @@ export async function apiRequest(
 		uri: `${baseUrl.replace(new RegExp('/$'), '')}/${endpoint}`,
 		json: true,
 	};
+=======
+	const normalizedBaseUrl = baseUrl.replace(/([^:])\/{2,}/g, '$1/').replace(/\/+$/, '');
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761)):packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
 
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			body,
+			qs: query,
+			uri: requestUrl`${normalizedBaseUrl}/${endpoint}`,
+			json: true,
+		};
+
 		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
 	} catch (error) {
 		if (error instanceof NodeApiError) {
@@ -56,7 +70,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {

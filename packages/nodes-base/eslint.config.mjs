@@ -5,6 +5,101 @@ import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
 import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
 
+// Deprecated nodes get no more fixes, so the path segment rule does not check them:
+// https://docs.n8n.io/integrations/builtin/deprecated-nodes
+// Convert to File and Extract from File use files from ICalendar and
+// SpreadsheetFile, so those files stay checked.
+const deprecatedNodes = [
+	'./nodes/Cron/**',
+	'./nodes/Function/**',
+	'./nodes/FunctionItem/**',
+	'./nodes/HtmlExtract/**',
+	'./nodes/ICalendar/ICalendar.node.ts',
+	'./nodes/Interval/**',
+	'./nodes/ItemLists/**',
+	'./nodes/Line/**',
+	'./nodes/MoveBinaryData/**',
+	'./nodes/Orbit/**',
+	'./nodes/ReadBinaryFile/**',
+	'./nodes/ReadBinaryFiles/**',
+	'./nodes/ReadPdf/**',
+	'./nodes/Simulate/**',
+	'./nodes/SpreadsheetFile/**',
+	'!./nodes/SpreadsheetFile/description.ts',
+	'!./nodes/SpreadsheetFile/v2/fromFile.operation.ts',
+	'./nodes/WorkflowTrigger/**',
+	'./nodes/WriteBinaryFile/**',
+];
+
+// Request URLs must come from requestPath or requestUrl, or be a constant string.
+// These folders still send a full URL on purpose (a next page link, a URL from a
+// response, a record or the user) or hit a limit of the rule. Remove a folder from
+// the list when its findings are fixed. Run `pnpm lint:request-target` to see them.
+const requestTargetPending = [
+	'./nodes/Airtable/**',
+	'./nodes/Airtop/**',
+	'./nodes/ApiTemplateIo/**',
+	'./nodes/Asana/**',
+	'./nodes/Aws/**',
+	'./nodes/Bitbucket/**',
+	'./nodes/Bitly/**',
+	'./nodes/Brandfetch/**',
+	'./nodes/Cisco/**',
+	'./nodes/Databricks/**',
+	'./nodes/Discord/**',
+	'./nodes/E2eTest/**',
+	'./nodes/ExecuteWorkflow/**',
+	'./nodes/Flow/**',
+	'./nodes/Freshdesk/**',
+	'./nodes/Google/Chat/**',
+	'./nodes/Google/CloudStorage/**',
+	'./nodes/Google/Drive/**',
+	'./nodes/Google/Sheet/**',
+	'./nodes/Google/Slides/**',
+	'./nodes/Google/YouTube/**',
+	'./nodes/Gotify/**',
+	'./nodes/GraphQL/**',
+	'./nodes/HelpScout/**',
+	'./nodes/HttpRequest/**',
+	'./nodes/Intercom/**',
+	'./nodes/InvoiceNinja/**',
+	'./nodes/Jira/**',
+	'./nodes/Keap/**',
+	'./nodes/KoBoToolbox/**',
+	'./nodes/LinkedIn/**',
+	'./nodes/Microsoft/Dataverse/**',
+	'./nodes/Microsoft/Dynamics/**',
+	'./nodes/Microsoft/Entra/**',
+	'./nodes/Microsoft/Excel/**',
+	'./nodes/Microsoft/ExcelSharePoint/**',
+	'./nodes/Microsoft/OneDrive/**',
+	'./nodes/Microsoft/Outlook/**',
+	'./nodes/Microsoft/SharePoint/**',
+	'./nodes/Microsoft/Teams/**',
+	'./nodes/Microsoft/ToDo/**',
+	'./nodes/MondayCom/**',
+	'./nodes/Nasa/**',
+	'./nodes/NocoDB/**',
+	'./nodes/Notion/**',
+	'./nodes/OneSimpleApi/**',
+	'./nodes/Orbit/**',
+	'./nodes/PayPal/**',
+	'./nodes/Pushbullet/**',
+	'./nodes/RssFeedRead/**',
+	'./nodes/S3/**',
+	'./nodes/Salesforce/**',
+	'./nodes/SecurityScorecard/**',
+	'./nodes/SentryIo/**',
+	'./nodes/Shopify/**',
+	'./nodes/Slack/**',
+	'./nodes/Spotify/**',
+	'./nodes/Supabase/**',
+	'./nodes/SurveyMonkey/**',
+	'./nodes/Telegram/**',
+	'./nodes/WooCommerce/**',
+	'./nodes/Zendesk/**',
+];
+
 export default defineConfig(
 	nodesConfig,
 	// This config fragment lives under nodes/ so it sits next to the code it
@@ -152,6 +247,37 @@ export default defineConfig(
 			'n8n-nodes-base/node-param-type-options-password-missing': 'error',
 		},
 	},
+	// Request path values must go through toPathSegment. The rule checks only
+	// the node folders in this list. Add a node folder when its paths are encoded.
+	// When all nodes are encoded, this list becomes './nodes/**/*.ts'. Then remove
+	// the sentence about this list from .agents/review-rules/security/node-input-safety.md.
+	// An exception needs the next-line form and a reason.
+	{
+		files: [
+			'./nodes/Adalo/**/*.ts',
+			'./nodes/Currents/**/*.ts',
+			'./nodes/Elastic/**/*.ts',
+			'./nodes/HighLevel/**/*.ts',
+			'./nodes/N8n/**/*.ts',
+			'./nodes/Notion/**/*.ts',
+			'./nodes/Supabase/**/*.ts',
+		],
+		ignores: deprecatedNodes,
+		rules: {
+			'n8n-local-rules/require-encoded-path-segments': 'error',
+			'n8n-local-rules/require-disable-reason': [
+				'error',
+				{ rules: ['n8n-local-rules/require-encoded-path-segments'] },
+			],
+		},
+	},
+	{
+		files: ['./nodes/**/*.ts'],
+		ignores: [...requestTargetPending, ...deprecatedNodes],
+		rules: {
+			'n8n-local-rules/require-request-target': 'error',
+		},
+	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts'],
 		rules: {
@@ -159,6 +285,9 @@ export default defineConfig(
 			'n8n-nodes-base/node-filename-against-convention': 'off',
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 			'n8n-local-rules/require-escaped-query-values': 'off',
+			'n8n-local-rules/require-encoded-path-segments': 'off',
+			'n8n-local-rules/require-disable-reason': 'off',
+			'n8n-local-rules/require-request-target': 'off',
 		},
 	},
 	...databricksUserAgentRestriction,

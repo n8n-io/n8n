@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { T2AResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
@@ -226,7 +226,7 @@ export async function execute(
 		body.language_boost = options.languageBoost;
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/v1/t2a_v2', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/v1/t2a_v2`, {
 		body,
 	})) as T2AResponse;
 

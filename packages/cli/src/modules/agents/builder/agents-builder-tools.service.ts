@@ -49,9 +49,14 @@ import { z } from 'zod';
 
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { ConflictError, LockedError, UnexpectedError } from '@n8n/errors';
+import { ConflictError, LockedError, UnexpectedError, UserError } from '@n8n/errors';
+import { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+<<<<<<< HEAD
 import { NodeTypes } from '@/node-types';
+=======
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -530,6 +535,11 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+<<<<<<< HEAD
+=======
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 	) {}
 
 	/**
@@ -762,6 +772,11 @@ export class AgentsBuilderToolsService {
 			proxyFetch: createAiMcpFetch(this.outboundHttp),
 			resolveRegistryConnection: async (nodeTypeName) =>
 				await this.mcpRegistryService.getConnection(nodeTypeName),
+			assertCredentialUsable: async (credentialId) => {
+				if (!(await findUsableMcpCredential(this.credentialsFinderService, credentialId, user))) {
+					throw new UserError('Credential not found or not accessible');
+				}
+			},
 			applyCredentialToMcpServer: async (serverName, credentialId) =>
 				await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId, user),
 		});

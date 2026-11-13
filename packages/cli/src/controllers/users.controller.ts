@@ -7,6 +7,7 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import type { PublicUser } from '@n8n/db';
+<<<<<<< HEAD
 import {
 	User,
 	UserRepository,
@@ -15,6 +16,9 @@ import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
+=======
+import { User, PersonRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import {
 	GlobalScope,
 	Delete,
@@ -147,10 +151,10 @@ export class UsersController {
 		}
 
 		if (
-			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			person.role.slug === GLOBAL_OWNER_ROLE.slug
+			person.role.slug === GLOBAL_OWNER_ROLE.slug &&
+			req.user.role.slug !== GLOBAL_OWNER_ROLE.slug
 		) {
-			throw new ForbiddenError('Admin cannot reset password of global owner');
+			throw new ForbiddenError('Only the owner can reset the password of the global owner');
 		}
 
 		const link = this.authService.generatePasswordResetUrl(person);

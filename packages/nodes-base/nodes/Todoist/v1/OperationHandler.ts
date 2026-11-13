@@ -1,5 +1,10 @@
 import type { IDataObject } from 'n8n-workflow';
+<<<<<<< HEAD
 import { jsonParse, UserError } from 'n8n-workflow';
+=======
+import { UserError } from '@n8n/errors';
+import { jsonParse, requestPath } from 'n8n-workflow';
+>>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import { v4 as uuid } from 'uuid';
 
 import type { Section, TodoistResponse } from './Service';
@@ -57,7 +62,7 @@ export type CommandType = (typeof CommandTypes)[keyof typeof CommandTypes];
 async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
 	const labelList = [];
 	for (const label of labelIds) {
-		const thisLabel = await todoistApiRequest.call(ctx, 'GET', `/labels/${label}`);
+		const thisLabel = await todoistApiRequest.call(ctx, 'GET', requestPath`/labels/${label}`);
 		labelList.push(thisLabel.name);
 	}
 	return labelList;
@@ -107,7 +112,12 @@ export class CreateHandler implements OperationHandler {
 			body.parent_id = options.parentId as string;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body as IDataObject);
+		const data = await todoistApiRequest.call(
+			ctx,
+			'POST',
+			requestPath`/tasks`,
+			body as IDataObject,
+		);
 
 		return {
 			data,
@@ -119,7 +129,7 @@ export class CloseHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/close`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}/close`);
 
 		return {
 			success: true,
@@ -131,7 +141,7 @@ export class DeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', requestPath`/tasks/${id}`);
 
 		return {
 			success: true,
@@ -143,7 +153,7 @@ export class GetHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		const responseData = await todoistApiRequest.call(ctx, 'GET', `/tasks/${id}`);
+		const responseData = await todoistApiRequest.call(ctx, 'GET', requestPath`/tasks/${id}`);
 		return {
 			data: responseData,
 		};
@@ -173,7 +183,7 @@ export class GetAllHandler implements OperationHandler {
 			qs.ids = filters.ids as string;
 		}
 
-		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
+		let responseData = await todoistApiRequest.call(ctx, 'GET', requestPath`/tasks`, {}, qs);
 
 		if (!returnAll) {
 			const limit = ctx.getNodeParameter('limit', itemIndex) as number;
@@ -190,7 +200,7 @@ async function getSectionIds(ctx: Context, projectId: number): Promise<Map<strin
 	const sections: Section[] = await todoistApiRequest.call(
 		ctx,
 		'GET',
-		'/sections',
+		requestPath`/sections`,
 		{},
 		{ project_id: projectId },
 	);
@@ -202,7 +212,7 @@ export class ReopenHandler implements OperationHandler {
 		//https://developer.todoist.com/rest/v2/#get-an-active-task
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}/reopen`);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}/reopen`);
 
 		return {
 			success: true,
@@ -250,7 +260,7 @@ export class UpdateHandler implements OperationHandler {
 			body.due_lang = updateFields.dueLang as string;
 		}
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body as IDataObject);
+		await todoistApiRequest.call(ctx, 'POST', requestPath`/tasks/${id}`, body as IDataObject);
 
 		return { success: true };
 	}

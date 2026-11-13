@@ -879,11 +879,11 @@ export function setExecutionStatus(this: { executionId?: string }, status: Execu
 }
 
 export function sendDataToUI(
-	this: { pushRef?: string },
+	this: { pushRef?: string; userId?: string },
 	type: PushType,
 	data: IDataObject | IDataObject[],
 ) {
-	const { pushRef } = this;
+	const { pushRef, userId } = this;
 	if (pushRef === undefined) {
 		return;
 	}
@@ -891,7 +891,7 @@ export function sendDataToUI(
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send({ type, data } as PushMessage, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef, userId);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);

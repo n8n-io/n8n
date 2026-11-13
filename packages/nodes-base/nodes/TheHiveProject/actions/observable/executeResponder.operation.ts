@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -34,7 +35,12 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		objectId: observableId,
 		objectType: 'case_artifact',
 	};
-	response = await theHiveApiRequest.call(this, 'POST', '/connector/cortex/action' as string, body);
+	response = await theHiveApiRequest.call(
+		this,
+		'POST',
+		requestPath`/connector/cortex/action`,
+		body,
+	);
 	body = {
 		query: [
 			{
@@ -62,7 +68,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const qs: IDataObject = {};
 	qs.name = 'log-actions';
 	do {
-		response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
+		response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, body, qs);
 	} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 	responseData = response;

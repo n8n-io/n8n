@@ -1,6 +1,9 @@
+import { CSV_MAX_COLUMNS, DataTableFileCleanupService } from '@n8n/backend-module-data-table';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 import { createOwner, createMember } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -353,6 +356,37 @@ describe('POST /data-tables/uploads', () => {
 			).toBe(true);
 			// Verify the error message includes size units (B, KB, or MB)
 			expect(message).toMatch(/\d+(B|KB|MB)/);
+		});
+	});
+
+	describe('file that cannot be parsed', () => {
+		test('should delete the uploaded file when the CSV cannot be parsed', async () => {
+			const deleteFile = vi.spyOn(Container.get(DataTableFileCleanupService), 'deleteFile');
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from('name\n"Alice\n'), 'broken.csv');
+
+			expect(response.status).toBeGreaterThanOrEqual(400);
+			expect(deleteFile).toHaveBeenCalledTimes(1);
+			const [fileId] = deleteFile.mock.calls[0];
+			const { uploadDir } = Container.get(GlobalConfig).dataTable;
+			expect(existsSync(join(uploadDir, fileId))).toBe(false);
+		});
+
+		test('should reject and delete a file with more columns than the limit', async () => {
+			const deleteFile = vi.spyOn(Container.get(DataTableFileCleanupService), 'deleteFile');
+			const header = Array.from({ length: CSV_MAX_COLUMNS + 1 }, (_, i) => `c${i}`).join(',');
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(`${header}\n`), 'wide.csv')
+				.expect(400);
+
+			expect(response.body.message).toContain(`more than ${CSV_MAX_COLUMNS} columns`);
+			const [fileId] = deleteFile.mock.calls[0];
+			const { uploadDir } = Container.get(GlobalConfig).dataTable;
+			expect(existsSync(join(uploadDir, fileId))).toBe(false);
 		});
 	});
 

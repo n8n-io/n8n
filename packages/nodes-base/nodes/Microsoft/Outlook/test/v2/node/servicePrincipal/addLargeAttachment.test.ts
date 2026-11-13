@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -93,7 +94,7 @@ describe('Microsoft Outlook V2 - Service Principal MessageAttachment:add (large 
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
 				method: 'POST',
-				uri: `https://graph.microsoft.com/v1.0/users/user%40example.com/messages/${messageId}/attachments/createUploadSession`,
+				uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/messages/${messageId}/attachments/createUploadSession`,
 			}),
 		);
 
@@ -104,7 +105,7 @@ describe('Microsoft Outlook V2 - Service Principal MessageAttachment:add (large 
 		);
 		const putUrl = (mockExecuteFunctions.helpers.request as Mock).mock.calls[0][0] as string;
 		expect(putUrl).toBe(uploadUrl);
-		expect(putUrl).not.toContain('/users/user%40example.com');
+		expect(putUrl).not.toContain('/users/user@example.com');
 		expect(putUrl).not.toContain('graph.microsoft');
 	});
 });

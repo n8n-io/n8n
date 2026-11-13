@@ -6,7 +6,7 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import { NodeOperationError, requestPath, setSafeObjectProperty } from 'n8n-workflow';
 
 import { type CollectionSearchOptions, searchGraphCollection } from '../../helpers/graphSearch';
 import {
@@ -62,12 +62,12 @@ export async function getItems(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let endpoint = '';
+	let endpoint = requestPath``;
 	if (!paginationToken) {
 		// In load-options contexts getNodeParameter's 2nd arg is a fallback, not an item index.
 		const siteId = await resolveSiteId.call(this, 0);
 		const list = String(this.getNodeParameter('list', 0, { extractValue: true }));
-		endpoint = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items`;
+		endpoint = requestPath`/v1.0/sites/${siteId}/lists/${list}/items`;
 	}
 
 	return await searchGraphCollection.call<
@@ -122,7 +122,7 @@ export async function lookupItemIdByColumns(
 			this,
 			'value',
 			'GET',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{},
 			{ $filter: filter },
 			2,
@@ -243,12 +243,12 @@ export async function updateItemFields(
 	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
 	const { fields, hasHyperlink } = buildItemFieldsPayload(value, schema);
 
-	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`;
+	const itemPath = requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items/${itemId}`;
 	try {
 		await microsoftApiRequest.call(
 			this,
 			'PATCH',
-			`${itemPath}/fields`,
+			requestPath`${itemPath}/fields`,
 			fields,
 			{},
 			undefined,
