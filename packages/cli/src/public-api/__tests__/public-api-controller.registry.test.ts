@@ -298,8 +298,6 @@ describe('PublicApiControllerRegistry', () => {
 		await vi.waitFor(() =>
 			expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
 				userId: 'user-1',
-				path: '/widgets/w-1',
-				method: 'GET',
 				route: 'GET /widgets/{widgetId}',
 				result: '2xx',
 				apiVersion: 'v1',
@@ -324,14 +322,15 @@ describe('PublicApiControllerRegistry', () => {
 		await request(app).get('/api/v1/widgets/w-1').expect(200);
 		await request(app).get('/api/v1/widgets/w-2').expect(200);
 
-		for (const path of ['/widgets/w-1', '/widgets/w-2']) {
-			await vi.waitFor(() =>
-				expect(eventService.emit).toHaveBeenCalledWith(
-					'public-api-invoked',
-					expect.objectContaining({ path, route: 'GET /widgets/{widgetId}' }),
-				),
-			);
-		}
+		const routeMatcher = expect.objectContaining({ route: 'GET /widgets/{widgetId}' });
+		await vi.waitFor(() =>
+			expect(
+				eventService.emit.mock.calls.filter(([event]) => event === 'public-api-invoked'),
+			).toEqual([
+				['public-api-invoked', routeMatcher],
+				['public-api-invoked', routeMatcher],
+			]),
+		);
 	});
 
 	it('does not emit public-api-invoked for a call that fails authentication', async () => {

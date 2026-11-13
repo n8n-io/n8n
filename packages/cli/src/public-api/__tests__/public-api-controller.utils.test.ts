@@ -1,11 +1,9 @@
 import { BadRequestError } from '@n8n/errors';
-import type { Request } from 'express';
 import { z } from 'zod';
 
 import {
 	matchesPathTemplate,
 	parsePathParam,
-	toRequestPath,
 	toEndpointPath,
 	toPublicApiResult,
 	toRouteName,
@@ -54,26 +52,6 @@ describe('matchesPathTemplate', () => {
 
 	it('ignores a trailing slash on the path', () => {
 		expect(matchesPathTemplate('/widgets', '/widgets/')).toBe(true);
-	});
-});
-
-describe('toRequestPath', () => {
-	const requestAt = (path: string) => ({ path }) as Request;
-
-	it('joins the controller prefix with the request path, without a version', () => {
-		expect(toRequestPath('/widgets', requestAt('/w-1'))).toBe('/widgets/w-1');
-	});
-
-	it('uses the request path alone when the prefix is the root', () => {
-		expect(toRequestPath('/', requestAt('/widgets'))).toBe('/widgets');
-	});
-
-	it('drops a trailing slash', () => {
-		expect(toRequestPath('/widgets', requestAt('/'))).toBe('/widgets');
-	});
-
-	it('keeps the root path', () => {
-		expect(toRequestPath('/', requestAt('/'))).toBe('/');
 	});
 });
 

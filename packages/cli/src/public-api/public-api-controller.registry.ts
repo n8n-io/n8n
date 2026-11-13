@@ -46,7 +46,6 @@ import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/publ
 import {
 	matchesPathTemplate,
 	parsePathParam,
-	toRequestPath,
 	toEndpointPath,
 	toPublicApiResult,
 	toRouteName,
@@ -213,7 +212,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createDeprecationMiddleware(route.deprecated));
 			}
 
-			middlewares.push(this.createAuthMiddleware(apiVersion, prefix, routeName));
+			middlewares.push(this.createAuthMiddleware(apiVersion, routeName));
 			middlewares.push(
 				...this.rateLimitService.createRouteLimiters(
 					route.method,
@@ -304,11 +303,7 @@ export class PublicApiControllerRegistry {
 		}
 	}
 
-	private createAuthMiddleware(
-		apiVersion: string,
-		prefix: string,
-		routeName: string,
-	): RequestHandler {
+	private createAuthMiddleware(apiVersion: string, routeName: string): RequestHandler {
 		return async (req, res, next) => {
 			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
@@ -333,8 +328,6 @@ export class PublicApiControllerRegistry {
 				res.once('finish', () => {
 					this.eventService.emit('public-api-invoked', {
 						userId,
-						path: toRequestPath(prefix, req),
-						method: req.method,
 						route: routeName,
 						apiVersion,
 						userAgent: req.headers['user-agent'],

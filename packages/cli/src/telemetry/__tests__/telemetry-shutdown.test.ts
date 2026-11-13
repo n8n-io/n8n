@@ -70,8 +70,6 @@ describe('Telemetry shutdown', () => {
 		for (const userId of userIds) {
 			telemetry.trackApiInvocation({
 				user_id: userId,
-				path: '/workflows',
-				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',
@@ -90,8 +88,6 @@ describe('Telemetry shutdown', () => {
 		try {
 			telemetry.trackApiInvocation({
 				user_id: 'user-0',
-				path: '/workflows',
-				method: 'GET',
 				route: 'GET /workflows',
 				result: '2xx',
 				api_version: 'v1',

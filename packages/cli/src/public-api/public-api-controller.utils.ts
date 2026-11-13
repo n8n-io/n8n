@@ -39,12 +39,6 @@ export function matchesPathTemplate(template: string, path: string): boolean {
 	);
 }
 
-// Match the legacy version-less route. req.path drops the prefix, req.baseUrl adds /api/v1
-export function toRequestPath(prefix: string, req: Request): string {
-	const path = (prefix === '/' ? '' : prefix) + req.path;
-	return path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path;
-}
-
 // Leaves out the version prefix. The name then matches the path that the controller declares.
 export function toRouteName(method: string, prefix: string, routeTemplate: string): string {
 	const path = (prefix === '/' ? '' : prefix) + routeTemplate;
