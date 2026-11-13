@@ -297,7 +297,10 @@ directly to Phase 7.
 Drive the PR to fully green using `gh` as the baseline (optional repo/personal review skills like
 `/comments`, `/bot-re`, or `check-pr-comments` can help if installed, but aren't required):
 
-1. Poll checks: `gh pr checks "$pr" --watch` and `gh pr view "$pr" --json statusCheckRollup,url` (using the `$pr` captured in Phase 6).
+1. Watch the checks of the `$pr` captured in Phase 6. If your tool list has PR-watch tools (for
+   example `bind_pr` and `get_status` in the Claude desktop app), bind the PR and read CI status
+   through them. Do not poll. Otherwise run `gh pr checks "$pr" --watch` and
+   `gh pr view "$pr" --json statusCheckRollup,url`.
 2. Gather feedback from all sources:
    - **CI failures** — get the failing run id from `gh pr checks "$pr"` (or `gh run list --branch "$(git branch --show-current)"`), then fetch logs (`gh run view <run-id> --log-failed`) and diagnose the root cause.
    - **Automated review/bot comments** — `gh pr view "$pr" --comments` and review threads. Fix
