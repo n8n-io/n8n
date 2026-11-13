@@ -2,7 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
+import { expandHome } from './config/paths';
 import { RigError } from './errors';
+import { RIG } from './self/build-info';
 
 const MONOREPO_NAME = 'n8n-monorepo';
 
@@ -37,15 +39,44 @@ export function findMonorepoRoot(start = userCwd()): string | undefined {
 	}
 }
 
-export function requireMonorepoRoot(): string {
-	const root = findMonorepoRoot();
-	if (!root) {
-		throw new RigError(
-			'rig needs an n8n checkout as the source.',
-			'Run rig from inside the n8n repository or one of its worktrees.',
-		);
+/** Where the n8n checkout of an environment comes from. */
+export type SourceOrigin = 'env.yaml' | 'current directory' | 'global config';
+
+export interface ResolvedSource {
+	root?: string;
+	origin?: SourceOrigin;
+	/** Why there is no root. */
+	problem?: RigError;
+}
+
+function checkoutAt(path: string, origin: SourceOrigin, setting: string): ResolvedSource {
+	const root = expandHome(path);
+	if (isMonorepoRoot(root)) return { root, origin };
+	return {
+		problem: new RigError(
+			`${root} (${setting} in the ${origin}) is not an n8n checkout.`,
+			'Point it at the root of an n8n repository or worktree.',
+		),
+	};
+}
+
+/**
+ * The n8n checkout that runs the components. `repo:<path>` pins one checkout.
+ * `auto` uses the checkout of the current directory, then `repo` in the global config.
+ */
+export function resolveSource(source: string, configRepo: string | undefined): ResolvedSource {
+	if (source.startsWith('repo:')) {
+		return checkoutAt(source.slice('repo:'.length), 'env.yaml', '`source`');
 	}
-	return root;
+	const root = findMonorepoRoot();
+	if (root) return { root, origin: 'current directory' };
+	if (configRepo) return checkoutAt(configRepo, 'global config', '`repo`');
+	return {
+		problem: new RigError(
+			'rig needs an n8n checkout as the source.',
+			`Run rig inside an n8n repository or worktree, run \`${RIG} config set repo <path>\`, or set \`source: repo:<path>\` in env.yaml.`,
+		),
+	};
 }
 
 export const CLI_DIR = 'packages/cli';

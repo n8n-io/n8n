@@ -13,9 +13,10 @@ import {
 	type ResolvedEnv,
 } from './env/resolve';
 import { RigError } from './errors';
+import { launcherSource, type LauncherSource } from './launcher/binary';
 import { buildLauncherConfig, type LauncherConfig } from './launcher/config';
 import { readTunnelUrl } from './services/tunnel';
-import { findMonorepoRoot } from './source';
+import { type ResolvedSource, resolveSource } from './source';
 import {
 	launcherComponents,
 	processComponents,
@@ -25,6 +26,7 @@ import {
 	type LauncherComponent,
 	type ProcessComponent,
 } from './topology/components';
+import { RIG } from './self/build-info';
 
 export function listEnvNames(): string[] {
 	if (!existsSync(envsDir())) return [];
@@ -64,14 +66,14 @@ export function selectEnvName(flag: string | undefined): string {
 		throw new RigError(
 			'No environment selected.',
 			names.length === 0
-				? 'Create one with `pnpm rig create`.'
-				: `Run \`pnpm rig use <name>\`. Environments: ${names.join(', ')}.`,
+				? `Create one with \`${RIG} create\`.`
+				: `Run \`${RIG} use <name>\`. Environments: ${names.join(', ')}.`,
 		);
 	}
 	if (!existsSync(envPaths(name).envYaml)) {
 		throw new RigError(
 			`Environment "${name}" does not exist.`,
-			'Run `pnpm rig ls` to see your environments.',
+			`Run \`${RIG} ls\` to see your environments.`,
 		);
 	}
 	return name;
@@ -82,15 +84,27 @@ export class RigEnv {
 	readonly topology: Topology;
 	readonly globalConfig: GlobalConfig;
 	readonly repoRoot: string | undefined;
+	readonly source: ResolvedSource;
 
 	constructor(
 		readonly name: string,
 		readonly paths: EnvPaths,
-		options: { repoRoot?: string } = {},
+		options: { source?: ResolvedSource } = {},
 	) {
 		this.topology = loadTopology(paths.envYaml);
 		this.globalConfig = loadGlobalConfig();
-		this.repoRoot = options.repoRoot ?? findMonorepoRoot();
+		this.source = options.source ?? resolveSource(this.topology.source, this.globalConfig.repo);
+		this.repoRoot = this.source.root;
+	}
+
+	launcherSource(): LauncherSource {
+		return launcherSource(this.globalConfig, this.repoRoot);
+	}
+
+	/** The n8n checkout. Throws with a hint when there is none. */
+	requireRepoRoot(): string {
+		if (this.repoRoot) return this.repoRoot;
+		throw this.source.problem ?? new RigError('rig needs an n8n checkout as the source.');
 	}
 
 	static load(flag: string | undefined): RigEnv {
@@ -99,7 +113,8 @@ export class RigEnv {
 	}
 
 	reload(): RigEnv {
-		return new RigEnv(this.name, this.paths, { repoRoot: this.repoRoot });
+		// Keep the checkout: a running session must not switch sources.
+		return new RigEnv(this.name, this.paths, { source: this.source });
 	}
 
 	context(overrides: Partial<ResolveContext> = {}): ResolveContext {

@@ -55,7 +55,10 @@ export type TunnelConfig = z.infer<typeof tunnelSchema>;
 export const topologySchema = z
 	.object({
 		name: z.string().regex(ENV_NAME_PATTERN, 'use lowercase letters, digits, and dashes'),
-		source: z.literal('auto').default('auto'),
+		/** `auto`: the checkout that rig runs in, then `repo` in the global config. `repo:<path>`: that checkout. */
+		source: z
+			.union([z.literal('auto'), z.string().regex(/^repo:.+/, 'use auto or repo:<path>')])
+			.default('auto'),
 		db: z.enum(['sqlite', 'postgres']).default('sqlite'),
 		queue: z.boolean().default(false),
 		mains: z.number().int().min(1).max(10).default(1),

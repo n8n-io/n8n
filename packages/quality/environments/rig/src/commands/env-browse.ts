@@ -8,7 +8,6 @@ import type { RigEnv } from '../environment';
 import { readDotenv, setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
 import { TOPOLOGY_KEYS } from '../env/managed';
 import { CancelledError, RigError } from '../errors';
-import { requireMonorepoRoot } from '../source';
 import { RUNNER_LAYERS } from '../topology/components';
 import {
 	ask,
@@ -26,6 +25,7 @@ import {
 } from '../ui/prompt';
 import { envArg, loadEnv, offerRestart } from './common';
 import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
+import { RIG } from '../self/build-info';
 
 type Pick =
 	| { type: 'done' }
@@ -266,11 +266,11 @@ export const browseCommand = defineCommand({
 		if (!isInteractive()) {
 			throw new RigError(
 				'rig env browse needs a terminal.',
-				'Use `pnpm rig env set KEY=VALUE` instead.',
+				`Use \`${RIG} env set KEY=VALUE\` instead.`,
 			);
 		}
 		let env = loadEnv(args.env);
-		const repoRoot = env.repoRoot ?? requireMonorepoRoot();
+		const repoRoot = env.requireRepoRoot();
 		let layer = resolveLayer(env, args.on);
 
 		intro(pc.bold(`rig · env · ${env.name}`));

@@ -19,6 +19,11 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 }
 
 child.on('exit', (code, signal) => {
-	if (signal) process.kill(process.pid, signal);
-	else process.exit(code ?? 1);
+	if (signal) {
+		// Exit with the same signal. The forwarding handler would catch it otherwise.
+		process.removeAllListeners(signal);
+		process.kill(process.pid, signal);
+	} else {
+		process.exit(code ?? 1);
+	}
 });

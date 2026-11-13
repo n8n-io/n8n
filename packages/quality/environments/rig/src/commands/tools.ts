@@ -7,6 +7,7 @@ import {
 	getGlobalConfigValue,
 	isGlobalConfigKey,
 	loadGlobalConfig,
+	PATH_KEYS,
 	saveGlobalConfig,
 	setGlobalConfigValue,
 } from '../config/global-config';
@@ -139,9 +140,21 @@ export const configCommand = defineCommand({
 					throw new RigError(`Unknown key "${key}". Keys: ${GLOBAL_CONFIG_KEYS.join(', ')}.`);
 				}
 				const raw = String(args.value);
-				const value = key === 'launcher.path' ? expandHome(raw) : raw;
+				const value = PATH_KEYS.includes(key) ? expandHome(raw) : raw;
 				saveGlobalConfig(setGlobalConfigValue(loadGlobalConfig(), key, value));
 				ui.success(`${key} = ${value}`);
+			},
+		}),
+		unset: defineCommand({
+			meta: { name: 'unset', description: 'Remove a global config value' },
+			args: { key: { type: 'positional', required: true, description: 'Key' } },
+			run({ args }) {
+				const key = String(args.key);
+				if (!isGlobalConfigKey(key)) {
+					throw new RigError(`Unknown key "${key}". Keys: ${GLOBAL_CONFIG_KEYS.join(', ')}.`);
+				}
+				saveGlobalConfig(setGlobalConfigValue(loadGlobalConfig(), key, undefined));
+				ui.success(`Removed ${key}.`);
 			},
 		}),
 	},

@@ -28,6 +28,7 @@ import { table, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
 import { envArg, newSupervisor, stopComponents } from './common';
 import { wizard } from './wizard';
+import { RIG } from '../self/build-info';
 
 const LAYER_HEADERS: Record<string, string> = {
 	shared: 'every component (mains, workers, engine, launchers)',
@@ -44,7 +45,7 @@ export function layerHeader(layer: string): string {
 	return (
 		`# Env vars for ${target}.\n` +
 		'# Order, later wins: managed by rig < shared.env < <role>.env < <component>.env < ../secrets.env\n' +
-		'# Edit this file or use `pnpm rig env set KEY=value --on <role|component>`.\n' +
+		`# Edit this file or use \`${RIG} env set KEY=value --on <role|component>\`.\n` +
 		'# Running components show drift and restart on request.\n\n'
 	);
 }
@@ -74,7 +75,7 @@ function assertNewEnv(name: string): void {
 	if (existsSync(envPaths(name).envYaml)) {
 		throw new RigError(
 			`Environment "${name}" exists.`,
-			`Use it with \`pnpm rig use ${name}\`, or delete it with \`pnpm rig destroy ${name}\`.`,
+			`Use it with \`${RIG} use ${name}\`, or delete it with \`${RIG} destroy ${name}\`.`,
 		);
 	}
 }
@@ -169,7 +170,7 @@ export const createCommand = defineCommand({
 		} else if (args.name) {
 			input = inputFromFlags(args.name, args);
 		} else {
-			throw new RigError('Give a name: `pnpm rig create <name> --preset <preset>`.');
+			throw new RigError(`Give a name: \`${RIG} create <name> --preset <preset>\`.`);
 		}
 
 		const { name } = input;
@@ -195,11 +196,11 @@ export const createCommand = defineCommand({
 		);
 		ui.step(`Directory:  ${paths.root}`);
 		console.log('');
-		ui.info(`Run everything:      ${pc.bold('pnpm rig up')}`);
+		ui.info(`Run everything:      ${pc.bold(`${RIG} up`)}`);
 		ui.info(
-			`Run one component:   ${pc.bold(`pnpm rig run ${env.components()[0]?.name ?? 'main-1'}`)}`,
+			`Run one component:   ${pc.bold(`${RIG} run ${env.components()[0]?.name ?? 'main-1'}`)}`,
 		);
-		ui.info(`Set an env var:      ${pc.bold('pnpm rig env set N8N_LOG_LEVEL=debug --on worker')}`);
+		ui.info(`Set an env var:      ${pc.bold(`${RIG} env set N8N_LOG_LEVEL=debug --on worker`)}`);
 	},
 });
 
@@ -208,7 +209,7 @@ export const lsCommand = defineCommand({
 	run() {
 		const names = listEnvNames();
 		if (names.length === 0) {
-			ui.info('No environments. Create one with `pnpm rig create`.');
+			ui.info(`No environments. Create one with \`${RIG} create\`.`);
 			return;
 		}
 		const current = currentEnvName();
