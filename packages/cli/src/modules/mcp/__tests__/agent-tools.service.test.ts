@@ -1894,6 +1894,122 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
 		});
 
+		it('keeps long values truncated without pages by default', async () => {
+			const longReply = 'x'.repeat(10_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [{ type: 'text', content: longReply, timestamp: 1 }];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn],
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true });
+			expect(result.structuredContent).not.toHaveProperty('nextCursor');
+			expect(result.structuredContent.transcript).toContain('… [truncated]');
+			expect(result.structuredContent.transcript).not.toContain(longReply);
+		});
+
+		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
+			const longOutput = 'o'.repeat(80_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'lookup_order',
+					toolCallId: 'call-1',
+					input: { orderId: 'BAD-1' },
+					output: longOutput,
+					startTime: 1,
+					endTime: 2,
+					success: true,
+				},
+			];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn, turn('execution-2')],
+			});
+			const args = { agentId: 'agent-1', sessionId: 'session-1', maxToolValueLength: 10_000_000 };
+
+			const first = await callTool('get_agent_session', args);
+			const second = await callTool('get_agent_session', {
+				...args,
+				cursor: first.structuredContent.nextCursor,
+			});
+
+			expect(first.structuredContent).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+			expect(second.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			const transcript = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
+			expect(transcript).toContain(`  Output: "${longOutput}"`);
+			expect(transcript).toContain('User: Message execution-2');
+			expect(transcript).not.toContain('… [truncated]');
+		});
+
+		it('leaves out tool values when maxToolValueLength is 0', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain(
+				'Tool call: lookup_order | kind=tool | failed | 1ms\n',
+			);
+			expect(result.structuredContent.transcript).not.toContain('Input:');
+			expect(result.structuredContent.transcript).not.toContain('Output:');
+		});
+
+		it('returns only the requested turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain('scope: single turn, turns: 1');
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('reports a cursor that does not match the transcript', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				cursor: 'not-a-cursor',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+		});
+
 		it('reports an unknown session', async () => {
 			agentContextService.readSession.mockResolvedValue(null);
 
