@@ -118,6 +118,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				currentUserId: { type: String, required: false },
 				placeholder: { type: String, required: false },
 				disabled: { type: Boolean, required: false },
+				remoteMethod: { type: Function, required: false },
 			},
 			emits: ['update:model-value'],
 			setup(_, { emit }) {
@@ -125,7 +126,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				return {};
 			},
 			template:
-				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-user-ids="users.map((u) => u.id).join(\',\')"></div>',
+				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-user-ids="users.map((u) => u.id).join(\',\')">' +
+				'<input data-test-id="project-members-select-query" @input="remoteMethod?.($event.target.value)" />' +
+				'</div>',
 		}),
 		N8nIconPicker: defineComponent({
 			name: 'N8nIconPickerStub',
@@ -622,6 +625,41 @@ describe('ProjectSettings', () => {
 			expect(wrapper.getByTestId('members-count').textContent).toBe('1');
 		});
 
+		it('matches each search term against any name or email field', async () => {
+			const people = [
+				{ id: '1', firstName: 'José', lastName: 'Smith', email: 'jose@example.com' },
+				{ id: '2', firstName: 'Bob', lastName: 'Johnson', email: 'bob@example.com' },
+				...Array.from({ length: 8 }, (_, i) => ({
+					id: String(i + 3),
+					firstName: `User${i + 3}`,
+					lastName: 'Test',
+					email: `user${i + 3}@example.com`,
+				})),
+			];
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				relations: people.map((person) => ({ ...person, role: 'project:editor' })),
+			};
+			usersStore.allUsers = people.map((person) => createUser(person));
+			usersStore.usersById = Object.fromEntries(usersStore.allUsers.map((u) => [u.id, u]));
+
+			const wrapper = renderComponent();
+			await nextTick();
+			const searchInput = getInput(wrapper.getByTestId('project-members-search'));
+			const countFor = async (query: string) => {
+				await userEvent.clear(searchInput);
+				if (query) await userEvent.type(searchInput, query);
+				await nextTick();
+				return wrapper.getByTestId('members-count').textContent;
+			};
+
+			expect(await countFor('jose smith')).toBe('1');
+			expect(await countFor('Smith José')).toBe('1');
+			expect(await countFor(' smith ')).toBe('1');
+			expect(await countFor('jose johnson')).toBe('0');
+			expect(await countFor('test example.com')).toBe('8');
+		});
+
 		it('inline role change saves immediately with telemetry', async () => {
 			const roleSpy = vi.spyOn(projectsStore, 'updateMemberRole').mockResolvedValue(undefined);
 			renderComponent();
@@ -767,6 +805,38 @@ describe('ProjectSettings', () => {
 			await nextTick();
 
 			expect(usersStore.fetchUsers).toHaveBeenCalledWith({ take: 50, filter: {} });
+		});
+
+		it('ignores the results of an older search that resolves after a newer one', async () => {
+			const alice = createUser({ id: 'a', firstName: 'Alice', lastName: 'Old' });
+			const bob = createUser({ id: 'b', firstName: 'Bob', lastName: 'New' });
+			const resolvers: Array<() => void> = [];
+			vi.mocked(usersStore.fetchUsers).mockImplementation(
+				async () => await new Promise<void>((resolve) => resolvers.push(resolve)),
+			);
+
+			const { getByTestId } = renderComponent();
+			await vi.waitFor(() => expect(resolvers).toHaveLength(1));
+			usersStore.allUsers = [alice, bob];
+			resolvers[0]();
+
+			const queryInput = getInput(getByTestId('project-members-select'));
+			const search = async (query: string, expectedCalls: number) => {
+				queryInput.value = query;
+				queryInput.dispatchEvent(new Event('input'));
+				await vi.waitFor(() => expect(resolvers).toHaveLength(expectedCalls));
+			};
+			await search('alice', 2);
+			await search('bob', 3);
+
+			resolvers[2]();
+			await vi.waitFor(() =>
+				expect(getByTestId('project-members-select').dataset.userIds).toBe('b'),
+			);
+			resolvers[1]();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(getByTestId('project-members-select').dataset.userIds).toBe('b');
 		});
 
 		it('skips user preloading on mount when user cannot manage members', async () => {

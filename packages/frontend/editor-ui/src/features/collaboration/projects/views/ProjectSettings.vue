@@ -5,6 +5,7 @@ import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { matchesAllTerms } from '@n8n/utils/search/matches-all-terms';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
@@ -557,16 +558,14 @@ const relationUsers = computed<ProjectMemberData[]>(() => {
 	return rows;
 });
 
-const filteredMembers = computed(() => {
-	if (!search.value.trim()) return relationUsers.value;
+const matchesUser = (
+	query: string,
+	user: { firstName?: string | null; lastName?: string | null; email?: string | null },
+) => matchesAllTerms(query, [user.firstName, user.lastName, user.email]);
 
-	const searchTerm = search.value.toLowerCase();
-	return relationUsers.value.filter((member) => {
-		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
-		const email = (member.email ?? '').toLowerCase();
-		return fullName.includes(searchTerm) || email.includes(searchTerm);
-	});
-});
+const filteredMembers = computed(() =>
+	relationUsers.value.filter((member) => matchesUser(search.value, member)),
+);
 
 const memberSortName = (member: ProjectMemberData) =>
 	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
@@ -619,13 +618,10 @@ watch(shouldShowSearch, (show) => {
 	}
 });
 
-const debouncedSearch = useDebounceFn(() => {
-	membersTableState.value.page = 0; // Reset to first page on search
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
-
+// The filter applies on each keystroke, so the page must reset at the same time.
 const onSearch = (value: string) => {
 	search.value = value;
-	void debouncedSearch();
+	membersTableState.value.page = 0;
 };
 
 const onUpdateMembersTableOptions = (options: TableOptions) => {
@@ -652,21 +648,15 @@ const searchUsers = async (query: string) => {
 		}
 
 		await usersStore.fetchUsers({ take: 50, filter });
+		// A slower, older request must not replace the results of a newer query.
+		if (query !== userSearchQuery.value) return;
 
-		if (query.trim()) {
-			userSearchResults.value = usersStore.allUsers.filter((user) => {
-				const searchLower = query.toLowerCase();
-				const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.toLowerCase();
-				const email = (user.email ?? '').toLowerCase();
-				return fullName.includes(searchLower) || email.includes(searchLower);
-			});
-		} else {
-			userSearchResults.value = usersStore.allUsers;
-		}
+		userSearchResults.value = usersStore.allUsers.filter((user) => matchesUser(query, user));
 	} catch (error) {
+		if (query !== userSearchQuery.value) return;
 		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
 	} finally {
-		isLoadingUsers.value = false;
+		if (query === userSearchQuery.value) isLoadingUsers.value = false;
 	}
 };
 
