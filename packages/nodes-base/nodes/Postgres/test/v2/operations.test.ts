@@ -1686,8 +1686,8 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(3);
 	});
 
-	it('should read the indexes for each table', async () => {
-		const { db, one } = createColumnInfoDb();
+	it('should read the columns and the indexes for each table', async () => {
+		const { db, any, one } = createColumnInfoDb();
 		const tables = ['orders', 'orders', 'customers'];
 		const context = createMockExecuteFunction(selectParameters({ column: 'id', value: '5' }));
 		const getNodeParameter = context.getNodeParameter.bind(context);
@@ -1708,6 +1708,8 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			db,
 		);
 
+		expect(any).toHaveBeenCalledTimes(2);
+		expect(any.mock.calls[1][1]).toEqual(['public', 'customers']);
 		expect(one).toHaveBeenCalledTimes(2);
 		expect(one.mock.calls[1][1]).toEqual(['public', 'customers', 'id']);
 	});
