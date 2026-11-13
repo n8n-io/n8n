@@ -278,6 +278,10 @@ describe('redactMcpUrl', () => {
 			'https://mcp.zapier.com/api/mcp/s/[REDACTED]/mcp',
 		);
 		expect(redactMcpUrl('https://api.example.com/v2/sse')).toBe('https://api.example.com/v2/sse');
+		expect(redactMcpUrl('https://mcp.example.com/s/xqjvnmksrptzbcdfghwy/mcp')).toBe(
+			'https://mcp.example.com/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://tools.acme.dev/acme/mcp')).toBe('https://tools.acme.dev/acme/mcp');
 	});
 
 	it('leaves a URL without a query as it is', () => {

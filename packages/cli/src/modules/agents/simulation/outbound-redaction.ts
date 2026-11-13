@@ -182,13 +182,39 @@ function parseJsonObject(text: string): unknown {
 
 const REDACTED_MCP_URL = '[REDACTED MCP URL]';
 
-// Path segments that read as words (`api`, `mcp`, `sse`) or versions (`v1`). Anything else,
-// such as the token in `/api/mcp/s/<token>/mcp`, may be a credential.
-const SAFE_MCP_PATH_SEGMENT = /^(?:[a-z][a-z_-]{0,30}|v\d{1,2})$/;
+// Path segments that are plain structure. Anything else, such as the token in
+// `/api/mcp/s/<token>/mcp`, may be a credential, however word-like it looks.
+const STRUCTURAL_MCP_PATH_SEGMENTS: ReadonlySet<string> = new Set([
+	'api',
+	'mcp',
+	'sse',
+	'stream',
+	'streamable',
+	'http',
+	'message',
+	'messages',
+	'rpc',
+	'jsonrpc',
+	'server',
+	'servers',
+	'remote',
+	'public',
+]);
+const SHORT_MCP_PATH_SEGMENT = /^(?:[a-z]|v\d{1,2})$/;
+
+/** Structural words, single letters, versions, and labels of the URL's own host stay. */
+function isSafeMcpPathSegment(segment: string, hostLabels: ReadonlySet<string>): boolean {
+	const lower = segment.toLowerCase();
+	return (
+		STRUCTURAL_MCP_PATH_SEGMENTS.has(lower) ||
+		SHORT_MCP_PATH_SEGMENT.test(lower) ||
+		hostLabels.has(lower)
+	);
+}
 
 /**
  * An MCP server URL with its user info, fragment, every query value and every path segment
- * that is not a plain word removed. MCP servers take a key in the query (`?key=`, `?apiKey=`)
+ * that is not plain structure removed. MCP servers take a key in the query (`?key=`, `?apiKey=`)
  * or the path (`/s/<token>/mcp`), and their credential is never decrypted where the redactor
  * sees it. The host and plain segments stay, so the simulator can tell servers apart.
  */
@@ -207,10 +233,11 @@ export function redactMcpUrl(url: string): string {
 	parsed.hash = '';
 	for (const name of new Set(parsed.searchParams.keys()))
 		parsed.searchParams.set(name, PLACEHOLDER);
+	const hostLabels = new Set(parsed.hostname.toLowerCase().split('.'));
 	parsed.pathname = parsed.pathname
 		.split('/')
 		.map((segment) =>
-			segment === '' || SAFE_MCP_PATH_SEGMENT.test(segment) ? segment : PLACEHOLDER,
+			segment === '' || isSafeMcpPathSegment(segment, hostLabels) ? segment : PLACEHOLDER,
 		)
 		.join('/');
 	return parsed.toString();
