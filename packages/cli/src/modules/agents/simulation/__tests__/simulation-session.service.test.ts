@@ -56,11 +56,15 @@ function setup({
 	backend,
 	queueMode = false,
 	engineV2 = false,
+	agentConfig = config,
+	integrations = [],
 }: {
 	flagOn?: boolean;
 	backend?: SimulationBackend;
 	queueMode?: boolean;
 	engineV2?: boolean;
+	agentConfig?: AgentJsonConfig;
+	integrations?: unknown[];
 } = {}) {
 	const flagGate = mock<SafeTestingFlagGate>();
 	flagGate.isEnabled.mockResolvedValue(flagOn);
@@ -69,16 +73,20 @@ function setup({
 	const agentRepository = mock<AgentRepository>();
 	agentRepository.findByIdAndProjectId.mockResolvedValue({
 		id: 'agent-1',
-		schema: config,
+		schema: agentConfig,
 		tools: { 'custom-1': { descriptor: { name: 'my_code', description: 'Code' } } },
-		integrations: [],
+		integrations,
 	} as unknown as ProjectAgent);
 	const skillRefs = mock<AgentSkillRefsService>();
 	skillRefs.refsForDraft.mockResolvedValue([] as never);
 	const executionRepository = mock<AgentExecutionRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
-	workflowRepository.find.mockResolvedValue([
-		{ id: 'wf-1', settings: engineV2 ? { engineType: 'v2' } : {} } as WorkflowEntity,
+	workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
+		{
+			id: 'wf-1',
+			name: 'Create ticket',
+			settings: engineV2 ? { engineType: 'v2' } : {},
+		} as WorkflowEntity,
 	]);
 	const service = new SimulationSessionService(
 		mock<Logger>(),
@@ -90,7 +98,7 @@ function setup({
 		executionRepository,
 		workflowRepository,
 	);
-	return { service, executionRepository, flagGate };
+	return { service, executionRepository, flagGate, workflowRepository };
 }
 
 function llmBackend(): SimulationBackend {
@@ -204,6 +212,96 @@ describe('SimulationSessionService', () => {
 				tools: expect.not.arrayContaining([expect.objectContaining({ toolName: 'create-ticket' })]),
 			}),
 		);
+	});
+
+	it('blocks a legacy workflow ref without an id whose workflow runs on Engine v2', async () => {
+		const legacy = {
+			...config,
+			tools: [{ type: 'workflow', name: 'Create ticket', workflow: 'Create ticket' }],
+		} as unknown as AgentJsonConfig;
+		const { service, workflowRepository } = setup({
+			backend: llmBackend(),
+			engineV2: true,
+			agentConfig: legacy,
+		});
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(workflowRepository.findManyByAgentToolReferences).toHaveBeenCalledWith(
+			'project-1',
+			[],
+			['Create ticket'],
+		);
+		expect(tools).toContainEqual(
+			expect.objectContaining({ toolName: 'create-ticket', testability: 'blocked' }),
+		);
+	});
+
+	it('leaves disabled tools out of the list, as the runtime does', async () => {
+		const withDisabled = {
+			...config,
+			tools: [
+				...(config.tools ?? []),
+				{
+					type: 'node',
+					name: 'Old Postgres',
+					enabled: false,
+					node: { nodeType: 'n8n-nodes-base.postgres', nodeTypeVersion: 2, nodeParameters: {} },
+				},
+			],
+		} as unknown as AgentJsonConfig;
+		const { service } = setup({ backend: llmBackend(), agentConfig: withDisabled });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools.map((tool) => tool.toolName)).not.toContain('Old_Postgres');
+	});
+
+	it('lists chat integration tools by the names the runtime gives them', async () => {
+		const { service } = setup({
+			backend: llmBackend(),
+			integrations: [
+				{ type: 'slack', credentialId: 'cred-a' },
+				{ type: 'slack', credentialId: 'cred-b' },
+			],
+		});
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		const integrationTools = tools.filter((tool) => tool.kind === 'integration');
+		expect(integrationTools.map((tool) => tool.toolName)).toEqual([
+			'slack_context',
+			'slack_action',
+			'slack_2_context',
+			'slack_2_action',
+		]);
+		expect(integrationTools.every((tool) => tool.testability === 'blocked')).toBe(true);
+	});
+
+	it('says the simulator is unavailable when it fails to describe the tools', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.describeTools).mockRejectedValue(new Error('timeout'));
+		const { service } = setup({ backend });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools[0]).toMatchObject({
+			toolName: 'Send_Slack',
+			testability: 'blocked',
+			reason: 'simulator_unavailable',
+		});
+	});
+
+	it('gives a reason to a tool the backend blocks without one', async () => {
+		const backend = llmBackend();
+		vi.mocked(backend.describeTools).mockResolvedValue([
+			{ toolName: 'Send_Slack', kind: 'node', testability: 'blocked' },
+		]);
+		const { service } = setup({ backend });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools[0]).toMatchObject({ testability: 'blocked', reason: 'unsupported_by_simulator' });
 	});
 
 	it('lets the simulator describe a workflow tool that runs on the default engine', async () => {

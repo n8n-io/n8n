@@ -39,8 +39,12 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('serves node and workflow tools, and nothing else', async () => {
 		const { backend } = setup();
+		const withWorkflow: SimulatedAgent = {
+			...agent,
+			tools: [...agent.tools, { toolName: 'Lookup_workflow', kind: 'workflow' }],
+		};
 
-		await expect(backend.describeTools(agent)).resolves.toEqual([
+		await expect(backend.describeTools(withWorkflow)).resolves.toEqual([
 			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
 			expect.objectContaining({ toolName: 'linear', testability: 'blocked' }),
 			expect.objectContaining({ toolName: 'web_search', testability: 'blocked' }),
@@ -49,6 +53,7 @@ describe('LlmMockSimulationBackend', () => {
 				testability: 'blocked',
 				reason: 'unsupported_by_simulator',
 			}),
+			{ toolName: 'Lookup_workflow', kind: 'workflow', testability: 'simulated' },
 		]);
 	});
 

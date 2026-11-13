@@ -88,7 +88,14 @@ interface ActiveToolCall {
 
 type ToolClassification =
 	| { type: 'local' }
-	| { type: 'simulated'; key: string; kind: ToolTestKind; nodeType?: string; parameters?: unknown };
+	| {
+			type: 'simulated';
+			key: string;
+			toolName: string;
+			kind: ToolTestKind;
+			nodeType?: string;
+			parameters?: unknown;
+	  };
 
 export interface SimulationSessionInit {
 	testChatId: string;
@@ -222,6 +229,12 @@ export class SimulationSession {
 		}
 		const capability = this.capabilities.get(classification.key);
 		if (!capability || capability.kind !== classification.kind) {
+			// An unrecognised runtime tool is blocked, with the list's reason when the list blocks it
+			// too (chat integration tools carry no metadata to classify them by).
+			const listed = this.capabilities.get(classification.toolName);
+			if (classification.kind === 'other' && listed?.testability === 'blocked') {
+				return blocked(listed.reason ?? 'not_simulatable', listed.detail);
+			}
 			return blocked('not_simulatable', 'This kind of tool cannot run in a test run yet.');
 		}
 		if (capability.testability === 'blocked') {
@@ -305,26 +318,39 @@ export class SimulationSession {
 
 function classifyTool(tool: BuiltTool): ToolClassification {
 	if (tool.mcpTool) {
-		return { type: 'simulated', key: tool.mcpServerName ?? tool.name, kind: 'mcp' };
+		return {
+			type: 'simulated',
+			toolName: tool.name,
+			key: tool.mcpServerName ?? tool.name,
+			kind: 'mcp',
+		};
 	}
 	const metadata = tool.metadata;
 	if (metadata?.kind === 'node') {
 		return {
 			type: 'simulated',
+			toolName: tool.name,
 			key: tool.name,
 			kind: 'node',
 			nodeType: typeof metadata.nodeType === 'string' ? metadata.nodeType : undefined,
 			parameters: metadata.nodeParameters,
 		};
 	}
-	if (metadata?.kind === 'workflow') return { type: 'simulated', key: tool.name, kind: 'workflow' };
-	if (metadata?.customTool === true) return { type: 'simulated', key: tool.name, kind: 'custom' };
+	if (metadata?.kind === 'workflow')
+		return { type: 'simulated', toolName: tool.name, key: tool.name, kind: 'workflow' };
+	if (metadata?.customTool === true)
+		return { type: 'simulated', toolName: tool.name, key: tool.name, kind: 'custom' };
 	if (tool.name === WEB_SEARCH_TOOL_NAME) {
-		return { type: 'simulated', key: WEB_SEARCH_TOOL_NAME, kind: 'web_search' };
+		return {
+			type: 'simulated',
+			toolName: tool.name,
+			key: WEB_SEARCH_TOOL_NAME,
+			kind: 'web_search',
+		};
 	}
 	if (LOCAL_TOOL_NAMES.has(tool.name)) return { type: 'local' };
 	// Custom code, integration actions, memory, shell commands and anything new: blocked.
-	return { type: 'simulated', key: `unknown:${tool.name}`, kind: 'other' };
+	return { type: 'simulated', toolName: tool.name, key: `unknown:${tool.name}`, kind: 'other' };
 }
 
 export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefined {
