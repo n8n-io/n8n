@@ -33,6 +33,11 @@ export interface OpenSimulationInput {
 	testChatId: string;
 	/** Seeds a new world. */
 	message: string;
+	/**
+	 * The caller asked for a test run (preview chat in `test` mode). Without it a new chat runs
+	 * live even with the flag on, so nothing changes until the panel lets users choose.
+	 */
+	testRunRequested?: boolean;
 }
 
 /** Decides whether a draft run is a test run, and gives it its test chat's session. */
@@ -76,7 +81,7 @@ export class SimulationSessionService {
 	}
 
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
-		if (!(await this.flagGate.isEnabled(input.user))) return undefined;
+		if (!input.testRunRequested || !(await this.flagGate.isEnabled(input.user))) return undefined;
 
 		const described = await this.describeAgent(input.agentId, input.projectId);
 		const capabilities = await this.capabilitiesFor(described);

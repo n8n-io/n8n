@@ -5,7 +5,11 @@ import {
 	type StreamChunk,
 } from '@n8n/agents';
 import type { ApprovalSuspendPayload } from '@n8n/agents/tool';
-import { N8N_CHAT_INTEGRATION_TYPE, type ToolCallSimulation } from '@n8n/api-types';
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	type AgentChatMode,
+	type ToolCallSimulation,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
@@ -74,6 +78,8 @@ export interface ExecutePreparedDraftRunInput
 	extends Omit<ExecuteForChatConfig, 'memory'>,
 		DraftRunConsumptionOptions {
 	sessionId: string;
+	/** `test` asks for a test run. Absent or `live` runs live, unless the chat is already a test run. */
+	chatMode?: AgentChatMode;
 }
 
 export interface ResumePreparedDraftRunInput
@@ -234,10 +240,11 @@ export class AgentTestRunService {
 		errorMode,
 		onChunk,
 		onExecutionRecorded,
+		chatMode,
 		...execution
 	}: ExecutePreparedDraftRunInput): Promise<PreparedDraftRunResult> {
 		let executionId: string | undefined;
-		const simulation = this.simulationResolver(execution, execution.message);
+		const simulation = this.simulationResolver(execution, execution.message, chatMode === 'test');
 		const stream = this.agentExecutionOrchestratorService.executeForChat({
 			...execution,
 			memory: {
@@ -390,6 +397,7 @@ export class AgentTestRunService {
 	private simulationResolver(
 		execution: { user: User; agentId: string; projectId: string },
 		message: string,
+		testRunRequested = false,
 	) {
 		let resolved: SimulationSession | undefined;
 		const { user } = execution;
@@ -401,6 +409,7 @@ export class AgentTestRunService {
 					projectId: execution.projectId,
 					testChatId: threadId,
 					message,
+					testRunRequested,
 				});
 				return resolved;
 			},
