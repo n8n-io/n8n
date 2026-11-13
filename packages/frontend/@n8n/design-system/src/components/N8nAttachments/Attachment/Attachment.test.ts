@@ -143,7 +143,7 @@ describe('N8nAttachment', function describeComponent() {
 		render(N8nAttachment, { props: { fileName, mimeType: 'application/pdf' } });
 
 		const container = screen.getByRole('figure').parentElement;
-		const viewport = screen.getByTitle(fileName).querySelector('[aria-hidden="true"]');
+		const viewport = screen.getByTitle(fileName).querySelector<HTMLElement>('[aria-hidden="true"]');
 		expect(container).not.toBeNull();
 		expect(viewport).not.toBeNull();
 		if (!container || !viewport) return;

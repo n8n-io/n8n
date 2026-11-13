@@ -126,7 +126,7 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	async removeTestAttachment(): Promise<void> {
-		await this.getPreviewDock().getByTestId('chat-file-remove').click();
+		await this.getPreviewDock().getByTestId('attachment-remove').click();
 	}
 
 	async isComposerScrollable(mode: 'build' | 'test'): Promise<boolean> {
