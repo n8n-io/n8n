@@ -106,6 +106,10 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				if (!response) {
 					return { outcome: 'unsupported', detail: 'The LLM mock could not answer this request.' };
 				}
+				// A failed generation comes back as a 200 with an error marker, not as a reply.
+				if (isMockGenerationError(response.body)) {
+					return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this request.' };
+				}
 				return {
 					outcome: 'served',
 					source: 'made_up',
@@ -140,4 +144,8 @@ function parseSaved(
 		return undefined;
 	}
 	return { worldId, scenarioHints, seed: seed as unknown as InstanceAiEvalAgentScenarioSeed };
+}
+
+function isMockGenerationError(body: unknown): boolean {
+	return typeof body === 'object' && body !== null && '_evalMockError' in body;
 }

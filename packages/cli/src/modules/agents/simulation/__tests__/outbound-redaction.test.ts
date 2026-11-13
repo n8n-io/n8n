@@ -95,6 +95,26 @@ describe('OutboundRedactor', () => {
 		expect(JSON.stringify(request)).not.toContain('pw4567');
 	});
 
+	it('replaces binary and stream bodies instead of walking their bytes', async () => {
+		const { redactor } = await redactorWithCredential({ accessToken: telegramToken });
+
+		const binary = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://upload.example.com/files',
+			body: Buffer.from(`file with ${telegramToken}`),
+		});
+		const form = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://api.example.com/token',
+			body: new URLSearchParams({ grant: 'x', note: telegramToken }),
+		});
+
+		expect(binary.body).toMatch(/^\[binary body, \d+ bytes\]$/);
+		expect(form.body).toBe('grant=x&note=[REDACTED]');
+	});
+
 	it('removes a header auth value whose header name does not look secret', async () => {
 		const secret = 'f3a9c1d27b8e4c60';
 		const { redactor } = await redactorWithCredential({

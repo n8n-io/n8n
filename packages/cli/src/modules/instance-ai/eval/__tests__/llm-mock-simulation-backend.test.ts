@@ -39,8 +39,12 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('serves node and workflow tools, and nothing else', async () => {
 		const { backend } = setup();
+		const withWorkflow: SimulatedAgent = {
+			...agent,
+			tools: [...agent.tools, { toolName: 'Lookup_workflow', kind: 'workflow' }],
+		};
 
-		await expect(backend.describeTools(agent)).resolves.toEqual([
+		await expect(backend.describeTools(withWorkflow)).resolves.toEqual([
 			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
 			expect.objectContaining({ toolName: 'linear', testability: 'blocked' }),
 			expect.objectContaining({ toolName: 'web_search', testability: 'blocked' }),
@@ -49,6 +53,7 @@ describe('LlmMockSimulationBackend', () => {
 				testability: 'blocked',
 				reason: 'unsupported_by_simulator',
 			}),
+			{ toolName: 'Lookup_workflow', kind: 'workflow', testability: 'simulated' },
 		]);
 	});
 
@@ -89,6 +94,23 @@ describe('LlmMockSimulationBackend', () => {
 			headers: {},
 			body: { ok: true, ts: '1.2' },
 		});
+	});
+
+	it('says unavailable when the mock failed to generate a reply, so the call is blocked', async () => {
+		const { backend, httpMock } = setup();
+		httpMock.mockResolvedValue({
+			statusCode: 200,
+			headers: {},
+			body: { _evalMockError: true, message: 'Mock generation failed: timeout' },
+		});
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		await expect(
+			world.handleRequest(
+				{ protocol: 'http', method: 'GET', url: 'https://slack.com/api/conversations.list' },
+				{ toolName: 'Send_Slack', nodeType: 'n8n-nodes-base.slack' },
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
 	});
 
 	it('says unsupported when the mock has no answer, so the call is blocked', async () => {

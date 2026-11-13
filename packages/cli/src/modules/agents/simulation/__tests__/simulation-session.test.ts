@@ -487,6 +487,33 @@ describe('SimulationSession', () => {
 		expect(handler).not.toHaveBeenCalled();
 	});
 
+	it('blocks a chat integration tool with the reason the list gives it', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} }),
+			capabilities: [
+				{
+					toolName: 'slack_action',
+					kind: 'integration',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+					detail: 'Chat integration tools cannot run in a test run yet.',
+				},
+			],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, { name: 'slack_action', description: '', handler }),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'Chat integration tools cannot run in a test run yet.',
+		});
+	});
+
 	it('blocks a node tool without a node type, even with a simulated list entry', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const session = new SimulationSession({

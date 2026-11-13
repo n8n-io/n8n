@@ -502,6 +502,27 @@ describe('executeWorkflow → instrumented runs stay on main', () => {
 		await expect(runInstrumented(workflow, run)).rejects.toThrow('This workflow paused to wait');
 		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
 	});
+
+	it('fails loudly, not as a safe refusal, when the paused run cannot be stopped', async () => {
+		setQueue('regular');
+		Container.set(Logger, mock<Logger>());
+		Container.set(
+			ExecutionService,
+			mock<ExecutionService>({ stop: vi.fn().mockRejectedValue(new Error('db down')) }),
+		);
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		const failure = runInstrumented(workflow, run);
+
+		await expect(failure).rejects.toThrow('could not be stopped');
+		await expect(failure).rejects.not.toBeInstanceOf(InstrumentedRunUnsupportedError);
+	});
 });
 
 describe('executeWorkflow → webhook response', () => {

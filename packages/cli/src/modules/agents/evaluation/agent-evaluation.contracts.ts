@@ -80,6 +80,8 @@ export interface AgentRuntimeInstrumentation {
 	 * run uses it to block the tools that the simulation cannot serve.
 	 */
 	toolCallInterceptor?: ToolCallInterceptor;
+	/** A test run: the executions of delegated sub-agents are marked simulated too. */
+	simulatedRun?: boolean;
 	/**
 	 * Transforms a configured sub-agent's config before its delegated runtime
 	 * is reconstructed (the child inherits this instrumentation, so its seams

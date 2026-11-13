@@ -222,6 +222,30 @@ describe('SubAgentRunner', () => {
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([true, false])(
+		'marks the child execution simulated only under a test run (test run: %s)',
+		async (simulatedRun) => {
+			await runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'test',
+				...(simulatedRun ? { instrumentation: { simulatedRun: true } } : {}),
+			});
+
+			if (simulatedRun) {
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: 'agent-execution-1' },
+					{ simulated: true },
+				);
+			} else {
+				expect(executionRepository.update).not.toHaveBeenCalledWith(expect.anything(), {
+					simulated: true,
+				});
+			}
+		},
+	);
+
 	it('sends the knowledge use of the child run when it ends', async () => {
 		await runner.run(spawnRequest, {
 			parentAgentId,

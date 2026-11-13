@@ -346,6 +346,10 @@ export class SubAgentRunner {
 		context.abortSignal?.throwIfAborted();
 		const admission = await this.turnExecutionService.startExecution(recording, recorder.startedAt);
 		const { executionId } = admission;
+		// The child runs under the parent's test run, so its execution is a test run too.
+		if (context.instrumentation?.simulatedRun) {
+			await this.executionRepository.update({ id: executionId }, { simulated: true });
+		}
 		let executionStarted = false;
 		let executionError: unknown;
 		let runId: string | undefined;
