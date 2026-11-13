@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_0b95d3793cd3cd::t_1a86ffdbb78335 970-987
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0b95d3793cd3cd::t_1d27b67f2f3dda 1741
+  s_0b95d3793cd3cd::t_d06f5592d54026 1141-1145,1151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2f44c893a5f708c46d329f7ddd3f9bf5c25eb1d",
+  "prompts": {},
+  "sessions": {
+    "s_0b95d3793cd3cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52f7a218-5c4b-40be-92f9-37b25cfe044f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
