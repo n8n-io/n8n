@@ -1758,4 +1758,78 @@ describe('useNodeHelpers()', () => {
 			});
 		});
 	});
+
+	describe('matchCredentials()', () => {
+		const createCredential = (id: string, name: string) =>
+			mock<ICredentialsResponse>({ id, name, type: 'httpBasicAuth' });
+
+		it('should replace a missing credential ID with the only credential of the same name', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([createCredential('new-id', 'Login API')]);
+			const node = createTestNode({
+				credentials: { httpBasicAuth: { id: 'deleted-id', name: 'Login API' } },
+			});
+
+			const { matchCredentials } = useNodeHelpers();
+			const result = matchCredentials(node);
+
+			expect(result).toBe(true);
+			expect(node.credentials?.httpBasicAuth).toEqual({ id: 'new-id', name: 'Login API' });
+		});
+
+		it('should not report a replacement when the credential ID exists', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([createCredential('existing-id', 'Login API')]);
+			const node = createTestNode({
+				credentials: { httpBasicAuth: { id: 'existing-id', name: 'Login API' } },
+			});
+
+			const { matchCredentials } = useNodeHelpers();
+			const result = matchCredentials(node);
+
+			expect(result).toBe(false);
+			expect(node.credentials?.httpBasicAuth).toEqual({ id: 'existing-id', name: 'Login API' });
+		});
+
+		it('should not report a replacement when only the credential name changed', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([createCredential('existing-id', 'Renamed API')]);
+			const node = createTestNode({
+				credentials: { httpBasicAuth: { id: 'existing-id', name: 'Login API' } },
+			});
+
+			const { matchCredentials } = useNodeHelpers();
+			const result = matchCredentials(node);
+
+			expect(result).toBe(false);
+			expect(node.credentials?.httpBasicAuth).toEqual({ id: 'existing-id', name: 'Renamed API' });
+		});
+
+		it('should keep the missing credential ID when more than one credential has the same name', () => {
+			mockedStore(useCredentialsStore).getCredentialsByType = vi
+				.fn()
+				.mockReturnValue([
+					createCredential('first-id', 'Login API'),
+					createCredential('second-id', 'Login API'),
+				]);
+			const node = createTestNode({
+				credentials: { httpBasicAuth: { id: 'deleted-id', name: 'Login API' } },
+			});
+
+			const { matchCredentials } = useNodeHelpers();
+			const result = matchCredentials(node);
+
+			expect(result).toBe(false);
+			expect(node.credentials?.httpBasicAuth).toEqual({ id: 'deleted-id', name: 'Login API' });
+		});
+
+		it('should return false when the node has no credentials', () => {
+			const { matchCredentials } = useNodeHelpers();
+
+			expect(matchCredentials(createTestNode())).toBe(false);
+		});
+	});
 });

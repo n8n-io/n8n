@@ -9,6 +9,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 export interface NormalizedWorkflowData {
 	nodes: INodeUi[];
 	connections: IConnections;
+	/** True when a missing credential ID was replaced by a name match. */
+	credentialsReplaced: boolean;
 }
 
 /**
@@ -81,11 +83,14 @@ export function useWorkflowNormalization() {
 			.filter((node) => !!node.type)
 			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
 		const validNodeNames = validNodes.map((node) => node.name);
+		let credentialsReplaced = false;
 
 		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
-			nodeHelpers.matchCredentials(node);
+			if (nodeHelpers.matchCredentials(node)) {
+				credentialsReplaced = true;
+			}
 			// skip this step because nodeTypeDescription is missing for unknown nodes
 			if (isInstalledNode) {
 				resolveNodeParameters(node, nodeTypeDescription);
@@ -96,6 +101,7 @@ export function useWorkflowNormalization() {
 		return {
 			nodes: validNodes,
 			connections: sanitizeConnections(data.connections, validNodeNames),
+			credentialsReplaced,
 		};
 	}
 
