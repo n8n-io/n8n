@@ -1,0 +1,131 @@
+packages/nodes-base/nodes/Supabase/tests/Supabase.node.test.ts
+  s_75b14d0b98a1e4::t_ca97f4fbbc3e8b 12
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/GenericFunctions.test.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 1-7
+packages/nodes-base/nodes/Mailcheck/GenericFunctions.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 12
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_69b91626d41b0a::t_1147e3ed8ec656 20
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/methods/listSearch.test.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 1-7
+packages/nodes-base/nodes/N8n/test/GenericFunctions.test.ts
+  s_00e156bc6f909d::t_4f070f8474e82d 5
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_00e156bc6f909d::t_86d70a974aa595 69
+packages/nodes-base/nodes/Databricks/test/lakebasePickers.test.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 2
+packages/nodes-base/nodes/Aws/Transcribe/test/GenericFunctions.test.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 3
+packages/nodes-base/nodes/LoneScale/GenericFunctions.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 12
+packages/nodes-base/nodes/Github/Github.node.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 17,19,24
+packages/nodes-base/nodes/Databricks/test/transport.test.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 2
+packages/nodes-base/nodes/Supabase/GenericFunctions.ts
+  s_00e156bc6f909d::t_86d70a974aa595 13
+packages/nodes-base/nodes/TheHive/GenericFunctions.ts
+  s_75b14d0b98a1e4::t_ca97f4fbbc3e8b 13
+packages/nodes-base/utils/microsoft/transport.ts
+  s_75b14d0b98a1e4::t_ca97f4fbbc3e8b 13-19
+packages/nodes-base/nodes/Github/__tests__/GenericFunctions.test.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 5,8,12
+packages/nodes-base/nodes/Venafi/Datacenter/GenericFunctions.ts
+  s_75b14d0b98a1e4::t_ca97f4fbbc3e8b 11
+packages/nodes-base/credentials/ZscalerZiaApi.credentials.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 10
+packages/nodes-base/nodes/Magento/GenericFunctions.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 15
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/helpers/utils.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 9
+packages/nodes-base/nodes/N8n/test/shared/WorkflowLocator.test.ts
+  s_00e156bc6f909d::t_4f070f8474e82d 4
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/v1/actions/assistant/update.operation.ts
+  s_2f7df893482b87::t_e383b812f572a7 7-12
+packages/nodes-base/nodes/Venafi/ProtectCloud/GenericFunctions.ts
+  s_00e156bc6f909d::t_8e4dd837a248b0 124-135
+packages/nodes-base/nodes/Airtable/v2/transport/index.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 14
+packages/nodes-base/nodes/Databricks/transport/pipelineEvents.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 3
+packages/nodes-base/nodes/Twitter/V2/GenericFunctions.ts
+  s_00e156bc6f909d::t_86d70a974aa595 13
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_69b91626d41b0a::t_1147e3ed8ec656 53
+packages/@n8n/nodes-langchain/nodes/vendors/GoogleGemini/actions/text/message.operation.ts
+  s_2f7df893482b87::t_e383b812f572a7 534-541,598-605
+packages/nodes-base/nodes/Formstack/GenericFunctions.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 14
+packages/nodes-base/nodes/Todoist/v1/OperationHandler.ts
+  s_75b14d0b98a1e4::t_ca97f4fbbc3e8b 2
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.ts
+  s_2f7df893482b87::t_e383b812f572a7 16
+packages/nodes-base/types/js-nacl.d.ts
+  s_00e156bc6f909d::t_4f070f8474e82d 1-15
+packages/nodes-base/nodes/HttpRequest/test/node/HttpRequestV3.test.ts
+  s_00e156bc6f909d::t_4f070f8474e82d 3
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.ts
+  s_2f7df893482b87::t_0be6ba7b610600 3
+packages/nodes-base/nodes/Databricks/actions/helpers.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 9
+packages/nodes-base/nodes/Microsoft/AzureCosmosDb/test/listSearch/listSearch.test.ts
+  s_0d3e23212bfcc6::t_4c8b791f263a5c 3
+packages/nodes-base/nodes/Beeminder/GenericFunctions.ts
+  s_4281a6b4b1321f::t_c1c123e91bf258 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40139e44ead2b9863894d591ed148efb933dfae9",
+  "prompts": {},
+  "sessions": {
+    "s_00e156bc6f909d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c9921abffe8RB2gIdrxXy7Uj",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_0d3e23212bfcc6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c979230ffejiCOCQM3txYCg6",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_2f7df893482b87": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c979396ffeSJx39L5fu3ltE7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_4281a6b4b1321f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c979242ffeXp5dFSZVwDlG7e",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_69b91626d41b0a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c9792d7ffeqwMtOiPJRhgPz7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_75b14d0b98a1e4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c979220ffez8I30H57BBYyap",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
