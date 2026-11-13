@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -9,7 +10,7 @@ export async function create(
 	const body = {} as IDataObject;
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'channels';
+	const endpoint = requestPath`channels`;
 
 	const type = this.getNodeParameter('type', index) as string;
 

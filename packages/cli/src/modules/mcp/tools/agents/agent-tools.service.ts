@@ -63,10 +63,16 @@ import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService, UrlService, NodeTypesProxy } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	ProjectScopeService,
+	UrlService,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -488,6 +494,7 @@ export class McpAgentToolsService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly slackSetup: McpAgentSlackSetup,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	/**
@@ -1861,7 +1868,7 @@ export class McpAgentToolsService {
 			if (!input.credential) {
 				throw new UserError('credential is required when authentication is not none');
 			}
-			await this.requireAccessibleCredential(credentialProvider, input.credential);
+			await this.requireUsableCredential(user, credentialProvider, input.credential);
 		}
 
 		try {
@@ -2093,12 +2100,19 @@ export class McpAgentToolsService {
 		return createAgentCredentialProvider(this.credentialsService, projectId, user);
 	}
 
-	private async requireAccessibleCredential(
+	/** The credential must be listed for the project and usable by the user, not only readable. */
+	private async requireUsableCredential(
+		user: User,
 		credentialProvider: CredentialProvider,
 		credentialId: string,
 	) {
 		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
-		if (!credential) throw new UserError('Credential not found or not accessible');
+		if (
+			!credential ||
+			!(await findUsableMcpCredential(this.credentialsFinderService, credentialId, user))
+		) {
+			throw new UserError('Credential not found or not accessible');
+		}
 		return credential;
 	}
 

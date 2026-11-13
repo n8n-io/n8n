@@ -5,15 +5,17 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type { LoaderGetResponse } from './types';
 
 export async function monicaCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -33,26 +35,26 @@ export async function monicaCrmApiRequest(
 		baseUrl = credentials.domain;
 	}
 
-	const options: IRequestOptions = {
-		headers: {
-			Authorization: `Bearer ${credentials.apiToken}`,
-		},
-		method,
-		body,
-		qs,
-		uri: `${baseUrl}/api${endpoint}`,
-		json: true,
-	};
-
-	if (!Object.keys(body).length) {
-		delete options.body;
-	}
-
-	if (!Object.keys(qs).length) {
-		delete options.qs;
-	}
-
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: {
+				Authorization: `Bearer ${credentials.apiToken}`,
+			},
+			method,
+			body,
+			qs,
+			uri: requestUrl`${baseUrl}/api${endpoint}`,
+			json: true,
+		};
+
+		if (!Object.keys(body).length) {
+			delete options.body;
+		}
+
+		if (!Object.keys(qs).length) {
+			delete options.qs;
+		}
+
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -62,7 +64,7 @@ export async function monicaCrmApiRequest(
 export async function monicaCrmApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	{ forLoader }: { forLoader: boolean } = { forLoader: false },

@@ -4,6 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { isDataObject, notionApiRequestAllItemsV3 } from '../transport';
 
@@ -41,7 +42,7 @@ async function searchDataSources(this: ILoadOptionsFunctions, filter?: string) {
 		query: filter,
 		filter: { property: 'object', value: 'data_source' },
 	};
-	return await notionApiRequestAllItemsV3.call(this, 'results', 'POST', '/search', body);
+	return await notionApiRequestAllItemsV3.call(this, 'results', 'POST', requestPath`/search`, body);
 }
 
 export async function getDataSources(

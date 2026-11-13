@@ -1,0 +1,59 @@
+{
+	"name": "Msg91 Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"from": "ACMECO",
+				"to": "919999999999",
+				"message": "Hello"
+			},
+			"id": "msg91-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.msg91",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"msg91Api": {
+					"id": "1",
+					"name": "Msg91 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"requestId": "3763646c3058373530393138"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

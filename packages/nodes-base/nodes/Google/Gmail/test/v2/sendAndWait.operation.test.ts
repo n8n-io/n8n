@@ -5,6 +5,7 @@ import {
 	type INodeTypeBaseDescription,
 	SEND_AND_WAIT_OPERATION,
 	type IExecuteFunctions,
+	requestPath,
 } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
@@ -98,7 +99,7 @@ describe('Test GmailV2, message => sendAndWait', () => {
 
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/gmail/v1/users/me/messages/send',
+			requestPath`/gmail/v1/users/me/messages/send`,
 			{ raw: expect.any(String) },
 		);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalled();

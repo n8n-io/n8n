@@ -1,11 +1,24 @@
 import {
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	type IExecuteFunctions,
 	type IHookFunctions,
 	type IHttpRequestMethods,
 	type IRequestOptions,
 	type IDataObject,
+	type RequestPath,
 } from 'n8n-workflow';
+
+export function webDavPath(path: string): RequestPath {
+	return path
+		.split('/')
+		.reduce(
+			(parent, segment) =>
+				segment === '' ? requestPath`${parent}/` : requestPath`${parent}/${segment}`,
+			requestPath``,
+		);
+}
 
 /**
  * Make an API request to NextCloud
@@ -14,7 +27,7 @@ import {
 export async function nextCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object | string | Buffer,
 	headers?: IDataObject,
 	encoding?: null,
@@ -40,12 +53,11 @@ export async function nextCloudApiRequest(
 		);
 	}
 
-	const options: IRequestOptions = {
+	const options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		headers,
 		method,
 		body,
 		qs: query ?? {},
-		uri: '',
 		json: false,
 	};
 
@@ -53,16 +65,22 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	// Preserve the existing WebDAV path behavior: endpoints may start with '/', producing '//'.
 	// For non-WebDAV requests, strip the WebDAV suffix while preserving any subpath prefix.
-	options.uri = useWebDavEndpoint
-		? `${webDavUrl}/${encodeURI(endpoint)}`
-		: `${webDavUrl.replace(/\/remote\.php\/webdav\/?$/, '')}/${encodeURI(endpoint)}`;
+	const requestOptions = {
+		...options,
+		uri: useWebDavEndpoint
+			? requestUrl`${webDavUrl}${endpoint}`
+			: requestUrl`${webDavUrl.replace(/\/remote\.php\/webdav\/?$/, '')}/${endpoint}`,
+	};
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
 
-	const response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	const response = await this.helpers.requestWithAuthentication.call(
+		this,
+		credentialType,
+		requestOptions,
+	);
 
 	if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
 		throw new NodeOperationError(

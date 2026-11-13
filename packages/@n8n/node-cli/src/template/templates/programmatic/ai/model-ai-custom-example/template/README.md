@@ -28,6 +28,8 @@ _If users need to authenticate with the app/service, provide details here. You s
 
 ## Compatibility
 
+This node needs n8n 2.46.1 or later.
+
 _State the minimum n8n version, as well as which versions you test against. You can also include any known version incompatibility issues._
 
 ## Usage

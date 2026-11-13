@@ -10,10 +10,11 @@ import {
 	type INodeTypeBaseDescription,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { verifySignature } from '../CalendlyTriggerHelpers';
-import { calendlyApiRequest } from '../GenericFunctions';
+import { calendlyApiRequest, deleteWebhookSubscription } from '../GenericFunctions';
 
 function isDataObject(value: unknown): value is IDataObject {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -123,7 +124,7 @@ export class CalendlyTriggerV2 implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				const scope = this.getNodeParameter('scope', 0) as string;
-				const userResponse = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				const userResponse = await calendlyApiRequest.call(this, 'GET', requestPath`/users/me`);
 				const user = isDataObject(userResponse.resource) ? userResponse.resource : undefined;
 				const organization = getStringField(user, 'current_organization');
 				const userUri = getStringField(user, 'uri');
@@ -143,7 +144,7 @@ export class CalendlyTriggerV2 implements INodeType {
 					qs.organization = organization;
 				}
 
-				const endpoint = '/webhook_subscriptions';
+				const endpoint = requestPath`/webhook_subscriptions`;
 				const subscriptionsResponse = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
 				const collection = Array.isArray(subscriptionsResponse.collection)
 					? subscriptionsResponse.collection
@@ -187,7 +188,7 @@ export class CalendlyTriggerV2 implements INodeType {
 				}
 
 				const scope = this.getNodeParameter('scope', 0) as string;
-				const userResponse = await calendlyApiRequest.call(this, 'GET', '/users/me');
+				const userResponse = await calendlyApiRequest.call(this, 'GET', requestPath`/users/me`);
 				const user = isDataObject(userResponse.resource) ? userResponse.resource : undefined;
 				const organization = getStringField(user, 'current_organization');
 				const userUri = getStringField(user, 'uri');
@@ -207,7 +208,7 @@ export class CalendlyTriggerV2 implements INodeType {
 					body.user = userUri;
 				}
 
-				const endpoint = '/webhook_subscriptions';
+				const endpoint = requestPath`/webhook_subscriptions`;
 				const responseData = await calendlyApiRequest.call(this, 'POST', endpoint, body);
 				const subscription = isDataObject(responseData.resource)
 					? responseData.resource
@@ -227,7 +228,7 @@ export class CalendlyTriggerV2 implements INodeType {
 
 				if (typeof webhookURI === 'string') {
 					try {
-						await calendlyApiRequest.call(this, 'DELETE', '', {}, {}, webhookURI);
+						await deleteWebhookSubscription.call(this, webhookURI);
 					} catch (error) {
 						return false;
 					}

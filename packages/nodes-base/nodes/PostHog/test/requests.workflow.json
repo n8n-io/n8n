@@ -1,0 +1,154 @@
+{
+	"name": "PostHog request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "alias",
+				"operation": "create",
+				"distinctId": "user-1",
+				"alias": "nathan",
+				"additionalFields": {}
+			},
+			"id": "node-0",
+			"name": "Alias Create",
+			"type": "n8n-nodes-base.postHog",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"postHogApi": {
+					"id": "1",
+					"name": "PostHog API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "create",
+				"eventName": "signup",
+				"distinctId": "user-1",
+				"additionalFields": {}
+			},
+			"id": "node-1",
+			"name": "Event Create",
+			"type": "n8n-nodes-base.postHog",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"postHogApi": {
+					"id": "1",
+					"name": "PostHog API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "identity",
+				"operation": "create",
+				"distinctId": "user-1",
+				"additionalFields": {}
+			},
+			"id": "node-2",
+			"name": "Identity Create",
+			"type": "n8n-nodes-base.postHog",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"postHogApi": {
+					"id": "1",
+					"name": "PostHog API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "track",
+				"operation": "page",
+				"distinctId": "user-1",
+				"name": "Home",
+				"additionalFields": {}
+			},
+			"id": "node-3",
+			"name": "Track Page",
+			"type": "n8n-nodes-base.postHog",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"postHogApi": {
+					"id": "1",
+					"name": "PostHog API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Alias Create": [
+			{
+				"json": {
+					"status": 1
+				}
+			}
+		],
+		"Event Create": [
+			{
+				"json": {
+					"status": 1
+				}
+			}
+		],
+		"Identity Create": [
+			{
+				"json": {
+					"status": 1
+				}
+			}
+		],
+		"Track Page": [
+			{
+				"json": {
+					"status": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Alias Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Identity Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track Page",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

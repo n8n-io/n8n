@@ -74,6 +74,7 @@ import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-f
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
@@ -489,9 +490,14 @@ export class AgentsService {
 				(credential) => credential.id,
 			),
 		);
+		// A copy adds every credential it keeps, so each one needs usage rights, not only read access.
+		const referencedIds = new Set<string>();
+		visitAgentCredentialReferences(schema, ({ id }) => {
+			if (accessibleCredentialIds.has(id)) referencedIds.add(id);
+		});
 		const sanitized = sanitizeUnknownAgentCredentials(
 			sanitizeAgentJsonConfig(schema),
-			accessibleCredentialIds,
+			await this.configPreparation.filterUsableCredentialIds(referencedIds, user),
 		) as AgentJsonConfig;
 
 		const { schemaConfig, integrations } = decomposeJsonConfig(sanitized);
