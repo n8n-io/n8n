@@ -73,7 +73,30 @@ export class FolderRepository extends Repository<Folder> {
 		projectId: string,
 		resourceType: FolderResourceType,
 	): Promise<Folder[]> {
-		const folders = await this.find({ where: { homeProject: { id: projectId }, resourceType } });
+		const baseQuery = this.createQueryBuilder('folder')
+			.select('folder.id', 'id')
+			.addSelect('folder.parentFolderId', 'parent_id')
+			.where('folder.id = :folderId', { folderId })
+			.andWhere('folder.projectId = :projectId', { projectId })
+			.andWhere('folder.resourceType = :resourceType', { resourceType });
+
+		const recursiveQuery = this.createQueryBuilder('parent')
+			.select('parent.id', 'id')
+			.addSelect('parent.parentFolderId', 'parent_id')
+			.innerJoin('folder_path', 'child', 'parent.id = child.parent_id')
+			.where('parent.projectId = :projectId')
+			.andWhere('parent.resourceType = :resourceType');
+
+		const folders = await this.createQueryBuilder('folder')
+			.addCommonTableExpression(
+				// UNION stops recursion when a cycle repeats an ancestor.
+				`${baseQuery.getQuery()} UNION ${recursiveQuery.getQuery()}`,
+				'folder_path',
+				{ recursive: true },
+			)
+			.innerJoin('folder_path', 'path', 'folder.id = path.id')
+			.setParameters(baseQuery.getParameters())
+			.getMany();
 		const byId = new Map(folders.map((folder) => [folder.id, folder]));
 		const path: Folder[] = [];
 		const visited = new Set<string>();
