@@ -893,7 +893,7 @@ describe('get-execution MCP tool', () => {
 
 		// An id from `search_workflow_executions` may come from either engine, so
 		// following it up here has to resolve on either store.
-		describe('engine 2.0 executions', () => {
+		describe('engine v2 executions', () => {
 			const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
 			const v2Execution = {

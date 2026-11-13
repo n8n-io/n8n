@@ -14,7 +14,7 @@ import {
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -131,7 +131,6 @@ describe('install_community_node registration', () => {
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),
