@@ -18,27 +18,7 @@ import { fromLcTool } from '../converters/tool';
 import type { ChatModel, ChatModelConfig } from '../types/chat-model';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
-
-function createToolCallIndexer() {
-	const indexById = new Map<string, number>();
-	let nextIndex = 0;
-	let currentIndex: number | undefined;
-
-	return (id?: string): number => {
-		if (!id) {
-			currentIndex ??= nextIndex++;
-			return currentIndex;
-		}
-
-		let index = indexById.get(id);
-		if (index === undefined) {
-			index = nextIndex++;
-			indexById.set(id, index);
-		}
-		currentIndex = index;
-		return index;
-	};
-}
+import { normalizeToolCallDeltas } from './normalize-tool-call-deltas';
 
 function toChatModelConfig(
 	options: ChatModelConfig & Pick<BaseChatModelCallOptions, 'signal' | 'stop'>,
@@ -51,6 +31,12 @@ function toChatModelConfig(
 		config.stopSequences = options.stop;
 	}
 	return config;
+}
+
+function toolCallIndexOf(indexes: Map<string, number>, id: string): number {
+	const index = indexes.get(id) ?? indexes.size;
+	indexes.set(id, index);
+	return index;
 }
 
 function readTokenCount(usage: unknown, key: 'input_tokens' | 'output_tokens'): number {
@@ -153,8 +139,10 @@ export class LangchainChatModelAdapter<
 		runManager?: CallbackManagerForLLMRun,
 	): AsyncGenerator<ChatGenerationChunk> {
 		const genericMessages = messages.map(fromLcMessage);
-		const stream = this.chatModel.stream(genericMessages, toChatModelConfig(options));
-		const toolCallIndex = createToolCallIndexer();
+		const stream = normalizeToolCallDeltas(
+			this.chatModel.stream(genericMessages, toChatModelConfig(options)),
+		);
+		const toolCallIndexes = new Map<string, number>();
 
 		for await (const chunk of stream) {
 			let lcChunk: ChatGenerationChunk | undefined = undefined;
@@ -179,7 +167,7 @@ export class LangchainChatModelAdapter<
 						id: chunk.id,
 						name: chunk.name,
 						args: chunk.argumentsDelta,
-						index: toolCallIndex(chunk.id),
+						index: toolCallIndexOf(toolCallIndexes, chunk.id),
 					},
 				];
 

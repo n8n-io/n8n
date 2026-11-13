@@ -333,9 +333,20 @@ describe('LangchainAdapter', () => {
 
 				expect(toolCalls).toEqual([
 					expect.objectContaining({ id: 'tc-2', name: 'weather', args: { city: 'Berlin' } }),
+					expect.objectContaining({ id: expect.any(String), name: 'search', args: { q: 'cats' } }),
 				]);
-				expect(invalidToolCalls).toEqual([
-					expect.objectContaining({ name: 'search', args: '{"q":"cats"}' }),
+				expect(toolCalls?.[1]?.id).not.toBe('tc-2');
+				expect(invalidToolCalls).toEqual([]);
+			});
+
+			it('gives a call that starts without an id the id that follows', async () => {
+				const { toolCalls } = await streamToolCalls([
+					{ type: 'tool-call-delta', name: 'search', argumentsDelta: '{"q":' },
+					{ type: 'tool-call-delta', id: 'tc-1', name: 'search', argumentsDelta: '"cats"}' },
+				]);
+
+				expect(toolCalls).toEqual([
+					expect.objectContaining({ id: 'tc-1', name: 'search', args: { q: 'cats' } }),
 				]);
 			});
 
