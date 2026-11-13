@@ -2370,9 +2370,11 @@ describe('AgentExecutionRepository', () => {
 			const cutoff = new Date(Date.now() - 120_000);
 			await repository.update(executionId, { updatedAt: new Date(cutoff.getTime() - 1) });
 			const abandoned = await repository.findOneByOrFail({ id: executionId });
-			expect(await remote.executionService.finalizeInterruptedExecution(abandoned, cutoff)).toBe(
-				true,
-			);
+			expect(
+				await remote.executionService.finalizeInterruptedExecution(abandoned, {
+					staleBefore: cutoff,
+				}),
+			).toBe(true);
 			const next = await claim(remote, threadId);
 			expect(next.item.id).toBe(b.id);
 			expect(
@@ -2500,7 +2502,7 @@ describe('AgentExecutionRepository', () => {
 					await repository.update(executionId, { updatedAt: new Date(cutoff.getTime() - 1) });
 					await remote.executionService.finalizeInterruptedExecution(
 						await repository.findOneByOrFail({ id: executionId }),
-						cutoff,
+						{ staleBefore: cutoff },
 					);
 				} else if (reason === 'stop') {
 					await finish(local, active, 'cancelled');
@@ -3430,9 +3432,13 @@ describe('AgentExecutionRepository', () => {
 			});
 			const stale = await repository.findOneByOrFail({ id: active.admission.executionId });
 			await repository.touchRunning(stale.id, null);
-			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(false);
+			expect(
+				await local.executionService.finalizeInterruptedExecution(stale, { staleBefore: cutoff }),
+			).toBe(false);
 			await repository.update(stale.id, { updatedAt: new Date(cutoff.getTime() - 1) });
-			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(true);
+			expect(
+				await local.executionService.finalizeInterruptedExecution(stale, { staleBefore: cutoff }),
+			).toBe(true);
 			const next = await claim(local, threadId);
 			expect(next.payload.message).toBe('next');
 			await expect(finish(remote, active)).rejects.toThrow('no longer running');
@@ -3496,9 +3502,11 @@ describe('AgentExecutionRepository', () => {
 						updatedAt: new Date(cutoff.getTime() - 1),
 					});
 					const stale = await repository.findOneByOrFail({ id: active.admission.executionId });
-					expect(await remote.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(
-						true,
-					);
+					expect(
+						await remote.executionService.finalizeInterruptedExecution(stale, {
+							staleBefore: cutoff,
+						}),
+					).toBe(true);
 				}
 				expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
 				expect(await remote.queueRepository.findDeliveryState(active.item.id)).not.toBeNull();
@@ -4915,6 +4923,37 @@ describe('AgentExecutionRepository', () => {
 				owned: true,
 				stopRequest: 'all',
 			});
+		});
+
+		it('lets only the owner, or any process for a legacy row, write the outcome', async () => {
+			const outcome = {
+				status: 'interrupted' as const,
+				stoppedAt: new Date(),
+				duration: 0,
+				timeline: null,
+				storedAt: 'db' as const,
+				error: null,
+				failureSummary: null,
+			};
+			const owned = await runningRow('instance-a');
+			expect(await repository.updateIfRunning(owned, outcome, { ownerKey: 'instance-b' })).toBe(
+				false,
+			);
+			expect(await repository.updateIfRunning(owned, outcome, { ownerKey: 'instance-a' })).toBe(
+				true,
+			);
+			const legacy = await runningRow(null);
+			expect(await repository.updateIfRunning(legacy, outcome, { ownerKey: 'instance-b' })).toBe(
+				true,
+			);
+		});
+
+		it('finds only the running rows among the given ids', async () => {
+			const running = await runningRow('instance-a');
+			const thread = await createThread();
+			const done = await createExecution({ threadId: thread.id, status: 'success' });
+			const rows = await repository.findRunningByIds([running, done.id]);
+			expect(rows.map(({ id }) => id)).toEqual([running]);
 		});
 
 		it('ignores a stop for a turn that already ended', async () => {

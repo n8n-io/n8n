@@ -67,10 +67,9 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 		await sweeper.sweep();
 
-		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
-			execution,
-			new Date('2026-01-01T00:00:00.000Z'),
-		);
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution, {
+			staleBefore: new Date('2026-01-01T00:00:00.000Z'),
+		});
 	});
 
 	it('leaves a recently active execution running in another process', async () => {
@@ -118,10 +117,11 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 			await sweeper.sweep();
 
-			expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
-				row,
-				new Date(now.getTime() - AgentInterruptedExecutionSweeper.OWNER_GONE_GRACE_SECONDS * 1000),
-			);
+			expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(row, {
+				staleBefore: new Date(
+					now.getTime() - AgentInterruptedExecutionSweeper.OWNER_GONE_GRACE_SECONDS * 1000,
+				),
+			});
 		});
 
 		it('keeps a turn whose owner left the registry but still heartbeats the row', async () => {

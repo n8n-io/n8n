@@ -18,6 +18,14 @@ export type RunningAgentExecution = Pick<
 	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline' | 'ownerKey'
 >;
 
+/** Extra conditions for the terminal write of a running turn. */
+export interface RunningRowGuard {
+	/** Write only when the last heartbeat is at or before this time. */
+	staleBefore?: Date;
+	/** Write only when this process owns the row, or the row has no owner. */
+	ownerKey?: string;
+}
+
 /** Result of one heartbeat of a running turn. */
 export type AgentExecutionHeartbeat =
 	/** The row is no longer running, or another process owns it. */
@@ -145,6 +153,19 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		});
 	}
 
+	async findRunningByIds(executionIds: string[]): Promise<RunningAgentExecution[]> {
+		const rows: RunningAgentExecution[] = [];
+		for (let i = 0; i < executionIds.length; i += PARENT_ID_BATCH_SIZE) {
+			rows.push(
+				...(await this.find({
+					select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline', 'ownerKey'],
+					where: { id: In(executionIds.slice(i, i + PARENT_ID_BATCH_SIZE)), status: 'running' },
+				})),
+			);
+		}
+		return rows;
+	}
+
 	async existsRunningByThread(threadId: string, ctx: OperationContext = {}): Promise<boolean> {
 		return await this.managerFor(ctx).existsBy(AgentExecution, { threadId, status: 'running' });
 	}
@@ -264,7 +285,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 	async updateIfRunning(
 		executionId: string,
 		values: AgentExecutionFinalizationValues,
-		staleBefore?: Date,
+		guard: RunningRowGuard = {},
 		ctx: OperationContext = {},
 		costIncrement?: number,
 	): Promise<boolean> {
@@ -299,9 +320,15 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 			.set(setValues)
 			.where('id = :executionId', { executionId })
 			.andWhere('status = :status', { status: 'running' });
-		if (staleBefore) {
-			qb.andWhere('updatedAt <= :staleBefore', { staleBefore });
-			params.staleBefore = staleBefore;
+		if (guard.staleBefore) {
+			qb.andWhere('updatedAt <= :staleBefore', { staleBefore: guard.staleBefore });
+			params.staleBefore = guard.staleBefore;
+		}
+		if (guard.ownerKey) {
+			// A process that lost the turn must not overwrite the outcome that its new owner wrote.
+			const column = this.manager.connection.driver.escape('ownerKey');
+			qb.andWhere(`(${column} = :ownerKey OR ${column} IS NULL)`);
+			params.ownerKey = guard.ownerKey;
 		}
 		const result = await qb.setParameters(params).execute();
 		return result.affected === 1;

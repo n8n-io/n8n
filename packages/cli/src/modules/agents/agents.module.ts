@@ -55,6 +55,9 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
+		// Loaded for its shutdown hook. Turns can run on every instance type.
+		await import('./agent-shutdown-drain.service.js');
+
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 

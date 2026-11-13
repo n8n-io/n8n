@@ -25,6 +25,7 @@ import { AgentProjectDeletionRepository } from './repositories/agent-project-del
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentInstanceShuttingDownError } from './agent-instance-shutting-down.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
@@ -75,6 +76,7 @@ import {
 	AgentExecutionRepository,
 	type AgentExecutionLinks,
 	type RunningAgentExecution,
+	type RunningRowGuard,
 } from './repositories/agent-execution.repository';
 import {
 	computeExecutionFailureSummary,
@@ -188,6 +190,10 @@ export class AgentExecutionService {
 	private readonly activeExecutions = new Map<string, { agentId: string; threadId: string }>();
 
 	private stopRequestHandler?: (request: DurableStopRequest) => void;
+
+	/** Set when this process shuts down. It refuses new turns from then on. */
+	private shuttingDown = false;
+
 	private readonly executionControllers = new Map<string, AbortController>();
 
 	private readonly pendingTimelineSnapshots = new Map<
@@ -266,6 +272,8 @@ export class AgentExecutionService {
 		ctx: OperationContext,
 		lockedQueueThread?: AgentExecutionThread,
 	): Promise<AgentExecutionReservation> {
+		// A turn that starts now cannot finish before the process exits.
+		if (this.shuttingDown) throw new AgentInstanceShuttingDownError();
 		return await this.projectDeletion.withWritableProject(
 			params.projectId,
 			async (ctx) => await this.reserveWritableExecution(params, startedAt, ctx, lockedQueueThread),
@@ -555,7 +563,7 @@ export class AgentExecutionService {
 
 	async finalizeInterruptedExecution(
 		execution: RunningAgentExecution,
-		staleBefore: Date,
+		guard: RunningRowGuard,
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
@@ -583,12 +591,52 @@ export class AgentExecutionService {
 						stoppedAt: stoppedAt.getTime(),
 					}),
 				},
-				staleBefore,
+				guard,
 				ctx,
 			);
 		});
 		if (finalized) void this.notifyInterruptedExecution(execution);
 		return finalized;
+	}
+
+	/** Refuse new turns. Turns that already run continue. */
+	beginShutdown(): void {
+		this.shuttingDown = true;
+	}
+
+	/**
+	 * Mark the turns that still run in this process as interrupted, then stop
+	 * them. The process is about to exit, so the turns cannot finish. Returns
+	 * the number of rows that this call marked.
+	 */
+	async interruptLocalExecutions(): Promise<number> {
+		const executionIds = this.localExecutionIds();
+		if (executionIds.length === 0) return 0;
+		const ownerKey = this.cluster.instanceKey ?? undefined;
+		let interrupted = 0;
+		try {
+			const running = await this.agentExecutionRepository.findRunningByIds(executionIds);
+			for (const execution of running) {
+				try {
+					// Write the outcome first. The aborted turn then finds its row already final.
+					if (await this.finalizeInterruptedExecution(execution, { ownerKey })) interrupted++;
+				} catch (error) {
+					this.logger.warn('Failed to mark an agent execution as interrupted on shutdown', {
+						executionId: execution.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		} catch (error) {
+			// The sweeper on another process interrupts these rows when this owner is gone.
+			this.logger.warn('Failed to read running agent executions on shutdown', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+		for (const executionId of executionIds) {
+			this.abortLostExecution(executionId, 'Agent execution stopped because n8n shut down');
+		}
+		return interrupted;
 	}
 
 	private async notifyInterruptedExecution(execution: RunningAgentExecution): Promise<void> {
@@ -1297,7 +1345,7 @@ export class AgentExecutionService {
 					return await this.agentExecutionRepository.updateIfRunning(
 						executionId,
 						terminalValues,
-						undefined,
+						{ ownerKey: this.cluster.instanceKey ?? undefined },
 						ctx,
 						record.totalCost ?? undefined,
 					);

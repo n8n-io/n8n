@@ -1,7 +1,12 @@
 import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
-import { OnPubSubEvent, OnShutdown, type PubSubCommandMap } from '@n8n/decorators';
+import {
+	HIGHEST_SHUTDOWN_PRIORITY,
+	OnPubSubEvent,
+	OnShutdown,
+	type PubSubCommandMap,
+} from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
@@ -58,7 +63,8 @@ export class AgentMessageQueueConsumer {
 		void this.scan();
 	}
 
-	@OnShutdown()
+	/** Stop claiming at once, while running turns drain. See `AgentShutdownDrain`. */
+	@OnShutdown(HIGHEST_SHUTDOWN_PRIORITY)
 	stop(): void {
 		this.stopped = true;
 		clearInterval(this.timer);
