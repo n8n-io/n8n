@@ -154,9 +154,30 @@ export function createFallbackServer(options: FallbackHostOptions): Server {
 	const runner: StepRunner = options.runner ?? { run: async (r) => await handler.handle(r) };
 	const log = options.log ?? (() => {});
 	let connections = 0;
-	return createServer((socket) =>
+	const server = createServer((socket) =>
 		serveConnection(socket, runner, options, log, (connections = (connections + 1) % 1e9)),
 	);
+	forgetStoppedWorkersOnClose(server);
+	return server;
+}
+
+/**
+ * A socket that the server hands to a worker process (`WorkerPool.adopt`) makes
+ * Node.js close the server through its children: `close` asks each of them, and
+ * it waits for their answers. Node.js drops a child from that list when it
+ * stops. With no child left, the list is empty, and `close` then waits for
+ * answers that never come: the host never stops cleanly. No socket is left in
+ * that case, so the server can close as one without handed-over sockets.
+ */
+function forgetStoppedWorkersOnClose(server: Server): void {
+	const state = server as unknown as { _usingWorkers?: boolean; _workers?: unknown[] };
+	const close = server.close.bind(server);
+	server.close = (done?: (error?: Error) => void) => {
+		if (state._usingWorkers === true && (state._workers?.length ?? 0) === 0) {
+			state._usingWorkers = false;
+		}
+		return close(done);
+	};
 }
 
 function serveConnection(
