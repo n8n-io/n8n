@@ -218,6 +218,7 @@ const summary = computed(() => {
 			<N8nScrollArea
 				as-child
 				type="hover"
+				edge-fade="bottom"
 				max-height="20vh"
 				:class="$style.details"
 				role="region"
@@ -354,7 +355,6 @@ const summary = computed(() => {
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/utils';
-@use '@n8n/design-system/css/mixins/mixins';
 
 .label {
 	@include utils.utils-ellipsis;
@@ -391,7 +391,6 @@ const summary = computed(() => {
 	min-height: 0;
 	height: auto;
 
-	@include mixins.scroll-mask(bottom);
 	> * {
 		padding-block: var(--spacing--4xs) var(--spacing--sm);
 	}
