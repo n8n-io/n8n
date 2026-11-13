@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_44d5218dab8107::t_4566ff02ad0e93 256-274,394-421
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_44d5218dab8107::t_435e5a7fa6594d 232
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_44d5218dab8107::t_2b239cfe4c253c 96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18436a26186d77a2de40c9c3e71bfa92f2b649b9",
+  "prompts": {},
+  "sessions": {
+    "s_44d5218dab8107": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dfbbab18-0990-4c83-a6e3-3838612119f6",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
