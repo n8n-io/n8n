@@ -9,7 +9,7 @@ import type { AgentChatMode, AgentLiveAvailability } from './chatMode.types';
 const props = withDefaults(
 	defineProps<{
 		mode: AgentChatMode;
-		liveAvailability?: AgentLiveAvailability;
+		liveAvailability: AgentLiveAvailability;
 		/**
 		 * Shows the options menu on a Test run badge, with the go-live actions.
 		 * A Live badge never has a menu: a live chat stays live.
@@ -21,7 +21,6 @@ const props = withDefaults(
 		goLiveDisabled?: boolean;
 	}>(),
 	{
-		liveAvailability: 'published',
 		showMenu: false,
 		canRunThisChat: true,
 		goLiveDisabled: false,

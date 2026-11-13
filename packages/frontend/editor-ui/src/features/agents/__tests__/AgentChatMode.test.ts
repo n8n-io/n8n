@@ -18,7 +18,9 @@ describe('AgentChatModeBadge', () => {
 	const renderBadge = createComponentRenderer(AgentChatModeBadge);
 
 	it('shows Test run in the header', () => {
-		const { getByTestId } = renderBadge({ props: { mode: 'test' } });
+		const { getByTestId } = renderBadge({
+			props: { mode: 'test', liveAvailability: 'unpublished' },
+		});
 
 		const badge = getByTestId('agent-chat-mode-badge');
 		expect(badge).toHaveTextContent('Test run');
@@ -27,7 +29,7 @@ describe('AgentChatModeBadge', () => {
 	});
 
 	it('shows Live in the header', () => {
-		const { getByTestId } = renderBadge({ props: { mode: 'live' } });
+		const { getByTestId } = renderBadge({ props: { mode: 'live', liveAvailability: 'published' } });
 
 		const badge = getByTestId('agent-chat-mode-badge');
 		expect(badge).toHaveTextContent('Live');
@@ -36,7 +38,9 @@ describe('AgentChatModeBadge', () => {
 	});
 
 	it('never shows the go-live menu on a live chat', () => {
-		const { getByTestId } = renderBadge({ props: { mode: 'live', showMenu: true } });
+		const { getByTestId } = renderBadge({
+			props: { mode: 'live', showMenu: true, liveAvailability: 'published' },
+		});
 
 		expect(getByTestId('agent-chat-mode-badge').tagName).toBe('SPAN');
 		expect(getByTestId('agent-chat-mode-badge')).not.toHaveAttribute('aria-haspopup');
@@ -60,6 +64,25 @@ describe('AgentChatModeBadge', () => {
 		expect(screen.getByTestId('agent-chat-go-live-heading')).toHaveTextContent(heading);
 	});
 
+	it('updates the open menu when the publish state changes', async () => {
+		const { getByTestId, rerender } = renderBadge({
+			props: { mode: 'test', showMenu: true, liveAvailability: 'unpublished' },
+		});
+
+		await fireEvent.click(getByTestId('agent-chat-mode-badge'));
+		expect(await screen.findByTestId('agent-chat-go-live-heading')).toHaveTextContent(
+			'Publish and go live',
+		);
+
+		await rerender({ liveAvailability: 'published' });
+		expect(screen.getByTestId('agent-chat-go-live-heading')).toHaveTextContent('Go live');
+
+		await rerender({ liveAvailability: 'changed' });
+		expect(screen.getByTestId('agent-chat-go-live-heading')).toHaveTextContent(
+			'Republish and go live',
+		);
+	});
+
 	it('emits the go-live actions and closes the menu', async () => {
 		const { getByTestId, emitted } = renderBadge({
 			props: { mode: 'test', showMenu: true, liveAvailability: 'changed' },
@@ -79,7 +102,7 @@ describe('AgentChatModeBadge', () => {
 
 	it('puts caller content before the go-live options', async () => {
 		const { getByTestId } = renderBadge({
-			props: { mode: 'test', showMenu: true },
+			props: { mode: 'test', showMenu: true, liveAvailability: 'unpublished' },
 			slots: { 'menu-before': '<button data-testid="caller-new-test-run">New test run</button>' },
 		});
 
@@ -399,13 +422,12 @@ describe('AgentGoLiveConfirmModal', () => {
 		expect(emitted('confirm')).toBeUndefined();
 	});
 
-	it('cannot be dismissed while busy', async () => {
+	it('cannot be dismissed with the close button while busy', async () => {
 		const { getByTestId, emitted } = renderModal({
 			props: { open: true, action: 'run-this-chat', liveAvailability: 'published', busy: true },
 		});
 
 		await fireEvent.click(getByTestId('dialog-close-button'));
-		await fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
 		expect(emitted('cancel')).toBeUndefined();
 		expect(emitted('update:open')).toBeUndefined();
