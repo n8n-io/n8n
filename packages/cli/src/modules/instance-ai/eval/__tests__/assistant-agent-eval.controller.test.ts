@@ -1,6 +1,7 @@
 import type {
 	InstanceAiEvalExportExecutionRequest,
 	InstanceAiEvalRestoreExecutionRequest,
+	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
 } from '@n8n/api-types';
 import {
@@ -10,15 +11,17 @@ import {
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { agentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { SystemAgentEvalService } from '@/modules/agents/system-agents/system-agent-eval.service';
+import type { SystemAgentThreadMetadataService } from '@/modules/agents/system-agents/system-agent-thread-metadata.service';
 
 import type { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
-import type { EvalThreadRestoreService } from '../thread-restore.service';
+import type { EvalThreadRestoreService, RestoredSeedArtifacts } from '../thread-restore.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { AssistantAgentEvalController } from '../assistant-agent-eval.controller';
 import { EvalAssistantTurnOverrides } from '../eval-assistant-turn-overrides';
@@ -41,6 +44,14 @@ describe('AssistantAgentEvalController', () => {
 		const overrides = new EvalAssistantTurnOverrides(allowlists);
 		const restore = mock<EvalThreadRestoreService>();
 		const portability = mock<FailedExecutionPortabilityService>();
+		// Stands in for the locked thread row: `patch` replaces the stored metadata.
+		const stored: { metadata: Record<string, unknown> } = { metadata: { other: 'kept' } };
+		const threadMetadata = mock<SystemAgentThreadMetadataService>();
+		threadMetadata.patch.mockImplementation(async (_agentId, _user, _threadId, change) => {
+			const next = change(stored.metadata);
+			if (next) stored.metadata = next;
+			return stored.metadata;
+		});
 		const controller = new AssistantAgentEvalController(
 			settings,
 			systemAgents,
@@ -48,6 +59,7 @@ describe('AssistantAgentEvalController', () => {
 			allowlists,
 			restore,
 			portability,
+			threadMetadata,
 		);
 		return {
 			user,
@@ -59,6 +71,8 @@ describe('AssistantAgentEvalController', () => {
 			overrides,
 			restore,
 			portability,
+			threadMetadata,
+			stored,
 			controller,
 		};
 	}
@@ -95,6 +109,11 @@ describe('AssistantAgentEvalController', () => {
 					workflowId: 'wf-1',
 					envelope: {},
 				} as InstanceAiEvalRestoreExecutionRequest),
+			restoreThread: async () =>
+				await controller.restoreThread(req, res, {
+					threadId: THREAD_ID,
+					messages: [],
+				} as InstanceAiEvalRestoreThreadRequest),
 			seedDataTableRows: async () =>
 				await controller.seedDataTableRows(req, res, {
 					threadId: THREAD_ID,
@@ -116,6 +135,7 @@ describe('AssistantAgentEvalController', () => {
 			['setThreadCredentialTestTarget', 'post', '/eval/thread-credential-test-target'],
 			['exportExecution', 'post', '/eval/export-execution'],
 			['restoreExecution', 'post', '/eval/restore-execution'],
+			['restoreThread', 'post', '/eval/restore-thread'],
 			['seedDataTableRows', 'post', '/eval/seed-data-table-rows'],
 		])('serves %s at %s /assistant%s with the instanceAi:manage scope', (handler, method, path) => {
 			expect(metadata.getControllerMetadata(controllerClass).basePath).toBe('/assistant');
@@ -158,6 +178,7 @@ describe('AssistantAgentEvalController', () => {
 			expect(ctx.portability.exportExecution).not.toHaveBeenCalled();
 			expect(ctx.portability.restoreExecution).not.toHaveBeenCalled();
 			expect(ctx.restore.reseedDataTableRows).not.toHaveBeenCalled();
+			expect(ctx.restore.restoreSeedArtifacts).not.toHaveBeenCalled();
 		});
 
 		it('keeps the state of a thread that the caller does not own on delete', async () => {
@@ -273,6 +294,207 @@ describe('AssistantAgentEvalController', () => {
 		expect(ctx.restore.reseedDataTableRows).toHaveBeenCalledWith('table-0001', PROJECT_ID, [
 			{ name: 'a' },
 		]);
+	});
+
+	describe('restoreThread', () => {
+		const seedMessages = [
+			{
+				id: 'msg-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				role: 'user',
+				content: [{ type: 'text', text: 'Build a Slack bot' }],
+			},
+			{
+				id: 'msg-2',
+				createdAt: '2026-01-01T00:00:01.000Z',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Done' }],
+			},
+		];
+		// The real binding keys, so the undo through `clearedAgentBuilderTargetMetadata` matches them.
+		const binding = agentBuilderTargetMetadata([
+			{ agentId: 'agent-1', projectId: PROJECT_ID, name: 'Slack bot', ref: 'Slack bot' },
+		]);
+
+		function seedArtifacts(overrides: Partial<RestoredSeedArtifacts> = {}) {
+			const seed: RestoredSeedArtifacts = {
+				folderIds: ['folder-1'],
+				dataTableIds: ['table-1'],
+				workflowIds: ['wf-1'],
+				createdWorkflowIds: ['wf-1'],
+				publishedWorkflowIds: [],
+				agentIds: [],
+				agentBuilderBinding: undefined,
+				rollback: vi.fn(async () => {}),
+				...overrides,
+			};
+			return seed;
+		}
+
+		function payload(messages: Array<Record<string, unknown>> = seedMessages) {
+			return { threadId: THREAD_ID, messages } as InstanceAiEvalRestoreThreadRequest;
+		}
+
+		it('recreates the artifacts in the project of the thread, then writes the messages', async () => {
+			const ctx = setup();
+			ctx.allowlists.set(THREAD_ID, ['cred-1']);
+			const seed = seedArtifacts();
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
+			const body = payload();
+
+			const result = await ctx.controller.restoreThread(ctx.req, ctx.res, body);
+
+			expect(ctx.systemAgents.getUsableThread).toHaveBeenCalledWith(
+				'assistant',
+				ctx.user,
+				THREAD_ID,
+			);
+			expect(ctx.restore.restoreSeedArtifacts).toHaveBeenCalledWith(
+				body,
+				PROJECT_ID,
+				ctx.user,
+				new Set(['cred-1']),
+			);
+			expect(ctx.systemAgents.ensureMemoryThread).toHaveBeenCalledWith(
+				'assistant',
+				ctx.user,
+				THREAD_ID,
+			);
+			// The seed keeps its roles and content under new ids. `createdAt` becomes a date.
+			expect(ctx.systemAgents.saveMessages).toHaveBeenCalledWith(
+				'assistant',
+				ctx.user,
+				THREAD_ID,
+				seedMessages.map((message) => ({
+					...message,
+					id: expect.not.stringMatching(message.id),
+					createdAt: new Date(message.createdAt),
+				})),
+			);
+			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
+			expect(seed.rollback).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: true,
+				threadId: THREAD_ID,
+				restored: 2,
+				workflowIds: ['wf-1'],
+				dataTableIds: ['table-1'],
+				agentIds: [],
+				folderIds: ['folder-1'],
+			});
+		});
+
+		it('passes no allowlist when the thread has none', async () => {
+			const ctx = setup();
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seedArtifacts());
+
+			await ctx.controller.restoreThread(ctx.req, ctx.res, payload());
+
+			expect(ctx.restore.restoreSeedArtifacts).toHaveBeenCalledWith(
+				expect.anything(),
+				PROJECT_ID,
+				ctx.user,
+				undefined,
+			);
+		});
+
+		it('writes no messages and no memory row for a seed without messages or agents', async () => {
+			const ctx = setup();
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seedArtifacts());
+
+			const result = await ctx.controller.restoreThread(ctx.req, ctx.res, payload([]));
+
+			expect(result).toMatchObject({ ok: true, restored: 0 });
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('binds the seeded agents before it writes the messages, and keeps the other keys', async () => {
+			const ctx = setup();
+			const order: string[] = [];
+			ctx.systemAgents.ensureMemoryThread.mockImplementation(async () => {
+				order.push('ensureThread');
+			});
+			ctx.threadMetadata.patch.mockImplementationOnce(async (_a, _u, _t, change) => {
+				order.push('binding');
+				ctx.stored.metadata = change(ctx.stored.metadata) ?? ctx.stored.metadata;
+				return ctx.stored.metadata;
+			});
+			ctx.systemAgents.saveMessages.mockImplementation(async () => {
+				order.push('messages');
+			});
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(
+				seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding }),
+			);
+
+			const result = await ctx.controller.restoreThread(ctx.req, ctx.res, payload());
+
+			expect(order).toEqual(['ensureThread', 'binding', 'messages']);
+			expect(ctx.threadMetadata.patch).toHaveBeenCalledWith(
+				'assistant',
+				ctx.user,
+				THREAD_ID,
+				expect.any(Function),
+			);
+			expect(ctx.stored.metadata).toEqual({ other: 'kept', ...binding });
+			expect(result).toMatchObject({ agentIds: ['agent-1'] });
+		});
+
+		it('undoes the binding and rolls back the artifacts when the message write fails', async () => {
+			const ctx = setup();
+			const seed = seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding });
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
+			ctx.systemAgents.saveMessages.mockRejectedValue(new Error('boom'));
+
+			await expect(ctx.controller.restoreThread(ctx.req, ctx.res, payload())).rejects.toThrow(
+				'boom',
+			);
+
+			expect(ctx.threadMetadata.patch).toHaveBeenCalledTimes(2);
+			// The undo writes the binding keys as undefined, which drops them from the stored JSON.
+			expect(ctx.stored.metadata).toEqual({ other: 'kept' });
+			expect(seed.rollback).toHaveBeenCalledTimes(1);
+		});
+
+		it('rolls back the artifacts and rethrows the first error when the undo of the binding fails', async () => {
+			const ctx = setup();
+			const seed = seedArtifacts({ agentIds: ['agent-1'], agentBuilderBinding: binding });
+			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
+			ctx.systemAgents.saveMessages.mockRejectedValue(new Error('boom'));
+			ctx.threadMetadata.patch
+				.mockImplementationOnce(async () => ({}))
+				.mockRejectedValueOnce(new Error('undo failed'));
+
+			await expect(ctx.controller.restoreThread(ctx.req, ctx.res, payload())).rejects.toThrow(
+				'boom',
+			);
+			expect(seed.rollback).toHaveBeenCalledTimes(1);
+		});
+
+		it('rejects a seed message that is not valid before it creates any artifact', async () => {
+			const ctx = setup();
+
+			await expect(
+				ctx.controller.restoreThread(ctx.req, ctx.res, payload([{ id: 'msg-1' }])),
+			).rejects.toThrow(BadRequestError);
+
+			expect(ctx.restore.restoreSeedArtifacts).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
+		});
+
+		it('writes nothing to the thread when the artifact restore fails', async () => {
+			const ctx = setup();
+			ctx.restore.restoreSeedArtifacts.mockRejectedValue(new BadRequestError('bad seed'));
+
+			await expect(ctx.controller.restoreThread(ctx.req, ctx.res, payload())).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
+			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('request DTOs', () => {
