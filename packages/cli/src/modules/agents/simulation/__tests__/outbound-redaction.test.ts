@@ -96,6 +96,21 @@ describe('OutboundRedactor', () => {
 		expect(JSON.stringify(request)).not.toContain('my real password');
 	});
 
+	it('removes a secret that a JSON string body escapes', async () => {
+		const secret = 'real"secret\\123';
+		const { redactor } = await redactorWithCredential({ password: secret });
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://example.com/login',
+			body: JSON.stringify({ login: secret }),
+		});
+
+		expect(request.body).not.toContain(JSON.stringify(secret).slice(1, -1));
+		expect(request.body).toContain('[REDACTED]');
+	});
+
 	it('removes a short password from the URL path and a free-form body', async () => {
 		const { redactor } = await redactorWithCredential({ password: 'pw4567' });
 
