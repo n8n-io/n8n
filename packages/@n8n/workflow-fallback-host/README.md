@@ -226,6 +226,24 @@ cli gives the host the settings of its instance.
   `WF_FALLBACK_BINARY_STORE=off`, or a mode other than `filesystem`, keeps the
   binary data in the items as base64.
 
+## Data tables
+
+The v1 Data Table node asks `additionalData['data-table'].dataTableProxyProvider`
+for a service of one table. Where that service keeps the tables depends on the
+step (`data-table.ts`):
+
+| Step | Where the tables are |
+|---|---|
+| Protocol version 2 (it has a service channel) | n8n's own data tables. Each call is a `dataTable` service call of the step (spec section 9.9), and n8n runs it with its engine v2 data-table service: the project of the workflow, the table and the rows are n8n's. The node changes the tables that the n8n UI shows. |
+| No channel, `WF_FALLBACK_DATA_TABLES_DIR` set | JSON files in that folder, one for each table, for the test bed. n8n never sets this variable. |
+| No channel, no variable | No data-table service. The node fails with the message of n8n's disabled data-table module. |
+
+A date goes to n8n as its ISO text. n8n gives a filter value on a `date`
+column its `Date` back, so the filter compares as a time, as in v1. A refused
+call fails the step with the message that n8n sent, and the node shows it.
+`deleteDataTableAll` is not available, because no node calls it and it would
+empty the whole project.
+
 ## Tests
 
 The end-to-end tests compile the host into `dist/test-build/`, not `dist/`, so

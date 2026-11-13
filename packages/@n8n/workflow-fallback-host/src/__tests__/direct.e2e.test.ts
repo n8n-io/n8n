@@ -206,6 +206,50 @@ describe('fallback host protocol version 2', () => {
 		conn.close();
 	}, 60_000);
 
+	it('gives a Data Table node step the data tables of n8n', async () => {
+		host = await startTestHost(5_000, { size: 1 });
+		const conn = await DirectConn.open(host.socketPath);
+		const row = {
+			id: 1,
+			createdAt: '2024-05-06T07:08:09.000Z',
+			updatedAt: '2024-05-06T07:08:09.000Z',
+			city: 'Paris',
+		};
+		conn.onService = (call) => {
+			if (call.op === 'getColumns') {
+				return {
+					ok: true,
+					result: [{ id: 'c1', name: 'city', type: 'string', index: 0, dataTableId: 'dt1' }],
+				};
+			}
+			if (call.op === 'getManyRowsAndCount') return { ok: true, result: { count: 1, data: [row] } };
+			return { ok: true, result: null };
+		};
+		const reply = await conn.send({
+			id: '9:1',
+			kind: 'node',
+			step: 'Get',
+			key: 'k',
+			args: {
+				name: 'Get',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				parameters: {
+					resource: 'row',
+					operation: 'get',
+					dataTableId: { __rl: true, mode: 'id', value: 'dt1' },
+					filters: { conditions: [{ keyName: 'city', condition: 'eq', keyValue: 'Paris' }] },
+				},
+				items: [{}],
+			},
+		});
+		expect(reply).toEqual({ id: '9:1', ok: true, result: [row] });
+		expect(
+			conn.serviceCalls.filter((call) => call.service === 'dataTable').map((call) => call.op),
+		).toEqual(['getColumns', 'getManyRowsAndCount']);
+		conn.close();
+	}, 60_000);
+
 	it('fails a service call that the runtime answers with an error', async () => {
 		host = await startTestHost(5_000, { size: 1 });
 		const conn = await DirectConn.open(host.socketPath);
