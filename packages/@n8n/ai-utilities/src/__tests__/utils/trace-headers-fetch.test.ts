@@ -5,7 +5,7 @@ import * as httpProxyAgent from 'src/utils/http-proxy-agent';
 import { createAiClientFetch, withTraceHeaders } from 'src/utils/trace-headers-fetch';
 
 vi.mock('src/utils/http-proxy-agent', () => ({
-	aiClientFetch: vi.fn(),
+	boundedAiClientFetch: vi.fn(),
 }));
 
 const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
@@ -90,16 +90,16 @@ describe('withTraceHeaders', () => {
 });
 
 describe('createAiClientFetch', () => {
-	it('sends through aiClientFetch with the trace headers of the context', async () => {
-		const aiClientFetch = vi.mocked(httpProxyAgent.aiClientFetch);
-		aiClientFetch.mockResolvedValue(new Response('ok'));
+	it('sends through boundedAiClientFetch with the trace headers of the context', async () => {
+		const boundedAiClientFetch = vi.mocked(httpProxyAgent.boundedAiClientFetch);
+		boundedAiClientFetch.mockResolvedValue(new Response('ok'));
 		const fetch = createAiClientFetch({
 			helpers: { getTraceHeaders: () => ({ traceparent: TRACEPARENT }) },
 		});
 
 		await fetch('https://provider.test');
 
-		expect(sentHeaders(aiClientFetch as ReturnType<typeof vi.fn>).get('traceparent')).toBe(
+		expect(sentHeaders(boundedAiClientFetch as ReturnType<typeof vi.fn>).get('traceparent')).toBe(
 			TRACEPARENT,
 		);
 	});
