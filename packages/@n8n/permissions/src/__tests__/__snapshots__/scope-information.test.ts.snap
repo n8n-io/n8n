@@ -120,6 +120,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "tag:list",
   "user:resetPassword",
   "user:changeRole",
+  "user:changeLocale",
   "user:enforceMfa",
   "user:generateInviteLink",
   "user:create",

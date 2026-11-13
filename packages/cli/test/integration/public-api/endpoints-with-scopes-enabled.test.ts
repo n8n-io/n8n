@@ -365,6 +365,34 @@ describe('Public API endpoints with API key scopes', () => {
 				});
 			});
 
+			describe('PATCH /users/:id/locale', () => {
+				test('should change locale when API key has "user:changeLocale" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+					const member = await createMember();
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${member.id}/locale`)
+						.send({ locale: 'en' });
+
+					expect(response.status).toBe(204);
+					const storedUser = await getUserById(member.id);
+					expect(storedUser.settings?.locale).toBe('en');
+				});
+
+				test('should fail to change locale when API key doesn\'t have "user:changeLocale" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
+					const member = await createMember();
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${member.id}/locale`)
+						.send({ locale: 'en' });
+
+					expect(response.status).toBe(403);
+				});
+			});
+
 			describe('DELETE /users/:id', () => {
 				test('should delete user when API key has "user:delete" scope', async () => {
 					/**

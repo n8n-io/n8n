@@ -349,6 +349,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'first-workflow-data-loaded': (event) => this.firstWorkflowDataLoaded(event),
 			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
 			'user-changed-role': (event) => this.userChangedRole(event),
+			'user-changed-locale': (event) => this.userChangedLocale(event),
 			'user-retrieved-user': (event) => this.userRetrievedUser(event),
 			'user-retrieved-all-users': (event) => this.userRetrievedAllUsers(event),
 			'user-retrieved-execution': (event) => this.userRetrievedExecution(event),
@@ -2520,6 +2521,20 @@ export class TelemetryEventRelay extends EventRelay {
 			user_id: userId,
 			target_user_id: targetUserId,
 			target_user_new_role: targetUserNewRole,
+			...toPublicApiProperties(publicApi),
+		});
+	}
+
+	private userChangedLocale({
+		userId,
+		targetUserId,
+		locale,
+		publicApi,
+	}: RelayEventMap['user-changed-locale']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CHANGED_USER_LANGUAGE, {
+			user_id: userId,
+			target_user_id: targetUserId,
+			locale,
 			...toPublicApiProperties(publicApi),
 		});
 	}

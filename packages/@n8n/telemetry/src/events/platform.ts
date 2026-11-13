@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { publicApiClientSchema } from '../schemas';
 
 export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 	USER_IS_PART_OF_EXPERIMENT: {
@@ -80,6 +81,23 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether this stop made the guard start to deactivate the workflow, after repeated stops',
 				),
+		}),
+	},
+	USER_CHANGED_USER_LANGUAGE: {
+		name: 'User changed user language',
+		description:
+			'A user set or cleared the personal UI language of a user through the public API. A user who changes their own language in personal settings does not report this event.',
+		properties: z.object({
+			user_id: z.string().describe('User who made the change'),
+			target_user_id: z.string().describe('User whose language changed'),
+			locale: z
+				.string()
+				.nullable()
+				.describe(
+					'New locale code. Null when the change cleared it, so the instance default applies',
+				),
+			public_api: z.boolean(),
+			public_api_client: publicApiClientSchema.optional(),
 		}),
 	},
 });

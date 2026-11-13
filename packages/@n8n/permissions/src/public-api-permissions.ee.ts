@@ -21,6 +21,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:list',
 	'user:create',
 	'user:changeRole',
+	'user:changeLocale',
 	'user:delete',
 	'sourceControl:pull',
 	'sourceControl:push',
