@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentToolSkippedFile } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -29,6 +29,7 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import { AgentBackgroundJobService } from '../../background/agent-background-job.service';
+import { InstrumentedRunUnsupportedError } from '../instrumented-run-guard';
 import {
 	executeWorkflow,
 	resolveWorkflowTool,
@@ -355,6 +356,22 @@ describe('executeWorkflow → eval instrumentation', () => {
 		});
 	});
 
+	it('marks the workflow execution as simulated in its custom data when instrumented', async () => {
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn() }),
+			false,
+			'Lookup_workflow',
+		);
+
+		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		expect(runData.executionData?.resultData.metadata).toEqual({ simulated: 'true' });
+	});
+
 	it('leaves the run data untouched when not instrumented', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
 
@@ -362,6 +379,7 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+		expect(runData.executionData?.resultData.metadata).toBeUndefined();
 	});
 
 	it('leaves the run data untouched when instrumented but no tool name is bound', async () => {
@@ -377,6 +395,112 @@ describe('executeWorkflow → eval instrumentation', () => {
 
 		const runData = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
 		expect(runData.configureAdditionalData).toBeUndefined();
+	});
+});
+
+describe('executeWorkflow → instrumented runs stay on main', () => {
+	const v2Workflow = {
+		...workflow,
+		settings: { engineType: 'v2' },
+	} as unknown as WorkflowEntity;
+	const offloadBefore = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+
+	function setQueue(mode: 'regular' | 'queue', offload?: 'true') {
+		Container.set(ExecutionsConfig, { mode } as ExecutionsConfig);
+		if (offload) process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offload;
+		else delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+	}
+
+	async function runInstrumented(
+		target: WorkflowEntity,
+		run: ReturnType<typeof vi.fn>,
+		executionMode: 'manual' | 'integrated' = 'manual',
+	) {
+		return await executeWorkflow(
+			target,
+			triggerNode,
+			{},
+			buildContext(run, { instrumentToolAdditionalData: vi.fn(), executionMode }),
+			false,
+			'Lookup_workflow',
+		);
+	}
+
+	beforeEach(() => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi
+				.fn()
+				.mockResolvedValue({ status: 'success', data: { resultData: { runData: {} } } }),
+		} as unknown as ExecutionPersistence);
+	});
+
+	afterEach(() => {
+		Container.reset();
+		if (offloadBefore === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = offloadBefore;
+	});
+
+	it('refuses an Engine v2 workflow before it starts', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(v2Workflow, run)).rejects.toThrow(InstrumentedRunUnsupportedError);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('still runs an Engine v2 workflow that is not instrumented', async () => {
+		setQueue('regular');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await executeWorkflow(v2Workflow, triggerNode, {}, buildContext(run), false);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('runs a manual workflow in queue mode while manual runs stay on main', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await runInstrumented(workflow, run);
+
+		expect(run).toHaveBeenCalledOnce();
+	});
+
+	it('refuses a manual workflow in queue mode when manual runs go to workers', async () => {
+		setQueue('queue', 'true');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow(
+			'This workflow would run on a queue worker',
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('refuses an integrated workflow in queue mode, which always goes to workers', async () => {
+		setQueue('queue');
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run, 'integrated')).rejects.toThrow(
+			InstrumentedRunUnsupportedError,
+		);
+		expect(run).not.toHaveBeenCalled();
+	});
+
+	it('stops a run that paused and refuses its result', async () => {
+		setQueue('regular');
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'waiting',
+				waitTill: new Date(Date.now() + 10 * 60_000),
+				data: { resultData: { runData: {} }, waitTill: new Date(Date.now() + 10 * 60_000) },
+			}),
+		} as unknown as ExecutionPersistence);
+		const run = vi.fn().mockResolvedValue('exec-1');
+
+		await expect(runInstrumented(workflow, run)).rejects.toThrow('This workflow paused to wait');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
 	});
 });
 

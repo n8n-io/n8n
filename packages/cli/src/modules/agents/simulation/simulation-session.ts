@@ -18,6 +18,7 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } fr
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
+import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard';
 import { nodeSimulationGap } from './non-http-node-types';
 import { OutboundRedactor } from './outbound-redaction';
 import type {
@@ -105,7 +106,7 @@ export interface SimulationSessionInit {
 	/** Configured MCP servers, to name the server of each MCP request. */
 	mcpServers?: McpServerRef[];
 	/** Stores the test chat marker. Runs before each turn starts. */
-	recordTestChat?: (session: SimulationSession) => Promise<void>;
+	recordTestChat?: (session: SimulationSession, executionId?: string) => Promise<void>;
 	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
 	queueMode?: boolean;
 	/** The world stored earlier, kept when a new one fails to open. */
@@ -158,10 +159,11 @@ export class SimulationSession {
 
 	/**
 	 * Store that this chat is a test chat before the turn runs, so that a later
-	 * turn never runs live, even after a restart or with the flag off.
+	 * turn never runs live, even after a restart or with the flag off. Marks the
+	 * turn's execution as simulated too, before the agent starts.
 	 */
-	async markTestChat(): Promise<void> {
-		await this.recordTestChat?.(this);
+	async markTestChat(executionId?: string): Promise<void> {
+		await this.recordTestChat?.(this, executionId);
 	}
 
 	/** The marker and world to store on the test chat's thread. */
@@ -207,6 +209,10 @@ export class SimulationSession {
 		try {
 			output = await this.activeCalls.run(active, run);
 		} catch (error) {
+			// The workflow would have left this process, or paused; it was refused or stopped.
+			if (!active.blocked && error instanceof InstrumentedRunUnsupportedError) {
+				active.blocked = blocked('not_simulatable', error.message);
+			}
 			if (active.blocked) {
 				this.decisions.set(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);

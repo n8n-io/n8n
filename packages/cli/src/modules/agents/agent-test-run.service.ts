@@ -385,15 +385,16 @@ export class AgentTestRunService {
 	}
 
 	// The orchestrator resolves the session once it knows the thread; `session()` reads it back.
+	// The user is required: without one the flag and the test chat marker cannot be checked,
+	// so a missing user must never quietly mean a live run.
 	private simulationResolver(
-		execution: { user?: User; agentId: string; projectId: string },
+		execution: { user: User; agentId: string; projectId: string },
 		message: string,
 	) {
 		let resolved: SimulationSession | undefined;
 		const { user } = execution;
 		return {
 			resolve: async (threadId: string) => {
-				if (!user) return undefined;
 				resolved = await this.simulationSessions.openForDraftRun({
 					user,
 					agentId: execution.agentId,
