@@ -612,24 +612,37 @@ describe('Microsoft Teams Trigger Node', () => {
 
 				// A throw runs `delete()`, which also removes the secret, so one lost subscription must
 				// not cost the stored one that still covers the resource.
-				it('drops a gone stored id and keeps the one that still covers its resource', async () => {
+				it('drops only the gone stored id and keeps the ones that still cover', async () => {
 					const staticData: Record<string, unknown> = {
-						subscriptionIds: ['sub1', 'sub2'],
+						subscriptionIds: ['a', 'b', 'c'],
 						webhookSecret: 'secret',
 					};
-					const ctx = hookCtx(staticData, { event: 'newChat' });
-					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					const ctx = hookCtx(staticData, { event: 'newChannel', watchAllTeams: true });
+					const error = throttled(ctx);
+					(microsoftApiRequestAllItems.call as Mock).mockImplementation(
+						async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+							if (String(path) === '/v1.0/me/joinedTeams')
+								return [{ id: 'team1' }, { id: 'team2' }];
+							throw error;
+						},
+					);
+					// a is renewed and gone, b still covers team1 without a clientState, c renews team2.
 					routeGraph({
-						'GET sub1': proven('sub1'),
-						'GET sub2': { ...own('sub2', '/me/chats', HOUR), clientState: null },
+						'GET a': proven('a', '/teams/team1/channels'),
+						'GET b': { ...own('b', '/teams/team1/channels', HOUR), clientState: null },
+						'GET c': proven('c', '/teams/team2/channels'),
+						'PATCH c': {},
 					});
 
 					await expect(checkExists(ctx)).resolves.toBe(true);
-					expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+					expect(calls('PATCH').map((call) => call[2])).toEqual([
+						'/v1.0/subscriptions/a',
+						'/v1.0/subscriptions/c',
+					]);
 					expect(calls('DELETE')).toHaveLength(0);
 					expect(calls('POST')).toHaveLength(0);
 					expect(staticData).toEqual({
-						subscriptionIds: ['sub2'],
+						subscriptionIds: ['b', 'c'],
 						webhookSecret: 'secret',
 						pendingReconcile: true,
 					});

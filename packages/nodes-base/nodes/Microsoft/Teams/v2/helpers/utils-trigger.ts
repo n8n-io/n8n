@@ -108,8 +108,7 @@ export async function deleteSubscriptions(
 /**
  * Renews every id once, all in parallel. Returns the answer of each renewed id and the ids that
  * Graph answered with 404. Pass only ids whose secret is proven. Never throws: every other failure
- * is warned, and that subscription keeps its expiry until its own `reauthorizationRequired`
- * renews it.
+ * is warned and left out of both results, so the caller decides what follows.
  */
 export async function renewSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
