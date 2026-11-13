@@ -103,14 +103,18 @@ describe('create_side_panel_view MCP tool', () => {
 		);
 	});
 
-	it('rethrows an unexpected error and pushes nothing', async () => {
-		const { viewsService, push, tool } = setup();
+	it('tracks and rethrows an unexpected error, and pushes nothing', async () => {
+		const { viewsService, push, telemetry, tool } = setup();
 		viewsService.upsert.mockRejectedValue(new Error('db down'));
 
 		await expect(tool.handler({ title: 'Stats', source: 'x' }, {} as never)).rejects.toThrow(
 			'db down',
 		);
 		expect(push.sendToUsers).not.toHaveBeenCalled();
+		expect(telemetry.track).toHaveBeenCalledWith(
+			USER_CALLED_MCP_TOOL_EVENT,
+			expect.objectContaining({ results: { success: false, error: 'db down' } }),
+		);
 	});
 });
 

@@ -14,6 +14,7 @@ import type { Telemetry } from '@/telemetry';
 
 import { MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { trackAndRethrowToolError, trackAndReturnToolError } from './tool-error.utils';
 
 const DESCRIPTION = `Add a view to the side panel of the n8n editor, or replace one. The view shows as a new tab for the current user. Open editors show it at once, with no reload.
 
@@ -35,7 +36,7 @@ The view runs in a sandboxed iframe with no network access to n8n. It has two gl
   { page: 'workflows', routeName, projectId, totalWorkflows: null }
   { page: 'other', routeName }
   "workflow" is null unless the open workflow is available in MCP.
-- n8n.t(key): returns the translated string for key, or the key itself.
+- n8n.t(key, params): returns the translated string for key with each {name} placeholder filled from params, or the key itself.
 
 These n8n design system components are registered: N8nText, N8nHeading, N8nCard, N8nButton, N8nBadge, N8nIcon, N8nCallout, N8nTag. Use them and the CSS variables of the design system (for example var(--spacing--sm)) so the view looks like n8n.
 
@@ -116,17 +117,9 @@ export const createCreateSidePanelViewTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			if (!(error instanceof UserError)) throw error;
-
-			telemetryPayload.results = { success: false, error: error.message };
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { error: error.message };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			if (!(error instanceof UserError))
+				trackAndRethrowToolError(telemetry, telemetryPayload, error);
+			return trackAndReturnToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

@@ -17,17 +17,19 @@ describe('UiExtensionViewsController', () => {
 		expect(service.list).toHaveBeenCalledWith('user-1');
 	});
 
-	it('requires the MCP access scope on the route', () => {
+	it('gates every route with a global scope', () => {
 		const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
 			UiExtensionViewsController as never,
 		);
-		const route = metadata.routes.get('listViews');
 
 		expect(metadata.basePath).toBe('/ui-extensions');
-		expect(route).toMatchObject({
-			method: 'get',
-			path: '/views',
-			accessScope: { scope: 'mcpApiKey:create', globalOnly: true },
-		});
+		expect(metadata.routes.size).toBeGreaterThan(0);
+		for (const [handlerName, route] of metadata.routes) {
+			expect(route.skipAuth, handlerName).toBeFalsy();
+			expect(route.accessScope, handlerName).toEqual({
+				scope: 'mcpApiKey:create',
+				globalOnly: true,
+			});
+		}
 	});
 });

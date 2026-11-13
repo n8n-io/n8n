@@ -8,9 +8,6 @@ import { SettingsRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-
-const storedViewsSchema = z.array(uiExtensionViewSchema);
 
 export type UpsertUiExtensionViewInput = {
 	/** Replaces this view. Without it, a new view is created. */
@@ -100,7 +97,10 @@ export class UiExtensionViewsService {
 		return `uiExtensions.views.${userId}`;
 	}
 
-	/** A missing or broken value gives no views, so one bad row cannot break the editor. */
+	/**
+	 * A missing or broken value gives no views, and a broken entry is skipped, so
+	 * one bad row or entry cannot break the editor or drop the other views.
+	 */
 	private parse(value: string | undefined, userId: string): UiExtensionView[] {
 		if (!value) return [];
 
@@ -111,14 +111,19 @@ export class UiExtensionViewsService {
 			json = undefined;
 		}
 
-		const result = storedViewsSchema.safeParse(json);
-		if (!result.success) {
-			this.logger.warn('Ignored the stored side panel views because they are not valid', {
+		if (!Array.isArray(json)) {
+			this.logger.warn('Ignored the stored side panel views because they are not a list', {
 				userId,
 			});
 			return [];
 		}
 
-		return result.data;
+		const views: UiExtensionView[] = [];
+		for (const entry of json) {
+			const result = uiExtensionViewSchema.safeParse(entry);
+			if (result.success) views.push(result.data);
+			else this.logger.warn('Skipped a stored side panel view that is not valid', { userId });
+		}
+		return views;
 	}
 }

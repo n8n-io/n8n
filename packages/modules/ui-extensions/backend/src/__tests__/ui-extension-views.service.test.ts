@@ -64,12 +64,20 @@ describe('UiExtensionViewsService', () => {
 
 		it.each([
 			['malformed JSON', '{not json'],
-			['a value that is not a list of views', '[{"id":1}]'],
+			['a value that is not a list', '{"id":"a"}'],
 		])('returns no views for %s', async (_case, value) => {
 			settingsRepository.findByKey.mockResolvedValue(mock<Settings>({ value }));
 
 			await expect(service.list('user-1')).resolves.toEqual([]);
 		});
+	});
+
+	it('skips a stored entry that is not a view and keeps the others', async () => {
+		settingsRepository.findByKey.mockResolvedValue(
+			mock<Settings>({ value: JSON.stringify([view('a'), { id: 1 }, view('b')]) }),
+		);
+
+		await expect(service.list('user-1')).resolves.toEqual([view('a'), view('b')]);
 	});
 
 	describe('upsert', () => {
@@ -171,13 +179,23 @@ describe('UiExtensionViewsService', () => {
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
-		it('writes nothing when the transaction fails', async () => {
-			transactionRunner.run.mockRejectedValue(new Error('db down'));
+		it('rejects when the write fails, and returns no view', async () => {
+			settingsRepository.upsertByKey.mockRejectedValue(new Error('db down'));
 
 			await expect(service.upsert('user-1', { title: 'T', source: 'x' })).rejects.toThrow(
 				'db down',
 			);
-			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).toHaveBeenCalledOnce();
+		});
+
+		it('keeps the existing views when it appends to a list with a broken entry', async () => {
+			settingsRepository.getOrCreateWithWriteLock.mockResolvedValue(
+				mock<Settings>({ value: JSON.stringify([view('a'), { id: 1 }]) }),
+			);
+
+			const { view: created } = await service.upsert('user-1', { title: 'B', source: 'x' });
+
+			expect(writtenViews()).toEqual([view('a'), created]);
 		});
 	});
 });
