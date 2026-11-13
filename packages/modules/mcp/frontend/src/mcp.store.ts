@@ -11,6 +11,7 @@ import {
 	fetchOAuthClients,
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
+	updateOAuthClient,
 	fetchMcpEligibleWorkflows,
 	fetchMcpExposedWorkflows,
 	fetchMcpAgents,
@@ -405,6 +406,25 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return response;
 	}
 
+	/**
+	 * Updates a client's name and description. The registration is shared by
+	 * every consent row of the client, so all cached rows with that id get the
+	 * new values. Returns the given row with the saved values applied.
+	 */
+	async function updateOAuthClientDetails(
+		client: OAuthClientResponseDto,
+		details: { name?: string; description?: string | null },
+	): Promise<OAuthClientResponseDto> {
+		const updated = await updateOAuthClient(rootStore.restApiContext, client.id, details);
+		const applyUpdate = (row: OAuthClientResponseDto): OAuthClientResponseDto =>
+			row.id === updated.id
+				? { ...row, name: updated.name, description: updated.description }
+				: row;
+		oauthClients.value = oauthClients.value.map(applyUpdate);
+		oauthClientsPreview.value = oauthClientsPreview.value.map(applyUpdate);
+		return applyUpdate(client);
+	}
+
 	async function getMcpEligibleWorkflows(options?: {
 		take?: number;
 		skip?: number;
@@ -478,6 +498,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		oauthClientScopeTools,
 		getInstanceClientStats,
 		removeOAuthClient,
+		updateOAuthClientDetails,
 		getMcpEligibleWorkflows,
 		getMcpEligibleAgents,
 		allowedRedirectUris,

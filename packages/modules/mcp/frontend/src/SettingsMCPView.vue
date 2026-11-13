@@ -494,6 +494,7 @@ onBeforeUnmount(() => {
 			v-model:open="detailsOpen"
 			:client="detailsClient"
 			@revoke="requestRevoke"
+			@updated="detailsClient = $event"
 		/>
 
 		<RevokeOAuthClientConfirmModal

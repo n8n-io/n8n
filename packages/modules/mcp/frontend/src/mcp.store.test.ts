@@ -120,6 +120,58 @@ describe('mcp.store', () => {
 		});
 	});
 
+	describe('updateOAuthClientDetails', () => {
+		it('saves the details and applies them to every cached row of the client', async () => {
+			const owner = { id: 'user-1', firstName: 'Jane', lastName: 'Doe', email: 'jane@n8n.io' };
+			const other = { id: 'user-2', firstName: 'John', lastName: 'Doe', email: 'john@n8n.io' };
+			const ownRow = createOAuthClient({ id: 'client-1', owner });
+			const otherRow = createOAuthClient({ id: 'client-1', owner: other });
+			const unrelated = createOAuthClient({ id: 'client-2', name: 'Cursor' });
+			store.oauthClients = [ownRow, otherRow, unrelated];
+			store.oauthClientsPreview = [createOAuthClient({ id: 'client-1' })];
+			const updateSpy = vi.spyOn(mcpApi, 'updateOAuthClient').mockResolvedValue({
+				id: 'client-1',
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+
+			const result = await store.updateOAuthClientDetails(ownRow, {
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+
+			expect(updateSpy).toHaveBeenCalledWith({}, 'client-1', {
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+			expect(result).toEqual({
+				...ownRow,
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+			expect(store.oauthClients.map((row) => [row.name, row.description, row.owner?.id])).toEqual([
+				['Claude (marketing)', 'Used by the marketing team', 'user-1'],
+				['Claude (marketing)', 'Used by the marketing team', 'user-2'],
+				['Cursor', null, undefined],
+			]);
+			expect(store.oauthClientsPreview[0]).toMatchObject({
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+		});
+
+		it('keeps the cached rows when the save fails', async () => {
+			const client = createOAuthClient({ id: 'client-1', name: 'Claude' });
+			store.oauthClients = [client];
+			vi.spyOn(mcpApi, 'updateOAuthClient').mockRejectedValue(new Error('network'));
+
+			await expect(store.updateOAuthClientDetails(client, { name: 'Renamed' })).rejects.toThrow(
+				'network',
+			);
+			expect(store.oauthClients[0].name).toBe('Claude');
+		});
+	});
+
 	describe('fetchOAuthClientsPreview', () => {
 		it("fetches the user's own first clients regardless of the list's ownership and filters", async () => {
 			const client = createOAuthClient();

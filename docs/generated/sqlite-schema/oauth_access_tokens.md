@@ -51,6 +51,7 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   datetime_3_ createdAt
+  TEXT description
   TEXT grantTypes
   varchar id PK
   boolean isFirstParty

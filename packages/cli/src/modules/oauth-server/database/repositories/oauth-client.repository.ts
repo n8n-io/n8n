@@ -50,6 +50,19 @@ export class OAuthClientRepository {
 		await this.table.managerFor(ctx).upsert(OAuthClient, client, ['id']);
 	}
 
+	/** Updates the user-editable details of a registered (non first-party) client. */
+	async updateDetails(
+		id: string,
+		details: Partial<Pick<OAuthClient, 'name' | 'description'>>,
+		ctx: OperationContext,
+	): Promise<OAuthClient | null> {
+		const manager = this.table.managerFor(ctx);
+		if (Object.keys(details).length > 0) {
+			await manager.update(OAuthClient, { id, isFirstParty: false }, details);
+		}
+		return await manager.findOneBy(OAuthClient, { id, isFirstParty: false });
+	}
+
 	async findRegisteredNames(
 		ctx: OperationContext,
 	): Promise<Array<Pick<OAuthClient, 'id' | 'name'>>> {

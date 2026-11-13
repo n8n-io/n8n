@@ -5,9 +5,10 @@ import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import OAuthClientsTable from './OAuthClientsTable.vue';
 import { createOAuthClient } from '../../mcp.test.utils';
 
-const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
+const { mockMcpStore, mockHasScope, mockShowMessage, mockShowError } = vi.hoisted(() => ({
 	mockMcpStore: {
 		openConnectPopover: vi.fn(),
+		updateOAuthClientDetails: vi.fn(),
 		oauthClientsOwnership: 'mine' as 'mine' | 'all',
 		oauthClientTotals: { mine: 0 } as { mine: number; all?: number },
 		oauthClientsPage: 0,
@@ -21,10 +22,16 @@ const { mockMcpStore, mockHasScope } = vi.hoisted(() => ({
 		}>,
 	},
 	mockHasScope: vi.fn().mockReturnValue(false),
+	mockShowMessage: vi.fn(),
+	mockShowError: vi.fn(),
 }));
 
 vi.mock('../../mcp.store', () => ({
 	useMCPStore: () => mockMcpStore,
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: mockShowMessage, showError: mockShowError }),
 }));
 
 vi.mock('@n8n/stores/rbac.store', () => ({
@@ -389,6 +396,125 @@ describe('OAuthClientsTable', () => {
 
 			expect(emitted('revokeClient')).toBeTruthy();
 			expect(emitted('revokeClient')[0]).toEqual([client]);
+		});
+
+		const getModal = () =>
+			document.querySelector('[data-test-id="mcp-client-details-modal"]') as HTMLElement;
+
+		it('should let a manager edit and save the name and description', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: null });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({
+				...client,
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const saveButton = modal.getByTestId('mcp-client-details-save');
+			expect(saveButton).toBeDisabled();
+
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			expect(nameInput).toHaveValue('Claude');
+			await userEvent.clear(nameInput);
+			await userEvent.type(nameInput, '  Claude (marketing) ');
+			await userEvent.type(
+				modal.getByTestId('mcp-client-details-description-input'),
+				'Used by the marketing team',
+			);
+			await userEvent.click(saveButton);
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(client, {
+				name: 'Claude (marketing)',
+				description: 'Used by the marketing team',
+			});
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			await waitFor(() => {
+				expect(getModal()).toHaveTextContent('Claude (marketing)');
+			});
+			expect(modal.getByTestId('mcp-client-details-description-input')).toHaveValue(
+				'Used by the marketing team',
+			);
+		});
+
+		it('should send only the changed fields and clear an emptied description', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude', description: 'Old note' });
+			mockMcpStore.updateOAuthClientDetails.mockResolvedValue({ ...client, description: null });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			await userEvent.clear(modal.getByTestId('mcp-client-details-description-input'));
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(client, {
+				description: null,
+			});
+		});
+
+		it('should not allow saving an empty name', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			await userEvent.clear(modal.getByTestId('mcp-client-details-name-input'));
+
+			expect(modal.getByTestId('mcp-client-details-save')).toBeDisabled();
+		});
+
+		it('should show an error and keep the edits when saving fails', async () => {
+			mockHasScope.mockReturnValue(true);
+			const client = createOAuthClient({ name: 'Claude' });
+			const error = new Error('network');
+			mockMcpStore.updateOAuthClientDetails.mockRejectedValue(error);
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+			const nameInput = modal.getByTestId('mcp-client-details-name-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
+
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+			expect(nameInput).toHaveValue('Claude 2');
+		});
+
+		it('should show the description read-only to users without mcp:manage', async () => {
+			const client = createOAuthClient({ name: 'Claude', description: 'Used by the team' });
+
+			const { getByTestId } = createComponent({
+				props: { clients: [client], loading: false },
+			});
+
+			// The description is shown in the modal only, not in the table.
+			expect(getByTestId('oauth-clients-data-table')).not.toHaveTextContent('Used by the team');
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+			const modal = within(getModal());
+
+			expect(modal.getByTestId('mcp-client-details-description')).toHaveTextContent(
+				'Used by the team',
+			);
+			expect(modal.queryByTestId('mcp-client-details-name-input')).not.toBeInTheDocument();
+			expect(modal.queryByTestId('mcp-client-details-description-input')).not.toBeInTheDocument();
+			expect(modal.queryByTestId('mcp-client-details-save')).not.toBeInTheDocument();
 		});
 	});
 });

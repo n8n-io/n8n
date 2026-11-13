@@ -5,10 +5,21 @@ import {
 	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
 	OAuthClientResponseDto,
+	UpdateOAuthClientDto,
+	UpdateOAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { accountSummary, AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, GlobalScope, Param, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
@@ -49,6 +60,7 @@ export class OAuthClientsController {
 		const clientDtos: OAuthClientResponseDto[] = clients.map((client) => ({
 			id: client.id,
 			name: client.name,
+			description: client.description,
 			redirectUris: client.redirectUris,
 			grantTypes: client.grantTypes,
 			tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
@@ -77,6 +89,23 @@ export class OAuthClientsController {
 	@Get('/instance-stats')
 	async getInstanceStats(): Promise<InstanceMcpClientStatsResponseDto> {
 		return await this.oauthServerService.getInstanceClientStats();
+	}
+
+	/**
+	 * Update the name and description of a connected client. The registration
+	 * is shared by every user connected through it, so this requires `mcp:manage`.
+	 */
+	@GlobalScope('mcp:manage')
+	@Patch('/:clientId')
+	async updateClient(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('clientId') clientId: string,
+		@Body dto: UpdateOAuthClientDto,
+	): Promise<UpdateOAuthClientResponseDto> {
+		this.logger.debug('Updating OAuth client details', { clientId, userId: req.user.id });
+
+		return await this.oauthServerService.updateClientDetails(clientId, dto);
 	}
 
 	/**
