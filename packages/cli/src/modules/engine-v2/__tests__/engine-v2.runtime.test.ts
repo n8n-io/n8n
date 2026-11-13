@@ -5,6 +5,7 @@ import {
 	mintApprovalCallback,
 	mintResumeToken,
 	mintStepBoundResumeToken,
+	type EngineWorkQueues,
 	type ExecutionResponseSender,
 } from '@n8n/engine';
 import type { V1StepExecutorDeps } from '@n8n/node-engine-compatibility';
@@ -219,6 +220,15 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
 			);
+		});
+
+		it.each<[string, EngineWorkQueues | undefined]>([
+			['the work queues it is given', { orchestration: mock(), step: mock() }],
+			['no work queues when it is given none', undefined],
+		])('passes %s to the engine', async (_name, queues) => {
+			await newRuntime().init(senders(), queues);
+
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(expect.objectContaining({ queues }));
 		});
 
 		it('starts the engine', async () => {

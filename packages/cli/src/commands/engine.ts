@@ -9,13 +9,14 @@ import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import type { RedisWorkQueues } from '@/modules/engine-v2/work-queue/redis-work-queues';
 
 import { BaseCommand } from './base-command';
 
 @Command({
 	name: 'engine',
 	description:
-		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis to send execution responses and lifecycle events over.',
+		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues and to send execution responses and lifecycle events over.',
 })
 export class Engine extends BaseCommand {
 	// The data plane has no control plane database. Its own database is the
@@ -32,6 +33,8 @@ export class Engine extends BaseCommand {
 	private runtime?: EngineV2Runtime;
 
 	private channelPublisher?: ExecutionChannelPublisher;
+
+	private workQueues?: RedisWorkQueues;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -66,15 +69,29 @@ export class Engine extends BaseCommand {
 		const { LifecycleEventChannelSender } = await import(
 			'@/modules/engine-v2/execution-channel/lifecycle-event-sender.js'
 		);
-		const publisher = await createRedisExecutionChannelPublisher(logger);
+		const { RedisClientService } = await import('@n8n/backend-services');
+		// The work queues share this connection, so on one Redis node a response arrives before the queue message that follows it.
+		const redisPublisher = Container.get(RedisClientService).createClient({
+			type: 'publisher(n8n)',
+		});
+		const publisher = await createRedisExecutionChannelPublisher(redisPublisher, logger);
 		this.channelPublisher = publisher;
+
+		// In Redis, so that every engine process shares the work.
+		const { createRedisWorkQueues } = await import(
+			'@/modules/engine-v2/work-queue/redis-work-queues.js'
+		);
+		this.workQueues = await createRedisWorkQueues(redisPublisher, logger);
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init({
-			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
-			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
-		});
+		await this.runtime.init(
+			{
+				responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
+				lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
+			},
+			this.workQueues.queues,
+		);
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -128,16 +145,27 @@ export class Engine extends BaseCommand {
 	protected async stopProcess() {
 		this.logger.info('Stopping engine v2 data plane...');
 
-		try {
-			try {
-				await this.runtime?.shutdown();
-			} finally {
-				// After the engine, so a final response still has somewhere to go.
-				await this.channelPublisher?.stop();
-			}
-			await Expression.disposeExpressionEngine();
-		} catch (error) {
-			await this.exitWithCrash('There was an error shutting down the engine.', error);
+		const errors: unknown[] = [];
+		const releaseSteps = [
+			async () => await this.runtime?.shutdown(),
+			// Before the publisher, so a fetch that returns late fails and does not give its message back.
+			async () => this.workQueues?.close(),
+			// After the engine and the queues, so a final response still has somewhere to go.
+			async () => await this.channelPublisher?.stop(),
+			async () => await Expression.disposeExpressionEngine(),
+		];
+
+		for (const release of releaseSteps) {
+			await release().catch((error: unknown) => {
+				errors.push(error);
+			});
+		}
+
+		if (errors.length > 0) {
+			await this.exitWithCrash(
+				'There was an error shutting down the engine.',
+				new AggregateError(errors, 'The engine could not release every resource'),
+			);
 		}
 
 		// No control plane database to close and no crash journal to clear, so
