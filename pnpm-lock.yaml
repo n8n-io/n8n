@@ -7618,6 +7618,9 @@ importers:
       n8n-containers:
         specifier: workspace:*
         version: link:../../../quality/environments/containers
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
