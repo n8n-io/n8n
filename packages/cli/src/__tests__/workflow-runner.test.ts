@@ -16,7 +16,7 @@ import { createExecution } from '@test-integration/db/executions';
 import { createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
-import { DirectedGraph, StorageConfig, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, StorageConfig, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IDataObject,
@@ -34,6 +34,7 @@ import {
 	type StartNodeData,
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
+	type WebhookResponseMode,
 	Workflow,
 	ExecutionError,
 	ObservableObject,
@@ -93,6 +94,13 @@ let runner: WorkflowRunner;
 const globalConfig = Container.get(GlobalConfig);
 setupTestServer({ endpointGroups: [] });
 
+const flushPromises = async () => await new Promise(setImmediate);
+
+type WorkflowRunnerInternals = {
+	runMainProcess: (...args: unknown[]) => Promise<void>;
+	failExecution: (...args: unknown[]) => Promise<void>;
+};
+
 mockInstance(Telemetry);
 
 mockInstance(OwnershipService, {
@@ -111,6 +119,10 @@ afterAll(() => {
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
+	vi.restoreAllMocks();
+	const activeExecutions = Container.get(ActiveExecutions);
+	vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+	vi.spyOn(activeExecutions, 'getStatus').mockReturnValue('new');
 	vi.clearAllMocks();
 	vi.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
@@ -1029,7 +1041,7 @@ describe('run', () => {
 		await runner.run(data, undefined, false, existingExecution);
 
 		// ASSERT
-		expect(addSpy).toHaveBeenCalledWith(data, existingExecution);
+		expect(addSpy).toHaveBeenCalledWith(data, existingExecution, undefined);
 	});
 
 	describe('storedAt', () => {
@@ -1164,7 +1176,7 @@ describe('run', () => {
 			// ASSERT
 			expect(executionId).toBe('1');
 			expect(startSpy).not.toHaveBeenCalled();
-			expect(addSpy).toHaveBeenCalledWith(data, undefined);
+			expect(addSpy).toHaveBeenCalledWith(data, undefined, undefined);
 		});
 	});
 
@@ -1289,9 +1301,258 @@ describe('run', () => {
 		});
 	});
 
-	describe('startup failure', () => {
-		it('rejects on startup errors', async () => {
-			const error = new Error('boom');
+	describe('webhook response modes', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ActiveExecutions), 'has').mockReturnValue(true);
+		});
+		const buildWebhookRunData = () =>
+			mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'webhook',
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Webhook workflow',
+					nodes: [],
+					connections: {},
+					active: true,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					settings: undefined,
+				},
+				executionData: undefined,
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+
+		const mockRunnerStartDeps = () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			vi.spyOn(activeExecutions, 'getPostExecutePromise').mockResolvedValue(undefined);
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValue();
+
+			return { activeExecutions };
+		};
+
+		it('returns immediately for onReceived before activation completes', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockReturnValue(new Promise<void>(() => {}));
+			const permissionCheckSpy = vi.spyOn(Container.get(CredentialsPermissionChecker), 'check');
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+
+			expect(activeExecutions.add).toHaveBeenCalledWith(data, undefined, 'onReceived');
+			expect(permissionCheckSpy).not.toHaveBeenCalled();
+		});
+
+		it('starts an onReceived execution after activation completes', async () => {
+			mockRunnerStartDeps();
+			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+			const runMainProcessSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+			await flushPromises();
+
+			expect(runMainProcessSpy).toHaveBeenCalledTimes(1);
+		});
+		it('fails an onReceived execution when background activation rejects', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			const activationError = new Error('set running failed');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockRejectedValue(activationError);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'onReceived'),
+			).resolves.toBe('execution-id');
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				activationError,
+				undefined,
+			);
+		});
+
+		it.each<WebhookResponseMode>(['responseNode', 'lastNode', 'formPage'])(
+			'keeps %s execution startup synchronous',
+			async (responseMode) => {
+				mockRunnerStartDeps();
+				let resolveRunMainProcess: () => void;
+				const runMainProcessPromise = new Promise<void>((resolve) => {
+					resolveRunMainProcess = resolve;
+				});
+				const runMainProcessSpy = vi
+					.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
+					.mockReturnValue(runMainProcessPromise);
+
+				const runPromise = runner.run(
+					buildWebhookRunData(),
+					false,
+					false,
+					undefined,
+					undefined,
+					responseMode,
+				);
+
+				await flushPromises();
+				let didResolve = false;
+				void runPromise.then(() => {
+					didResolve = true;
+				});
+				await flushPromises();
+
+				expect(didResolve).toBe(false);
+				expect(runMainProcessSpy).toHaveBeenCalledTimes(1);
+
+				resolveRunMainProcess!();
+
+				await expect(runPromise).resolves.toBe('execution-id');
+			},
+		);
+
+		it('fails the execution when credentials validation fails after activation', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			const error = new Error('credentials denied');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValue(error);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			await expect(runner.run(data, false, false, undefined, undefined, 'lastNode')).resolves.toBe(
+				'execution-id',
+			);
+
+			await flushPromises();
+
+			expect(failExecutionSpy).toHaveBeenCalledWith(
+				data,
+				'execution-id',
+				error,
+				undefined,
+				undefined,
+			);
+		});
+
+		it('fails the execution when workflow startup throws', async () => {
+			mockRunnerStartDeps();
+			const error = new Error('start failed');
+			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess').mockRejectedValue(
+				error,
+			);
+			const failExecutionSpy = vi
+				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
+				.mockResolvedValue();
+			const data = buildWebhookRunData();
+
+			// lastNode is synchronous: startup errors propagate so executeWebhook
+			// can respond with an error response. See webhook-helpers.ts:1634.
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'lastNode'),
+			).rejects.toThrow(error);
+
+			expect(failExecutionSpy).not.toHaveBeenCalled();
+		});
+
+		it('clears streaming heartbeat on execution/startup failures', async () => {
+			mockRunnerStartDeps();
+			const error = new Error('startup failed');
+			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess').mockRejectedValue(
+				error,
+			);
+
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+
+			const mockResponse = mock<Response>({
+				writableEnded: false,
+			});
+			const data = {
+				...buildWebhookRunData(),
+				streamingEnabled: true,
+				httpResponse: mockResponse,
+			};
+
+			await expect(
+				runner.run(data, false, false, undefined, undefined, 'lastNode'),
+			).rejects.toThrow(error);
+
+			expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+			expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+			setIntervalSpy.mockRestore();
+			clearIntervalSpy.mockRestore();
+		});
+
+		it('does not set an already activated onReceived execution running a second time', async () => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'getStatus').mockReturnValue('running');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+			const setRunningSpy = vi.spyOn(Container.get(ExecutionRepository), 'setRunning');
+			setRunningSpy.mockClear();
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(
+				mock<core.ExecutionLifecycleHooks>(),
+			);
+			vi.spyOn(Container.get(ManualExecutionService), 'runManually').mockReturnValue(
+				new PCancelable(() => mock<IRun>()),
+			);
+
+			// Use a plain object for workflowData to avoid ObservableObject mutation conflicts
+			const plainWorkflowData: IWorkflowBase = {
+				id: 'workflow-id',
+				name: 'Webhook workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				settings: {},
+			};
+
+			const data = {
+				...buildWebhookRunData(),
+				workflowData: plainWorkflowData,
+			};
+
+			await (runner as unknown as WorkflowRunnerInternals).runMainProcess(
+				'execution-id',
+				data,
+				undefined,
+				undefined,
+				undefined,
+				true,
+			);
+
+			expect(setRunningSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
@@ -1312,9 +1573,13 @@ describe('run', () => {
 				destinationNode: undefined,
 				userId: 'mock-user-id',
 			});
+			return { data, processError };
+		}
 
+		it('rejects when execution startup fails', async () => {
+			const error = new Error('boom');
+			const { data, processError } = arrangeFailingRunDeps(error);
 			await expect(runner.run(data)).rejects.toThrowError(error);
-
 			expect(processError).toHaveBeenCalled();
 		});
 	});

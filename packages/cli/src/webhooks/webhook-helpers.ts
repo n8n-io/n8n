@@ -64,6 +64,7 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import {
 	ResponseError,
 	BadRequestError,
@@ -530,6 +531,20 @@ export function setupResponseNodePromise(
 				`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 				{ executionId, workflowId: workflow.id },
 			);
+
+			// Admission limit reached (HTTP 429).
+			// Note: this branch is unreachable when responseMode === 'onReceived' because
+			// setupResponseNodePromise() is only wired up for responseMode === 'responseNode'.
+			// It is kept here as defensive belt-and-suspenders protection in case the
+			// call-site changes in the future.
+			if (error instanceof AdmissionLimitError) {
+				responder.respondWith({
+					data: { message: error.message },
+					responseCode: 429,
+				});
+				return;
+			}
+
 			responder.respondWithError(error);
 		});
 }
@@ -1362,6 +1377,7 @@ export async function executeWebhook(
 					}
 				: undefined,
 			responsePromise,
+			responseMode,
 		);
 
 		/**
@@ -1624,6 +1640,15 @@ export async function executeWebhook(
 		}
 
 		const error = ensureError(e);
+		if (error instanceof AdmissionLimitError) {
+			if (!responder.hasResponded) {
+				responder.respondWith({
+					data: { message: error.message },
+					responseCode: 429,
+				});
+			}
+			return;
+		}
 		let responseError: Error;
 		if (error instanceof ResponseError && error.httpStatusCode < 500) {
 			responseError = error;

@@ -2589,6 +2589,29 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 
+		test('queue removal during shutdown aborts the run instead of completing it', async () => {
+			setupHappyPathMocks(2);
+			// `removeAll()` on shutdown rejects queued throttles while no user Stop
+			// landed, so the abort signal is still live.
+			concurrencyControlService.throttle.mockImplementation(async () => {
+				throw new ManualExecutionCancelledError('test-run-id-case-0');
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			// The cancellation transaction settles the run and its cases; it is
+			// never reported as completed.
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testCaseExecutionRepository.markAllPendingAsCancelled).toHaveBeenCalledWith(
+				'test-run-id',
+				expect.objectContaining(TRX_CTX),
+			);
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
+		});
+
 		test('multi-main DB cancel flag flipped mid-run aborts the controller', async () => {
 			const multiMainInstance = mock<InstanceSettings>({
 				hostId: 'main-a',

@@ -864,17 +864,29 @@ export class TestRunnerService {
 							});
 							const acquireRace = this.concurrencyControlService
 								.throttle({ mode: 'evaluation', executionId: caseTrackingId })
-								.then(() => {
-									throttleAcquired = true;
-									return 'acquired' as const;
-								});
+								.then(
+									() => {
+										throttleAcquired = true;
+										return 'acquired' as const;
+									},
+									(error: unknown) => {
+										if (error instanceof ManualExecutionCancelledError) return 'cancelled' as const;
+										this.logger.warn(
+											'Failed to acquire evaluation concurrency slot for test case',
+											{
+												workflowId,
+												testRunId: testRun.id,
+												error,
+											},
+										);
+										throw error;
+									},
+								);
 							const acquired = await Promise.race([acquireRace, abortRace]);
 
-							if (acquired === 'aborted') {
-								// Abort won the race. If throttle was already acquired (queue had
-								// immediate capacity, microtask beat abort), release the slot;
-								// otherwise remove() the possibly-queued entry (no-op if not
-								// queued). Both defensive against scheduler ordering quirks.
+							if (acquired !== 'acquired') {
+								// Abort or queue removal won the race. Release a slot that was
+								// granted before abort; otherwise remove the queued entry.
 								if (throttleAcquired) {
 									this.concurrencyControlService.release({ mode: 'evaluation' });
 								} else {
@@ -882,6 +894,14 @@ export class TestRunnerService {
 										mode: 'evaluation',
 										executionId: caseTrackingId,
 									});
+								}
+								// A user Stop aborts our signal first, so `'cancelled'` with the
+								// signal still live is an external eviction (shutdown's
+								// `removeAll`). Abort the run so the cancellation transaction
+								// settles this already-running case instead of leaving it stuck
+								// and completing the run.
+								if (acquired === 'cancelled' && !abortSignal.aborted) {
+									abortController.abort();
 								}
 								return [];
 							}
