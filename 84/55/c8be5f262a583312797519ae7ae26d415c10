@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_d3c8c5921f746f::t_5d9de7b9374838 4,26-37,40,42,53,61-63,74,81
+  s_d3c8c5921f746f::t_b7a8cc5b14285d 13-14
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-server.test.ts
+  s_d3c8c5921f746f::t_d40ef3f1f599f7 480-483,495-500
+  s_d3c8c5921f746f::t_560c602469a1c8 449-452,467,470,473-479
+  s_d3c8c5921f746f::t_43f76d5f9caadb 484-494
+  s_d3c8c5921f746f::t_718b7f535ea689 453-466,468-469,471-472
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_d3c8c5921f746f::t_c4fa8d2f38dd46 34
+packages/@n8n/instance-ai/evaluations/__tests__/helpers/fixture-navigation.ts
+  s_d3c8c5921f746f::t_c1d77f2afcbedb 3-6
+  s_d3c8c5921f746f::t_e4ee8836902602 15-16
+  s_d3c8c5921f746f::t_1753f07d7f5a87 17-25
+packages/@n8n/instance-ai/evaluations/__tests__/fixture-navigation.test.ts
+  s_d3c8c5921f746f::t_c1d77f2afcbedb 31-32,40-42,44-45
+  s_d3c8c5921f746f::t_8cce49b454386b 43,50-62
+  s_d3c8c5921f746f::t_b0ddaf4c5cb790 9,17,22-30,33-39,46-49,63-64,74,83
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_d3c8c5921f746f::t_6801cce9222710 15-18,99-106
+  s_d3c8c5921f746f::t_20b9a7f9ac8b66 21,36-45,47-49,86,93,95-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8455c8be5f262a583312797519ae7ae26d415c10",
+  "prompts": {},
+  "sessions": {
+    "s_d3c8c5921f746f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91b7-71db-8f42-c7dd33ef98b8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

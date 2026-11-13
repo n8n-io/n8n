@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentToolCallRouteRow.vue
+  s_47b1af41b47c86::t_786085611cf209 6-7,66-71,93,132
+packages/frontend/@n8n/design-system/src/index.ts
+  s_47b1af41b47c86::t_77b507389c9610 3-8
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolCallRouteList.test.ts
+  s_47b1af41b47c86::t_cfc70cadd8cad1 255-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ba3141f406e15af8947aacbb83e61205a65f524",
+  "prompts": {},
+  "sessions": {
+    "s_47b1af41b47c86": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91c4-739b-9f85-5816f2162d35",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
