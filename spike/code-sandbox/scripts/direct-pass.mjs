@@ -9,6 +9,7 @@
  *   node direct-pass.mjs claims      --out DIR --pool-size 8 [--seq 200]
  *   node direct-pass.mjs claim-burst --out DIR --pool-size 8 [--rounds 13]
  *   node direct-pass.mjs refill      --out DIR --pool-size 8 [--rounds 10] [--label c2]
+ *   node direct-pass.mjs names       --out DIR [--seq 50] [--rounds 10]
  *
  * refill: claims the full pool at once, then polls the pool count every 25 ms
  * until the pool is full again. One record per round with the time of each
@@ -310,6 +311,59 @@ switch (step) {
 			});
 			await Promise.all(ids.map(async (id) => await del(id).catch(() => {})));
 		}
+		break;
+	}
+	case 'names': {
+		// Create by name: a new name (create or claim), a repeated create of the
+		// name (name hit), N concurrent creates of a new name, a task on a
+		// draining sandbox (410), and the delete by name.
+		const n = Number(args.seq ?? 50);
+		for (let i = 0; i < n; i++) {
+			const name = `bench-${process.pid}-${i}`;
+			const first = await create({ ...poolOptions, name });
+			const hit = await create({ ...poolOptions, name });
+			const t0 = performance.now();
+			await json('DELETE', `/v1/code/sandboxes/names/${name}`);
+			const delMs = performance.now() - t0;
+			record({
+				kind: 'seq',
+				ok: hit.sb.id === first.sb.id && hit.sb.created === false,
+				createMs: first.ms,
+				pooled: first.sb.pooled === true,
+				hitMs: hit.ms,
+				delMs,
+			});
+			await sleep(200);
+		}
+		for (let r = 0; r < Number(args.rounds ?? 10); r++) {
+			const name = `bench-${process.pid}-c${r}`;
+			const results = await Promise.all(
+				Array.from({ length: 10 }, async () => await create({ ...poolOptions, name })),
+			);
+			const ids = new Set(results.map((x) => x.sb.id));
+			record({
+				kind: 'concurrent10',
+				round: r,
+				ok: ids.size === 1 && results.filter((x) => x.sb.created).length === 1,
+				ms: results.map((x) => Math.round(x.ms)),
+			});
+			await json('DELETE', `/v1/code/sandboxes/names/${name}`);
+			await sleep(1000);
+		}
+		// Max age: the sandbox drains, a task gets 410, the name moves.
+		const name = `bench-${process.pid}-age`;
+		const aged = await create({ ...poolOptions, name, maxAgeMs: 1000 });
+		await runTask(aged.sb.id, 'return [{json: {a: 1}}]');
+		await sleep(1500);
+		let status = 0;
+		try {
+			await runTask(aged.sb.id, 'return []');
+		} catch (e) {
+			status = Number(/task: (\d+)/.exec(String(e.message))?.[1] ?? -1);
+		}
+		const moved = await create({ ...poolOptions, name, maxAgeMs: 1000 });
+		record({ kind: 'max-age', ok: status === 410 && moved.sb.id !== aged.sb.id, status });
+		await json('DELETE', `/v1/code/sandboxes/names/${name}`);
 		break;
 	}
 	default:
