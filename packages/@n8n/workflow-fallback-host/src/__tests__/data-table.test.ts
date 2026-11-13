@@ -2,10 +2,11 @@
  * The Data Table node in the fallback host, with tables in JSON files
  * (`data-table.ts`): the node's own code reads and writes them.
  */
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { fileDataTableProvider } from '../data-table';
 import { NodeStepRunner } from '../node-step';
 
 const dir = mkdtempSync(join(tmpdir(), 'wf-data-tables-'));
@@ -111,5 +112,30 @@ describe('the Data Table node with file tables', () => {
 		expect(out[0]).toMatchObject({ id: 3, name: 'Cy', city: 'Rome' });
 		const stored = JSON.parse(readFileSync(join(dir, 'dt1.json'), 'utf8'));
 		expect(stored.rows).toHaveLength(3);
+	});
+});
+
+describe('fileDataTableProvider list', () => {
+	it("gives a listed table the project keys of n8n's list query", async () => {
+		const own = mkdtempSync(join(tmpdir(), 'wf-data-tables-list-'));
+		const provider = fileDataTableProvider(own);
+		if (!provider) throw new Error('no provider');
+		const aggregate = await provider.getDataTableAggregateProxy(
+			// The file provider reads neither the workflow nor the node.
+			{} as Parameters<typeof provider.getDataTableAggregateProxy>[0],
+			{} as Parameters<typeof provider.getDataTableAggregateProxy>[1],
+		);
+		await aggregate.createDataTable({ name: 'ledger', columns: [{ name: 'a', type: 'string' }] });
+		const { data } = await aggregate.getManyAndCount({ filter: { name: 'ledger' } });
+		expect(Object.keys(data[0]).sort()).toEqual([
+			'columns',
+			'createdAt',
+			'id',
+			'name',
+			'project',
+			'projectId',
+			'updatedAt',
+		]);
+		rmSync(own, { recursive: true, force: true });
 	});
 });

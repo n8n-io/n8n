@@ -389,7 +389,12 @@ function aggregateService(dir: string): IDataTableProjectAggregateService {
 			const data = all()
 				.filter((t) => !names || names.some((n) => t.name.toLowerCase().includes(n)))
 				.filter((t) => !ids || ids.includes(t.id))
-				.map(asTable);
+				// n8n's list query joins the project (`id`, `name`, `type`, `icon`); "create if not
+				// exists" returns that row, so the keys must match.
+				.map((t) => ({
+					...asTable(t),
+					project: { id: 'fallback-host', name: 'fallback-host', type: 'team', icon: null },
+				}));
 			const skip = options.skip ?? 0;
 			const page =
 				options.take === undefined ? data.slice(skip) : data.slice(skip, skip + options.take);
