@@ -6,8 +6,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export class OpenWeatherMap implements INodeType {
 	description: INodeTypeDescription = {
@@ -266,10 +267,10 @@ export class OpenWeatherMap implements INodeType {
 
 				let responseData;
 				try {
-					const options: IHttpRequestOptions = {
+					const options: WithRequestTarget<IHttpRequestOptions> = {
 						method: 'GET',
 						qs,
-						url: `${baseUrl}/data/2.5/${endpoint}`,
+						url: requestUrl`${baseUrl}/data/2.5/${endpoint}`,
 						json: true,
 					};
 					responseData = await this.helpers.httpRequestWithAuthentication.call(

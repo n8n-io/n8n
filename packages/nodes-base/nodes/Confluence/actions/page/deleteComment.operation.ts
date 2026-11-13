@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceOperation } from '../router';
@@ -41,7 +41,7 @@ export const execute: ConfluenceOperation = async function (
 		await confluenceApiRequest.call(
 			this,
 			'DELETE',
-			`/wiki/api/v2/footer-comments/${encodeURIComponent(commentId)}`,
+			requestPath`/wiki/api/v2/footer-comments/${commentId}`,
 		);
 	} catch (error) {
 		// Atlassian masks permission failures on this endpoint as 404

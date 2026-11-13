@@ -5747,6 +5747,138 @@ describe('OauthService', () => {
 					expect.any(Number),
 				);
 			});
+
+			describe('client registration telemetry', () => {
+				const baseMetadata = {
+					issuer: 'https://mcp.example.com/mcp',
+					authorization_endpoint: 'https://auth.example.com/oauth2/auth',
+					token_endpoint: 'https://auth.example.com/oauth2/token',
+					grant_types_supported: ['authorization_code'],
+					token_endpoint_auth_methods_supported: ['none'],
+					code_challenge_methods_supported: ['S256'],
+				};
+
+				const mockMetadata = (metadata: Record<string, unknown> | undefined) => {
+					vi.mocked(httpClientMock.get).mockImplementation(async (url: string) => {
+						if (metadata && url.includes('oauth-authorization-server')) return { data: metadata };
+						throw new Error('not found');
+					});
+					vi.mocked(httpClientMock.post).mockResolvedValue({
+						data: { client_id: 'registered-client-id' },
+					});
+				};
+
+				const generate = async () =>
+					await service.generateAOauth2AuthUri(credential, {
+						cid: credential.id,
+						origin: 'static-credential',
+						userId: 'user-id',
+					});
+
+				beforeEach(async () => {
+					const pkceChallenge = await import('pkce-challenge');
+					vi.mocked(pkceChallenge.default).mockResolvedValue({
+						code_verifier: 'code_verifier',
+						code_challenge: 'code_challenge',
+					});
+					vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
+						oauthCredentials: makeDcrCredentials(),
+					});
+				});
+
+				it('should report a DCR registration', async () => {
+					mockMetadata({
+						...baseMetadata,
+						registration_endpoint: 'https://auth.example.com/oauth2/register',
+					});
+
+					await generate();
+
+					expect(eventService.emit).toHaveBeenCalledWith('oauth-client-registered', {
+						userId: 'user-id',
+						credentialId: '1',
+						credentialType: 'mcpOAuth2Api',
+						method: 'dcr',
+						success: true,
+						cimdEnabled: false,
+						serverSupportsCimd: false,
+						serverSupportsDcr: true,
+					});
+				});
+
+				it('should report a CIMD registration', async () => {
+					globalConfig.auth.oauthCimdEnabled = true;
+					urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+					mockMetadata({ ...baseMetadata, client_id_metadata_document_supported: true });
+
+					await generate();
+
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+					expect(eventService.emit).toHaveBeenCalledWith(
+						'oauth-client-registered',
+						expect.objectContaining({
+							method: 'cimd',
+							success: true,
+							cimdEnabled: true,
+							serverSupportsCimd: true,
+							serverSupportsDcr: false,
+						}),
+					);
+				});
+
+				it('should report a failure when the server supports neither CIMD nor DCR', async () => {
+					mockMetadata(baseMetadata);
+
+					await expect(generate()).rejects.toThrow(
+						'does not support automatic client registration',
+					);
+
+					expect(eventService.emit).toHaveBeenCalledWith(
+						'oauth-client-registered',
+						expect.objectContaining({
+							method: 'none_available',
+							success: false,
+							serverSupportsCimd: false,
+							serverSupportsDcr: false,
+						}),
+					);
+				});
+
+				it('should report a failure without a method when metadata discovery fails', async () => {
+					mockMetadata(undefined);
+
+					await expect(generate()).rejects.toThrow(
+						'Failed to discover OAuth2 authorization server metadata',
+					);
+
+					expect(eventService.emit).toHaveBeenCalledWith('oauth-client-registered', {
+						userId: 'user-id',
+						credentialId: '1',
+						credentialType: 'mcpOAuth2Api',
+						success: false,
+						cimdEnabled: false,
+					});
+				});
+
+				it('should not report when the credential does not use automatic registration', async () => {
+					vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
+						oauthCredentials: makeDcrCredentials({
+							clientId: 'client-id',
+							authUrl: 'https://auth.example.com/oauth2/auth',
+							accessTokenUrl: 'https://auth.example.com/oauth2/token',
+							useDynamicClientRegistration: false,
+						}),
+					});
+					mockMetadata(undefined);
+
+					await generate();
+
+					expect(eventService.emit).not.toHaveBeenCalledWith(
+						'oauth-client-registered',
+						expect.anything(),
+					);
+				});
+			});
 		});
 
 		describe('scope discovery from protected-resource metadata', () => {

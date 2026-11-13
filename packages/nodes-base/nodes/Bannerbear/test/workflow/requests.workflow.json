@@ -1,0 +1,155 @@
+{
+	"name": "Bannerbear Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "create",
+				"templateId": "A89wavQyY3Bebk3djP",
+				"additionalFields": {
+					"waitForImage": true,
+					"waitForImageMaxTries": 2
+				},
+				"modificationsUi": {}
+			},
+			"id": "node-0",
+			"name": "Image Create",
+			"type": "n8n-nodes-base.bannerbear",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"credentials": {
+				"bannerbearApi": {
+					"id": "1",
+					"name": "Bannerbear account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "image",
+				"operation": "get",
+				"imageId": "kG39R5XbvPQpLENKBW"
+			},
+			"id": "node-1",
+			"name": "Image Get",
+			"type": "n8n-nodes-base.bannerbear",
+			"typeVersion": 1,
+			"position": [400, 150],
+			"credentials": {
+				"bannerbearApi": {
+					"id": "1",
+					"name": "Bannerbear account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "get",
+				"templateId": "A89wavQyY3Bebk3djP"
+			},
+			"id": "node-2",
+			"name": "Template Get",
+			"type": "n8n-nodes-base.bannerbear",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"credentials": {
+				"bannerbearApi": {
+					"id": "1",
+					"name": "Bannerbear account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "getAll"
+			},
+			"id": "node-3",
+			"name": "Template Get Many",
+			"type": "n8n-nodes-base.bannerbear",
+			"typeVersion": 1,
+			"position": [400, 450],
+			"credentials": {
+				"bannerbearApi": {
+					"id": "1",
+					"name": "Bannerbear account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Image Create": [
+			{
+				"json": {
+					"uid": "kG39R5XbvPQpLENKBW",
+					"status": "completed"
+				}
+			}
+		],
+		"Image Get": [
+			{
+				"json": {
+					"uid": "kG39R5XbvPQpLENKBW",
+					"status": "completed"
+				}
+			}
+		],
+		"Template Get": [
+			{
+				"json": {
+					"uid": "A89wavQyY3Bebk3djP",
+					"name": "Promo banner"
+				}
+			}
+		],
+		"Template Get Many": [
+			{
+				"json": {
+					"uid": "A89wavQyY3Bebk3djP",
+					"name": "Promo banner"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Image Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Image Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Template Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Template Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

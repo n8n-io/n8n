@@ -106,7 +106,11 @@ describe('Harvest Node', () => {
 
 			const result = await harvest.execute.call(mockExecuteFunctions);
 
-			expect(mockHarvestApiRequest).toHaveBeenCalledWith('GET', {}, 'users/42');
+			expect(mockHarvestApiRequest).toHaveBeenCalledWith(
+				'GET',
+				{},
+				expect.objectContaining({ value: 'users/42' }),
+			);
 			expect(result).toEqual([[{ json: mockUser, pairedItem: { item: 0 } }]]);
 		});
 	});

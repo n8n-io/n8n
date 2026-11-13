@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,7 +20,7 @@ vi.mock('../../GenericFunctions', async () => ({
 const mockApiRequest = vi.mocked(genericFunctions.microsoftApiRequest);
 const mockApiRequestAllItems = vi.mocked(genericFunctions.microsoftApiRequestAllItems);
 
-const USER_ROOT = '/users/jane%40contoso.com';
+const USER_ROOT = requestPath`/users/jane@contoso.com`;
 
 describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
@@ -78,7 +78,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'DELETE',
-				'/drive/items/item-1',
+				requestPath`/items/item-1`,
 				{},
 				{},
 				undefined,
@@ -89,12 +89,12 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		},
 	);
 
-	it('file:copy encodes the path-interpolated item id (.. is escaped) and threads the root', async () => {
+	it('file:copy encodes the path-interpolated item id and threads the root', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(
 			params({
 				resource: 'file',
 				operation: 'copy',
-				fileId: '../secret',
+				fileId: 'a/secret',
 				additionalFields: {},
 				// explicit destination driveId so no resolution GET is needed
 				parentReference: { id: 'dest', driveId: 'b!explicit' },
@@ -106,7 +106,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/items/..%2Fsecret/copy',
+			requestPath`/items/a%2Fsecret/copy`,
 			expect.objectContaining({
 				parentReference: expect.objectContaining({ driveId: 'b!explicit' }),
 			}),
@@ -127,7 +127,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/items/item-1',
+			requestPath`/items/item-1`,
 			{ name: 'new.txt' },
 			{},
 			undefined,
@@ -146,7 +146,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/items/item-1',
+			requestPath`/items/item-1`,
 			{},
 			{},
 			undefined,
@@ -171,7 +171,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/items/item-1/createLink',
+			requestPath`/items/item-1/createLink`,
 			{ type: 'view', scope: 'anonymous' },
 			{},
 			undefined,
@@ -190,7 +190,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/root/children',
+			requestPath`/root/children`,
 			{ name: 'NewFolder', folder: {} },
 			{},
 			undefined,
@@ -210,7 +210,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		expect(mockApiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/drive/items/folder-1/children',
+			requestPath`/items/folder-1/children`,
 			{},
 			{},
 			USER_ROOT,
@@ -228,7 +228,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		);
 		mockExecuteFunctions.helpers.prepareBinaryData = vi.fn(async () => ({ data: 'bin' })) as never;
 		mockApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/drive/items/item-1') {
+			if (String(resource) === '/items/item-1') {
 				return { name: 'f.png', file: { mimeType: 'image/png' } };
 			}
 			// content path
@@ -240,7 +240,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		// item metadata GET scoped under the user root
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/items/item-1',
+			requestPath`/items/item-1`,
 			{},
 			{},
 			undefined,
@@ -251,7 +251,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 		// content GET also scoped under the same root
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/items/item-1/content',
+			requestPath`/items/item-1/content`,
 			{},
 			{},
 			undefined,
@@ -295,7 +295,7 @@ describe('Test MicrosoftOneDrive, per-op Service Principal scope threading', () 
 
 		expect(mockApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parent-1:/report.txt:/content',
+			requestPath`/items/parent-1:/report.txt:/content`,
 			'hello',
 			{},
 			undefined,

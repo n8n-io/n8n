@@ -22,6 +22,11 @@ import type {
 } from '../../v2/helpers/interfaces';
 import * as utils from '../../v2/helpers/utils';
 
+const { yieldToEventLoop } = vi.hoisted(() => ({ yieldToEventLoop: vi.fn(async () => {}) }));
+vi.mock('@n8n/utils/promise/create-event-loop-yielder', () => ({
+	createEventLoopYielder: () => yieldToEventLoop,
+}));
+
 const runQueries: QueriesRunner = vi.fn().mockResolvedValue([]);
 
 const node: INode = {
@@ -2506,5 +2511,56 @@ describe('When matching on all columns', () => {
 			],
 			nodeOptions,
 		);
+	});
+});
+
+describe('Test PostgresV2, yield to the event loop', () => {
+	const threeItems = [{ json: {} }, { json: {} }, { json: {} }];
+	const columnsInfo: ColumnInfo[] = [
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO', udt_name: '' },
+		{ column_name: 'foo', data_type: 'text', is_nullable: 'NO', udt_name: '' },
+	];
+	const writeParameters: IDataObject = {
+		schema: { __rl: true, mode: 'list', value: 'public' },
+		table: { __rl: true, mode: 'list', value: 'my_table' },
+		dataMode: 'defineBelow',
+		columnToMatchOn: 'id',
+		valueToMatchOn: '1',
+		valuesToSend: { values: [{ column: 'foo', value: 'bar' }] },
+		options: { nodeVersion: 2.1 },
+	};
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('executeQuery yields once for each item', async () => {
+		const nodeParameters: IDataObject = { query: 'select 1;', options: {} };
+
+		await executeQuery.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			threeItems,
+			{},
+		);
+
+		expect(yieldToEventLoop).toHaveBeenCalledTimes(threeItems.length);
+	});
+
+	it.each([
+		['insert', insert.execute],
+		['update', update.execute],
+		['upsert', upsert.execute],
+	])('%s yields once for each item', async (_operation, execute) => {
+		await execute.call(
+			createMockExecuteFunction(writeParameters),
+			runQueries,
+			threeItems,
+			writeParameters.options as IDataObject,
+			createMockDb(columnsInfo),
+			pgPromise(),
+		);
+
+		expect(yieldToEventLoop).toHaveBeenCalledTimes(threeItems.length);
 	});
 });

@@ -2,6 +2,7 @@ export * from './license-state';
 export type * from './types';
 
 export { inDevelopment, inProduction, inTest, isEnvFeatureEnabled } from './environment';
+export { getN8nVersion, setN8nVersion } from './n8n-version';
 export { isObjectLiteral } from './utils/is-object-literal';
 export { Logger } from './logging/logger';
 export { ModuleRegistry } from './modules/module-registry';

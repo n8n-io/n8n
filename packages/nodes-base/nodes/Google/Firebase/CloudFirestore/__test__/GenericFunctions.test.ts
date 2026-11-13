@@ -1,9 +1,10 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 import {
+	documentsPath,
 	googleApiRequest,
 	jsonToDocument,
 	documentToJson,
@@ -64,7 +65,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const result = await googleApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/databases/test/documents/users',
+					requestPath`/databases/test/documents/users`,
 				);
 
 				expect(result).toEqual(mockResponse);
@@ -72,7 +73,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 					'googleFirebaseCloudFirestoreOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://firestore.googleapis.com/v1/projects/databases/test/documents/users',
+						uri: requestUrl`https://firestore.googleapis.com/v1/projects/databases/test/documents/users`,
 						headers: {
 							'Content-Type': 'application/json',
 						},
@@ -89,7 +90,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const mockResponse = { success: true };
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				await googleApiRequest.call(mockExecuteFunctions, 'GET', '/test', {});
+				await googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`, {});
 
 				expect(mockRequestWithAuth).toHaveBeenCalledWith(
 					'googleFirebaseCloudFirestoreOAuth2Api',
@@ -102,7 +103,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const requestBody = { name: 'Test', value: 'data' };
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				await googleApiRequest.call(mockExecuteFunctions, 'POST', '/test', requestBody);
+				await googleApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/test`, requestBody);
 
 				expect(mockRequestWithAuth).toHaveBeenCalledWith(
 					'googleFirebaseCloudFirestoreOAuth2Api',
@@ -118,7 +119,13 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const queryParams = { pageSize: 100, orderBy: 'name' };
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				await googleApiRequest.call(mockExecuteFunctions, 'GET', '/test', {}, queryParams);
+				await googleApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test`,
+					{},
+					queryParams,
+				);
 
 				expect(mockRequestWithAuth).toHaveBeenCalledWith(
 					'googleFirebaseCloudFirestoreOAuth2Api',
@@ -130,10 +137,17 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 
 			it('should use custom URI when provided', async () => {
 				const mockResponse = { success: true };
-				const customUri = 'https://custom.googleapis.com/v1/test';
+				const customUri = requestUrl`https://custom.googleapis.com/v1/test`;
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				await googleApiRequest.call(mockExecuteFunctions, 'GET', '/test', {}, {}, customUri);
+				await googleApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test`,
+					{},
+					{},
+					customUri,
+				);
 
 				expect(mockRequestWithAuth).toHaveBeenCalledWith(
 					'googleFirebaseCloudFirestoreOAuth2Api',
@@ -164,7 +178,7 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				mockGetGoogleAccessToken.mockResolvedValue({ access_token: mockAccessToken });
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				const result = await googleApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+				const result = await googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 
 				expect(result).toEqual(mockResponse);
 				expect(mockGetGoogleAccessToken).toHaveBeenCalledWith(
@@ -189,18 +203,18 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const credentialError = new Error('Invalid service account');
 				mockExecuteFunctions.getCredentials.mockRejectedValue(credentialError);
 
-				await expect(googleApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-					NodeApiError,
-				);
+				await expect(
+					googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+				).rejects.toThrow(NodeApiError);
 			});
 
 			it('should handle access token errors', async () => {
 				const tokenError = new Error('Failed to get access token');
 				mockGetGoogleAccessToken.mockRejectedValue(tokenError);
 
-				await expect(googleApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-					NodeApiError,
-				);
+				await expect(
+					googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+				).rejects.toThrow(NodeApiError);
 			});
 		});
 
@@ -213,9 +227,9 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const apiError = new Error('API request failed');
 				mockRequestWithAuth.mockRejectedValue(apiError);
 
-				await expect(googleApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-					NodeApiError,
-				);
+				await expect(
+					googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+				).rejects.toThrow(NodeApiError);
 
 				expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
 			});
@@ -224,10 +238,42 @@ describe('GoogleFirebaseCloudFirestore > GenericFunctions', () => {
 				const mockResponse = { options: ['option1', 'option2'] };
 				mockRequestWithAuth.mockResolvedValue(mockResponse);
 
-				const result = await googleApiRequest.call(mockLoadOptionsFunctions, 'GET', '/options');
+				const result = await googleApiRequest.call(
+					mockLoadOptionsFunctions,
+					'GET',
+					requestPath`/options`,
+				);
 
 				expect(result).toEqual(mockResponse);
 			});
+		});
+	});
+
+	describe('documentsPath', () => {
+		it('should keep subcollection parts as path segments and encode each part as entered', () => {
+			expect(
+				documentsPath('my-project', '(default)', 'users/uid 1/orders?x%20y', 1.2).toString(),
+			).toBe('/my-project/databases/(default)/documents/users/uid%201/orders%3Fx%2520y');
+		});
+
+		it('should decode each part once in previous node versions', () => {
+			expect(documentsPath('my-project', '(default)', 'users/uid%201/a%2Fb', 1.1).toString()).toBe(
+				'/my-project/databases/(default)/documents/users/uid%201/a%2Fb',
+			);
+		});
+	});
+
+	describe('documentsPath empty segments', () => {
+		it('should reject an empty segment inside the collection path', () => {
+			expect(() => documentsPath('my-project', '(default)', 'users//u1/orders', 1.2)).toThrow(
+				'The collection path cannot contain empty segments',
+			);
+		});
+
+		it('should ignore a leading or trailing slash', () => {
+			expect(documentsPath('my-project', '(default)', '/users/', 1.2).toString()).toBe(
+				'/my-project/databases/(default)/documents/users',
+			);
 		});
 	});
 

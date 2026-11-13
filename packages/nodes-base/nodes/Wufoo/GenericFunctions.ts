@@ -5,29 +5,30 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function wufooApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('wufooApi');
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		form: body,
 		body,
 		qs,
-		uri: `https://${credentials.subdomain}.wufoo.com/api/v3/${resource}`,
+		uri: requestUrl`https://${credentials.subdomain}.wufoo.com/api/v3/${resource}`,
 		json: true,
 	};
 
-	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0 || method === 'PUT') {
 		delete options.body;
 	}

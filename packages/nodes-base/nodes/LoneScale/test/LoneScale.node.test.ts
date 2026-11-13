@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 import { LoneScale } from '../LoneScale.node';
@@ -65,7 +65,7 @@ describe('LoneScale Node', () => {
 			const ctx = createExecuteFunctions(baseParams);
 			const result = await new LoneScale().execute.call(ctx);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/trigger/enrich/sync', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/trigger/enrich/sync`, {
 				enrichment_type: ['email', 'profile'],
 				detect_job_change: true,
 				contacts: [
@@ -101,7 +101,7 @@ describe('LoneScale Node', () => {
 			});
 			await new LoneScale().execute.call(ctx);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/trigger/enrich/sync', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/trigger/enrich/sync`, {
 				enrichment_type: ['email'],
 				contacts: [{ firstname: 'Tim', lastname: 'Cook' }],
 			});
@@ -148,20 +148,24 @@ describe('LoneScale Node', () => {
 			const ctx = createExecuteFunctions(baseParams);
 			const result = await new LoneScale().execute.call(ctx);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/trigger/contact-sourcing/sync', {
-				company_domain: 'stripe.com',
-				personas: [
-					{
-						name: 'Sales',
-						job_titles: ['Head of Sales', 'VP Sales'],
-						exclude_job_titles: ['Intern', 'Assistant'],
-					},
-				],
-				limit: 5,
-				included_locations: ['US', 'FR'],
-				seniority_levels: ['c-suite'],
-				disable_company_info: true,
-			});
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/trigger/contact-sourcing/sync`,
+				{
+					company_domain: 'stripe.com',
+					personas: [
+						{
+							name: 'Sales',
+							job_titles: ['Head of Sales', 'VP Sales'],
+							exclude_job_titles: ['Intern', 'Assistant'],
+						},
+					],
+					limit: 5,
+					included_locations: ['US', 'FR'],
+					seniority_levels: ['c-suite'],
+					disable_company_info: true,
+				},
+			);
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json).toEqual(contact);
 		});
@@ -182,10 +186,14 @@ describe('LoneScale Node', () => {
 			});
 			await new LoneScale().execute.call(ctx);
 
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/trigger/contact-sourcing/sync', {
-				company_domain: 'stripe.com',
-				personas: [{ name: 'Sales', job_titles: ['Head of Sales'] }],
-			});
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/trigger/contact-sourcing/sync`,
+				{
+					company_domain: 'stripe.com',
+					personas: [{ name: 'Sales', job_titles: ['Head of Sales'] }],
+				},
+			);
 		});
 
 		it('returns an empty array when the response has no contacts', async () => {
@@ -218,7 +226,7 @@ describe('LoneScale Node', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/companies/search',
+				requestPath`/companies/search`,
 				{},
 				{ domain: 'stripe.com', enrich: true },
 			);
@@ -242,7 +250,7 @@ describe('LoneScale Node', () => {
 
 			expect(mockApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/companies/search',
+				requestPath`/companies/search`,
 				{},
 				{ slug: 'stripe' },
 			);

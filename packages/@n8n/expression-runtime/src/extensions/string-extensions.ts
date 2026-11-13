@@ -3,11 +3,11 @@ import SHA from 'jssha';
 import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
-import { transliterate } from 'transliteration';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
 import { toDateTime as numberToDateTime } from './number-extensions';
+import { toAscii } from './to-ascii';
 
 export const SupportedHashAlgorithms = [
 	'md5',
@@ -300,7 +300,7 @@ function toTitleCase(value: string) {
 }
 
 function replaceSpecialChars(value: string) {
-	return transliterate(value, { unknown: '?' });
+	return toAscii(value);
 }
 
 function toSentenceCase(value: string) {

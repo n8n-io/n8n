@@ -2,6 +2,7 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
 	connectRequiredSubnodeInputs,
@@ -9,7 +10,14 @@ import {
 	type ClearedSubnodeInput,
 } from '@n8n/workflow-sdk';
 import isEqual from 'lodash/isEqual';
-import { NodeConnectionTypes, type IWorkflowSettings, type INodeTypes } from 'n8n-workflow';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeType,
+	type IWorkflowSettings,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -66,6 +74,10 @@ import {
 } from './workflow-operations';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	workflowMigrationFindingsSchema,
+	type ReadWorkflowMigrationFindings,
+} from '../migration-report/migration-report.utils';
 import { getMcpWorkflow, validateMcpWorkflow } from '../workflow-validation.utils';
 
 const MAX_OPERATIONS_PER_CALL = 100;
@@ -359,6 +371,7 @@ const outputSchema = {
 		.describe('Error message explaining why the update failed. Present only on failure.'),
 	errorCode: z.string().optional().describe('Machine-readable error code.'),
 	note: z.string().optional(),
+	migrationFindings: workflowMigrationFindingsSchema.optional(),
 } satisfies z.ZodRawShape;
 /**
  * The success payload, derived from `outputSchema` so the handler cannot build a
@@ -937,6 +950,63 @@ async function autoAssignCredentialsForAddedNodes(
 	);
 }
 
+function createNodeTypesIgnoringUnloadedExistingTypes(
+	nodeTypes: INodeTypes,
+	existingNodes: INode[],
+): INodeTypes {
+	const existingNodeTypeNames = new Set(existingNodes.map((node) => node.type));
+
+	return {
+		getByName: (nodeType) => nodeTypes.getByName(nodeType),
+		getKnownTypes: () => nodeTypes.getKnownTypes(),
+		getByNameAndVersion: (nodeType, version) => {
+			try {
+				return nodeTypes.getByNameAndVersion(nodeType, version);
+			} catch (error) {
+				if (error instanceof UnrecognizedNodeTypeError && existingNodeTypeNames.has(nodeType)) {
+					return undefined as unknown as INodeType;
+				}
+				throw error;
+			}
+		},
+	};
+}
+
+function isUnloadedNodeType(node: INode, nodeTypes: INodeTypes): boolean {
+	try {
+		nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	} catch (error) {
+		if (error instanceof UnrecognizedNodeTypeError) return true;
+	}
+	return false;
+}
+
+function assertAddedNodeTypesLoaded(addedNodes: INode[], nodeTypes: INodeTypes): void {
+	const unloadedNode = addedNodes.find((node) => isUnloadedNodeType(node, nodeTypes));
+	if (unloadedNode) {
+		throw Object.assign(
+			new UserError(
+				`Cannot add node '${unloadedNode.name}': this instance does not load the node type '${unloadedNode.type}'. Check the type name, or use a node type that this instance has.`,
+			),
+			{ errorCode: 'UNRECOGNIZED_NODE_TYPE' },
+		);
+	}
+}
+
+function buildUnloadedNodeTypeWarnings(
+	nodes: INode[],
+	nodeTypes: INodeTypes,
+): Array<ValidationWarning & { preExisting: true }> {
+	return nodes
+		.filter((node) => isUnloadedNodeType(node, nodeTypes))
+		.map((node) => ({
+			code: 'UNLOADED_NODE_TYPE',
+			message: `[pre-existing] This instance does not load the node type '${node.type}', so the workflow cannot run this node. Tell the user; an administrator of this instance must enable the node type, or the node must be replaced.`,
+			nodeName: node.name,
+			preExisting: true,
+		}));
+}
+
 /**
  * Validates the resulting workflow and marks the warnings that were already
  * there before this update.
@@ -961,7 +1031,7 @@ async function collectValidationWarnings(
 
 	const validator = new ParseValidateHandler({
 		generatePinData: false,
-		nodeTypesProvider: nodeTypes,
+		nodeTypesProvider: createNodeTypesIgnoringUnloadedExistingTypes(nodeTypes, existing.nodes),
 	});
 	const validate = (workflow: Pick<WorkflowEntity, 'name' | 'nodes' | 'connections'>) =>
 		validator.validateJSON({
@@ -1069,6 +1139,11 @@ export const createUpdateWorkflowTool = (
 		findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 		/** Whether this session can call the install tool; steers the warning text. */
 		installToolAvailable?: boolean;
+		/**
+		 * Reads the migration report findings of the saved workflow, so a fix needs no
+		 * extra check. Supplied only when the caller can read the migration report.
+		 */
+		readMigrationFindings?: ReadWorkflowMigrationFindings;
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
@@ -1159,6 +1234,11 @@ export const createUpdateWorkflowTool = (
 				if (!result.success) {
 					throw new Error(result.error);
 				}
+
+				const addedNodes = result.workflow.nodes.filter((node) =>
+					result.addedNodeNames.includes(node.name),
+				);
+				assertAddedNodeTypesLoaded(addedNodes, nodeTypes);
 
 				// Setting a parameter can make a subnode input required without wiring it.
 				// Skip inputs this batch disconnected, or removeConnection is a no-op.
@@ -1277,10 +1357,11 @@ export const createUpdateWorkflowTool = (
 
 				validationWarnings.push(
 					...(await buildUninstalledNodeWarnings(
-						workflowUpdateData.nodes.filter((node) => result.addedNodeNames.includes(node.name)),
+						addedNodes,
 						options.findUninstalledNodeTypes,
 						options.installToolAvailable,
 					)),
+					...buildUnloadedNodeTypeWarnings(workflowUpdateData.nodes, nodeTypes),
 				);
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
@@ -1373,6 +1454,9 @@ export const createUpdateWorkflowTool = (
 						? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
 						: undefined,
 				};
+
+				const migrationFindings = await options.readMigrationFindings?.(updatedWorkflow.id);
+				if (migrationFindings) output.migrationFindings = migrationFindings;
 
 				try {
 					if (autoAssignOutcomes.length > 0) {

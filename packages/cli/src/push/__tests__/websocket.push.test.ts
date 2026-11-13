@@ -5,6 +5,7 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type WebSocket from 'ws';
 
 import { WebSocketPush } from '@/push/websocket.push';
@@ -29,6 +30,7 @@ describe('WebSocketPush', () => {
 	const pushRef1 = 'test-session1';
 	const pushRef2 = 'test-session2';
 	const userId: User['id'] = 'test-user';
+	const otherUserId: User['id'] = 'other-user';
 	const pushMessage: PushMessage = {
 		type: 'executionRecovered',
 		data: {
@@ -74,10 +76,21 @@ describe('WebSocketPush', () => {
 	it('sends data to one connection', () => {
 		webSocketPush.add(pushRef1, userId, mockWebSocket1);
 		webSocketPush.add(pushRef2, userId, mockWebSocket2);
-		webSocketPush.sendToOne(pushMessage, pushRef1);
+		webSocketPush.sendToOne(pushMessage, pushRef1, userId);
 
 		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(mockWebSocket2.send).not.toHaveBeenCalled();
+	});
+
+	it('sends to one connection only when the connection belongs to the given user', () => {
+		const userSocket = createMockWebSocket();
+		const otherUserSocket = createMockWebSocket();
+		webSocketPush.add(pushRef1, userId, userSocket);
+		webSocketPush.add(pushRef1, otherUserId, otherUserSocket);
+
+		webSocketPush.sendToOne(pushMessage, pushRef1, userId);
+
+		expect(otherUserSocket.send).not.toHaveBeenCalled();
 	});
 
 	it('sends data to all connections', () => {
@@ -139,9 +152,19 @@ describe('WebSocketPush', () => {
 		expect(webSocketPush.hasPushRef(pushRef1)).toBe(true);
 
 		// New connection still works
-		webSocketPush.sendToOne(pushMessage, pushRef1);
+		webSocketPush.sendToOne(pushMessage, pushRef1, userId);
 		expect(newSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
 		expect(oldSocket.send).not.toHaveBeenCalled();
+	});
+
+	it('closes the old connection when the same user connects again with the same push ref', () => {
+		const push = new WebSocketPush(mock(), mock());
+		const oldSocket = createMockWebSocket();
+		push.add(pushRef1, userId, oldSocket);
+
+		push.add(pushRef1, userId, createMockWebSocket());
+
+		expect(oldSocket.close).toHaveBeenCalled();
 	});
 
 	it('emits message event when connection receives data', async () => {
@@ -181,5 +204,48 @@ describe('WebSocketPush', () => {
 		await new Promise(process.nextTick);
 
 		expect(mockOnMessageReceived).not.toHaveBeenCalled();
+	});
+
+	describe('when another user connects with the same push ref', () => {
+		let push: WebSocketPush;
+		let userSocket: Mocked<WebSocket>;
+		let otherUserSocket: Mocked<WebSocket>;
+
+		beforeEach(() => {
+			push = new WebSocketPush(mock(), mock());
+			userSocket = createMockWebSocket();
+			otherUserSocket = createMockWebSocket();
+			push.add(pushRef1, userId, userSocket);
+			push.add(pushRef1, otherUserId, otherUserSocket);
+		});
+
+		it('keeps the connection of the first user open', () => {
+			expect(userSocket.close).not.toHaveBeenCalled();
+		});
+
+		it('delivers to the first user', () => {
+			push.sendToOne(pushMessage, pushRef1, userId);
+
+			expect(userSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		});
+
+		it("keeps the first user's connection when the other user's connection closes", () => {
+			otherUserSocket.emit('close');
+
+			push.sendToOne(pushMessage, pushRef1, userId);
+
+			expect(userSocket.send).toHaveBeenCalledWith(expectedMsg, { binary: false });
+		});
+
+		it("reports the sender's user for a message", async () => {
+			const data = { test: 'data' };
+			const onMessageReceived = vi.fn();
+			push.on('message', onMessageReceived);
+
+			userSocket.emit('message', Buffer.from(JSON.stringify(data)));
+			await new Promise(process.nextTick);
+
+			expect(onMessageReceived).toHaveBeenCalledWith({ msg: data, pushRef: pushRef1, userId });
+		});
 	});
 });

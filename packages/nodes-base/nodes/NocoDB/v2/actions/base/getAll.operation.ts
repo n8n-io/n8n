@@ -5,8 +5,9 @@ import type {
 	IHttpRequestMethods,
 	INodeExecutionData,
 	INodeProperties,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../transport';
 
@@ -51,7 +52,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	const qs: IDataObject = {};
 
 	for (let i = 0; i < items.length; i++) {
@@ -61,9 +62,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}) as string;
 			requestMethod = 'GET';
 			if (workspaceId && workspaceId !== 'none') {
-				endPoint = `/api/v3/meta/workspaces/${workspaceId}/bases`; // Endpoint for getting all bases (NocoDB API v3)
+				endPoint = requestPath`/api/v3/meta/workspaces/${workspaceId}/bases`; // Endpoint for getting all bases (NocoDB API v3)
 			} else {
-				endPoint = '/api/v2/meta/bases/'; // Endpoint for getting all bases without workspace (NocoDB API v2)
+				endPoint = requestPath`/api/v2/meta/bases/`; // Endpoint for getting all bases without workspace (NocoDB API v2)
 			}
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);

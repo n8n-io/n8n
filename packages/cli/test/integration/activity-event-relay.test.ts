@@ -1,6 +1,6 @@
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -10,7 +10,6 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
-import { PostHogClient } from '@/posthog';
 import { ActivityPruningTask } from '@/services/pruning/activity-pruning.task';
 import { WorkflowService } from '@/workflows/workflow.service';
 

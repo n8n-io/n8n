@@ -67,7 +67,7 @@
 
 	/** Scale headings with the Markdown base size. */
 	h1:not(:where(.not-prose, .not-prose *)) {
-		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 2);
+		font-size: calc(var(--n8n-markdown--font-size--base, var(--font-size--md)) * 1.75);
 		margin-top: calc(var(--n8n-markdown--spacing) * 3);
 	}
 

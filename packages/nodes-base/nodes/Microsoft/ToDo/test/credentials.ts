@@ -4,6 +4,12 @@
 // this fixture. Supply `accessToken` directly and nock only the scoped Graph endpoint
 // (with the Bearer header), never login.microsoftonline.com.
 export const credentials = {
+	microsoftToDoOAuth2Api: {
+		scope: 'openid',
+		oauthTokenData: {
+			access_token: 'token',
+		},
+	},
 	microsoftEntraServicePrincipalApi: {
 		accessToken: 'test-access-token',
 		authentication: 'clientSecret',

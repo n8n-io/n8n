@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { type DataverseQuery } from '../GenericFunctions';
 import { assertValidEntitySet, buildODataQs, executeRequest } from './shared';
@@ -162,7 +162,7 @@ export const getManyRows: OperationDefinition = {
 
 		return await executeRequest(ctx, credentialType, {
 			method: 'GET',
-			path: `/${entitySet}`,
+			path: requestPath`/${entitySet}`,
 			qs,
 			options,
 			paged: true,

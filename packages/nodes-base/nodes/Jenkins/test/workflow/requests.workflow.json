@@ -1,0 +1,438 @@
+{
+	"name": "Jenkins Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "trigger",
+				"job": "deploy-app"
+			},
+			"id": "jenkins-0",
+			"name": "Job Trigger",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "trigger",
+				"job": "platform/job/deploy-app"
+			},
+			"id": "jenkins-1",
+			"name": "Job Trigger In Folder",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "triggerParams",
+				"job": "platform/job/deploy-app",
+				"param": {
+					"params": [
+						{
+							"name": "BRANCH",
+							"value": "main"
+						}
+					]
+				}
+			},
+			"id": "jenkins-2",
+			"name": "Job Trigger Params",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "copy",
+				"job": "deploy-app",
+				"newJob": "deploy-app-copy"
+			},
+			"id": "jenkins-3",
+			"name": "Job Copy",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "job",
+				"operation": "create",
+				"newJob": "new-app",
+				"xml": "<project></project>"
+			},
+			"id": "jenkins-4",
+			"name": "Job Create",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "quietDown",
+				"reason": "maintenance"
+			},
+			"id": "jenkins-5",
+			"name": "Instance Quiet Down",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "cancelQuietDown"
+			},
+			"id": "jenkins-6",
+			"name": "Instance Cancel Quiet Down",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "restart"
+			},
+			"id": "jenkins-7",
+			"name": "Instance Restart",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "safeRestart"
+			},
+			"id": "jenkins-8",
+			"name": "Instance Safe Restart",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "exit"
+			},
+			"id": "jenkins-9",
+			"name": "Instance Exit",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "instance",
+				"operation": "safeExit"
+			},
+			"id": "jenkins-10",
+			"name": "Instance Safe Exit",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "getAll",
+				"job": "deploy-app",
+				"limit": 2
+			},
+			"id": "jenkins-11",
+			"name": "Build Get Many",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "getAll",
+				"job": "platform/job/deploy-app",
+				"returnAll": true
+			},
+			"id": "jenkins-12",
+			"name": "Build Get Many In Folder",
+			"type": "n8n-nodes-base.jenkins",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"jenkinsApi": {
+					"id": "1",
+					"name": "Jenkins account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Job Trigger": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Job Trigger In Folder": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Job Trigger Params": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Job Copy": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Job Create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Quiet Down": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Cancel Quiet Down": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Restart": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Safe Restart": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Exit": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Instance Safe Exit": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Build Get Many": [
+			{
+				"json": {
+					"number": 42,
+					"result": "SUCCESS"
+				}
+			},
+			{
+				"json": {
+					"number": 41,
+					"result": "FAILURE"
+				}
+			}
+		],
+		"Build Get Many In Folder": [
+			{
+				"json": {
+					"number": 42,
+					"result": "SUCCESS"
+				}
+			},
+			{
+				"json": {
+					"number": 41,
+					"result": "FAILURE"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Job Trigger",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Trigger In Folder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Trigger Params",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Copy",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Job Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Quiet Down",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Cancel Quiet Down",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Restart",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Safe Restart",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Exit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Instance Safe Exit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Get Many In Folder",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

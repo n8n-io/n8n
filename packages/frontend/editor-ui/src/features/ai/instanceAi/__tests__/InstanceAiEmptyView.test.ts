@@ -1424,7 +1424,9 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1457,7 +1459,9 @@ describe('InstanceAiEmptyView', () => {
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'false');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1708,6 +1712,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
+			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
 		});
 
 		it('drops the first message and restores the draft when the navigation fails', async () => {

@@ -162,6 +162,124 @@
 					"name": "NodeQA"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"databaseId": 199364,
+				"tableId": 482710,
+				"operation": "batchCreate",
+				"rowsUi": {
+					"rowValues": [
+						{
+							"fieldsUi": {
+								"fieldValues": [
+									{
+										"fieldId": 3799030,
+										"fieldValue": "Nathan"
+									}
+								]
+							}
+						},
+						{
+							"fieldsUi": {
+								"fieldValues": [
+									{
+										"fieldId": 3799030,
+										"fieldValue": "Jan"
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1.1,
+			"position": [200, 1000],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c51",
+			"name": "Baserow > Batch Create",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 1000],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c52",
+			"name": "Batch Create Response"
+		},
+		{
+			"parameters": {
+				"databaseId": 199364,
+				"tableId": 482710,
+				"operation": "batchUpdate",
+				"rowsUi": {
+					"rowValues": [
+						{
+							"id": "3",
+							"fieldsUi": {
+								"fieldValues": [
+									{
+										"fieldId": 3799032,
+										"fieldValue": "true"
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1.1,
+			"position": [200, 1200],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c53",
+			"name": "Baserow > Batch Update",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 1200],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c54",
+			"name": "Batch Update Response"
+		},
+		{
+			"parameters": {
+				"databaseId": 199364,
+				"tableId": 482710,
+				"operation": "batchDelete",
+				"rowIds": ["3", "4"]
+			},
+			"type": "n8n-nodes-base.baserow",
+			"typeVersion": 1.1,
+			"position": [200, 1400],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c55",
+			"name": "Baserow > Batch Delete",
+			"credentials": {
+				"baserowApi": {
+					"id": "SWSFqWDWdnC74WMJ",
+					"name": "NodeQA"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [420, 1400],
+			"id": "b1c3a7e2-4d5f-4a6b-8c9d-0e1f2a3b4c56",
+			"name": "Batch Delete Response"
 		}
 	],
 	"pinData": {
@@ -224,6 +342,45 @@
 					"success": true
 				}
 			}
+		],
+		"Batch Create Response": [
+			{
+				"json": {
+					"id": 4,
+					"order": "4.00000000000000000000",
+					"Name": "Nathan",
+					"Notes": "",
+					"Active": false
+				}
+			},
+			{
+				"json": {
+					"id": 5,
+					"order": "5.00000000000000000000",
+					"Name": "Jan",
+					"Notes": "",
+					"Active": false
+				}
+			}
+		],
+		"Batch Update Response": [
+			{
+				"json": {
+					"id": 3,
+					"order": "3.00000000000000000000",
+					"Name": "Nathan",
+					"Notes": "testing",
+					"Active": true
+				}
+			}
+		],
+		"Batch Delete Response": [
+			{
+				"json": {
+					"success": true,
+					"deleted": ["3", "4"]
+				}
+			}
 		]
 	},
 	"connections": {
@@ -252,6 +409,21 @@
 					},
 					{
 						"node": "Baserow > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Batch Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Batch Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Baserow > Batch Delete",
 						"type": "main",
 						"index": 0
 					}
@@ -307,6 +479,39 @@
 				[
 					{
 						"node": "Delete Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Batch Create": {
+			"main": [
+				[
+					{
+						"node": "Batch Create Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Batch Update": {
+			"main": [
+				[
+					{
+						"node": "Batch Update Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Baserow > Batch Delete": {
+			"main": [
+				[
+					{
+						"node": "Batch Delete Response",
 						"type": "main",
 						"index": 0
 					}

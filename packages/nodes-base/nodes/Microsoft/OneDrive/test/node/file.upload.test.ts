@@ -1,6 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -71,7 +72,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/customFileName.txt:/content',
+			requestPath`/items/parentFolderId:/customFileName.txt:/content`,
 			expect.any(Buffer),
 			{},
 			undefined,
@@ -98,7 +99,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/binaryFileName.txt:/content',
+			requestPath`/items/parentFolderId:/binaryFileName.txt:/content`,
 			expect.any(Buffer),
 			{},
 			undefined,
@@ -125,13 +126,31 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/file%20with%20spaces%20%26%20special.txt:/content',
+			requestPath`/items/parentFolderId:/file%20with%20spaces%20&%20special.txt:/content`,
 			expect.any(Buffer),
 			{},
 			undefined,
 			{ 'Content-Type': 'text/plain', 'Content-length': expect.any(Number) },
 			{},
 			undefined,
+		);
+	});
+
+	it('should encode "+" in the file name as %2B', async () => {
+		mockExecuteFunctions.getInputData.mockReturnValue([{ json: { data: 'test' } }]);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			if (key === 'resource') return 'file';
+			if (key === 'operation') return 'upload';
+			if (key === 'parentId') return 'parentFolderId';
+			if (key === 'fileName') return 'C++.txt';
+			if (key === 'binaryData') return false;
+			if (key === 'fileContent') return 'hello world';
+		});
+
+		await microsoftOneDrive.execute.call(mockExecuteFunctions);
+
+		expect(String(vi.mocked(genericFunctions.microsoftApiRequest).mock.calls[0][1])).toBe(
+			'/items/parentFolderId:/C%2B%2B.txt:/content',
 		);
 	});
 
@@ -158,7 +177,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		// In version 1, binary filename always overwrites the parameter filename
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/binaryFileName.txt:/content',
+			requestPath`/items/parentFolderId:/binaryFileName.txt:/content`,
 			expect.any(Buffer),
 			{},
 			undefined,
@@ -185,7 +204,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/report.txt:/content',
+			requestPath`/items/parentFolderId:/report.txt:/content`,
 			'hello world',
 			{},
 			undefined,
@@ -389,7 +408,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/report.pdf:/content',
+			requestPath`/items/parentFolderId:/report.pdf:/content`,
 			expect.any(Buffer),
 			{},
 			undefined,
@@ -417,7 +436,7 @@ describe('Test MicrosoftOneDrive, file > upload', () => {
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.microsoftApiRequest).toHaveBeenCalledWith(
 			'PUT',
-			'/drive/items/parentFolderId:/good.txt:/content',
+			requestPath`/items/parentFolderId:/good.txt:/content`,
 			'hello world',
 			{},
 			undefined,

@@ -14,6 +14,7 @@ import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { assertAgentNotArchived } from './utils/agent-draft.utils';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 
 /**
@@ -41,7 +42,7 @@ export class AgentKnowledgeService {
 	): Promise<UploadedKnowledgeFile[]> {
 		let scope: KnowledgeConsumerScope;
 		try {
-			scope = await this.scopeFor(agentId, projectId);
+			scope = await this.scopeFor(agentId, projectId, { forWrite: true });
 		} catch (error) {
 			// The knowledge module removes the temp files it receives; these never reach it.
 			await cleanupUploadedTempFiles(files);
@@ -74,7 +75,7 @@ export class AgentKnowledgeService {
 
 	/** Returns false when the agent has no file with this id, so nothing was deleted. */
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<boolean> {
-		const scope = await this.scopeFor(agentId, projectId);
+		const scope = await this.scopeFor(agentId, projectId, { forWrite: true });
 
 		const deleted = await this.knowledgeFileService.deleteFile(scope, fileId);
 		if (!deleted) {
@@ -114,9 +115,14 @@ export class AgentKnowledgeService {
 	}
 
 	/** The scope of a feature call: the module must be active and the agent must be in the project. */
-	private async scopeFor(agentId: string, projectId: string): Promise<KnowledgeConsumerScope> {
+	private async scopeFor(
+		agentId: string,
+		projectId: string,
+		{ forWrite = false }: { forWrite?: boolean } = {},
+	): Promise<KnowledgeConsumerScope> {
 		this.knowledgeAvailabilityService.assertModuleActive();
-		await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		if (forWrite) assertAgentNotArchived(agent);
 		return { kind: 'agent', projectId, agentId };
 	}
 }

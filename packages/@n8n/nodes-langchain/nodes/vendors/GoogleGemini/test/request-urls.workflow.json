@@ -1,0 +1,79 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "3e4f5a6b-7c8d-4e9f-a0b1-c2d3e4f5a601",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "fileSearch",
+				"operation": "createStore",
+				"displayName": "Product manuals"
+			},
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"typeVersion": 1.2,
+			"position": [220, 0],
+			"id": "3e4f5a6b-7c8d-4e9f-a0b1-c2d3e4f5a602",
+			"name": "Create Store",
+			"credentials": {
+				"googlePalmApi": {
+					"id": "123",
+					"name": "Google Gemini(PaLM) Api account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "fileSearch",
+				"operation": "listStores",
+				"pageSize": 10
+			},
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"typeVersion": 1.2,
+			"position": [440, 0],
+			"id": "3e4f5a6b-7c8d-4e9f-a0b1-c2d3e4f5a603",
+			"name": "List Stores",
+			"credentials": {
+				"googlePalmApi": {
+					"id": "123",
+					"name": "Google Gemini(PaLM) Api account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"inputType": "url",
+				"fileUrl": "https://example.com/manual.pdf"
+			},
+			"type": "@n8n/n8n-nodes-langchain.googleGemini",
+			"typeVersion": 1.2,
+			"position": [660, 0],
+			"id": "3e4f5a6b-7c8d-4e9f-a0b1-c2d3e4f5a604",
+			"name": "Upload File",
+			"credentials": {
+				"googlePalmApi": {
+					"id": "123",
+					"name": "Google Gemini(PaLM) Api account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Create Store", "type": "main", "index": 0 }]]
+		},
+		"Create Store": {
+			"main": [[{ "node": "List Stores", "type": "main", "index": 0 }]]
+		},
+		"List Stores": {
+			"main": [[{ "node": "Upload File", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

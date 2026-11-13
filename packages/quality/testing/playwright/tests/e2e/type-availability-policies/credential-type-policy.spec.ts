@@ -224,6 +224,36 @@ test.describe(
 			});
 		});
 
+		test.describe('the new credential type picker', () => {
+			test('should list a type blocked in the project last, disabled and explained', async ({
+				api,
+				n8n,
+			}) => {
+				const { id: projectId } = await api.projects.createProject();
+				await policies.setProjectPolicy(projectId, {
+					rules: [rule('deny', SLACK_CREDENTIAL.type)],
+					defaultAction: 'allow',
+				});
+
+				await n8n.navigate.toCredentials(projectId);
+				await n8n.credentials.addResource.credential();
+				await n8n.credentials.searchCredentialTypes('slack');
+
+				// Slack OAuth2 matches the search too and stays allowed, so it must come first.
+				const options = n8n.credentials.getCredentialTypeOptions();
+				await expect(options.first()).not.toHaveClass(/is-disabled/);
+				const blocked = options.last();
+				await expect(blocked).toContainText(SLACK_CREDENTIAL.displayName);
+				await expect(blocked).toContainText('Restricted in this project');
+				await expect(blocked).toHaveClass(/is-disabled/);
+
+				await blocked.hover();
+				await expect(n8n.credentials.getRestrictedTypePopover()).toContainText(
+					SLACK_CREDENTIAL.displayName,
+				);
+			});
+		});
+
 		test.describe('a project that narrows the instance policy', () => {
 			let narrowedProjectId: string;
 			let otherProjectId: string;

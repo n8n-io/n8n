@@ -1411,6 +1411,8 @@ describe('InstanceAiThreadMessagesQuery', () => {
 		{ limit: 1.5 },
 		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
 		{ page: -1 },
+		{ cursor: '' },
+		{ cursor: 'a'.repeat(513) },
 	])('rejects out-of-range paging (%o)', (query) => {
 		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
 	});

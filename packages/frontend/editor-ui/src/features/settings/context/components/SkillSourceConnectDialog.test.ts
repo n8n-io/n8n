@@ -15,12 +15,21 @@ import { waitFor, within } from '@testing-library/vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
 import SkillSourceConnectDialog from './SkillSourceConnectDialog.vue';
 import { useSkillsStore } from '../skills.store';
 
 const showErrorMock = vi.fn();
+const oauth = vi.hoisted(() => ({
+	canOAuthCredentialQuickConnect: vi.fn(() => false),
+	createAndAuthorize: vi.fn(),
+	cancelAuthorize: vi.fn(),
+}));
+vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
+	useCredentialOAuth: () => oauth,
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock, showMessage: vi.fn() }),
 }));
@@ -43,10 +52,13 @@ vi.mock('@n8n/design-system', async () => {
 	};
 	const N8nSelect2 = {
 		name: 'N8nSelect2',
+		inheritAttrs: false,
 		props: ['modelValue', 'items', 'disabled', 'placeholder'],
 		emits: ['update:modelValue'],
+		// A native option holds text only, so the custom item labels render after the select.
 		template: `
 			<select
+				v-bind="$attrs"
 				:value="modelValue"
 				:disabled="disabled"
 				@change="$emit('update:modelValue', $event.target.value)"
@@ -57,6 +69,9 @@ vi.mock('@n8n/design-system', async () => {
 					:value="item.value"
 				>{{ item.label }}</option>
 			</select>
+			<template v-for="item in items.filter((entry) => entry.type !== 'separator')" :key="'label-' + item.value">
+				<slot name="item-label" :item="item" />
+			</template>
 		`,
 	};
 	const N8nCombobox2 = {
@@ -134,6 +149,11 @@ const renderDialog = createComponentRenderer(SkillSourceConnectDialog);
 
 const TOKEN: SkillSourceCredentialOption = { id: 'cred-1', name: 'Ada token', type: 'githubApi' };
 const APP: SkillSourceCredentialOption = { id: 'cred-2', name: 'Acme app', type: 'githubAppApi' };
+const OAUTH: SkillSourceCredentialOption = {
+	id: 'cred-3',
+	name: 'Ada account',
+	type: 'githubOAuth2Api',
+};
 
 const REPOSITORIES: SkillSourceRepositoryList = {
 	repositories: [
@@ -163,6 +183,14 @@ async function selectCredential(view: View, value: string) {
 	await userEvent.selectOptions(select, within(select).getByRole('option', { name: value }));
 }
 
+/** Waits until the credential list loaded, so only other loads can keep the select busy. */
+async function selectCredentialOptionsLoaded(view: View) {
+	const select = view.getByTestId('skill-source-credential-select');
+	await waitFor(() =>
+		expect(within(select).getByRole('option', { name: 'Ada token' })).toBeTruthy(),
+	);
+}
+
 async function typeRepository(view: View, text: string) {
 	await userEvent.type(view.getByTestId('repository-search'), text);
 }
@@ -184,6 +212,9 @@ async function review(view: View, link = 'https://github.com/acme/skills') {
 
 describe('SkillSourceConnectDialog', () => {
 	beforeEach(() => {
+		oauth.canOAuthCredentialQuickConnect.mockReset().mockReturnValue(false);
+		oauth.createAndAuthorize.mockReset();
+		oauth.cancelAuthorize.mockReset();
 		createTestingPinia();
 		skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSourceCredentials.mockResolvedValue([]);
@@ -199,6 +230,33 @@ describe('SkillSourceConnectDialog', () => {
 			{ id: 'team-2', type: 'team', name: 'Sales', scopes: ['credential:read'] },
 		] as ProjectListItem[];
 		showErrorMock.mockClear();
+	});
+
+	it('shows the project scope and its icon in the review', async () => {
+		mockedStore(useProjectsStore).myProjects[0].icon = { type: 'emoji', value: '🚀' };
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render();
+		await selectScope(view, 'project:team-1');
+		await review(view);
+
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(/🚀\s*Marketing/);
+	});
+
+	it('shows the icon of the scope option in the review when the project is not listed', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		const view = render([
+			...SCOPES,
+			{
+				value: 'project:team-unlisted',
+				label: 'Finance',
+				icon: 'layers',
+				projectIcon: { type: 'emoji', value: '💰' },
+			},
+		]);
+		await selectScope(view, 'project:team-unlisted');
+		await review(view);
+
+		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(/💰\s*Finance/);
 	});
 
 	describe('the connect form', () => {
@@ -382,6 +440,31 @@ describe('SkillSourceConnectDialog', () => {
 				'GitHub limits how often n8n can read it. Try again in a few minutes.',
 			);
 			expect(error).not.toHaveTextContent('raw server text');
+		});
+
+		it('opens the visible source from the duplicate message', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: 'source-1' } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			await userEvent.click(await view.findByTestId('skill-source-view-existing'));
+
+			expect(view.emitted('openSource')).toEqual([['source-1']]);
+		});
+
+		it('does not offer to open a source that the user cannot see', async () => {
+			skillsStore.discoverSource.mockResolvedValue(
+				discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: null } }),
+			);
+			const view = render();
+			await typeRepository(view, 'https://github.com/acme/skills');
+			await next(view);
+
+			expect(await view.findByTestId('skill-source-duplicate')).toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-view-existing')).not.toBeInTheDocument();
 		});
 
 		it.each([
@@ -967,6 +1050,161 @@ describe('SkillSourceConnectDialog', () => {
 					'Could not load the credentials',
 				),
 			);
+		});
+
+		it('offers OAuth2 with a note on its write access, and opens the credential modal for it', async () => {
+			const view = render();
+
+			expect(
+				await view.findByText(
+					'Gives n8n write access to your repositories and admin access to your organizations',
+				),
+			).toBeInTheDocument();
+			await selectCredential(view, '+ Sign in with GitHub');
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'githubOAuth2Api',
+				false,
+				false,
+				'personal-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ closeOnSave: true }),
+			);
+		});
+
+		it('keeps the credential select disabled until the credential types load', async () => {
+			let typesLoaded = () => {};
+			mockedStore(useCredentialsStore).fetchCredentialTypes.mockReturnValue(
+				new Promise<void>((resolve) => {
+					typesLoaded = resolve;
+				}),
+			);
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredentialOptionsLoaded(view);
+
+			expect(view.getByTestId('skill-source-credential-select')).toBeDisabled();
+			typesLoaded();
+			await waitFor(() =>
+				expect(view.getByTestId('skill-source-credential-select')).not.toBeDisabled(),
+			);
+		});
+
+		it('signs in with GitHub in one step when the instance has a managed GitHub OAuth2 app', async () => {
+			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
+			oauth.createAndAuthorize.mockImplementation(async () => {
+				skillsStore.fetchSourceCredentials.mockResolvedValue([OAUTH]);
+				return { id: OAUTH.id };
+			});
+			const view = render();
+
+			await selectCredential(view, '+ Sign in with GitHub');
+
+			expect(oauth.createAndAuthorize).toHaveBeenCalledWith('githubOAuth2Api', undefined, {
+				projectId: 'personal-1',
+			});
+			expect(uiStore.openNewCredential).not.toHaveBeenCalled();
+			await waitFor(() =>
+				expect(view.getByTestId('skill-source-credential-select')).toHaveValue(OAUTH.id),
+			);
+			expect(view.getByTestId('skill-source-oauth-warning')).toBeInTheDocument();
+		});
+
+		/** A sign-in that stays open until the test ends it, as the GitHub popup does. */
+		function pendingSignIn() {
+			let finish: (credential: { id: string } | null) => void = () => {};
+			oauth.canOAuthCredentialQuickConnect.mockReturnValue(true);
+			oauth.createAndAuthorize.mockReturnValue(
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+			);
+			return (credential: { id: string } | null) => finish(credential);
+		}
+
+		it('keeps the picked credential when the user cancels a pending GitHub sign-in', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredential(view, 'Ada token');
+
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+			// The composable gives null when the user closes the popup.
+			finish(null);
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			// The token stays picked: its repositories loaded once, and no other read started.
+			expect(skillsStore.fetchSourceRepositories).toHaveBeenCalledTimes(1);
+			expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith(
+				expect.objectContaining({ credentialId: TOKEN.id }),
+			);
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(1);
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
+		});
+
+		it('drops a GitHub sign-in that finishes after the dialog closed and opened again', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+
+			await view.rerender({ open: false, scopeOptions: SCOPES });
+			expect(oauth.cancelAuthorize).toHaveBeenCalled();
+			await view.rerender({ open: true, scopeOptions: SCOPES });
+			await selectCredential(view, 'Ada token');
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, OAUTH]);
+			finish({ id: OAUTH.id });
+
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			// The old result reloads nothing, so the token of the new session stays picked.
+			expect(skillsStore.fetchSourceCredentials).toHaveBeenCalledTimes(2);
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skill-source-credential-created')).not.toBeInTheDocument();
+		});
+
+		it('runs one GitHub sign-in at a time: the select waits until it ends', async () => {
+			const finish = pendingSignIn();
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			const view = render();
+			await selectCredentialOptionsLoaded(view);
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalledTimes(1));
+
+			const select = view.getByTestId('skill-source-credential-select');
+			expect(select).toBeDisabled();
+			finish(null);
+
+			await waitFor(() => expect(select).not.toBeDisabled());
+			expect(oauth.createAndAuthorize).toHaveBeenCalledTimes(1);
+		});
+
+		it('cancels a pending GitHub sign-in when the dialog unmounts', async () => {
+			pendingSignIn();
+			const view = render();
+			await selectCredential(view, '+ Sign in with GitHub');
+			await waitFor(() => expect(oauth.createAndAuthorize).toHaveBeenCalled());
+
+			view.unmount();
+
+			expect(oauth.cancelAuthorize).toHaveBeenCalled();
+		});
+
+		it('warns about write access while an OAuth2 credential is picked', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, OAUTH]);
+			const view = render();
+
+			await selectCredential(view, 'Ada account');
+			expect(view.getByTestId('skill-source-oauth-warning')).toHaveTextContent(
+				'This GitHub sign-in gives n8n write access to every repository that the account can reach, admin access to its organizations, and more',
+			);
+
+			await selectCredential(view, 'Ada token');
+			expect(view.queryByTestId('skill-source-oauth-warning')).not.toBeInTheDocument();
 		});
 
 		it('says why the credential cannot list the repositories', async () => {
