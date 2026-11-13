@@ -23,6 +23,7 @@ export class CodeSandboxModule implements ModuleInterface {
 			slots: config.slots,
 			idleTimeoutMs: config.idleTimeoutMs,
 			maxLifetimeMs: config.maxLifetimeMs,
+			maxPerKey: config.maxPerKey,
 			spareWorkers: config.spareWorkers,
 			serviceUrl: config.serviceUrl,
 		});
@@ -32,7 +33,7 @@ export class CodeSandboxModule implements ModuleInterface {
 	async shutdown() {
 		const { CodeSandboxConfig } = await import('./code-sandbox.config.js');
 		if (!Container.get(CodeSandboxConfig).enabled) return;
-		const { SandboxLeaseManager } = await import('./sandbox-lease-manager.js');
-		await Container.get(SandboxLeaseManager).shutdown();
+		const { SandboxScopeClient } = await import('./sandbox-scope-client.js');
+		await Container.get(SandboxScopeClient).shutdown();
 	}
 }

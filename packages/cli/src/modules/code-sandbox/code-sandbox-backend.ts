@@ -33,7 +33,15 @@ import {
 } from './code-sandbox-timings';
 import { CodeTaskBuilder, type BuiltTask } from './code-task-builder';
 import { ALLOWED_RPC_METHODS, RpcHandler } from './rpc-handler';
-import { SandboxLeaseManager, type Lease } from './sandbox-lease-manager';
+import {
+	SandboxCreateError,
+	SandboxFullError,
+	SandboxGoneError,
+	SandboxQueueTimeoutError,
+	SandboxScopeClient,
+	type Placement,
+	type PlacementStats,
+} from './sandbox-scope-client';
 import {
 	readAll,
 	TaskApiError,
@@ -46,7 +54,7 @@ import {
 
 const SANDBOX_OUT_PREFIX = 'sandbox-out:';
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-/** After a cancel, wait this long for the terminal event before the lease counts as broken. */
+/** After a cancel, wait this long for the terminal event before the task fails. */
 const CANCEL_GRACE_MS = 2_000;
 /**
  * Time until the `accepted` event: a fixed part plus the upload at 10 MB/s.
@@ -82,13 +90,6 @@ const MAX_PRINT_ARGS_PER_CALL = 100;
 /** An infrastructure failure of the code sandbox (not a user error). */
 export class CodeSandboxInfraError extends UnexpectedError {}
 
-/** A failure before the worker had the task. The task can run on another lease. */
-class RetryableTaskError extends Error {
-	constructor(readonly original: Error) {
-		super(original.message);
-	}
-}
-
 /** Splits a stream of text chunks into lines. */
 class LineSplitter {
 	private pending = '';
@@ -121,7 +122,7 @@ class LineSplitter {
 export class CodeSandboxBackend {
 	constructor(
 		private readonly config: CodeSandboxConfig,
-		private readonly leases: SandboxLeaseManager,
+		private readonly scopes: SandboxScopeClient,
 		private readonly builder: CodeTaskBuilder,
 		private readonly timings: CodeSandboxTimings,
 		private readonly globalConfig: GlobalConfig,
@@ -236,10 +237,9 @@ export class CodeSandboxBackend {
 			rec.bin_in_count = built.binaryCount;
 			rec.bytes_in_bin = built.bytesInBin;
 
-			const resultFile = await this.runWithRetry(
+			const resultFile = await this.runInScope(
 				key,
 				executionId,
-				workflow.id,
 				random,
 				taskId,
 				built,
@@ -277,10 +277,14 @@ export class CodeSandboxBackend {
 		}
 	}
 
-	private async runWithRetry(
+	/**
+	 * Runs the task in a sandbox of the scope. The scope client tries the next
+	 * shard after a 429, and creates the name again after a 410 or 404. Other
+	 * failures are not retried: n8n does not know if the task ran.
+	 */
+	private async runInScope(
 		key: string,
 		executionId: string | undefined,
-		workflowId: string | undefined,
 		random: boolean,
 		taskId: string,
 		built: BuiltTask,
@@ -288,70 +292,56 @@ export class CodeSandboxBackend {
 		rec: TaskTimingRecord,
 		lang: LanguageSpec,
 	): Promise<CodeTaskResultFile> {
-		for (;;) {
-			rec.attempts++;
-			const tAcquire = performance.now();
-			let lease: Lease;
-			try {
-				const acq = await this.leases.acquire(key, executionId, workflowId, lang.runtime);
-				lease = acq.lease;
-				rec.leaseHit = acq.leaseHit;
-				rec.slotWaitMs = acq.slotWaitMs;
-				if (acq.createdForTask) {
-					rec.t_create = lease.createMs;
-					rec.createTimings = lease.createTimings;
-				}
-			} catch (e) {
-				if (rec.attempts === 1) {
-					this.logger.warn('Code sandbox acquire failed, retrying', {
-						error: (e as Error).message,
-					});
-					continue;
-				}
-				throw new CodeSandboxInfraError(`Could not get a code sandbox: ${(e as Error).message}`, {
-					cause: e,
-				});
-			}
-			rec.t_acquire = ms(performance.now() - tAcquire);
-			rec.sandboxId = lease.sandboxId;
-
-			try {
-				return await this.runOnLease(lease, key, taskId, built, executeFunctions, rec, lang);
-			} catch (e) {
-				if (e instanceof RetryableTaskError) {
-					if (rec.attempts === 1) {
-						this.logger.warn('Code task failed before it was accepted, retrying', {
-							sandboxId: lease.sandboxId,
-							error: e.message,
-						});
-						continue;
+		const stats: PlacementStats = { attempts: 0, fullRejects: 0, goneRetries: 0, waitMs: 0 };
+		const tAcquire = performance.now();
+		try {
+			return await this.scopes.run(
+				key,
+				lang.runtime,
+				executionId,
+				async (placement) => {
+					rec.t_acquire = ms(performance.now() - tAcquire);
+					rec.sandboxId = placement.sandboxId;
+					rec.shard = placement.shard;
+					rec.leaseHit = placement.cached;
+					rec.sandboxCreated = placement.created;
+					if (placement.created) {
+						rec.t_create = placement.createMs;
+						rec.createTimings = placement.createTimings;
 					}
-					throw new CodeSandboxInfraError(`Code task failed: ${e.message}`, { cause: e.original });
-				}
-				throw e;
-			} finally {
-				this.leases.onTaskEnd(lease);
-				if (random) this.leases.releaseUnused(lease, 'execution_end');
+					return await this.runOnSandbox(placement, taskId, built, executeFunctions, rec, lang);
+				},
+				stats,
+			);
+		} catch (e) {
+			if (
+				e instanceof SandboxCreateError ||
+				e instanceof SandboxQueueTimeoutError ||
+				e instanceof SandboxGoneError
+			) {
+				throw new CodeSandboxInfraError(e.message, { cause: e });
 			}
+			throw e;
+		} finally {
+			rec.attempts = stats.attempts;
+			rec.fullRejects = stats.fullRejects;
+			rec.goneRetries = stats.goneRetries;
+			rec.slotWaitMs = stats.waitMs;
+			// A random key is single-use.
+			if (random) this.scopes.closeScope(key, lang.runtime);
 		}
 	}
 
-	private async runOnLease(
-		lease: Lease,
-		key: string,
+	private async runOnSandbox(
+		placement: Placement,
 		taskId: string,
 		built: BuiltTask,
 		executeFunctions: IExecuteFunctions,
 		rec: TaskTimingRecord,
 		lang: LanguageSpec,
 	): Promise<CodeTaskResultFile> {
-		if (lease.scopeKey !== key) {
-			throw new UnexpectedError('A lease took a task of another scope key', {
-				extra: { leaseKey: lease.scopeKey, taskKey: key },
-			});
-		}
-		const client = this.leases.client;
-		const sandboxId = lease.sandboxId;
+		const client = this.scopes.client;
+		const sandboxId = placement.sandboxId;
 		const timeoutMs = this.taskRunnersConfig.taskTimeout * 1000;
 		const rpc = new RpcHandler(executeFunctions, lang.rpcMethods);
 		const controller = new AbortController();
@@ -382,13 +372,12 @@ export class CodeSandboxBackend {
 			if (cancelling) return;
 			cancelling = why;
 			client.deleteTask(sandboxId, taskId).catch(() => {});
+			// The sandbox is shared: n8n does not delete it. The service decides
+			// if it is broken.
 			graceTimer = setTimeout(() => {
-				this.leases.markBroken(lease, `no terminal event ${CANCEL_GRACE_MS} ms after cancel`);
+				brokenReason = `no terminal event ${CANCEL_GRACE_MS} ms after cancel`;
+				controller.abort();
 			}, CANCEL_GRACE_MS);
-		};
-		const onBroken = (reason: string) => {
-			brokenReason = reason;
-			controller.abort();
 		};
 
 		// RPC calls run in the background: the stream must be read while a
@@ -429,7 +418,6 @@ export class CodeSandboxBackend {
 		const cancelSignal = executeFunctions.getExecutionCancelSignal?.();
 		const onCancel = () => (accepted ? cancelTask('cancelled') : controller.abort());
 
-		lease.onBroken.add(onBroken);
 		cancelSignal?.addEventListener('abort', onCancel);
 
 		const tSend = performance.now();
@@ -487,29 +475,37 @@ export class CodeSandboxBackend {
 			}
 			if (cancelling === 'cancelled') throw new TaskCancelledError('Execution was cancelled');
 			if (rpcFailure && !brokenReason) {
-				// A transport error (status 0) means the path to the sandbox is
-				// gone. An HTTP error status or another error does not.
+				// A transport error (status 0) means the path to the sandbox may be
+				// gone: the next task creates the name again.
 				if (rpcFailure instanceof TaskApiError && rpcFailure.status === 0) {
-					this.leases.markBroken(lease, `RPC result failed: ${rpcFailure.message}`);
+					this.scopes.forget(placement);
 				}
 				throw new CodeSandboxInfraError('Code task failed: RPC result could not be sent', {
 					cause: rpcFailure,
 				});
 			}
+			if (!accepted) {
+				// Stop the upload. A retry opens the binary streams again.
+				controller.abort();
+				// Explicit rejections before the inputs were read: the task did not start.
+				if (e instanceof TaskApiError && e.status === 429) {
+					throw new SandboxFullError(e.message);
+				}
+				if (e instanceof TaskApiError && (e.status === 410 || e.status === 404)) {
+					throw new SandboxGoneError(e.message);
+				}
+			}
 			const reason =
 				brokenReason ?? (acceptTimedOut ? 'no accepted event in time' : (e as Error).message);
-			if (!accepted) {
-				this.leases.markBroken(lease, reason);
-				throw new RetryableTaskError(e as Error);
+			if (!(e instanceof TaskApiError) || e.status === 0 || brokenReason) {
+				this.scopes.forget(placement);
 			}
-			if (!(e instanceof TaskApiError) || brokenReason) this.leases.markBroken(lease, reason);
 			throw new CodeSandboxInfraError(`Code task failed: ${reason}`, { cause: e });
 		} finally {
 			clearTimeout(acceptTimer);
 			if (timeoutTimer) clearTimeout(timeoutTimer);
 			if (graceTimer) clearTimeout(graceTimer);
 			cancelSignal?.removeEventListener('abort', onCancel);
-			lease.onBroken.delete(onBroken);
 			stdout.flush();
 			stderr.flush();
 			rec.rpc_count = rpc.rpcCount;
@@ -536,7 +532,7 @@ export class CodeSandboxBackend {
 				this.logPrintArgs(executeFunctions, userError.printArgs, rec);
 				delete userError.printArgs;
 			}
-			throw this.toTaskError(terminal, accepted, cancelling, lease);
+			throw this.toTaskError(terminal, cancelling, placement);
 		}
 
 		const tOutputs = performance.now();
@@ -579,9 +575,8 @@ export class CodeSandboxBackend {
 
 	private toTaskError(
 		ev: CodeTaskErrorEvent,
-		accepted: boolean,
 		cancelling: 'timeout' | 'cancelled' | undefined,
-		lease: Lease,
+		placement: Placement,
 	): Error {
 		const isSelfHosted = this.globalConfig.deployment.type !== 'cloud';
 		const code = ev.code === 'cancelled' && cancelling === 'timeout' ? 'timeout' : ev.code;
@@ -597,12 +592,8 @@ export class CodeSandboxBackend {
 			case 'cancelled':
 				return new TaskCancelledError('Execution was cancelled');
 			case 'oom':
-				return new TaskRunnerOomError(lease.sandboxId, !isSelfHosted);
+				return new TaskRunnerOomError(placement.sandboxId, !isSelfHosted);
 			default:
-				if (!accepted) {
-					this.leases.markBroken(lease, ev.message);
-					return new RetryableTaskError(new CodeSandboxInfraError(ev.message));
-				}
 				return new CodeSandboxInfraError(`Code task failed (${ev.code}): ${ev.message}`);
 		}
 	}
@@ -637,7 +628,7 @@ export class CodeSandboxBackend {
 				if (!UUID_REGEX.test(uuid))
 					throw new CodeSandboxInfraError(`Invalid output binary id ${id}`);
 				const info = resultFile.binaries?.[uuid] ?? {};
-				const stream = await this.leases.client.getOutput(sandboxId, taskId, `bin/${uuid}`);
+				const stream = await this.scopes.client.getOutput(sandboxId, taskId, `bin/${uuid}`);
 				const fileName = meta.fileName ?? info.fileName;
 				const data = await executeFunctions.helpers.prepareBinaryData(
 					stream,

@@ -19,6 +19,28 @@ The code is throwaway spike code.
 The sandbox service part (Task API, code daemon, SDK client, k6 benchmark) is
 in the `spike/code-task-api-opus` branch of `n8n-sandbox-service`.
 
+## Sandbox placement
+
+The backend follows step B of `design/HIGH-LEVEL-DESIGN-v2.md` (§5.5):
+
+- The sandbox of a scope shard has a name:
+  `c1-` + sha256(scope key, runtime, n8n version, slots, taskMemoryMb,
+  spareWorkers, reuseWorkers, shard). All n8n processes compute the same name,
+  so they share the sandbox.
+- `SandboxScopeClient` caches name → sandbox id. Without a cached id it sends
+  `POST /v1/code/sandboxes {name, …}`. Tasks of one name in one process share
+  the create.
+- A `429` (full) sends the task to the next shard, up to
+  `N8N_CODE_SANDBOX_MAX_PER_KEY` shards. Then the task waits and starts again,
+  up to `N8N_CODE_SANDBOX_MAX_QUEUE_MS`. The next task of the scope starts at
+  the last shard that took a task.
+- A `410` (draining) or `404` (gone) drops the cached id and creates the name
+  again.
+- At execution end and waiting, n8n deletes the names of all shards of the
+  `execution` and `node` scopes that the execution used in this process
+  (`DELETE /v1/code/sandboxes/names/{name}`). n8n never deletes a sandbox after
+  a task error. The service runs the idle timeout and the max age.
+
 ## Run it locally
 
 1. Start the sandbox service with code sandboxes. In `n8n-sandbox-service`:
@@ -109,7 +131,7 @@ CPUSET=0-15 PHASES="direct refill modes file" SCOPES=execution OPTIONS="shared s
 | Create (one at a time, bursts of 10 and 50) | `direct/creates.jsonl` |
 | Pool claim, claim burst | `direct/claims.jsonl`, `direct/claim-burst.jsonl` |
 | Refill rate at refill concurrency 2, 4 and 8 (`REFILL_CONCURRENCY`) | `direct/refill.jsonl` (`ratePerSec`, `fillMs`) |
-| Memory: guest cgroup (idle and per sandbox) | `direct/idle.jsonl`, the `code_sandbox_lease` records |
+| Memory: guest cgroup (idle and per sandbox) | `direct/idle.jsonl`, the `code_sandbox_event` `processes` records (written before a scope close) |
 | Memory: host RSS and PSS of each microVM | `poll-*.jsonl` (`memory.perVm`, `memory.pssTotalMiB`) |
 | First-task overhead, pool hit rate, throughput | the latency and benchmark folders of `execution-shared` and `execution-shared-pool` |
 | Binary path | `execution-shared-file` (WFILE) |
@@ -145,15 +167,16 @@ W10 (live console output) needs a manual run of the "W10" workflow in the editor
 | `N8N_CODE_SANDBOX_PYTHON` | `true` | `false`: Python keeps task runners |
 | `N8N_CODE_SANDBOX_PYTHON_RUNTIME` | `n8n-py` | The Python runtime of the image. Python tasks get their own sandboxes (scope key suffix `:py`) |
 | `N8N_CODE_SANDBOX_SCOPE` | `execution` | `node`, `execution` or `workflow` |
-| `N8N_CODE_SANDBOX_IDLE_TIMEOUT_MS` | `30000` | Release an idle sandbox |
-| `N8N_CODE_SANDBOX_MAX_LIFETIME_MS` | `60000` | `workflow` scope: drain a sandbox after this time |
+| `N8N_CODE_SANDBOX_IDLE_TIMEOUT_MS` | `30000` | Sent as `idleTimeoutMs`: the service deletes an idle sandbox |
+| `N8N_CODE_SANDBOX_MAX_LIFETIME_MS` | `60000` | `workflow` scope: sent as `maxAgeMs`. The service drains the sandbox after this time |
 | `N8N_CODE_SANDBOX_SLOTS` | `1` / `2` / `4` | Slots per sandbox (node / execution / workflow) |
-| `N8N_CODE_SANDBOX_MAX_PER_KEY` | `4` | Sandboxes per scope key in one process |
+| `N8N_CODE_SANDBOX_MAX_PER_KEY` | `4` | Sandboxes (shards) per scope key, for all n8n processes |
+| `N8N_CODE_SANDBOX_MAX_QUEUE_MS` | `60000` | How long a task retries when all shards of its scope are full |
 | `N8N_CODE_SANDBOX_SPARE_WORKERS` | `true` | Each slot keeps a started worker |
 | `N8N_CODE_SANDBOX_REUSE_WORKERS` | `false` | One shared worker process runs all tasks of a sandbox, at the same time up to the slot count. Each task has its own scope for the built-ins. The module cache, changes to built-in objects and globals that sloppy code creates are shared while tasks run. A timeout or cancel drops the task, and the process is replaced when no task runs in it. If the process does not respond, the daemon kills it at once and the other running tasks fail |
 | `N8N_CODE_SANDBOX_TASK_MEMORY_MB` | `512` | Memory per task |
 | `N8N_CODE_SANDBOX_RUNTIME` | `n8n-js` | `n8n-js` (startup snapshot) or `n8n-js-nosnapshot` |
-| `N8N_CODE_SANDBOX_TIMINGS` | `true` | Write `code_sandbox_task` and `code_sandbox_lease` records to stdout |
+| `N8N_CODE_SANDBOX_TIMINGS` | `true` | Write `code_sandbox_task` and `code_sandbox_event` records to stdout |
 | `N8N_CODE_SANDBOX_TIMINGS_PATH` | — | Also append the records to this file |
 | `N8N_SANDBOX_SERVICE_URL`, `N8N_SANDBOX_SERVICE_API_KEY` | — | The sandbox service |
 

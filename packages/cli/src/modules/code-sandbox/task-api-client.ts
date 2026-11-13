@@ -26,16 +26,23 @@ export class TaskApiError extends Error {
 }
 
 export interface CreateCodeSandboxOptions {
+	/** A create with the name of a current sandbox returns that sandbox. */
+	name?: string;
 	runtime: string;
 	slots: number;
 	taskMemoryMb: number;
 	spareWorkers: boolean;
 	reuseWorkers: boolean;
+	idleTimeoutMs?: number;
+	maxAgeMs?: number;
 	labels?: Record<string, string>;
 }
 
 export interface CodeSandbox {
 	id: string;
+	name?: string;
+	/** Create only: false when the name already had a current sandbox. */
+	created?: boolean;
 	runtime: string;
 	runtimeVersion: string;
 	slots: number;
@@ -173,6 +180,11 @@ export class TaskApiClient {
 		}
 	}
 
+	/** Deletes all sandboxes of the name, also draining ones. */
+	async deleteSandboxesByName(name: string): Promise<void> {
+		await this.json('DELETE', `v1/code/sandboxes/names/${encodeURIComponent(name)}`);
+	}
+
 	/**
 	 * Runs a task. Streams the inputs. Calls `onEvent` for each event and
 	 * resolves with the terminal event. `onEvent` must not block: answer `rpc`
@@ -276,15 +288,22 @@ export class TaskApiClient {
 
 	private async json<T>(method: string, path: string, body?: unknown): Promise<T> {
 		const payload = body === undefined ? undefined : Buffer.from(JSON.stringify(body));
-		const res = await this.request(
-			method,
-			path,
-			payload
-				? { 'Content-Type': 'application/json', 'Content-Length': String(payload.length) }
-				: {},
-			payload ? Readable.from([payload]) : undefined,
-		);
-		const text = await readAll(res);
+		let res: http.IncomingMessage;
+		let text: string;
+		try {
+			res = await this.request(
+				method,
+				path,
+				payload
+					? { 'Content-Type': 'application/json', 'Content-Length': String(payload.length) }
+					: {},
+				payload ? Readable.from([payload]) : undefined,
+			);
+			text = await readAll(res);
+		} catch (e) {
+			// Status 0: a transport error.
+			throw new TaskApiError(`${method} ${path} failed: ${(e as Error).message}`, 0);
+		}
 		if ((res.statusCode ?? 0) >= 300) throw errorFromText(res.statusCode ?? 0, text);
 		return (text ? JSON.parse(text) : undefined) as T;
 	}

@@ -10,7 +10,12 @@ import { CodeSandboxBackend, CodeSandboxInfraError } from '../code-sandbox-backe
 import type { CodeSandboxTimings, TaskTimingRecord } from '../code-sandbox-timings';
 import type { BuiltTask, CodeTaskBuilder } from '../code-task-builder';
 import { ALLOWED_RPC_METHODS } from '../rpc-handler';
-import type { Lease, SandboxLeaseManager } from '../sandbox-lease-manager';
+import {
+	SandboxFullError,
+	SandboxGoneError,
+	type Placement,
+	type SandboxScopeClient,
+} from '../sandbox-scope-client';
 import {
 	TaskApiError,
 	type CodeTaskDoneEvent,
@@ -65,7 +70,7 @@ function setup(runTask: RunTask, lang: Lang = JS) {
 		deleteTask: vi.fn(async () => {}),
 		getOutput: vi.fn(),
 	};
-	const leases = { client, markBroken: vi.fn() } as unknown as SandboxLeaseManager;
+	const scopes = { client, forget: vi.fn() } as unknown as SandboxScopeClient;
 	const backend = new CodeSandboxBackend(
 		mock<CodeSandboxConfig>({
 			inlineResultMaxBytes: 1024 * 1024,
@@ -73,7 +78,7 @@ function setup(runTask: RunTask, lang: Lang = JS) {
 			runtime: 'n8n-js',
 			pythonRuntime: 'n8n-py',
 		}),
-		leases,
+		scopes,
 		mock<CodeTaskBuilder>(),
 		mock<CodeSandboxTimings>(),
 		mock<GlobalConfig>({ deployment: { type: 'default' } }),
@@ -94,22 +99,29 @@ function setup(runTask: RunTask, lang: Lang = JS) {
 	};
 	(executeFunctions as unknown as { logNodeOutput: unknown }).logNodeOutput = vi.fn();
 
-	const lease = { scopeKey: 'e:1', sandboxId: 's1', onBroken: new Set() } as unknown as Lease;
+	const placement: Placement = {
+		scopeKey: 'e:1',
+		name: 'c1-x',
+		shard: 0,
+		sandboxId: 's1',
+		cached: true,
+		created: false,
+	};
 	const built = { inputs: [], bytesInBin: 0 } as unknown as BuiltTask;
 	const rec = { attempts: 1, outcome: 'ok' } as TaskTimingRecord;
 	const run = async () =>
 		await (
 			backend as unknown as {
-				runOnLease: (...args: unknown[]) => Promise<unknown>;
+				runOnSandbox: (...args: unknown[]) => Promise<unknown>;
 			}
-		).runOnLease(lease, 'e:1', 't1', built, executeFunctions, rec, lang);
+		).runOnSandbox(placement, 't1', built, executeFunctions, rec, lang);
 
 	return {
 		run,
 		backend,
 		executeFunctions,
 		client,
-		leases,
+		scopes,
 		posted,
 		rec,
 		cancel,
@@ -154,7 +166,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 		expect(t.client.postRpcResult).toHaveBeenCalledTimes(2);
 	});
 
-	it('fails the task when the result cannot be sent, without breaking the lease on an HTTP error', async () => {
+	it('fails the task when the result cannot be sent, and keeps the cached sandbox on an HTTP error', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent, signal) => {
 			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
 			onEvent(rpcEvent);
@@ -167,10 +179,10 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 		expect(err).toBeInstanceOf(CodeSandboxInfraError);
 		expect((err as Error).message).toContain('RPC result could not be sent');
 		expect(t.client.postRpcResult).toHaveBeenCalledTimes(2);
-		expect(t.leases.markBroken).not.toHaveBeenCalled();
+		expect(t.scopes.forget).not.toHaveBeenCalled();
 	});
 
-	it('breaks the lease when the result post has a transport error', async () => {
+	it('forgets the cached sandbox when the result post has a transport error', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent, signal) => {
 			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
 			onEvent(rpcEvent);
@@ -182,7 +194,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 		);
 
 		await expect(t.run()).rejects.toBeInstanceOf(CodeSandboxInfraError);
-		expect(t.leases.markBroken).toHaveBeenCalledTimes(1);
+		expect(t.scopes.forget).toHaveBeenCalledTimes(1);
 	});
 
 	it('does not retry a 4xx result post', async () => {
@@ -223,6 +235,51 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 		await expect(t.run()).resolves.toBeDefined();
 		expect(t.helperCalls).toHaveLength(0);
+	});
+});
+
+describe('CodeSandboxBackend rejections before accepted', () => {
+	it('maps a 429 to SandboxFullError and stops the upload', async () => {
+		let uploadSignal: AbortSignal | undefined;
+		const t = setup(async (_s, _spec, _i, _onEvent, signal) => {
+			uploadSignal = signal;
+			throw new TaskApiError('no free slot', 429);
+		});
+		await expect(t.run()).rejects.toBeInstanceOf(SandboxFullError);
+		expect(uploadSignal?.aborted).toBe(true);
+		expect(t.scopes.forget).not.toHaveBeenCalled();
+	});
+
+	it.each([410, 404])('maps a %d to SandboxGoneError', async (status) => {
+		const t = setup(async () => {
+			throw new TaskApiError('gone', status);
+		});
+		await expect(t.run()).rejects.toBeInstanceOf(SandboxGoneError);
+	});
+
+	it('fails without a retry when the stream breaks before accepted', async () => {
+		const t = setup(async () => {
+			throw new TaskApiError('task request failed: ECONNRESET', 0);
+		});
+		await expect(t.run()).rejects.toBeInstanceOf(CodeSandboxInfraError);
+		expect(t.scopes.forget).toHaveBeenCalledTimes(1);
+	});
+
+	it('fails the task when no terminal event comes after a cancel', async () => {
+		vi.useFakeTimers();
+		try {
+			const t = setup(async (_s, _spec, _i, onEvent, signal) => {
+				onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+				t.cancel.abort();
+				return await untilAborted(signal);
+			});
+			const result = t.run().catch((e: unknown) => e);
+			await vi.advanceTimersByTimeAsync(2_500);
+			expect(await result).toBeInstanceOf(TaskCancelledError);
+			expect(t.client.deleteTask).toHaveBeenCalledWith('s1', 't1');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 

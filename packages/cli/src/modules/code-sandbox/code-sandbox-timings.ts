@@ -17,9 +17,17 @@ export interface TaskTimingRecord {
 	language?: string;
 	nodeMode?: string;
 	reuseWorkers?: boolean;
+	/** The sandbox id was cached: no create request. */
 	leaseHit?: boolean;
+	/** The create of this task made a new sandbox. */
+	sandboxCreated?: boolean;
+	shard?: number;
 	randomKey?: boolean;
+	/** Task requests, including the ones refused with 429, 410 or 404. */
 	attempts: number;
+	fullRejects?: number;
+	goneRetries?: number;
+	/** Time spent waiting after all shards of the scope were full. */
 	slotWaitMs?: number;
 	t_acquire?: number;
 	t_create?: number;
@@ -51,26 +59,6 @@ export interface TaskTimingRecord {
 	error?: string;
 }
 
-/** One record per released lease (`code_sandbox_lease`). */
-export interface LeaseRecord {
-	scopeMode: string;
-	scopeKey: string;
-	runtime?: string;
-	sandboxId: string;
-	workflowId?: string;
-	createMs?: number;
-	createdAt: number;
-	releasedAt: number;
-	holdMs: number;
-	busyMs: number;
-	idleRatio: number;
-	taskCount: number;
-	executionCount: number;
-	maxConcurrentTasks: number;
-	slots: number;
-	releaseReason: string;
-}
-
 /**
  * Writes the measurement records as JSON lines to stdout, and to a file if
  * N8N_CODE_SANDBOX_TIMINGS_PATH is set. The analysis script reads them.
@@ -87,10 +75,6 @@ export class CodeSandboxTimings {
 
 	task(record: TaskTimingRecord) {
 		this.write({ type: 'code_sandbox_task', ts: Date.now(), ...record });
-	}
-
-	lease(record: LeaseRecord) {
-		this.write({ type: 'code_sandbox_lease', ts: Date.now(), ...record });
 	}
 
 	event(name: string, data: Record<string, unknown>) {

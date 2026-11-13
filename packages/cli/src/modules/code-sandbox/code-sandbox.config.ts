@@ -24,11 +24,14 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_SCOPE', scopeSchema)
 	scope: CodeSandboxScope = 'execution';
 
-	/** Release a sandbox after this idle time. */
+	/** Sent as `idleTimeoutMs`: the service deletes a sandbox after this idle time. */
 	@Env('N8N_CODE_SANDBOX_IDLE_TIMEOUT_MS')
 	idleTimeoutMs: number = 30_000;
 
-	/** `workflow` scope only. Stop new tasks on a sandbox after this time. */
+	/**
+	 * `workflow` scope only. Sent as `maxAgeMs`: after this time the service
+	 * drains the sandbox, and the scope gets a new one.
+	 */
 	@Env('N8N_CODE_SANDBOX_MAX_LIFETIME_MS')
 	maxLifetimeMs: number = 60_000;
 
@@ -36,9 +39,16 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_SLOTS')
 	slotsOverride: number = 0;
 
-	/** Maximum sandboxes for one scope key in one process. Draining ones do not count. */
+	/**
+	 * Maximum sandboxes (shards) for one scope key, for all n8n processes
+	 * together. A task tries the next shard when a sandbox is full.
+	 */
 	@Env('N8N_CODE_SANDBOX_MAX_PER_KEY')
 	maxPerKey: number = 4;
+
+	/** How long a task waits and retries when all shards of its scope are full. */
+	@Env('N8N_CODE_SANDBOX_MAX_QUEUE_MS')
+	maxQueueMs: number = 60_000;
 
 	/** Each slot keeps a started worker process. */
 	@Env('N8N_CODE_SANDBOX_SPARE_WORKERS')
@@ -56,7 +66,7 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_TASK_MEMORY_MB')
 	taskMemoryMb: number = 512;
 
-	/** Write timing records (`code_sandbox_task`, `code_sandbox_lease`). */
+	/** Write timing records (`code_sandbox_task`, `code_sandbox_event`). */
 	@Env('N8N_CODE_SANDBOX_TIMINGS')
 	timings: boolean = true;
 
