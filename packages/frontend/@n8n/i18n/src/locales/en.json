@@ -5766,6 +5766,7 @@
 	"uiExtensions.sidePanel.open": "Open side panel",
 	"uiExtensions.sidePanel.close": "Close side panel",
 	"uiExtensions.view.error": "This view stopped with an error. Ask the MCP client that made the view to fix it. Error: {message}",
+	"uiExtensions.view.builtinError": "Page summary stopped with an error. Reload the page to try again. Error: {message}",
 	"uiExtensions.view.leftFrame": "This view tried to open another page, so n8n stopped it.",
 	"uiExtensions.pageSummary.title": "Page summary",
 	"uiExtensions.pageSummary.workflow.active": "Published",

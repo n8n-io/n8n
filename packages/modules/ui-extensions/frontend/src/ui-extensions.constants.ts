@@ -24,3 +24,9 @@ export const PAGE_SUMMARY_STRING_KEYS = [
 	'uiExtensions.pageSummary.workflows.hint',
 	'uiExtensions.pageSummary.other.heading',
 ] as const;
+
+/** The Page summary strings with a `{count}` placeholder, which the view fills. */
+export const PAGE_SUMMARY_COUNT_KEYS: ReadonlySet<string> = new Set([
+	'uiExtensions.pageSummary.workflow.nodeCount',
+	'uiExtensions.pageSummary.workflows.total',
+]);

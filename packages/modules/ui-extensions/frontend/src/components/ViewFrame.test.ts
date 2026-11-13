@@ -164,7 +164,36 @@ describe('ViewFrame', () => {
 
 		fromFramePort({ ...envelope, type: 'error', message: 'boom' });
 
-		expect((await findByTestId('ui-extensions-view-error')).textContent).toContain('boom');
+		const callout = await findByTestId('ui-extensions-view-error');
+		expect(callout.textContent).toContain('boom');
+		expect(callout.textContent).toContain('MCP client');
+	});
+
+	it('tells the user to reload the page when the built-in view fails', async () => {
+		const { fromFrame, fromFramePort, findByTestId } = renderFrame({
+			view: { ...mcpView, builtin: true },
+		});
+		fromFrame(ready);
+
+		fromFramePort({ ...envelope, type: 'error', message: 'boom' });
+
+		const callout = await findByTestId('ui-extensions-view-error');
+		expect(callout.textContent).toContain('Reload the page');
+		expect(callout.textContent).not.toContain('MCP client');
+	});
+
+	it('sends nothing more after the view loads another page', async () => {
+		const { iframe, received, fromFrame, rerender } = renderFrame();
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		await fireEvent.load(iframe);
+		await fireEvent.load(iframe);
+		await rerender({ pageContext: { page: 'other', routeName: 'SettingsPersonalView' } });
+		await nextTick();
+		await flush();
+
+		expect(received).toHaveLength(1);
 	});
 
 	it('shows why a source is not a view, and renders no frame', () => {

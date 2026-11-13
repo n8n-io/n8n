@@ -31,6 +31,22 @@ const flush = async () => {
 	for (let turn = 0; turn < 5; turn++) await new Promise((resolve) => setTimeout(resolve, 0));
 };
 
+/** The channels that a test opens. They are closed after each test. */
+const openChannels: MessageChannel[] = [];
+
+afterEach(() => {
+	for (const channel of openChannels.splice(0)) {
+		channel.port1.close();
+		channel.port2.close();
+	}
+});
+
+const createChannel = () => {
+	const channel = new MessageChannel();
+	openChannels.push(channel);
+	return channel;
+};
+
 /** A frame window with a fake parent, so `event.source` checks work. */
 function createFrameWindow() {
 	const events = new EventTarget();
@@ -57,7 +73,7 @@ function createFrameWindow() {
 
 	/** Does the editor's side of the handshake and returns the editor's port. */
 	const connect = () => {
-		const channel = new MessageChannel();
+		const channel = createChannel();
 		const received: unknown[] = [];
 		channel.port1.onmessage = (event) => received.push(event.data);
 		sendWindowMessage({ ...envelope, type: 'connect' }, parent, [channel.port2]);
@@ -133,7 +149,7 @@ describe('createViewBridge', () => {
 	it('takes the port only from the parent window, and only once', async () => {
 		const { target, sendWindowMessage, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
-		const intruder = new MessageChannel();
+		const intruder = createChannel();
 
 		sendWindowMessage({ ...envelope, type: 'connect' }, { postMessage: vi.fn() }, [intruder.port2]);
 		const editor = connect();

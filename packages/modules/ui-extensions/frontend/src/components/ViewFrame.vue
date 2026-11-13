@@ -11,7 +11,7 @@ import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { PAGE_SUMMARY_STRING_KEYS } from '../ui-extensions.constants';
+import { PAGE_SUMMARY_COUNT_KEYS, PAGE_SUMMARY_STRING_KEYS } from '../ui-extensions.constants';
 import { contextForView } from '../ui-extensions.context';
 import { buildViewDocument, VIEW_FRAME_SANDBOX } from '../ui-extensions.frame';
 import type { SidePanelView, ViewRuntimeAssets } from '../ui-extensions.types';
@@ -50,10 +50,23 @@ const strings = computed<Record<string, string>>(() =>
 		? Object.fromEntries(
 				PAGE_SUMMARY_STRING_KEYS.map((key) => [
 					key,
-					i18n.baseText(key, { interpolate: { count: '{count}' } }),
+					PAGE_SUMMARY_COUNT_KEYS.has(key)
+						? i18n.baseText(key, { interpolate: { count: '{count}' } })
+						: i18n.baseText(key),
 				]),
 			)
 		: {},
+);
+
+const errorText = computed(() =>
+	viewError.value === null
+		? ''
+		: i18n.baseText(
+				props.view.builtin ? 'uiExtensions.view.builtinError' : 'uiExtensions.view.error',
+				{
+					interpolate: { message: viewError.value },
+				},
+			),
 );
 
 /** The channel to the runtime document that sent the first `ready`. */
@@ -113,7 +126,9 @@ let loadCount = 0;
  */
 function onLoad() {
 	loadCount += 1;
-	if (loadCount > 1) hasLeftFrame.value = true;
+	if (loadCount <= 1) return;
+	hasLeftFrame.value = true;
+	channel?.port1.close();
 }
 
 watch([context, strings], sendContext, { deep: true });
@@ -142,7 +157,7 @@ onBeforeUnmount(() => {
 				:class="$style.callout"
 				data-test-id="ui-extensions-view-error"
 			>
-				{{ i18n.baseText('uiExtensions.view.error', { interpolate: { message: viewError } }) }}
+				{{ errorText }}
 			</N8nCallout>
 			<iframe
 				v-if="srcdoc"
