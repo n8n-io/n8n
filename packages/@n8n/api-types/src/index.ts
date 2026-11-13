@@ -532,6 +532,8 @@ export {
 	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalCredentialTestTargetRequest,
+	InstanceAiAssistantEvalCreateThreadRequest,
+	InstanceAiAssistantEvalThreadOverridesRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
