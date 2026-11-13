@@ -23,15 +23,7 @@ describe(useAppSidePanelLayout, () => {
 		route.meta = {};
 		useSettingsStore().setSettings({ ...defaultSettings, activeModules: ['ui-extensions'] });
 		const usersStore = useUsersStore();
-		usersStore.addUsers([
-			{
-				id: 'user-1',
-				email: 'a@b.c',
-				isDefaultUser: false,
-				isPendingUser: false,
-				mfaEnabled: false,
-			},
-		]);
+		usersStore.addUsers([{ id: 'user-1', email: 'a@b.c', isPending: false, mfaEnabled: false }]);
 		usersStore.currentUserId = 'user-1';
 	});
 

@@ -95,15 +95,13 @@ describe(useFloatingUiOffsets, () => {
 		);
 	});
 	describe('toastRightOffset', () => {
-		it('should move toasts left by the open chat panel and the side panel', () => {
+		it('should move toasts left by the side panel rail, and by the panel while it is open', () => {
 			const { toastRightOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
 			expect(toastRightOffset.value).toBe('0px');
 
 			useSettingsStore().setSettings({ ...defaultSettings, activeModules: ['ui-extensions'] });
 			const usersStore = useUsersStore();
-			usersStore.addUsers([
-				{ id: 'u', email: 'a@b.c', isDefaultUser: false, isPendingUser: false, mfaEnabled: false },
-			]);
+			usersStore.addUsers([{ id: 'u', email: 'a@b.c', isPending: false, mfaEnabled: false }]);
 			usersStore.currentUserId = 'u';
 			expect(toastRightOffset.value).toBe('40px');
 
