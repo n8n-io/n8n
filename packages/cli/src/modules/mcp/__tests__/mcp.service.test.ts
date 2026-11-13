@@ -684,11 +684,21 @@ describe('McpService', () => {
 				);
 			};
 
-			it.each([true, false])(
-				'reports activation outcomes with publication service enabled=%s',
-				async (enabled) => {
+			it.each([
+				{ enabled: true, versionId: undefined },
+				{ enabled: true, versionId: 'v-1' },
+				{ enabled: false, versionId: undefined },
+				{ enabled: false, versionId: 'v-1' },
+			])(
+				'reports activation outcomes with publication service enabled=$enabled and versionId=$versionId',
+				async ({ enabled, versionId }) => {
 					Container.get(WorkflowsConfig).useWorkflowPublicationService = enabled;
-					const workflow = createWorkflow({ versionId: 'v-2', activeVersionId: 'v-2', nodes: [] });
+					const requestedVersionId = versionId ?? 'v-2';
+					const workflow = createWorkflow({
+						versionId: 'v-2',
+						activeVersionId: requestedVersionId,
+						nodes: [],
+					});
 					vi.mocked(Container.get(WorkflowFinderService).findWorkflowForUser).mockResolvedValue(
 						workflow,
 					);
@@ -702,7 +712,7 @@ describe('McpService', () => {
 					);
 					const status: Awaited<ReturnType<WorkflowPublicationStatusService['getLatestStatus']>> = {
 						status: 'failed',
-						versionId: 'v-2',
+						versionId: requestedVersionId,
 						liveVersionId: null,
 						pendingVersionId: null,
 						triggers: [{ nodeId: 'invalid', status: 'failed', errorMessage: 'Invalid interval' }],
@@ -729,7 +739,10 @@ describe('McpService', () => {
 									method: 'tools/call',
 									params: {
 										name,
-										arguments: { workflowId: workflow.id },
+										arguments: {
+											workflowId: workflow.id,
+											...(name === 'publish_workflow' ? { versionId } : {}),
+										},
 										_meta: {
 											'io.modelcontextprotocol/protocolVersion': '2026-07-28',
 											'io.modelcontextprotocol/clientCapabilities': {},
@@ -757,6 +770,12 @@ describe('McpService', () => {
 						workflow: { active: !enabled, ...(enabled ? { publicationStatus: status } : {}) },
 					});
 					expect(publication.waitForPublication).toHaveBeenCalledTimes(enabled ? 1 : 0);
+					if (enabled) {
+						expect(publication.waitForPublication).toHaveBeenCalledWith(
+							workflow.id,
+							requestedVersionId,
+						);
+					}
 					expect(publication.getLatestStatus).toHaveBeenCalledTimes(enabled ? 1 : 0);
 				},
 			);
