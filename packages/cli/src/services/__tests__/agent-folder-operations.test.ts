@@ -134,4 +134,37 @@ describe('Agent folder operations', () => {
 
 		expect(repository.save).not.toHaveBeenCalled();
 	});
+
+	describe('folder paths', () => {
+		it('builds the breadcrumb tree from an ordered path', async () => {
+			repository.getAncestorPath.mockResolvedValue([
+				folder('root'),
+				folder('parent', 'root'),
+				folder('leaf', 'parent'),
+			]);
+
+			expect(await service.getFolderTree('leaf', 'project')).toEqual([
+				{
+					id: 'root',
+					name: 'root',
+					children: [
+						{
+							id: 'parent',
+							name: 'parent',
+							children: [{ id: 'leaf', name: 'leaf', children: [] }],
+						},
+					],
+				},
+			]);
+		});
+
+		it.each([[], [folder('first', 'second'), folder('second', 'first')]])(
+			'keeps an empty or cyclic path out of the breadcrumb tree (%#)',
+			async (...path) => {
+				repository.getAncestorPath.mockResolvedValue(path);
+
+				expect(await service.getFolderTree('source', 'project')).toEqual([]);
+			},
+		);
+	});
 });

@@ -34,12 +34,6 @@ export interface SimpleFolderNode {
 	children: SimpleFolderNode[];
 }
 
-interface FolderPathRow {
-	folder_id: string;
-	folder_name: string;
-	folder_parent_folder_id: string | null;
-}
-
 @Service()
 export class FolderService {
 	constructor(
@@ -216,13 +210,15 @@ export class FolderService {
 
 	async getFolderTree(folderId: string, projectId: string): Promise<SimpleFolderNode[]> {
 		const path = await this.getFolderPath(folderId, projectId);
+		const root = path[0];
 
-		return this.transformFolderPathToTree(
-			path.map((item) => ({
-				folder_id: item.id,
-				folder_name: item.name,
-				folder_parent_folder_id: item.parentFolderId,
-			})),
+		if (root?.parentFolderId && path.some(({ id }) => id === root.parentFolderId)) {
+			return [];
+		}
+
+		return path.reduceRight<SimpleFolderNode[]>(
+			(children, { id, name }) => [{ id, name, children }],
+			[],
 		);
 	}
 
@@ -347,39 +343,6 @@ export class FolderService {
 		tx?: EntityManager,
 	) {
 		return await this.folderRepository.transferAllFoldersToProject(fromProjectId, toProjectId, tx);
-	}
-
-	private transformFolderPathToTree(flatPath: FolderPathRow[]): SimpleFolderNode[] {
-		if (!flatPath || flatPath.length === 0) {
-			return [];
-		}
-
-		const folderMap = new Map<string, SimpleFolderNode>();
-
-		// First pass: create all nodes
-		flatPath.forEach((folder) => {
-			folderMap.set(folder.folder_id, {
-				id: folder.folder_id,
-				name: folder.folder_name,
-				children: [],
-			});
-		});
-
-		let rootNode: SimpleFolderNode | null = null;
-
-		// Second pass: build the tree
-		flatPath.forEach((folder) => {
-			const currentNode = folderMap.get(folder.folder_id)!;
-
-			if (folder.folder_parent_folder_id && folderMap.has(folder.folder_parent_folder_id)) {
-				const parentNode = folderMap.get(folder.folder_parent_folder_id)!;
-				parentNode.children = [currentNode];
-			} else {
-				rootNode = currentNode;
-			}
-		});
-
-		return rootNode ? [rootNode] : [];
 	}
 
 	private isDescendant(folderId: string, tree: SimpleFolderNode[]): boolean {
