@@ -1,0 +1,108 @@
+packages/cli/src/modules/skills/__tests__/skill.service.test.ts
+  s_3f90602cbb1671::t_fd054a77f62148 644
+  s_3f90602cbb1671::t_9db81a0229ddb3 15,633
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_3f90602cbb1671::t_e7e014da1397b1 192-196
+  s_3f90602cbb1671::t_c43a9facd79aa1 28,63,191,197,208
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 1380
+  s_3f90602cbb1671::t_519965dd075f0e 1736
+packages/cli/src/modules/skills/utils/skill-content.ts
+  s_3f90602cbb1671::t_6b007087702407 77-78
+packages/cli/src/modules/skills/__tests__/integration/skill-source-move.integration.test.ts
+  s_3f90602cbb1671::t_7fc00721a8139e 288,291-293,397-400,412-421,427-432,436-467
+  s_3f90602cbb1671::t_e7e014da1397b1 1-5,7-12,85-94,96-103,109-110,113-114,120-129,134-165,182-193,212-218,244-251,253-255,259-265,267-270,272-275,325-328,335-340,342-346,358-359,377-383,387-388
+  s_3f90602cbb1671::t_af44bc16c3e630 13,20,390-396,401-411,422-426
+  s_3f90602cbb1671::t_7cb86c7a20cebd 433-435
+  s_3f90602cbb1671::t_8a35744e96f4c4 6,14,17-19,21-26,29-35,37-41,47-84,95,104-108,111-112,115-119,130-133,166-181,194-211,219-243,252,256-258,266,271,276-285,303-324,329-334,341,347-357,360-376,384-386,389,468
+  s_3f90602cbb1671::t_519965dd075f0e 36,286-287,289-290,294-302
+  s_3f90602cbb1671::t_8d1159c99e1fa3 15-16,27-28,42-46
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_3f90602cbb1671::t_6b007087702407 71-98,330-331
+packages/@n8n/telemetry/src/events/context.ts
+  s_3f90602cbb1671::t_9f0aef3c98251c 453-454,457-467
+  s_3f90602cbb1671::t_e7e014da1397b1 455-456
+packages/cli/src/modules/skills/controllers/skill-source.controller.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 93-98,103-108
+  s_3f90602cbb1671::t_9f0aef3c98251c 3,91-92,99-102,109
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_3f90602cbb1671::t_7fc00721a8139e 329-336,386,401-406,408-424,454,865-867,874
+  s_3f90602cbb1671::t_e7e014da1397b1 22-28,34-37,287-291,309-310,322-325,345-350,353-369,373-382,427-431,433-434,453,468-469,477,479-490,492-503,581-586,588,857-859
+  s_3f90602cbb1671::t_cc0c82442d8be0 84-91,295-296,305,315-319,398-400,407,432,448,474,478,491,587,855,879
+  s_3f90602cbb1671::t_9f0aef3c98251c 16-17,20,29,32,43-44,73,148-149,257,261,281,286,292-294,297-304,306-308,311-314,320-321,326-328,337-344,351-352,370-372,383-385,388-397,425-426,435-438,449-452,459-467,470-473,475-476,504-506,580,589,853-854,1030-1035
+  s_3f90602cbb1671::t_2759c7bf4ac3a4 387
+  s_3f90602cbb1671::t_566e13102b2e86 439-447,455-458
+packages/cli/src/modules/skills/__tests__/skill-sync.service.test.ts
+  s_3f90602cbb1671::t_3c30c0a6b42acf 50
+  s_3f90602cbb1671::t_9db81a0229ddb3 1,6,23,35,47,65,121,153
+packages/cli/src/modules/skills/services/skills-telemetry.service.ts
+  s_3f90602cbb1671::t_9f0aef3c98251c 137,142-144
+  s_3f90602cbb1671::t_e7e014da1397b1 130-136,138-141
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 635-637
+  s_3f90602cbb1671::t_6b007087702407 4,630-634,638-639,656
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_3f90602cbb1671::t_7fc00721a8139e 5,109-110
+  s_3f90602cbb1671::t_cc0c82442d8be0 7,94,101-103,105,111-112
+  s_3f90602cbb1671::t_3c30c0a6b42acf 95-98,104,106-108
+  s_3f90602cbb1671::t_e7e014da1397b1 84,99-100,113-117,260,270-274,284,311
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_3f90602cbb1671::t_c43a9facd79aa1 63,117,866-867,872-874,1067
+  s_3f90602cbb1671::t_e7e014da1397b1 868-871,1107-1114
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceMoveDialog.vue
+  s_3f90602cbb1671::t_c43a9facd79aa1 1,8-11,22-24,26-48,56-59,69-70,76-80,85-90,96-102,107-118,135-139,143-166,171-182,190,196,205,209-210,218,225-226,234-235,243-244,252,258-260,281-283,289-291,296,303-310,330-334,337-342,349-350
+  s_3f90602cbb1671::t_2759c7bf4ac3a4 25
+  s_3f90602cbb1671::t_7fc00721a8139e 52-53,236-242
+  s_3f90602cbb1671::t_e7e014da1397b1 2-7,12-21,49-51,54-55,60-68,71-75,81-84,91-95,103-106,119-134,140-142,167-170,183-189,191-195,197-204,206-208,211-217,219-224,227-233,245-251,253-257,261-280,284-288,292-295,297-302,311-329,335-336,343-348
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_3f90602cbb1671::t_c43a9facd79aa1 2,166-173,175-176
+packages/cli/src/modules/agents/agent-skill-refs.service.ts
+  s_3f90602cbb1671::t_3f3e521ae45d31 581-582,596-597
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_3f90602cbb1671::t_c43a9facd79aa1 2-3,197-198,210-211,217
+  s_3f90602cbb1671::t_e7e014da1397b1 199-209,212-216
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 640-645
+packages/cli/src/modules/agents/__tests__/agent-skill-refs.service.test.ts
+  s_3f90602cbb1671::t_3f3e521ae45d31 915-918,922-923
+  s_3f90602cbb1671::t_7fc00721a8139e 919-921
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_3f90602cbb1671::t_8d1159c99e1fa3 547-550,554-560,564-566
+  s_3f90602cbb1671::t_7fc00721a8139e 551-553,561-563
+  s_3f90602cbb1671::t_c43a9facd79aa1 393
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_3f90602cbb1671::t_6b007087702407 28
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceMoveDialog.test.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 11-17,24-25,32-48,50-63,65-70,74-76,81-83,91-94,96-107,144-153,157-159
+  s_3f90602cbb1671::t_a5e0ea576ab414 71-73
+  s_3f90602cbb1671::t_fd054a77f62148 1-10,18-23,26-31,49,64,77-80,84-90,95,108-143,154-156,160-185
+packages/cli/src/modules/skills/errors/skill-source-move.error.ts
+  s_3f90602cbb1671::t_e7e014da1397b1 9-13
+  s_3f90602cbb1671::t_9f0aef3c98251c 1-8,14-16
+packages/cli/src/modules/skills/AGENTS.md
+  s_3f90602cbb1671::t_2d3ad47b09a019 86
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_3f90602cbb1671::t_7fc00721a8139e 339-347
+  s_3f90602cbb1671::t_6b007087702407 9,147-162,174-179,241,361,368-371,378,386,390
+  s_3f90602cbb1671::t_e7e014da1397b1 163-173,237-240,336-338,372-377,379-382
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3f90602cbb1671::t_9db81a0229ddb3 4105
+  s_3f90602cbb1671::t_c43a9facd79aa1 4102-4104,4106-4115,4118-4122
+  s_3f90602cbb1671::t_2759c7bf4ac3a4 4116-4117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea101e55b970404ea18e908c3a9b271d71ee0854",
+  "prompts": {},
+  "sessions": {
+    "s_3f90602cbb1671": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cfd0-acd2-7921-a2e2-a79f65f339f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
