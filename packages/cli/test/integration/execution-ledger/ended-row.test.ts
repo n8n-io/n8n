@@ -1,5 +1,5 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import { isBillableExecution } from '@n8n/backend-services';
+import { isBillableExecution, isLedgerFact } from '@n8n/backend-services';
 import type { ExecutionLedgerRow, Project, WorkflowEntity } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -221,12 +221,7 @@ describe('execution ledger ended rows', () => {
 			);
 
 			const rows = await collectEndedRows(6);
-			const billableRows = rows.filter(
-				(row) =>
-					row.outcome !== 'none' &&
-					row.outcome !== 'blocked' &&
-					isBillableExecution({ mode: row.mode as WorkflowExecuteMode, status: row.outcome }),
-			);
+			const billableRows = rows.filter((row) => isLedgerFact(row) && isBillableExecution(row));
 
 			expect(rows).toHaveLength(6);
 			expect(billableRows).toHaveLength(4);

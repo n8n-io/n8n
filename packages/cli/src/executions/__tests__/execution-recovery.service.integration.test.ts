@@ -7,7 +7,6 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
-	ExecutionLedger,
 	ExecutionRepository,
 	WorkflowRepository,
 	ProjectRelationRepository,
@@ -39,7 +38,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { EventService } from '@n8n/backend-services';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { ExecutionLedger, WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
