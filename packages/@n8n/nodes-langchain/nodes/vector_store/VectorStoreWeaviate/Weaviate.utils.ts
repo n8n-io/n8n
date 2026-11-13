@@ -2,6 +2,8 @@ import { OperationalError, UserError } from '@n8n/errors';
 import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
 
+import { getIntegrationHeaders } from './Weaviate.integration';
+
 export type WeaviateCredential = {
 	weaviate_cloud_endpoint: string;
 	weaviate_api_key: string;
@@ -43,11 +45,14 @@ export async function createWeaviateClient(
 	nodeOptionProxy?: string,
 	skipInitChecks: boolean = false,
 ): Promise<WeaviateClient> {
+	// Set the headers before the connection, so that the startup checks also send them
+	const headers = await getIntegrationHeaders();
 	if (credentials.weaviate_cloud_endpoint) {
 		const weaviateClient: WeaviateClient = await weaviate.connectToWeaviateCloud(
 			credentials.weaviate_cloud_endpoint,
 			{
 				authCredentials: new weaviate.ApiKey(credentials.weaviate_api_key),
+				headers,
 				timeout,
 				skipInitChecks,
 			},
@@ -66,6 +71,7 @@ export async function createWeaviateClient(
 				? new weaviate.ApiKey(credentials.weaviate_api_key)
 				: undefined,
 			timeout,
+			headers,
 			proxies: grpcProxy ? { grpc: grpcProxy } : undefined,
 			skipInitChecks,
 		});
