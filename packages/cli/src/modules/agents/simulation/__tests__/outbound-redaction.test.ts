@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
@@ -140,8 +142,40 @@ describe('OutboundRedactor', () => {
 			body: new URLSearchParams({ grant: 'x', note: telegramToken }),
 		});
 
+		const stream = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://upload.example.com/files',
+			body: Readable.from([`streamed ${telegramToken}`]),
+		});
+
 		expect(binary.body).toMatch(/^\[binary body, \d+ bytes\]$/);
+		expect(stream.body).toBe('[Readable body]');
+		expect(JSON.stringify(stream)).not.toContain(telegramToken);
 		expect(form.body).toBe('grant=x&note=[REDACTED]');
+	});
+
+	it('keeps multipart fields, scrubbed, and describes files', async () => {
+		const { redactor } = await redactorWithCredential({ accessToken: telegramToken });
+		const form = new FormData();
+		form.append('chat_id', '42');
+		form.append('caption', `sent with ${telegramToken}`);
+		form.append('password', 'hunter22222');
+		form.append('document', new Blob(['file contents']), 'report.pdf');
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://api.telegram.org/sendDocument',
+			body: form,
+		});
+
+		expect(request.body).toEqual({
+			chat_id: '42',
+			caption: 'sent with [REDACTED]',
+			password: '[REDACTED]',
+			document: '[file report.pdf, 13 bytes]',
+		});
 	});
 
 	it('removes a header auth value whose header name does not look secret', async () => {

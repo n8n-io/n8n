@@ -246,6 +246,25 @@ describe('SubAgentRunner', () => {
 		},
 	);
 
+	it('finalizes the child execution when marking it simulated fails', async () => {
+		executionRepository.update.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'test',
+				instrumentation: { simulatedRun: true },
+			}),
+		).rejects.toThrow('db down');
+
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
+			expect.anything(),
+		);
+	});
+
 	it('sends the knowledge use of the child run when it ends', async () => {
 		await runner.run(spawnRequest, {
 			parentAgentId,
