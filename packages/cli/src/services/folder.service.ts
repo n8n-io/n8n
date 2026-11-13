@@ -3,6 +3,7 @@ import { EventService } from '@n8n/backend-services';
 import type {
 	FolderWithWorkflowAndSubFolderCount,
 	FolderWithWorkflowAndSubFolderCountAndPath,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
@@ -166,14 +167,19 @@ export class FolderService {
 	 *
 	 * If any workflows were active this will also deactivate those workflows.
 	 */
-	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
+	async flattenAndArchive(
+		user: User,
+		folderId: string,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
 			folderId,
 			projectId,
 		);
 
 		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, { skipArchived: true });
+			await this.workflowService.archive(user, workflowId, { skipArchived: true }, ctx);
 		}
 
 		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
@@ -184,11 +190,12 @@ export class FolderService {
 		folderId: string,
 		projectId: string,
 		{ transferToFolderId }: DeleteFolderDto,
+		ctx: OperationContext = {},
 	) {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 
 		if (!transferToFolderId) {
-			await this.flattenAndArchive(user, folderId, projectId);
+			await this.flattenAndArchive(user, folderId, projectId, ctx);
 			await this.folderRepository.delete({ id: folderId });
 			this.eventService.emit('folder-deleted', { folderId, projectId });
 			return;
