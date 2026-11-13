@@ -2066,6 +2066,12 @@ pub const Runner = struct {
         const form = if (lm.form_len > 0) lm.form_base[0..lm.form_len] else "/resume";
         try w.appendSliceBounded(",\"execution\":{\"id\":");
         try appendJsonStringBounded(w, id);
+        // A test bed run reads its own start clock in the host too (CLOCK-OFFSET).
+        const clock = r.sh.st.clockOffsetOf(a.exec_id);
+        if (clock != 0) {
+            var cb: [32]u8 = undefined;
+            try w.appendSliceBounded(std.fmt.bufPrint(&cb, ",\"clockOffsetMs\":{d}", .{clock}) catch unreachable);
+        }
         try w.appendSliceBounded(if (a.exec_id & core.given_id_flag != 0) ",\"mode\":\"test\",\"resumeUrl\":" else ",\"mode\":\"production\",\"resumeUrl\":");
         var ub: [core.max_base + 96]u8 = undefined;
         var sb: [32]u8 = undefined;

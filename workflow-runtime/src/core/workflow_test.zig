@@ -229,6 +229,18 @@ test "CLOCK-OFFSET: a run reads the time the test bed gives it" {
     try testing.expectEqual(@as(u32, 400), replyStatus(try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("4").?, .conn = 3, .payload = "clock:315360000001\nwf\nv1\nnull" }})));
 }
 
+test "CLOCK-OFFSET: the clock offset of an unknown or finished execution is 0" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var h = try Harness.init(a);
+    try testing.expectEqual(@as(u32, 200), try h.load("wf", "v1", false, try nowModule(a)));
+    try testing.expectEqual(@as(i64, 0), h.st.clockOffsetOf(core.parseExecId("9").?));
+    _ = try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("2").?, .conn = 3, .payload = "clock:-86400000\nwf\nv1\nnull" }});
+    // The run finished in that tick: the shell has no host step left to send it with.
+    try testing.expectEqual(@as(i64, 0), h.st.clockOffsetOf(core.parseExecId("2").?));
+}
+
 test "CLOCK-OFFSET: a wait date is on the run clock, a duration is not" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();

@@ -613,6 +613,13 @@ pub const State = struct {
         return s.by_exec.get(id) != null or s.parked.get(id) != null;
     }
 
+    /// The clock offset of a running execution (CLOCK-OFFSET), 0 for an
+    /// unknown one. The shell sends it with a host step.
+    pub fn clockOffsetOf(s: *const State, id: u64) i64 {
+        const slot = s.by_exec.get(id) orelse return 0;
+        return s.regions[slot].exec().clock_offset_ms;
+    }
+
     pub fn liveExecutions(s: *const State) u32 {
         return s.cfg.slots - s.nfree_slots;
     }
