@@ -904,7 +904,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -978,7 +978,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
@@ -1258,7 +1258,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			modelService: {
 				resolveAgentModelConfig: Mock;
 				resolveProxyModel: Mock;
-				resolveMemoryModelConfig: Mock;
+				resolveUtilityModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
 				getLabeledModelFetch: Mock;
@@ -1331,7 +1331,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.modelService = {
 			resolveAgentModelConfig: vi.fn(async () => 'model-1'),
 			resolveProxyModel: vi.fn(async () => 'model-1'),
-			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
 			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({

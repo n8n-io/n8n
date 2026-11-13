@@ -374,7 +374,7 @@ describe('GlobalConfig', () => {
 			mcpServers: '',
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
 			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',

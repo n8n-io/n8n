@@ -43,9 +43,9 @@ function modelReporting(tokens: {
 	});
 }
 
-/** No eval key in the environment, so the agent runs on the mock model. */
+/** The agent runs on the mock model, passed in as a resolved model. */
 function judgeOn(model: MockLanguageModelV3, name = 'eval-checklist-verifier') {
-	return createEvalAgent(name, { instructions: 'Judge the run.', fallbackModelConfig: model });
+	return createEvalAgent(name, { instructions: 'Judge the run.', resolvedModel: model });
 }
 
 describe('eval usage meter', () => {
