@@ -63,6 +63,7 @@ export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
 export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
 export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
 export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
+export const MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME = 'create_side_panel_view';
 
 /**
  * Installs a vetted community package so its nodes become usable. Not in

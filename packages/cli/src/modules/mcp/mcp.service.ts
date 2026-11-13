@@ -78,7 +78,9 @@ import { getAllowedToolNames } from './mcp-scopes';
 import {
 	areAgentToolsAvailable,
 	canReadMigrationReport,
+	canUseSidePanelViewTool,
 	isCommunityNodeInstallAvailable,
+	isUiExtensionsAvailable,
 } from './mcp-tool-availability';
 import type {
 	McpAppsTelemetryVariant,
@@ -899,6 +901,28 @@ export class McpService {
 		registerIfAllowed(
 			createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 		);
+
+		// Not builder-gated. The tool belongs to the `ui-extensions` module, so it loads only
+		// when that module is active.
+		if (
+			isUiExtensionsAvailable(this.moduleRegistry) &&
+			canUseSidePanelViewTool(auth?.grantedScopes)
+		) {
+			const [{ UiExtensionViewsService }, { Push }, { createCreateSidePanelViewTool }] =
+				await Promise.all([
+					import('@n8n/backend-module-ui-extensions'),
+					import('@/push/index.js'),
+					import('./tools/create-side-panel-view.tool.js'),
+				]);
+			registerIfAllowed(
+				createCreateSidePanelViewTool(
+					user,
+					Container.get(UiExtensionViewsService),
+					Container.get(Push),
+					this.telemetry,
+				),
+			);
+		}
 
 		// Not builder-gated: reading the report and running its built-in fixes need no builder.
 		// The tools belong to the `breaking-changes` module, so they load only when it serves a report.

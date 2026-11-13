@@ -2,6 +2,7 @@ import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
 import {
+	MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME,
 	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
 	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
@@ -148,6 +149,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		MCP_MIGRATE_WORKFLOW_TOOL_NAME,
 		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
 	],
+	// A view sees the workflows that are available in MCP, so registration also
+	// needs `workflow:read` (`canUseSidePanelViewTool`).
+	'sidePanelView:write': [MCP_CREATE_SIDE_PANEL_VIEW_TOOL_NAME],
 };
 
 /**
