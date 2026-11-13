@@ -5,6 +5,7 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	getPropertyKeyName,
+	getStringLiteralValue,
 	isNodeTypeClass,
 	WEBHOOK_LIFECYCLE_METHODS,
 	type WebhookLifecycleMethod,
@@ -51,6 +52,15 @@ function hasWebhooksDeclared(descriptionValue: TSESTree.ObjectExpression): boole
 	const webhooks = unwrapTypeAnnotations(webhooksProperty.value);
 	if (webhooks.type !== AST_NODE_TYPES.ArrayExpression) return false;
 	return webhooks.elements.length > 0;
+}
+
+/** The loader builds `webhookMethods` for a declarative webhook trigger. */
+function isDeclarativeWebhookTrigger(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const trigger = asObjectExpression(findObjectProperty(descriptionValue, 'trigger')?.value);
+	if (!trigger) return false;
+
+	const type = findObjectProperty(trigger, 'type')?.value;
+	return getStringLiteralValue(type ? unwrapTypeAnnotations(type) : null) === 'webhook';
 }
 
 /** Only explicit nullish values prove that a method is missing. */
@@ -139,6 +149,7 @@ export const WebhookLifecycleCompleteRule = createRule({
 
 				const descriptionValue = asObjectExpression(descriptionProperty.value);
 				if (!descriptionValue) return;
+				if (isDeclarativeWebhookTrigger(descriptionValue)) return;
 
 				const webhookMethodsProperty = findClassProperty(node, 'webhookMethods');
 

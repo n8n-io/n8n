@@ -32,6 +32,9 @@ method does not change whether the rule applies.
 Polling triggers (trigger nodes without a `webhooks` array and without
 `webhookMethods`) are intentionally out of scope.
 
+Declarative webhook triggers (`trigger: { type: 'webhook' }` in the description)
+are also out of scope, because n8n builds their `webhookMethods`.
+
 ## Examples
 
 ### ❌ Incorrect
