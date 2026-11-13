@@ -19,6 +19,9 @@ import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
 const SQLITE_ENQUEUE_CHUNK_SIZE = 998;
 
+/** Pending reasons a transfer takes over, because their apply would not re-register unchanged triggers. */
+const REASONS_A_TRANSFER_REPLACES_SQL = `('${WorkflowPublicationReason.Publish}', '${WorkflowPublicationReason.Reconcile}')`;
+
 @Service()
 export class WorkflowPublicationOutboxRepository extends BaseRepository<WorkflowPublicationOutbox> {
 	constructor(
@@ -168,13 +171,19 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		// record in the gap between them (detection's in-flight exclusion saw an
 		// earlier snapshot). Such a record is at least as fresh as this statement's
 		// snapshot — overwriting it could roll the workflow back to a stale version.
+		// A transfer changes only the reason of such a record, never its version.
+		const onConflict =
+			reason === WorkflowPublicationReason.Transfer
+				? `DO UPDATE SET "reason" = EXCLUDED."reason", "updatedAt" = CURRENT_TIMESTAMP(3)
+				   WHERE ${outboxTableName}."reason" IN ${REASONS_A_TRANSFER_REPLACES_SQL}`
+				: 'DO NOTHING';
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status", "reason")
 			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}', $2
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO NOTHING`,
+			 ${onConflict}`,
 			[workflowIds, reason],
 		);
 	}
@@ -190,6 +199,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		// statement, while a fresh leader can pass every active workflow at once.
 		// Chunked upserts stay idempotent, so a failure mid-batch just leaves the
 		// remainder for the next reconciliation pass.
+		const onConflict =
+			reason === WorkflowPublicationReason.Transfer
+				? `DO UPDATE SET "reason" = excluded."reason", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')
+				   WHERE ${outboxTableName}."reason" IN ${REASONS_A_TRANSFER_REPLACES_SQL}`
+				: 'DO NOTHING';
 		for (let i = 0; i < workflowIds.length; i += SQLITE_ENQUEUE_CHUNK_SIZE) {
 			const chunk = workflowIds.slice(i, i + SQLITE_ENQUEUE_CHUNK_SIZE);
 			const placeholders = chunk.map(() => '?').join(', ');
@@ -200,7 +214,7 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 				 FROM ${workflowTableName} w
 				 WHERE w."id" IN (${placeholders})
 				 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-				 DO NOTHING`,
+				 ${onConflict}`,
 				[reason, ...chunk],
 			);
 		}
