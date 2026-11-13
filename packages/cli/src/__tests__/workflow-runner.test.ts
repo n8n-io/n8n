@@ -64,6 +64,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import type { Job, JobFinishedProps } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
@@ -1091,6 +1092,84 @@ describe('run', () => {
 			} finally {
 				storageConfig.mode = 'database';
 			}
+		});
+	});
+
+	describe('static data of a new execution that waits for a concurrency slot', () => {
+		// These spies have persistent implementations. Restore them so that later tests use the real ones.
+		const spies: Array<MockInstance<(...args: never[]) => unknown>> = [];
+
+		afterEach(() => {
+			for (const spy of spies.splice(0)) spy.mockRestore();
+		});
+
+		function arrangeRun() {
+			// Another execution of the workflow saves its static data while add() waits.
+			let storedStaticData: IDataObject = { global: { counter: 1 } };
+			const activeExecutions = Container.get(ActiveExecutions);
+			spies.push(
+				vi
+					.spyOn(Container.get(WorkflowStaticDataService), 'getStaticDataById')
+					.mockImplementation(async () => storedStaticData),
+				vi.spyOn(activeExecutions, 'add').mockImplementation(async () => {
+					storedStaticData = { global: { counter: 2 } };
+					return '1';
+				}),
+				vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined),
+			);
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const processRunExecutionData = vi
+				.spyOn(WorkflowExecute.prototype, 'processRunExecutionData')
+				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'webhook',
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+			});
+
+			return {
+				data,
+				getExecutedWorkflow: () => processRunExecutionData.mock.calls[0][0],
+			};
+		}
+
+		it('runs with the static data saved during the wait', async () => {
+			const { data, getExecutedWorkflow } = arrangeRun();
+
+			await runner.run(data, true);
+
+			expect(getExecutedWorkflow().staticData).toMatchObject({ global: { counter: 2 } });
+		});
+
+		it('replaces the static data of the workflow built before the wait without marking it as changed', async () => {
+			const { data, getExecutedWorkflow } = arrangeRun();
+			const prebuiltWorkflow = new Workflow({
+				id: 'workflow-id',
+				nodes: [],
+				connections: {},
+				active: true,
+				nodeTypes: mock(),
+				staticData: { global: { counter: 1 } },
+			});
+			vi.spyOn(Container.get(WorkflowPreExecute), 'run').mockResolvedValueOnce(prebuiltWorkflow);
+
+			await runner.run(data, true);
+
+			const executedWorkflow = getExecutedWorkflow();
+			expect(executedWorkflow).toBe(prebuiltWorkflow);
+			expect(executedWorkflow.staticData).toMatchObject({ global: { counter: 2 } });
+			expect(executedWorkflow.staticData.__dataChanged).toBeFalsy();
 		});
 	});
 
