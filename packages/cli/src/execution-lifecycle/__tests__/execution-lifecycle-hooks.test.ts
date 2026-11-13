@@ -1807,7 +1807,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-				const payload = executionPersistence.updateExistingExecution.mock.calls[0][1];
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
 				expect(payload.data?.pushRefUserId).toBe(userId);
 			});
 
@@ -1819,7 +1819,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-				const payload = executionPersistence.updateExistingExecution.mock.calls[0][1];
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
 				expect(payload.data?.pushRefUserId).toBeUndefined();
 			});
 		});
@@ -2150,7 +2150,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-				const payload = executionPersistence.updateExistingExecution.mock.calls[0][1];
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
 				expect(payload.data?.pushRefUserId).toBe(userId);
 			});
 
