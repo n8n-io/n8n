@@ -118,7 +118,7 @@ export class VectorStoreConnectionTestService {
 		vectorStore: AgentJsonVectorStoreConfig,
 		credentialProvider: CredentialProvider,
 	): Promise<VectorStoreTestResult> {
-		const sanitizer = createVectorStoreErrorSanitizer(credentialProvider);
+		const sanitizer = createVectorStoreErrorSanitizer(credentialProvider, vectorStore);
 		// Hoisted so cleanup can reach a backend that finishes building *after*
 		// the timeout below has already won the race — `settled` distinguishes
 		// that late-arriving case from a backend built in time (closed by the

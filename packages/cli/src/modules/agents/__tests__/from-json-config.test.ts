@@ -2027,6 +2027,42 @@ describe('buildFromJson()', () => {
 			).rejects.toThrow('Cannot build docs tool using [REDACTED] and [REDACTED]');
 		});
 
+		it('names the store and the credential role when a lookup fails during the build', async () => {
+			const secondStore = {
+				...vectorStoreConfig,
+				name: 'support_tickets',
+				credential: 'tickets-cred',
+				embedding: { ...vectorStoreConfig.embedding, credential: 'deleted-embed-cred' },
+			};
+			const credentialProvider = makeMockCredentialProvider();
+			credentialProvider.resolve.mockImplementation(async (id: string) => {
+				if (id === 'deleted-embed-cred') {
+					throw new Error('Credential "deleted-embed-cred" not found or not accessible');
+				}
+				return { apiKey: 'opaque-value' };
+			});
+			vi.mocked(buildVectorStore).mockImplementation(async (config, provider) => {
+				await provider.resolve(config.credential);
+				await provider.resolve(config.embedding.credential);
+				return { asTool: () => ({ build: () => ({ name: `search_${config.name}` }) }) } as never;
+			});
+
+			await expect(
+				buildFromJson(
+					makeConfig({ vectorStores: [vectorStoreConfig, secondStore] }),
+					{},
+					{
+						toolExecutor: makeMockToolExecutor(),
+						credentialProvider,
+						memoryFactory: makeMockMemoryFactory(),
+					},
+				),
+			).rejects.toMatchObject({
+				message: 'Could not resolve the embedding credential of vector store "support_tickets"',
+				stack: undefined,
+			});
+		});
+
 		it.each([
 			['no credential', { ...vectorStoreConfig, credential: '' }],
 			[

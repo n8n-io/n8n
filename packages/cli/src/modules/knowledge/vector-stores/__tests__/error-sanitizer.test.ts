@@ -6,6 +6,11 @@ import { createVectorStoreErrorSanitizer } from '../error-sanitizer';
 
 describe('vector-store error sanitisation', () => {
 	const provider = mock<CredentialProvider>();
+	const vectorStore = {
+		name: 'product_docs',
+		credential: 'store-cred',
+		embedding: { model: 'openai/text-embedding-3-small', credential: 'embed-cred' },
+	};
 
 	it.each([
 		'apiKey',
@@ -18,7 +23,7 @@ describe('vector-store error sanitisation', () => {
 		const secret = 'opaque/"value\\with space';
 		const credential = { [key]: secret, host: 'db.example', database: 'documents' };
 		provider.resolve.mockResolvedValue(credential);
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		await expect(sanitizer.credentialProvider.resolve('store-cred')).resolves.toBe(credential);
 		const error = sanitizer.sanitize(
@@ -37,7 +42,7 @@ describe('vector-store error sanitisation', () => {
 		provider.resolve
 			.mockResolvedValueOnce({ apiKey: 'opaque-value' })
 			.mockResolvedValueOnce({ apiKey: 'opaque-value-longer' });
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 		await sanitizer.credentialProvider.resolve('store-cred');
 		await sanitizer.credentialProvider.resolve('embed-cred');
 
@@ -51,7 +56,7 @@ describe('vector-store error sanitisation', () => {
 	});
 
 	it('bounds long multiline provider messages promptly', () => {
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 		const message = `Query failed${'\n'.repeat(100_000)}Provider details`;
 		const startedAt = performance.now();
 
@@ -63,7 +68,7 @@ describe('vector-store error sanitisation', () => {
 	});
 
 	it.each(['\n', '\\n', '\\r\\n'])('removes embedded stack frames separated by %j', (separator) => {
-		const error = createVectorStoreErrorSanitizer(provider).sanitize(
+		const error = createVectorStoreErrorSanitizer(provider, vectorStore).sanitize(
 			new Error(`Collection docs unavailable${separator}    at query (/private/provider.ts:12:3)`),
 		);
 
@@ -76,7 +81,7 @@ describe('vector-store error sanitisation', () => {
 			request: { apiKey: 'raw secret' },
 		});
 		const originalStack = original.stack;
-		const error = createVectorStoreErrorSanitizer(provider).sanitize(original);
+		const error = createVectorStoreErrorSanitizer(provider, vectorStore).sanitize(original);
 
 		expect(error).toBeInstanceOf(OperationalError);
 		expect(error.message).toBe(original.message);
@@ -89,7 +94,7 @@ describe('vector-store error sanitisation', () => {
 	});
 
 	it('keeps provider validation errors as user errors', () => {
-		const error = createVectorStoreErrorSanitizer(provider).sanitize(
+		const error = createVectorStoreErrorSanitizer(provider, vectorStore).sanitize(
 			new UserError('Selected embedding model is not supported'),
 		);
 
@@ -99,7 +104,7 @@ describe('vector-store error sanitisation', () => {
 
 	it('uses a fallback when credential redaction changes a stack marker', async () => {
 		provider.resolve.mockResolvedValue({ password: 'at' });
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 		await sanitizer.credentialProvider.resolve('store-cred');
 
 		expect(
@@ -115,17 +120,41 @@ describe('vector-store error sanitisation', () => {
 		'uses a fixed message when credential resolution rejects with $error.name',
 		async ({ error, expectedType }) => {
 			provider.resolve.mockRejectedValue(error);
-			const sanitizer = createVectorStoreErrorSanitizer(provider);
+			const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 			const result = sanitizer.credentialProvider.resolve('store-cred');
 
 			await expect(result).rejects.toBeInstanceOf(expectedType);
 			await expect(result).rejects.toMatchObject({
-				message: 'Could not resolve vector store credentials',
+				message: 'Could not resolve the credential of vector store "product_docs"',
 				stack: undefined,
 			});
 		},
 	);
+
+	it.each([
+		{ id: 'store-cred', role: 'credential' },
+		{ id: 'embed-cred', role: 'embedding credential' },
+	])('names the store and its $role when $id cannot be resolved', async ({ id, role }) => {
+		provider.resolve.mockRejectedValue(new Error('Cannot load opaque-value'));
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
+
+		await expect(sanitizer.credentialProvider.resolve(id)).rejects.toMatchObject({
+			message: `Could not resolve the ${role} of vector store "product_docs"`,
+		});
+	});
+
+	it('reports a credential shared by both roles as the store credential', async () => {
+		provider.resolve.mockRejectedValue(new Error('Cannot load opaque-value'));
+		const sanitizer = createVectorStoreErrorSanitizer(provider, {
+			...vectorStore,
+			embedding: { ...vectorStore.embedding, credential: 'store-cred' },
+		});
+
+		await expect(sanitizer.credentialProvider.resolve('store-cred')).rejects.toMatchObject({
+			message: 'Could not resolve the credential of vector store "product_docs"',
+		});
+	});
 
 	it.each(['\n', '\\n', '\\r\\n'])('removes Python tracebacks separated by %j', (separator) => {
 		const traceback = [
@@ -133,7 +162,7 @@ describe('vector-store error sanitisation', () => {
 			'  File "/private/provider.py", line 42, in query',
 			'ValueError: query failed',
 		].join(separator);
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		expect(sanitizer.sanitize(new Error(`Query failed${separator}${traceback}`)).message).toBe(
 			'Query failed',
@@ -176,7 +205,7 @@ describe('vector-store error sanitisation', () => {
 			}),
 		],
 	])('uses a fallback for a serialized stack field: %s', (_format, message) => {
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		expect(sanitizer.sanitize(new Error(`Provider response: ${message}`)).message).toBe(
 			'Vector store request failed',
@@ -185,7 +214,7 @@ describe('vector-store error sanitisation', () => {
 
 	it('keeps serialized diagnostics without a stack field', () => {
 		const message = 'Provider response: {"message":"Query failed","stackSize":3}';
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		expect(sanitizer.sanitize(new Error(message)).message).toBe(message);
 	});
@@ -194,22 +223,24 @@ describe('vector-store error sanitisation', () => {
 		[{ message: 'Query failed: apiKey=opaque', stack: 'raw stack' }, 'Query failed: [REDACTED]'],
 		[null, 'Vector store request failed'],
 	])('handles non-Error failures safely: %j', (failure, message) => {
-		expect(createVectorStoreErrorSanitizer(provider).sanitize(failure).message).toBe(message);
+		expect(createVectorStoreErrorSanitizer(provider, vectorStore).sanitize(failure).message).toBe(
+			message,
+		);
 	});
 
 	it('does not stringify an unknown object', () => {
 		const toString = vi.fn(() => 'raw secret');
-		const sanitizer = createVectorStoreErrorSanitizer(provider);
+		const sanitizer = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		expect(sanitizer.sanitize({ toString }).message).toBe('Vector store request failed');
 		expect(toString).not.toHaveBeenCalled();
 	});
 
 	it('keeps captured secrets local to each sanitizer', async () => {
-		const first = createVectorStoreErrorSanitizer(provider);
+		const first = createVectorStoreErrorSanitizer(provider, vectorStore);
 		provider.resolve.mockResolvedValue({ apiKey: 'opaque-value' });
 		await first.credentialProvider.resolve('store-cred');
-		const second = createVectorStoreErrorSanitizer(provider);
+		const second = createVectorStoreErrorSanitizer(provider, vectorStore);
 
 		expect(first.sanitize('opaque-value').message).toBe('[REDACTED]');
 		expect(second.sanitize('opaque-value').message).toBe('opaque-value');

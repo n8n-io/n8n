@@ -1,4 +1,5 @@
 import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
+import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import { OperationalError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
@@ -11,6 +12,15 @@ const SERIALIZED_STACK_FIELD = /(["'])(?:stack(?:_?trace)?|traceback)\\*\1\s*:/i
 const STACK_TRACE_START =
 	/(?:\r?\n|\\r\\n|\\n)[^\S\r\n]*(?:at\s|Traceback \(most recent call last\):)|Traceback \(most recent call last\):/;
 
+/**
+ * The non-secret parts of a vector store connection that a fixed message can name.
+ * The name is validated against `VECTOR_STORE_NAME_REGEX`, so it is safe to show.
+ */
+export type VectorStoreErrorLabels = Pick<
+	AgentJsonVectorStoreConfig,
+	'name' | 'credential' | 'embedding'
+>;
+
 function createSanitizedError(error: unknown, message: string): Error {
 	const sanitized =
 		error instanceof UserError ? new UserError(message) : new OperationalError(message);
@@ -20,11 +30,15 @@ function createSanitizedError(error: unknown, message: string): Error {
 }
 
 /**
- * Keep resolved secrets local to one connection or search tool. Use a fixed message if resolution fails.
+ * Keep resolved secrets local to one connection or search tool. If resolution fails, use a fixed
+ * message that names the store and the credential role, so the user can tell which lookup failed.
  * Remove known secrets and V8/Python traces. Use a fallback for serialized stack fields.
  * Keep other provider diagnostics and limit the message to 500 characters.
  */
-export function createVectorStoreErrorSanitizer(provider: CredentialProvider) {
+export function createVectorStoreErrorSanitizer(
+	provider: CredentialProvider,
+	vectorStore: VectorStoreErrorLabels,
+) {
 	const secrets = new Set<string>();
 	const credentialProvider: CredentialProvider = {
 		list: async () => await provider.list(),
@@ -33,8 +47,16 @@ export function createVectorStoreErrorSanitizer(provider: CredentialProvider) {
 			try {
 				credential = await provider.resolve(id);
 			} catch (error) {
-				// A failed lookup gives us no credential values to redact.
-				throw createSanitizedError(error, 'Could not resolve vector store credentials');
+				// A failed lookup gives us no credential values to redact, so the provider message stays
+				// hidden. The store credential resolves first, so a shared id fails as the store credential.
+				const role =
+					id === vectorStore.embedding.credential && id !== vectorStore.credential
+						? 'embedding credential'
+						: 'credential';
+				throw createSanitizedError(
+					error,
+					`Could not resolve the ${role} of vector store "${vectorStore.name}"`,
+				);
 			}
 			for (const [key, value] of Object.entries(credential)) {
 				if (

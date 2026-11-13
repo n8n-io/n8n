@@ -255,7 +255,10 @@ export async function buildFromJson(
 			// Draft connections may not have a credential (or embedding credential)
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
-			const sanitizer = createVectorStoreErrorSanitizer(options.credentialProvider);
+			const sanitizer = createVectorStoreErrorSanitizer(
+				options.credentialProvider,
+				vectorStoreConfig,
+			);
 			try {
 				const vectorStore = await buildVectorStore(vectorStoreConfig, sanitizer.credentialProvider);
 				const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
