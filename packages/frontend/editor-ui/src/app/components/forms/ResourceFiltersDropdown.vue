@@ -126,7 +126,9 @@ watch(filtersLength, (value) => {
 		<template #trigger>
 			<span :class="$style['trigger-wrapper']">
 				<N8nTooltip>
-					<template #content> Filters </template>
+					<template #content>
+						{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+					</template>
 					<N8nButton
 						variant="outline"
 						icon="funnel"
