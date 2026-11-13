@@ -82,14 +82,16 @@ export class TestNode implements INodeType {
 }`;
 }
 
-function createCredentialCode(icon: string): string {
+function createCredentialCode(icon: string | { light: string; dark: string }): string {
+	const iconValue =
+		typeof icon === 'string' ? `'${icon}'` : `{ light: '${icon.light}', dark: '${icon.dark}' }`;
 	return `
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TestCredential implements ICredentialType {
 	name = 'testApi';
 	displayName = 'Test API';
-	icon = '${icon}';
+	icon = ${iconValue};
 	properties: INodeProperties[] = [];
 }`;
 }
@@ -166,6 +168,11 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 		{
 			name: 'credential with a mid-tone icon',
 			code: createCredentialCode('file:teal.svg'),
+			filename: credentialFilePath,
+		},
+		{
+			name: 'credential with themed variants that each fit their theme',
+			code: createCredentialCode({ light: 'file:black.svg', dark: 'file:white.svg' }),
 			filename: credentialFilePath,
 		},
 		{
@@ -276,6 +283,24 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			filename: credentialFilePath,
 			errors: [
 				{ messageId: 'lowContrast', data: { iconPath: 'white.svg', theme: 'light', visible: 0 } },
+			],
+		},
+		{
+			name: 'credential with themed variants that are swapped',
+			code: createCredentialCode({ light: 'file:white.svg', dark: 'file:black.svg' }),
+			filename: credentialFilePath,
+			errors: [
+				{ messageId: 'lowContrast', data: { iconPath: 'white.svg', theme: 'light', visible: 0 } },
+				{ messageId: 'lowContrast', data: { iconPath: 'black.svg', theme: 'dark', visible: 0 } },
+			],
+		},
+		{
+			name: 'credential with themed variants and a minimum of 3:1',
+			code: createCredentialCode({ light: 'file:gray.svg', dark: 'file:white.svg' }),
+			filename: credentialFilePath,
+			options: [{ minimum: 3 }],
+			errors: [
+				{ messageId: 'lowContrast', data: { iconPath: 'gray.svg', theme: 'light', visible: 0 } },
 			],
 		},
 		{
