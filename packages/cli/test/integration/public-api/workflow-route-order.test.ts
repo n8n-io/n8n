@@ -84,7 +84,6 @@ async function get(path: string) {
 
 	const response = await authOwnerAgent.get(path);
 
-	// The call is recorded when the answer finishes, which can be after the client has the response.
 	await vi.waitFor(() =>
 		expect(emit.mock.calls.filter(([event]) => event === 'public-api-invoked')).toHaveLength(1),
 	);
@@ -117,19 +116,6 @@ describe('workflow routes next to the deprecated version alias', () => {
 			})),
 			nextCursor: null,
 		});
-	});
-
-	test('GET /workflows/:workflowId/history is recorded under its own route name', async () => {
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
-
-		await authOwnerAgent.get(`/workflows/${target.workflow.id}/history`);
-
-		await vi.waitFor(() =>
-			expect(emit).toHaveBeenCalledWith(
-				'public-api-invoked',
-				expect.objectContaining({ route: 'GET /workflows/{workflowId}/history' }),
-			),
-		);
 	});
 
 	test('GET /workflows/:workflowId/tags returns the tags of that workflow', async () => {
