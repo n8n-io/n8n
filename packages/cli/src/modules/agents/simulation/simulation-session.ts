@@ -7,7 +7,12 @@ import {
 	type FetchFn,
 	type ToolCallInterceptor,
 } from '@n8n/agents';
-import type { ToolCallReason, ToolCallSimulation, ToolTestKind } from '@n8n/api-types';
+import type {
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestCapability,
+	ToolTestKind,
+} from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } from 'n8n-core';
@@ -83,13 +88,22 @@ interface ActiveToolCall {
 
 type ToolClassification =
 	| { type: 'local' }
-	| { type: 'simulated'; key: string; kind: ToolTestKind; nodeType?: string; parameters?: unknown };
+	| {
+			type: 'simulated';
+			key: string;
+			toolName: string;
+			kind: ToolTestKind;
+			nodeType?: string;
+			parameters?: unknown;
+	  };
 
 export interface SimulationSessionInit {
 	testChatId: string;
 	/** Absent when no backend is set up or the world failed to open: every simulated call is blocked. */
 	world?: SimulationWorld;
 	unavailableDetail?: string;
+	/** Keyed by tool name (MCP: server name). */
+	capabilities: ToolTestCapability[];
 	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
 	queueMode?: boolean;
 }
@@ -105,6 +119,8 @@ export class SimulationSession {
 	private readonly world: SimulationWorld | undefined;
 
 	private readonly unavailableDetail: string;
+
+	private capabilities: Map<string, ToolTestCapability>;
 
 	private readonly queueMode: boolean;
 
@@ -123,11 +139,17 @@ export class SimulationSession {
 		this.worldId = init.world?.worldId;
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
+		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
 		this.queueMode = init.queueMode ?? false;
 	}
 
 	get runtimeCacheKey(): string {
 		return `simulation:${this.testChatId}:${this.instanceId}`;
+	}
+
+	/** For example after the agent's tools changed mid-chat. */
+	updateCapabilities(capabilities: ToolTestCapability[]): void {
+		this.capabilities = new Map(capabilities.map((tool) => [tool.toolName, tool]));
 	}
 
 	takeDecision(toolCallId: string): ToolCallSimulation | undefined {
@@ -189,34 +211,40 @@ export class SimulationSession {
 	private preflight(
 		classification: Extract<ToolClassification, { type: 'simulated' }>,
 	): ToolCallSimulation | undefined {
-		const gap = this.toolGap(classification);
-		if (gap) return blocked('not_simulatable', gap);
+		if (classification.kind === 'node') {
+			const gap = classification.nodeType
+				? nodeSimulationGap(
+						classification.nodeType,
+						isRecord(classification.parameters) ? classification.parameters : undefined,
+					)
+				: 'This node tool has no node type.';
+			if (gap) return blocked('not_simulatable', gap);
+		}
+		// Checked on the runtime tool, so a stale or same-name list entry cannot allow it.
+		if (classification.kind === 'workflow' && this.queueMode) {
+			return blocked(
+				'not_simulatable',
+				'Workflow tools cannot run in a test run in queue mode yet.',
+			);
+		}
+		const capability = this.capabilities.get(classification.key);
+		if (!capability || capability.kind !== classification.kind) {
+			// An unrecognised runtime tool is blocked, with the list's reason when the list blocks it
+			// too (chat integration tools carry no metadata to classify them by).
+			const listed = this.capabilities.get(classification.toolName);
+			if (classification.kind === 'other' && listed?.testability === 'blocked') {
+				return blocked(listed.reason ?? 'not_simulatable', listed.detail);
+			}
+			return blocked('not_simulatable', 'This kind of tool cannot run in a test run yet.');
+		}
+		if (capability.testability === 'blocked') {
+			return blocked(capability.reason ?? 'not_simulatable', capability.detail);
+		}
+		if (capability.testability === 'read_for_real') {
+			return blocked('blocked_by_policy', 'Real reads are not available in test runs yet.');
+		}
 		if (!this.world) return blocked('simulator_unavailable', this.unavailableDetail);
 		return undefined;
-	}
-
-	private toolGap(
-		classification: Extract<ToolClassification, { type: 'simulated' }>,
-	): string | undefined {
-		switch (classification.kind) {
-			case 'node':
-				return classification.nodeType
-					? nodeSimulationGap(
-							classification.nodeType,
-							isRecord(classification.parameters) ? classification.parameters : undefined,
-						)
-					: 'This node tool has no node type.';
-			case 'workflow':
-				return this.queueMode
-					? 'Workflow tools cannot run in a test run in queue mode yet.'
-					: undefined;
-			case 'mcp':
-				return 'MCP servers cannot run in a test run yet.';
-			case 'web_search':
-				return 'Web search cannot run in a test run yet.';
-			default:
-				return 'This kind of tool cannot run in a test run yet.';
-		}
 	}
 
 	private async ask(request: OutboundRequest, extra: { nodeType?: string }) {
@@ -290,26 +318,39 @@ export class SimulationSession {
 
 function classifyTool(tool: BuiltTool): ToolClassification {
 	if (tool.mcpTool) {
-		return { type: 'simulated', key: tool.mcpServerName ?? tool.name, kind: 'mcp' };
+		return {
+			type: 'simulated',
+			toolName: tool.name,
+			key: tool.mcpServerName ?? tool.name,
+			kind: 'mcp',
+		};
 	}
 	const metadata = tool.metadata;
 	if (metadata?.kind === 'node') {
 		return {
 			type: 'simulated',
+			toolName: tool.name,
 			key: tool.name,
 			kind: 'node',
 			nodeType: typeof metadata.nodeType === 'string' ? metadata.nodeType : undefined,
 			parameters: metadata.nodeParameters,
 		};
 	}
-	if (metadata?.kind === 'workflow') return { type: 'simulated', key: tool.name, kind: 'workflow' };
-	if (metadata?.customTool === true) return { type: 'simulated', key: tool.name, kind: 'custom' };
+	if (metadata?.kind === 'workflow')
+		return { type: 'simulated', toolName: tool.name, key: tool.name, kind: 'workflow' };
+	if (metadata?.customTool === true)
+		return { type: 'simulated', toolName: tool.name, key: tool.name, kind: 'custom' };
 	if (tool.name === WEB_SEARCH_TOOL_NAME) {
-		return { type: 'simulated', key: WEB_SEARCH_TOOL_NAME, kind: 'web_search' };
+		return {
+			type: 'simulated',
+			toolName: tool.name,
+			key: WEB_SEARCH_TOOL_NAME,
+			kind: 'web_search',
+		};
 	}
 	if (LOCAL_TOOL_NAMES.has(tool.name)) return { type: 'local' };
 	// Custom code, integration actions, memory, shell commands and anything new: blocked.
-	return { type: 'simulated', key: `unknown:${tool.name}`, kind: 'other' };
+	return { type: 'simulated', toolName: tool.name, key: `unknown:${tool.name}`, kind: 'other' };
 }
 
 export function foldSources(sources: ReplySource[]): ToolCallSimulation | undefined {

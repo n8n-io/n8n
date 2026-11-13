@@ -155,8 +155,8 @@ describe('AgentRuntimeCacheService', () => {
 			backend: 'llm-mock' as const,
 			handleRequest: vi.fn(),
 		};
-		const session = new SimulationSession({ testChatId: 'chat-1', world });
-		const otherSession = new SimulationSession({ testChatId: 'chat-2', world });
+		const session = new SimulationSession({ testChatId: 'chat-1', world, capabilities: [] });
+		const otherSession = new SimulationSession({ testChatId: 'chat-2', world, capabilities: [] });
 
 		const live = await service.getRuntime({ agentId, projectId });
 		const simulated = await service.getRuntime({ agentId, projectId, simulation: session });

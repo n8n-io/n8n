@@ -107,6 +107,7 @@ describe('a write tool in a test run', () => {
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
 			world,
+			capabilities: [{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' }],
 		});
 		return { session, world };
 	}

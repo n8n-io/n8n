@@ -1,4 +1,4 @@
-import type { ToolTestKind } from '@n8n/api-types';
+import type { ToolTestCapability, ToolTestKind } from '@n8n/api-types';
 
 /**
  * Contract between n8n and a simulation backend. Each test chat gets one world; every request a
@@ -7,6 +7,9 @@ import type { ToolTestKind } from '@n8n/api-types';
  */
 export interface SimulationBackend {
 	readonly id: SimulationBackendId;
+
+	/** Which of the agent's tools this backend can serve. Called before a run. */
+	describeTools(agent: SimulatedAgent): Promise<ToolTestCapability[]>;
 
 	/** n8n keeps the world for the chat's later turns. A new test chat gets a new world. */
 	openWorld(input: OpenWorldInput): Promise<SimulationWorld>;

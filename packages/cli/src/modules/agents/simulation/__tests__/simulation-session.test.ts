@@ -1,4 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
+import type { ToolTestCapability } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type {
@@ -21,6 +22,12 @@ function makeWorld(
 		handleRequest: vi.fn(async () => (typeof reply === 'function' ? await reply() : reply)),
 	};
 }
+
+const slackCapability: ToolTestCapability = {
+	toolName: 'send_slack',
+	kind: 'node',
+	testability: 'simulated',
+};
 
 function nodeTool(name: string, nodeType: string, handler: BuiltTool['handler']): BuiltTool {
 	return { name, description: name, metadata: { kind: 'node', nodeType }, handler };
@@ -61,6 +68,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 		const handler = vi.fn(async () => await Promise.resolve('plan saved'));
 
@@ -80,6 +88,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 		const { tool } = slackTool(session);
 
@@ -111,6 +120,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 
 		await runTool(session, slackTool(session).tool);
@@ -129,6 +139,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 
 		await expect(runTool(session, slackTool(session, true).tool)).rejects.toThrow(
@@ -146,6 +157,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [slackCapability],
 		});
 		const { tool, additionalData } = slackTool(session);
 
@@ -164,6 +176,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			unavailableDetail: 'No simulator is set up on this instance.',
+			capabilities: [slackCapability],
 		});
 		const { tool, handler } = slackTool(session);
 
@@ -187,7 +200,7 @@ describe('SimulationSession', () => {
 		],
 	])('blocks %s that it cannot route', async (_label, partial) => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
 		const handler = vi.fn();
 
 		await expect(runTool(session, { ...partial, handler })).rejects.toThrow(SimulationBlockedError);
@@ -203,6 +216,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [{ toolName: 'send_email', kind: 'node', testability: 'simulated' }],
 		});
 		const handler = vi.fn();
 
@@ -217,6 +231,7 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
 		});
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		session
@@ -240,11 +255,42 @@ describe('SimulationSession', () => {
 		});
 	});
 
+	it('uses the reason the backend gave for a tool it cannot serve', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [
+				{
+					...slackCapability,
+					testability: 'blocked',
+					reason: 'unsupported_by_simulator',
+					detail: 'No Slack',
+				},
+			],
+		});
+
+		await expect(runTool(session, slackTool(session).tool)).rejects.toThrow(SimulationBlockedError);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'unsupported_by_simulator',
+			detail: 'No Slack',
+		});
+	});
+
 	it('blocks MCP tools and refuses every MCP connection', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
+			capabilities: [
+				{
+					toolName: 'linear',
+					kind: 'mcp',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+					detail: 'MCP servers cannot run in a test run yet.',
+				},
+			],
 		});
 		const handler = vi.fn();
 		const tool: BuiltTool = {
@@ -267,36 +313,40 @@ describe('SimulationSession', () => {
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 		const replacement = new SimulationSession({
 			testChatId: 'chat-1',
 			world: makeWorld({ outcome: 'unsupported' }),
+			capabilities: [],
 		});
 
 		expect(session.runtimeCacheKey).toMatch(/^simulation:chat-1:/);
 		expect(replacement.runtimeCacheKey).not.toBe(session.runtimeCacheKey);
 	});
 
-	it('blocks workflow tools in queue mode, where the hooks do not reach the worker', async () => {
+	it('uses a tool list update for later calls', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world, queueMode: true });
-		const handler = vi.fn();
+		const session = new SimulationSession({ testChatId: 't', world, capabilities: [] });
+		const tool = nodeTool(
+			'send_slack',
+			'n8n-nodes-base.slack',
+			async () => await Promise.resolve('ok'),
+		);
 
-		await expect(
-			runTool(session, {
-				name: 'notify',
-				description: '',
-				metadata: { kind: 'workflow' },
-				handler,
-			}),
-		).rejects.toThrow(SimulationBlockedError);
-		expect(handler).not.toHaveBeenCalled();
-		expect(session.takeDecision('tc-1')).toMatchObject({ reason: 'not_simulatable' });
+		await expect(runTool(session, tool, 'tc-before')).rejects.toThrow(SimulationBlockedError);
+		session.updateCapabilities([slackCapability]);
+
+		await expect(runTool(session, tool, 'tc-after')).resolves.toBe('ok');
 	});
 
 	it('blocks a workflow tool whose run would leave this process or paused', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
+		});
 		const handler = vi.fn(async () => {
 			throw new InstrumentedRunUnsupportedError('This workflow runs on Engine v2.');
 		});
@@ -318,7 +368,11 @@ describe('SimulationSession', () => {
 
 	it('keeps a decrypted credential out of the request the world receives', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'send_telegram', kind: 'node', testability: 'simulated' }],
+		});
 		const credentialsHelper = mock<ICredentialsHelper>();
 		credentialsHelper.getDecrypted.mockResolvedValue({
 			accessToken: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw',
@@ -352,7 +406,11 @@ describe('SimulationSession', () => {
 
 	it('sends query parameters from `qs` to the world, without secret values', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'search', kind: 'node', testability: 'simulated' }],
+		});
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		session
 			.instrumentation()
@@ -379,5 +437,94 @@ describe('SimulationSession', () => {
 		expect(url.searchParams.get('query')).toBe('release');
 		expect(url.searchParams.get('count')).toBe('20');
 		expect(url.searchParams.get('api_key')).toBe('[REDACTED]');
+	});
+
+	it('blocks a tool whose list entry has the same name but another kind', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'notify', kind: 'node', testability: 'simulated' }],
+		});
+		const handler = vi.fn();
+		const workflowTool: BuiltTool = {
+			name: 'notify',
+			description: '',
+			metadata: { kind: 'workflow' },
+			handler,
+		};
+
+		await expect(runTool(session, workflowTool)).rejects.toThrow(SimulationBlockedError);
+		session.updateCapabilities([{ toolName: 'notify', kind: 'node', testability: 'simulated' }]);
+		await expect(runTool(session, workflowTool, 'tc-2')).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('blocks workflow tools in queue mode even when the list says simulated', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			queueMode: true,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, {
+				name: 'notify',
+				description: '',
+				metadata: { kind: 'workflow' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('blocks a chat integration tool with the reason the list gives it', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} }),
+			capabilities: [
+				{
+					toolName: 'slack_action',
+					kind: 'integration',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+					detail: 'Chat integration tools cannot run in a test run yet.',
+				},
+			],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, { name: 'slack_action', description: '', handler }),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'Chat integration tools cannot run in a test run yet.',
+		});
+	});
+
+	it('blocks a node tool without a node type, even with a simulated list entry', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [slackCapability],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, {
+				name: 'send_slack',
+				description: '',
+				metadata: { kind: 'node' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
 	});
 });
