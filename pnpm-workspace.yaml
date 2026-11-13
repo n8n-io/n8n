@@ -337,6 +337,8 @@ catalogs:
     element-plus: 2.4.3
     highlight.js: 11.12.0
     pinia: ^2.2.4
+    # vue-tsc loads it through patches/vue-tsc@2.2.8.patch. Pin exactly: it is a prerelease.
+    typescript-native-bridge: 6.0.3-bridge.19.tsgo.7.0.2
     unplugin-icons: ^23.0.1
     vite-svg-loader: 5.1.0
     vue: ^3.5.13

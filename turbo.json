@@ -57,7 +57,9 @@
 			"env": ["RELEASE"]
 		},
 		"typecheck": {
-			"dependsOn": ["^build"]
+			"dependsOn": ["^build"],
+			// `false` makes vue-tsc check with TypeScript 6 instead of tsgo.
+			"env": ["N8N_VUE_TSC_TSGO"]
 		},
 		"format": {},
 		"format:check": {},

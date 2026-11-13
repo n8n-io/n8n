@@ -898,6 +898,9 @@ catalogs:
     pinia:
       specifier: ^2.2.4
       version: 2.2.4
+    typescript-native-bridge:
+      specifier: 6.0.3-bridge.19.tsgo.7.0.2
+      version: 6.0.3-bridge.19.tsgo.7.0.2
     unplugin-icons:
       specifier: ^23.0.1
       version: 23.0.1
@@ -1140,7 +1143,7 @@ patchedDependencies:
   pkce-challenge@5.0.0: 651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90
   reka-ui@2.5.0: aae76c02ce4d2dd6366e80dbb2026f6c8be88e358e9315016de1d82a4469eba6
   v-code-diff: 21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9
-  vue-tsc@2.2.8: e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f
+  vue-tsc@2.2.8: 95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023
   vuedraggable@4.1.0: eaa2c80f80cdc4293b0f1c9c0410823960f839fc15f155c8cb23666d5950e049
   weaviate-client@3.9.0: fa0a287aabbb267a9390a72cb310a641afd7fb1d96311589acd38137739f4a99
   xml2js@0.6.2: 3efbf117e53f23a62e3e3faa4d02fef8e73d5359bfd50a24e94d32d6f1257bf3
@@ -1216,6 +1219,9 @@ importers:
       typescript:
         specifier: 6.0.2
         version: 6.0.2
+      typescript-native-bridge:
+        specifier: catalog:frontend
+        version: 6.0.3-bridge.19.tsgo.7.0.2
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -2262,7 +2268,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: catalog:typescript
-        version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
+        version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2))
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3178,7 +3184,7 @@ importers:
         version: 6.0.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2))
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -3554,7 +3560,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/@n8n/mcp-browser:
     dependencies:
@@ -4770,7 +4776,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: catalog:typescript
-        version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
+        version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2))
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -5889,7 +5895,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/composables:
     dependencies:
@@ -5965,7 +5971,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -5977,7 +5983,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/design-system:
     dependencies:
@@ -6215,7 +6221,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/eslint-plugin-design-system:
     dependencies:
@@ -6288,7 +6294,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6300,7 +6306,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/frontend-module-sdk:
     dependencies:
@@ -6358,7 +6364,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/frontend-test-utils:
     dependencies:
@@ -6434,7 +6440,7 @@ importers:
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/frontend-utils:
     dependencies:
@@ -6468,7 +6474,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6480,7 +6486,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/frontend-vite-config:
     devDependencies:
@@ -6532,7 +6538,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6544,7 +6550,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/rest-api-client:
     dependencies:
@@ -6596,7 +6602,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6608,7 +6614,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/stores:
     dependencies:
@@ -6675,7 +6681,7 @@ importers:
         version: 0.21.1
       tsdown:
         specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+        version: 0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6690,7 +6696,7 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/frontend/@n8n/storybook:
     dependencies:
@@ -6726,7 +6732,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
     devDependencies:
       '@iconify/json':
         specifier: 'catalog:'
@@ -7289,7 +7295,7 @@ importers:
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
       vue-virtual-scroller:
         specifier: 2.0.0-beta.8
         version: 2.0.0-beta.8(vue@3.5.26(typescript@6.0.2))
@@ -7555,7 +7561,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/data-table/backend:
     dependencies:
@@ -7771,7 +7777,7 @@ importers:
         version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/modules/inbox/frontend:
     dependencies:
@@ -7901,7 +7907,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/insights/backend:
     dependencies:
@@ -8131,7 +8137,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/instance-registry/frontend:
     dependencies:
@@ -8201,7 +8207,7 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/mcp/frontend:
     dependencies:
@@ -8340,7 +8346,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/otel/frontend:
     dependencies:
@@ -8446,7 +8452,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/promotions/frontend:
     dependencies:
@@ -8588,7 +8594,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/quick-connect/backend:
     dependencies:
@@ -8758,7 +8764,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/type-availability-policies/frontend:
     dependencies:
@@ -8861,7 +8867,7 @@ importers:
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
       vue-tsc:
         specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+        version: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
 
   packages/modules/workflow-builder/backend:
     dependencies:
@@ -17144,6 +17150,41 @@ packages:
   '@typescript-eslint/visitor-keys@8.70.0':
     resolution: {integrity: sha512-BoC8PiO4Hkdo0TVJh9Ntxr5MxPDI7/oFsrygN5ADelFSeXG/qgNuucIGA+L5Z6JpPTE/uRfcTWtscjbUaufepQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@typescript-native-bridge/darwin-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-rH2VAjxJYx8hyzCn2tmRoXFZ43lwWBsIufJbTMZPOeEyHHW2z1Upi+br5agXQWeNJtnpNKj/dqGzrNpQrtbzkA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@typescript-native-bridge/darwin-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-Waxqmr4o7s53cEXDGvsayUaE2ur5PXy+Ug2K8iL9/QM+fjbeXskI3UGw7TZj7GoiGwzjmS61eJn8iXJZkAVC2g==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@typescript-native-bridge/linux-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-agS7Ki8LUFKU6b2tXgy0UoatSWwzDEJsVg8jBJsBonT/o7itGtasxjUd+a/T4RC7ifJeJt3JBYuU/y6uzULN0g==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@typescript-native-bridge/linux-arm@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-Vkt8iAaZmbo9qoVtyWecSTpT64sxz7evUfNeISOiWlTWNmoWI178ptXCV/WypHXLkI/C5BCAKoOVRsoYDPpc9Q==}
+    cpu: [arm]
+    os: [linux]
+
+  '@typescript-native-bridge/linux-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-CWQxiKnqk4WGxAd1K2OQYPDtqQy93ye3G2FARdfvqwopuT+i1joAoZas6u9Up1Eee19LOLkgYVfBO+k/alZfZw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@typescript-native-bridge/win32-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-wKKJsDB+oSMOCaT2OiovupKX9X2JyaPawJY63tMkwZhQJaFXICWr4RXYFGHMoHDf0UPV571NQ8idieY2jfy/4w==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@typescript-native-bridge/win32-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    resolution: {integrity: sha512-YR29W2mxNbT0BAeiyPMvIzH3WJHtPzf54/Fr9KCllOO5dnN1g6iHf4OHSaPJRE/genhWXuYefN+S+sSSyQGA3A==}
+    cpu: [x64]
+    os: [win32]
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -26121,6 +26162,11 @@ packages:
     peerDependencies:
       eslint: ^8.57.0 || ^9.0.0 || ^10.0.0
       typescript: '>=4.8.4 <6.1.0'
+
+  typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2:
+    resolution: {integrity: sha512-BB3iFbsTcNdirXoR+Rmljowvbb/46bBhGwkU9up2+tCE6YjXa+OeNBkwmkzStAMpZVMFnqGC6O0WFBTmVXZ3vw==}
+    engines: {node: '>=20.19'}
+    hasBin: true
 
   typescript@4.9.5:
     resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
@@ -35939,6 +35985,27 @@ snapshots:
       '@typescript-eslint/types': 8.70.0
       eslint-visitor-keys: 5.0.1
 
+  '@typescript-native-bridge/darwin-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/darwin-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/linux-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/linux-arm@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/linux-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/win32-arm64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
+  '@typescript-native-bridge/win32-x64@6.0.3-bridge.19.tsgo.7.0.2':
+    optional: true
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
 
@@ -45271,7 +45338,7 @@ snapshots:
 
   robust-predicates@3.0.3: {}
 
-  rolldown-plugin-dts@0.17.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+  rolldown-plugin-dts@0.17.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2)):
     dependencies:
       '@babel/generator': 7.29.1
       '@babel/parser': 7.29.8
@@ -45285,11 +45352,11 @@ snapshots:
       rolldown: 1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
-      vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)
+      vue-tsc: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2)
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-plugin-dts@0.17.8(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
+  rolldown-plugin-dts@0.17.8(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)):
     dependencies:
       '@babel/generator': 7.29.1
       '@babel/parser': 7.29.8
@@ -45303,11 +45370,11 @@ snapshots:
       rolldown: 1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
     optionalDependencies:
       typescript: 6.0.2
-      vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+      vue-tsc: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)
     transitivePeerDependencies:
       - oxc-resolver
 
-  rolldown-plugin-dts@0.27.9(oxc-resolver@11.21.2)(rolldown@1.1.5)(typescript@7.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2)):
+  rolldown-plugin-dts@0.27.9(oxc-resolver@11.21.2)(rolldown@1.1.5)(typescript@7.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2)):
     dependencies:
       dts-resolver: 3.0.0(oxc-resolver@11.21.2)
       get-tsconfig: 5.0.0-beta.5
@@ -45318,7 +45385,7 @@ snapshots:
       yuku-parser: 0.6.1
     optionalDependencies:
       typescript: 7.0.2
-      vue-tsc: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2)
+      vue-tsc: 2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2)
     transitivePeerDependencies:
       - oxc-resolver
 
@@ -46966,7 +47033,7 @@ snapshots:
       minimist: 1.2.8
       strip-bom: 3.0.0
 
-  tsdown@0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2)):
+  tsdown@0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2)):
     dependencies:
       ansis: 4.3.1
       cac: 6.7.14
@@ -46976,7 +47043,7 @@ snapshots:
       hookable: 5.5.3
       obug: 2.1.3
       rolldown: 1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
-      rolldown-plugin-dts: 0.17.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2))
+      rolldown-plugin-dts: 0.17.8(@typescript/typescript6@6.0.2)(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2))
       semver: 7.7.3
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
@@ -46994,7 +47061,7 @@ snapshots:
       - synckit
       - vue-tsc
 
-  tsdown@0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)):
+  tsdown@0.16.5(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2)):
     dependencies:
       ansis: 4.3.1
       cac: 6.7.14
@@ -47004,7 +47071,7 @@ snapshots:
       hookable: 5.5.3
       obug: 2.1.3
       rolldown: 1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)
-      rolldown-plugin-dts: 0.17.8(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
+      rolldown-plugin-dts: 0.17.8(oxc-resolver@11.21.2)(rolldown@1.0.0-beta.50(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2))
       semver: 7.7.3
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
@@ -47022,7 +47089,7 @@ snapshots:
       - synckit
       - vue-tsc
 
-  tsdown@0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2)):
+  tsdown@0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3))(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2)):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -47033,7 +47100,7 @@ snapshots:
       obug: 2.1.3
       picomatch: 4.0.4
       rolldown: 1.1.5
-      rolldown-plugin-dts: 0.27.9(oxc-resolver@11.21.2)(rolldown@1.1.5)(typescript@7.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
+      rolldown-plugin-dts: 0.27.9(oxc-resolver@11.21.2)(rolldown@1.1.5)(typescript@7.0.2)(vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2))
       semver: 7.7.3
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
@@ -47177,6 +47244,16 @@ snapshots:
       typescript: '@typescript/typescript6@6.0.2'
     transitivePeerDependencies:
       - supports-color
+
+  typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2:
+    optionalDependencies:
+      '@typescript-native-bridge/darwin-arm64': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/darwin-x64': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/linux-arm': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/linux-arm64': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/linux-x64': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/win32-arm64': 6.0.3-bridge.19.tsgo.7.0.2
+      '@typescript-native-bridge/win32-x64': 6.0.3-bridge.19.tsgo.7.0.2
 
   typescript@4.9.5: {}
 
@@ -47864,20 +47941,20 @@ snapshots:
       '@vue/devtools-api': 6.6.4
       vue: 3.5.26(typescript@6.0.2)
 
-  vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(@typescript/typescript6@6.0.2):
+  vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(@typescript/typescript6@6.0.2):
     dependencies:
       '@volar/typescript': 2.4.28(@typescript/typescript6@6.0.2)
       '@vue/language-core': 2.2.8(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
     optional: true
 
-  vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2):
+  vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@6.0.2):
     dependencies:
       '@volar/typescript': 2.4.28(typescript@6.0.2)
       '@vue/language-core': 2.2.8(typescript@6.0.2)
       typescript: 6.0.2
 
-  vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2):
+  vue-tsc@2.2.8(patch_hash=95a8339923d5c7977989b9293c00c51a0c8604fac35608f2af8f71e8afe6a023)(typescript@7.0.2):
     dependencies:
       '@volar/typescript': 2.4.28(typescript@7.0.2)
       '@vue/language-core': 2.2.8(typescript@7.0.2)

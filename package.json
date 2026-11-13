@@ -127,6 +127,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.11.4",
     "typescript": "6.0.2",
+    "typescript-native-bridge": "catalog:frontend",
     "yaml": "catalog:",
     "zx": "^8.8.5"
   }

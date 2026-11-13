@@ -1,13 +1,23 @@
 diff --git a/index.js b/index.js
-index a680d25dfa98a45a3efec0bfb493500e6e9faa91..ca90b6226c88b5bc27aa5323c4e0e5f30f5b9ef2 100644
+index 667d05299b36d85bbdea741b96612eda5322c6fd..db12d6a35fada8f59d5c381287a3563690060593 100644
 --- a/index.js
 +++ b/index.js
-@@ -4,7 +4,7 @@ exports.run = run;
+@@ -4,7 +4,17 @@ exports.run = run;
  const runTsc_1 = require("@volar/typescript/lib/quickstart/runTsc");
  const vue = require("@vue/language-core");
  const windowsPathReg = /\\/g;
 -function run(tscPath = require.resolve('typescript/lib/tsc')) {
-+function run(tscPath = require.resolve('typescript/lib/_tsc')) {
++// n8n: check on tsgo through typescript-native-bridge. N8N_VUE_TSC_TSGO=false selects TypeScript 6.
++function resolveTsc() {
++    if (process.env.N8N_VUE_TSC_TSGO !== 'false') {
++        try {
++            return require.resolve('typescript-native-bridge/lib/_tsc');
++        }
++        catch { }
++    }
++    return require.resolve('typescript/lib/_tsc');
++}
++function run(tscPath = resolveTsc()) {
      let runExtensions = ['.vue'];
      const extensionsChangedException = new Error('extensions changed');
      const main = () => (0, runTsc_1.runTsc)(tscPath, runExtensions, (ts, options) => {
