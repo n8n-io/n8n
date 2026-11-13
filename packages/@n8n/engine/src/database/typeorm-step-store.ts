@@ -1,4 +1,4 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
@@ -208,25 +208,21 @@ export class TypeOrmStepStore implements StepStore {
 			if (!execution) return false;
 
 			if (!isLiveExecutionStatus(execution.status)) {
-				await manager.update(
-					WorkflowStepExecution,
-					{ id, status: 'running' },
-					{ status: 'cancelled' },
-				);
+				await this.transition(id, 'running', 'cancelled', {}, manager);
 				return false;
 			}
 
-			const result = await manager.update(
-				WorkflowStepExecution,
-				{ id, status: 'running' },
+			return await this.transition(
+				id,
+				'running',
+				'waiting',
 				{
 					waitDeclaration,
 					waitTill:
 						waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
-					status: 'waiting',
 				},
+				manager,
 			);
-			return result.affected === 1;
 		});
 	}
 
@@ -334,8 +330,13 @@ export class TypeOrmStepStore implements StepStore {
 			waitTill?: Date | null;
 			resumeCause?: ResumeCause;
 		} = {},
+		manager: EntityManager = this.repo.manager,
 	): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
+		const result = await manager.update(
+			WorkflowStepExecution,
+			{ id, status: from },
+			{ ...fields, status: to },
+		);
 		return result.affected === 1;
 	}
 
