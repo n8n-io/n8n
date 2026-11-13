@@ -44,6 +44,7 @@ let capturedSelectHandler: ((value: string) => void) | undefined;
 let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
 let capturedSearchable: boolean | undefined;
+let capturedPopperClass: string | undefined;
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
@@ -66,11 +67,12 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			],
 			emits: ['select', 'search', 'update:modelValue'],
 			setup(
-				props: { items: unknown[]; searchable: boolean },
+				props: { items: unknown[]; searchable: boolean; extraPopperClass?: string },
 				{ emit }: { emit: (e: string, v: unknown) => void },
 			) {
 				capturedItems = props.items;
 				capturedSearchable = props.searchable;
+				capturedPopperClass = props.extraPopperClass;
 				capturedSelectHandler = (value: string) => emit('select', value);
 				capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
 			},
@@ -111,6 +113,7 @@ describe('DependencyPill', () => {
 		capturedOpenHandler = undefined;
 		capturedItems = [];
 		capturedSearchable = undefined;
+		capturedPopperClass = undefined;
 		mockDepsResult = undefined;
 	});
 
@@ -123,6 +126,18 @@ describe('DependencyPill', () => {
 		const { getByText } = renderComponent({ props: defaultProps });
 
 		expect(getByText(String(mockDepsResult.dependencies.length))).toBeInTheDocument();
+	});
+
+	it('should lower the menu z-index outside a dialog', () => {
+		renderComponent({ props: defaultProps });
+
+		expect(capturedPopperClass).toBe('dependency-pill-dropdown');
+	});
+
+	it('should keep the default menu z-index inside a dialog', () => {
+		renderComponent({ props: { ...defaultProps, inDialog: true } });
+
+		expect(capturedPopperClass).toBeUndefined();
 	});
 
 	it('should render badge with zero count when no dependencies', () => {
