@@ -1,9 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { GenerateContentResponse } from '../../helpers/interfaces';
 import { uploadFile } from '../../helpers/utils';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 interface ImagesParameter {
@@ -192,7 +192,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response: unknown = await apiRequest.call(
 		this,
 		'POST',
-		`/v1beta/${model}:generateContent`,
+		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 		{
 			body,
 		},

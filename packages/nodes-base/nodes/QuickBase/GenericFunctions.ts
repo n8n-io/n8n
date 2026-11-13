@@ -7,17 +7,19 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function quickbaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'json' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('quickbaseApi');
 
@@ -30,7 +32,7 @@ export async function quickbaseApiRequest(
 	}
 
 	try {
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			headers: {
 				'QB-Realm-Hostname': credentials.hostname,
 				'User-Agent': 'n8n',
@@ -40,7 +42,7 @@ export async function quickbaseApiRequest(
 			method,
 			body,
 			qs,
-			uri: `https://api.quickbase.com/v1${resource}`,
+			uri: requestUrl`https://api.quickbase.com/v1${resource}`,
 			json: true,
 		};
 
@@ -68,7 +70,7 @@ export async function getFieldsObject(
 ): Promise<any> {
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
-	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
+	const data = await quickbaseApiRequest.call(this, 'GET', requestPath`/fields`, {}, { tableId });
 	for (const field of data) {
 		fieldsLabelKey[field.label] = field.id;
 		fieldsIdKey[field.id] = field.label;
@@ -79,7 +81,7 @@ export async function getFieldsObject(
 export async function quickbaseApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

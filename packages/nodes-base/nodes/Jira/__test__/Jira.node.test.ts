@@ -1,6 +1,7 @@
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Jira } from '../Jira.node';
@@ -51,7 +52,7 @@ describe('Jira Node', () => {
 			await jiraNode.execute.call(executeFunctionsMock);
 
 			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-				'/api/2/search/jql',
+				requestPath`/api/2/search/jql`,
 				'POST',
 				expect.objectContaining({
 					fields: ['*navigable'],
@@ -82,7 +83,7 @@ describe('Jira Node', () => {
 			await jiraNode.execute.call(executeFunctionsMock);
 
 			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-				'/api/2/search/jql',
+				requestPath`/api/2/search/jql`,
 				'POST',
 				expect.objectContaining({
 					jql: 'created >= "1970-01-01"',
@@ -113,7 +114,7 @@ describe('Jira Node', () => {
 			await jiraNode.execute.call(executeFunctionsMock);
 
 			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-				'/api/2/search/jql',
+				requestPath`/api/2/search/jql`,
 				'POST',
 				expect.objectContaining({
 					fields: ['summary', 'description'],
@@ -144,7 +145,7 @@ describe('Jira Node', () => {
 			await jiraNode.execute.call(executeFunctionsMock);
 
 			expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-				'/api/2/search/jql',
+				requestPath`/api/2/search/jql`,
 				'POST',
 				expect.objectContaining({
 					jql: 'project = TEST',
@@ -174,7 +175,7 @@ describe('Jira Node', () => {
 
 			expect(jiraSoftwareCloudApiRequestAllItems).toHaveBeenCalledWith(
 				'issues',
-				'/api/2/search/jql',
+				requestPath`/api/2/search/jql`,
 				'POST',
 				expect.anything(),
 				{},
@@ -207,7 +208,7 @@ describe('Jira Node', () => {
 				await jiraNode.execute.call(executeFunctionsMock);
 
 				expect(jiraSoftwareCloudApiRequestMock).toHaveBeenCalledWith(
-					'/api/2/search',
+					requestPath`/api/2/search`,
 					'POST',
 					expect.anything(),
 				);
@@ -238,7 +239,7 @@ describe('Jira Node', () => {
 
 				expect(jiraSoftwareCloudApiRequestAllItems).toHaveBeenCalledWith(
 					'issues',
-					'/api/2/search',
+					requestPath`/api/2/search`,
 					'POST',
 					expect.anything(),
 				);

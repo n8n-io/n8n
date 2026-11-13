@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequestAllItems } from '../../v1/GenericFunctions';
 
@@ -37,7 +38,7 @@ describe('googleApiRequestAllItems', () => {
 			mockContext,
 			'files',
 			'GET',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			{},
 			{},
 		);
@@ -56,7 +57,7 @@ describe('googleApiRequestAllItems', () => {
 			mockContext,
 			'files',
 			'GET',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			{},
 			{},
 		);

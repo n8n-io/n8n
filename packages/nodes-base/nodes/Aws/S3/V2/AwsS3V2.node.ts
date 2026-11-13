@@ -8,7 +8,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
@@ -18,6 +18,7 @@ import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
+import { assertBucketName, bucketTarget, objectKeyPath } from '../utils';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -94,6 +95,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
+						assertBucketName(this.getNode(), name);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
 							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
@@ -142,7 +144,7 @@ export class AwsS3V2 implements INodeType {
 							this,
 							`${name}.s3`,
 							'PUT',
-							'',
+							requestPath``,
 							data,
 							qs,
 							headers,
@@ -157,12 +159,13 @@ export class AwsS3V2 implements INodeType {
 					// https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
 					if (operation === 'delete') {
 						const name = this.getNodeParameter('name', i) as string;
+						assertBucketName(this.getNode(), name);
 
 						responseData = await awsApiRequestREST.call(
 							this,
 							`${name}.s3`,
 							'DELETE',
-							'',
+							requestPath``,
 							'',
 							{},
 							headers,
@@ -183,7 +186,7 @@ export class AwsS3V2 implements INodeType {
 								'ListAllMyBucketsResult.Buckets.Bucket',
 								's3',
 								'GET',
-								'',
+								requestPath``,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -192,7 +195,7 @@ export class AwsS3V2 implements INodeType {
 								'ListAllMyBucketsResult.Buckets.Bucket',
 								's3',
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 							);
@@ -208,8 +211,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -284,17 +286,16 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'create') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const folderName = this.getNodeParameter('folderName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						let path = `${basePath}/${folderName}/`;
+						let path = requestPath`${basePath}${objectKeyPath(folderName)}/`;
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';
 						}
 						if (additionalFields.parentFolderKey) {
-							path = `${basePath}/${additionalFields.parentFolderKey}/${folderName}/`;
+							path = requestPath`${basePath}${objectKeyPath(`${additionalFields.parentFolderKey}/${folderName}`)}/`;
 						}
 						if (additionalFields.storageClass) {
 							headers['x-amz-storage-class'] = snakeCase(
@@ -327,8 +328,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
 					if (operation === 'delete') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const folderKey = this.getNodeParameter('folderKey', i) as string;
 
 						responseData = await awsApiRequestREST.call(this, servicePath, 'GET', basePath, '', {
@@ -356,7 +356,7 @@ export class AwsS3V2 implements INodeType {
 								this,
 								servicePath,
 								'DELETE',
-								`${basePath}/${folderKey}`,
+								requestPath`${basePath}${objectKeyPath(folderKey)}`,
 								'',
 								qs,
 								{},
@@ -394,7 +394,7 @@ export class AwsS3V2 implements INodeType {
 								this,
 								servicePath,
 								'POST',
-								`${basePath}/`,
+								requestPath`${basePath}/`,
 								data,
 								{ delete: '' },
 								headers,
@@ -413,8 +413,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0);
 
@@ -562,12 +561,11 @@ export class AwsS3V2 implements INodeType {
 						const destinationParts = destinationPath.split('/');
 
 						const bucketName = destinationParts[1];
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 
-						const destination = `${basePath}/${destinationParts
-							.slice(2, destinationParts.length)
-							.join('/')}`;
+						const destination = requestPath`${basePath}${objectKeyPath(
+							destinationParts.slice(2, destinationParts.length).join('/'),
+						)}`;
 
 						responseData = await awsApiRequestREST.call(this, servicePath, 'GET', basePath, '', {
 							location: '',
@@ -595,8 +593,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 					if (operation === 'download') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 
@@ -619,7 +616,7 @@ export class AwsS3V2 implements INodeType {
 							this,
 							servicePath,
 							'GET',
-							`${basePath}/${fileKey}`,
+							requestPath`${basePath}${objectKeyPath(fileKey)}`,
 							'',
 							qs,
 							{},
@@ -661,8 +658,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html
 					if (operation === 'delete') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 
@@ -682,7 +678,7 @@ export class AwsS3V2 implements INodeType {
 							this,
 							servicePath,
 							'DELETE',
-							`${basePath}/${fileKey}`,
+							requestPath`${basePath}${objectKeyPath(fileKey)}`,
 							'',
 							qs,
 							{},
@@ -698,8 +694,7 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0);
 
@@ -767,14 +762,13 @@ export class AwsS3V2 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const servicePath = bucketName.includes('.') ? 's3' : `${bucketName}.s3`;
-						const basePath = bucketName.includes('.') ? `/${bucketName}` : '';
+						const { servicePath, basePath } = bucketTarget(this.getNode(), bucketName);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
-						let path = `${basePath}/${fileName}`;
+						let path = requestPath`${basePath}${objectKeyPath(fileName)}`;
 						let body;
 
 						const multipartHeaders: IDataObject = {};
@@ -784,7 +778,7 @@ export class AwsS3V2 implements INodeType {
 							neededHeaders['x-amz-request-payer'] = 'requester';
 						}
 						if (additionalFields.parentFolderKey) {
-							path = `${basePath}/${additionalFields.parentFolderKey}/${fileName}`;
+							path = requestPath`${basePath}${objectKeyPath(`${additionalFields.parentFolderKey}/${fileName}`)}`;
 						}
 						if (additionalFields.storageClass) {
 							multipartHeaders['x-amz-storage-class'] = snakeCase(
@@ -871,9 +865,9 @@ export class AwsS3V2 implements INodeType {
 									this,
 									servicePath,
 									'POST',
-									`${path}?uploads`,
+									path,
 									body,
-									qs,
+									{ uploads: '', ...qs },
 									{ ...neededHeaders, ...multipartHeaders },
 									{},
 									region as string,
@@ -893,9 +887,9 @@ export class AwsS3V2 implements INodeType {
 											this,
 											servicePath,
 											'PUT',
-											`${path}?partNumber=${part}&uploadId=${uploadId}`,
+											path,
 											chunk,
-											qs,
+											{ partNumber: part, uploadId, ...qs },
 											listHeaders,
 											{},
 											region as string,
@@ -903,12 +897,9 @@ export class AwsS3V2 implements INodeType {
 										part++;
 									} catch (error) {
 										try {
-											await awsApiRequestREST.call(
-												this,
-												servicePath,
-												'DELETE',
-												`${path}?uploadId=${uploadId}`,
-											);
+											await awsApiRequestREST.call(this, servicePath, 'DELETE', path, undefined, {
+												uploadId,
+											});
 										} catch (err) {
 											throw new NodeOperationError(this.getNode(), err as Error);
 										}
@@ -920,9 +911,9 @@ export class AwsS3V2 implements INodeType {
 									this,
 									servicePath,
 									'GET',
-									`${path}?max-parts=${900}&part-number-marker=0&uploadId=${uploadId}`,
+									path,
 									'',
-									qs,
+									{ 'max-parts': 900, 'part-number-marker': 0, uploadId, ...qs },
 									{ ...neededHeaders },
 									{},
 									region as string,
@@ -972,9 +963,9 @@ export class AwsS3V2 implements INodeType {
 									this,
 									servicePath,
 									'POST',
-									`${path}?uploadId=${uploadId}`,
+									path,
 									data,
-									qs,
+									{ uploadId, ...qs },
 									{
 										...neededHeaders,
 										'Content-MD5': createHash('md5').update(data).digest('base64'),

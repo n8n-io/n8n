@@ -7,28 +7,39 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IPollFunctions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
+/**
+ * Issues a Microsoft Graph request.
+ *
+ * The `resource` argument is a path relative to the drive (e.g. `/items/{id}`).
+ * It is appended to `/v1.0/me/drive`.
+ *
+ * To bypass this (delta `@odata.nextLink`/`deltaLink`), pass the absolute URL
+ * as `uri` — it is used verbatim.
+ */
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		...(uri ? { uri } : { uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive${resource}` }),
 	};
 	try {
 		Object.assign(options, option);
@@ -51,7 +62,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -78,7 +89,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -111,7 +122,14 @@ export async function microsoftApiRequestAllItemsDelta(
 	let uri: string = link;
 
 	do {
-		responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, uri)) as IDataObject;
+		responseData = (await microsoftApiRequest.call(
+			this,
+			'GET',
+			requestPath``,
+			{},
+			{},
+			uri,
+		)) as IDataObject;
 		uri = responseData['@odata.nextLink'] as string;
 
 		for (const value of responseData.value as IDataObject[]) {
@@ -148,10 +166,7 @@ export async function getPath(
 	const responseData = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'',
-		{},
-		{},
-		`https://graph.microsoft.com/v1.0/me/drive/items/${itemId}`,
+		requestPath`/items/${itemId}`,
 	)) as IDataObject;
 	if (responseData.folder) {
 		return (responseData?.parentReference as IDataObject)?.path + `/${responseData?.name}`;

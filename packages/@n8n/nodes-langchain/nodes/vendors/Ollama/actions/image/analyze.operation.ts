@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { OllamaChatResponse, OllamaMessage } from '../../helpers';
 import { apiRequest } from '../../transport';
@@ -434,7 +434,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options: processedOptions,
 	};
 
-	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', '/api/chat', {
+	const response: OllamaChatResponse = await apiRequest.call(this, 'POST', requestPath`/api/chat`, {
 		body,
 	});
 

@@ -7,8 +7,10 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../utils/utilities';
@@ -187,6 +189,16 @@ export function addAdditionalFields(
 	}
 }
 
+export function fileUrl(baseUrl: unknown, token: unknown, filePath: string): RequestUrl {
+	const path = filePath
+		.split('/')
+		.reduce(
+			(result, part) => (part ? requestPath`${result}/${part}` : requestPath`${result}/`),
+			requestPath``,
+		);
+	return requestUrl`${baseUrl}/file/bot${token}${path}`;
+}
+
 /**
  * Make an API request to Telegram
  *
@@ -197,16 +209,20 @@ export async function apiRequest(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	option: IDataObject = {},
+	option: Pick<
+		IRequestOptions,
+		'encoding' | 'formData' | 'json' | 'resolveWithFullResponse' | 'useStream'
+	> & { uri?: never; url?: never; baseURL?: never } = {},
+	uri?: RequestUrl,
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 
 	query = query || {};
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
-		uri: `${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
+		uri: uri ?? requestUrl`${credentials.baseUrl}/bot${credentials.accessToken}/${endpoint}`,
 		body,
 		qs: query,
 		json: true,

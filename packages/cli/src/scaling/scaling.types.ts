@@ -19,6 +19,8 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	/** The user who owns `pushRef`, so the worker can route push messages to that user. */
+	pushRefUserId?: string;
 	streamingEnabled?: boolean;
 };
 

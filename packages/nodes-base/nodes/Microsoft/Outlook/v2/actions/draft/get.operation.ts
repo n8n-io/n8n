@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -107,7 +108,13 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'GET', `/messages/${draftId}`, undefined, qs);
+	responseData = await microsoftApiRequest.call(
+		this,
+		'GET',
+		requestPath`/messages/${draftId}`,
+		undefined,
+		qs,
+	);
 
 	if (output === 'simple') {
 		responseData = simplifyOutputMessages([responseData as IDataObject]);

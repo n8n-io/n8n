@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -79,5 +80,10 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	if (options.type) {
 		body.membershipType = options.type as string;
 	}
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/teams/${teamId}/channels`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1.0/teams/${teamId}/channels`,
+		body,
+	);
 }

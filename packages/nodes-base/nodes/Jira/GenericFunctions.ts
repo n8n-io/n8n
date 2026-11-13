@@ -8,19 +8,24 @@ import type {
 	INodePropertyOptions,
 	IRequestOptions,
 	JsonObject,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, UnexpectedError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { JiraServerInfo, JiraWebhook } from './types';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<
+		IRequestOptions,
+		'formData' | 'json' | 'encoding' | 'useStream' | 'sendCredentialsOnCrossOriginRedirect'
+	> = {},
 ): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -38,7 +43,7 @@ export async function jiraSoftwareCloudApiRequest(
 		credentialType = 'jiraSoftwareCloudApi';
 	}
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -46,7 +51,7 @@ export async function jiraSoftwareCloudApiRequest(
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest${endpoint}`,
+		...(uri ? { uri } : { uri: requestUrl`${domain}/rest${endpoint}` }),
 		body,
 		json: true,
 	};
@@ -129,7 +134,7 @@ export function handlePagination(
 export async function jiraSoftwareCloudApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	body: any = {},
 	query: IDataObject = {},
@@ -280,10 +285,10 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 	const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
 	const maxResults = 1000;
 	const query: IDataObject = { maxResults };
-	let endpoint = '/api/2/users/search';
+	let endpoint = requestPath`/api/2/users/search`;
 
 	if (jiraVersion === 'server' || jiraVersion === 'serverPat') {
-		endpoint = '/api/2/user/search';
+		endpoint = requestPath`/api/2/user/search`;
 		query.username = "'";
 	}
 
@@ -316,18 +321,29 @@ export async function getUsers(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getServerInfo(this: IHookFunctions) {
 	return await (jiraSoftwareCloudApiRequest.call(
 		this,
-		'/api/2/serverInfo',
+		requestPath`/api/2/serverInfo`,
 		'GET',
 	) as Promise<JiraServerInfo>);
 }
 
+const legacyWebhookEndpoint = requestPath`/webhooks/1.0/webhook`;
+const webhookEndpoint = requestPath`/jira-webhook/1.0/webhooks`;
+
 export async function getWebhookEndpoint(this: IHookFunctions) {
 	const serverInfo = await getServerInfo.call(this).catch(() => null);
 
-	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return '/webhooks/1.0/webhook';
+	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return legacyWebhookEndpoint;
 
 	// Assume old version when versionNumbers is not set
 	const majorVersion = serverInfo.versionNumbers?.[0] ?? 1;
 
-	return majorVersion >= 10 ? '/jira-webhook/1.0/webhooks' : '/webhooks/1.0/webhook';
+	return majorVersion >= 10 ? webhookEndpoint : legacyWebhookEndpoint;
+}
+
+export function toWebhookEndpoint(endpoint: string): RequestPath {
+	const path = [legacyWebhookEndpoint, webhookEndpoint].find(
+		(candidate) => candidate.toString() === endpoint,
+	);
+	if (!path) throw new UnexpectedError(`Unknown Jira webhook endpoint "${endpoint}"`);
+	return path;
 }

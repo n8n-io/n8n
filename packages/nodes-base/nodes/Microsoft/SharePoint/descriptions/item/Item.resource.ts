@@ -27,7 +27,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -42,7 +42,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -57,7 +57,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items/{{ $parameter["item"] }}',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items/{{ toPathSegment($parameter["item"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -81,7 +81,7 @@ export const description: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'GET',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items/{{ $parameter["item"] }}',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items/{{ toPathSegment($parameter["item"]) }}',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive, simplifyItemPostReceive],
@@ -96,7 +96,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items',
 					},
 					output: {
 						postReceive: [
@@ -120,7 +120,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}/items',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}/items',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],

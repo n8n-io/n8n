@@ -1,5 +1,5 @@
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError, isDomainAllowed } from 'n8n-workflow';
+import { NodeOperationError, isDomainAllowed, requestPath } from 'n8n-workflow';
 
 import { createHmac, timingSafeEqual } from 'crypto';
 
@@ -9,7 +9,7 @@ export async function getUserInfo(this: IWebhookFunctions, userId: string): Prom
 	const user = await slackApiRequest.call(
 		this,
 		'GET',
-		'/users.info',
+		requestPath`/users.info`,
 		{},
 		{
 			user: userId,
@@ -23,7 +23,7 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 	const channel = await slackApiRequest.call(
 		this,
 		'GET',
-		'/conversations.info',
+		requestPath`/conversations.info`,
 		{},
 		{
 			channel: channelId,
@@ -33,13 +33,15 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 	return channel.channel.name;
 }
 
-// Slack serves file downloads only from these hosts.
-const SLACK_FILE_DOMAINS = '*.slack.com, *.slack-gov.com';
+const SLACK_FILE_DOMAINS = 'files.slack.com, files.slack-gov.com';
+const SLACK_FILE_PATH_PREFIX = '/files-pri/';
 
 function isSlackFileUrl(url: string): boolean {
 	try {
+		const { protocol, pathname } = new URL(url);
 		return (
-			new URL(url).protocol === 'https:' &&
+			protocol === 'https:' &&
+			pathname.startsWith(SLACK_FILE_PATH_PREFIX) &&
 			isDomainAllowed(url, { allowedDomains: SLACK_FILE_DOMAINS })
 		);
 	} catch {

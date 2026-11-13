@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as create from '../../../../v2/actions/record/create.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -84,14 +85,14 @@ describe('Test AirtableV2, create operation', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`appYoLbase/tblltable`, {
 			fields: {
 				foo: 'foo 1',
 				bar: 'bar 1',
 			},
 			typecast: true,
 		});
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`appYoLbase/tblltable`, {
 			fields: {
 				foo: 'foo 2',
 				bar: 'bar 2',
@@ -146,7 +147,7 @@ describe('Test AirtableV2, create operation', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`appYoLbase/tblltable`, {
 			fields: {
 				foo: 'foo 1',
 				bar: 'bar 1',
@@ -197,7 +198,7 @@ describe('Test AirtableV2, create operation', () => {
 		});
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', 'appYoLbase/tblltable', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`appYoLbase/tblltable`, {
 			fields: {
 				foo: 'foo 1',
 				bar: 'bar 1',

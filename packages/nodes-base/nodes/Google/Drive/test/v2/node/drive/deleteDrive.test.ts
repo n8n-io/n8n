@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as deleteDrive from '../../../../v2/actions/drive/deleteDrive.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -31,7 +32,7 @@ describe('test GoogleDriveV2: drive deleteDrive', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/drive/v3/drives/driveIDxxxxxx',
+			requestPath`/drive/v3/drives/driveIDxxxxxx`,
 		);
 	});
 });

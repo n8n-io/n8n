@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { toPathSegment, jsonParse, NodeApiError } from 'n8n-workflow';
+import { requestPath, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import { loadOptions } from './methods';
 import { versionDescription } from './VersionDescription';
@@ -75,7 +75,7 @@ export class NotionV2 implements INodeType {
 						const block = await notionApiRequest.call(
 							this,
 							'PATCH',
-							`/blocks/${toPathSegment(blockId)}/children`,
+							requestPath`/blocks/${blockId}/children`,
 							body,
 						);
 
@@ -109,7 +109,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'GET',
-								`/blocks/${toPathSegment(blockId)}/children`,
+								requestPath`/blocks/${blockId}/children`,
 								{},
 							);
 
@@ -122,7 +122,7 @@ export class NotionV2 implements INodeType {
 							responseData = await notionApiRequest.call(
 								this,
 								'GET',
-								`/blocks/${toPathSegment(blockId)}/children`,
+								requestPath`/blocks/${blockId}/children`,
 								{},
 								qs,
 							);
@@ -184,7 +184,7 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(
 							this,
 							'GET',
-							`/databases/${toPathSegment(databaseId)}`,
+							requestPath`/databases/${databaseId}`,
 						);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download)[0];
@@ -221,12 +221,12 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								'/search',
+								requestPath`/search`,
 								body,
 							);
 						} else {
 							body.page_size = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequest.call(this, 'POST', '/search', body);
+							responseData = await notionApiRequest.call(this, 'POST', requestPath`/search`, body);
 							responseData = responseData.results;
 						}
 						if (simple) {
@@ -277,7 +277,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								'/search',
+								requestPath`/search`,
 								body,
 							);
 						} else {
@@ -286,7 +286,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								'/search',
+								requestPath`/search`,
 								body,
 							);
 							responseData = responseData.splice(0, qs.limit);
@@ -323,7 +323,7 @@ export class NotionV2 implements INodeType {
 				const { properties } = await notionApiRequest.call(
 					this,
 					'GET',
-					`/databases/${toPathSegment(databaseId)}`,
+					requestPath`/databases/${databaseId}`,
 				);
 				let titleKey = '';
 				for (const key of Object.keys(properties as IDataObject)) {
@@ -382,7 +382,7 @@ export class NotionV2 implements INodeType {
 							}
 						}
 
-						responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
+						responseData = await notionApiRequest.call(this, 'POST', requestPath`/pages`, body);
 						if (simple) {
 							responseData = simplifyObjects(responseData);
 						}
@@ -411,11 +411,7 @@ export class NotionV2 implements INodeType {
 						const pageId = getPageId.call(this, i);
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
-						responseData = await notionApiRequest.call(
-							this,
-							'GET',
-							`/pages/${toPathSegment(pageId)}`,
-						);
+						responseData = await notionApiRequest.call(this, 'GET', requestPath`/pages/${pageId}`);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
 						}
@@ -491,7 +487,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								`/databases/${toPathSegment(databaseId)}/query`,
+								requestPath`/databases/${databaseId}/query`,
 								body,
 								{},
 							);
@@ -500,7 +496,7 @@ export class NotionV2 implements INodeType {
 							responseData = await notionApiRequest.call(
 								this,
 								'POST',
-								`/databases/${toPathSegment(databaseId)}/query`,
+								requestPath`/databases/${databaseId}/query`,
 								body,
 								qs,
 							);
@@ -563,7 +559,7 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(
 							this,
 							'PATCH',
-							`/pages/${toPathSegment(pageId)}`,
+							requestPath`/pages/${pageId}`,
 							body,
 						);
 						if (simple) {
@@ -594,11 +590,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < itemsLength; i++) {
 					try {
 						const userId = this.getNodeParameter('userId', i) as string;
-						responseData = await notionApiRequest.call(
-							this,
-							'GET',
-							`/users/${toPathSegment(userId)}`,
-						);
+						responseData = await notionApiRequest.call(this, 'GET', requestPath`/users/${userId}`);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
@@ -622,10 +614,20 @@ export class NotionV2 implements INodeType {
 					try {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
-							responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
+							responseData = await notionApiRequestAllItems.call(
+								this,
+								'results',
+								'GET',
+								requestPath`/users`,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
+							responseData = await notionApiRequestAllItems.call(
+								this,
+								'results',
+								'GET',
+								requestPath`/users`,
+							);
 							responseData = responseData.splice(0, qs.limit);
 						}
 
@@ -657,7 +659,7 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(
 							this,
 							'PATCH',
-							`/pages/${toPathSegment(pageId)}`,
+							requestPath`/pages/${pageId}`,
 							{
 								archived: true,
 							},
@@ -711,7 +713,7 @@ export class NotionV2 implements INodeType {
 							}
 						}
 
-						responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
+						responseData = await notionApiRequest.call(this, 'POST', requestPath`/pages`, body);
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
 						}
@@ -759,7 +761,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								'/search',
+								requestPath`/search`,
 								body,
 							);
 						} else {
@@ -768,7 +770,7 @@ export class NotionV2 implements INodeType {
 								this,
 								'results',
 								'POST',
-								'/search',
+								requestPath`/search`,
 								body,
 							);
 							responseData = responseData.splice(0, qs.limit);

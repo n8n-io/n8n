@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { calApiRequest, sortOptionParameters } from './GenericFunctions';
@@ -158,7 +159,7 @@ export class CalTrigger implements INodeType {
 		loadOptions: {
 			async getEventTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const data = await calApiRequest.call(this, 'GET', '/event-types', {});
+				const data = await calApiRequest.call(this, 'GET', requestPath`/event-types`, {});
 
 				for (const item of data.event_types) {
 					returnData.push({
@@ -184,8 +185,8 @@ export class CalTrigger implements INodeType {
 				// one that is supposed to get created.
 				const data =
 					version === 2
-						? await calApiRequest.call(this, 'GET', '/webhooks', {})
-						: await calApiRequest.call(this, 'GET', '/hooks', {});
+						? await calApiRequest.call(this, 'GET', requestPath`/webhooks`, {})
+						: await calApiRequest.call(this, 'GET', requestPath`/hooks`, {});
 
 				for (const webhook of data.webhooks) {
 					if (webhook.subscriberUrl === webhookUrl) {
@@ -218,8 +219,8 @@ export class CalTrigger implements INodeType {
 
 				const responseData =
 					version === 2
-						? await calApiRequest.call(this, 'POST', '/webhooks', body)
-						: await calApiRequest.call(this, 'POST', '/hooks', body);
+						? await calApiRequest.call(this, 'POST', requestPath`/webhooks`, body)
+						: await calApiRequest.call(this, 'POST', requestPath`/hooks`, body);
 
 				if (responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
@@ -235,8 +236,8 @@ export class CalTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 					const endpoint =
 						version === 2
-							? `/webhooks/${webhookData.webhookId}`
-							: `/hooks/${webhookData.webhookId}`;
+							? requestPath`/webhooks/${webhookData.webhookId}`
+							: requestPath`/hooks/${webhookData.webhookId}`;
 
 					try {
 						await calApiRequest.call(this, 'DELETE', endpoint);

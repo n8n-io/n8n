@@ -4,28 +4,29 @@ import type {
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestUrl } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com${resource}`,
+		...(uri ? { uri } : { uri: requestUrl`https://graph.microsoft.com${resource}` }),
 		json: true,
 	};
 	try {
@@ -42,7 +43,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -69,7 +70,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -111,4 +112,8 @@ export function prepareMessage(
 			content: message,
 		},
 	};
+}
+
+export function getLinkId(this: IExecuteFunctions, name: 'channelId' | 'chatId', i: number) {
+	return decodePathValue(this.getNodeParameter(name, i) as string);
 }

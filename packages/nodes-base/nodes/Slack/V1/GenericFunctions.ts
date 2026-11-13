@@ -7,27 +7,33 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: object = {},
 	query: IDataObject = {},
 	headers: IDataObject | undefined = undefined,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData' | 'form'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		uri: `https://slack.com/api${resource}`,
+		uri: requestUrl`https://slack.com/api${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -85,7 +91,7 @@ export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -95,7 +101,7 @@ export async function slackApiRequestAllItems(
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
 	//https://api.slack.com/docs/pagination#classic
-	if (endpoint.includes('files.list')) {
+	if (endpoint.value.includes('files.list')) {
 		query.count = 100;
 	} else {
 		query.limit = 100;

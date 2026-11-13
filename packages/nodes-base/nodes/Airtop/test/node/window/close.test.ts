@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as close from '../../../actions/window/close.operation';
@@ -47,7 +48,7 @@ describe('Test Airtop, window close operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/sessions/test-session-123/windows/win-123',
+			requestPath`/sessions/test-session-123/windows/win-123`,
 		);
 
 		expect(result).toEqual([

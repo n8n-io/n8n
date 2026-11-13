@@ -1,4 +1,4 @@
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { JsonObject, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
 import { prepareFilterString, simplifyOutputMessages } from '../v2/helpers/utils';
@@ -40,7 +40,7 @@ export async function getPollResponse(
 			qs.$filter = filterString;
 		}
 
-		const endpoint = '/messages';
+		const endpoint = requestPath`/messages`;
 		if (this.getMode() !== 'manual') {
 			if (qs.$filter) {
 				qs.$filter = `${qs.$filter} and receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;

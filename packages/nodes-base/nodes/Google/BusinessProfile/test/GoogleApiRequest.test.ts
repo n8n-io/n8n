@@ -1,6 +1,11 @@
-import { NodeApiError, type ILoadOptionsFunctions, type IPollFunctions } from 'n8n-workflow';
+import {
+	NodeApiError,
+	requestPath,
+	type ILoadOptionsFunctions,
+	type IPollFunctions,
+} from 'n8n-workflow';
 
-import { googleApiRequest } from '../GenericFunctions';
+import { googleApiRequest, locationPath } from '../GenericFunctions';
 
 describe('googleApiRequest', () => {
 	const mockHttpRequestWithAuthentication = jest.fn();
@@ -19,13 +24,15 @@ describe('googleApiRequest', () => {
 		const mockResponse = { success: true };
 		mockHttpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
-		const result = await googleApiRequest.call(mockContext, 'GET', '/test-resource');
+		const result = await googleApiRequest.call(mockContext, 'GET', requestPath`/test-resource`);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'googleBusinessProfileOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://mybusiness.googleapis.com/v4/test-resource',
+				url: expect.objectContaining({
+					value: 'https://mybusiness.googleapis.com/v4/test-resource',
+				}),
 				qs: {},
 				json: true,
 			}),
@@ -39,14 +46,21 @@ describe('googleApiRequest', () => {
 		mockHttpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
 		const requestBody = { key: 'value' };
-		const result = await googleApiRequest.call(mockContext, 'POST', '/test-resource', requestBody);
+		const result = await googleApiRequest.call(
+			mockContext,
+			'POST',
+			requestPath`/test-resource`,
+			requestBody,
+		);
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'googleBusinessProfileOAuth2Api',
 			expect.objectContaining({
 				method: 'POST',
 				body: requestBody,
-				url: 'https://mybusiness.googleapis.com/v4/test-resource',
+				url: expect.objectContaining({
+					value: 'https://mybusiness.googleapis.com/v4/test-resource',
+				}),
 				qs: {},
 				json: true,
 			}),
@@ -59,7 +73,7 @@ describe('googleApiRequest', () => {
 		const mockResponse = { success: true };
 		mockHttpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
-		const result = await googleApiRequest.call(mockContext, 'GET', '/test-resource', {});
+		const result = await googleApiRequest.call(mockContext, 'GET', requestPath`/test-resource`, {});
 
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith(
 			'googleBusinessProfileOAuth2Api',
@@ -74,11 +88,39 @@ describe('googleApiRequest', () => {
 		const mockError = new Error('API request failed');
 		mockHttpRequestWithAuthentication.mockRejectedValue(mockError);
 
-		await expect(googleApiRequest.call(mockContext, 'GET', '/test-resource')).rejects.toThrow(
-			NodeApiError,
-		);
+		await expect(
+			googleApiRequest.call(mockContext, 'GET', requestPath`/test-resource`),
+		).rejects.toThrow(NodeApiError);
 
 		expect(mockContext.getNode).toHaveBeenCalled();
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalled();
+	});
+});
+
+describe('locationPath', () => {
+	const mockContext = { getNode: jest.fn() } as unknown as ILoadOptionsFunctions;
+
+	it('should build the path from the account and location names', () => {
+		expect(locationPath.call(mockContext, 'accounts/123', 'locations/456').toString()).toBe(
+			'/accounts/123/locations/456',
+		);
+	});
+
+	it('should encode characters that are not valid in a path segment', () => {
+		expect(locationPath.call(mockContext, 'accounts/12?3', 'locations/4#56').toString()).toBe(
+			'/accounts/12%3F3/locations/4%2356',
+		);
+	});
+
+	it.each([
+		['123', 'locations/456', 'The resource name "123" must have the form "accounts/*"'],
+		['accounts/', 'locations/456', 'The resource name "accounts/" must have the form "accounts/*"'],
+		[
+			'accounts/123',
+			'accounts/123/locations/456',
+			'The resource name "accounts/123/locations/456" must have the form "locations/*"',
+		],
+	])('should reject the account "%s" and location "%s"', (account, location, message) => {
+		expect(() => locationPath.call(mockContext, account, location)).toThrow(message);
 	});
 });

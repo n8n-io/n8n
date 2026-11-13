@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -24,7 +25,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}) as string,
 	);
 
-	await microsoftApiRequest.call(this, 'DELETE', `/mailFolders/${folderId}`);
+	await microsoftApiRequest.call(this, 'DELETE', requestPath`/mailFolders/${folderId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

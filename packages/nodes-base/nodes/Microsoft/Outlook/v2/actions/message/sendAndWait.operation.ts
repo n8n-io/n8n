@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	createEmailBodyWithN8nAttribution,
@@ -56,7 +57,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 
 	const body: IDataObject = { message };
 
-	await microsoftApiRequest.call(this, 'POST', '/sendMail', body);
+	await microsoftApiRequest.call(this, 'POST', requestPath`/sendMail`, body);
 
 	return items;
 }

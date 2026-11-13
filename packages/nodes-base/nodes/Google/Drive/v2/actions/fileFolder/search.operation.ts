@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -348,10 +349,23 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	let response;
 	if (returnAll) {
-		response = await googleApiRequestAllItems.call(this, 'GET', 'files', '/drive/v3/files', {}, qs);
+		response = await googleApiRequestAllItems.call(
+			this,
+			'GET',
+			'files',
+			requestPath`/drive/v3/files`,
+			{},
+			qs,
+		);
 	} else {
 		qs.pageSize = this.getNodeParameter('limit', i);
-		response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
+		response = await googleApiRequest.call(
+			this,
+			'GET',
+			requestPath`/drive/v3/files`,
+			undefined,
+			qs,
+		);
 		response = response.files;
 	}
 

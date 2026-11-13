@@ -5,22 +5,27 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function wordpressApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('wordpressApi');
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -29,7 +34,7 @@ export async function wordpressApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
+		uri: requestUrl`${credentials.url}/wp-json/wp/v2${resource}`,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
@@ -48,7 +53,7 @@ export async function wordpressApiRequest(
 export async function wordpressApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -62,7 +67,7 @@ export async function wordpressApiRequestAllItems(
 
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);

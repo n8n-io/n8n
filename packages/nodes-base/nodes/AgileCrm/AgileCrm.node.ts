@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 import { contactFields, contactOperations } from './ContactDescription';
@@ -96,12 +96,12 @@ export class AgileCrm implements INodeType {
 				if (operation === 'get') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
 
-					const endpoint = `api/contacts/${contactId}`;
+					const endpoint = requestPath`api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 				} else if (operation === 'delete') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
 
-					const endpoint = `api/contacts/${contactId}`;
+					const endpoint = requestPath`api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 				} else if (operation === 'getAll') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
@@ -165,9 +165,8 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequestAllItems.call(
 							this,
 							'POST',
-							'api/filters/filter/dynamic-filter',
+							requestPath`api/filters/filter/dynamic-filter`,
 							body,
-							undefined,
 							undefined,
 							true,
 						);
@@ -176,9 +175,8 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequest.call(
 							this,
 							'POST',
-							'api/filters/filter/dynamic-filter',
+							requestPath`api/filters/filter/dynamic-filter`,
 							body,
-							undefined,
 							undefined,
 							true,
 						);
@@ -347,7 +345,7 @@ export class AgileCrm implements INodeType {
 						}
 						body.properties = properties;
 					}
-					const endpoint = 'api/contacts';
+					const endpoint = requestPath`api/contacts`;
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 				} else if (operation === 'update') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
@@ -518,16 +516,16 @@ export class AgileCrm implements INodeType {
 				if (operation === 'get') {
 					const dealId = this.getNodeParameter('dealId', i) as string;
 
-					const endpoint = `api/opportunity/${dealId}`;
+					const endpoint = requestPath`api/opportunity/${dealId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
 				} else if (operation === 'delete') {
 					const contactId = this.getNodeParameter('dealId', i) as string;
 
-					const endpoint = `api/opportunity/${contactId}`;
+					const endpoint = requestPath`api/opportunity/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
 				} else if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0);
-					const endpoint = 'api/opportunity';
+					const endpoint = requestPath`api/opportunity`;
 
 					if (returnAll) {
 						const limit = 100;
@@ -578,7 +576,7 @@ export class AgileCrm implements INodeType {
 						}
 					}
 
-					const endpoint = 'api/opportunity';
+					const endpoint = requestPath`api/opportunity`;
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
 				} else if (operation === 'update') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i);
@@ -625,7 +623,7 @@ export class AgileCrm implements INodeType {
 						}
 					}
 
-					const endpoint = 'api/opportunity/partial-update';
+					const endpoint = requestPath`api/opportunity/partial-update`;
 					responseData = await agileCrmApiRequest.call(this, 'PUT', endpoint, body);
 				}
 			}

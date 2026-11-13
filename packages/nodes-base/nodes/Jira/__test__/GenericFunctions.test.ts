@@ -1,7 +1,12 @@
 import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
-import { handlePagination, jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
+import {
+	handlePagination,
+	jiraSoftwareCloudApiRequest,
+	jiraSoftwareCloudApiRequestAllItems,
+} from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
 	describe('jiraSoftwareCloudApiRequestAllItems', () => {
@@ -10,7 +15,7 @@ describe('Jira -> GenericFunctions', () => {
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('server');
-			mockExecuteFunctions.getCredentials.mockResolvedValue({ domain: 'jira.domain.com' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ domain: 'https://jira.domain.com' });
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockImplementation(
 				async function (_, options) {
 					if (!options.qs?.startAt) {
@@ -40,7 +45,7 @@ describe('Jira -> GenericFunctions', () => {
 			const result = await jiraSoftwareCloudApiRequestAllItems.call(
 				mockExecuteFunctions,
 				'issues',
-				'/api/2/search',
+				requestPath`/api/2/search`,
 				'GET',
 			);
 
@@ -50,6 +55,40 @@ describe('Jira -> GenericFunctions', () => {
 				'jiraSoftwareServerApi',
 				expect.not.objectContaining({
 					body: expect.anything(),
+				}),
+			);
+		});
+	});
+
+	describe('jiraSoftwareCloudApiRequest', () => {
+		let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({});
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should encode path values', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloud');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://example.atlassian.net',
+			});
+
+			const issueKey = 'NODE-1/delete?x=1';
+			await jiraSoftwareCloudApiRequest.call(
+				mockExecuteFunctions,
+				requestPath`/api/2/issue/${issueKey}`,
+				'GET',
+			);
+
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareCloudApi',
+				expect.objectContaining({
+					uri: requestUrl`https://example.atlassian.net/rest/api/2/issue/NODE-1%2Fdelete%3Fx=1`,
 				}),
 			);
 		});

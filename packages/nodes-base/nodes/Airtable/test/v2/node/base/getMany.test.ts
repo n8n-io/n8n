@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as getMany from '../../../../v2/actions/base/getMany.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -40,7 +41,7 @@ describe('Test AirtableV2, base => getMany', () => {
 
 		const response = await getMany.execute.call(createMockExecuteFunction(nodeParameters));
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', requestPath`meta/bases`);
 
 		expect(response).toEqual([
 			{
@@ -92,7 +93,7 @@ describe('Test AirtableV2, base => getMany', () => {
 
 		const response = await getMany.execute.call(createMockExecuteFunction(nodeParameters));
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases');
+		expect(transport.apiRequest).toHaveBeenCalledWith('GET', requestPath`meta/bases`);
 
 		expect(response).toEqual([
 			{

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -13,7 +14,7 @@ export async function update(
 	const fileId: string = this.getNodeParameter('fileId', index) as string;
 
 	//endpoint
-	const endpoint = `files/${fileId}`;
+	const endpoint = requestPath`files/${fileId}`;
 
 	//body parameters
 	const shareWithEmployee = this.getNodeParameter(

@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	baserowApiRequest,
@@ -34,17 +34,22 @@ describe('Baserow > GenericFunctions', () => {
 			const result = await baserowApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/endpoint',
+				requestPath`/endpoint`,
 				'testJwt',
 			);
 			expect(result).toEqual({ success: true });
-			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'GET',
+					uri: requestUrl`https://api.baserow.io/endpoint`,
+				}),
+			);
 		});
 
 		it('should throw NodeApiError on failure', async () => {
 			mockExecuteFunctions.helpers.request.mockRejectedValue({ error: 'fail' });
 			await expect(
-				baserowApiRequest.call(mockExecuteFunctions, 'GET', '/endpoint', 'testJwt'),
+				baserowApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/endpoint`, 'testJwt'),
 			).rejects.toThrow(NodeApiError);
 		});
 	});
@@ -61,7 +66,7 @@ describe('Baserow > GenericFunctions', () => {
 			const result = await baserowApiRequestAllItems.call(
 				mockExecuteFunctions,
 				'GET',
-				'/endpoint',
+				requestPath`/endpoint`,
 				'testJwt',
 				{},
 				{},
@@ -105,6 +110,23 @@ describe('Baserow > GenericFunctions', () => {
 				names: ['field1', 'field2'],
 				ids: ['field_1', 'field_2'],
 			});
+		});
+
+		it('should encode the table ID in the request URL', async () => {
+			mockExecuteFunctions.helpers.request.mockResolvedValue([]);
+			await getFieldNamesAndIds.call(mockExecuteFunctions, '1/rows', 'testJwt');
+			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: requestUrl`https://api.baserow.io/api/database/fields/table/1%2Frows/`,
+				}),
+			);
+		});
+
+		it('should reject a table ID of ".." without a request', async () => {
+			await expect(
+				getFieldNamesAndIds.call(mockExecuteFunctions, '..', 'testJwt'),
+			).rejects.toThrow();
+			expect(mockExecuteFunctions.helpers.request).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,6 +1,7 @@
 import isEqual from 'lodash/isEqual';
 import zip from 'lodash/zip';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import * as XLSX from 'xlsx';
 
 import type { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
@@ -15,16 +16,33 @@ type DiffData = Array<{
 	changeType: string;
 }>;
 
-export async function getRevisionFile(this: IPollFunctions, exportLink: string) {
-	const mimeType = BINARY_MIME_TYPE;
+export async function getRevisionFile(
+	this: IPollFunctions,
+	exportLink: string,
+	documentId: string,
+) {
+	const link = URL.canParse(exportLink) ? new URL(exportLink) : undefined;
+	if (
+		link?.protocol !== 'https:' ||
+		link.hostname !== 'docs.google.com' ||
+		link.pathname !== '/spreadsheets/export' ||
+		link.searchParams.get('id') !== documentId
+	) {
+		throw new NodeOperationError(this.getNode(), 'Unexpected revision export link');
+	}
+
+	const qs: IDataObject = { mimeType: BINARY_MIME_TYPE };
+	link.searchParams.forEach((value, key) => {
+		qs[key] = value;
+	});
 
 	const response = await apiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		undefined,
-		{ mimeType },
-		exportLink,
+		qs,
+		requestUrl`https://docs.google.com/spreadsheets/export`,
 		undefined,
 		{
 			resolveWithFullResponse: true,

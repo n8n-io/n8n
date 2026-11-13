@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from './GenericFunctions';
 
@@ -349,7 +349,13 @@ export class LoneScale implements INodeType {
 		loadOptions: {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const type = this.getNodeParameter('type') as string;
-				const data = await lonescaleApiRequest.call(this, 'GET', '/lists', {}, { entity: type });
+				const data = await lonescaleApiRequest.call(
+					this,
+					'GET',
+					requestPath`/lists`,
+					{},
+					{ entity: type },
+				);
 				return (data as { list: Array<{ name: string; id: string; entity: string }> })?.list
 					?.filter((l) => l.entity === type)
 					.map((d) => ({
@@ -378,7 +384,7 @@ export class LoneScale implements INodeType {
 							entity,
 						};
 
-						responseData = await lonescaleApiRequest.call(this, 'POST', '/lists', body);
+						responseData = await lonescaleApiRequest.call(this, 'POST', requestPath`/lists`, body);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
 							{ itemData: { item: i } },
@@ -456,7 +462,7 @@ export class LoneScale implements INodeType {
 						responseData = await lonescaleApiRequest.call(
 							this,
 							'POST',
-							`/lists/${listId}/item`,
+							requestPath`/lists/${listId}/item`,
 							body,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(

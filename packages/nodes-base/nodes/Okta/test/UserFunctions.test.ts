@@ -8,6 +8,7 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	getCursorPaginator,
@@ -39,7 +40,7 @@ describe('oktaApiRequest', () => {
 			{ profile: { firstName: 'John', lastName: 'Doe' }, id: '1' },
 		]);
 
-		const response = await oktaApiRequest.call(mockContext, 'GET', 'users');
+		const response = await oktaApiRequest.call(mockContext, 'GET', requestPath`users`);
 
 		expect(mockGetCredentials).toHaveBeenCalledWith('oktaApi');
 		expect(mockHttpRequestWithAuthentication).toHaveBeenCalledWith('oktaApi', {
@@ -47,17 +48,30 @@ describe('oktaApiRequest', () => {
 			method: 'GET',
 			body: undefined,
 			qs: undefined,
-			url: 'https://okta.example.com/api/v1/users',
+			url: requestUrl`https://okta.example.com/api/v1/users`,
 			json: true,
 		});
 		expect(response).toEqual([{ profile: { firstName: 'John', lastName: 'Doe' }, id: '1' }]);
+	});
+
+	it('should encode a path value that contains a slash', async () => {
+		mockGetCredentials.mockResolvedValue({ url: 'https://okta.example.com' });
+		mockHttpRequestWithAuthentication.mockResolvedValue([]);
+
+		await oktaApiRequest.call(mockContext, 'GET', requestPath`/users/${'00u1/groups'}`);
+
+		expect(String(mockHttpRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+			'https://okta.example.com/api/v1//users/00u1%2Fgroups',
+		);
 	});
 
 	// Tests for error handling
 	it('should handle errors from oktaApiRequest', async () => {
 		mockHttpRequestWithAuthentication.mockRejectedValue(new Error('Network error'));
 
-		await expect(oktaApiRequest.call(mockContext, 'GET', 'users')).rejects.toThrow('Network error');
+		await expect(oktaApiRequest.call(mockContext, 'GET', requestPath`users`)).rejects.toThrow(
+			'Network error',
+		);
 	});
 });
 
@@ -101,6 +115,17 @@ describe('getUsers', () => {
 				{ name: 'Jane@example.com', value: '2' },
 			],
 		});
+	});
+
+	it('should request the users endpoint', async () => {
+		mockOktaApiRequest.mockResolvedValue([]);
+
+		await getUsers.call(mockContext);
+
+		expect(mockOktaApiRequest.mock.calls[0][1].method).toBe('GET');
+		expect(String(mockOktaApiRequest.mock.calls[0][1].url)).toBe(
+			'https://okta.example.com/api/v1//users/',
+		);
 	});
 
 	// Tests for empty results

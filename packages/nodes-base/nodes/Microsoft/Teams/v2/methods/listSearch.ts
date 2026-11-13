@@ -1,5 +1,6 @@
 import {
 	NodeOperationError,
+	requestPath,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
@@ -23,8 +24,15 @@ export async function getChats(
 	let attempts = 5;
 	do {
 		try {
-			value = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs)) as IDataObject)
-				.value as IDataObject[];
+			value = (
+				(await microsoftApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1.0/chats`,
+					{},
+					qs,
+				)) as IDataObject
+			).value as IDataObject[];
 			break;
 		} catch (error) {
 			if (attempts > 0) {
@@ -78,7 +86,7 @@ export async function getTeams(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
+	const { value } = await microsoftApiRequest.call(this, 'GET', requestPath`/v1.0/me/joinedTeams`);
 
 	for (const team of value) {
 		const teamName = team.displayName;
@@ -128,7 +136,11 @@ export async function getChannels(
 
 	if (resource === 'channel') excludeGeneralChannel.push('update');
 
-	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/teams/${teamId}/channels`);
+	const { value } = await microsoftApiRequest.call(
+		this,
+		'GET',
+		requestPath`/v1.0/teams/${teamId}/channels`,
+	);
 
 	for (const channel of value) {
 		if (channel.displayName === 'General' && excludeGeneralChannel.includes(operation)) {
@@ -154,7 +166,7 @@ export async function getGroups(
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
 	// const groupSource = this.getCurrentNodeParameter('groupSource') as string;
-	const requestUrl = '/v1.0/groups' as string;
+	const requestUrl = requestPath`/v1.0/groups`;
 
 	// if (groupSource === 'mine') {
 	// 	requestUrl = '/v1.0/me/transitiveMemberOf';
@@ -202,7 +214,7 @@ export async function getPlans(
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/groups/${groupId}/planner/plans`,
+		requestPath`/v1.0/groups/${groupId}/planner/plans`,
 	);
 	for (const plan of value) {
 		returnData.push({
@@ -236,7 +248,7 @@ export async function getBuckets(
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/planner/plans/${planId}/buckets`,
+		requestPath`/v1.0/planner/plans/${planId}/buckets`,
 	);
 	for (const bucket of value) {
 		returnData.push({
@@ -266,7 +278,11 @@ export async function getMembers(
 			extractValue: true,
 		}) as string;
 	}
-	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/groups/${groupId}/members`);
+	const { value } = await microsoftApiRequest.call(
+		this,
+		'GET',
+		requestPath`/v1.0/groups/${groupId}/members`,
+	);
 
 	for (const member of value) {
 		returnData.push({

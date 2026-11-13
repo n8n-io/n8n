@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as alert from '../../../v2/actions/alert';
 import * as transport from '../../../v2/transport';
@@ -20,7 +21,7 @@ describe('Splunk, alert resource', () => {
 		const responseData = await alert.getMetrics.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/alerts/metric_alerts',
+			requestPath`/services/alerts/metric_alerts`,
 		);
 		expect(responseData).toEqual(response);
 	});
@@ -31,7 +32,7 @@ describe('Splunk, alert resource', () => {
 		const responseData = await alert.getReport.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/alerts/fired_alerts',
+			requestPath`/services/alerts/fired_alerts`,
 		);
 		expect(responseData).toEqual(response);
 	});

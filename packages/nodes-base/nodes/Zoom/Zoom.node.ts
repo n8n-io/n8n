@@ -1,6 +1,7 @@
 import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
+	requestPath,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
@@ -177,7 +178,13 @@ export class Zoom implements INodeType {
 							qs.occurrence_id = additionalFields.occurrenceId as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}`, {}, qs);
+						responseData = await zoomApiRequest.call(
+							this,
+							'GET',
+							requestPath`/meetings/${meetingId}`,
+							{},
+							qs,
+						);
 					}
 					if (operation === 'getAll') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
@@ -193,13 +200,19 @@ export class Zoom implements INodeType {
 								this,
 								'meetings',
 								'GET',
-								'/users/me/meetings',
+								requestPath`/users/me/meetings`,
 								{},
 								qs,
 							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i);
-							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
+							responseData = await zoomApiRequest.call(
+								this,
+								'GET',
+								requestPath`/users/me/meetings`,
+								{},
+								qs,
+							);
 							responseData = responseData.meetings;
 						}
 					}
@@ -218,7 +231,7 @@ export class Zoom implements INodeType {
 						responseData = await zoomApiRequest.call(
 							this,
 							'DELETE',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							{},
 							qs,
 						);
@@ -320,7 +333,13 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
+						responseData = await zoomApiRequest.call(
+							this,
+							'POST',
+							requestPath`/users/me/meetings`,
+							body,
+							qs,
+						);
 					}
 					if (operation === 'update') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
@@ -415,7 +434,7 @@ export class Zoom implements INodeType {
 						responseData = await zoomApiRequest.call(
 							this,
 							'PATCH',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							body,
 							qs,
 						);

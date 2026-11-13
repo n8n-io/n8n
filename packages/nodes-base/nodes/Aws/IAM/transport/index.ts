@@ -16,12 +16,14 @@ const errorMapping: IDataObject = {
 
 export async function awsApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions,
-	opts: IHttpRequestOptions,
+	opts: Pick<IHttpRequestOptions, 'method' | 'body' | 'headers' | 'ignoreHttpStatusErrors'>,
 ): Promise<IDataObject> {
 	const requestOptions: IHttpRequestOptions = {
 		baseURL: BASE_URL,
+		url: '',
 		json: true,
-		...opts,
+		method: opts.method,
+		ignoreHttpStatusErrors: opts.ignoreHttpStatusErrors,
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 			...(opts.headers ?? {}),

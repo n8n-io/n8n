@@ -1,6 +1,7 @@
 import FormData from 'form-data';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import * as transport from '../../../../transport';
@@ -108,7 +109,7 @@ describe('Image Edit Operation', () => {
 			expect(mockFormDataInstance.append).toHaveBeenCalledWith('size', '1024x1024');
 			expect(mockFormDataInstance.append).toHaveBeenCalledWith('response_format', 'url');
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/edits`, {
 				option: { formData: mockFormDataInstance },
 				headers: { 'content-type': 'multipart/form-data' },
 			});
@@ -621,7 +622,7 @@ describe('Image Edit Operation', () => {
 			await execute.call(mockExecuteFunctions, 0);
 
 			expect(mockFormDataInstance.getHeaders).toHaveBeenCalled();
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/edits`, {
 				option: { formData: mockFormDataInstance },
 				headers: { 'content-type': 'multipart/form-data' },
 			});

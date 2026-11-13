@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { isObjectEmpty, jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { isObjectEmpty, jsonParse, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { metadataProperty, textMessageProperties } from '../descriptions';
@@ -96,7 +96,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const response = await apiRequest.call(this, 'POST', '/conversations', { body });
+	const response = await apiRequest.call(this, 'POST', requestPath`/conversations`, { body });
 
 	return [
 		{

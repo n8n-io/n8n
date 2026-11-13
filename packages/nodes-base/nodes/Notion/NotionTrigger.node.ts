@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
-	toPathSegment,
+	requestPath,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
@@ -167,7 +167,7 @@ export class NotionTrigger implements INodeType {
 
 		const sortProperty = event === 'pageAddedToDatabase' ? 'created_time' : 'last_edited_time';
 
-		const option: IDataObject = {
+		const option = {
 			headers: {
 				'Notion-Version': '2022-02-22',
 			},
@@ -199,10 +199,9 @@ export class NotionTrigger implements INodeType {
 		let { results: data } = await notionApiRequest.call(
 			this,
 			'POST',
-			`/databases/${toPathSegment(databaseId)}/query`,
+			requestPath`/databases/${databaseId}/query`,
 			body,
 			{},
-			'',
 			option,
 		);
 
@@ -222,10 +221,9 @@ export class NotionTrigger implements INodeType {
 				const { results, has_more, next_cursor } = await notionApiRequest.call(
 					this,
 					'POST',
-					`/databases/${toPathSegment(databaseId)}/query`,
+					requestPath`/databases/${databaseId}/query`,
 					body,
 					{},
-					'',
 					option,
 				);
 				records.push(...(results as IDataObject[]));

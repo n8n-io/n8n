@@ -1,4 +1,5 @@
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { stripeApiRequest } from '../helpers';
 import { StripeTrigger } from '../StripeTrigger.node';
@@ -69,7 +70,7 @@ describe('Stripe Trigger Node', () => {
 			enabled_events: ['*'],
 		};
 
-		const endpoint = '/webhook_endpoints';
+		const endpoint = requestPath`/webhook_endpoints`;
 
 		await node.webhookMethods.default.create.call(mockNodeFunctions);
 		expect(mockedStripeApiRequest).toHaveBeenCalledWith('POST', endpoint, expectedRequestBody);
@@ -93,7 +94,7 @@ describe('Stripe Trigger Node', () => {
 			api_version: '2025-05-28.basil',
 		};
 
-		const endpoint = '/webhook_endpoints';
+		const endpoint = requestPath`/webhook_endpoints`;
 
 		await node.webhookMethods.default.create.call(mockNodeFunctions);
 		expect(mockedStripeApiRequest).toHaveBeenCalledWith('POST', endpoint, expectedRequestBody);

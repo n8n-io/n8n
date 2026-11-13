@@ -9,17 +9,20 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function hubspotApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 ): Promise<any> {
 	let authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -31,18 +34,18 @@ export async function hubspotApiRequest(
 		method,
 		qs: query,
 		headers: {},
-		uri: uri || `https://api.hubapi.com${endpoint}`,
+		uri: uri || requestUrl`https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
 		useQuerystring: true,
-	} satisfies IRequestOptions;
+	} satisfies WithRequestTarget<IRequestOptions, 'uri'>;
 
 	try {
 		if (authenticationMethod === 'apiKey' || authenticationMethod === 'appToken') {
 			const credentialType = authenticationMethod === 'apiKey' ? 'hubspotApi' : 'hubspotAppToken';
 			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		} else if (authenticationMethod === 'developerApi') {
-			if (endpoint.includes('webhooks')) {
+			if (endpoint.value.includes('webhooks')) {
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
 				options.qs.hapikey = credentials.apiKey as string;
 				return await this.helpers.request(options);
@@ -71,7 +74,7 @@ export async function hubspotApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -95,7 +98,7 @@ export async function hubspotApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		//ticket:getAll endpoint does not support setting a limit, so return once the limit is reached
 		const limit = query.limit as number | undefined;
-		if (limit && limit <= returnData.length && endpoint.includes('/tickets/paged')) {
+		if (limit && limit <= returnData.length && endpoint.value.includes('/tickets/paged')) {
 			return returnData;
 		}
 	} while (responseData.hasMore || responseData['has-more'] || responseData.paging);

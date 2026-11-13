@@ -4,30 +4,31 @@ import type {
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	LegacyRequestOptions,
 	IHookFunctions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com${resource}`,
+		...(uri ? { uri } : { uri: requestUrl`https://graph.microsoft.com${resource}` }),
 		json: true,
 	};
 	try {
@@ -56,7 +57,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -82,7 +83,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

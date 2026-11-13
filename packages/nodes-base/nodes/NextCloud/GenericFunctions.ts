@@ -1,11 +1,24 @@
 import {
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	type IExecuteFunctions,
 	type IHookFunctions,
 	type IHttpRequestMethods,
 	type IRequestOptions,
 	type IDataObject,
+	type RequestPath,
 } from 'n8n-workflow';
+
+export function webDavPath(path: string): RequestPath {
+	return path
+		.split('/')
+		.reduce(
+			(parent, segment) =>
+				segment === '' ? requestPath`${parent}/` : requestPath`${parent}/${segment}`,
+			requestPath``,
+		);
+}
 
 /**
  * Make an API request to NextCloud
@@ -14,7 +27,7 @@ import {
 export async function nextCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object | string | Buffer,
 	headers?: IDataObject,
 	encoding?: null,
@@ -32,12 +45,11 @@ export async function nextCloudApiRequest(
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
 	}
 
-	const options: IRequestOptions = {
+	const options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		headers,
 		method,
 		body,
 		qs: query ?? {},
-		uri: '',
 		json: false,
 	};
 
@@ -45,20 +57,26 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
+	let baseUrl = credentials.webDavUrl;
 
 	if (resource === 'user' && operation === 'create') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
+		baseUrl = baseUrl.replace('/remote.php/webdav', '');
 	}
 
 	if (resource === 'file' && operation === 'share') {
-		options.uri = options.uri.replace('/remote.php/webdav', '');
+		baseUrl = baseUrl.replace('/remote.php/webdav', '');
 	}
+
+	const requestOptions = { ...options, uri: requestUrl`${baseUrl}${endpoint}` };
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
 
-	const response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	const response = await this.helpers.requestWithAuthentication.call(
+		this,
+		credentialType,
+		requestOptions,
+	);
 
 	if (typeof response === 'string' && response.includes('<b>Fatal error</b>')) {
 		throw new NodeOperationError(

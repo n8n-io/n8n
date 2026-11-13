@@ -3,6 +3,11 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { parse } from 'csv-parse';
 import { createReadStream } from 'fs';
+import { pipeline } from 'stream/promises';
+
+import { CsvColumnLimit } from './csv-column-limit';
+
+export const CSV_ROW_BATCH_SIZE = 1000;
 
 export interface CsvColumnMetadata {
 	name: string;
@@ -49,82 +54,143 @@ export class CsvParserService {
 		let firstDataRow: Record<string, string> | null = null;
 		let columnNames: string[] = [];
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders
-					? (header: string[]) => {
-							columnNames = header;
-							return header;
-						}
-					: false,
-				skip_empty_lines: true,
-			})
-				.on('data', (row: Record<string, string> | string[]) => {
-					rowCount++;
-
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						firstDataRow ??= processed.rowObject;
-					} else if (!Array.isArray(row)) {
-						firstDataRow ??= row;
+		const parser = parse({
+			columns: hasHeaders
+				? (header: string[]) => {
+						columnNames = header;
+						return header;
 					}
-				})
-				.on('end', () => {
-					const columns = columnNames.map((columnName) => {
-						const detectedType = this.inferColumnType(firstDataRow?.[columnName]);
-						return {
-							name: columnName,
-							type: detectedType,
-							compatibleTypes: this.getCompatibleTypes(detectedType),
-						};
-					});
+				: false,
+			skip_empty_lines: true,
+			// The same line endings that `CsvColumnLimit` counts. With auto-detection, a file that
+			// starts with `\r\n` reads every later `\n` as data, so one record could span many lines.
+			record_delimiter: ['\r\n', '\n', '\r'],
+		}).on('data', (row: Record<string, string> | string[]) => {
+			rowCount++;
 
-					resolve({
-						rowCount,
-						columnCount: columns.length,
-						columns,
-					});
-				})
-				.on('error', reject);
-
-			createReadStream(filePath).on('error', reject).pipe(parser);
+			if (!hasHeaders && Array.isArray(row)) {
+				const processed = this.processRowWithoutHeaders(row, columnNames);
+				columnNames = processed.columnNames;
+				firstDataRow ??= processed.rowObject;
+			} else if (!Array.isArray(row)) {
+				firstDataRow ??= row;
+			}
 		});
+
+		await pipeline(createReadStream(filePath), new CsvColumnLimit(), parser);
+
+		const columns = columnNames.map((columnName) => {
+			const detectedType = this.inferColumnType(firstDataRow?.[columnName]);
+			return {
+				name: columnName,
+				type: detectedType,
+				compatibleTypes: this.getCompatibleTypes(detectedType),
+			};
+		});
+
+		return {
+			rowCount,
+			columnCount: columns.length,
+			columns,
+		};
 	}
 
 	/**
-	 * Parses a CSV file and returns all rows as an array of objects
+	 * Reads only the first line of a CSV file and returns its column names.
 	 */
-	async parseFileData(
+	async parseColumnNames(fileId: string, hasHeaders: boolean = true): Promise<string[]> {
+		let columnNames: string[] = [];
+		const rows = this.readRows(fileId, hasHeaders, {
+			toLine: 1,
+			onColumnNames: (names) => {
+				columnNames = names;
+			},
+		});
+
+		try {
+			await rows.next();
+		} finally {
+			await rows.return(undefined);
+		}
+
+		return columnNames;
+	}
+
+	/**
+	 * Yields the rows of a CSV file in batches of at most `batchSize` rows.
+	 * The file is read only as fast as the caller consumes the batches.
+	 */
+	async *parseFileInBatches(
 		fileId: string,
 		hasHeaders: boolean = true,
-	): Promise<Array<Record<string, string>>> {
-		const filePath = safeJoinPath(this.uploadDir, fileId);
+		batchSize: number = CSV_ROW_BATCH_SIZE,
+	): AsyncGenerator<Array<Record<string, string>>> {
+		let batch: Array<Record<string, string>> = [];
 
-		const rows: Array<Record<string, string>> = [];
+		for await (const rowObject of this.readRows(fileId, hasHeaders)) {
+			batch.push(rowObject);
+			if (batch.length >= batchSize) {
+				yield batch;
+				batch = [];
+			}
+		}
+
+		if (batch.length > 0) {
+			yield batch;
+		}
+	}
+
+	private async *readRows(
+		fileId: string,
+		hasHeaders: boolean,
+		{
+			toLine,
+			onColumnNames,
+		}: { toLine?: number; onColumnNames?: (columnNames: string[]) => void } = {},
+	): AsyncGenerator<Record<string, string>> {
+		const filePath = safeJoinPath(this.uploadDir, fileId);
 		let columnNames: string[] = [];
 
-		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders ? true : false,
-				skip_empty_lines: true,
-			})
-				.on('data', (row: Record<string, string> | string[]) => {
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						rows.push(processed.rowObject);
-					} else if (!Array.isArray(row)) {
-						rows.push(row);
+		const parser = parse({
+			columns: hasHeaders
+				? (header: string[]) => {
+						onColumnNames?.(header);
+						return header;
 					}
-				})
-				.on('end', () => {
-					resolve(rows);
-				})
-				.on('error', reject);
-
-			createReadStream(filePath).on('error', reject).pipe(parser);
+				: false,
+			skip_empty_lines: true,
+			// The same line endings that `CsvColumnLimit` counts. With auto-detection, a file that
+			// starts with `\r\n` reads every later `\n` as data, so one record could span many lines.
+			record_delimiter: ['\r\n', '\n', '\r'],
+			to_line: toLine,
 		});
+
+		const input = createReadStream(filePath);
+		// Errors reach the caller through the parser. A parser that stops early at `toLine`
+		// ends the pipeline with a premature close, which is expected.
+		pipeline(input, new CsvColumnLimit(), parser).catch(() => {});
+
+		const records: AsyncIterable<Record<string, string> | string[]> = parser;
+
+		try {
+			for await (const row of records) {
+				if (!Array.isArray(row)) {
+					yield row;
+					continue;
+				}
+
+				const processed = this.processRowWithoutHeaders(row, columnNames);
+				if (columnNames.length === 0) {
+					onColumnNames?.(processed.columnNames);
+				}
+
+				columnNames = processed.columnNames;
+				yield processed.rowObject;
+			}
+		} finally {
+			input.destroy();
+			parser.destroy();
+		}
 	}
 
 	/**

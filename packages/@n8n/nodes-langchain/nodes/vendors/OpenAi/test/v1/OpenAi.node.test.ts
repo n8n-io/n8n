@@ -1,6 +1,7 @@
 import FormData from 'form-data';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as assistant from '../../v1/actions/assistant';
 import * as audio from '../../v1/actions/audio';
@@ -85,7 +86,7 @@ describe('OpenAi, Assistant resource', () => {
 			0,
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/assistants`, {
 			body: {
 				description: 'description',
 				instructions: 'some instructions',
@@ -138,9 +139,13 @@ describe('OpenAi, Assistant resource', () => {
 			0,
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/assistants/assistant-id`,
+			{
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
+			},
+		);
 	});
 
 	it('list => should call apiRequest with correct parameters', async () => {
@@ -199,23 +204,31 @@ describe('OpenAi, Assistant resource', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
-			body: {
-				instructions: 'some instructions',
-				model: 'gpt-model',
-				name: 'name',
-				tool_resources: {
-					code_interpreter: {
-						file_ids: [],
-					},
-				},
-				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/assistants/assistant-id`,
+			{
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
 			},
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
+		);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/assistants/assistant-id`,
+			{
+				body: {
+					instructions: 'some instructions',
+					model: 'gpt-model',
+					name: 'name',
+					tool_resources: {
+						code_interpreter: {
+							file_ids: [],
+						},
+					},
+					tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+				},
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
+			},
+		);
 	});
 
 	it('update => should call apiRequest with file_ids as an array for search', async () => {
@@ -241,23 +254,31 @@ describe('OpenAi, Assistant resource', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
-			body: {
-				instructions: 'some instructions',
-				model: 'gpt-model',
-				name: 'name',
-				tool_resources: {
-					code_interpreter: {
-						file_ids: ['1234'],
-					},
-				},
-				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/assistants/assistant-id`,
+			{
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
 			},
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
+		);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/assistants/assistant-id`,
+			{
+				body: {
+					instructions: 'some instructions',
+					model: 'gpt-model',
+					name: 'name',
+					tool_resources: {
+						code_interpreter: {
+							file_ids: ['1234'],
+						},
+					},
+					tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+				},
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
+			},
+		);
 	});
 
 	it('update => should call apiRequest with file_ids as strings for search', async () => {
@@ -283,23 +304,31 @@ describe('OpenAi, Assistant resource', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', '/assistants/assistant-id', {
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/assistants/assistant-id', {
-			body: {
-				instructions: 'some instructions',
-				model: 'gpt-model',
-				name: 'name',
-				tool_resources: {
-					code_interpreter: {
-						file_ids: ['1234', '5678', '90'],
-					},
-				},
-				tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/assistants/assistant-id`,
+			{
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
 			},
-			headers: { 'OpenAI-Beta': 'assistants=v2' },
-		});
+		);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/assistants/assistant-id`,
+			{
+				body: {
+					instructions: 'some instructions',
+					model: 'gpt-model',
+					name: 'name',
+					tool_resources: {
+						code_interpreter: {
+							file_ids: ['1234', '5678', '90'],
+						},
+					},
+					tools: [{ type: 'existing_tool' }, { type: 'code_interpreter' }, { type: 'file_search' }],
+				},
+				headers: { 'OpenAI-Beta': 'assistants=v2' },
+			},
+		);
 	});
 });
 
@@ -329,7 +358,7 @@ describe('OpenAi, Audio resource', () => {
 		expect(returnData[0].binary?.myData).toBeDefined();
 		expect(returnData[0].pairedItem).toBeDefined();
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/audio/speech', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/audio/speech`, {
 			body: {
 				input: 'input',
 				model: 'tts-model',
@@ -361,7 +390,7 @@ describe('OpenAi, Audio resource', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/audio/transcriptions',
+			requestPath`/audio/transcriptions`,
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
@@ -390,7 +419,7 @@ describe('OpenAi, Audio resource', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/audio/translations',
+			requestPath`/audio/translations`,
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
@@ -418,7 +447,7 @@ describe('OpenAi, File resource', () => {
 			0,
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', '/files/file-id');
+		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/files/file-id`);
 	});
 
 	it('list => should return list of files', async () => {
@@ -462,7 +491,7 @@ describe('OpenAi, File resource', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/files',
+			requestPath`/files`,
 			expect.objectContaining({
 				headers: expect.objectContaining({
 					'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
@@ -501,7 +530,7 @@ describe('OpenAi, Image resource', () => {
 		expect(returnData[0].binary?.myData).toBeDefined();
 		expect(returnData[0].pairedItem).toBeDefined();
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/images/generations', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 			body: {
 				model: 'dall-e-3',
 				prompt: 'cat with a hat',
@@ -535,7 +564,7 @@ describe('OpenAi, Image resource', () => {
 		expect(returnData[0].pairedItem).toBeDefined();
 		expect(returnData).toEqual([{ json: { url: 'image-url' }, pairedItem: { item: 0 } }]);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/images/generations', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/images/generations`, {
 			body: {
 				model: 'dall-e-3',
 				prompt: 'cat with a hat',
@@ -566,7 +595,7 @@ describe('OpenAi, Image resource', () => {
 		expect(returnData[0].pairedItem).toBeDefined();
 		expect(returnData[0].json).toEqual({ success: true });
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/chat/completions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/chat/completions`, {
 			body: {
 				max_tokens: 300,
 				messages: [
@@ -605,7 +634,7 @@ describe('OpenAi, Text resource', () => {
 		expect(returnData[0].pairedItem).toBeDefined();
 		expect(returnData[0].json).toEqual({ flagged: true });
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/moderations', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/moderations`, {
 			body: { input: 'input', model: 'text-moderation-stable' },
 		});
 	});
@@ -627,7 +656,7 @@ describe('OpenAi, Text resource', () => {
 			0,
 		);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('POST', '/chat/completions', {
+		expect(transport.apiRequest).toHaveBeenCalledWith('POST', requestPath`/chat/completions`, {
 			body: {
 				messages: [{ content: 'message', role: 'user' }],
 				model: 'gpt-model',

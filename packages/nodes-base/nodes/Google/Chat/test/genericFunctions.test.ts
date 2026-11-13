@@ -1,9 +1,9 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { type IExecuteFunctions } from 'n8n-workflow';
+import { type IExecuteFunctions, type INode, requestPath } from 'n8n-workflow';
 
 import * as googleHelpers from '../../GenericFunctions';
-import { googleApiRequest } from '../GenericFunctions';
+import { googleApiRequest, resourceNamePath, toResourcePath } from '../GenericFunctions';
 
 jest.mock('../../GenericFunctions', () => ({
 	...jest.requireActual('../../GenericFunctions'),
@@ -29,9 +29,14 @@ describe('Test GoogleChat, googleApiRequest', () => {
 	it('should call requestWithAuthentication when authentication set to OAuth2', async () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('oAuth2'); // authentication
 
-		const result = await googleApiRequest.call(mockExecuteFunctions, 'POST', '/test-resource', {
-			text: 'test',
-		});
+		const result = await googleApiRequest.call(
+			mockExecuteFunctions,
+			'POST',
+			requestPath`/test-resource`,
+			{
+				text: 'test',
+			},
+		);
 
 		expect(result).toEqual({ success: true });
 
@@ -45,7 +50,7 @@ describe('Test GoogleChat, googleApiRequest', () => {
 				method: 'POST',
 				qs: {},
 				qsStringifyOptions: { arrayFormat: 'repeat' },
-				uri: 'https://chat.googleapis.com/test-resource',
+				uri: expect.objectContaining({ value: 'https://chat.googleapis.com/test-resource' }),
 			},
 		);
 	});
@@ -59,7 +64,11 @@ describe('Test GoogleChat, googleApiRequest', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('serviceAccount');
 		mockExecuteFunctions.getCredentials.mockResolvedValueOnce(mockCredentials);
 
-		const result = await googleApiRequest.call(mockExecuteFunctions, 'GET', '/test-resource');
+		const result = await googleApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/test-resource`,
+		);
 
 		expect(googleHelpers.getGoogleAccessToken).toHaveBeenCalledWith(mockCredentials, 'chat');
 		expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
@@ -72,14 +81,14 @@ describe('Test GoogleChat, googleApiRequest', () => {
 		expect(result).toEqual({ success: true });
 	});
 
-	it('should call request when noCredentials equals true', async () => {
+	it('should call request with the given uri when noCredentials equals true', async () => {
 		const result = await googleApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
-			'/test-resource',
+			requestPath``,
 			{},
 			{},
-			undefined,
+			'https://chat.googleapis.com/v1/spaces/AAAA/messages?key=k&token=t',
 			true,
 		);
 
@@ -90,8 +99,40 @@ describe('Test GoogleChat, googleApiRequest', () => {
 			method: 'GET',
 			qs: {},
 			qsStringifyOptions: { arrayFormat: 'repeat' },
-			uri: 'https://chat.googleapis.com/test-resource',
+			uri: 'https://chat.googleapis.com/v1/spaces/AAAA/messages?key=k&token=t',
 		});
 		expect(result).toEqual({ success: true });
+	});
+});
+
+describe('Test GoogleChat, resource name paths', () => {
+	const mockExecuteFunctions = mock<IExecuteFunctions>();
+	mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+
+	it('should build the path from a resource name with the expected form', () => {
+		expect(
+			resourceNamePath
+				.call(mockExecuteFunctions, 'spaces/AAAA/messages/BBBB.CCCC', 'spaces/*/messages/*', 0)
+				.toString(),
+		).toBe('/spaces/AAAA/messages/BBBB.CCCC');
+	});
+
+	it('should encode characters that are not valid in a path segment', () => {
+		expect(
+			resourceNamePath.call(mockExecuteFunctions, 'spaces/AA?x=1#y', 'spaces/*', 0).toString(),
+		).toBe('/spaces/AA%3Fx=1%23y');
+	});
+
+	it.each(['AAAA', 'spaces/', 'spaces/AAAA/messages/BBBB', 'rooms/AAAA', 'spaces/AAAA/../x'])(
+		'should reject the space name "%s"',
+		(name) => {
+			expect(() => resourceNamePath.call(mockExecuteFunctions, name, 'spaces/*', 0)).toThrow(
+				`The resource name "${name}" must have the form "spaces/*"`,
+			);
+		},
+	);
+
+	it('should keep each part of a media resource name as a path segment', () => {
+		expect(toResourcePath('Clx/abc?d'.split('/')).toString()).toBe('/Clx/abc%3Fd');
 	});
 });

@@ -37,10 +37,84 @@
 					"name": "Microsoft Excel account"
 				}
 			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "clear",
+				"workbook": {
+					"__rl": true,
+					"value": "7d2b1f6a9c3e4b58%21ABC123DEF456",
+					"mode": "list"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{F7AF92FE-D42D-452F-8E4A-901B1D1EBF3F}",
+					"mode": "list",
+					"cachedResultName": "Sheet2"
+				},
+				"useRange": true,
+				"range": ""
+			},
+			"id": "5b0c1f3e-2d1a-4c55-9f0e-7a1d2b3c4d5e",
+			"name": "Clear Blank Range",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1020, 420],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "clear",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "id"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{F7AF92FE-D42D-452F-8E4A-901B1D1EBF3F}",
+					"mode": "list",
+					"cachedResultName": "Sheet2"
+				},
+				"useRange": true,
+				"range": "A1:B2"
+			},
+			"id": "8c3d2e1f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+			"name": "Clear Range",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1020, 620],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
 		}
 	],
 	"pinData": {
 		"Microsoft Excel 365": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Clear Blank Range": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Clear Range": [
 			{
 				"json": {
 					"success": true
@@ -54,6 +128,16 @@
 				[
 					{
 						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Clear Blank Range",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Clear Range",
 						"type": "main",
 						"index": 0
 					}

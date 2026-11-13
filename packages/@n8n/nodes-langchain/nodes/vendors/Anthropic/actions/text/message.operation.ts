@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -338,7 +338,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		top_k: options.topK,
 	};
 
-	let response = (await apiRequest.call(this, 'POST', '/v1/messages', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/v1/messages`, {
 		body,
 		enableAnthropicBetas: { codeExecution: options.codeExecution },
 	})) as MessagesResponse;
@@ -378,7 +378,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/v1/messages', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/v1/messages`, {
 			body,
 			enableAnthropicBetas: { codeExecution: options.codeExecution },
 		})) as MessagesResponse;
@@ -515,15 +515,18 @@ async function addRegularAttachmentsToMessages(
 		const urls = this.getNodeParameter('attachmentsUrls', i, '') as string;
 		const promises = splitByComma(urls).map(async (url) => {
 			if (url.startsWith(fileUrlPrefix)) {
-				const response = (await apiRequest.call(this, 'GET', '', {
-					option: { url },
-				})) as File;
+				const fileId = url.replace(fileUrlPrefix, '');
+				const response = (await apiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1/files/${fileId}`,
+				)) as File;
 				const type = getFileTypeOrThrow.call(this, response.mime_type);
 				return {
 					type,
 					source: {
 						type: 'file',
-						file_id: url.replace(fileUrlPrefix, ''),
+						file_id: fileId,
 					},
 				} as Content;
 			} else {

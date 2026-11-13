@@ -1,0 +1,48 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c6e4a0b3-7d5f-4c80-9e93-2f4a5b6c7d01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "text",
+				"operation": "message",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "llama3.2:latest"
+				},
+				"messages": {
+					"values": [
+						{
+							"content": "Write a haiku about the sea"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.ollama",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "c6e4a0b3-7d5f-4c80-9e93-2f4a5b6c7d02",
+			"name": "Message a Model",
+			"credentials": {
+				"ollamaApi": {
+					"id": "123",
+					"name": "Ollama account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Message a Model", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

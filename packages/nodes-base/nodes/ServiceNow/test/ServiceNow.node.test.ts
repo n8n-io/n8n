@@ -48,7 +48,7 @@ describe('ServiceNow Node', () => {
 
 	describe('request paths', () => {
 		// `.call(this, ...)` on a jest.fn records only the arguments, so the path is the 2nd.
-		const sentPath = () => mockedApiRequest.mock.calls[0][1];
+		const sentPath = () => String(mockedApiRequest.mock.calls[0][1]);
 		const columns = { dataToSend: 'columns', fieldsToSend: { field: [] } };
 
 		it.each([
@@ -126,7 +126,7 @@ describe('ServiceNow Node', () => {
 				}),
 			);
 
-			expect(mockedDownloadAttachment.mock.calls[0][0]).toBe('/now/attachment/c%2Fd');
+			expect(String(mockedDownloadAttachment.mock.calls[0][0])).toBe('/now/attachment/c%2Fd');
 		});
 
 		it('rejects a table name of ".."', async () => {
@@ -167,7 +167,7 @@ describe('ServiceNow Node', () => {
 			const options = await new ServiceNow().methods.loadOptions.getUsers.call(ctx);
 
 			expect(mockedApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockedApiRequest.mock.calls[0][1]).toBe('/now/table/sys_user/c%2Fd');
+			expect(String(mockedApiRequest.mock.calls[0][1])).toBe('/now/table/sys_user/c%2Fd');
 			expect(options).toEqual([{ name: 'Jane', value: 'abc' }]);
 		});
 	});

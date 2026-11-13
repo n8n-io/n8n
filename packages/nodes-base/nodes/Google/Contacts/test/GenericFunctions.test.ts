@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 
@@ -42,7 +42,7 @@ describe('Google Contacts GenericFunctions', () => {
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/people/me',
+				requestPath`/people/me`,
 			);
 
 			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
@@ -53,7 +53,7 @@ describe('Google Contacts GenericFunctions', () => {
 					},
 					method: 'GET',
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people/me',
+					uri: requestUrl`https://people.googleapis.com/v1/people/me`,
 					json: true,
 				},
 			);
@@ -61,14 +61,14 @@ describe('Google Contacts GenericFunctions', () => {
 		});
 
 		it('should make API request with custom URI', async () => {
-			const customUri = 'https://custom.api.com/endpoint';
+			const customUri = requestUrl`https://custom.api.com/endpoint`;
 			const mockResponse = { data: 'custom response' };
 			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
 
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/custom',
+				requestPath`/custom`,
 				{ data: 'test' },
 				{ param: 'value' },
 				customUri,
@@ -98,7 +98,7 @@ describe('Google Contacts GenericFunctions', () => {
 			await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'PUT',
-				'/people/123',
+				requestPath`/people/123`,
 				{ name: 'Updated Name' },
 				{},
 				undefined,
@@ -115,7 +115,7 @@ describe('Google Contacts GenericFunctions', () => {
 					method: 'PUT',
 					body: { name: 'Updated Name' },
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people/123',
+					uri: requestUrl`https://people.googleapis.com/v1/people/123`,
 					json: true,
 				},
 			);
@@ -125,14 +125,19 @@ describe('Google Contacts GenericFunctions', () => {
 			const mockResponse = { data: 'response' };
 			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockResolvedValue(mockResponse);
 
-			await GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people', {});
+			await GenericFunctions.googleApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/people`,
+				{},
+			);
 
 			expect(mockExecuteFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 				'googleContactsOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
 					qs: {},
-					uri: 'https://people.googleapis.com/v1/people',
+					uri: requestUrl`https://people.googleapis.com/v1/people`,
 					json: true,
 					headers: {
 						'Content-Type': 'application/json',
@@ -151,14 +156,14 @@ describe('Google Contacts GenericFunctions', () => {
 			const result = await GenericFunctions.googleApiRequest.call(
 				mockLoadOptionsFunctions,
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(mockLoadOptionsFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
 				'googleContactsOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://people.googleapis.com/v1/people/connections',
+					uri: requestUrl`https://people.googleapis.com/v1/people/connections`,
 				}),
 			);
 			expect(result).toEqual(mockResponse);
@@ -169,7 +174,11 @@ describe('Google Contacts GenericFunctions', () => {
 			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(apiError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people/invalid'),
+				GenericFunctions.googleApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/people/invalid`,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(mockExecuteFunctions.getNode).toHaveBeenCalled();
@@ -180,7 +189,7 @@ describe('Google Contacts GenericFunctions', () => {
 			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(authError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'POST', '/people'),
+				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/people`),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -189,7 +198,7 @@ describe('Google Contacts GenericFunctions', () => {
 			(mockExecuteFunctions.helpers.requestOAuth2 as jest.Mock).mockRejectedValue(networkError);
 
 			await expect(
-				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', '/people'),
+				GenericFunctions.googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/people`),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -201,7 +210,7 @@ describe('Google Contacts GenericFunctions', () => {
 			await GenericFunctions.googleApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 				{},
 				queryParams,
 			);
@@ -247,7 +256,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 				{},
 				{ personFields: 'names' },
 			);
@@ -273,7 +282,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(1);
@@ -292,7 +301,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toEqual([]);
@@ -313,7 +322,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockLoadOptionsFunctions,
 				'items',
 				'GET',
-				'/custom/endpoint',
+				requestPath`/custom/endpoint`,
 				{ filter: 'active' },
 				{ sortBy: 'name' },
 			);
@@ -345,7 +354,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(1);
@@ -370,7 +379,7 @@ describe('Google Contacts GenericFunctions', () => {
 				mockExecuteFunctions,
 				'connections',
 				'GET',
-				'/people/connections',
+				requestPath`/people/connections`,
 			);
 
 			expect(result).toHaveLength(30);
@@ -386,7 +395,7 @@ describe('Google Contacts GenericFunctions', () => {
 					mockExecuteFunctions,
 					'connections',
 					'GET',
-					'/people/connections',
+					requestPath`/people/connections`,
 				),
 			).rejects.toThrow('Rate limit exceeded');
 		});

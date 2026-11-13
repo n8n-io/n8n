@@ -1,6 +1,11 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import type { IHttpRequestMethods, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	RequestPath,
+} from 'n8n-workflow';
 
 import { Jira } from '../Jira.node';
 
@@ -11,10 +16,13 @@ jest.mock('../GenericFunctions', () => {
 	return {
 		...originalModule,
 		jiraSoftwareCloudApiRequest: jest.fn(async function (
-			endpoint: string,
+			endpoint: RequestPath,
 			method: IHttpRequestMethods,
+			_body?: IDataObject,
+			query?: IDataObject,
 		) {
-			if (method === 'GET' && endpoint === `/api/2/issue/${ISSUE_KEY}`) {
+			const path = endpoint.toString();
+			if (method === 'GET' && path === `/api/2/issue/${ISSUE_KEY}`) {
 				return {
 					id: 10000,
 					fields: {
@@ -26,7 +34,7 @@ jest.mock('../GenericFunctions', () => {
 						},
 					},
 				};
-			} else if (method === 'GET' && endpoint === '/api/2/issue/10000/editmeta') {
+			} else if (method === 'GET' && path === '/api/2/issue/10000/editmeta') {
 				return {
 					fields: {
 						customfield_123: {
@@ -39,8 +47,10 @@ jest.mock('../GenericFunctions', () => {
 				};
 			} else if (
 				method === 'GET' &&
-				endpoint ===
-					'/api/2/issue/createmeta?projectIds=10001&issueTypeIds=10002&expand=projects.issuetypes.fields'
+				path === '/api/2/issue/createmeta' &&
+				query?.projectIds === 10001 &&
+				query?.issueTypeIds === 10002 &&
+				query?.expand === 'projects.issuetypes.fields'
 			) {
 				return {
 					projects: [

@@ -11,8 +11,18 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+	requestUrl,
+	sleep,
+} from 'n8n-workflow';
 import { RRule } from 'rrule';
 
 import type { RecurringEventInstance } from './EventInterface';
@@ -20,20 +30,20 @@ import type { RecurringEventInstance } from './EventInterface';
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com${resource}`,
+		uri: uri ?? requestUrl`https://www.googleapis.com${resource}`,
 		json: true,
 	};
 	try {
@@ -53,7 +63,7 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -71,11 +81,6 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
-export function encodeURIComponentOnce(uri: string) {
-	// load options used to save encoded uri strings
-	return encodeURIComponent(decodeURIComponent(uri));
-}
-
 export async function getCalendars(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -84,7 +89,7 @@ export async function getCalendars(
 		this,
 		'items',
 		'GET',
-		'/calendar/v3/users/me/calendarList',
+		requestPath`/calendar/v3/users/me/calendarList`,
 	)) as Array<{ id: string; summary: string }>;
 
 	const results: INodeListSearchItems[] = calendars
@@ -255,10 +260,10 @@ export async function googleApiRequestWithRetries({
 }: {
 	context: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 	method: IHttpRequestMethods;
-	resource: string;
+	resource: RequestPath;
 	body?: any;
 	qs?: IDataObject;
-	uri?: string;
+	uri?: RequestUrl;
 	headers?: IDataObject;
 	itemIndex?: number;
 }) {
@@ -302,3 +307,6 @@ export function dateObjectToISO<T>(date: T): string {
 	if (date instanceof Date) return date.toISOString();
 	return date as string;
 }
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.4 ? decodePathValue(value) : value;

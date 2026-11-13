@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { theHiveApiQuery } from '../transport/queryHelper';
 import * as transport from '../transport/requestApi';
@@ -46,7 +47,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 		);
 
 		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
+		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/query`, {
 			query: [
 				{ _name: 'listOrganisationPage' },
 				{ _and: [{ _like: { _field: 'title', _value: 'Test' } }], _name: 'filter' },
@@ -95,7 +96,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 		);
 
 		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(2);
-		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
+		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/query`, {
 			query: [
 				{ _name: 'getTask', idOrName: '~368644136' },
 				{ _name: 'logs' },
@@ -128,7 +129,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 		);
 
 		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(3);
-		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
+		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/query`, {
 			query: [{ _name: 'listOrganisationPage' }, { _name: 'count' }],
 		});
 	});
@@ -143,7 +144,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 		await theHiveApiQuery.call(fakeExecuteFunction, scope, undefined, undefined, limit);
 
 		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(4);
-		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
+		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', requestPath`/v1/query`, {
 			query: [
 				{ _name: 'listOrganisationPage' },
 				{ _name: 'page', extraData: undefined, from: 0, to: 15 },

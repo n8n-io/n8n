@@ -3,10 +3,12 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { FileUploadError } from '../errors/data-table-file-upload.error';
 
 jest.mock('fs', () => ({
 	promises: {
 		unlink: jest.fn(),
+		rename: jest.fn(),
 		readdir: jest.fn(),
 		stat: jest.fn(),
 	},
@@ -73,6 +75,46 @@ describe('DataTableFileCleanupService', () => {
 			await expect(service.deleteFile(maliciousFileId)).rejects.toThrowError(
 				'Path traversal detected',
 			);
+		});
+	});
+
+	describe('claimFile', () => {
+		it('should rename the file and return the claimed file id', async () => {
+			(fs.rename as jest.Mock).mockResolvedValue(undefined);
+
+			await expect(service.claimFile('abc123_-XY')).resolves.toBe('abc123_-XY.importing');
+
+			expect(fs.rename).toHaveBeenCalledWith(
+				path.join(uploadDir, 'abc123_-XY'),
+				path.join(uploadDir, 'abc123_-XY.importing'),
+			);
+		});
+
+		it('should reject a second claim of the same file', async () => {
+			const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+			error.code = 'ENOENT';
+			(fs.rename as jest.Mock).mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+			await service.claimFile('abc123');
+
+			await expect(service.claimFile('abc123')).rejects.toThrow(FileUploadError);
+		});
+
+		it.each(['abc123.importing', '../abc123', 'abc/123', ''])(
+			'should reject the file id %j without touching the disk',
+			async (fileId) => {
+				await expect(service.claimFile(fileId)).rejects.toThrow(FileUploadError);
+
+				expect(fs.rename).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should rethrow errors other than a missing file', async () => {
+			const error = new Error('Permission denied') as NodeJS.ErrnoException;
+			error.code = 'EPERM';
+			(fs.rename as jest.Mock).mockRejectedValue(error);
+
+			await expect(service.claimFile('abc123')).rejects.toThrow('Permission denied');
 		});
 	});
 
@@ -155,6 +197,41 @@ describe('DataTableFileCleanupService', () => {
 			expect(fs.readdir).toHaveBeenCalled();
 			expect(fs.stat).toHaveBeenCalled();
 			expect(fs.unlink).not.toHaveBeenCalled();
+		});
+
+		it('should keep an old claimed file until the import deletes it', async () => {
+			const claimingService = new DataTableFileCleanupService(globalConfig);
+			const oldFile = 'old-file.csv';
+			(fs.rename as jest.Mock).mockResolvedValue(undefined);
+			(fs.readdir as jest.Mock).mockResolvedValue(['abc123.importing', oldFile]);
+			(fs.stat as jest.Mock).mockResolvedValue({ mtimeMs: Date.now() - 3 * 60 * 1000 });
+			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+
+			const claimedFileId = await claimingService.claimFile('abc123');
+			await claimingService['cleanupOrphanedFiles']();
+
+			expect((fs.unlink as jest.Mock).mock.calls).toEqual([[path.join(uploadDir, oldFile)]]);
+
+			await claimingService.deleteFile(claimedFileId);
+			(fs.unlink as jest.Mock).mockClear();
+			await claimingService['cleanupOrphanedFiles']();
+
+			expect((fs.unlink as jest.Mock).mock.calls).toEqual([
+				[path.join(uploadDir, 'abc123.importing')],
+				[path.join(uploadDir, oldFile)],
+			]);
+		});
+
+		it('should delete an old claimed file that no import in this process holds', async () => {
+			(fs.readdir as jest.Mock).mockResolvedValue(['left-over.importing']);
+			(fs.stat as jest.Mock).mockResolvedValue({ mtimeMs: Date.now() - 3 * 60 * 1000 });
+			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
+
+			await service['cleanupOrphanedFiles']();
+
+			expect((fs.unlink as jest.Mock).mock.calls).toEqual([
+				[path.join(uploadDir, 'left-over.importing')],
+			]);
 		});
 
 		it('should handle mixed old and new files', async () => {

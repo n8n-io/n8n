@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHttpRequestOptions,
+	INodeType,
+	INodeTypeDescription,
+	WithRequestTarget,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
@@ -88,10 +94,16 @@ export class WhatsApp implements INodeType {
 					const config = getSendAndWaitConfig(this);
 					const instanceId = this.getInstanceId();
 
+					const options: WithRequestTarget<IHttpRequestOptions> = createMessage(
+						config,
+						phoneNumberId,
+						recipientPhoneNumber,
+						instanceId,
+					);
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
-						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
+						options,
 					);
 
 					const waitTill = configureWaitTillDate(this);

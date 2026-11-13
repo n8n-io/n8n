@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import type { ILoadOptionsFunctions, WorkflowTestData } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestUrl } from 'n8n-workflow';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
@@ -155,7 +155,7 @@ describe('Microsoft Entra Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('microsoftEntraOAuth2Api', {
 				method: 'GET',
-				url: 'https://graph.microsoft.com/v1.0/groups',
+				url: requestUrl`https://graph.microsoft.com/v1.0/groups`,
 				json: true,
 				headers: {},
 				body: {},
@@ -189,7 +189,7 @@ describe('Microsoft Entra Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('microsoftEntraOAuth2Api', {
 				method: 'GET',
-				url: 'https://graph.microsoft.com/v1.0/users',
+				url: requestUrl`https://graph.microsoft.com/v1.0/users`,
 				json: true,
 				headers: {},
 				body: {},

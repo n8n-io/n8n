@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { conditionFields } from './ConditionDescription';
 import { zendeskApiRequest, zendeskApiRequestAllItems } from './GenericFunctions';
@@ -162,7 +162,7 @@ export class ZendeskTrigger implements INodeType {
 					this,
 					'ticket_fields',
 					'GET',
-					'/ticket_fields',
+					requestPath`/ticket_fields`,
 				);
 				for (const field of fields) {
 					if (customFields.includes(field.type as string) && field.removable && field.active) {
@@ -181,7 +181,12 @@ export class ZendeskTrigger implements INodeType {
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const groups = await zendeskApiRequestAllItems.call(this, 'groups', 'GET', '/groups');
+				const groups = await zendeskApiRequestAllItems.call(
+					this,
+					'groups',
+					'GET',
+					requestPath`/groups`,
+				);
 				for (const group of groups) {
 					const groupName = group.name;
 					const groupId = group.id;
@@ -196,7 +201,12 @@ export class ZendeskTrigger implements INodeType {
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const users = await zendeskApiRequestAllItems.call(this, 'users', 'GET', '/users');
+				const users = await zendeskApiRequestAllItems.call(
+					this,
+					'users',
+					'GET',
+					requestPath`/users`,
+				);
 				for (const user of users) {
 					const userName = user.name;
 					const userId = user.id;
@@ -225,7 +235,6 @@ export class ZendeskTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const conditions = this.getNodeParameter('conditions') as IDataObject;
 
-				let endpoint = '';
 				const resultAll = [],
 					resultAny = [];
 
@@ -261,7 +270,7 @@ export class ZendeskTrigger implements INodeType {
 
 				// get all webhooks
 				// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#list-webhooks
-				const { webhooks } = await zendeskApiRequest.call(this, 'GET', '/webhooks');
+				const { webhooks } = await zendeskApiRequest.call(this, 'GET', requestPath`/webhooks`);
 				for (const webhook of webhooks) {
 					if (webhook.endpoint === webhookUrl) {
 						webhookData.targetId = webhook.id;
@@ -274,8 +283,12 @@ export class ZendeskTrigger implements INodeType {
 					return false;
 				}
 
-				endpoint = '/triggers/active';
-				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
+				const triggers = await zendeskApiRequestAllItems.call(
+					this,
+					'triggers',
+					'GET',
+					requestPath`/triggers/active`,
+				);
 
 				for (const trigger of triggers) {
 					const toDeleteTriggers = [];
@@ -288,7 +301,7 @@ export class ZendeskTrigger implements INodeType {
 						await zendeskApiRequest.call(
 							this,
 							'DELETE',
-							'/triggers/destroy_many',
+							requestPath`/triggers/destroy_many`,
 							{},
 							{ ids: toDeleteTriggers.join(',') },
 						);
@@ -394,8 +407,9 @@ export class ZendeskTrigger implements INodeType {
 					} else {
 						// create a webhook
 						// https://developer.zendesk.com/api-reference/event-connectors/webhooks/webhooks/#create-or-clone-webhook
-						target = (await zendeskApiRequest.call(this, 'POST', '/webhooks', bodyTarget))
-							.webhook as IDataObject;
+						target = (
+							await zendeskApiRequest.call(this, 'POST', requestPath`/webhooks`, bodyTarget)
+						).webhook as IDataObject;
 					}
 
 					// Fetch the signing secret for webhook signature verification
@@ -403,7 +417,7 @@ export class ZendeskTrigger implements INodeType {
 					const signingSecretResponse = (await zendeskApiRequest.call(
 						this,
 						'GET',
-						`/webhooks/${target.id as string}/signing_secret`,
+						requestPath`/webhooks/${target.id as string}/signing_secret`,
 					)) as { signing_secret?: { secret?: string } };
 					if (signingSecretResponse.signing_secret?.secret) {
 						webhookData.webhookSecret = signingSecretResponse.signing_secret.secret;
@@ -414,7 +428,12 @@ export class ZendeskTrigger implements INodeType {
 						JSON.stringify(message),
 					];
 
-					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
+					const { trigger } = await zendeskApiRequest.call(
+						this,
+						'POST',
+						requestPath`/triggers`,
+						bodyTrigger,
+					);
 					webhookData.webhookId = trigger.id;
 					webhookData.targetId = target.id;
 				}
@@ -423,8 +442,16 @@ export class ZendeskTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await zendeskApiRequest.call(this, 'DELETE', `/triggers/${webhookData.webhookId}`);
-					await zendeskApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.targetId}`);
+					await zendeskApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/triggers/${webhookData.webhookId}`,
+					);
+					await zendeskApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/webhooks/${webhookData.targetId}`,
+					);
 				} catch (error) {
 					return false;
 				}

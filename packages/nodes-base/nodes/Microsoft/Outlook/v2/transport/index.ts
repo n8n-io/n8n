@@ -7,36 +7,47 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPollFunctions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { prepareApiError } from '../helpers/utils';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
 ) {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
-	// If accessing shared mailbox
-	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	if (uri && (!URL.canParse(uri) || new URL(uri).origin !== 'https://graph.microsoft.com')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
 	}
 
-	const options: IRequestOptions = {
+	let apiUrl: RequestUrl = requestUrl`https://graph.microsoft.com/v1.0/me${resource}`;
+	// If accessing shared mailbox
+	if (credentials.useShared && credentials.userPrincipalName) {
+		apiUrl = requestUrl`https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	}
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		uri: apiUrl,
 	};
 	try {
 		Object.assign(options, option);
@@ -52,7 +63,7 @@ export async function microsoftApiRequest(
 		return await this.helpers.requestWithAuthentication.call(
 			this,
 			'microsoftOutlookOAuth2Api',
-			options,
+			uri ? { ...options, uri } : options,
 		);
 	} catch (error) {
 		if (
@@ -80,7 +91,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
@@ -127,14 +138,14 @@ export async function downloadAttachments(
 				this,
 				'value',
 				'GET',
-				`/messages/${message.id}/attachments`,
+				requestPath`/messages/${message.id}/attachments`,
 				{},
 			);
 			for (const [index, attachment] of attachments.entries()) {
 				const response = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					requestPath`/messages/${message.id}/attachments/${attachment.id}/$value`,
 					undefined,
 					{},
 					undefined,
@@ -167,7 +178,7 @@ export async function getMimeContent(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}/$value`,
+		requestPath`/messages/${messageId}/$value`,
 		undefined,
 		{},
 		undefined,
@@ -203,7 +214,7 @@ export async function getSubfolders(
 			let subfolders = await microsoftApiRequest.call(
 				this,
 				'GET',
-				`/mailFolders/${folder.id}/childFolders`,
+				requestPath`/mailFolders/${folder.id}/childFolders`,
 			);
 
 			if (addPathToDisplayName) {

@@ -1,4 +1,5 @@
-import type { IHttpRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, WithRequestTarget } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { SendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createMessage, WHATSAPP_BASE_URL } from '../GenericFunctions';
@@ -46,7 +47,7 @@ describe('createMessage', () => {
 	const recipientPhone = '990001112222';
 
 	it('should return a valid HTTP request object', () => {
-		const request: IHttpRequestOptions = createMessage(
+		const request: WithRequestTarget<IHttpRequestOptions> = createMessage(
 			mockSendAndWaitConfig,
 			phoneID,
 			recipientPhone,
@@ -56,7 +57,7 @@ describe('createMessage', () => {
 		expect(request).toEqual({
 			baseURL: WHATSAPP_BASE_URL,
 			method: 'POST',
-			url: `${phoneID}/messages`,
+			url: requestPath`${phoneID}/messages`,
 			body: {
 				messaging_product: 'whatsapp',
 				text: {
@@ -69,6 +70,17 @@ describe('createMessage', () => {
 				to: recipientPhone,
 			},
 		});
+	});
+
+	it('should encode the phone number ID so that it cannot change the host', () => {
+		const request = createMessage(
+			mockSendAndWaitConfig,
+			'https://attack.example/x',
+			recipientPhone,
+			'',
+		);
+
+		expect(request.url.toString()).toBe('https%3A%2F%2Fattack.example%2Fx/messages');
 	});
 
 	it('should handle a single option correctly', () => {
@@ -84,7 +96,7 @@ describe('createMessage', () => {
 			],
 		};
 
-		const request: IHttpRequestOptions = createMessage(
+		const request: WithRequestTarget<IHttpRequestOptions> = createMessage(
 			singleOptionConfig,
 			phoneID,
 			recipientPhone,
@@ -94,7 +106,7 @@ describe('createMessage', () => {
 		expect(request).toEqual({
 			baseURL: WHATSAPP_BASE_URL,
 			method: 'POST',
-			url: `${phoneID}/messages`,
+			url: requestPath`${phoneID}/messages`,
 			body: {
 				messaging_product: 'whatsapp',
 				text: {

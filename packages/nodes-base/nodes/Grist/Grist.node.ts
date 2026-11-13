@@ -9,7 +9,10 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type IRequestOptions,
+	type WithRequestTarget,
 	NodeConnectionTypes,
+	requestPath,
+	requestUrl,
 } from 'n8n-workflow';
 
 import {
@@ -61,7 +64,7 @@ export class Grist implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions) {
 				const docId = this.getNodeParameter('docId', 0) as string;
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const endpoint = `/docs/${docId}/tables/${tableId}/columns`;
+				const endpoint = requestPath`/docs/${docId}/tables/${tableId}/columns`;
 
 				const { columns } = (await gristApiRequest.call(this, 'GET', endpoint)) as GristColumns;
 				return columns.map(({ id }) => ({ name: id, value: id }));
@@ -76,26 +79,26 @@ export class Grist implements INodeType {
 				const { apiKey, planType, customSubdomain, selfHostedUrl } =
 					credential.data as GristCredentials;
 
-				const endpoint = '/orgs';
-
-				const gristapiurl =
-					planType === 'free'
-						? `https://docs.getgrist.com/api${endpoint}`
-						: planType === 'paid'
-							? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-							: `${selfHostedUrl}/api${endpoint}`;
-
-				const options: IRequestOptions = {
-					headers: {
-						Authorization: `Bearer ${apiKey}`,
-					},
-					method: 'GET',
-					uri: gristapiurl,
-					qs: { limit: 1 },
-					json: true,
-				};
-
 				try {
+					const endpoint = requestPath`/orgs`;
+
+					const gristapiurl =
+						planType === 'free'
+							? requestUrl`https://docs.getgrist.com/api${endpoint}`
+							: planType === 'paid'
+								? requestUrl`https://${customSubdomain}.getgrist.com/api${endpoint}`
+								: requestUrl`${selfHostedUrl}/api${endpoint}`;
+
+					const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+						headers: {
+							Authorization: `Bearer ${apiKey}`,
+						},
+						method: 'GET',
+						uri: gristapiurl,
+						qs: { limit: 1 },
+						json: true,
+					};
+
 					await this.helpers.request(options);
 					return {
 						status: 'OK',
@@ -145,7 +148,7 @@ export class Grist implements INodeType {
 
 					const docId = this.getNodeParameter('docId', 0) as string;
 					const tableId = this.getNodeParameter('tableId', 0) as string;
-					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+					const endpoint = requestPath`/docs/${docId}/tables/${tableId}/records`;
 
 					responseData = await gristApiRequest.call(this, 'POST', endpoint, body);
 					responseData = {
@@ -161,7 +164,7 @@ export class Grist implements INodeType {
 
 					const docId = this.getNodeParameter('docId', 0) as string;
 					const tableId = this.getNodeParameter('tableId', 0) as string;
-					const endpoint = `/docs/${docId}/tables/${tableId}/data/delete`;
+					const endpoint = requestPath`/docs/${docId}/tables/${tableId}/data/delete`;
 
 					const rawRowIds = (this.getNodeParameter('rowId', i) as string).toString();
 					const body = rawRowIds
@@ -198,7 +201,7 @@ export class Grist implements INodeType {
 
 					const docId = this.getNodeParameter('docId', 0) as string;
 					const tableId = this.getNodeParameter('tableId', 0) as string;
-					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+					const endpoint = requestPath`/docs/${docId}/tables/${tableId}/records`;
 
 					await gristApiRequest.call(this, 'PATCH', endpoint, body);
 					responseData = {
@@ -214,7 +217,7 @@ export class Grist implements INodeType {
 
 					const docId = this.getNodeParameter('docId', 0) as string;
 					const tableId = this.getNodeParameter('tableId', 0) as string;
-					const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+					const endpoint = requestPath`/docs/${docId}/tables/${tableId}/records`;
 
 					const qs: IDataObject = {};
 

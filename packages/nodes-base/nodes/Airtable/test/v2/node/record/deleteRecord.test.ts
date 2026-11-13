@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as deleteRecord from '../../../../v2/actions/record/deleteRecord.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -33,6 +34,9 @@ describe('Test AirtableV2, deleteRecord operation', () => {
 		);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', 'appYoLbase/tblltable/recXXX');
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`appYoLbase/tblltable/recXXX`,
+		);
 	});
 });

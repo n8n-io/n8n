@@ -5,8 +5,10 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 	IHttpRequestMethods,
-	IRequestOptions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 function getAuthenticationTypeFromApiKey(data: string): 'accessToken' | 'apiKey' {
 	// The access token is a JWT, so it will always include dots to separate
@@ -29,12 +31,10 @@ export async function getAuthenticationType(
 export async function calendlyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const authenticationType = await getAuthenticationType.call(this);
 
@@ -49,12 +49,12 @@ export async function calendlyApiRequest(
 		endpoint = 'https://calendly.com/api/v1';
 	}
 
-	let options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers,
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 
@@ -64,11 +64,22 @@ export async function calendlyApiRequest(
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 
 	const credentialsType =
 		(this.getNodeParameter('authentication', 0) as string) === 'apiKey'
 			? 'calendlyApi'
 			: 'calendlyOAuth2Api';
 	return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
+}
+
+const WEBHOOK_SUBSCRIPTION_URI_PREFIX = 'https://api.calendly.com/webhook_subscriptions/';
+
+export async function deleteWebhookSubscription(
+	this: IHookFunctions,
+	webhookURI: string,
+): Promise<void> {
+	if (!webhookURI.startsWith(WEBHOOK_SUBSCRIPTION_URI_PREFIX)) return;
+
+	const id = webhookURI.slice(WEBHOOK_SUBSCRIPTION_URI_PREFIX.length);
+	await calendlyApiRequest.call(this, 'DELETE', requestPath`/webhook_subscriptions/${id}`);
 }

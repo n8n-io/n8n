@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { sanitizeXmlName } from 'n8n-workflow';
+import { decodePathValue, sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import type { SplunkError, SplunkFeedResponse } from './interfaces';
@@ -101,6 +101,14 @@ export function populate(source: IDataObject, destination: IDataObject) {
 	if (Object.keys(source).length) {
 		Object.assign(destination, source);
 	}
+}
+
+export function toListValue(version: number, id: string) {
+	return version < 2.1 ? id : decodePathValue(id);
+}
+
+export function toPathValue(version: number, value: string) {
+	return version < 2.1 ? decodePathValue(value) : value;
 }
 
 export function getId(

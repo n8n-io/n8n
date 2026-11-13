@@ -35,7 +35,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 					return;
 				}
 
-				this.onMessageReceived(pushRef, msg);
+				this.onMessageReceived(pushRef, userId, msg);
 			} catch (error) {
 				this.errorReporter.error(
 					new UnexpectedError('Error parsing push message', {
@@ -58,7 +58,7 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
 			connection.off('message', onMessage);
-			this.remove(pushRef);
+			this.remove(pushRef, userId, connection);
 		});
 
 		connection.on('message', onMessage);

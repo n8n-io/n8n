@@ -25,7 +25,10 @@ import type {
 } from './scaling.types';
 
 import { EventService } from '@/events/event.service';
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import {
+	getLifecycleHooksForScalingWorker,
+	getPushRefUserId,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -129,20 +132,22 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		const lifecycleHooks = getLifecycleHooksForScalingWorker(
-			{
-				executionMode: execution.mode,
-				workflowData: execution.workflowData,
-				retryOf: execution.retryOf,
-				pushRef,
-			},
-			executionId,
-		);
+		const hooksData: IWorkflowExecutionDataProcess = {
+			executionMode: execution.mode,
+			workflowData: execution.workflowData,
+			executionData: execution.data,
+			retryOf: execution.retryOf,
+			pushRef,
+			pushRefUserId: job.data.pushRefUserId,
+		};
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(hooksData, executionId);
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({ pushRef });
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
+				pushRef,
+				userId: getPushRefUserId(hooksData),
+			});
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {

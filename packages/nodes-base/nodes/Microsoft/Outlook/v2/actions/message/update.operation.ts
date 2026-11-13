@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -193,7 +193,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/move`,
+			requestPath`/messages/${messageId}/move`,
 			body,
 		);
 
@@ -215,7 +215,13 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		throw new NodeOperationError(this.getNode(), 'No fields to update got specified');
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, body, {});
+	responseData = await microsoftApiRequest.call(
+		this,
+		'PATCH',
+		requestPath`/messages/${messageId}`,
+		body,
+		{},
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

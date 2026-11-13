@@ -1,8 +1,13 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
-import { awsApiRequest, awsApiRequestREST, awsApiRequestSOAP } from '../GenericFunctions';
+import {
+	awsApiRequest,
+	awsApiRequestREST,
+	awsApiRequestSOAP,
+	awsRequestPath,
+} from '../GenericFunctions';
 
 describe('AWS GenericFunctions', () => {
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
@@ -48,7 +53,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'GET',
-					'/test-path',
+					requestPath`/test-path`,
 					undefined,
 					{ 'Content-Type': 'application/json' },
 				);
@@ -84,7 +89,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test/invocations',
+					requestPath`/2015-03-31/functions/test/invocations`,
 					testBody,
 				);
 
@@ -116,7 +121,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'PUT',
-					'/bucket/object',
+					requestPath`/bucket/object`,
 					testBody as any,
 				);
 
@@ -149,7 +154,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ec2',
 					'GET',
-					'/instances',
+					requestPath`/instances`,
 				);
 
 				expect(result).toEqual(mockResponse);
@@ -176,7 +181,7 @@ describe('AWS GenericFunctions', () => {
 					mockWebhookFunctions,
 					'apigateway',
 					'GET',
-					'/webhooks',
+					requestPath`/webhooks`,
 				);
 
 				expect(result).toEqual(mockResponse);
@@ -191,7 +196,7 @@ describe('AWS GenericFunctions', () => {
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/list-buckets');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/list-buckets`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -210,7 +215,7 @@ describe('AWS GenericFunctions', () => {
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/list-buckets');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/list-buckets`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -227,7 +232,7 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(credentialError);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow('Failed to get AWS credentials');
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('aws');
@@ -243,7 +248,7 @@ describe('AWS GenericFunctions', () => {
 				);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow(NodeApiError);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalled();
@@ -263,7 +268,7 @@ describe('AWS GenericFunctions', () => {
 				);
 
 				await expect(
-					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test-path'),
+					awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test-path`),
 				).rejects.toThrow(NodeApiError);
 			});
 		});
@@ -278,7 +283,7 @@ describe('AWS GenericFunctions', () => {
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, '', 'GET', '/test');
+				await awsApiRequest.call(mockExecuteFunctions, '', 'GET', requestPath`/test`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -300,7 +305,7 @@ describe('AWS GenericFunctions', () => {
 					mockResponse,
 				);
 
-				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', '/test');
+				await awsApiRequest.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test`);
 
 				expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 					'aws',
@@ -322,7 +327,7 @@ describe('AWS GenericFunctions', () => {
 				const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const;
 
 				for (const method of methods) {
-					await awsApiRequest.call(mockExecuteFunctions, 's3', method, '/test');
+					await awsApiRequest.call(mockExecuteFunctions, 's3', method, requestPath`/test`);
 
 					expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 						'aws',
@@ -353,7 +358,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/2015-03-31/functions/test/invocations',
+					requestPath`/2015-03-31/functions/test/invocations`,
 					'{"test": "data"}',
 				);
 
@@ -374,7 +379,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'GET',
-					'/bucket/object.txt',
+					requestPath`/bucket/object.txt`,
 				);
 
 				expect(result).toBe(invalidJsonResponse);
@@ -393,7 +398,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/test',
+					requestPath`/test`,
 				);
 
 				expect(result).toBe(emptyResponse);
@@ -412,7 +417,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'DELETE',
-					'/bucket',
+					requestPath`/bucket`,
 				);
 
 				expect(result).toBeNull();
@@ -431,7 +436,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'cloudwatch',
 					'GET',
-					'/metrics',
+					requestPath`/metrics`,
 				);
 
 				expect(result).toBe(numberResponse);
@@ -450,7 +455,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					's3',
 					'HEAD',
-					'/bucket/exists',
+					requestPath`/bucket/exists`,
 				);
 
 				expect(result).toBe(booleanResponse);
@@ -477,7 +482,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ec2',
 					'GET',
-					'/instances',
+					requestPath`/instances`,
 				);
 
 				expect(result).toEqual(['option1', 'option2', 'option3']);
@@ -490,7 +495,7 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(apiError);
 
 				await expect(
-					awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/test'),
+					awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', requestPath`/test`),
 				).rejects.toThrow('API request failed');
 			});
 
@@ -507,7 +512,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'lambda',
 					'POST',
-					'/test',
+					requestPath`/test`,
 				);
 
 				expect(result).toBe(malformedJson);
@@ -530,7 +535,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'ses',
 					'POST',
-					'/send-email',
+					requestPath`/send-email`,
 					'<email>test</email>',
 				);
 
@@ -555,7 +560,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'ses',
 					'POST',
-					'/send-email',
+					requestPath`/send-email`,
 				);
 
 				expect(result).toBe(invalidXmlResponse);
@@ -570,7 +575,12 @@ describe('AWS GenericFunctions', () => {
 					emptyResponse,
 				);
 
-				const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'GET', '/status');
+				const result = await awsApiRequestSOAP.call(
+					mockExecuteFunctions,
+					'ses',
+					'GET',
+					requestPath`/status`,
+				);
 
 				expect(result).toBeNull();
 			});
@@ -589,7 +599,7 @@ describe('AWS GenericFunctions', () => {
 					mockExecuteFunctions,
 					'sqs',
 					'GET',
-					'/list-queues',
+					requestPath`/list-queues`,
 				);
 
 				expect(result).toEqual({
@@ -620,7 +630,7 @@ describe('AWS GenericFunctions', () => {
 					mockLoadOptionsFunctions,
 					'ses',
 					'GET',
-					'/options',
+					requestPath`/options`,
 				);
 
 				expect(result).toEqual({
@@ -635,9 +645,28 @@ describe('AWS GenericFunctions', () => {
 				mockExecuteFunctions.getCredentials.mockRejectedValue(apiError);
 
 				await expect(
-					awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', '/test'),
+					awsApiRequestSOAP.call(mockExecuteFunctions, 'ses', 'POST', requestPath`/test`),
 				).rejects.toThrow('SOAP API request failed');
 			});
+		});
+	});
+
+	describe('awsRequestPath', () => {
+		it('should append encoded query values to the path', () => {
+			expect(
+				awsRequestPath(requestPath`/2015-03-31/functions/${'orders/sync?x=1'}/invocations`, {
+					Qualifier: '$LATEST',
+					Message: 'a b&Action=DeleteTopic#x',
+					MaxItems: 50,
+				}),
+			).toBe(
+				'/2015-03-31/functions/orders%2Fsync%3Fx=1/invocations?Qualifier=%24LATEST&Message=a%20b%26Action%3DDeleteTopic%23x&MaxItems=50',
+			);
+		});
+
+		it('should return the path without a query', () => {
+			expect(awsRequestPath(requestPath`/`)).toBe('/');
+			expect(awsRequestPath(requestPath`/`, {})).toBe('/');
 		});
 	});
 });

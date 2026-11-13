@@ -31,6 +31,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { stringify } from 'flatted';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -3750,6 +3751,31 @@ describe('GET /workflows/:workflowId/executions/last-successful', () => {
 			id: lastExecution.id,
 			workflowId: workflow.id,
 		});
+	});
+
+	test('should hide the push session fields', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const { createExecution } = await import('../shared/db/executions');
+		await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				data: stringify({
+					pushRef: 'push-ref-of-the-owner',
+					pushRefUserId: 'user-id-of-the-owner',
+					resultData: { runData: {} },
+				}),
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent
+			.get(`/workflows/${workflow.id}/executions/last-successful`)
+			.expect(200);
+
+		expect(response.body.data.data).toHaveProperty('resultData');
+		expect(response.body.data.data).not.toHaveProperty('pushRef');
+		expect(response.body.data.data).not.toHaveProperty('pushRefUserId');
 	});
 
 	test('should return 404 when no successful execution exists', async () => {

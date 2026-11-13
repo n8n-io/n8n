@@ -7,8 +7,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	agentFields,
@@ -190,21 +191,29 @@ export class Freshservice implements INodeType {
 	methods = {
 		loadOptions: {
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { agents } = (await freshserviceApiRequest.call(this, 'GET', '/agents')) as {
+				const { agents } = (await freshserviceApiRequest.call(
+					this,
+					'GET',
+					requestPath`/agents`,
+				)) as {
 					agents: LoadedUser[];
 				};
 				return toUserOptions(agents.filter((agent) => agent.active));
 			},
 
 			async getAgentGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { groups } = (await freshserviceApiRequest.call(this, 'GET', '/groups')) as {
+				const { groups } = (await freshserviceApiRequest.call(
+					this,
+					'GET',
+					requestPath`/groups`,
+				)) as {
 					groups: LoadedResource[];
 				};
 				return toOptions(groups);
 			},
 
 			async getAgentRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { roles } = (await freshserviceApiRequest.call(this, 'GET', '/roles')) as {
+				const { roles } = (await freshserviceApiRequest.call(this, 'GET', requestPath`/roles`)) as {
 					roles: LoadedResource[];
 				};
 				return toOptions(roles);
@@ -214,7 +223,7 @@ export class Freshservice implements INodeType {
 				const { asset_types } = (await freshserviceApiRequest.call(
 					this,
 					'GET',
-					'/asset_types',
+					requestPath`/asset_types`,
 				)) as {
 					asset_types: LoadedResource[];
 				};
@@ -226,7 +235,7 @@ export class Freshservice implements INodeType {
 				const { asset_type_fields } = (await freshserviceApiRequest.call(
 					this,
 					'GET',
-					`/asset_types/${assetType}/fields`,
+					requestPath`/asset_types/${assetType}/fields`,
 				)) as {
 					asset_type_fields: [{ fields: LoadedResource[] }];
 				};
@@ -243,7 +252,7 @@ export class Freshservice implements INodeType {
 				const { departments } = (await freshserviceApiRequest.call(
 					this,
 					'GET',
-					'/departments',
+					requestPath`/departments`,
 				)) as {
 					departments: LoadedResource[];
 				};
@@ -251,14 +260,22 @@ export class Freshservice implements INodeType {
 			},
 
 			async getLocations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { locations } = (await freshserviceApiRequest.call(this, 'GET', '/locations')) as {
+				const { locations } = (await freshserviceApiRequest.call(
+					this,
+					'GET',
+					requestPath`/locations`,
+				)) as {
 					locations: LoadedResource[];
 				};
 				return toOptions(locations);
 			},
 
 			async getRequesters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { requesters } = (await freshserviceApiRequest.call(this, 'GET', '/requesters')) as {
+				const { requesters } = (await freshserviceApiRequest.call(
+					this,
+					'GET',
+					requestPath`/requesters`,
+				)) as {
 					requesters: LoadedUser[];
 				};
 				return toUserOptions(requesters);
@@ -307,21 +324,34 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/agents', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/agents`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//              agent: delete
 						// ----------------------------------------
 
 						const agentId = this.getNodeParameter('agentId', i);
-						responseData = await freshserviceApiRequest.call(this, 'DELETE', `/agents/${agentId}`);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/agents/${agentId}`,
+						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//                agent: get
 						// ----------------------------------------
 
 						const agentId = this.getNodeParameter('agentId', i);
-						responseData = await freshserviceApiRequest.call(this, 'GET', `/agents/${agentId}`);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'GET',
+							requestPath`/agents/${agentId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//              agent: getAll
@@ -334,7 +364,7 @@ export class Freshservice implements INodeType {
 							Object.assign(qs, formatFilters(filters));
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/agents', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/agents`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//              agent: update
@@ -351,7 +381,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'PUT',
-							`/agents/${agentId}`,
+							requestPath`/agents/${agentId}`,
 							body,
 						);
 					}
@@ -375,14 +405,19 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/groups', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/groups`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            agentGroup: delete
 						// ----------------------------------------
 
 						const agentGroupId = this.getNodeParameter('agentGroupId', i);
-						const endpoint = `/groups/${agentGroupId}`;
+						const endpoint = requestPath`/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -390,14 +425,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const agentGroupId = this.getNodeParameter('agentGroupId', i);
-						const endpoint = `/groups/${agentGroupId}`;
+						const endpoint = requestPath`/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//            agentGroup: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/groups');
+						responseData = await handleListing.call(this, 'GET', requestPath`/groups`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            agentGroup: update
@@ -411,7 +446,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const agentGroupId = this.getNodeParameter('agentGroupId', i);
-						const endpoint = `/groups/${agentGroupId}`;
+						const endpoint = requestPath`/groups/${agentGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'agentRole') {
@@ -425,13 +460,17 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const agentRoleId = this.getNodeParameter('agentRoleId', i);
-						responseData = await freshserviceApiRequest.call(this, 'GET', `/roles/${agentRoleId}`);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'GET',
+							requestPath`/roles/${agentRoleId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//            agentRole: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/roles');
+						responseData = await handleListing.call(this, 'GET', requestPath`/roles`);
 					}
 				} else if (resource === 'announcement') {
 					// **********************************************************************
@@ -467,14 +506,19 @@ export class Freshservice implements INodeType {
 							});
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/announcements', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/announcements`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//           announcement: delete
 						// ----------------------------------------
 
 						const announcementId = this.getNodeParameter('announcementId', i);
-						const endpoint = `/announcements/${announcementId}`;
+						const endpoint = requestPath`/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -483,14 +527,14 @@ export class Freshservice implements INodeType {
 
 						const announcementId = this.getNodeParameter('announcementId', i);
 
-						const endpoint = `/announcements/${announcementId}`;
+						const endpoint = requestPath`/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//           announcement: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/announcements');
+						responseData = await handleListing.call(this, 'GET', requestPath`/announcements`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           announcement: update
@@ -513,7 +557,7 @@ export class Freshservice implements INodeType {
 						});
 
 						const announcementId = this.getNodeParameter('announcementId', i);
-						const endpoint = `/announcements/${announcementId}`;
+						const endpoint = requestPath`/announcements/${announcementId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'asset') {
@@ -543,7 +587,12 @@ export class Freshservice implements INodeType {
 								{},
 							),
 						});
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/assets', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/assets`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//              asset: delete
@@ -553,7 +602,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'DELETE',
-							`/assets/${assetDisplayId}`,
+							requestPath`/assets/${assetDisplayId}`,
 						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -564,7 +613,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'GET',
-							`/assets/${assetDisplayId}`,
+							requestPath`/assets/${assetDisplayId}`,
 						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -578,7 +627,7 @@ export class Freshservice implements INodeType {
 							Object.assign(qs, formatFilters(filters));
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/assets', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/assets`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//              asset: update
@@ -595,7 +644,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'PUT',
-							`/assets/${assetDisplayId}`,
+							requestPath`/assets/${assetDisplayId}`,
 							body,
 						);
 					}
@@ -619,7 +668,12 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/asset_types', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/asset_types`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            assetType: delete
@@ -627,7 +681,7 @@ export class Freshservice implements INodeType {
 
 						const assetTypeId = this.getNodeParameter('assetTypeId', i);
 
-						const endpoint = `/asset_types/${assetTypeId}`;
+						const endpoint = requestPath`/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -635,14 +689,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const assetTypeId = this.getNodeParameter('assetTypeId', i);
-						const endpoint = `/asset_types/${assetTypeId}`;
+						const endpoint = requestPath`/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//            assetType: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/asset_types');
+						responseData = await handleListing.call(this, 'GET', requestPath`/asset_types`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            assetType: update
@@ -656,7 +710,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const assetTypeId = this.getNodeParameter('assetTypeId', i);
-						const endpoint = `/asset_types/${assetTypeId}`;
+						const endpoint = requestPath`/asset_types/${assetTypeId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'change') {
@@ -687,7 +741,12 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/changes', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/changes`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//              change: delete
@@ -697,7 +756,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'DELETE',
-							`/changes/${changeId}`,
+							requestPath`/changes/${changeId}`,
 						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -705,7 +764,11 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const changeId = this.getNodeParameter('changeId', i);
-						responseData = await freshserviceApiRequest.call(this, 'GET', `/changes/${changeId}`);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'GET',
+							requestPath`/changes/${changeId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//              change: getAll
@@ -718,7 +781,7 @@ export class Freshservice implements INodeType {
 							Object.assign(qs, formatFilters(filters));
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/changes', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/changes`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//              change: update
@@ -735,7 +798,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'PUT',
-							`/changes/${changeId}`,
+							requestPath`/changes/${changeId}`,
 							body,
 						);
 					}
@@ -765,14 +828,19 @@ export class Freshservice implements INodeType {
 							});
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/departments', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/departments`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            department: delete
 						// ----------------------------------------
 
 						const departmentId = this.getNodeParameter('departmentId', i);
-						const endpoint = `/departments/${departmentId}`;
+						const endpoint = requestPath`/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -780,7 +848,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const departmentId = this.getNodeParameter('departmentId', i);
-						const endpoint = `/departments/${departmentId}`;
+						const endpoint = requestPath`/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -794,7 +862,7 @@ export class Freshservice implements INodeType {
 							Object.assign(qs, formatFilters(filters));
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/departments', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/departments`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            department: update
@@ -814,7 +882,7 @@ export class Freshservice implements INodeType {
 						});
 
 						const departmentId = this.getNodeParameter('departmentId', i);
-						const endpoint = `/departments/${departmentId}`;
+						const endpoint = requestPath`/departments/${departmentId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'location') {
@@ -838,14 +906,19 @@ export class Freshservice implements INodeType {
 							Object.assign(body, adjustAddress(additionalFields));
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/locations', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/locations`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             location: delete
 						// ----------------------------------------
 
 						const locationId = this.getNodeParameter('locationId', i);
-						const endpoint = `/locations/${locationId}`;
+						const endpoint = requestPath`/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -853,14 +926,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const locationId = this.getNodeParameter('locationId', i);
-						const endpoint = `/locations/${locationId}`;
+						const endpoint = requestPath`/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             location: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/locations');
+						responseData = await handleListing.call(this, 'GET', requestPath`/locations`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             location: update
@@ -874,7 +947,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, adjustAddress(updateFields));
 
 						const locationId = this.getNodeParameter('locationId', i);
-						const endpoint = `/locations/${locationId}`;
+						const endpoint = requestPath`/locations/${locationId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'problem') {
@@ -902,14 +975,19 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/problems', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/problems`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             problem: delete
 						// ----------------------------------------
 
 						const problemId = this.getNodeParameter('problemId', i);
-						const endpoint = `/problems/${problemId}`;
+						const endpoint = requestPath`/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -917,14 +995,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const problemId = this.getNodeParameter('problemId', i);
-						const endpoint = `/problems/${problemId}`;
+						const endpoint = requestPath`/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             problem: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/problems');
+						responseData = await handleListing.call(this, 'GET', requestPath`/problems`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             problem: update
@@ -938,7 +1016,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const problemId = this.getNodeParameter('problemId', i);
-						const endpoint = `/problems/${problemId}`;
+						const endpoint = requestPath`/problems/${problemId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'product') {
@@ -962,7 +1040,12 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/products', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/products`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             product: delete
@@ -970,7 +1053,7 @@ export class Freshservice implements INodeType {
 
 						const productId = this.getNodeParameter('productId', i);
 
-						const endpoint = `/products/${productId}`;
+						const endpoint = requestPath`/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -978,14 +1061,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const productId = this.getNodeParameter('productId', i);
-						const endpoint = `/products/${productId}`;
+						const endpoint = requestPath`/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             product: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/products');
+						responseData = await handleListing.call(this, 'GET', requestPath`/products`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             product: update
@@ -997,7 +1080,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const productId = this.getNodeParameter('productId', i);
-						const endpoint = `/products/${productId}`;
+						const endpoint = requestPath`/products/${productId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'release') {
@@ -1025,14 +1108,19 @@ export class Freshservice implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/releases', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/releases`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             release: delete
 						// ----------------------------------------
 
 						const releaseId = this.getNodeParameter('releaseId', i);
-						const endpoint = `/releases/${releaseId}`;
+						const endpoint = requestPath`/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1040,14 +1128,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const releaseId = this.getNodeParameter('releaseId', i);
-						const endpoint = `/releases/${releaseId}`;
+						const endpoint = requestPath`/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             release: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/releases');
+						responseData = await handleListing.call(this, 'GET', requestPath`/releases`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             release: update
@@ -1059,7 +1147,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const releaseId = this.getNodeParameter('releaseId', i);
-						const endpoint = `/releases/${releaseId}`;
+						const endpoint = requestPath`/releases/${releaseId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'requester') {
@@ -1090,14 +1178,19 @@ export class Freshservice implements INodeType {
 							});
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/requesters', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/requesters`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            requester: delete
 						// ----------------------------------------
 
 						const requesterId = this.getNodeParameter('requesterId', i);
-						const endpoint = `/requesters/${requesterId}`;
+						const endpoint = requestPath`/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1105,7 +1198,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const requesterId = this.getNodeParameter('requesterId', i);
-						const endpoint = `/requesters/${requesterId}`;
+						const endpoint = requestPath`/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -1119,7 +1212,7 @@ export class Freshservice implements INodeType {
 							Object.assign(qs, formatFilters(filters));
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/requesters', {}, qs);
+						responseData = await handleListing.call(this, 'GET', requestPath`/requesters`, {}, qs);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            requester: update
@@ -1140,7 +1233,7 @@ export class Freshservice implements INodeType {
 						});
 
 						const requesterId = this.getNodeParameter('requesterId', i);
-						const endpoint = `/requesters/${requesterId}`;
+						const endpoint = requestPath`/requesters/${requesterId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'requesterGroup') {
@@ -1166,7 +1259,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'POST',
-							'/requester_groups',
+							requestPath`/requester_groups`,
 							body,
 						);
 					} else if (operation === 'delete') {
@@ -1175,7 +1268,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const requesterGroupId = this.getNodeParameter('requesterGroupId', i);
-						const endpoint = `/requester_groups/${requesterGroupId}`;
+						const endpoint = requestPath`/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1183,14 +1276,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const requesterGroupId = this.getNodeParameter('requesterGroupId', i);
-						const endpoint = `/requester_groups/${requesterGroupId}`;
+						const endpoint = requestPath`/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//          requesterGroup: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/requester_groups');
+						responseData = await handleListing.call(this, 'GET', requestPath`/requester_groups`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//          requesterGroup: update
@@ -1204,7 +1297,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body, updateFields);
 
 						const requesterGroupId = this.getNodeParameter('requesterGroupId', i);
-						const endpoint = `/requester_groups/${requesterGroupId}`;
+						const endpoint = requestPath`/requester_groups/${requesterGroupId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'software') {
@@ -1230,14 +1323,19 @@ export class Freshservice implements INodeType {
 							Object.assign(body.application!, additionalFields);
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/applications', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/applications`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             software: delete
 						// ----------------------------------------
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/applications/${softwareId}`;
+						const endpoint = requestPath`/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1245,14 +1343,14 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/applications/${softwareId}`;
+						const endpoint = requestPath`/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             software: getAll
 						// ----------------------------------------
 
-						responseData = await handleListing.call(this, 'GET', '/applications');
+						responseData = await handleListing.call(this, 'GET', requestPath`/applications`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             software: update
@@ -1266,7 +1364,7 @@ export class Freshservice implements INodeType {
 						Object.assign(body.application!, updateFields);
 
 						const softwareId = this.getNodeParameter('softwareId', i);
-						const endpoint = `/applications/${softwareId}`;
+						const endpoint = requestPath`/applications/${softwareId}`;
 						responseData = await freshserviceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'ticket') {
@@ -1300,7 +1398,12 @@ export class Freshservice implements INodeType {
 							});
 						}
 
-						responseData = await freshserviceApiRequest.call(this, 'POST', '/tickets', body);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/tickets`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//              ticket: delete
@@ -1310,7 +1413,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'DELETE',
-							`/tickets/${ticketId}`,
+							requestPath`/tickets/${ticketId}`,
 						);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1318,7 +1421,11 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const ticketId = this.getNodeParameter('ticketId', i);
-						responseData = await freshserviceApiRequest.call(this, 'GET', `/tickets/${ticketId}`);
+						responseData = await freshserviceApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tickets/${ticketId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//              ticket: getAll
@@ -1326,13 +1433,13 @@ export class Freshservice implements INodeType {
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);
-						let endpoint = '';
+						let endpoint: RequestPath;
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
-							endpoint = '/tickets/filter';
+							endpoint = requestPath`/tickets/filter`;
 						} else {
-							endpoint = '/tickets';
+							endpoint = requestPath`/tickets`;
 						}
 
 						responseData = await handleListing.call(this, 'GET', endpoint, {}, qs);
@@ -1352,7 +1459,7 @@ export class Freshservice implements INodeType {
 						responseData = await freshserviceApiRequest.call(
 							this,
 							'PUT',
-							`/tickets/${ticketId}`,
+							requestPath`/tickets/${ticketId}`,
 							body,
 						);
 					}

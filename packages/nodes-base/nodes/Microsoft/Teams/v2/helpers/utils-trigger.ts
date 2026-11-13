@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'crypto';
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { TeamResponse, ChannelResponse, SubscriptionResponse } from './types';
 import { microsoftApiRequest } from '../transport';
@@ -22,7 +22,7 @@ export async function fetchAllTeams(this: IHookFunctions): Promise<TeamResponse[
 	const { value: teams } = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/me/joinedTeams',
+		requestPath`/v1.0/me/joinedTeams`,
 	)) as { value: TeamResponse[] };
 	return teams;
 }
@@ -34,7 +34,7 @@ export async function fetchAllChannels(
 	const { value: channels } = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/teams/${teamId}/channels`,
+		requestPath`/v1.0/teams/${teamId}/channels`,
 	)) as { value: ChannelResponse[] };
 	return channels;
 }
@@ -62,7 +62,7 @@ export async function createSubscription(
 	const response = (await microsoftApiRequest.call(
 		this,
 		'POST',
-		'/v1.0/subscriptions',
+		requestPath`/v1.0/subscriptions`,
 		body,
 	)) as SubscriptionResponse;
 
@@ -76,7 +76,11 @@ export async function deleteSubscriptions(
 	await Promise.all(
 		subscriptionIds.map(async (subscriptionId) => {
 			try {
-				await microsoftApiRequest.call(this, 'DELETE', `/v1.0/subscriptions/${subscriptionId}`);
+				await microsoftApiRequest.call(
+					this,
+					'DELETE',
+					requestPath`/v1.0/subscriptions/${subscriptionId}`,
+				);
 			} catch (error) {
 				// The transport wraps a Graph failure in NodeApiError, which carries the
 				// status on `httpCode` as a string. `httpStatusCode` is never set on it.
@@ -132,7 +136,7 @@ export async function getResourcePath(
 				return '/me/chats/getAllMessages';
 			} else {
 				const chatId = this.getNodeParameter('chatId', undefined, { extractValue: true }) as string;
-				return `/chats/${decodeURIComponent(chatId)}/messages`;
+				return requestPath`/chats/${decodeURIComponent(chatId)}/messages`.value;
 			}
 		}
 
@@ -146,7 +150,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				return `/teams/${teamId}/channels`;
+				return requestPath`/teams/${teamId}/channels`.value;
 			}
 		}
 
@@ -177,7 +181,8 @@ export async function getResourcePath(
 					const channelId = this.getNodeParameter('channelId', undefined, {
 						extractValue: true,
 					}) as string;
-					return `/teams/${teamId}/channels/${decodeURIComponent(channelId)}/messages`;
+					return requestPath`/teams/${teamId}/channels/${decodeURIComponent(channelId)}/messages`
+						.value;
 				}
 			}
 		}
@@ -192,7 +197,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/members`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				return `/teams/${teamId}/members`;
+				return requestPath`/teams/${teamId}/members`.value;
 			}
 		}
 

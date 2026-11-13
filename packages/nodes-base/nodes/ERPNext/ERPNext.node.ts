@@ -8,10 +8,10 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
+import { erpNextApiRequest, erpNextApiRequestAllItems, toPathValue } from './GenericFunctions';
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
@@ -21,7 +21,8 @@ export class ERPNext implements INodeType {
 		name: 'erpNext',
 		icon: 'file:erpnext.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Consume ERPNext API',
 		defaults: {
@@ -62,21 +63,24 @@ export class ERPNext implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/api/resource/DocType',
+					requestPath`/api/resource/DocType`,
 					{},
 				);
 				const docTypes = data.map(({ name }: { name: string }) => {
-					return { name, value: encodeURI(name) };
+					return { name, value: this.getNode().typeVersion < 1.1 ? encodeURI(name) : name };
 				});
 
 				return processNames(docTypes);
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
+				const docType = toPathValue(
+					this.getNode().typeVersion,
+					this.getCurrentNodeParameter('docType') as string,
+				);
 				const { data } = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					requestPath`/api/resource/DocType/${docType}`,
 					{},
 				);
 
@@ -91,11 +95,14 @@ export class ERPNext implements INodeType {
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
+				const docType = toPathValue(
+					this.getNode().typeVersion,
+					this.getCurrentNodeParameter('docType') as string,
+				);
 				const { data } = await erpNextApiRequest.call(
 					this,
 					'GET',
-					`/api/resource/DocType/${docType}`,
+					requestPath`/api/resource/DocType/${docType}`,
 					{},
 				);
 
@@ -121,6 +128,7 @@ export class ERPNext implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const version = this.getNode().typeVersion;
 
 		for (let i = 0; i < items.length; i++) {
 			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
@@ -138,13 +146,16 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'GET',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 					);
 					responseData = responseData.data;
 				}
@@ -157,7 +168,7 @@ export class ERPNext implements INodeType {
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType_
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const endpoint = `/api/resource/${docType}`;
+					const endpoint = requestPath`/api/resource/${toPathValue(version, docType)}`;
 
 					const { fields, filters } = this.getNodeParameter('options', i) as {
 						fields: string[];
@@ -223,12 +234,12 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'POST',
-						`/api/resource/${docType}`,
+						requestPath`/api/resource/${docType}`,
 						body,
 					);
 					responseData = responseData.data;
@@ -239,13 +250,16 @@ export class ERPNext implements INodeType {
 
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'DELETE',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 					);
 				} else if (operation === 'update') {
 					// ----------------------------------
@@ -268,13 +282,16 @@ export class ERPNext implements INodeType {
 						body[property.field] = property.value;
 					});
 
-					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const docType = toPathValue(version, this.getNodeParameter('docType', i) as string);
+					const documentName = toPathValue(
+						version,
+						this.getNodeParameter('documentName', i) as string,
+					);
 
 					responseData = await erpNextApiRequest.call(
 						this,
 						'PUT',
-						`/api/resource/${docType}/${documentName}`,
+						requestPath`/api/resource/${docType}/${documentName}`,
 						body,
 					);
 					responseData = responseData.data;

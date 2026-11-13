@@ -1,6 +1,34 @@
-import { simplify, type IExpenseDocument } from '../GenericFunctions';
+import { mock } from 'jest-mock-extended';
+import type { ICredentialTestFunctions } from 'n8n-workflow';
+
+import { simplify, validateCredentials, type IExpenseDocument } from '../GenericFunctions';
 
 describe('AWS Textract Generic Functions', () => {
+	describe('validateCredentials', () => {
+		it('should send the request to the STS endpoint of the region', async () => {
+			const request = jest.fn().mockResolvedValue('<GetCallerIdentityResponse />');
+			const context = mock<ICredentialTestFunctions>({
+				helpers: { request } as unknown as ICredentialTestFunctions['helpers'],
+			});
+
+			await validateCredentials.call(
+				context,
+				{
+					accessKeyId: 'AKIA-test',
+					secretAccessKey: 'secret-test',
+					temporaryCredentials: false,
+					region: 'eu-central-1',
+				},
+				'sts',
+			);
+
+			const [options] = request.mock.calls[0];
+			expect(String(options.uri)).toBe(
+				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
+			);
+		});
+	});
+
 	describe('simplify function', () => {
 		it('should simplify expense document response correctly', () => {
 			const input = {

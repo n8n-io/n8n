@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath, decodePathValue } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -85,7 +86,9 @@ export async function execute(
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const channelId = decodePathValue(
+		this.getNodeParameter('channelId', i, '', { extractValue: true }) as string,
+	);
 	const contentType = this.getNodeParameter('contentType', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
 	const options = this.getNodeParameter('options', i);
@@ -108,14 +111,14 @@ export async function execute(
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
+			requestPath`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
 			body,
 		);
 	} else {
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages`,
+			requestPath`/beta/teams/${teamId}/channels/${channelId}/messages`,
 			body,
 		);
 	}

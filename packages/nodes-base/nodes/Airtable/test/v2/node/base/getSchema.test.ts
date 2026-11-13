@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import { mockDeep } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -49,7 +50,13 @@ describe('Test AirtableV2, base => getSchema', () => {
 		);
 
 		expect(transport.apiRequest).toBeCalledTimes(2);
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase1/tables');
-		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'meta/bases/appYobase2/tables');
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`meta/bases/appYobase1/tables`,
+		);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`meta/bases/appYobase2/tables`,
+		);
 	});
 });

@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	awsApiRequest,
@@ -43,7 +43,7 @@ describe('ELB GenericFunctions', () => {
 				mockExecuteFunctions,
 				'elasticloadbalancing',
 				'GET',
-				'/test-path',
+				requestPath`/test-path`,
 			);
 
 			expect(result).toEqual(mockResponse);
@@ -66,8 +66,38 @@ describe('ELB GenericFunctions', () => {
 			mockRequestWithAuth.mockRejectedValue(apiError);
 
 			await expect(
-				awsApiRequest.call(mockExecuteFunctions, 'elasticloadbalancing', 'GET', '/test-path'),
+				awsApiRequest.call(
+					mockExecuteFunctions,
+					'elasticloadbalancing',
+					'GET',
+					requestPath`/test-path`,
+				),
 			).rejects.toThrow(NodeApiError);
+		});
+
+		it('should encode query values', async () => {
+			const mockRequestWithAuth = mockExecuteFunctions.helpers
+				.requestWithAuthentication as jest.Mock;
+			mockRequestWithAuth.mockResolvedValue({});
+
+			await awsApiRequest.call(
+				mockExecuteFunctions,
+				'elasticloadbalancing',
+				'GET',
+				requestPath`/`,
+				undefined,
+				{ Action: 'DeleteLoadBalancer', LoadBalancerArn: 'app/lb?x=1&Version=1#a' },
+			);
+
+			expect(mockRequestWithAuth).toHaveBeenCalledWith(
+				'aws',
+				expect.objectContaining({
+					qs: {
+						service: 'elasticloadbalancing',
+						path: '/?Action=DeleteLoadBalancer&LoadBalancerArn=app%2Flb%3Fx%3D1%26Version%3D1%23a',
+					},
+				}),
+			);
 		});
 	});
 
@@ -90,7 +120,7 @@ describe('ELB GenericFunctions', () => {
 				mockExecuteFunctions,
 				'elasticloadbalancing',
 				'GET',
-				'/test-path',
+				requestPath`/test-path`,
 			);
 
 			expect(result).toEqual(expectedResult);
@@ -106,7 +136,7 @@ describe('ELB GenericFunctions', () => {
 				mockExecuteFunctions,
 				'elasticloadbalancing',
 				'GET',
-				'/test-path',
+				requestPath`/test-path`,
 			);
 
 			expect(result).toBe(rawResponse);
@@ -146,7 +176,7 @@ describe('ELB GenericFunctions', () => {
 				mockExecuteFunctions,
 				'elasticloadbalancing',
 				'GET',
-				'/test-path',
+				requestPath`/test-path`,
 			);
 
 			expect(result).toEqual(expectedParsedData);
@@ -167,7 +197,7 @@ describe('ELB GenericFunctions', () => {
 				mockExecuteFunctions,
 				'elasticloadbalancing',
 				'GET',
-				'/test-path',
+				requestPath`/test-path`,
 			);
 
 			expect(result).toBeInstanceOf(Error);
@@ -210,7 +240,7 @@ describe('ELB GenericFunctions', () => {
 					'DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancerDescriptions',
 					'elasticloadbalancing',
 					'POST',
-					'/describe-load-balancers',
+					requestPath`/describe-load-balancers`,
 				);
 
 				expect(result).toEqual([{ LoadBalancerName: 'elb-1' }, { LoadBalancerName: 'elb-2' }]);
@@ -251,7 +281,7 @@ describe('ELB GenericFunctions', () => {
 					'DescribeTargetGroupsResponse.DescribeTargetGroupsResult.TargetGroups',
 					'elasticloadbalancing',
 					'POST',
-					'/describe-target-groups',
+					requestPath`/describe-target-groups`,
 				);
 
 				expect(result).toEqual([
@@ -259,6 +289,12 @@ describe('ELB GenericFunctions', () => {
 					{ TargetGroupName: 'tg-2', Protocol: 'HTTPS' },
 					{ TargetGroupName: 'tg-3', Protocol: 'TCP' },
 				]);
+
+				const requestMock = mockExecuteFunctions.helpers.requestWithAuthentication as jest.Mock;
+				expect(requestMock.mock.calls[0][1].qs.path).toBe('/describe-target-groups');
+				expect(requestMock.mock.calls[1][1].qs.path).toBe(
+					'/describe-target-groups?Marker=marker123',
+				);
 			});
 		});
 
@@ -280,7 +316,7 @@ describe('ELB GenericFunctions', () => {
 						'DescribeLoadBalancersResponse.DescribeLoadBalancersResult.LoadBalancerDescriptions',
 						'elasticloadbalancing',
 						'POST',
-						'/describe-load-balancers',
+						requestPath`/describe-load-balancers`,
 					),
 				).rejects.toThrow('LoadBalancerNotFound: The specified load balancer does not exist');
 			});

@@ -1,0 +1,1536 @@
+{
+	"name": "GitHub Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "create",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": "docs/README.md",
+				"fileContent": "Hello",
+				"commitMessage": "Add readme"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 0],
+			"id": "github-0",
+			"name": "File Create",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "edit",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": "docs/README.md",
+				"fileContent": "Hello again",
+				"commitMessage": "Update readme"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 150],
+			"id": "github-1",
+			"name": "File Edit",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": "docs/OLD.md",
+				"commitMessage": "Remove file"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 300],
+			"id": "github-2",
+			"name": "File Delete",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": "docs/README.md",
+				"asBinaryProperty": false,
+				"additionalParameters": {
+					"reference": "main"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 450],
+			"id": "github-3",
+			"name": "File Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "list",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": "docs"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 600],
+			"id": "github-4",
+			"name": "File List",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "list",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"filePath": ""
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 750],
+			"id": "github-5",
+			"name": "File List Root",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "create",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"title": "Printer is broken",
+				"body": "Details",
+				"labels": [],
+				"assignees": []
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 900],
+			"id": "github-6",
+			"name": "Issue Create",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "createComment",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"issueNumber": 42,
+				"body": "Checked"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 1050],
+			"id": "github-7",
+			"name": "Issue Create Comment",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "edit",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"issueNumber": 42,
+				"editFields": {
+					"title": "Printer fixed"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 1200],
+			"id": "github-8",
+			"name": "Issue Edit",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"issueNumber": 42
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 1350],
+			"id": "github-9",
+			"name": "Issue Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "issue",
+				"operation": "lock",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"issueNumber": 42,
+				"lockReason": "resolved"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 1500],
+			"id": "github-10",
+			"name": "Issue Lock",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "create",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"releaseTag": "v1.0.0",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3000],
+			"id": "github-20",
+			"name": "Release Create",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "delete",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"release_id": "501"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3150],
+			"id": "github-21",
+			"name": "Release Delete",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"release_id": "501"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3300],
+			"id": "github-22",
+			"name": "Release Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "getAll",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3450],
+			"id": "github-23",
+			"name": "Release Get Many",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "update",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"release_id": "501",
+				"additionalFields": {
+					"name": "First"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3600],
+			"id": "github-24",
+			"name": "Release Update",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "listPopularPaths",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3750],
+			"id": "github-25",
+			"name": "Repository Popular Paths",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "listReferrers",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 3900],
+			"id": "github-26",
+			"name": "Repository Referrers",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4050],
+			"id": "github-27",
+			"name": "Repository Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "getLicense",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4200],
+			"id": "github-28",
+			"name": "Repository License",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "getIssues",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 5,
+				"getRepositoryIssuesFilters": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4350],
+			"id": "github-29",
+			"name": "Repository Issues",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "getPullRequests",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 5,
+				"getRepositoryPullRequestsFilters": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4500],
+			"id": "github-30",
+			"name": "Repository Pull Requests",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "review",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"pullRequestNumber": 7,
+				"reviewId": "801"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4650],
+			"id": "github-31",
+			"name": "Review Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "review",
+				"operation": "getAll",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"pullRequestNumber": 7,
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4800],
+			"id": "github-32",
+			"name": "Review Get Many",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "review",
+				"operation": "create",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"pullRequestNumber": 7,
+				"event": "approve",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 4950],
+			"id": "github-33",
+			"name": "Review Create",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "review",
+				"operation": "update",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"pullRequestNumber": 7,
+				"reviewId": "802",
+				"body": "Updated"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 5100],
+			"id": "github-34",
+			"name": "Review Update",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getRepositories",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 5250],
+			"id": "github-35",
+			"name": "User Repositories",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getUserIssues",
+				"returnAll": false,
+				"limit": 5,
+				"getUserIssuesFilters": {}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 5400],
+			"id": "github-36",
+			"name": "User Issues",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "invite",
+				"organization": "acme-corp",
+				"email": "nathan@example.com"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 5550],
+			"id": "github-37",
+			"name": "User Invite",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "organization",
+				"operation": "getRepositories",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 5700],
+			"id": "github-38",
+			"name": "Organization Repositories",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "disable",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6000],
+			"id": "github-40",
+			"name": "Workflow Disable",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "dispatch",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				},
+				"ref": {
+					"__rl": true,
+					"value": "main",
+					"mode": "name"
+				},
+				"inputs": "{}"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6150],
+			"id": "github-41",
+			"name": "Workflow Dispatch",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "enable",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6300],
+			"id": "github-42",
+			"name": "Workflow Enable",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6450],
+			"id": "github-43",
+			"name": "Workflow Get",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "getUsage",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"workflowId": {
+					"__rl": true,
+					"value": "ci.yml",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6600],
+			"id": "github-44",
+			"name": "Workflow Usage",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "repository",
+				"operation": "get",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				},
+				"authentication": "oAuth2"
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6750],
+			"id": "github-45",
+			"name": "Enterprise Repository Get",
+			"credentials": {
+				"githubOAuth2Api": {
+					"id": "2",
+					"name": "GitHub Enterprise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workflow",
+				"operation": "list",
+				"owner": {
+					"__rl": true,
+					"value": "acme-corp",
+					"mode": "name"
+				},
+				"repository": {
+					"__rl": true,
+					"value": "billing-service",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1.1,
+			"position": [300, 6900],
+			"id": "github-46",
+			"name": "Workflow List",
+			"credentials": {
+				"githubApi": {
+					"id": "1",
+					"name": "GitHub account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"File Create": [
+			{
+				"json": {
+					"content": {
+						"sha": "abc123"
+					}
+				}
+			}
+		],
+		"File Edit": [
+			{
+				"json": {
+					"content": {
+						"sha": "abc123"
+					}
+				}
+			}
+		],
+		"File Delete": [
+			{
+				"json": {
+					"commit": {
+						"sha": "ghi789"
+					}
+				}
+			}
+		],
+		"File Get": [
+			{
+				"json": {
+					"name": "README.md",
+					"path": "docs/README.md"
+				}
+			}
+		],
+		"File List": [
+			{
+				"json": {
+					"name": "README.md"
+				}
+			}
+		],
+		"File List Root": [
+			{
+				"json": {
+					"name": "docs"
+				}
+			}
+		],
+		"Issue Create": [
+			{
+				"json": {
+					"number": 42
+				}
+			}
+		],
+		"Issue Create Comment": [
+			{
+				"json": {
+					"id": 1001
+				}
+			}
+		],
+		"Issue Edit": [
+			{
+				"json": {
+					"number": 42,
+					"title": "Printer fixed"
+				}
+			}
+		],
+		"Issue Get": [
+			{
+				"json": {
+					"number": 42
+				}
+			}
+		],
+		"Issue Lock": [
+			{
+				"json": {}
+			}
+		],
+		"Release Create": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Release Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Release Get": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Release Get Many": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Release Update": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Repository Popular Paths": [
+			{
+				"json": {
+					"path": "/"
+				}
+			}
+		],
+		"Repository Referrers": [
+			{
+				"json": {
+					"referrer": "example.com"
+				}
+			}
+		],
+		"Repository Get": [
+			{
+				"json": {
+					"id": 301
+				}
+			}
+		],
+		"Repository License": [
+			{
+				"json": {
+					"name": "MIT"
+				}
+			}
+		],
+		"Repository Issues": [
+			{
+				"json": {
+					"number": 42
+				}
+			}
+		],
+		"Repository Pull Requests": [
+			{
+				"json": {
+					"number": 7
+				}
+			}
+		],
+		"Review Get": [
+			{
+				"json": {
+					"id": 801
+				}
+			}
+		],
+		"Review Get Many": [
+			{
+				"json": {
+					"id": 801
+				}
+			}
+		],
+		"Review Create": [
+			{
+				"json": {
+					"id": 802
+				}
+			}
+		],
+		"Review Update": [
+			{
+				"json": {
+					"id": 802
+				}
+			}
+		],
+		"User Repositories": [
+			{
+				"json": {
+					"id": 301
+				}
+			}
+		],
+		"User Issues": [
+			{
+				"json": {
+					"number": 42
+				}
+			}
+		],
+		"User Invite": [
+			{
+				"json": {
+					"id": 901
+				}
+			}
+		],
+		"Organization Repositories": [
+			{
+				"json": {
+					"id": 301
+				}
+			}
+		],
+		"Workflow Disable": [
+			{
+				"json": {}
+			}
+		],
+		"Workflow Dispatch": [
+			{
+				"json": {}
+			}
+		],
+		"Workflow Enable": [
+			{
+				"json": {}
+			}
+		],
+		"Workflow Get": [
+			{
+				"json": {
+					"id": 161335
+				}
+			}
+		],
+		"Workflow Usage": [
+			{
+				"json": {
+					"billable": {}
+				}
+			}
+		],
+		"Enterprise Repository Get": [
+			{
+				"json": {
+					"id": 302
+				}
+			}
+		],
+		"Workflow List": [
+			{
+				"json": {
+					"total_count": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "File Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Edit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File List Root",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Create Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Edit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Issue Lock",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository Popular Paths",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository Referrers",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository License",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository Issues",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Repository Pull Requests",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Review Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Review Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Review Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Review Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Repositories",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Issues",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Invite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Organization Repositories",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow Disable",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow Dispatch",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow Enable",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow Usage",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Enterprise Repository Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Workflow List",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

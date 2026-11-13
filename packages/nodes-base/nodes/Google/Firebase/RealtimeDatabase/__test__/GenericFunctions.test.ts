@@ -1,6 +1,6 @@
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { googleApiRequest } from '../GenericFunctions';
 
@@ -61,7 +61,7 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 					'googleFirebaseRealtimeDatabaseOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						url: 'https://test-project.firebaseio.com//users.json',
+						url: requestUrl`https://test-project.firebaseio.com//users.json`,
 						headers: {
 							'Content-Type': 'application/json',
 						},
@@ -156,7 +156,7 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 
 			it('should use custom URI when provided', async () => {
 				const mockResponse = { data: [] };
-				const customUri = 'https://custom-project.firebaseio.com/custom/path.json';
+				const customUri = requestUrl`https://custom-project.firebaseio.com/custom/path.json`;
 				mockRequestOAuth2.mockResolvedValue(mockResponse);
 
 				await googleApiRequest.call(
@@ -178,6 +178,53 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 				);
 			});
 
+			it.each([
+				['', 'https://test-project.firebaseio.com/.json'],
+				['users/', 'https://test-project.firebaseio.com/users/.json'],
+				[
+					'users/u8Kf2Lq9/profile',
+					'https://test-project.firebaseio.com/users/u8Kf2Lq9/profile.json',
+				],
+				[
+					'users/u8Kf2Lq9?print=pretty#top',
+					'https://test-project.firebaseio.com/users/u8Kf2Lq9%3Fprint=pretty%23top.json',
+				],
+				[
+					'discounts/50%25%3Foff',
+					'https://test-project.firebaseio.com/discounts/50%2525%253Foff.json',
+				],
+				['discounts/50%', 'https://test-project.firebaseio.com/discounts/50%25.json'],
+			])('should build the URL for object path "%s" in version 1.1', async (path, url) => {
+				mockNode.typeVersion = 1.1;
+				mockRequestOAuth2.mockResolvedValue({});
+
+				await googleApiRequest.call(mockExecuteFunctions, 'test-project', 'GET', path);
+
+				expect(String(mockRequestOAuth2.mock.calls[0][1].url)).toBe(url);
+			});
+
+			it.each([
+				['users/u8Kf2Lq9?print=pretty#top', 'users/u8Kf2Lq9%3Fprint=pretty%23top'],
+				['discounts/50%25%3Foff', 'discounts/50%25%3Foff'],
+				['My%20Table/a%2Fb', 'My%20Table/a%2Fb'],
+				['discounts/50%', 'discounts/50%25'],
+			])('should decode the object path "%s" in version 1', async (path, encoded) => {
+				mockRequestOAuth2.mockResolvedValue({});
+
+				await googleApiRequest.call(mockExecuteFunctions, 'test-project', 'GET', path);
+
+				expect(String(mockRequestOAuth2.mock.calls[0][1].url)).toBe(
+					`https://test-project.firebaseio.com/${encoded}.json`,
+				);
+			});
+
+			it('should reject an object path with a ".." segment', async () => {
+				await expect(
+					googleApiRequest.call(mockExecuteFunctions, 'test-project', 'GET', 'users/../admin'),
+				).rejects.toThrow();
+				expect(mockRequestOAuth2).not.toHaveBeenCalled();
+			});
+
 			it('should use different regions correctly', async () => {
 				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					region: 'europe-west1-firebase.cloudfunctions.net',
@@ -190,7 +237,7 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'googleFirebaseRealtimeDatabaseOAuth2Api',
 					expect.objectContaining({
-						url: 'https://test-project.europe-west1-firebase.cloudfunctions.net//users.json',
+						url: requestUrl`https://test-project.europe-west1-firebase.cloudfunctions.net//users.json`,
 					}),
 				);
 			});
@@ -233,7 +280,7 @@ describe('GoogleFirebaseRealtimeDatabase > GenericFunctions', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'googleFirebaseRealtimeDatabaseOAuth2Api',
 					expect.objectContaining({
-						url: 'https://test-project.undefined//users.json',
+						url: requestUrl`https://test-project.undefined//users.json`,
 					}),
 				);
 			});

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as takeScreenshot from '../../../actions/window/takeScreenshot.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as GenericFunctions from '../../../GenericFunctions';
@@ -78,7 +79,7 @@ describe('Test Airtop, take screenshot operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/screenshot',
+			requestPath`/sessions/test-session-123/windows/win-123/screenshot`,
 		);
 
 		expect(result).toEqual([{ ...expectedJsonResult }]);
@@ -96,7 +97,7 @@ describe('Test Airtop, take screenshot operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/screenshot',
+			requestPath`/sessions/test-session-123/windows/win-123/screenshot`,
 		);
 
 		expect(GenericFunctions.convertScreenshotToBinary).toHaveBeenCalledWith(

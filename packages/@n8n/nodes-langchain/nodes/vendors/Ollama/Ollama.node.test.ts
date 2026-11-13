@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { z } from 'zod';
 
 import * as helpers from '@utils/helpers';
@@ -57,7 +58,7 @@ describe('Ollama Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llama3.2:latest',
 					messages: [
@@ -273,7 +274,7 @@ describe('Ollama Node', () => {
 
 			await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llama3.2:latest',
 					messages: [{ role: 'user', content: 'Generate text' }],
@@ -335,7 +336,7 @@ describe('Ollama Node', () => {
 
 			await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llama3.2:latest',
 					messages: [{ role: 'user', content: 'Test with options' }],
@@ -417,7 +418,7 @@ describe('Ollama Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llava:latest',
 					messages: [
@@ -482,7 +483,7 @@ describe('Ollama Node', () => {
 				url: 'https://example.com/test-image.jpg',
 				encoding: 'arraybuffer',
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llava:latest',
 					messages: [
@@ -543,7 +544,7 @@ describe('Ollama Node', () => {
 				},
 			]);
 			expect(executeFunctionsMock.helpers.httpRequest).toHaveBeenCalledTimes(2);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llava:latest',
 					messages: [
@@ -658,7 +659,7 @@ describe('Ollama Node', () => {
 
 			await image.analyze.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/api/chat', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/api/chat`, {
 				body: {
 					model: 'llava:latest',
 					messages: [

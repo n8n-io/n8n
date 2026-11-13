@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
@@ -63,7 +63,7 @@ export class GoogleTasks implements INodeType {
 					this,
 					'items',
 					'GET',
-					'/tasks/v1/users/@me/lists',
+					requestPath`/tasks/v1/users/@me/lists`,
 				);
 				for (const task of tasks) {
 					const taskName = task.title;
@@ -126,7 +126,7 @@ export class GoogleTasks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/tasks/v1/lists/${taskId}/tasks`,
+							requestPath`/tasks/v1/lists/${taskId}/tasks`,
 							body,
 							qs,
 						);
@@ -139,7 +139,7 @@ export class GoogleTasks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
 							{},
 						);
 						responseData = { success: true };
@@ -151,7 +151,7 @@ export class GoogleTasks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
 							{},
 							qs,
 						);
@@ -192,7 +192,7 @@ export class GoogleTasks implements INodeType {
 								this,
 								'items',
 								'GET',
-								`/tasks/v1/lists/${taskListId}/tasks`,
+								requestPath`/tasks/v1/lists/${taskListId}/tasks`,
 								{},
 								qs,
 							);
@@ -201,7 +201,7 @@ export class GoogleTasks implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/tasks/v1/lists/${taskListId}/tasks`,
+								requestPath`/tasks/v1/lists/${taskListId}/tasks`,
 								{},
 								qs,
 							);
@@ -246,7 +246,7 @@ export class GoogleTasks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/tasks/v1/lists/${taskListId}/tasks/${taskId}`,
 							body,
 							qs,
 						);

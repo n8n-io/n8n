@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { AzureStorage } from '../../AzureStorage.node';
 import { XMsVersion } from '../../GenericFunctions';
@@ -44,7 +45,7 @@ describe('Azure Storage Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
-				url: `${baseUrl}/mycontainer`,
+				url: requestUrl`${baseUrl}/mycontainer`,
 				headers: {
 					'x-ms-date': 'Wed, 01 Jan 2025 00:00:00 GMT',
 					'x-ms-version': XMsVersion,
@@ -94,7 +95,7 @@ describe('Azure Storage Node', () => {
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith('azureStorageSharedKeyApi', {
 				method: 'GET',
-				url: `${baseUrl}/`,
+				url: requestUrl`${baseUrl}/`,
 				headers: {
 					'x-ms-date': 'Wed, 01 Jan 2025 00:00:00 GMT',
 					'x-ms-version': XMsVersion,
@@ -110,6 +111,30 @@ describe('Azure Storage Node', () => {
 				results: [{ name: 'mycontainer1', value: 'mycontainer1' }],
 				paginationToken: 'mycontainer2',
 			});
+		});
+
+		it('should encode a container name with a slash as one path segment', async () => {
+			const mockResponse = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><EnumerationResults ServiceEndpoint="${baseUrl}" ContainerName="item1"><Prefix/><Marker/><MaxResults>1</MaxResults><Blobs></Blobs><NextMarker/></EnumerationResults>`;
+			const mockRequestWithAuthentication = jest.fn().mockReturnValue(mockResponse);
+			const mockContext = {
+				getCredentials: jest.fn(async () => credentials.azureStorageSharedKeyApi),
+				getNodeParameter: jest.fn((parameterName: string) =>
+					parameterName === 'authentication' ? 'sharedKey' : { value: 'mycontainer/other' },
+				),
+				helpers: {
+					requestWithAuthentication: mockRequestWithAuthentication,
+				},
+			} as unknown as ILoadOptionsFunctions;
+			const node = new AzureStorage();
+
+			await node.methods.listSearch.getBlobs.call(mockContext);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'azureStorageSharedKeyApi',
+				expect.objectContaining({
+					url: requestUrl`${baseUrl}/mycontainer%2Fother`,
+				}),
+			);
 		});
 	});
 });

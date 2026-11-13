@@ -4,6 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	validateAirtopApiResponse,
@@ -63,7 +64,7 @@ export async function execute(
 	const response = await apiRequest.call(
 		this,
 		'PUT',
-		`/sessions/${sessionId}/save-profile-on-termination/${profileName}`,
+		requestPath`/sessions/${sessionId}/save-profile-on-termination/${profileName}`,
 	);
 
 	// validate response

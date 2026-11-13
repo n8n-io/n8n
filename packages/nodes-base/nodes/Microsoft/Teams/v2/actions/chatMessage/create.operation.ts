@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath, decodePathValue } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -69,7 +70,9 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 
-	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+	const chatId = decodePathValue(
+		this.getNodeParameter('chatId', i, '', { extractValue: true }) as string,
+	);
 	const contentType = this.getNodeParameter('contentType', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
 	const options = this.getNodeParameter('options', i, {});
@@ -84,5 +87,10 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		instanceId,
 	);
 
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1.0/chats/${chatId}/messages`,
+		body,
+	);
 }

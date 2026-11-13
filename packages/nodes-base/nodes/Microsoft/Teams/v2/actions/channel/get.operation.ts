@@ -1,4 +1,10 @@
-import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
+import {
+	type INodeProperties,
+	type IExecuteFunctions,
+	NodeOperationError,
+	requestPath,
+	decodePathValue,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -21,12 +27,14 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	try {
 		const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-		const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+		const channelId = decodePathValue(
+			this.getNodeParameter('channelId', i, '', { extractValue: true }) as string,
+		);
 
 		return await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/teams/${teamId}/channels/${channelId}`,
+			requestPath`/v1.0/teams/${teamId}/channels/${channelId}`,
 		);
 	} catch (error) {
 		throw new NodeOperationError(

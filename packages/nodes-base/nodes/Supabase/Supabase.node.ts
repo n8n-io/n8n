@@ -11,13 +11,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, toPathSegment } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
-	appendFilterStringToEndpoint,
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	getFilterString,
 	getSchemaHeader,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
@@ -107,7 +107,7 @@ export class Supabase implements INodeType {
 				const { paths } = await supabaseApiRequest.call(
 					this,
 					'GET',
-					'/',
+					requestPath`/`,
 					{},
 					{},
 					undefined,
@@ -130,7 +130,7 @@ export class Supabase implements INodeType {
 				const { definitions } = await supabaseApiRequest.call(
 					this,
 					'GET',
-					'/',
+					requestPath`/`,
 					{},
 					{},
 					undefined,
@@ -176,7 +176,7 @@ export class Supabase implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
-			const tableId = toPathSegment(this.getNodeParameter('tableId', 0));
+			const endpoint = requestPath`/${this.getNodeParameter('tableId', 0)}`;
 
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
@@ -205,7 +205,6 @@ export class Supabase implements INodeType {
 					}
 					records.push(record);
 				}
-				const endpoint = `/${tableId}`;
 
 				try {
 					const createdRows: IDataObject[] = await supabaseApiRequest.call(
@@ -242,7 +241,7 @@ export class Supabase implements INodeType {
 				const header = getSchemaHeader(this, 'DELETE', 'execute');
 
 				for (let i = 0; i < length; i++) {
-					let endpoint = `/${tableId}`;
+					let filterString: string | undefined;
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
 						const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -266,7 +265,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
+						filterString = getFilterString(this, i);
 					}
 
 					let rows;
@@ -278,7 +277,7 @@ export class Supabase implements INodeType {
 							endpoint,
 							{},
 							qs,
-							undefined,
+							filterString,
 							header,
 						);
 					} catch (error) {
@@ -302,7 +301,6 @@ export class Supabase implements INodeType {
 			}
 
 			if (operation === 'get') {
-				const endpoint = `/${tableId}`;
 				const header = getSchemaHeader(this, 'GET', 'execute');
 
 				for (let i = 0; i < length; i++) {
@@ -346,7 +344,7 @@ export class Supabase implements INodeType {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				const header = getSchemaHeader(this, 'GET', 'execute');
 
-				let endpoint = `/${tableId}`;
+				let filterString: string | undefined;
 				for (let i = 0; i < length; i++) {
 					qs = {}; // reset qs
 
@@ -367,7 +365,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
+						filterString = getFilterString(this, i);
 					}
 
 					if (!returnAll) {
@@ -385,7 +383,7 @@ export class Supabase implements INodeType {
 								endpoint,
 								{},
 								qs,
-								undefined,
+								filterString,
 								header,
 							);
 							responseLength = newRows.length;
@@ -414,7 +412,7 @@ export class Supabase implements INodeType {
 
 			if (operation === 'update') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
-				let endpoint = `/${tableId}`;
+				let filterString: string | undefined;
 				const header = getSchemaHeader(this, 'PATCH', 'execute');
 
 				for (let i = 0; i < length; i++) {
@@ -441,7 +439,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
+						filterString = getFilterString(this, i);
 					}
 
 					const record: IDataObject = {};
@@ -473,7 +471,7 @@ export class Supabase implements INodeType {
 							endpoint,
 							record,
 							qs,
-							undefined,
+							filterString,
 							header,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(

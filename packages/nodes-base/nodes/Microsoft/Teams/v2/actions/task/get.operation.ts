@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -29,5 +30,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/plannertask-get?view=graph-rest-1.0&tabs=http
 
 	const taskId = this.getNodeParameter('taskId', i) as string;
-	return await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
+	return await microsoftApiRequest.call(this, 'GET', requestPath`/v1.0/planner/tasks/${taskId}`);
 }

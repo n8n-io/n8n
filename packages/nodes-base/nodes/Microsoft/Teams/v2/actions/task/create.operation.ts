@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -107,5 +108,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		delete body.assignedTo;
 	}
 
-	return await microsoftApiRequest.call(this, 'POST', '/v1.0/planner/tasks', body);
+	return await microsoftApiRequest.call(this, 'POST', requestPath`/v1.0/planner/tasks`, body);
 }

@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as search from '../../../v2/actions/search';
 import * as transport from '../../../v2/transport';
@@ -27,16 +28,20 @@ describe('Splunk, search resource', () => {
 		(transport.splunkApiRequest as jest.Mock).mockReturnValue({ response: { sid: '12345' } });
 		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue([{ test: 'test' }]);
 		const responseData = await search.create.execute.call(executeFunctions, 0);
-		expect(transport.splunkApiRequest).toHaveBeenCalledWith('POST', '/services/search/jobs', {
-			earliest_time: 1577836800,
-			index_earliest: 1577836800,
-			index_latest: 1577837100,
-			latest_time: 1577837100,
-			search: 'search index=_internal | stats count by source',
-		});
+		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/services/search/jobs`,
+			{
+				earliest_time: 1577836800,
+				index_earliest: 1577836800,
+				index_latest: 1577837100,
+				latest_time: 1577837100,
+				search: 'search index=_internal | stats count by source',
+			},
+		);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/search/jobs/12345',
+			requestPath`/services/search/jobs/12345`,
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
@@ -48,7 +53,7 @@ describe('Splunk, search resource', () => {
 		const responseData = await search.deleteJob.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/services/search/jobs/12345',
+			requestPath`/services/search/jobs/12345`,
 		);
 		expect(responseData).toEqual({ success: true });
 	});
@@ -61,7 +66,7 @@ describe('Splunk, search resource', () => {
 		const responseData = await search.get.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/search/jobs/12345',
+			requestPath`/services/search/jobs/12345`,
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
@@ -75,7 +80,7 @@ describe('Splunk, search resource', () => {
 		const responseData = await search.getAll.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/search/jobs',
+			requestPath`/services/search/jobs`,
 			{},
 			{ count: 0 },
 		);
@@ -96,7 +101,7 @@ describe('Splunk, search resource', () => {
 		const responseData = await search.getResult.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/search/jobs/12345/results',
+			requestPath`/services/search/jobs/12345/results`,
 			{},
 			{ count: 10, search: 'search key1=test1' },
 		);

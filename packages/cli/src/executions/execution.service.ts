@@ -14,6 +14,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
@@ -48,6 +49,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { ExecutionRequest, StopResult } from './execution.types';
+import { hidePushSession } from './execution.utils';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -118,7 +120,10 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findIfShared(executionId, sharedWorkflowIds);
+		const execution = await this.executionRepository.findWithUnflattenedData(
+			executionId,
+			sharedWorkflowIds,
+		);
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
@@ -128,7 +133,8 @@ export class ExecutionService {
 			return undefined;
 		}
 
-		return execution;
+		hidePushSession(execution);
+		return { ...execution, data: stringify(execution.data) };
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {
@@ -148,6 +154,7 @@ export class ExecutionService {
 			},
 		);
 
+		executions.forEach(hidePushSession);
 		return executions[0];
 	}
 
@@ -267,7 +274,7 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
-		return {
+		const response: Omit<IExecutionResponse, 'createdAt'> = {
 			id: retriedExecutionId,
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
@@ -281,6 +288,8 @@ export class ExecutionService {
 			customData: execution.customData,
 			annotation: execution.annotation,
 		};
+		hidePushSession(response);
+		return response;
 	}
 
 	async delete(req: ExecutionRequest.Delete, sharedWorkflowIds: string[]) {

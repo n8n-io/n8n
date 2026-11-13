@@ -6,9 +6,13 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
-import { calendlyApiRequest, getAuthenticationType } from './GenericFunctions';
+import {
+	calendlyApiRequest,
+	deleteWebhookSubscription,
+	getAuthenticationType,
+} from './GenericFunctions';
 
 export class CalendlyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -135,7 +139,7 @@ export class CalendlyTrigger implements INodeType {
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {
-					const endpoint = '/hooks';
+					const endpoint = requestPath`/hooks`;
 					const { data } = await calendlyApiRequest.call(this, 'GET', endpoint, {});
 
 					for (const webhook of data) {
@@ -154,7 +158,7 @@ export class CalendlyTrigger implements INodeType {
 
 				if (authenticationType === 'accessToken') {
 					const scope = this.getNodeParameter('scope', 0) as string;
-					const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+					const { resource } = await calendlyApiRequest.call(this, 'GET', requestPath`/users/me`);
 
 					const qs: IDataObject = {};
 
@@ -169,7 +173,7 @@ export class CalendlyTrigger implements INodeType {
 						qs.organization = resource.current_organization;
 					}
 
-					const endpoint = '/webhook_subscriptions';
+					const endpoint = requestPath`/webhook_subscriptions`;
 					const { collection } = await calendlyApiRequest.call(this, 'GET', endpoint, {}, qs);
 
 					for (const webhook of collection) {
@@ -195,7 +199,7 @@ export class CalendlyTrigger implements INodeType {
 
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {
-					const endpoint = '/hooks';
+					const endpoint = requestPath`/hooks`;
 
 					const body = {
 						url: webhookUrl,
@@ -214,7 +218,7 @@ export class CalendlyTrigger implements INodeType {
 
 				if (authenticationType === 'accessToken') {
 					const scope = this.getNodeParameter('scope', 0) as string;
-					const { resource } = await calendlyApiRequest.call(this, 'GET', '/users/me');
+					const { resource } = await calendlyApiRequest.call(this, 'GET', requestPath`/users/me`);
 
 					const body: IDataObject = {
 						url: webhookUrl,
@@ -227,7 +231,7 @@ export class CalendlyTrigger implements INodeType {
 						body.user = resource.uri;
 					}
 
-					const endpoint = '/webhook_subscriptions';
+					const endpoint = requestPath`/webhook_subscriptions`;
 					const responseData = await calendlyApiRequest.call(this, 'POST', endpoint, body);
 
 					if (responseData?.resource === undefined || responseData?.resource?.uri === undefined) {
@@ -246,7 +250,7 @@ export class CalendlyTrigger implements INodeType {
 				// remove condition once API Keys are deprecated
 				if (authenticationType === 'apiKey') {
 					if (webhookData.webhookId !== undefined) {
-						const endpoint = `/hooks/${webhookData.webhookId}`;
+						const endpoint = requestPath`/hooks/${webhookData.webhookId}`;
 
 						try {
 							await calendlyApiRequest.call(this, 'DELETE', endpoint);
@@ -263,14 +267,7 @@ export class CalendlyTrigger implements INodeType {
 				if (authenticationType === 'accessToken') {
 					if (webhookData.webhookURI !== undefined) {
 						try {
-							await calendlyApiRequest.call(
-								this,
-								'DELETE',
-								'',
-								{},
-								{},
-								webhookData.webhookURI as string,
-							);
+							await deleteWebhookSubscription.call(this, webhookData.webhookURI as string);
 						} catch (error) {
 							return false;
 						}

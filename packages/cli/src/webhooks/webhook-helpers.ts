@@ -597,6 +597,7 @@ export async function executeWebhook(
 			executionMode,
 			executionData: runExecutionData,
 			pushRef,
+			pushRefUserId: webhookData.userId,
 			workflowData,
 			pinData,
 			projectId: project?.id,

@@ -1,5 +1,4 @@
 import * as nacl_factory from 'js-nacl';
-import get from 'lodash/get';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -8,23 +7,27 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
+
+import { parseNextPageLink } from '../parseNextPageLink';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding' | 'json' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);
 	const credentials = await this.getCredentials('venafiTlsProtectCloudApi');
 
 	const region = credentials.region ?? 'cloud';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'content-type': 'application/json',
@@ -32,7 +35,7 @@ export async function venafiApiRequest(
 		method,
 		body,
 		qs,
-		uri: `https://api.venafi.${region}${resource}`,
+		uri: requestUrl`https://api.venafi.${region}${resource}`,
 		json: true,
 	};
 
@@ -44,7 +47,7 @@ export async function venafiApiRequest(
 	// If we remove for everything the key fetch fails
 	if (operation === 'download') {
 		// We need content-type for keystore
-		if (!resource.endsWith('keystore')) {
+		if (!resource.value.endsWith('keystore')) {
 			delete options.headers!.Accept;
 			delete options.headers!['content-type'];
 		}
@@ -68,7 +71,7 @@ export async function venafiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -76,12 +79,17 @@ export async function venafiApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
+	let next: { resource: RequestPath; qs: IDataObject } | undefined = {
+		resource: endpoint,
+		qs: query,
+	};
 
 	do {
-		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
-		endpoint = get(responseData, '_links[0].Next');
+		responseData = await venafiApiRequest.call(this, method, next.resource, body, next.qs);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData._links?.[0].Next);
+		const nextLink: string | undefined = responseData._links?.[0]?.Next;
+		next = nextLink ? parseNextPageLink(this, nextLink, next.resource) : undefined;
+	} while (next);
 
 	return returnData;
 }
@@ -96,7 +104,7 @@ export async function encryptPassphrase(
 	const dekResponse = await venafiApiRequest.call(
 		this,
 		'GET',
-		`/outagedetection/v1/certificates/${certificateId}`,
+		requestPath`/outagedetection/v1/certificates/${certificateId}`,
 	);
 
 	if (dekResponse.dekHash) {
@@ -107,7 +115,7 @@ export async function encryptPassphrase(
 	const pubKeyResponse = await venafiApiRequest.call(
 		this,
 		'GET',
-		`/v1/edgeencryptionkeys/${dekHash}`,
+		requestPath`/v1/edgeencryptionkeys/${dekHash}`,
 	);
 
 	if (pubKeyResponse.key) {

@@ -9,8 +9,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, UserError } from 'n8n-workflow';
+import { NodeApiError, requestUrl, UserError } from 'n8n-workflow';
 
 export function getSchemaHeader(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -50,10 +52,10 @@ export function getSchemaHeader(
 export async function supabaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
-	uri?: string,
+	filterString?: string,
 	headers: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<{
@@ -61,14 +63,14 @@ export async function supabaseApiRequest(
 		serviceRole: string;
 	}>('supabaseApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Prefer: 'return=representation',
 		},
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
+		uri: requestUrl`${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
 
@@ -77,7 +79,11 @@ export async function supabaseApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
+		const request =
+			filterString === undefined
+				? options
+				: { ...options, uri: `${options.uri.toString()}?${filterString}` };
+		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', request);
 	} catch (error) {
 		if (error.description) {
 			error.message = `${error.message}: ${error.description}`;
@@ -411,11 +417,7 @@ export function applyFilterStringParameters(filterString: string, parameters: ID
 	});
 }
 
-export function appendFilterStringToEndpoint(
-	context: IExecuteFunctions,
-	endpoint: string,
-	itemIndex: number,
-) {
+export function getFilterString(context: IExecuteFunctions, itemIndex: number) {
 	const filterString = context.getNodeParameter('filterString', itemIndex) as string;
 	const filterStringParameters = context.getNodeParameter(
 		'filterStringParameters.values',
@@ -424,7 +426,7 @@ export function appendFilterStringToEndpoint(
 	) as IDataObject[];
 
 	const encodedTemplate = encodeURI(filterString);
-	return `${endpoint}?${applyFilterStringParameters(encodedTemplate, filterStringParameters)}`;
+	return applyFilterStringParameters(encodedTemplate, filterStringParameters);
 }
 
 export async function validateCredentials(

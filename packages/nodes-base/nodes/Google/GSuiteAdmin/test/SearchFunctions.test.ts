@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 import { searchUsers, searchGroups, searchDevices } from '../SearchFunctions';
@@ -28,7 +29,7 @@ describe('searchFunctions', () => {
 			expect(googleApiRequestAllItems).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				'/directory/v1/users',
+				requestPath`/directory/v1/users`,
 				{},
 				{ customer: 'my_customer' },
 			);
@@ -83,7 +84,7 @@ describe('searchFunctions', () => {
 
 			expect(googleApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/directory/v1/customer/my_customer/devices/chromeos/',
+				requestPath`/directory/v1/customer/my_customer/devices/chromeos/`,
 				{},
 				{ customerId: 'my_customer' },
 			);

@@ -11,8 +11,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, deepCopy, randomInt } from 'n8n-workflow';
+import { NodeConnectionTypes, deepCopy, randomInt, requestUrl } from 'n8n-workflow';
 
 import {
 	contactDescription,
@@ -246,7 +247,7 @@ export class Odoo implements INodeType {
 						id: randomInt(100),
 					};
 
-					const options: IRequestOptions = {
+					const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 						headers: {
 							'User-Agent': 'n8n',
 							Connection: 'keep-alive',
@@ -255,7 +256,7 @@ export class Odoo implements INodeType {
 						},
 						method: 'POST',
 						body,
-						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
+						uri: requestUrl`${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
 					const result = await this.helpers.request(options);

@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
 import { apiRequest } from '../../../transport';
@@ -82,7 +82,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		contentType,
 	});
 
-	const response = await apiRequest.call(this, 'POST', '/audio/transcriptions', {
+	const response = await apiRequest.call(this, 'POST', requestPath`/audio/transcriptions`, {
 		option: { formData },
 		headers: formData.getHeaders(),
 	});

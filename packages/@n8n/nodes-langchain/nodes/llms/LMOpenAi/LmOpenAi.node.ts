@@ -1,5 +1,5 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestUrl } from 'n8n-workflow';
 import type {
 	INodeType,
 	INodeTypeDescription,
@@ -208,7 +208,7 @@ export class LmOpenAi implements INodeType {
 
 				const options = this.getNodeParameter('options', {}) as LmOpenAiOptions;
 
-				let uri = 'https://api.openai.com/v1/models';
+				let uri = requestUrl`https://api.openai.com/v1/models`;
 				let allowedDomains: string | undefined;
 
 				if (options.baseURL) {
@@ -218,7 +218,7 @@ export class LmOpenAi implements INodeType {
 						credentials,
 						options.baseURL,
 					);
-					uri = `${options.baseURL}/models`;
+					uri = requestUrl`${options.baseURL}/models`;
 				}
 
 				const { data } = (await this.helpers.requestWithAuthentication.call(this, 'openAiApi', {

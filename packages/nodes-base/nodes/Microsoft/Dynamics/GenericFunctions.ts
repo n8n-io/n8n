@@ -6,26 +6,25 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials<{
 		subdomain: string;
 		region: string;
 	}>('microsoftDynamicsOAuth2Api');
 
-	let options: IRequestOptions = {
+	const options = {
 		headers: {
 			'Content-Type': 'application/json',
 			accept: 'application/json',
@@ -34,14 +33,15 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
+		...(uri
+			? { uri }
+			: {
+					uri: requestUrl`https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
+				}),
 		json: true,
 	};
 
 	try {
-		if (Object.keys(option).length !== 0) {
-			options = Object.assign({}, options, option);
-		}
 		return await this.helpers.requestOAuth2.call(this, 'microsoftDynamicsOAuth2Api', options, {
 			property: 'id_token',
 		});
@@ -54,7 +54,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -80,7 +80,7 @@ export async function getPicklistOptions(
 	attributeName: string,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const endpoint = `/EntityDefinitions(LogicalName='${entityName}')/Attributes(LogicalName='${attributeName}')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$select=LogicalName&$expand=OptionSet($select=Options),GlobalOptionSet($select=Options)`;
+	const endpoint = requestPath`/EntityDefinitions(LogicalName='${entityName}')/Attributes(LogicalName='${attributeName}')/Microsoft.Dynamics.CRM.PicklistAttributeMetadata?$select=LogicalName&$expand=OptionSet($select=Options),GlobalOptionSet($select=Options)`;
 	const {
 		OptionSet: { Options: options },
 	} = await microsoftApiRequest.call(this, 'GET', endpoint);
@@ -97,7 +97,7 @@ export async function getEntityFields(
 	this: ILoadOptionsFunctions,
 	entityName: string,
 ): Promise<IField[]> {
-	const endpoint = `/EntityDefinitions(LogicalName='${entityName}')/Attributes`;
+	const endpoint = requestPath`/EntityDefinitions(LogicalName='${entityName}')/Attributes`;
 	const { value } = await microsoftApiRequest.call(this, 'GET', endpoint);
 	return value;
 }

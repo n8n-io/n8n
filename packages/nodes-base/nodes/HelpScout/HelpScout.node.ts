@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
@@ -103,7 +103,7 @@ export class HelpScout implements INodeType {
 					this,
 					'_embedded.tags',
 					'GET',
-					'/v2/tags',
+					requestPath`/v2/tags`,
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
@@ -122,7 +122,7 @@ export class HelpScout implements INodeType {
 					this,
 					'_embedded.mailboxes',
 					'GET',
-					'/v2/mailboxes',
+					requestPath`/v2/mailboxes`,
 				);
 				for (const mailbox of mailboxes) {
 					const mailboxName = mailbox.name;
@@ -200,7 +200,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'POST',
-							'/v2/conversations',
+							requestPath`/v2/conversations`,
 							body,
 							qs,
 							undefined,
@@ -209,7 +209,14 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
+							responseData = await helpscoutApiRequest.call(
+								this,
+								'GET',
+								requestPath``,
+								{},
+								{},
+								uri as string,
+							);
 						} else {
 							responseData = {
 								id,
@@ -223,7 +230,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'DELETE',
-							`/v2/conversations/${conversationId}`,
+							requestPath`/v2/conversations/${conversationId}`,
 						);
 						responseData = { success: true };
 					}
@@ -233,7 +240,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'GET',
-							`/v2/conversations/${conversationId}`,
+							requestPath`/v2/conversations/${conversationId}`,
 						);
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
@@ -251,7 +258,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.conversations',
 								'GET',
-								'/v2/conversations',
+								requestPath`/v2/conversations`,
 								{},
 								qs,
 							);
@@ -261,7 +268,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.conversations',
 								'GET',
-								'/v2/conversations',
+								requestPath`/v2/conversations`,
 								{},
 								qs,
 							);
@@ -318,7 +325,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'POST',
-							'/v2/customers',
+							requestPath`/v2/customers`,
 							body,
 							qs,
 							undefined,
@@ -327,7 +334,14 @@ export class HelpScout implements INodeType {
 						const id = responseData.headers['resource-id'];
 						const uri = responseData.headers.location;
 						if (resolveData) {
-							responseData = await helpscoutApiRequest.call(this, 'GET', '', {}, {}, uri as string);
+							responseData = await helpscoutApiRequest.call(
+								this,
+								'GET',
+								requestPath``,
+								{},
+								{},
+								uri as string,
+							);
 						} else {
 							responseData = {
 								id,
@@ -341,7 +355,7 @@ export class HelpScout implements INodeType {
 							this,
 							'_embedded.customer-properties',
 							'GET',
-							'/v2/customer-properties',
+							requestPath`/v2/customer-properties`,
 							{},
 							qs,
 						);
@@ -352,7 +366,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'GET',
-							`/v2/customers/${customerId}`,
+							requestPath`/v2/customers/${customerId}`,
 						);
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
@@ -365,7 +379,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.customers',
 								'GET',
-								'/v2/customers',
+								requestPath`/v2/customers`,
 								{},
 								qs,
 							);
@@ -375,7 +389,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.customers',
 								'GET',
-								'/v2/customers',
+								requestPath`/v2/customers`,
 								{},
 								qs,
 							);
@@ -399,7 +413,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'PUT',
-							`/v2/customers/${customerId}`,
+							requestPath`/v2/customers/${customerId}`,
 							body,
 							qs,
 							undefined,
@@ -415,7 +429,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'GET',
-							`/v2/mailboxes/${mailboxId}`,
+							requestPath`/v2/mailboxes/${mailboxId}`,
 							{},
 							qs,
 						);
@@ -428,7 +442,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.mailboxes',
 								'GET',
-								'/v2/mailboxes',
+								requestPath`/v2/mailboxes`,
 								{},
 								qs,
 							);
@@ -438,7 +452,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.mailboxes',
 								'GET',
-								'/v2/mailboxes',
+								requestPath`/v2/mailboxes`,
 								{},
 								qs,
 							);
@@ -528,7 +542,7 @@ export class HelpScout implements INodeType {
 						responseData = await helpscoutApiRequest.call(
 							this,
 							'POST',
-							`/v2/conversations/${conversationId}/${threadType}`,
+							requestPath`/v2/conversations/${conversationId}/${threadType}`,
 							body,
 						);
 						responseData = { success: true };
@@ -542,7 +556,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.threads',
 								'GET',
-								`/v2/conversations/${conversationId}/threads`,
+								requestPath`/v2/conversations/${conversationId}/threads`,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
@@ -550,7 +564,7 @@ export class HelpScout implements INodeType {
 								this,
 								'_embedded.threads',
 								'GET',
-								`/v2/conversations/${conversationId}/threads`,
+								requestPath`/v2/conversations/${conversationId}/threads`,
 								{},
 								qs,
 							);

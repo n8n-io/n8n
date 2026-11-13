@@ -2,6 +2,7 @@ import merge from 'lodash/merge';
 import type { DateTime } from 'luxon';
 import {
 	NodeOperationError,
+	requestPath,
 	type IDataObject,
 	type IExecuteSingleFunctions,
 	type IHttpRequestOptions,
@@ -901,16 +902,26 @@ const createFields: INodeProperties[] = [
 
 								try {
 									if (Object.keys(separateBody).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, separateBody);
+										await microsoftApiRequest.call(
+											this,
+											'PATCH',
+											requestPath`/users/${userId}`,
+											separateBody,
+										);
 										merge(item.json, separateBody);
 									}
 									if (Object.keys(body).length) {
-										await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+										await microsoftApiRequest.call(
+											this,
+											'PATCH',
+											requestPath`/users/${userId}`,
+											body,
+										);
 										merge(item.json, body);
 									}
 								} catch (error) {
 									try {
-										await microsoftApiRequest.call(this, 'DELETE', `/users/${userId}`);
+										await microsoftApiRequest.call(this, 'DELETE', requestPath`/users/${userId}`);
 									} catch {}
 									throw error;
 								}
@@ -2086,7 +2097,7 @@ const updateFields: INodeProperties[] = [
 								if (body.birthday) {
 									body.birthday = (body.birthday as DateTime).toUTC().toISO();
 								}
-								await microsoftApiRequest.call(this, 'PATCH', `/users/${userId}`, body);
+								await microsoftApiRequest.call(this, 'PATCH', requestPath`/users/${userId}`, body);
 							}
 						}
 						return items;

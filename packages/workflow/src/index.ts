@@ -87,6 +87,8 @@ export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export { decodePathValue, requestPath, requestUrl } from './request-target';
+export type { RequestPath, RequestUrl } from './request-target';
 
 export type {
 	DocMetadata,

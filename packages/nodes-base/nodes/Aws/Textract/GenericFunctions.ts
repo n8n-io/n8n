@@ -11,8 +11,9 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
+import { NodeApiError, requestUrl, sanitizeXmlName } from 'n8n-workflow';
 import { URL } from 'url';
 import { parseString } from 'xml2js';
 import { getAwsCredentials } from '../GenericFunctions';
@@ -150,10 +151,7 @@ export async function validateCredentials(
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
-	// Concatenate path and instantiate URL object so it parses correctly query strings
-	const endpoint = new URL(
-		getEndpointForService(service, credentials) + '?Action=GetCallerIdentity&Version=2011-06-15',
-	);
+	const endpoint = new URL(getEndpointForService(service, credentials));
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
@@ -171,10 +169,10 @@ export async function validateCredentials(
 
 	sign(signOpts, securityHeaders);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: signOpts.headers,
 		method: 'POST',
-		uri: endpoint.href,
+		uri: requestUrl`${endpoint.origin}/?Action=GetCallerIdentity&Version=2011-06-15`,
 		body: signOpts.body,
 	};
 

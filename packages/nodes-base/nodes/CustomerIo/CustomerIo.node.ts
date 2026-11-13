@@ -4,13 +4,14 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { campaignFields, campaignOperations } from './CampaignDescription';
 import { customerFields, customerOperations } from './CustomerDescription';
 import { eventFields, eventOperations } from './EventDescription';
-import { customerIoApiRequest, validateJSON } from './GenericFunctions';
+import { customerIoApiRequest, toPathValue, validateJSON } from './GenericFunctions';
 import { segmentFields, segmentOperations } from './SegmentDescription';
 
 export class CustomerIo implements INodeType {
@@ -19,7 +20,8 @@ export class CustomerIo implements INodeType {
 		name: 'customerIo',
 		icon: { light: 'file:customerio.svg', dark: 'file:customerio.dark.svg' },
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Customer.io API',
 		defaults: {
@@ -80,6 +82,7 @@ export class CustomerIo implements INodeType {
 		const items = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const { typeVersion } = this.getNode();
 		const body: IDataObject = {};
 
 		let responseData;
@@ -88,14 +91,14 @@ export class CustomerIo implements INodeType {
 				if (resource === 'campaign') {
 					if (operation === 'get') {
 						const campaignId = this.getNodeParameter('campaignId', i) as number;
-						const endpoint = `/campaigns/${campaignId}`;
+						const endpoint = requestPath`/campaigns/${campaignId}`;
 
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
 						responseData = responseData.campaign;
 					}
 
 					if (operation === 'getAll') {
-						const endpoint = '/campaigns';
+						const endpoint = requestPath`/campaigns`;
 
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
 						responseData = responseData.campaigns;
@@ -125,10 +128,10 @@ export class CustomerIo implements INodeType {
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const period = this.getNodeParameter('period', i) as string;
-							let endpoint = `/campaigns/${campaignId}/metrics`;
+							let endpoint = requestPath`/campaigns/${campaignId}/metrics`;
 
 							if (period !== 'days') {
-								endpoint = `${endpoint}?period=${period}`;
+								endpoint = requestPath`${endpoint}?period=${period}`;
 							}
 							if (additionalFields.steps) {
 								body.steps = additionalFields.steps as number;
@@ -149,7 +152,7 @@ export class CustomerIo implements INodeType {
 
 				if (resource === 'customer') {
 					if (operation === 'upsert') {
-						const id = this.getNodeParameter('id', i) as number;
+						const id = this.getNodeParameter('id', i) as string;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
@@ -191,7 +194,7 @@ export class CustomerIo implements INodeType {
 							}
 						}
 
-						const endpoint = `/customers/${id}`;
+						const endpoint = requestPath`/customers/${toPathValue(typeVersion, id)}`;
 
 						responseData = await customerIoApiRequest.call(this, 'PUT', endpoint, body, 'tracking');
 
@@ -199,11 +202,11 @@ export class CustomerIo implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const id = this.getNodeParameter('id', i) as number;
+						const id = this.getNodeParameter('id', i) as string;
 
 						body.id = id;
 
-						const endpoint = `/customers/${id}`;
+						const endpoint = requestPath`/customers/${toPathValue(typeVersion, id)}`;
 
 						await customerIoApiRequest.call(this, 'DELETE', endpoint, body, 'tracking');
 
@@ -215,7 +218,7 @@ export class CustomerIo implements INodeType {
 
 				if (resource === 'event') {
 					if (operation === 'track') {
-						const customerId = this.getNodeParameter('customerId', i) as number;
+						const customerId = this.getNodeParameter('customerId', i) as string;
 						const eventName = this.getNodeParameter('eventName', i) as string;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
@@ -256,7 +259,7 @@ export class CustomerIo implements INodeType {
 							body.data = data;
 						}
 
-						const endpoint = `/customers/${customerId}/events`;
+						const endpoint = requestPath`/customers/${toPathValue(typeVersion, customerId)}/events`;
 
 						await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');
 						responseData = {
@@ -300,7 +303,7 @@ export class CustomerIo implements INodeType {
 							body.data = data;
 						}
 
-						const endpoint = '/events';
+						const endpoint = requestPath`/events`;
 						await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');
 
 						responseData = {
@@ -316,12 +319,12 @@ export class CustomerIo implements INodeType {
 					body.id = segmentId;
 					body.ids = customerIds.split(',');
 
-					let endpoint = '';
+					let endpoint: RequestPath;
 
 					if (operation === 'add') {
-						endpoint = `/segments/${segmentId}/add_customers`;
+						endpoint = requestPath`/segments/${segmentId}/add_customers`;
 					} else {
-						endpoint = `/segments/${segmentId}/remove_customers`;
+						endpoint = requestPath`/segments/${segmentId}/remove_customers`;
 					}
 
 					responseData = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');

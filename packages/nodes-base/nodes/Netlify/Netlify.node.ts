@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { deployFields, deployOperations } from './DeployDescription';
 import { netlifyApiRequest, netlifyRequestAllItems } from './GenericFunctions';
@@ -64,7 +64,7 @@ export class Netlify implements INodeType {
 		loadOptions: {
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const sites = await netlifyApiRequest.call(this, 'GET', '/sites');
+				const sites = await netlifyApiRequest.call(this, 'GET', requestPath`/sites`);
 				for (const site of sites) {
 					returnData.push({
 						name: site.name,
@@ -94,7 +94,7 @@ export class Netlify implements INodeType {
 						responseData = await netlifyApiRequest.call(
 							this,
 							'POST',
-							`/deploys/${deployId}/cancel`,
+							requestPath`/deploys/${deployId}/cancel`,
 							body,
 							qs,
 						);
@@ -114,7 +114,7 @@ export class Netlify implements INodeType {
 						responseData = await netlifyApiRequest.call(
 							this,
 							'POST',
-							`/sites/${siteId}/deploys`,
+							requestPath`/sites/${siteId}/deploys`,
 							body,
 							qs,
 						);
@@ -126,7 +126,7 @@ export class Netlify implements INodeType {
 						responseData = await netlifyApiRequest.call(
 							this,
 							'GET',
-							`/sites/${siteId}/deploys/${deployId}`,
+							requestPath`/sites/${siteId}/deploys/${deployId}`,
 							body,
 							qs,
 						);
@@ -139,14 +139,14 @@ export class Netlify implements INodeType {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								`/sites/${siteId}/deploys`,
+								requestPath`/sites/${siteId}/deploys`,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								`/sites/${siteId}/deploys`,
+								requestPath`/sites/${siteId}/deploys`,
 								{},
 								{ per_page: limit },
 							);
@@ -156,12 +156,16 @@ export class Netlify implements INodeType {
 				if (resource === 'site') {
 					if (operation === 'delete') {
 						const siteId = this.getNodeParameter('siteId', i);
-						responseData = await netlifyApiRequest.call(this, 'DELETE', `/sites/${siteId}`);
+						responseData = await netlifyApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/sites/${siteId}`,
+						);
 					}
 
 					if (operation === 'get') {
 						const siteId = this.getNodeParameter('siteId', i);
-						responseData = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}`);
+						responseData = await netlifyApiRequest.call(this, 'GET', requestPath`/sites/${siteId}`);
 					}
 
 					if (operation === 'getAll') {
@@ -170,7 +174,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyRequestAllItems.call(
 								this,
 								'GET',
-								'/sites',
+								requestPath`/sites`,
 								{},
 								{ filter: 'all' },
 							);
@@ -179,7 +183,7 @@ export class Netlify implements INodeType {
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
-								'/sites',
+								requestPath`/sites`,
 								{},
 								{ filter: 'all', per_page: limit },
 							);

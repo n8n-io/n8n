@@ -6,6 +6,7 @@ import {
 	type INodeTypeDescription,
 	type JsonObject,
 	NodeConnectionTypes,
+	requestUrl,
 } from 'n8n-workflow';
 
 export const apiUrl = 'https://api.peekalink.io';
@@ -78,7 +79,8 @@ export class Peekalink extends Node {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 					return await context.helpers.request({
 						method: 'POST',
-						uri: operation === 'preview' ? apiUrl : `${apiUrl}/is-available/`,
+						uri:
+							operation === 'preview' ? requestUrl`${apiUrl}` : requestUrl`${apiUrl}/is-available/`,
 						body: { link },
 						headers: { 'X-API-Key': credentials.apiKey },
 						json: true,

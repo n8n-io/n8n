@@ -10,6 +10,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import type { TodoistProjectType } from './Service';
@@ -1805,7 +1806,7 @@ export class TodoistV2 implements INodeType {
 				const projects: TodoistProjectType[] = await todoistApiRequest.call(
 					this,
 					'GET',
-					'/projects',
+					requestPath`/projects`,
 				);
 				return {
 					results: projects
@@ -1824,7 +1825,7 @@ export class TodoistV2 implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+				const projects = await todoistApiRequest.call(this, 'GET', requestPath`/projects`);
 				for (const project of projects) {
 					returnData.push({
 						name: project.name,
@@ -1851,7 +1852,13 @@ export class TodoistV2 implements INodeType {
 					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 				if (projectId) {
 					const qs: IDataObject = { project_id: projectId };
-					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
+					const sections = await todoistApiRequest.call(
+						this,
+						'GET',
+						requestPath`/sections`,
+						{},
+						qs,
+					);
 					for (const section of sections) {
 						returnData.push({
 							name: section.name,
@@ -1888,7 +1895,7 @@ export class TodoistV2 implements INodeType {
 						? { project_id: projectId, section_id: sectionId }
 						: { project_id: projectId };
 
-					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+					const items = await todoistApiRequest.call(this, 'GET', requestPath`/tasks`, {}, qs);
 					for (const item of items) {
 						returnData.push({
 							name: item.content,
@@ -1904,7 +1911,7 @@ export class TodoistV2 implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+				const labels = await todoistApiRequest.call(this, 'GET', requestPath`/labels`);
 
 				for (const label of labels) {
 					returnData.push({

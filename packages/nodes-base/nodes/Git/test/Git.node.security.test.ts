@@ -73,6 +73,9 @@ const missingPathError = (path: string) =>
 // Mirrors the production helper in packages/core so relative references resolve through
 // symlinks the way they do at runtime.
 const resolveRealPath = async (path: string): Promise<ResolvedFilePath> => {
+	if (Buffer.byteLength(path) > 4096) {
+		throw Object.assign(new Error('ENAMETOOLONG: path too long'), { code: 'ENAMETOOLONG' });
+	}
 	try {
 		return (await realpath(path)) as ResolvedFilePath;
 	} catch (error) {
@@ -986,6 +989,21 @@ describe('Git Node repository reference validation', () => {
 		);
 
 		expect(errorOf(result)).toContain(SOURCE_DENIED);
+		// The rejection has to land before the staging directory is created.
+		expect(readdirSync(allowedRoot).filter((entry) => entry.startsWith('.n8n-clone-'))).toEqual([]);
+		expect(existsSync(target)).toBe(false);
+	});
+
+	it('rejects an over-long clone target before resolving it', async () => {
+		const target = join(allowedRoot, 'a/'.repeat(8000) + 'x');
+
+		const startedAt = Date.now();
+		const result = await gitNode.execute.call(
+			buildAllowedRootContext('clone', target, { sourceRepository: '../outside/src' }, allowedRoot),
+		);
+
+		expect(Date.now() - startedAt).toBeLessThan(1_000);
+		expect(errorOf(result)).toContain('ENAMETOOLONG');
 		// The rejection has to land before the staging directory is created.
 		expect(readdirSync(allowedRoot).filter((entry) => entry.startsWith('.n8n-clone-'))).toEqual([]);
 		expect(existsSync(target)).toBe(false);

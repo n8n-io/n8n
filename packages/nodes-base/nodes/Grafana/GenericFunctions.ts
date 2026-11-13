@@ -5,8 +5,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type { GrafanaCredentials } from './types';
 
@@ -17,7 +19,7 @@ export function tolerateTrailingSlash(baseUrl: string) {
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -25,14 +27,14 @@ export async function grafanaApiRequest(
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}/api${endpoint}`,
+		uri: requestUrl`${baseUrl}/api${endpoint}`,
 		json: true,
 	};
 
@@ -92,7 +94,7 @@ export function throwOnEmptyUpdate(
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {
 	if (!uidOrUrl.startsWith('http')) return uidOrUrl;
 
-	const urlSegments = uidOrUrl.split('/');
+	const urlSegments = uidOrUrl.split(/[?#]/)[0].split('/');
 	const uid = urlSegments[urlSegments.indexOf('d') + 1];
 
 	if (!uid) {

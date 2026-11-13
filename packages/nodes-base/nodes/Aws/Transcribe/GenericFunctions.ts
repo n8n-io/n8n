@@ -11,8 +11,10 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 import { URL } from 'url';
 
 function getEndpointForService(
@@ -34,17 +36,22 @@ export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	headers?: object,
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
-	// Concatenate path and instantiate URL object so it parses correctly query strings
-	const endpoint = new URL(getEndpointForService(service, credentials) + path);
+	const endpoint = getEndpointForService(service, credentials);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
+	const signOpts = {
+		headers: headers || {},
+		host: new URL(endpoint).host,
+		method,
+		path: path.value,
+		body,
+	} as Request;
 	const securityHeaders = {
 		accessKeyId: `${credentials.accessKeyId}`.trim(),
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),
@@ -55,10 +62,10 @@ export async function awsApiRequest(
 
 	sign(signOpts, securityHeaders);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: signOpts.headers,
 		method,
-		uri: endpoint.href,
+		uri: requestUrl`${endpoint}${path}`,
 		body: signOpts.body,
 	};
 
@@ -73,7 +80,7 @@ export async function awsApiRequestREST(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	headers?: object,
 ): Promise<any> {
@@ -90,7 +97,7 @@ export async function awsApiRequestRESTAllItems(
 	propertyName: string,
 	service: string,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body?: string,
 	query: IDataObject = {},
 	_headers: IDataObject = {},

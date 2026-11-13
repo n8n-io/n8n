@@ -3,6 +3,8 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
 import { apiRequest } from '../../../v2/transport';
 
+const requestTarget = (value: unknown) => expect.objectContaining({ value });
+
 jest.mock('../../../v2/transport', () => ({
 	apiRequest: {
 		call: jest.fn(),
@@ -29,7 +31,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}/values/${range}:clear`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/${range}:clear`),
 				{ spreadsheetId, range },
 			);
 		});
@@ -53,7 +55,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				`/v4/spreadsheets/${spreadsheetId}/values/${range}`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/${range}`),
 				{},
 				{
 					valueRenderOption: valueRenderMode,
@@ -297,7 +299,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}:batchUpdate`),
 				{
 					requests: [
 						{
@@ -331,7 +333,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				`/v4/spreadsheets/${spreadsheetId}/values/${range}`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/${range}`),
 				{},
 				{
 					valueRenderOption: valueRenderMode,
@@ -357,7 +359,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				`/v4/spreadsheets/${spreadsheetId}`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}`),
 				{},
 				{ fields: 'sheets.properties' },
 			);
@@ -431,7 +433,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				`/v4/spreadsheets/${spreadsheetId}`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}`),
 				{},
 				{ fields: 'sheets.properties' },
 			);
@@ -455,7 +457,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}:batchUpdate`),
 				{ requests },
 			);
 		});
@@ -478,7 +480,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`),
 				{
 					data: updateData,
 					valueInputOption: 'USER_ENTERED',
@@ -518,7 +520,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PUT',
-				expect.stringContaining('Sheet1!5:5'),
+				requestTarget(expect.stringContaining('Sheet1!5:5')),
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -532,7 +534,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				expect.stringContaining(':append'),
+				requestTarget(expect.stringContaining(':append')),
 				expect.any(Object),
 				expect.any(Object),
 			);
@@ -548,7 +550,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PUT',
-				`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:2`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:2`),
 				{
 					range: 'Sheet1!2:2',
 					values: data,
@@ -565,7 +567,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:3:append`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:3:append`),
 				{
 					range: 'Sheet1!2:3',
 					values: data,
@@ -585,7 +587,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PUT',
-				`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:3`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/Sheet1!2:3`),
 				{
 					range: 'Sheet1!2:3',
 					values: data,
@@ -747,7 +749,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				expect.stringContaining('/values/Sheet1!A1:A10'),
+				requestTarget(expect.stringContaining('/values/Sheet1!A1:A10')),
 				{},
 				{ valueRenderOption: 'UNFORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING' },
 			);
@@ -773,11 +775,14 @@ describe('GoogleSheet', () => {
 			// Mock getData responses
 			(apiRequest.call as jest.Mock).mockImplementation(
 				(_: unknown, _method: unknown, url: string) => {
-					if (url.includes('/values/Sheet1!A1:C1')) {
+					if (String(url).includes('/values/Sheet1!A1:C1')) {
 						return { values: [['Name', 'Age', 'City']] };
 					}
 					// Match the actual URL pattern generated by getColumnValues
-					if (url.includes('/values/Sheet1!A1:A10') || url.includes('/values/Sheet1%21A1%3AA10')) {
+					if (
+						String(url).includes('/values/Sheet1!A1:A10') ||
+						String(url).includes('/values/Sheet1%21A1%3AA10')
+					) {
 						return { values: [['Name'], ['John'], ['Jane']] };
 					}
 					return {};
@@ -935,7 +940,7 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				`/v4/spreadsheets/${spreadsheetId}/values/Sheet%20with%20spaces!A1:B2:clear`,
+				requestTarget(`/v4/spreadsheets/${spreadsheetId}/values/Sheet%20with%20spaces!A1:B2:clear`),
 				{ spreadsheetId, range },
 			);
 		});
@@ -947,9 +952,24 @@ describe('GoogleSheet', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				expect.stringContaining(encodeURIComponent("'Sheet with spaces'")),
+				requestTarget(expect.stringContaining(encodeURIComponent("'Sheet with spaces'"))),
 				{ spreadsheetId, range },
 			);
+		});
+
+		it('should encode path values that contain a slash', async () => {
+			const sheet = new GoogleSheet('1kZ8/files', mockExecuteFunctions as IExecuteFunctions);
+			await sheet.clearData('Q3/Orders!A1/B2:C3');
+
+			expect(String(jest.mocked(apiRequest.call).mock.calls[0][2])).toBe(
+				'/v4/spreadsheets/1kZ8%2Ffiles/values/Q3%2FOrders!A1%2FB2:C3:clear',
+			);
+		});
+
+		it('should reject a spreadsheet ID with a dot segment', async () => {
+			const sheet = new GoogleSheet('1kZ8/../files', mockExecuteFunctions as IExecuteFunctions);
+
+			await expect(sheet.clearData('Q3!A1:B2')).rejects.toThrow('Invalid identifier');
 		});
 	});
 });

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	resolveReportDownloadUrl,
@@ -83,7 +84,7 @@ describe('SecurityScorecard GenericFunctions', () => {
 			await scorecardApiRequest.call(
 				executeFunctions,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{},
 				'https://api.securityscorecard.io/reports/files/example-report.pdf',
@@ -95,6 +96,20 @@ describe('SecurityScorecard GenericFunctions', () => {
 					method: 'GET',
 					uri: 'https://api.securityscorecard.io/reports/files/example-report.pdf',
 				}),
+			);
+		});
+
+		it('should encode path values as a single segment', async () => {
+			const portfolioId = '5f3c2a1b/companies?x=1';
+
+			await scorecardApiRequest.call(
+				executeFunctions,
+				'GET',
+				requestPath`portfolios/${portfolioId}`,
+			);
+
+			expect(String(request.mock.calls[0][0].uri)).toBe(
+				'https://api.securityscorecard.io/portfolios/5f3c2a1b%2Fcompanies%3Fx=1',
 			);
 		});
 	});

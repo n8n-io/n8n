@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
-import { apiRequest } from '../transport';
+import { apiRequest, resourcePath } from '../transport';
 
 import axios from 'axios';
 import type Stream from 'node:stream';
@@ -15,6 +15,29 @@ interface File {
 }
 
 const CHUNK_SIZE = 256 * 1024;
+
+export function getCredentialHostname(this: IExecuteFunctions, host: string): string {
+	try {
+		return new URL(host).hostname;
+	} catch {
+		throw new NodeOperationError(
+			this.getNode(),
+			"The Google Gemini credential host isn't a valid URL",
+			{
+				description: "Enter a valid URL in the credential's Host field",
+			},
+		);
+	}
+}
+
+export function isGeminiFileUrl(url: string): boolean {
+	try {
+		const { protocol, hostname } = new URL(url);
+		return protocol === 'https:' && hostname === 'generativelanguage.googleapis.com';
+	} catch {
+		return false;
+	}
+}
 
 export async function downloadFile(
 	this: IExecuteFunctions,
@@ -41,18 +64,21 @@ export async function downloadFile(
 
 export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, mimeType: string) {
 	const numBytes = fileContent.length.toString();
-	const uploadInitResponse = (await apiRequest.call(this, 'POST', '/upload/v1beta/files', {
-		headers: {
-			'X-Goog-Upload-Protocol': 'resumable',
-			'X-Goog-Upload-Command': 'start',
-			'X-Goog-Upload-Header-Content-Length': numBytes,
-			'X-Goog-Upload-Header-Content-Type': mimeType,
-			'Content-Type': 'application/json',
-		},
-		option: {
+	const uploadInitResponse = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/upload/v1beta/files`,
+		{
+			headers: {
+				'X-Goog-Upload-Protocol': 'resumable',
+				'X-Goog-Upload-Command': 'start',
+				'X-Goog-Upload-Header-Content-Length': numBytes,
+				'X-Goog-Upload-Header-Content-Type': mimeType,
+				'Content-Type': 'application/json',
+			},
 			returnFullResponse: true,
 		},
-	})) as { headers: IDataObject };
+	)) as { headers: IDataObject };
 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
 
 	const uploadResponse = (await this.helpers.httpRequest({
@@ -71,7 +97,7 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 		uploadResponse.file = (await apiRequest.call(
 			this,
 			'GET',
-			`/v1beta/${uploadResponse.file.name}`,
+			requestPath`/v1beta${resourcePath(uploadResponse.file.name)}`,
 		)) as File;
 	}
 
@@ -124,15 +150,20 @@ export async function transferFile(
 		}
 	}
 
-	const uploadInitResponse = (await apiRequest.call(this, 'POST', '/upload/v1beta/files', {
-		headers: {
-			'X-Goog-Upload-Protocol': 'resumable',
-			'X-Goog-Upload-Command': 'start',
-			'X-Goog-Upload-Header-Content-Type': mimeType,
-			'Content-Type': 'application/json',
+	const uploadInitResponse = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/upload/v1beta/files`,
+		{
+			headers: {
+				'X-Goog-Upload-Protocol': 'resumable',
+				'X-Goog-Upload-Command': 'start',
+				'X-Goog-Upload-Header-Content-Type': mimeType,
+				'Content-Type': 'application/json',
+			},
+			returnFullResponse: true,
 		},
-		option: { returnFullResponse: true },
-	})) as { headers: IDataObject };
+	)) as { headers: IDataObject };
 
 	const uploadUrl = uploadInitResponse.headers['x-goog-upload-url'] as string;
 	if (!uploadUrl) {
@@ -155,7 +186,11 @@ export async function transferFile(
 
 	while (file.state !== 'ACTIVE' && file.state !== 'FAILED') {
 		await new Promise((resolve) => setTimeout(resolve, 1000));
-		file = (await apiRequest.call(this, 'GET', `/v1beta/${file.name}`)) as File;
+		file = (await apiRequest.call(
+			this,
+			'GET',
+			requestPath`/v1beta${resourcePath(file.name)}`,
+		)) as File;
 	}
 
 	if (file.state === 'FAILED') {

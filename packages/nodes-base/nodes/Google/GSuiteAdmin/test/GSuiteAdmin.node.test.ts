@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import { returnData } from '../../../E2eTest/mock';
@@ -365,7 +365,7 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'POST',
-			'/directory/v1/users',
+			requestPath`/directory/v1/users`,
 			expect.objectContaining({
 				changePasswordAtNextLogin: true,
 				password: 'SecurePassword123!',
@@ -423,7 +423,7 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'POST',
-			'/directory/v1/users',
+			requestPath`/directory/v1/users`,
 			expect.objectContaining({
 				changePasswordAtNextLogin: false,
 				password: 'AnotherPassword456!',
@@ -474,7 +474,7 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'POST',
-			'/directory/v1/users',
+			requestPath`/directory/v1/users`,
 			{
 				name: { familyName: 'Johnson', givenName: 'Bob' },
 				password: 'Password789!',
@@ -556,7 +556,7 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'POST',
-			'/directory/v1/users',
+			requestPath`/directory/v1/users`,
 			{
 				name: { familyName: 'Johnson', givenName: 'Bob' },
 				password: 'Password789!',
@@ -676,7 +676,7 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'PUT',
-			'/directory/v1/users/user-id-456',
+			requestPath`/directory/v1/users/user-id-456`,
 			expect.objectContaining({
 				password: 'NewSecurePassword123!',
 				changePasswordAtNextLogin: true,
@@ -720,7 +720,7 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'PUT',
-			'/directory/v1/users/user-id-999',
+			requestPath`/directory/v1/users/user-id-999`,
 			expect.objectContaining({
 				password: 'TestPassword!',
 				changePasswordAtNextLogin: false,
@@ -846,7 +846,7 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 
 		expect(mockCall).toHaveBeenCalledWith(
 			'PUT',
-			'/directory/v1/users/user-id-123',
+			requestPath`/directory/v1/users/user-id-123`,
 			{
 				customSchemas: {
 					validSchema: {

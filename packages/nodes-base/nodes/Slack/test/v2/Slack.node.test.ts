@@ -5,7 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
@@ -91,7 +91,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.kick',
+				requestPath`/conversations.kick`,
 				{
 					channel: 'C123456789',
 					user: 'U987654321',
@@ -125,7 +125,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.join',
+				requestPath`/conversations.join`,
 				{
 					channel: 'C123456789',
 				},
@@ -177,7 +177,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.history',
+				requestPath`/conversations.history`,
 				{},
 				{
 					channel: 'C123456789',
@@ -258,7 +258,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'messages',
 				'GET',
-				'/conversations.history',
+				requestPath`/conversations.history`,
 				{},
 				{
 					channel: 'C123456789',
@@ -301,7 +301,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.invite',
+				requestPath`/conversations.invite`,
 				{
 					channel: 'C123456789',
 					users: 'U111111111,U222222222',
@@ -334,7 +334,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.leave',
+				requestPath`/conversations.leave`,
 				{
 					channel: 'C123456789',
 				},
@@ -380,7 +380,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'members',
 				'GET',
-				'/conversations.members',
+				requestPath`/conversations.members`,
 				{},
 				{
 					channel: 'C123456789',
@@ -426,7 +426,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.open',
+				requestPath`/conversations.open`,
 				{
 					users: 'U111111111,U222222222',
 					return_im: true,
@@ -466,7 +466,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.rename',
+				requestPath`/conversations.rename`,
 				{
 					channel: 'C123456789',
 					name: 'new-channel-name',
@@ -516,7 +516,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.replies',
+				requestPath`/conversations.replies`,
 				{},
 				{
 					channel: 'C123456789',
@@ -562,7 +562,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.setPurpose',
+				requestPath`/conversations.setPurpose`,
 				{
 					channel: 'C123456789',
 					purpose: 'New channel purpose',
@@ -606,7 +606,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.setTopic',
+				requestPath`/conversations.setTopic`,
 				{
 					channel: 'C123456789',
 					topic: 'New channel topic',
@@ -639,7 +639,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.unarchive',
+				requestPath`/conversations.unarchive`,
 				{
 					channel: 'C123456789',
 				},
@@ -692,7 +692,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					channel: 'C123456789',
 					text: 'Test ephemeral message',
@@ -737,7 +737,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					user: '@john.doe',
 				}),
@@ -766,7 +766,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					channel: 'U123456789',
 					user: 'U123456789',
@@ -796,7 +796,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/reactions.add',
+					requestPath`/reactions.add`,
 					{
 						channel: 'C123456789',
 						name: 'thumbs_up',
@@ -825,7 +825,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/reactions.remove',
+					requestPath`/reactions.remove`,
 					{
 						channel: 'C123456789',
 						name: 'thumbs_up',
@@ -864,7 +864,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/reactions.get',
+					requestPath`/reactions.get`,
 					{},
 					{
 						channel: 'C123456789',
@@ -902,7 +902,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.add',
+					requestPath`/stars.add`,
 					{
 						channel: 'C123456789',
 						timestamp: '1234567890.123456',
@@ -933,7 +933,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.add',
+					requestPath`/stars.add`,
 					{
 						channel: 'C123456789',
 						file: 'F123456789',
@@ -964,7 +964,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.remove',
+					requestPath`/stars.remove`,
 					{
 						channel: 'C123456789',
 						file: 'F123456789',
@@ -1001,7 +1001,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'items',
 					'GET',
-					'/stars.list',
+					requestPath`/stars.list`,
 					{},
 					{},
 				);
@@ -1043,7 +1043,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/stars.list',
+					requestPath`/stars.list`,
 					{},
 					{
 						limit: 10,
@@ -1132,7 +1132,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				{},
 				{},
 				{ 'Content-Type': 'multipart/form-data' },
@@ -1206,7 +1206,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'test.txt',
@@ -1235,7 +1235,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				3,
 				'POST',
-				'/files.completeUploadExternal',
+				requestPath`/files.completeUploadExternal`,
 				{
 					channels: 'C123456789',
 					initial_comment: 'Test upload',
@@ -1289,7 +1289,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				{
 					channels: 'C123456789',
 					content: 'This is text file content',
@@ -1344,7 +1344,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'test.txt',
@@ -1406,7 +1406,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'custom-name.txt',

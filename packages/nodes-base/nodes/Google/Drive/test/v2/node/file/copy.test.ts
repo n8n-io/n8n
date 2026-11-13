@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as copy from '../../../../v2/actions/file/copy.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -45,7 +46,7 @@ describe('test GoogleDriveV2: file copy', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toBeCalledWith(
 			'POST',
-			'/drive/v3/files/fileIDxxxxxx/copy',
+			requestPath`/drive/v3/files/fileIDxxxxxx/copy`,
 			{
 				copyRequiresWriterPermission: true,
 				description: 'image copy',

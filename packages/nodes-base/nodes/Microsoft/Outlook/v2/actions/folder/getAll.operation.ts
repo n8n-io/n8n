@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -87,9 +88,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	let endpoint;
 	if (parentFolderId) {
-		endpoint = `/mailFolders/${parentFolderId}/childFolders`;
+		endpoint = requestPath`/mailFolders/${parentFolderId}/childFolders`;
 	} else {
-		endpoint = '/mailFolders';
+		endpoint = requestPath`/mailFolders`;
 	}
 
 	if (returnAll) {

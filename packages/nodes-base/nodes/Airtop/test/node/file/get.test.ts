@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as get from '../../../actions/file/get.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -51,7 +52,7 @@ describe('Test Airtop, get file operation', () => {
 
 		const result = await get.execute.call(createMockExecuteFunction(baseNodeParameters), 0);
 
-		expect(apiRequestMock).toHaveBeenCalledWith('GET', '/files/file-123');
+		expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/files/file-123`);
 
 		expect(result).toEqual([
 			{
@@ -60,6 +61,28 @@ describe('Test Airtop, get file operation', () => {
 				},
 			},
 		]);
+	});
+
+	it('should encode a file ID that contains a slash', async () => {
+		const apiRequestMock = transport.apiRequest as jest.Mock;
+		apiRequestMock.mockResolvedValueOnce(mockFileResponse);
+
+		await get.execute.call(
+			createMockExecuteFunction({ ...baseNodeParameters, fileId: 'file-123/sessions' }),
+			0,
+		);
+
+		expect(String(apiRequestMock.mock.calls[0][1])).toBe('/files/file-123%2Fsessions');
+	});
+
+	it('should reject a file ID that is a dot segment', async () => {
+		const apiRequestMock = transport.apiRequest as jest.Mock;
+
+		await expect(
+			get.execute.call(createMockExecuteFunction({ ...baseNodeParameters, fileId: '../x' }), 0),
+		).rejects.toThrow('Invalid identifier');
+
+		expect(apiRequestMock).not.toHaveBeenCalled();
 	});
 
 	it('should output file with binary data when specified', async () => {
@@ -80,7 +103,7 @@ describe('Test Airtop, get file operation', () => {
 
 		const result = await get.execute.call(mockExecuteFunction, 0);
 
-		expect(apiRequestMock).toHaveBeenCalledWith('GET', '/files/file-123');
+		expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/files/file-123`);
 
 		expect(result).toEqual([
 			{

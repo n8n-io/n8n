@@ -90,7 +90,10 @@ describe('Test Twitter Request Node', () => {
 			.reply(200, searchResult);
 	});
 
-	new NodeTestHarness().setupTests({ credentials });
+	new NodeTestHarness().setupTests({
+		credentials,
+		workflowFiles: ['Workflow_Twitter_UnitTest.json'],
+	});
 });
 
 describe('X / Twitter Node unit tests', () => {

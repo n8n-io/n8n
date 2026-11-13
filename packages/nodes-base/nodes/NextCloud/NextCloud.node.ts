@@ -12,12 +12,14 @@ import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	sanitizeXmlName,
 } from 'n8n-workflow';
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest } from './GenericFunctions';
+import { nextCloudApiRequest, webDavPath } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -879,7 +881,7 @@ export class NextCloud implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let endpoint = '';
+		let endpoint = requestPath``;
 		let requestMethod: IHttpRequestMethods = 'GET';
 		let responseData: any;
 
@@ -896,14 +898,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -921,14 +923,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'MKCOL' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
 
 						requestMethod = 'PROPFIND' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					}
 				}
 
@@ -939,25 +941,27 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'COPY' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination =
+							requestUrl`${credentials.webDavUrl}${webDavPath(toPath)}`.toString();
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
 						// ----------------------------------
 
 						requestMethod = 'DELETE';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
 						// ----------------------------------
 
 						requestMethod = 'MOVE' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination =
+							requestUrl`${credentials.webDavUrl}${webDavPath(toPath)}`.toString();
 					} else if (operation === 'share') {
 						// ----------------------------------
 						//         share
@@ -965,7 +969,7 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+						endpoint = requestPath`/ocs/v2.php/apps/files_sharing/api/v1/shares`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -996,7 +1000,7 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = 'ocs/v1.php/cloud/users';
+						endpoint = requestPath`/ocs/v1.php/cloud/users`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1020,7 +1024,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'DELETE';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`/ocs/v1.php/cloud/users/${userid}`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1033,7 +1037,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'GET';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`/ocs/v1.php/cloud/users/${userid}`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1049,7 +1053,7 @@ export class NextCloud implements INodeType {
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = 'ocs/v1.php/cloud/users';
+						endpoint = requestPath`/ocs/v1.php/cloud/users`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1062,7 +1066,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'PUT';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`/ocs/v1.php/cloud/users/${userid}`;
 
 						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
 							.map((entry) => {
@@ -1136,7 +1140,7 @@ export class NextCloud implements INodeType {
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData as Buffer,
-						endpoint,
+						this.getNodeParameter('path', i) as string,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {

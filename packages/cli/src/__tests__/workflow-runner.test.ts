@@ -20,6 +20,7 @@ import {
 	Workflow,
 	ExecutionError,
 	TimeoutExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -28,6 +29,7 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -265,6 +267,40 @@ describe('run', () => {
 			undefined,
 		);
 	});
+
+	describe('user of the pushRef', () => {
+		it('binds sendDataToUI to the user of the pushRef', async () => {
+			const push = mockInstance(Push);
+			const activeExecutions = Container.get(ActiveExecutions);
+			jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			jest
+				.spyOn(WorkflowExecute.prototype, 'processRunExecutionData')
+				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: Object.assign(createRunExecutionData({}), { pushRefUserId: undefined }),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				pushRef: 'push-ref',
+				pushRefUserId: undefined,
+				userId: 'editor',
+			});
+
+			await runner.run(data);
+			additionalData.sendDataToUI?.('sendConsoleMessage', { message: 'hi' });
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				'push-ref',
+				'editor',
+			);
+		});
+	});
 });
 
 describe('enqueueExecution', () => {
@@ -306,6 +342,30 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('enqueues the user of the pushRef with the job', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			executionMode: 'trigger',
+			pushRef: 'push-ref',
+			pushRefUserId: undefined,
+			userId: 'editor',
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({ pushRefUserId: 'editor' }),
+			expect.any(Object),
+		);
 	});
 });
 

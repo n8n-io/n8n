@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as deleteFile from '../../../actions/file/delete.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -30,7 +31,7 @@ describe('Test Airtop, delete file operation', () => {
 	it('should delete file successfully', async () => {
 		const result = await deleteFile.execute.call(createMockExecuteFunction(baseNodeParameters), 0);
 
-		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', '/files/file-123');
+		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/files/file-123`);
 		expect(result).toEqual([
 			{
 				json: {

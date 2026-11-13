@@ -16,6 +16,9 @@ import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 import { NoArgumentSpreadRule } from './no-argument-spread.js';
 import { NoInternalPackageImportRule } from './no-internal-package-import.js';
 import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
+import { RequireEncodedPathSegmentsRule } from './require-encoded-path-segments.js';
+import { RequireDisableReasonRule } from './require-disable-reason.js';
+import { RequireRequestTargetRule } from './require-request-target.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -35,4 +38,7 @@ export const rules = {
 	'no-argument-spread': NoArgumentSpreadRule,
 	'no-internal-package-import': NoInternalPackageImportRule,
 	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
+	'require-encoded-path-segments': RequireEncodedPathSegmentsRule,
+	'require-disable-reason': RequireDisableReasonRule,
+	'require-request-target': RequireRequestTargetRule,
 } satisfies Record<string, AnyRuleModule>;

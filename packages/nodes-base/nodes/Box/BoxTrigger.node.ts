@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
@@ -267,7 +268,7 @@ export class BoxTrigger implements INodeType {
 				const targetType = this.getNodeParameter('targetType') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				const webhooks = await boxApiRequestAllItems.call(this, 'entries', 'GET', endpoint, {});
 
 				for (const webhook of webhooks) {
@@ -295,7 +296,7 @@ export class BoxTrigger implements INodeType {
 				const targetId = this.getNodeParameter('targetId') as string;
 				const targetType = this.getNodeParameter('targetType') as string;
 
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const body = {
 					address: webhookUrl,
@@ -319,7 +320,7 @@ export class BoxTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await boxApiRequest.call(this, 'DELETE', endpoint);

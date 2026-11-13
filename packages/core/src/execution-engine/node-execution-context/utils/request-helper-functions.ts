@@ -53,9 +53,11 @@ import type {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	LegacyRequestOptions,
 	NodeParameterValueType,
 	PaginationOptions,
 	RequestHelperFunctions,
+	WithRequestTarget,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -80,6 +82,7 @@ import {
 	setAxiosAgents,
 	throwIfDomainNotAllowed,
 } from './request-helpers/axios-utils';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-helpers/request-target';
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
@@ -1080,12 +1083,13 @@ export async function refreshOAuth2Token(
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	requestOptions = toHttpRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	// Cancel this request on execution cancellation
@@ -1196,13 +1200,14 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IRequestOptions,
+	requestOptions: LegacyRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	requestOptions = toLegacyRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
@@ -1341,13 +1346,14 @@ export const getRequestHelperFunctions = (
 	// eslint-disable-next-line complexity
 	async function requestWithAuthenticationPaginated(
 		this: IExecuteFunctions,
-		requestOptions: IRequestOptions,
+		requestOptionsWithTarget: LegacyRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		sanitizedRequest?: IDataObject,
 	): Promise<any[]> {
+		const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
 		const responseData = [];
 		if (!requestOptions.qs) {
 			requestOptions.qs = {};
@@ -1553,7 +1559,9 @@ export const getRequestHelperFunctions = (
 	}
 
 	return {
-		httpRequest,
+		httpRequest: async (
+			requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+		) => await httpRequest(toHttpRequestOptions(requestOptions)),
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
@@ -1587,7 +1595,13 @@ export const getRequestHelperFunctions = (
 		},
 
 		request: async (uriOrObject, options) =>
-			await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+			await proxyRequestToAxios(
+				workflow,
+				additionalData,
+				node,
+				typeof uriOrObject === 'string' ? uriOrObject : toLegacyRequestOptions(uriOrObject),
+				options && toLegacyRequestOptions(options),
+			),
 
 		async requestWithAuthentication(
 			this,
@@ -1611,21 +1625,25 @@ export const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: IRequestOptions,
+			requestOptions: LegacyRequestOptions,
 		): Promise<any> {
-			return await requestOAuth1.call(this, credentialsType, requestOptions);
+			return await requestOAuth1.call(
+				this,
+				credentialsType,
+				toLegacyRequestOptions(requestOptions),
+			);
 		},
 
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: IRequestOptions,
+			requestOptions: LegacyRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
-				requestOptions,
+				toLegacyRequestOptions(requestOptions),
 				node,
 				additionalData,
 				oAuth2Options,

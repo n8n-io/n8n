@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	allEvents,
@@ -15,6 +15,7 @@ import {
 	getWebhookId,
 	getWebhookEndpoint,
 	jiraSoftwareCloudApiRequest,
+	toWebhookEndpoint,
 } from './GenericFunctions';
 import type { JiraWebhook } from './types';
 
@@ -419,7 +420,7 @@ export class JiraTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				const endpoint = await getWebhookEndpoint.call(this);
-				webhookData.endpoint = endpoint;
+				webhookData.endpoint = endpoint.toString();
 
 				const webhooks: JiraWebhook[] = await jiraSoftwareCloudApiRequest.call(
 					this,
@@ -443,7 +444,7 @@ export class JiraTrigger implements INodeType {
 				let events = this.getNodeParameter('events', []) as string[];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = webhookData.endpoint as string;
+				const endpoint = toWebhookEndpoint(webhookData.endpoint as string);
 
 				let authenticateWebhook = false;
 
@@ -526,12 +527,12 @@ export class JiraTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const baseUrl = webhookData.endpoint as string;
 					const webhookId = webhookData.webhookId as string;
-					const endpoint = `${baseUrl}/${webhookId}`;
 					const body = {};
 
 					try {
+						const baseUrl = toWebhookEndpoint(webhookData.endpoint as string);
+						const endpoint = requestPath`${baseUrl}/${webhookId}`;
 						await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', body);
 					} catch (error) {
 						return false;

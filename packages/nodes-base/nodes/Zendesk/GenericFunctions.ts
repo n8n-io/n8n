@@ -5,25 +5,28 @@ import type {
 	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
-function getUri(resource: string, subdomain: string) {
-	if (resource.includes('webhooks')) {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+function getUri(resource: RequestPath, subdomain: string) {
+	if (resource.value.includes('webhooks')) {
+		return requestUrl`https://${subdomain}.zendesk.com/api/v2${resource}`;
 	} else {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+		return requestUrl`https://${subdomain}.zendesk.com/api/v2${resource}.json`;
 	}
 }
 
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'headers'> = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -35,11 +38,11 @@ export async function zendeskApiRequest(
 		credentials = await this.getCredentials<{ subdomain: string }>('zendeskOAuth2Api');
 	}
 
-	let options: IRequestOptions = {
+	let options: IRequestOptions | WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
 		body,
-		uri: uri || getUri(resource, credentials.subdomain),
+		...(uri ? { uri } : { uri: getUri(resource, credentials.subdomain) }),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -64,7 +67,7 @@ export async function zendeskApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

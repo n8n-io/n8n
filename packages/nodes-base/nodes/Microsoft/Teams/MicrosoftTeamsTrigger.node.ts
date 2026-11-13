@@ -8,7 +8,7 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
 import {
@@ -278,7 +278,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						this as unknown as ILoadOptionsFunctions,
 						'value',
 						'GET',
-						'/v1.0/subscriptions',
+						requestPath`/v1.0/subscriptions`,
 					)) as SubscriptionResponse[];
 
 					const matchingSubscriptions = subscriptions.filter(

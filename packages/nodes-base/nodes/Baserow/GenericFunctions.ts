@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
@@ -16,21 +18,21 @@ import type { Accumulator, BaserowCredentials, LoadedResource } from './types';
 export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	jwtToken: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `JWT ${jwtToken}`,
 		},
 		method,
 		body,
 		qs,
-		uri: `${credentials.host}${endpoint}`,
+		uri: requestUrl`${credentials.host}${endpoint}`,
 		json: true,
 	};
 
@@ -55,7 +57,7 @@ export async function baserowApiRequest(
 export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	jwtToken: string,
 	body: IDataObject,
 	qs: IDataObject = {},
@@ -90,13 +92,13 @@ export async function getJwtToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ username, password, host }: BaserowCredentials,
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method: 'POST',
 		body: {
 			username,
 			password,
 		},
-		uri: `${host}/api/user/token-auth/`,
+		uri: requestUrl`${host}/api/user/token-auth/`,
 		json: true,
 	};
 
@@ -113,7 +115,7 @@ export async function getFieldNamesAndIds(
 	tableId: string,
 	jwtToken: string,
 ) {
-	const endpoint = `/api/database/fields/table/${tableId}/`;
+	const endpoint = requestPath`/api/database/fields/table/${tableId}/`;
 	const response = (await baserowApiRequest.call(
 		this,
 		'GET',
@@ -145,7 +147,7 @@ export class TableFieldMapper {
 		table: string,
 		jwtToken: string,
 	): Promise<LoadedResource[]> {
-		const endpoint = `/api/database/fields/table/${table}/`;
+		const endpoint = requestPath`/api/database/fields/table/${table}/`;
 		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 	}
 

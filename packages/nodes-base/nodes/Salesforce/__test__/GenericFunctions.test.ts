@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	getValue,
@@ -497,7 +497,13 @@ describe('Salesforce -> GenericFunctions', () => {
 					debug: jest.fn(),
 				} as any;
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				// Verify JWT signature generation
 				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
@@ -538,7 +544,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					},
 					method: 'GET',
 					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
+					uri: requestUrl`https://test.salesforce.com/services/data/v59.0/test-endpoint`,
 					json: true,
 				};
 
@@ -569,7 +575,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/sandbox-endpoint',
+					requestPath`/sandbox-endpoint`,
 					{ data: 'test' },
 					{ param: 'value' },
 				);
@@ -630,7 +636,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/test-endpoint',
+					requestPath`/test-endpoint`,
 					testBody,
 					testQs,
 				);
@@ -644,7 +650,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					method: 'POST',
 					body: testBody,
 					qs: testQs,
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
+					uri: requestUrl`https://test.salesforce.com/services/data/v59.0/test-endpoint`,
 					json: true,
 				};
 
@@ -672,10 +678,10 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/default-endpoint',
+					requestPath`/default-endpoint`,
 					{},
 					{},
-					'/custom-uri',
+					requestPath`/custom-uri`,
 				);
 
 				// Verify custom URI is used instead of endpoint
@@ -686,61 +692,38 @@ describe('Salesforce -> GenericFunctions', () => {
 					},
 					method: 'GET',
 					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/custom-uri',
+					uri: requestUrl`https://test.salesforce.com/services/data/v59.0/custom-uri`,
 					json: true,
 				};
 
 				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
 			});
 
-			it('should merge additional options', async () => {
-				const mockCredentials = {
+			it('should encode path values as a single segment', async () => {
+				mockExecuteFunctions.getCredentials.mockResolvedValue({
 					clientId: 'test-client-id',
 					username: 'test@example.com',
 					privateKey: 'mock-private-key',
 					environment: 'production',
-				};
-				const mockResponse = {
+				});
+				mockRequest.mockResolvedValue({
 					access_token: 'mock-access-token',
 					instance_url: 'https://test.salesforce.com',
-				};
-
-				mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
-				mockRequest.mockResolvedValue(mockResponse);
+				});
 				mockExecuteFunctions.logger = {
 					debug: jest.fn(),
 				} as any;
-
-				const additionalOptions = {
-					timeout: 30000,
-					resolveWithFullResponse: true,
-				};
+				const leadId = '00Q5g00000A1b2C/query?q=1';
 
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/test-endpoint',
-					{},
-					{},
-					undefined,
-					additionalOptions,
+					requestPath`/sobjects/lead/${leadId}`,
 				);
 
-				// Verify additional options are merged
-				const expectedApiOptions = {
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: 'Bearer mock-access-token',
-					},
-					method: 'GET',
-					qs: {},
-					uri: 'https://test.salesforce.com/services/data/v59.0/test-endpoint',
-					json: true,
-					timeout: 30000,
-					resolveWithFullResponse: true,
-				};
-
-				expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
+				expect(String(mockRequest.mock.calls[1][0].uri)).toBe(
+					'https://test.salesforce.com/services/data/v59.0/sobjects/lead/00Q5g00000A1b2C%2Fquery%3Fq=1',
+				);
 			});
 		});
 
@@ -758,7 +741,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
+					salesforceApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/test-endpoint`,
+						{},
+						{},
+					),
 				).rejects.toThrow(NodeApiError);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('salesforceJwtApi');
@@ -785,7 +774,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
+					salesforceApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/test-endpoint`,
+						{},
+						{},
+					),
 				).rejects.toThrow(NodeApiError);
 			});
 
@@ -819,14 +814,20 @@ describe('Salesforce -> GenericFunctions', () => {
 				} as any;
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
+					salesforceApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/test-endpoint`,
+						{},
+						{},
+					),
 				).rejects.toThrow(NodeApiError);
 
 				// Verify that token exchange succeeded but API request failed
 				expect(mockRequest).toHaveBeenCalledTimes(2);
 			});
 
-			it('should handle missing instance_url in token response', async () => {
+			it('should throw when the token response has no instance_url', async () => {
 				const mockCredentials = {
 					clientId: 'test-client-id',
 					username: 'test@example.com',
@@ -852,11 +853,18 @@ describe('Salesforce -> GenericFunctions', () => {
 					debug: jest.fn(),
 				} as any;
 
-				// Should not throw error but handle gracefully
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await expect(
+					salesforceApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/test-endpoint`,
+						{},
+						{},
+					),
+				).rejects.toThrow(NodeApiError);
 
-				// Verify API call was made with undefined instance_url
-				expect(mockRequest).toHaveBeenCalledTimes(2);
+				// Only the token exchange runs: the request URL needs a valid instance URL
+				expect(mockRequest).toHaveBeenCalledTimes(1);
 			});
 		});
 
@@ -879,7 +887,13 @@ describe('Salesforce -> GenericFunctions', () => {
 					debug: jest.fn(),
 				} as any;
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
 					{
@@ -916,7 +930,13 @@ describe('Salesforce -> GenericFunctions', () => {
 					debug: jest.fn(),
 				} as any;
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				expect(mockJwt.sign as jest.Mock).toHaveBeenCalledWith(
 					{
@@ -953,7 +973,13 @@ describe('Salesforce -> GenericFunctions', () => {
 					debug: jest.fn(),
 				} as any;
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				const jwtOptions = (mockJwt.sign as jest.Mock).mock.calls[0][2];
 				expect(jwtOptions.algorithm).toBe('RS256');

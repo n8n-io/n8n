@@ -8,7 +8,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 import { verifySignature } from './GithubTriggerHelpers';
@@ -488,7 +488,7 @@ export class GithubTrigger implements INodeType {
 				const repository = this.getNodeParameter('repository', '', {
 					extractValue: true,
 				}) as string;
-				const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
@@ -524,7 +524,7 @@ export class GithubTrigger implements INodeType {
 				}) as string;
 				const events = this.getNodeParameter('events', []);
 
-				const endpoint = `/repos/${owner}/${repository}/hooks`;
+				const endpoint = requestPath`/repos/${owner}/${repository}/hooks`;
 				const options = this.getNodeParameter('options') as { insecureSSL: boolean };
 
 				// Generate a secure random secret for webhook signature verification
@@ -567,7 +567,7 @@ export class GithubTrigger implements INodeType {
 							existingWebhook = await githubApiRequest.call(
 								this,
 								'GET',
-								`${endpoint}/${webhookData.webhookId}`,
+								requestPath`${endpoint}/${webhookData.webhookId}`,
 								{},
 							);
 						} catch (error2) {
@@ -598,7 +598,7 @@ export class GithubTrigger implements INodeType {
 							patchResponse = await githubApiRequest.call(
 								this,
 								'PATCH',
-								`${endpoint}/${existingWebhook.id}`,
+								requestPath`${endpoint}/${existingWebhook.id}`,
 								{ config: body.config, events, active: true },
 							);
 						} catch (patchError) {
@@ -675,10 +675,10 @@ export class GithubTrigger implements INodeType {
 					const repository = this.getNodeParameter('repository', '', {
 						extractValue: true,
 					}) as string;
-					const endpoint = `/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 					const body = {};
 
 					try {
+						const endpoint = requestPath`/repos/${owner}/${repository}/hooks/${webhookData.webhookId}`;
 						await githubApiRequest.call(this, 'DELETE', endpoint, body);
 					} catch (error) {
 						return false;

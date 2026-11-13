@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { AwsS3V2 } from '../../V2/AwsS3V2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
@@ -90,15 +90,22 @@ describe('AWS S3 V2 Node - File Download', () => {
 
 			expect(awsApiRequestRESTSpy).toHaveBeenCalledTimes(2);
 
-			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(1, 'test-bucket.s3', 'GET', '', '', {
-				location: '',
-			});
+			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(
+				1,
+				'test-bucket.s3',
+				'GET',
+				requestPath``,
+				'',
+				{
+					location: '',
+				},
+			);
 
 			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(
 				2,
 				'test-bucket.s3',
 				'GET',
-				'/path/to/test.txt',
+				requestPath`/path/to/test.txt`,
 				'',
 				{},
 				{},
@@ -138,15 +145,22 @@ describe('AWS S3 V2 Node - File Download', () => {
 
 			await node.execute.call(executeFunctionsMock);
 
-			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(1, 's3', 'GET', '/test.bucket.com', '', {
-				location: '',
-			});
+			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(
+				1,
+				's3',
+				'GET',
+				requestPath`/test.bucket.com`,
+				'',
+				{
+					location: '',
+				},
+			);
 
 			expect(awsApiRequestRESTSpy).toHaveBeenNthCalledWith(
 				2,
 				's3',
 				'GET',
-				'/test.bucket.com/path/to/test.txt',
+				requestPath`/test.bucket.com/path/to/test.txt`,
 				'',
 				{},
 				{},
@@ -350,5 +364,77 @@ describe('AWS S3 V2 Node - File Download', () => {
 			expect(result[0][0].binary).toHaveProperty('existingFile');
 			expect(result[0][0].binary).toHaveProperty('customData');
 		});
+	});
+});
+
+describe('AWS S3 V2 Node - Multipart Upload', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: jest.SpyInstance;
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		awsApiRequestRESTSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) => [
+			{ json: data as IDataObject },
+		]);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			const params: IDataObject = {
+				resource: 'file',
+				operation: 'upload',
+				bucketName: 'test-bucket',
+				fileName: 'report?v=1#a.pdf',
+				binaryData: true,
+				binaryPropertyName: 'data',
+				additionalFields: { parentFolderKey: '2024/q1' },
+				tagsUi: {},
+			};
+			return params[paramName];
+		});
+		executeFunctionsMock.helpers.assertBinaryData.mockReturnValue({
+			id: 'binary-id',
+			mimeType: 'application/pdf',
+			data: '',
+		});
+		executeFunctionsMock.helpers.getBinaryStream.mockResolvedValue([Buffer.from('chunk')] as any);
+		executeFunctionsMock.helpers.binaryToBuffer.mockResolvedValue(Buffer.from('chunk'));
+		awsApiRequestRESTSpy
+			.mockResolvedValueOnce(mockLocationResponse)
+			.mockResolvedValueOnce({ InitiateMultipartUploadResult: { UploadId: 'upload-1' } })
+			.mockResolvedValueOnce({})
+			.mockResolvedValueOnce({ ListPartsResult: { Part: { ETag: 'etag-1', PartNumber: 1 } } })
+			.mockResolvedValueOnce({ CompleteMultipartUploadResult: { Key: 'report.pdf' } });
+	});
+
+	it('should send the object key in the path and the upload values in the query', async () => {
+		const node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		await node.execute.call(executeFunctionsMock);
+
+		const calls = awsApiRequestRESTSpy.mock.calls.slice(1).map((call) => ({
+			method: call[1],
+			path: call[2].value,
+			query: call[4],
+		}));
+		const path = '/2024/q1/report%3Fv=1%23a.pdf';
+		expect(calls).toEqual([
+			{ method: 'POST', path, query: { uploads: '' } },
+			{ method: 'PUT', path, query: { partNumber: 1, uploadId: 'upload-1' } },
+			{
+				method: 'GET',
+				path,
+				query: { 'max-parts': 900, 'part-number-marker': 0, uploadId: 'upload-1' },
+			},
+			{ method: 'POST', path, query: { uploadId: 'upload-1' } },
+		]);
 	});
 });

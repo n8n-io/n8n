@@ -1,6 +1,11 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import {
+	SEND_AND_WAIT_OPERATION,
+	type IExecuteFunctions,
+	type INode,
+	requestPath,
+} from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { MicrosoftTeamsV2 } from '../../../../v2/MicrosoftTeamsV2.node';
@@ -57,7 +62,7 @@ describe('Test MicrosoftTeamsV2, chatMessage => sendAndWait', () => {
 
 		expect(transport.microsoftApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/v1.0/chats/chatID/messages',
+			requestPath`/v1.0/chats/chatID/messages`,
 			{
 				body: {
 					content:

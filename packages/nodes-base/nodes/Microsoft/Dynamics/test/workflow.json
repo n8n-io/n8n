@@ -1,0 +1,135 @@
+{
+	"name": "Microsoft Dynamics CRM request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8f1c2a4e-6b3d-4c5e-9a7f-1b2c3d4e5f60",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"name": "Acme Corp",
+				"additionalFields": {},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, -400],
+			"id": "a1b2c3d4-0001-4e5f-8a9b-0c1d2e3f4a51",
+			"name": "Create Account",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"accountId": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, -200],
+			"id": "a1b2c3d4-0002-4e5f-8a9b-0c1d2e3f4a52",
+			"name": "Get Account",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"accountId": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc",
+				"updateFields": { "telephone1": "555-0100" },
+				"options": {}
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "a1b2c3d4-0003-4e5f-8a9b-0c1d2e3f4a53",
+			"name": "Update Account",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"accountId": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc"
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "a1b2c3d4-0004-4e5f-8a9b-0c1d2e3f4a54",
+			"name": "Delete Account",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {},
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "a1b2c3d4-0005-4e5f-8a9b-0c1d2e3f4a55",
+			"name": "Get All Accounts",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 2,
+				"options": {},
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.microsoftDynamicsCrm",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "a1b2c3d4-0006-4e5f-8a9b-0c1d2e3f4a56",
+			"name": "Get Two Accounts",
+			"credentials": {
+				"microsoftDynamicsOAuth2Api": { "id": "1", "name": "Dynamics account" }
+			}
+		}
+	],
+	"pinData": {
+		"Create Account": [{ "json": { "accountid": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc" } }],
+		"Get Account": [
+			{ "json": { "accountid": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc", "name": "Acme Corp" } }
+		],
+		"Update Account": [{ "json": { "accountid": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc" } }],
+		"Delete Account": [{ "json": { "success": true } }],
+		"Get All Accounts": [
+			{ "json": { "accountid": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc", "name": "Acme Corp" } },
+			{ "json": { "accountid": "2d4f6a8c-3e5b-4c7d-8e9f-abcdef012345", "name": "Globex" } }
+		],
+		"Get Two Accounts": [
+			{ "json": { "accountid": "7c6a8b3e-1f2d-4e5a-9b0c-123456789abc", "name": "Acme Corp" } },
+			{ "json": { "accountid": "2d4f6a8c-3e5b-4c7d-8e9f-abcdef012345", "name": "Globex" } }
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{ "node": "Create Account", "type": "main", "index": 0 },
+					{ "node": "Get Account", "type": "main", "index": 0 },
+					{ "node": "Update Account", "type": "main", "index": 0 },
+					{ "node": "Delete Account", "type": "main", "index": 0 },
+					{ "node": "Get All Accounts", "type": "main", "index": 0 },
+					{ "node": "Get Two Accounts", "type": "main", "index": 0 }
+				]
+			]
+		}
+	}
+}

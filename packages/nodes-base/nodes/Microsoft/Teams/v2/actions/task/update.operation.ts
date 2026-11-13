@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -141,12 +142,16 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const body: IDataObject = {};
 	Object.assign(body, updateFields);
 
-	const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
+	const task = await microsoftApiRequest.call(
+		this,
+		'GET',
+		requestPath`/v1.0/planner/tasks/${taskId}`,
+	);
 
 	await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/v1.0/planner/tasks/${taskId}`,
+		requestPath`/v1.0/planner/tasks/${taskId}`,
 		body,
 		{},
 		undefined,

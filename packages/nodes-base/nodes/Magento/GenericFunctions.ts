@@ -9,34 +9,42 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeApiError,
+	decodePathValue,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
+
+export function toPathValue(version: number, value: string) {
+	return version < 1.1 ? decodePathValue(value) : value;
+}
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_headers: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('magento2Api');
 
-	let options: IRequestOptions = {
-		method,
-		body,
-		qs,
-		uri: uri || `${credentials.host}${resource}`,
-		json: true,
-	};
-
 	try {
-		options = Object.assign({}, options, option);
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			body,
+			qs,
+			uri: requestUrl`${credentials.host}${resource}`,
+			json: true,
+		};
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
@@ -50,7 +58,7 @@ export async function magentoApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -994,7 +1002,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		'/rest/default/V1/products/attributes',
+		requestPath`/rest/default/V1/products/attributes`,
 		{},
 		{
 			search_criteria: 0,

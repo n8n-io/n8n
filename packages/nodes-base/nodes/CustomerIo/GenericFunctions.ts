@@ -6,44 +6,48 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { decodePathValue, requestUrl } from 'n8n-workflow';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	baseApi?: string,
 	_query?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('customerIoApi');
-	const options: IHttpRequestOptions = {
+	const isEu = credentials.region === 'track-eu.customer.io';
+
+	let url: RequestUrl;
+	if (baseApi === 'tracking') {
+		url = requestUrl`https://${isEu ? 'track-eu' : 'track'}.customer.io/api/v1${endpoint}`;
+	} else if (baseApi === 'api') {
+		// Special handling for EU region
+		url = requestUrl`https://${isEu ? 'api-eu' : 'api'}.customer.io/v1/api${endpoint}`;
+	} else {
+		url = requestUrl`https://beta-api.customer.io/v1/api${endpoint}`;
+	}
+
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
-		url: '',
+		url,
 		json: true,
 	};
 
-	if (baseApi === 'tracking') {
-		const region = credentials.region;
-		options.url = `https://${region}/api/v1${endpoint}`;
-	} else if (baseApi === 'api') {
-		const region = credentials.region;
-		// Special handling for EU region
-		if (region === 'track-eu.customer.io') {
-			options.url = `https://api-eu.customer.io/v1/api${endpoint}`;
-		} else {
-			options.url = `https://api.customer.io/v1/api${endpoint}`;
-		}
-	} else if (baseApi === 'beta') {
-		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
-	}
-
 	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
 	for (const currentEvent of currentEvents) {

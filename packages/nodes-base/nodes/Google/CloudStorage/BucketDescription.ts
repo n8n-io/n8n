@@ -136,7 +136,7 @@ export const bucketOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '={{"/b/" + $parameter["bucketName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"])}}',
 						returnFullResponse: true,
 					},
 				},
@@ -149,7 +149,7 @@ export const bucketOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"])}}',
 						returnFullResponse: true,
 						qs: {},
 					},
@@ -224,7 +224,7 @@ export const bucketOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '={{"/b/" + $parameter["bucketName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"])}}',
 						qs: {
 							project: '={{$parameter["projectId"]}}',
 						},

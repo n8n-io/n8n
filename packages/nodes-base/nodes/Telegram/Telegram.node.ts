@@ -20,6 +20,7 @@ import {
 	addAdditionalFields,
 	apiRequest,
 	createSendAndWaitMessageBody,
+	fileUrl,
 	getPropertyName,
 } from './GenericFunctions';
 import { appendAttributionOption } from '../../utils/descriptions';
@@ -2212,10 +2213,10 @@ export class Telegram implements INodeType {
 							{
 								json: false,
 								encoding: null,
-								uri: `${credentials.baseUrl}/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
 								useStream: true,
 							},
+							fileUrl(credentials.baseUrl, credentials.accessToken, filePath),
 						);
 
 						const fileName = filePath.split('/').pop() as string;

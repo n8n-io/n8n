@@ -6,7 +6,7 @@ import type {
 	INode,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { ApplicationError, NodeOperationError, requestPath } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
 
 import type {
@@ -46,10 +46,10 @@ export class GoogleSheet {
 	private encodeRange(range: string): string {
 		if (range.includes('!')) {
 			const [sheet, ranges] = range.split('!');
-			return `${encodeURIComponent(sheet)}!${ranges}`;
+			return `${sheet}!${ranges}`;
 		}
 		// Use '' so that sheet is not interpreted as range
-		return encodeURIComponent(`'${range}'`);
+		return `'${range}'`;
 	}
 
 	/**
@@ -68,7 +68,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:clear`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:clear`,
 			body,
 		);
 
@@ -91,7 +91,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 			{},
 			query,
 		);
@@ -110,7 +110,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		);
@@ -129,7 +129,7 @@ export class GoogleSheet {
 		const response = (await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		)) as SpreadSheetResponse;
@@ -158,7 +158,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		);
@@ -179,7 +179,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}:batchUpdate`,
 			body,
 		);
 
@@ -198,7 +198,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}/values:batchUpdate`,
 			body,
 		);
 
@@ -237,7 +237,7 @@ export class GoogleSheet {
 		const response = await apiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}:batchUpdate`,
 			{ requests },
 		);
 
@@ -296,7 +296,7 @@ export class GoogleSheet {
 			response = await apiRequest.call(
 				this.executeFunctions,
 				'POST',
-				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+				requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
 				body,
 				query,
 			);
@@ -304,7 +304,7 @@ export class GoogleSheet {
 			response = await apiRequest.call(
 				this.executeFunctions,
 				'PUT',
-				`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
+				requestPath`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}`,
 				body,
 				query,
 			);

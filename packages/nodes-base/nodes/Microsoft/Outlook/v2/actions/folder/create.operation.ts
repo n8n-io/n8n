@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -51,9 +52,9 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	let endpoint;
 
 	if (folderId) {
-		endpoint = `/mailFolders/${folderId}/childFolders`;
+		endpoint = requestPath`/mailFolders/${folderId}/childFolders`;
 	} else {
-		endpoint = '/mailFolders';
+		endpoint = requestPath`/mailFolders`;
 	}
 
 	const responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);

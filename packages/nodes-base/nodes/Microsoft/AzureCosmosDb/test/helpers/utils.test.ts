@@ -102,6 +102,7 @@ describe('validatePartitionKey', () => {
 	test('should throw NodeOperationError when partition key is missing for "create" operation', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('create');
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce({});
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('container1');
 
 		const mockApiResponse = {
 			partitionKey: {
@@ -127,6 +128,7 @@ describe('validatePartitionKey', () => {
 	test('should throw NodeOperationError when partition key is missing for "update" operation', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('update');
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce({ partitionKey: '' });
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('container1');
 
 		const mockApiResponse = {
 			partitionKey: {
@@ -151,6 +153,7 @@ describe('validatePartitionKey', () => {
 	test('should throw NodeOperationError when partition key is missing for "get" operation', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('get');
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce(undefined);
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('container1');
 
 		const mockApiResponse = {
 			partitionKey: {
@@ -175,6 +178,7 @@ describe('validatePartitionKey', () => {
 	test('should throw NodeOperationError when invalid JSON is provided for customProperties', async () => {
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('create');
 		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('invalidJson');
+		mockExecuteSingleFunctions.getNodeParameter.mockReturnValueOnce('container1');
 
 		const mockApiResponse = {
 			partitionKey: {

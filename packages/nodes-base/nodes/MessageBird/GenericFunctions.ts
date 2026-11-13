@@ -5,8 +5,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Message Bird
@@ -15,13 +17,13 @@ import { NodeApiError } from 'n8n-workflow';
 export async function messageBirdApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject,
 	query: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('messageBirdApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `AccessKey ${credentials.accessKey}`,
@@ -29,7 +31,7 @@ export async function messageBirdApiRequest(
 		method,
 		qs: query,
 		body,
-		uri: `https://rest.messagebird.com${resource}`,
+		uri: requestUrl`https://rest.messagebird.com${resource}`,
 		json: true,
 	};
 	try {

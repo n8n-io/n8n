@@ -5,6 +5,7 @@ import type {
 	IHttpRequestMethods,
 	INode,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { brandfetchApiRequest } from '../GenericFunctions';
 
@@ -34,13 +35,13 @@ describe('Brandfetch', () => {
 
 		it('should make an authenticated API request to Brandfetch', async () => {
 			const method: IHttpRequestMethods = 'GET';
-			const resource = '/brands/n8n.io';
+			const resource = requestPath`/brands/n8n.io`;
 
 			await brandfetchApiRequest.call(mockThis, method, resource);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('brandfetchApi', {
 				method: 'GET',
-				url: 'https://api.brandfetch.io/v2/brands/n8n.io',
+				url: requestUrl`https://api.brandfetch.io/v2/brands/n8n.io`,
 				json: true,
 			});
 		});

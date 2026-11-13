@@ -1,14 +1,13 @@
 import { DateTime } from 'luxon';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { RecurringEventInstance } from '../EventInterface';
 import {
 	addNextOccurrence,
 	addTimezoneToDate,
 	dateObjectToISO,
-	encodeURIComponentOnce,
 	eventExtendYearIntoFuture,
 	getCalendars,
 	getTimezones,
@@ -147,7 +146,7 @@ describe('googleApiRequest', () => {
 		const result = await googleApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
-			'/calendar/v3/users/me/calendarList',
+			requestPath`/calendar/v3/users/me/calendarList`,
 		);
 
 		expect(requestOAuth2Spy).toHaveBeenCalledWith('googleCalendarOAuth2Api', {
@@ -156,7 +155,7 @@ describe('googleApiRequest', () => {
 			},
 			method: 'GET',
 			qs: {},
-			uri: 'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+			uri: requestUrl`https://www.googleapis.com/calendar/v3/users/me/calendarList`,
 			json: true,
 		});
 		expect(result).toEqual(mockResponse);
@@ -170,7 +169,7 @@ describe('googleApiRequest', () => {
 		const result = await googleApiRequest.call(
 			mockExecuteFunctions,
 			'POST',
-			'/calendar/v3/calendars',
+			requestPath`/calendar/v3/calendars`,
 			requestBody,
 		);
 
@@ -181,7 +180,7 @@ describe('googleApiRequest', () => {
 			method: 'POST',
 			body: requestBody,
 			qs: {},
-			uri: 'https://www.googleapis.com/calendar/v3/calendars',
+			uri: requestUrl`https://www.googleapis.com/calendar/v3/calendars`,
 			json: true,
 		});
 		expect(result).toEqual(mockResponse);
@@ -195,7 +194,7 @@ describe('googleApiRequest', () => {
 		await googleApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
-			'/calendar/v3/calendars/primary/events',
+			requestPath`/calendar/v3/calendars/primary/events`,
 			{},
 			queryParams,
 		);
@@ -216,7 +215,7 @@ describe('googleApiRequest', () => {
 		await googleApiRequest.call(
 			mockExecuteFunctions,
 			'PUT',
-			'/calendar/v3/calendars/test',
+			requestPath`/calendar/v3/calendars/test`,
 			{ summary: 'Updated' },
 			{},
 			undefined,
@@ -237,13 +236,13 @@ describe('googleApiRequest', () => {
 
 	it('should use custom URI when provided', async () => {
 		const mockResponse = { success: true };
-		const customUri = 'https://custom.googleapis.com/v1/test';
+		const customUri = requestUrl`https://custom.googleapis.com/v1/test`;
 		requestOAuth2Spy.mockResolvedValue(mockResponse);
 
 		await googleApiRequest.call(
 			mockExecuteFunctions,
 			'GET',
-			'/calendar/v3/test',
+			requestPath`/calendar/v3/test`,
 			{},
 			{},
 			customUri,
@@ -261,7 +260,12 @@ describe('googleApiRequest', () => {
 		const mockResponse = { items: [] };
 		requestOAuth2Spy.mockResolvedValue(mockResponse);
 
-		await googleApiRequest.call(mockExecuteFunctions, 'GET', '/calendar/v3/calendars', {});
+		await googleApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/calendar/v3/calendars`,
+			{},
+		);
 
 		const callOptions = requestOAuth2Spy.mock.calls[0][1];
 		expect(callOptions.body).toBeUndefined();
@@ -272,7 +276,7 @@ describe('googleApiRequest', () => {
 		requestOAuth2Spy.mockRejectedValue(originalError);
 
 		await expect(
-			googleApiRequest.call(mockExecuteFunctions, 'GET', '/calendar/v3/calendars'),
+			googleApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/calendar/v3/calendars`),
 		).rejects.toThrow(NodeApiError);
 	});
 });
@@ -314,7 +318,7 @@ describe('googleApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'items',
 			'GET',
-			'/calendar/v3/users/me/calendarList',
+			requestPath`/calendar/v3/users/me/calendarList`,
 		);
 
 		expect(result).toEqual([
@@ -344,7 +348,7 @@ describe('googleApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'items',
 			'GET',
-			'/calendar/v3/users/me/calendarList',
+			requestPath`/calendar/v3/users/me/calendarList`,
 		);
 
 		expect(result).toEqual([{ id: '1', summary: 'Calendar 1' }]);
@@ -362,7 +366,7 @@ describe('googleApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'items',
 			'GET',
-			'/calendar/v3/users/me/calendarList',
+			requestPath`/calendar/v3/users/me/calendarList`,
 		);
 
 		expect(result).toEqual([]);
@@ -379,7 +383,7 @@ describe('googleApiRequestAllItems', () => {
 			mockExecuteFunctions,
 			'items',
 			'GET',
-			'/calendar/v3/calendars/primary/events',
+			requestPath`/calendar/v3/calendars/primary/events`,
 			body,
 			query,
 		);
@@ -391,38 +395,6 @@ describe('googleApiRequestAllItems', () => {
 				qs: { ...query, maxResults: 100 },
 			}),
 		);
-	});
-});
-
-describe('encodeURIComponentOnce', () => {
-	it('should encode unencoded URI', () => {
-		const uri = 'test calendar@example.com';
-		const result = encodeURIComponentOnce(uri);
-		expect(result).toBe('test%20calendar%40example.com');
-	});
-
-	it('should not double-encode already encoded URI', () => {
-		const uri = 'test%20calendar%40example.com';
-		const result = encodeURIComponentOnce(uri);
-		expect(result).toBe('test%20calendar%40example.com');
-	});
-
-	it('should handle mixed encoded/unencoded URI', () => {
-		const uri = 'test%20calendar@example.com';
-		const result = encodeURIComponentOnce(uri);
-		expect(result).toBe('test%20calendar%40example.com');
-	});
-
-	it('should handle special characters', () => {
-		const uri = 'test+calendar&param=value';
-		const result = encodeURIComponentOnce(uri);
-		expect(result).toBe('test%2Bcalendar%26param%3Dvalue');
-	});
-
-	it('should handle empty string', () => {
-		const uri = '';
-		const result = encodeURIComponentOnce(uri);
-		expect(result).toBe('');
 	});
 });
 
@@ -742,7 +714,7 @@ describe('googleApiRequestWithRetries', () => {
 		const result = await googleApiRequestWithRetries({
 			context: mockExecuteFunctions,
 			method: 'GET',
-			resource: '/calendar/v3/calendars/test',
+			resource: requestPath`/calendar/v3/calendars/test`,
 		});
 
 		expect(result).toEqual(mockResponse);
@@ -760,7 +732,7 @@ describe('googleApiRequestWithRetries', () => {
 		const result = await googleApiRequestWithRetries({
 			context: mockExecuteFunctions,
 			method: 'GET',
-			resource: '/calendar/v3/calendars/test',
+			resource: requestPath`/calendar/v3/calendars/test`,
 		});
 
 		expect(result).toEqual(mockResponse);
@@ -778,7 +750,7 @@ describe('googleApiRequestWithRetries', () => {
 		const result = await googleApiRequestWithRetries({
 			context: mockExecuteFunctions,
 			method: 'GET',
-			resource: '/calendar/v3/calendars/test',
+			resource: requestPath`/calendar/v3/calendars/test`,
 		});
 
 		expect(result).toEqual(mockResponse);
@@ -795,7 +767,7 @@ describe('googleApiRequestWithRetries', () => {
 			googleApiRequestWithRetries({
 				context: mockExecuteFunctions,
 				method: 'GET',
-				resource: '/calendar/v3/calendars/test',
+				resource: requestPath`/calendar/v3/calendars/test`,
 			}),
 		).rejects.toThrow(NodeApiError);
 
@@ -811,7 +783,7 @@ describe('googleApiRequestWithRetries', () => {
 			googleApiRequestWithRetries({
 				context: mockExecuteFunctions,
 				method: 'GET',
-				resource: '/calendar/v3/calendars/test',
+				resource: requestPath`/calendar/v3/calendars/test`,
 				itemIndex: 5,
 			}),
 		).rejects.toThrow(NodeApiError);
@@ -822,14 +794,14 @@ describe('googleApiRequestWithRetries', () => {
 		const body = { summary: 'Test Calendar' };
 		const qs = { maxResults: 10 };
 		const headers = { 'X-Custom': 'test' };
-		const uri = 'https://custom.googleapis.com/test';
+		const uri = requestUrl`https://custom.googleapis.com/test`;
 
 		requestOAuth2Spy.mockResolvedValue(mockResponse);
 
 		await googleApiRequestWithRetries({
 			context: mockExecuteFunctions,
 			method: 'POST',
-			resource: '/calendar/v3/calendars',
+			resource: requestPath`/calendar/v3/calendars`,
 			body,
 			qs,
 			uri,

@@ -4,8 +4,9 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeProperties,
+	RequestUrl,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { AGENT_MIN_TIMEOUT_SECONDS, ERROR_MESSAGES } from '../../constants';
 import { validateRequiredStringField } from '../../GenericFunctions';
@@ -94,10 +95,10 @@ async function getAgentStatus(
 	agentId: string,
 	invocationId: string,
 ): Promise<AgentResultResponse> {
-	const resultUrl = `https://api.airtop.ai/api/hooks/agents/${agentId}/invocations/${invocationId}/result`;
+	const resultUrl = requestUrl`https://api.airtop.ai/api/hooks/agents/${agentId}/invocations/${invocationId}/result`;
 	const response = await apiRequest.call<
 		IExecuteFunctions,
-		['GET', string],
+		['GET', RequestUrl],
 		Promise<AgentResultResponse>
 	>(this, 'GET', resultUrl);
 	return response;
@@ -164,9 +165,9 @@ export async function execute(
 
 	const invocationResponse = await apiRequest.call<
 		IExecuteFunctions,
-		['POST', string, IDataObject],
+		['POST', RequestUrl, IDataObject],
 		Promise<AgentInvocationResponse>
-	>(this, 'POST', webhookUrl, jsonParse<IDataObject>(agentParametersJson));
+	>(this, 'POST', requestUrl`${webhookUrl}`, jsonParse<IDataObject>(agentParametersJson));
 
 	const invocationId = invocationResponse.invocationId;
 	throwOperationErrorIf(

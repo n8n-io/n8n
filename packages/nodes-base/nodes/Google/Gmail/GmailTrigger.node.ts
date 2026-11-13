@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -228,7 +228,7 @@ export class GmailTrigger implements INodeType {
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels',
+					requestPath`/gmail/v1/users/me/labels`,
 				)) as Label[];
 
 				for (const label of labels) {
@@ -295,7 +295,7 @@ export class GmailTrigger implements INodeType {
 			const messagesResponse: MessageListResponse = await googleApiRequest.call(
 				this,
 				'GET',
-				'/gmail/v1/users/me/messages',
+				requestPath`/gmail/v1/users/me/messages`,
 				{},
 				qs,
 			);
@@ -328,7 +328,7 @@ export class GmailTrigger implements INodeType {
 				const fullMessage = (await googleApiRequest.call(
 					this,
 					'GET',
-					`/gmail/v1/users/me/messages/${message.id}`,
+					requestPath`/gmail/v1/users/me/messages/${message.id}`,
 					{},
 					qs,
 				)) as Message;

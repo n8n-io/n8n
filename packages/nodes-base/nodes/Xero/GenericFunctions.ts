@@ -5,27 +5,30 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { decodePathValue, NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function xeroApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
+		uri: uri ?? requestUrl`https://api.xero.com/api.xro/2.0${resource}`,
 		json: true,
 	};
 	try {
@@ -49,7 +52,7 @@ export async function xeroApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -67,3 +70,6 @@ export async function xeroApiRequestAllItems(
 
 	return returnData;
 }
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;

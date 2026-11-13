@@ -1,13 +1,14 @@
 import {
 	containsSymlinkedComponent,
 	isContainedWithin,
+	Logger,
 	pathComponents,
 	pathSegmentsBetween,
 	safeJoinPath,
 } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, safeRegex } from 'n8n-workflow';
 import type {
 	FileSystemHelperFunctions,
 	INode,
@@ -50,8 +51,17 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
+// Paths whose encoded size exceeds PATH_MAX cannot exist on a supported filesystem. Reject them
+// before any filesystem call, so over-long paths with early missing components cost O(1) instead
+// of O(n²). On POSIX the limit applies to encoded bytes, not UTF-16 code units.
+const PATH_MAX = 4096;
+
 async function resolvePath(path: PathLike): Promise<ResolvedFilePath> {
 	const pathStr = path.toString();
+
+	if (Buffer.byteLength(pathStr) > PATH_MAX) {
+		throw Object.assign(new Error('ENAMETOOLONG: path too long'), { code: 'ENAMETOOLONG' });
+	}
 
 	try {
 		return (await fsRealpath(pathStr)) as ResolvedFilePath; // apply brand, since we know it's resolved now
@@ -79,8 +89,12 @@ function isFilePatternBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 		.filter((pattern) => pattern)
 		.some((pattern) => {
 			try {
-				return new RegExp(pattern, 'mi').test(normalizedPath);
-			} catch {
+				return safeRegex.test(pattern, normalizedPath, 'mi');
+			} catch (error) {
+				Container.get(Logger).warn(
+					'The file block pattern check failed. The path is treated as blocked.',
+					{ error },
+				);
 				return true;
 			}
 		});

@@ -5,7 +5,7 @@ import {
 	type IDataObject,
 	jsonParse,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
 import { SESSION_MODE } from './actions/common/fields';
@@ -381,7 +381,7 @@ export async function createSession(
 	const response = (await apiRequest.call(
 		this,
 		'POST',
-		'/sessions',
+		requestPath`/sessions`,
 		parameters,
 	)) as IAirtopSessionResponse;
 	const sessionId = response?.data?.id;
@@ -408,7 +408,7 @@ export async function createSession(
 		const sessionStatusResponse = (await apiRequest.call(
 			this,
 			'GET',
-			`/sessions/${sessionId}`,
+			requestPath`/sessions/${sessionId}`,
 		)) as IAirtopSessionResponse;
 		sessionStatus = sessionStatusResponse.data.status;
 	}
@@ -449,9 +449,14 @@ export async function createSessionAndWindow(
 	}
 	this.logger.info(`[${node.name}] Session successfully created.`);
 
-	const windowResponse = await apiRequest.call(this, 'POST', `/sessions/${sessionId}/windows`, {
-		url,
-	});
+	const windowResponse = await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/sessions/${sessionId}/windows`,
+		{
+			url,
+		},
+	);
 	const windowId = windowResponse?.data?.windowId as string;
 
 	if (!windowId) {
@@ -498,7 +503,7 @@ export async function waitForSessionEvent(
 	condition: (event: IAirtopServerEvent) => boolean,
 	timeoutInSeconds = DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,
 ): Promise<IAirtopServerEvent> {
-	const url = `${BASE_URL}/sessions/${sessionId}/events?all=true`;
+	const url = requestUrl`${BASE_URL}/sessions/${sessionId}/events?all=true`;
 	let stream: Stream;
 
 	const eventPromise = new Promise<IAirtopServerEvent>(async (resolve) => {
