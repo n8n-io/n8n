@@ -1089,8 +1089,8 @@ describe('AgentRepository', () => {
 			await createAgent();
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [first.id, second.id] },
 			});
 
@@ -1103,8 +1103,8 @@ describe('AgentRepository', () => {
 			const outside = await createAgent({ projectId: otherProject.id });
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [outside.id] },
 			});
 
@@ -1151,8 +1151,8 @@ describe('AgentRepository', () => {
 
 		async function listReachable(availableInChat = true) {
 			return await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat },
 			});
 		}
@@ -1273,7 +1273,7 @@ describe('AgentRepository', () => {
 			}
 		});
 
-		it('keeps count and skip/take pagination correct with the filter applied', async () => {
+		it('keeps count and offset/limit pagination correct with the filter applied', async () => {
 			const agents: Agent[] = [];
 			for (let i = 0; i < 3; i++) {
 				agents.push(await createPublishedAgent([chatChannel]));
@@ -1281,8 +1281,8 @@ describe('AgentRepository', () => {
 			await createPublishedAgent([]);
 
 			const page = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 1,
-				take: 1,
+				offset: 1,
+				limit: 1,
 				sortBy: 'name:asc',
 				filter: { availableInChat: true },
 			});
@@ -1376,7 +1376,7 @@ describe('AgentRepository', () => {
 		async function listByUsage(usageCounts?: Map<string, number>) {
 			return await agentRepo.findByProjectIdsPaginated(
 				[projectId],
-				{ skip: 0, take: 10, sortBy: 'usage:desc' },
+				{ offset: 0, limit: 10, sortBy: 'usage:desc' },
 				{ usageCounts },
 			);
 		}

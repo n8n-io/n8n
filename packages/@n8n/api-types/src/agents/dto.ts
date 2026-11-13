@@ -34,7 +34,11 @@ import {
 	type AgentSkill,
 	type AgentSkillVersionInfo,
 } from './types';
-import { paginationSchema } from '../dto/pagination/pagination.dto';
+import {
+	MAX_ITEMS_PER_PAGE,
+	createLimitValidator,
+	offsetValidator,
+} from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
@@ -60,6 +64,8 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	// option fall back to createdAt desc.
 	'usage:desc',
 ] as const;
+
+export const DEFAULT_AGENTS_LIST_LIMIT = 10;
 
 export const AGENT_SESSION_STATUSES = [
 	'running',
@@ -99,6 +105,8 @@ const agentListFilterSchema = z
 		availableInMCP: z.boolean().optional(),
 		availableInChat: z.boolean().optional(),
 		includeArchived: z.boolean().optional(),
+		active: z.boolean().optional(),
+		projectId: z.string().min(1).optional(),
 	})
 	.strict();
 
@@ -130,10 +138,22 @@ const agentListFilterValidator = z
 	});
 
 export class ListAgentsQueryDto extends Z.class({
-	...paginationSchema,
+	offset: offsetValidator,
+	limit: createLimitValidator(MAX_ITEMS_PER_PAGE, DEFAULT_AGENTS_LIST_LIMIT),
 	filter: agentListFilterValidator,
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
+
+export type AgentListFilter = z.infer<typeof agentListFilterSchema>;
+
+export type AgentsListSortBy = (typeof AGENTS_LIST_SORT_OPTIONS)[number];
+
+export type ListAgentsOptions = {
+	offset?: number;
+	limit?: number;
+	filter?: AgentListFilter;
+	sortBy?: AgentsListSortBy;
+};
 
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),
