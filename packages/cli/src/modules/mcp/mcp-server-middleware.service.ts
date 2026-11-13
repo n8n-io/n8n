@@ -19,6 +19,7 @@ import type { AuthFailureReason, TelemetryAuthContext } from '@n8n/backend-servi
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService, type McpApiKeyResult } from './mcp-api-key.service';
+import { McpClientUsageService } from './mcp-client-usage.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -82,6 +83,7 @@ export class McpServerMiddlewareService {
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly clientUsage: McpClientUsageService,
 	) {}
 
 	/**
@@ -177,6 +179,7 @@ export class McpServerMiddlewareService {
 		mcpReq.mcpScopes = context.tokenScopes ?? [];
 		// Keep what earlier middleware put on the operation context.
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
+		this.clientUsage.recordUse(user.id, context.clientId);
 		next();
 	}
 

@@ -56,6 +56,7 @@ export class OAuthClientsController {
 			updatedAt: client.updatedAt.toISOString(),
 			grantedAt: client.grantedAt,
 			scopes: client.scopes,
+			lastUsedAt: client.lastUsedAt?.toISOString() ?? null,
 			owner: client.owner,
 		}));
 

@@ -13,6 +13,7 @@ import { JwtService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
+import type { McpClientUsageService } from '../mcp-client-usage.service';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
 import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
@@ -66,6 +67,7 @@ let admission: Mocked<ResourceAdmission>;
 let userRepository: Mocked<UserRepository>;
 let telemetry: Mocked<Telemetry>;
 let logger: Mocked<Logger>;
+let clientUsage: Mocked<McpClientUsageService>;
 let service: McpServerMiddlewareService;
 
 describe('McpServerMiddlewareService', () => {
@@ -78,6 +80,7 @@ describe('McpServerMiddlewareService', () => {
 		userRepository = mock<UserRepository>();
 		telemetry = mockInstance(Telemetry);
 		logger = mock<Logger>();
+		clientUsage = mock<McpClientUsageService>();
 
 		service = new McpServerMiddlewareService(
 			mcpServerApiKeyService,
@@ -87,6 +90,7 @@ describe('McpServerMiddlewareService', () => {
 			jwtService,
 			telemetry,
 			logger,
+			clientUsage,
 		);
 	});
 
@@ -266,6 +270,12 @@ describe('McpServerMiddlewareService', () => {
 				expect(logger.info).not.toHaveBeenCalled();
 			});
 
+			it('records the use of the OAuth client grant', async () => {
+				await run(`Bearer ${signIssuerToken('https://idp.example')}`);
+
+				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc');
+			});
+
 			it('keeps what earlier middleware put on the operation context', async () => {
 				const req = mockReqWith(`Bearer ${signIssuerToken('https://idp.example')}`);
 				const earlier = { trx: mock<Transaction>() };
@@ -299,6 +309,7 @@ describe('McpServerMiddlewareService', () => {
 					withoutClient,
 				);
 				expectUnauthorized(res, next, 'Unauthorized: not-an-access-token');
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User connected to MCP server',
 					expect.objectContaining({
@@ -320,6 +331,7 @@ describe('McpServerMiddlewareService', () => {
 					context,
 				);
 				expectUnauthorized(res, next, 'Unauthorized: unknown-subject');
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
 				expect(telemetry.track).toHaveBeenCalledWith(
 					'User connected to MCP server',
 					expect.objectContaining({ reason: 'user_not_found', auth_type: 'oauth' }),

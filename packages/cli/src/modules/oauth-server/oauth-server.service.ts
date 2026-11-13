@@ -97,6 +97,8 @@ export type ConnectedOAuthClient = Omit<
 > & {
 	grantedAt: number;
 	scopes: string[];
+	/** Last time the client used this grant on the instance MCP server. `null` if never. */
+	lastUsedAt: Date | null;
 	/** Consent owner; present only when listing across users (ownership=all). */
 	owner?: ConnectedOAuthClientOwner;
 };
@@ -787,6 +789,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				// bigint columns come back as strings on Postgres
 				grantedAt: Number(consent.grantedAt),
 				scopes: consent.scope,
+				lastUsedAt: consent.lastUsedAt ?? null,
 				...(listAll
 					? {
 							owner: ownerSummary(consent.user),

@@ -125,6 +125,32 @@ describe('OAuthClientsTable', () => {
 			expect(getByTestId('mcp-client-created-at')).toBeVisible();
 		});
 
+		it('should render the last use time of a used client', () => {
+			const client = createOAuthClient({ lastUsedAt: '2025-10-16T08:00:00.000Z' });
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [client],
+					loading: false,
+				},
+			});
+
+			expect(getByTestId('mcp-client-last-used')).toHaveTextContent('2025-10-16T08:00:00.000Z');
+		});
+
+		it('should render a never-used state for a client that has not connected yet', () => {
+			const client = createOAuthClient({ lastUsedAt: null });
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [client],
+					loading: false,
+				},
+			});
+
+			expect(getByTestId('mcp-client-last-used')).toHaveTextContent('Never');
+		});
+
 		it('should render the client type for recognized clients', () => {
 			const client = createOAuthClient({ name: 'Claude Code' });
 
@@ -367,6 +393,29 @@ describe('OAuthClientsTable', () => {
 			expect(
 				within(modal as HTMLElement).getByTestId('mcp-client-details-scope-execution:read'),
 			).toBeInTheDocument();
+			// the client has not connected since it was authorized
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-last-used'),
+			).toHaveTextContent('Never');
+		});
+
+		it('should show the last use time in the details modal', async () => {
+			const client = createOAuthClient({ lastUsedAt: '2025-10-16T08:00:00.000Z' });
+
+			const { getByTestId } = createComponent({
+				props: {
+					clients: [client],
+					loading: false,
+				},
+			});
+
+			await userEvent.click(getByTestId('mcp-client-name'));
+
+			const modal = document.querySelector('[data-test-id="mcp-client-details-modal"]');
+			expect(modal).not.toBeNull();
+			expect(
+				within(modal as HTMLElement).getByTestId('mcp-client-details-last-used'),
+			).toHaveTextContent('2025-10-16T08:00:00.000Z');
 		});
 
 		it('should emit revokeClient from the details modal revoke button', async () => {

@@ -65,6 +65,11 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 		return await this.managerFor(ctx).findOneBy(UserConsent, { userId, clientId });
 	}
 
+	/** Stamps the last time the client used the user's grant. A missing grant is a no-op. */
+	async recordLastUsed(userId: string, clientId: string, usedAt: Date): Promise<void> {
+		await this.update({ userId, clientId }, { lastUsedAt: usedAt });
+	}
+
 	/**
 	 * Connected clients (a consent joined with its client) matching the given
 	 * filters, newest grant first. Name/owner/date filters and pagination run
