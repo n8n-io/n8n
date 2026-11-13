@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -47,15 +47,19 @@ const i18n = useI18n();
 
 const searchFn = useAvailableProjectSearch();
 
+// Owners can come from a remote search that does not add them to the projects
+// store, so keep the picked project instead of looking it up there again.
+const pickedProject = ref<ProjectSharingData | null>(null);
+
 const selectedProject = computed<ProjectSharingData | null>({
 	get: () => {
-		return (
-			projectsStore.availableProjects.find(
-				(project) => project.id === props.modelValue.homeProject,
-			) ?? null
-		);
+		const homeProjectId = props.modelValue.homeProject;
+		if (!homeProjectId) return null;
+		if (pickedProject.value?.id === homeProjectId) return pickedProject.value;
+		return projectsStore.availableProjects.find((project) => project.id === homeProjectId) ?? null;
 	},
 	set: (value) => {
+		pickedProject.value = value;
 		setKeyValue('homeProject', value?.id ?? '');
 	},
 });
@@ -175,7 +179,6 @@ watch(filtersLength, (value) => {
 						show-suffix
 						:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 						:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
-						@update:model-value="setKeyValue('homeProject', ($event as ProjectSharingData).id)"
 					/>
 				</EnterpriseEdition>
 				<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">

@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
@@ -247,6 +247,47 @@ describe('ProjectSharing', () => {
 				}),
 			],
 		]);
+	});
+
+	describe('selected project outside the search results', () => {
+		const selected = createProjectSharingData('team');
+
+		it('should show the selected project name when the search results do not include it', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(teamProjects),
+					modelValue: selected,
+				},
+			});
+
+			const input = within(getByTestId('project-sharing-select')).getByRole('combobox');
+			await waitFor(() => expect(input).toHaveValue(selected.name));
+		});
+
+		it('should show the selected project name while the search request is pending', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: async () => await new Promise<never>(() => {}),
+					modelValue: selected,
+				},
+			});
+
+			const input = within(getByTestId('project-sharing-select')).getByRole('combobox');
+			await waitFor(() => expect(input).toHaveValue(selected.name));
+		});
+
+		it('should list the selected project as the selected option', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					searchFn: createTestSearchFn(teamProjects),
+					modelValue: selected,
+				},
+			});
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			expect(items).toHaveLength(teamProjects.length + 1);
+			expect(await getSelectedDropdownValue(items)).toBe(selected.name);
+		});
 	});
 
 	it('should render home project as owner when defined', async () => {
