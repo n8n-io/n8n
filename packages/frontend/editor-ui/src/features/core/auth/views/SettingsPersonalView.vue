@@ -252,6 +252,45 @@ function onThemeChange(value: SelectValue | undefined) {
 	if (item && item.value !== uiStore.theme) uiStore.setTheme(item.value);
 }
 
+// Stands for "use the instance default" and clears the personal locale. Not empty, because the
+// select treats an empty value as "nothing selected".
+const INSTANCE_DEFAULT_LOCALE = '__instance_default__';
+
+const localeItems = computed(
+	(): Array<SelectOptionBase<string>> => [
+		{
+			value: INSTANCE_DEFAULT_LOCALE,
+			label: i18n.baseText('settings.personal.language.instanceDefault'),
+		},
+		...(settingsStore.settings.availableLocales ?? []).map(({ code, name }) => ({
+			value: code,
+			label: name,
+		})),
+	],
+);
+
+// English is always available, so the picker only makes sense with at least one extra locale.
+const isLanguageRowVisible = computed(
+	(): boolean =>
+		settingsStore.settings.localeUserOverride &&
+		(settingsStore.settings.availableLocales?.length ?? 0) > 1,
+);
+
+const selectedLocale = computed(
+	(): string => currentUser.value?.settings?.locale ?? INSTANCE_DEFAULT_LOCALE,
+);
+
+async function onLocaleChange(value: SelectValue | undefined) {
+	if (typeof value !== 'string' || value === selectedLocale.value) return;
+	try {
+		await usersStore.updateUserSettings({
+			locale: value === INSTANCE_DEFAULT_LOCALE ? null : value,
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.personal.language.error'));
+	}
+}
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
 	Object.assign(draft, savedValues.value);
@@ -620,6 +659,23 @@ onBeforeUnmount(() => {
 								</span>
 							</template>
 						</N8nSelect2>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					v-if="isLanguageRowVisible"
+					:title="i18n.baseText('settings.personal.language')"
+					:description="i18n.baseText('settings.personal.language.description')"
+				>
+					<template #action>
+						<N8nSelect2
+							:model-value="selectedLocale"
+							:items="localeItems"
+							size="medium"
+							:aria-label="i18n.baseText('settings.personal.language')"
+							data-test-id="language-select"
+							data-attr="language-select"
+							@update:model-value="onLocaleChange"
+						/>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
