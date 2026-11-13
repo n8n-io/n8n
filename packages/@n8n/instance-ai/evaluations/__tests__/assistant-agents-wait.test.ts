@@ -172,6 +172,48 @@ describe('waitForAssistantAgentActivity', () => {
 		await expect(waitForAssistantAgentActivity(config(client))).resolves.toBeUndefined();
 	});
 
+	it('returns for a turn that wrote output before a card when the resumed execution fails without output', async () => {
+		const beforeCard: AgentChatMessagesResponse['messages'][number] = {
+			...finishedTurn,
+			content: [
+				{ type: 'text', text: 'I will delete it.' },
+				{
+					type: 'tool-call',
+					toolCallId: 'call-approve',
+					toolName: 'workflows_delete',
+					suspendPayload: { message: 'Delete?' },
+					output: { success: true },
+				},
+			],
+		};
+		const failedResume: AgentChatMessagesResponse['messages'][number] = {
+			id: 'exec-2:assistant',
+			role: 'assistant',
+			executionId: 'exec-2',
+			executionStatus: 'error',
+			executionError: 'Provider overloaded',
+			createdAt: new Date(SENT_AT + 5_000).toISOString(),
+			content: [],
+		};
+		const client = scriptedClient([history({ messages: [beforeCard, failedResume] })]);
+
+		await expect(waitForAssistantAgentActivity(config(client))).resolves.toBeUndefined();
+	});
+
+	it('fails a turn that was interrupted before it wrote any output', async () => {
+		const interrupted: AgentChatMessagesResponse['messages'][number] = {
+			...finishedTurn,
+			executionStatus: 'interrupted',
+			executionError: 'The execution stopped when n8n restarted',
+			content: [],
+		};
+		const client = scriptedClient([history({ messages: [interrupted] })]);
+
+		await expect(waitForAssistantAgentActivity(config(client))).rejects.toThrow(
+			'Assistant agent turn failed: The execution stopped when n8n restarted',
+		);
+	});
+
 	it('fails a turn that the history leaves out because it failed without output or message', async () => {
 		const client = scriptedClient([history({ messages: [takenUserMessage] })], usageWith('error'));
 

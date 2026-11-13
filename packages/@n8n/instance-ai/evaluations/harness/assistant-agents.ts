@@ -147,27 +147,42 @@ function requestIdOf(payload: Record<string, unknown>, toolCallId: string): stri
 }
 
 /**
- * The error of the latest turn since `since` when that turn failed before it
- * wrote any text or tool call. Undefined in every other case, so a turn that
- * fails part-way is graded on what it produced, like on Instance AI.
+ * The error of the latest execution since `since` when it failed and the turn
+ * wrote no text or tool call. Undefined in every other case, so a turn that
+ * fails part-way is graded on what it produced, like on Instance AI. A turn can
+ * span more than one execution: the answer to a card starts a new one.
  */
 export function failedTurnWithoutOutput(
 	messages: AgentPersistedMessageDto[],
 	since: number,
 ): string | undefined {
-	const latest = messages
-		.filter(
-			(message) =>
-				message.role === 'assistant' &&
-				message.executionStatus !== undefined &&
-				createdSince(message, since),
-		)
-		.at(-1);
-	if (latest?.executionStatus !== 'error') return undefined;
-	const hasOutput = latest.content.some(
+	const turnMessages = assistantMessagesSince(messages, since);
+	const latest = turnMessages.at(-1);
+	if (latest === undefined || !isFailedStatus(latest.executionStatus)) return undefined;
+	if (turnMessages.some(hasOutput)) return undefined;
+	return latest.executionError ?? 'unknown error';
+}
+
+function isFailedStatus(status: AgentExecutionStatus | undefined): boolean {
+	return status === 'error' || status === 'interrupted';
+}
+
+function assistantMessagesSince(
+	messages: AgentPersistedMessageDto[],
+	since: number,
+): AgentPersistedMessageDto[] {
+	return messages.filter(
+		(message) =>
+			message.role === 'assistant' &&
+			message.executionStatus !== undefined &&
+			createdSince(message, since),
+	);
+}
+
+function hasOutput(message: AgentPersistedMessageDto): boolean {
+	return message.content.some(
 		(part) => (part.type === 'text' && Boolean(part.text)) || part.type === 'tool-call',
 	);
-	return hasOutput ? undefined : (latest.executionError ?? 'unknown error');
 }
 
 function createdSince(message: AgentPersistedMessageDto, since: number): boolean {
@@ -202,6 +217,8 @@ async function failedTurnWithoutMessage(
 		(message) => message.role === 'assistant' && message.executionId === latestExecutionId,
 	);
 	if (hasReply) return undefined;
+	// An earlier execution of the turn (before a card) wrote output: grade it.
+	if (assistantMessagesSince(messages, config.sentAt).some(hasOutput)) return undefined;
 	const usage = await config.client.getUsage(config.threadId);
 	const execution = usage.executions.find((entry) => entry.executionId === latestExecutionId);
 	if (execution?.status !== 'error' && execution?.status !== 'interrupted') return undefined;
@@ -215,10 +232,12 @@ async function failedTurnWithoutMessage(
  */
 export function syncEventsFromHistory(
 	events: CapturedEvent[],
-	history: Pick<AgentChatMessagesResponse, 'messages'>,
+	history: Pick<AgentChatMessagesResponse, 'messages'> &
+		Partial<Pick<AgentChatMessagesResponse, 'openSuspensions' | 'activeExecutionId'>>,
 ): void {
 	const markers = events.filter((event) => event.type === USER_TURN_EVENT);
-	const rebuilt = eventsFromHistory(history.messages);
+	const settled = history.openSuspensions?.length === 0 && !history.activeExecutionId;
+	const rebuilt = eventsFromHistory(history.messages, { settled });
 	// Stable sort: on a tie the marker comes first.
 	const merged = [...markers, ...rebuilt].sort((a, b) => a.timestamp - b.timestamp);
 	events.length = 0;
@@ -245,11 +264,36 @@ function runFinishStatus(status: AgentExecutionStatus): string | undefined {
  * Rebuild Instance AI events from the assistant messages of live turns. A
  * message without `executionStatus` did not come from an execution of this
  * run (seeded history), so it is skipped: the seeded transcript covers it.
+ *
+ * On the Agents runtime the answer to a card starts a new execution. Instance AI
+ * resumes the same run, so one user request gives one run-start and one
+ * run-finish. To match it, an execution that stopped at a card gets no
+ * run-finish, and the execution after it (its continuation) gets no run-start.
+ * Each execution keeps its own run id, so the usage records still join by run id.
+ * The runtime admits no new user message while a card is open, so the next
+ * execution without a user message before it is the continuation.
+ *
+ * `settled`: the thread has no open card and no running execution. Then a
+ * suspended execution without a continuation in the history gets its
+ * run-finish: the continuation ended without a message.
  */
-export function eventsFromHistory(messages: AgentPersistedMessageDto[]): CapturedEvent[] {
+export function eventsFromHistory(
+	messages: AgentPersistedMessageDto[],
+	options: { settled?: boolean } = {},
+): CapturedEvent[] {
 	const events: CapturedEvent[] = [];
+	// The deferred run-finish of the last execution when it stopped at a card.
+	let pendingFinish: (() => void) | undefined;
 	for (const message of messages) {
+		if (message.role === 'user') {
+			// A new user request: the turn before it is over.
+			pendingFinish?.();
+			pendingFinish = undefined;
+			continue;
+		}
 		if (message.role !== 'assistant' || message.executionStatus === undefined) continue;
+		const continuation = pendingFinish !== undefined;
+		pendingFinish = undefined;
 		const runId = message.executionId ?? message.id;
 		const startedAt = firstTimestamp(message);
 		const push = (timestamp: number, type: string, payload: Record<string, unknown>) =>
@@ -259,7 +303,7 @@ export function eventsFromHistory(messages: AgentPersistedMessageDto[]): Capture
 				data: { type, runId, agentId: ORCHESTRATOR_AGENT_ID, payload },
 			});
 
-		push(startedAt, 'run-start', { messageId: message.id });
+		if (!continuation) push(startedAt, 'run-start', { messageId: message.id });
 		let last = startedAt;
 		for (const part of message.content) {
 			const at = part.startTime ?? last;
@@ -298,13 +342,23 @@ export function eventsFromHistory(messages: AgentPersistedMessageDto[]): Capture
 		if (status === 'error' && message.executionError) {
 			push(last, 'error', { content: message.executionError });
 		}
-		if (status) {
-			push(last, 'run-finish', {
-				status,
+		const finishedAt = last;
+		const finish = (finishStatus: string) =>
+			push(finishedAt, 'run-finish', {
+				status: finishStatus,
 				...(message.executionError ? { error: message.executionError } : {}),
 			});
+		// A chat turn that stops at a card is saved as 'success' ('awaiting' for tasks).
+		const suspended =
+			(status === 'completed' || message.executionStatus === 'awaiting') &&
+			message.content.some((part) => part.type === 'tool-call' && isRecord(part.suspendPayload));
+		if (suspended) {
+			pendingFinish = () => finish('completed');
+		} else if (status) {
+			finish(status);
 		}
 	}
+	if (options.settled) pendingFinish?.();
 	return events;
 }
 

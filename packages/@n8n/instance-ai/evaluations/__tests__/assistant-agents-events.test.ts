@@ -5,7 +5,7 @@ import {
 	runDebugFromUsage,
 	syncEventsFromHistory,
 } from '../harness/assistant-agents';
-import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { USER_TURN_EVENT, type CapturedEvent } from '../types';
 import { transcriptAsText } from '../utils/conversation-text';
@@ -250,6 +250,119 @@ describe('eventsFromHistory', () => {
 		expect(
 			events.filter((event) => event.type === 'run-start').map((event) => event.data.runId),
 		).toEqual(['exec-a', 'exec-b', 'exec-c']);
+	});
+
+	describe('a request that needs approval', () => {
+		/** An execution that stopped at a card. A chat turn that suspends is saved as 'success'. */
+		function suspendedTurn(
+			executionId: string,
+			at: number,
+			answered = true,
+		): AgentPersistedMessageDto {
+			return {
+				id: `${executionId}:assistant`,
+				role: 'assistant',
+				executionId,
+				executionStatus: 'success',
+				createdAt: new Date(at).toISOString(),
+				content: [
+					{ type: 'text', text: 'I need your approval.', startTime: at + 10 },
+					{
+						type: 'tool-call',
+						toolCallId: `call-${executionId}`,
+						toolName: 'workflows_delete',
+						suspendPayload: { requestId: `req-${executionId}`, message: 'Delete?' },
+						startTime: at + 20,
+						// History merges the result of the resumed execution into the card's tool call.
+						...(answered ? { output: { success: true }, endTime: at + 500 } : {}),
+					},
+				],
+			};
+		}
+
+		const resumed = (executionId: string, at: number): AgentPersistedMessageDto => ({
+			id: `${executionId}:assistant`,
+			role: 'assistant',
+			executionId,
+			executionStatus: 'success',
+			createdAt: new Date(at).toISOString(),
+			content: [{ type: 'text', text: 'Deleted.', startTime: at + 10 }],
+		});
+
+		const runEvents = (events: CapturedEvent[], type: string) =>
+			events.filter((event) => event.type === type).map((event) => event.data.runId);
+
+		it('gives one run-start and one run-finish across the resumed execution', () => {
+			const events = eventsFromHistory([
+				userMessage('u1', 'Delete it', T0),
+				suspendedTurn('exec-a', T0 + 100),
+				resumed('exec-b', T0 + 1_000),
+			]);
+
+			expect(runEvents(events, 'run-start')).toEqual(['exec-a']);
+			expect(runEvents(events, 'run-finish')).toEqual(['exec-b']);
+			// Each execution keeps its run id, so the usage records still join.
+			expect(new Set(events.map((event) => event.data.runId))).toEqual(
+				new Set(['exec-a', 'exec-b']),
+			);
+
+			const metrics = buildConversationMetrics(events);
+			expect(metrics.turnCount).toBe(1);
+			expect(metrics.perTurn).toHaveLength(1);
+			expect(metrics.perTurn[0]).toMatchObject({
+				confirmationAskedTotal: 1,
+				runFinishStatus: 'completed',
+			});
+			expect(metrics.reachedRunFinishCleanly).toBe(true);
+		});
+
+		it('still gives one turn for two approvals in a row', () => {
+			const events = eventsFromHistory([
+				userMessage('u1', 'Delete both', T0),
+				suspendedTurn('exec-a', T0 + 100),
+				suspendedTurn('exec-b', T0 + 1_000),
+				resumed('exec-c', T0 + 2_000),
+			]);
+
+			expect(runEvents(events, 'run-start')).toEqual(['exec-a']);
+			expect(runEvents(events, 'run-finish')).toEqual(['exec-c']);
+			expect(buildConversationMetrics(events).turnCount).toBe(1);
+		});
+
+		it('gives no run-finish while the card is open', () => {
+			const events: CapturedEvent[] = [];
+			syncEventsFromHistory(events, {
+				messages: [userMessage('u1', 'Delete it', T0), suspendedTurn('exec-a', T0 + 100, false)],
+				openSuspensions: [{ toolCallId: 'call-exec-a', runId: 'run-a', suspendPayload: {} }],
+				activeExecutionId: null,
+			});
+
+			expect(runEvents(events, 'run-start')).toEqual(['exec-a']);
+			expect(runEvents(events, 'run-finish')).toEqual([]);
+		});
+
+		it('finishes the turn when the resumed execution wrote no message and the thread is settled', () => {
+			const events: CapturedEvent[] = [];
+			const messages = [userMessage('u1', 'Delete it', T0), suspendedTurn('exec-a', T0 + 100)];
+
+			syncEventsFromHistory(events, { messages, openSuspensions: [], activeExecutionId: 'exec-b' });
+			expect(runEvents(events, 'run-finish')).toEqual([]);
+
+			syncEventsFromHistory(events, { messages, openSuspensions: [], activeExecutionId: null });
+			expect(runEvents(events, 'run-finish')).toEqual(['exec-a']);
+		});
+
+		it('finishes the turn at the next user message when the resumed execution wrote no message', () => {
+			const events = eventsFromHistory([
+				userMessage('u1', 'Delete it', T0),
+				suspendedTurn('exec-a', T0 + 100),
+				userMessage('u2', 'Now rename it', T0 + 5_000),
+				resumed('exec-c', T0 + 5_100),
+			]);
+
+			expect(runEvents(events, 'run-start')).toEqual(['exec-a', 'exec-c']);
+			expect(runEvents(events, 'run-finish')).toEqual(['exec-a', 'exec-c']);
+		});
 	});
 
 	it('skips seeded history: messages without an execution status', () => {
