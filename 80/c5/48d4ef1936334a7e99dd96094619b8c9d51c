@@ -1,0 +1,31 @@
+packages/cli/src/public-api/types.ts
+  s_1002c4e88ae523::t_646dc218941a1a 28-29
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1002c4e88ae523::t_646dc218941a1a 297,312-313,315-320,322-323,325,327-329
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_646dc218941a1a 30
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1002c4e88ae523::t_646dc218941a1a 60
+packages/cli/src/public-api/public-api-result.ts
+  s_1002c4e88ae523::t_646dc218941a1a 1,4-9
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_646dc218941a1a 1104,1115,1126,1149,1159,1169,1190,1207,1218,1238,1248,1258,1293,1722,1750
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1002c4e88ae523::t_646dc218941a1a 2002,2015
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "80c548d4ef1936334a7e99dd96094619b8c9d51c",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
