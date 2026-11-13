@@ -121,7 +121,7 @@ describe('ScimProvisioningSection', () => {
 		await waitFor(() => expect(getScimConfig).toHaveBeenCalledTimes(2));
 	});
 
-	it('rotates the token from the menu after a confirmation', async () => {
+	it('rotates the token from its button after a confirmation', async () => {
 		getScimConfig.mockResolvedValue({
 			...baseConfig,
 			enabled: true,
@@ -131,10 +131,13 @@ describe('ScimProvisioningSection', () => {
 		generateScimToken.mockResolvedValue({ token: NEW_TOKEN, baseUrl: baseConfig.baseUrl });
 
 		const { getByTestId, getByRole } = renderComponent({ props: { ssoEnabled: true } });
-		await waitFor(() => expect(getByTestId('sso-scim-token-menu-trigger')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('sso-scim-token-rotate')).toBeInTheDocument());
 
-		await userEvent.click(getByTestId('sso-scim-token-menu-trigger'));
-		await userEvent.click(await screen.findByTestId('sso-scim-token-rotate'));
+		expect(screen.queryAllByText('Rotate token')).toHaveLength(0);
+		await userEvent.hover(getByTestId('sso-scim-token-rotate'));
+		expect((await screen.findAllByText('Rotate token')).length).toBeGreaterThan(0);
+
+		await userEvent.click(getByTestId('sso-scim-token-rotate'));
 		await waitFor(() => expect(getByRole('dialog')).toBeInTheDocument());
 		expect(generateScimToken).not.toHaveBeenCalled();
 

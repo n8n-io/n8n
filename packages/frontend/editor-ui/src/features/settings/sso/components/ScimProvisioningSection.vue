@@ -5,7 +5,6 @@ import {
 	N8nAlertDialog,
 	N8nButton,
 	N8nCopyInput,
-	N8nDropdownMenu,
 	N8nHeading,
 	N8nIconButton,
 	N8nOption,
@@ -68,19 +67,6 @@ const tokenDescription = computed(() => {
 	if (config.value?.enabled) return i18n.baseText('settings.sso.scim.token.none');
 	return i18n.baseText('settings.sso.scim.token.createdOnEnable');
 });
-
-const tokenMenuItems = computed(() => [
-	{
-		id: 'rotate',
-		label: i18n.baseText('settings.sso.scim.token.rotate'),
-		icon: { type: 'icon' as const, value: 'refresh-cw' as const },
-		testId: 'sso-scim-token-rotate',
-	},
-]);
-
-function onTokenMenu(action: string) {
-	if (action === 'rotate') showRegenerateDialog.value = true;
-}
 
 async function load() {
 	try {
@@ -230,23 +216,17 @@ watch(
 							redact
 							data-test-id="sso-scim-token"
 						/>
-						<N8nDropdownMenu
-							:items="tokenMenuItems"
-							placement="bottom-end"
-							data-test-id="sso-scim-token-menu"
-							@select="onTokenMenu"
-						>
-							<template #trigger>
-								<N8nIconButton
-									variant="ghost"
-									size="medium"
-									icon="ellipsis"
-									:disabled="generatingToken"
-									:aria-label="i18n.baseText('settings.sso.scim.token.actions')"
-									data-test-id="sso-scim-token-menu-trigger"
-								/>
-							</template>
-						</N8nDropdownMenu>
+						<N8nTooltip :content="i18n.baseText('settings.sso.scim.token.rotate')" placement="top">
+							<N8nIconButton
+								variant="ghost"
+								size="medium"
+								icon="refresh-cw"
+								:disabled="generatingToken"
+								:aria-label="i18n.baseText('settings.sso.scim.token.rotate')"
+								data-test-id="sso-scim-token-rotate"
+								@click="showRegenerateDialog = true"
+							/>
+						</N8nTooltip>
 					</div>
 					<N8nButton
 						v-else-if="config.enabled"
@@ -292,7 +272,7 @@ watch(
 	}
 }
 
-/* The token field takes the room that the menu button leaves in the control. */
+/* The token field takes the room that the rotate button leaves in the control. */
 .tokenAction {
 	display: flex;
 	align-items: center;

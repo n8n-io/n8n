@@ -7138,7 +7138,6 @@
 	"settings.sso.scim.token.active": "Your identity provider uses this token. Rotate it to get a new one.",
 	"settings.sso.scim.token.createdOnEnable": "n8n creates a token when you turn on SCIM.",
 	"settings.sso.scim.token.rotate": "Rotate token",
-	"settings.sso.scim.token.actions": "Token actions",
 	"settings.sso.scim.token.copyNow": "Copy this token now. You will not see it again.",
 	"settings.sso.scim.token.generate": "Generate token",
 	"settings.sso.scim.token.error": "Could not generate the SCIM token",
