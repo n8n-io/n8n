@@ -2,7 +2,7 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AiService } from '@/services/ai.service';
@@ -21,6 +21,7 @@ import { ServiceAccountUsageProxy } from '@/services/service-account-usage-proxy
 
 import { AgentFolderService } from '../agent-folder.service';
 import { AgentChannelMediaRetentionTask } from '../agent-channel-media-retention.task';
+import { AgentClusterService } from '../agent-cluster.service';
 import { AgentKnowledgeSnapshotTask } from '../agent-knowledge-snapshot.task';
 import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
 import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
@@ -52,6 +53,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import { testCluster } from './test-utils/cluster';
 
 /**
  * Stubs every dependency `AgentsModule.init()` resolves via `Container.get`,
@@ -115,6 +117,8 @@ function setUpContainerForInit() {
 	Container.set(AgentChannelReconciler, mock<AgentChannelReconciler>());
 	Container.set(AgentTaskService, mock<AgentTaskService>());
 	Container.set(Logger, mock<Logger>());
+	Container.set(AgentClusterService, testCluster({ instanceType: 'worker', isLeader: false }));
+	Container.set(BinaryDataConfig, mock<BinaryDataConfig>({ mode: 'database' }));
 	Container.set(
 		InstanceSettings,
 		mock<InstanceSettings>({ instanceType: 'worker', isLeader: false }),
