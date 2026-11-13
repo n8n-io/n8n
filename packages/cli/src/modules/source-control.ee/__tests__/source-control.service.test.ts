@@ -84,6 +84,53 @@ describe('SourceControlService', () => {
 		sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([]);
 	});
 
+	describe('setBranch', () => {
+		it('checks out the branch before storing the preference', async () => {
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			const setPreferences = vi.fn().mockResolvedValue(undefined);
+			preferencesService.setPreferences = setPreferences;
+
+			await sourceControlService.setBranch('main');
+
+			expect(gitService.setBranch).toHaveBeenCalledWith('main');
+			expect(setPreferences).toHaveBeenCalledWith({ branchName: 'main', connected: true });
+			expect(gitService.setBranch.mock.invocationCallOrder[0]).toBeLessThan(
+				setPreferences.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not store the preference when the checkout fails', async () => {
+			vi.spyOn(preferencesService, 'getPreferences').mockReturnValue({
+				branchName: 'main',
+			} as never);
+			gitService.setBranch.mockRejectedValueOnce(new Error('branch not found'));
+			const setPreferences = vi.fn().mockResolvedValue(undefined);
+			preferencesService.setPreferences = setPreferences;
+
+			await expect(sourceControlService.setBranch('missing')).rejects.toThrow('branch not found');
+
+			expect(setPreferences).not.toHaveBeenCalled();
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
+		});
+
+		it('rolls back the checkout when storing the preference fails', async () => {
+			vi.spyOn(preferencesService, 'getPreferences').mockReturnValue({
+				branchName: 'main',
+			} as never);
+			gitService.setBranch.mockResolvedValueOnce({
+				branches: ['main', 'next'],
+				currentBranch: 'next',
+			});
+			const setPreferences = vi.fn().mockRejectedValue(new Error('DB down'));
+			preferencesService.setPreferences = setPreferences;
+
+			await expect(sourceControlService.setBranch('next')).rejects.toThrow('DB down');
+
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(1, 'next');
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
+		});
+	});
+
 	describe('pushWorkfolder', () => {
 		it('should push the workfolder', async () => {
 			const mockExportResult = mock<ExportResult>();
