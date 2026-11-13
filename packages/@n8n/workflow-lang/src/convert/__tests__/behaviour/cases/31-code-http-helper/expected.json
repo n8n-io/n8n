@@ -1,0 +1,41 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Status",
+		"Fails"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "code-http"
+					}
+				}
+			]
+		],
+		"Status": [
+			[
+				{
+					"statusCode": 404,
+					"statusMessage": "Not Found",
+					"body": ""
+				}
+			]
+		],
+		"Fails": [
+			[
+				{
+					"error": "Request failed with status code 404"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

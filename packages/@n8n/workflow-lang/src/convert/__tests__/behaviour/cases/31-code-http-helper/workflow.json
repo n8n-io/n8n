@@ -1,0 +1,52 @@
+{
+	"name": "Code HTTP helper",
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "code-http",
+				"options": {}
+			},
+			"id": "1a3f7c20-0e4b-4d2f-9a11-0c1b2d3e4f50",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [-220, 0],
+			"webhookId": "5f0d1e2c-3b4a-4c5d-8e6f-7a8b9c0d1e2f"
+		},
+		{
+			"parameters": {
+				"jsCode": "const response = await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'http://127.0.0.1:47123/code-404',\n  ignoreHttpStatusErrors: true,\n  returnFullResponse: true,\n});\nreturn [{ json: { statusCode: response.statusCode, statusMessage: response.statusMessage, body: response.body } }];"
+			},
+			"id": "2b4e8d31-1f5c-4e3a-8b22-1d2c3e4f5a61",
+			"name": "Status",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [0, -100]
+		},
+		{
+			"parameters": {
+				"jsCode": "await this.helpers.httpRequest({\n  method: 'GET',\n  url: 'http://127.0.0.1:47123/code-404',\n});\nreturn [{ json: { threw: false } }];"
+			},
+			"id": "3c5f9e42-2a6d-4f4b-9c33-2e3d4f5a6b72",
+			"name": "Fails",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [0, 100],
+			"onError": "continueRegularOutput"
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{ "node": "Status", "type": "main", "index": 0 },
+					{ "node": "Fails", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
