@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@test/utils';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import type {
 	IDataObject,
 	IDeclarativeWebhookTrigger,
@@ -132,6 +132,12 @@ function setup(
 		logger,
 	};
 }
+
+const mockResponse = () => {
+	const res = mock<Response>();
+	res.status.mockReturnValue(res);
+	return res;
+};
 
 const respond = (body: unknown) =>
 	httpRequest.mockResolvedValueOnce({ body, headers: {}, statusCode: 200 });
@@ -677,12 +683,18 @@ describe('createDeclarativeWebhook', () => {
 		{
 			headers = {},
 			query = {},
+			webhookName = 'default',
+			staticData = {},
+			res = mockResponse(),
 			rawBody,
 			unreadBody,
 			contentType,
 		}: {
 			headers?: IDataObject;
 			query?: IDataObject;
+			webhookName?: string;
+			staticData?: IDataObject;
+			res?: Response;
 			rawBody?: Buffer;
 			/** The body that `readRawBody` reads, for a request that the server did not read. */
 			unreadBody?: Buffer;
@@ -705,6 +717,7 @@ describe('createDeclarativeWebhook', () => {
 			connections: {},
 			active: true,
 			nodeTypes: mock<INodeTypes>({ getByNameAndVersion: () => nodeType }),
+			staticData,
 		});
 		// Set after `mock()`, which would wrap the request data in proxies.
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
@@ -713,12 +726,13 @@ describe('createDeclarativeWebhook', () => {
 			request.rawBody = unreadBody ?? request.rawBody;
 		});
 		additionalData.httpRequest = request;
+		additionalData.httpResponse = res;
 		const context = new WebhookContext(
 			workflow,
 			node,
 			additionalData,
 			'webhook',
-			mock<IWebhookData>(),
+			{ webhookDescription: { name: webhookName } } as IWebhookData,
 			[],
 			null,
 		);
@@ -868,6 +882,201 @@ describe('createDeclarativeWebhook', () => {
 			);
 
 			expect(await run()).toStrictEqual({ webhookResponse: undefined });
+		});
+	});
+
+	describe('handshake', () => {
+		const secretHeader = '={{ $webhookRequest.headers["x-hook-secret"] }}';
+		const handshake = { when: '={{ $webhookRequest.headers["x-hook-secret"] !== undefined }}' };
+
+		test('replies OK, starts no workflow and writes no static data', async () => {
+			const nodeData: IDataObject = {};
+			const run = webhookSetup(
+				{ handshake },
+				{ event: 'created' },
+				{ headers: { 'x-hook-secret': 's1' }, staticData: { 'node:Hook': nodeData } },
+			);
+
+			expect(await run()).toStrictEqual({ webhookResponse: 'OK' });
+			expect(nodeData).toEqual({});
+		});
+
+		test('emits the body when `when` is falsy', async () => {
+			const run = webhookSetup({ handshake }, { event: 'created' });
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { event: 'created' } }]] });
+		});
+
+		test('does not apply on the default endpoint without `when`', async () => {
+			const run = webhookSetup({ handshake: { respond: { body: 'x' } } }, { event: 'created' });
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { event: 'created' } }]] });
+		});
+
+		test('runs before the ping', async () => {
+			const run = webhookSetup(
+				{ handshake, ping: { when: '={{ true }}' } },
+				{},
+				{ headers: { 'x-hook-secret': 's1' } },
+			);
+
+			expect(await run()).toStrictEqual({ webhookResponse: 'OK' });
+		});
+
+		test('handles every request on a setup endpoint', async () => {
+			const run = webhookSetup(
+				{ handshake: { respond: { body: '={{ $webhookRequest.query.challenge }}' } } },
+				{ event: 'created' },
+				{ query: { challenge: 'abc' }, webhookName: 'setup' },
+			);
+
+			expect(await run()).toStrictEqual({ webhookResponse: 'abc' });
+		});
+
+		test('replies OK on a setup endpoint without a handshake', async () => {
+			const run = webhookSetup(undefined, { event: 'created' }, { webhookName: 'setup' });
+
+			expect(await run()).toStrictEqual({ webhookResponse: 'OK' });
+		});
+
+		test('replies 401 on a setup endpoint when `when` is falsy', async () => {
+			const res = mockResponse();
+			const run = webhookSetup(
+				{ handshake: { ...handshake, when: '={{ false }}' } },
+				{},
+				{ headers: { 'x-hook-secret': 's1' }, webhookName: 'setup', res },
+			);
+
+			expect(await run()).toStrictEqual({ noWebhookResponse: true });
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.send).toHaveBeenCalledWith('Unauthorized');
+		});
+
+		describe('respond', () => {
+			let res: ReturnType<typeof mockResponse>;
+			const handshakeWith = async (respond: object) =>
+				await webhookSetup(
+					{ handshake: { when: '={{ true }}', respond } },
+					{ challenge: 'abc' },
+					{ res },
+				)();
+			beforeEach(() => {
+				res = mockResponse();
+			});
+
+			test('body returns the resolved value for the server reply', async () => {
+				expect(
+					await handshakeWith({ body: '={{ $webhookRequest.body.challenge }}' }),
+				).toStrictEqual({ webhookResponse: 'abc' });
+				expect(res.send).not.toHaveBeenCalled();
+			});
+
+			test.each([
+				['an object', '={{ { challenge: $webhookRequest.body.challenge } }}', { challenge: 'abc' }],
+				['a number', '={{ 2 }}', 2],
+				['null', '={{ null }}', null],
+				['undefined as an empty string', '={{ $webhookRequest.body.missing }}', ''],
+			])('body returns %s', async (_, body, expected) => {
+				expect(await handshakeWith({ body })).toStrictEqual({ webhookResponse: expected });
+			});
+
+			test('statusCode sends the reply directly', async () => {
+				expect(await handshakeWith({ statusCode: 202 })).toStrictEqual({
+					noWebhookResponse: true,
+				});
+				expect(res.status).toHaveBeenCalledWith(202);
+				expect(res.send).toHaveBeenCalledWith('OK');
+			});
+
+			test('statusCode sends a value that is not a string as JSON', async () => {
+				await handshakeWith({ statusCode: 202, body: '={{ { a: 1 } }}' });
+
+				expect(res.json).toHaveBeenCalledWith({ a: 1 });
+			});
+
+			test('statusCode sends an empty string for undefined', async () => {
+				await handshakeWith({ statusCode: 202, body: '={{ $webhookRequest.body.missing }}' });
+
+				expect(res.send).toHaveBeenCalledWith('');
+			});
+
+			test('contentType sets the content type', async () => {
+				await handshakeWith({ contentType: 'text/plain' });
+
+				expect(res.setHeader).toHaveBeenCalledWith('content-type', 'text/plain');
+			});
+
+			test('contentType wins over a Content-Type in headers', async () => {
+				await handshakeWith({
+					contentType: 'text/plain',
+					headers: { 'Content-Type': 'application/json' },
+				});
+
+				expect(res.setHeader).toHaveBeenLastCalledWith('content-type', 'text/plain');
+			});
+
+			test('headers sets the resolved headers', async () => {
+				await handshakeWith({
+					headers: { 'X-Challenge': '={{ $webhookRequest.body.challenge }}' },
+				});
+
+				expect(res.setHeader).toHaveBeenCalledWith('X-Challenge', 'abc');
+			});
+
+			test('headers sets no header for a missing value and JSON for other values', async () => {
+				await handshakeWith({
+					headers: { 'X-Missing': '={{ $webhookRequest.body.missing }}', 'X-Count': '={{ 2 }}' },
+				});
+
+				expect(res.setHeader).not.toHaveBeenCalledWith('X-Missing', expect.anything());
+				expect(res.setHeader).toHaveBeenCalledWith('X-Count', '2');
+			});
+
+			test('headers skips a value that is not a valid header value', async () => {
+				const run = webhookSetup(
+					{
+						handshake: {
+							when: '={{ true }}',
+							respond: { headers: { 'X-Challenge': '={{ $webhookRequest.body.challenge }}' } },
+						},
+					},
+					{ challenge: 'a\r\nX-Other: 1' },
+					{ res },
+				);
+
+				expect(await run()).toStrictEqual({ webhookResponse: 'OK' });
+				expect(res.setHeader).not.toHaveBeenCalledWith('X-Challenge', expect.anything());
+			});
+
+			test.each([200, 202])('a string reply is plain text with status %s', async (statusCode) => {
+				await handshakeWith({ statusCode, body: '={{ $webhookRequest.body.challenge }}' });
+
+				expect(res.setHeader).toHaveBeenCalledWith('content-type', 'text/plain');
+			});
+
+			test('a reply that is not a string sets no content type', async () => {
+				await handshakeWith({ body: '={{ { challenge: $webhookRequest.body.challenge } }}' });
+
+				expect(res.setHeader).not.toHaveBeenCalledWith('content-type', expect.anything());
+			});
+
+			test('a string reply keeps a Content-Type from headers', async () => {
+				res.getHeader.mockReturnValue('application/json');
+
+				await handshakeWith({ headers: { 'Content-Type': 'application/json' } });
+
+				expect(res.setHeader).not.toHaveBeenCalledWith('content-type', 'text/plain');
+			});
+		});
+
+		test('sends request values in one pass', async () => {
+			const run = webhookSetup(
+				{ handshake: { ...handshake, respond: { body: secretHeader } } },
+				{},
+				{ headers: { 'x-hook-secret': '={{ 1 + 1 }}' } },
+			);
+
+			expect(await run()).toStrictEqual({ webhookResponse: '={{ 1 + 1 }}' });
 		});
 	});
 

@@ -75,6 +75,13 @@ export class E2eTestDeclarativeWebhookTrigger implements INodeType {
 				},
 			},
 			handler: {
+				handshake: {
+					when: '={{ $webhookRequest.headers["x-hook-secret"] !== undefined }}',
+					respond: {
+						body: '={{ $webhookRequest.headers["x-hook-secret"] }}',
+						headers: { 'X-Hook-Secret': '={{ $webhookRequest.headers["x-hook-secret"] }}' },
+					},
+				},
 				ping: { when: '={{ $webhookRequest.body.type === "ping" }}', response: 'pong' },
 				filter: {
 					allowed: '={{ $parameter.events }}',
