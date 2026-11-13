@@ -1,5 +1,6 @@
 import type { AgentDbMessage } from '@n8n/agents';
 import { BadRequestError } from '@n8n/errors';
+import { randomUUID } from 'node:crypto';
 
 function isRestorableMessage(
 	value: Record<string, unknown> & { createdAt: Date },
@@ -27,6 +28,8 @@ export function toRestorableMessage(value: Record<string, unknown>): AgentDbMess
 /**
  * Convert the messages of a conversation seed into agent messages. Both
  * Assistant runtimes use it, so a seed restores the same way on each.
+ * Each message gets a new id: the id is a global key, and one seed can be
+ * restored into many threads on the same instance.
  * Throws `BadRequestError` for the first message that is not valid.
  */
 export function toRestorableMessages(messages: Array<Record<string, unknown>>): AgentDbMessage[] {
@@ -37,6 +40,6 @@ export function toRestorableMessages(messages: Array<Record<string, unknown>>): 
 				`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
 			);
 		}
-		return message;
+		return { ...message, id: randomUUID() };
 	});
 }

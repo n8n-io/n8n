@@ -3,7 +3,7 @@ import { BadRequestError } from '@n8n/errors';
 import { toRestorableMessages } from '../restorable-messages';
 
 describe('toRestorableMessages', () => {
-	it('keeps the ids, roles and content of the seed and converts `createdAt` to a date', () => {
+	it('keeps the roles and content of the seed and converts `createdAt` to a date', () => {
 		const messages = toRestorableMessages([
 			{
 				id: 'msg-1',
@@ -16,13 +16,31 @@ describe('toRestorableMessages', () => {
 
 		expect(messages).toEqual([
 			{
-				id: 'msg-1',
+				id: expect.any(String),
 				createdAt: new Date('2026-01-01T00:00:00.000Z'),
 				role: 'user',
 				content: [{ type: 'text', text: 'Hi' }],
 			},
-			{ id: 'msg-2', createdAt: new Date('2026-01-01T00:00:01.000Z'), type: 'custom', data: {} },
+			{
+				id: expect.any(String),
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				type: 'custom',
+				data: {},
+			},
 		]);
+	});
+
+	it('gives the messages new ids on each call, so one seed can restore into many threads', () => {
+		const seed = [
+			{ id: 'msg-1', createdAt: '2026-01-01T00:00:00.000Z', role: 'user', content: [] },
+			{ id: 'msg-2', createdAt: '2026-01-01T00:00:01.000Z', role: 'assistant', content: [] },
+		];
+
+		const first = toRestorableMessages(seed).map(({ id }) => id);
+		const second = toRestorableMessages(seed).map(({ id }) => id);
+
+		expect(new Set([...first, ...second, 'msg-1', 'msg-2']).size).toBe(6);
+		for (const id of [...first, ...second]) expect(id).toMatch(/^[0-9a-f-]{36}$/);
 	});
 
 	it.each([
