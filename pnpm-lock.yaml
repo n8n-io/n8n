@@ -3827,6 +3827,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../workflow-engine-check
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)

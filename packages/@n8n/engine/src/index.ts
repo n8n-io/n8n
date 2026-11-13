@@ -87,7 +87,7 @@ export type {
 export { jsonObjectSchema, UnimplementedError } from './common';
 export type { JsonObject, JsonValue } from './common';
 
-export { deriveLoops, isBatchStepConfig } from './graph';
+export { deriveLoops, isBatchStepConfig, validateExecutableGraph } from './graph';
 export type {
 	BatchStepConfig,
 	GraphEdge,
