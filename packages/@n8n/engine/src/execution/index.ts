@@ -39,7 +39,7 @@ export type {
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
 export type { DueStep, NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
-export { DEFAULT_STALENESS_THRESHOLDS } from './staleness';
+export { assertValidStalenessThresholds, DEFAULT_STALENESS_THRESHOLDS } from './staleness';
 export type { StalenessThresholds } from './staleness';
 export { ExecutionStartHandler } from './execution-start-handler';
 export { ExecutionQueryService } from './execution-query.service';

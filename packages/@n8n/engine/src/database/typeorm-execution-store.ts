@@ -41,7 +41,6 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			...record,
 			...toParentColumns(parent),
 			finishedAt: null,
-			staleAfter: this.staleAfterFor(record.status),
 		});
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
@@ -50,6 +49,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			// The cast is needed because the insert payload type recurses into the
 			// opaque `graph` jsonb and rejects `StepConfig`'s deliberate `unknown`.
 			// NOTE: prefer insert to save for performance reasons.
+			execution.staleAfter = this.staleAfterFor(record.status);
 			await manager.insert(this.repo.target, execution as InsertValues);
 			if (seeded.length > 0) await manager.insert(WorkflowSeededStep, seeded);
 		});

@@ -93,15 +93,6 @@ export class TypeOrmStepStore implements StepStore {
 
 		for (const record of records) assertCreatableRecord(record);
 
-		// Ids are assigned here because the entity's insert hook only runs on class
-		// instances, and these are plain values.
-		const rows = records.map((record) => ({
-			...record,
-			executionId,
-			id: generateId(),
-			staleAfter: this.staleAfterFor(record.status),
-		}));
-
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
 		// Otherwise rows inserted after the sweep would stay `queued` forever.
@@ -116,6 +107,16 @@ export class TypeOrmStepStore implements StepStore {
 				[executionId],
 			);
 			if (failed) return [];
+
+			// Ids are assigned here because the entity's insert hook only runs on class
+			// instances, and these are plain values. `stale_after` is computed after
+			// the lock, so the wait for the lock does not shorten the threshold.
+			const rows = records.map((record) => ({
+				...record,
+				executionId,
+				id: generateId(),
+				staleAfter: this.staleAfterFor(record.status),
+			}));
 
 			// `orIgnore` is the unique key doing its job: a node another planner already
 			// queued is skipped, leaving the rest of the batch to land. RETURNING emits

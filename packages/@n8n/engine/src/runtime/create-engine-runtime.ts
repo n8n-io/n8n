@@ -9,6 +9,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	assertValidStalenessThresholds,
 	CancelExecutionService,
 	ExecutionQueryService,
 	ExecutionStartHandler,
@@ -111,6 +112,10 @@ export function createEngineRuntime({
 			`The resume secret must be at least ${MIN_SECRET_LENGTH} characters long`,
 		);
 	}
+
+	// Refused here and not at the first write: an invalid threshold would
+	// otherwise fail every write of a row that becomes `queued` or `running`.
+	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
 
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
 		concurrency: concurrency.orchestration,
