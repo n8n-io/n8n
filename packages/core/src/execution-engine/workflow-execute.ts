@@ -1495,11 +1495,9 @@ export class WorkflowExecute {
 			);
 		}
 
-		const isDeclarativeNode = nodeType.description.requestDefaults !== undefined;
+		const isDeclarativeNode = NodeHelpers.isDeclarativeActionNode(nodeType.description);
 		if (nodeType.webhook && !isDeclarativeNode) {
-			// Check if the node have requestDefaults(Declarative Node),
-			// else for webhook nodes always simply pass the data through
-			// as webhook method would be called by WebhookService
+			// WebhookService calls webhook(), so here the node passes its input through.
 			return { data: inputData.main as INodeExecutionData[][] };
 		}
 

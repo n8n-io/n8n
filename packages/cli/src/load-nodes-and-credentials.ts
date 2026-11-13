@@ -97,6 +97,7 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push(
 				'n8n-nodes-base.e2eTest',
 				'n8n-nodes-base.e2eTestDeclarativePollingTrigger',
+				'n8n-nodes-base.e2eTestDeclarativeWebhookTrigger',
 			);
 		}
 

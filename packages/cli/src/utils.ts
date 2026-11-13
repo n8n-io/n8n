@@ -1,4 +1,9 @@
-import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
+import {
+	CliWorkflowOperationError,
+	isDeclarativeActionNode,
+	isHitlToolType,
+	SubworkflowOperationError,
+} from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -92,7 +97,7 @@ export const isPositiveInteger = (maybeInt: string) => /^[1-9]\d*$/.test(maybeIn
  * Check if a execute method should be assigned to the node
  */
 export const shouldAssignExecuteMethod = (nodeType: INodeType) => {
-	const isDeclarativeNode = nodeType?.description?.requestDefaults !== undefined;
+	const isDeclarativeNode = isDeclarativeActionNode(nodeType?.description);
 
 	return (
 		!nodeType.execute &&

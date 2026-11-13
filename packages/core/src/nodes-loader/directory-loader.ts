@@ -25,6 +25,10 @@ import * as path from 'path';
 import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credential-type.error';
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 import { createDeclarativePoll } from '@/execution-engine/declarative-poll';
+import {
+	createDeclarativeWebhookMethods,
+	declarativeWebhook,
+} from '@/execution-engine/declarative-webhook';
 
 import {
 	commonCORSParameters,
@@ -410,6 +414,15 @@ export abstract class DirectoryLoader implements NodeLoader {
 		if (trigger?.type === 'polling') {
 			nodeType.description.polling = true;
 			nodeType.poll ??= createDeclarativePoll(nodeType, trigger);
+		}
+
+		if (trigger?.type === 'webhook') {
+			const own = nodeType.webhookMethods?.default;
+			nodeType.webhookMethods = {
+				...nodeType.webhookMethods,
+				default: { ...createDeclarativeWebhookMethods(nodeType, trigger), ...own },
+			};
+			nodeType.webhook ??= declarativeWebhook;
 		}
 
 		const { properties, polling, supportsCORS } = nodeType.description;

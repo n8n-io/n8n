@@ -5,7 +5,12 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { createRunExecutionData, NodeError, TimeoutExecutionCancelledError } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	isDeclarativeActionNode,
+	NodeError,
+	TimeoutExecutionCancelledError,
+} from 'n8n-workflow';
 import type {
 	IDataObject,
 	INode,
@@ -162,7 +167,7 @@ export class ExecuteNodeService {
 	 *  without an `execute` method; trigger/webhook-only nodes have neither. */
 	private assertExecutable(nodeType: INodeType, type: string) {
 		if (nodeType.execute) return;
-		if (nodeType.description.requestDefaults !== undefined) return;
+		if (isDeclarativeActionNode(nodeType.description)) return;
 
 		throw new BadRequestError(
 			`Node type "${type}" has no execute method and no routing support (e.g. it is trigger/webhook-only)`,

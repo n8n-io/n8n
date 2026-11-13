@@ -3030,6 +3030,69 @@ export interface IDeclarativePollingTrigger {
 	manual?: { maxResults?: number };
 }
 
+/** A webhook lifecycle method that the node writes as a function, not as config. */
+export type DeclarativeHookMethod = (this: IHookFunctions) => Promise<boolean>;
+
+/** Checks on activation if the webhook is still registered. */
+export interface DeclarativeWebhookCheckExists {
+	/** The request. Expressions can use `$webhookUrl` and `$staticData`. */
+	routing: INodePropertyRouting;
+	/** The webhook exists if one returned item matches all clauses. Replaces the ID check. Compares single values with `===`, not arrays or objects. */
+	matchOn?: Array<{ itemProperty: string; value: string }>;
+	/** Static data to write from the matched item. Expressions can use `$hook`. */
+	store?: Record<string, string>;
+	/** Status codes that mean the webhook is gone. Default `[404]`. */
+	notFoundHttpCodes?: number[];
+	/** Static-data key of the webhook ID. Without it, no request is sent. Default `webhookId`. */
+	idKey?: string;
+	/** Static-data keys that must have a value, or the webhook is registered again. */
+	requireKeys?: string[];
+}
+
+/** Registers the webhook. */
+export interface DeclarativeWebhookCreate {
+	/** The request. Expressions can use `$webhookUrl`, `$staticData` and `$generated`. */
+	routing: INodePropertyRouting;
+	/** Static data to write from the response. Expressions can use `$response` and `$generated`. */
+	store?: Record<string, string>;
+	/** Random values to make before the request, available as `$generated.<name>`. */
+	generate?: Record<string, DeclarativeSecretGenerator>;
+	/** Refuse a webhook URL on localhost. */
+	rejectLocalhostUrl?: boolean;
+	/** Expression that can use `$response`. A falsy result fails the registration. */
+	validateResponse?: string;
+}
+
+/** Deregisters the webhook. A failed request keeps the static data. */
+export interface DeclarativeWebhookDelete {
+	/** The request. Expressions can use `$webhookUrl` and `$staticData`. */
+	routing: INodePropertyRouting;
+	/** Static-data key of the webhook ID. Without it, no request is sent. Default `webhookId`. */
+	idKey?: string;
+}
+
+/** A random value that a declarative webhook trigger makes before it registers. */
+export interface DeclarativeSecretGenerator {
+	type: 'hex' | 'base64' | 'uuid' | 'alphanumericLower';
+	/** Bytes, or characters for `alphanumericLower`. A whole number of 1 or more. Default 32 (10 for `alphanumericLower`). */
+	length?: number;
+	prefix?: string;
+}
+
+export interface IDeclarativeWebhookTrigger {
+	type: 'webhook';
+	/** The loader builds `webhookMethods.default` from it. Each method can also be a function. */
+	lifecycle: {
+		/** Omit to delete the stored hook and register again on each activation. */
+		checkExists?: DeclarativeHookMethod | DeclarativeWebhookCheckExists;
+		create: DeclarativeHookMethod | DeclarativeWebhookCreate;
+		/** Omit when there is nothing to deregister. */
+		delete?: DeclarativeHookMethod | DeclarativeWebhookDelete;
+	};
+	/** Static-data keys to clear when the webhook is gone. Default: the keys of `create.store`. */
+	managedKeys?: string[];
+}
+
 export type PostReceiveAction =
 	| ((
 			this: IExecuteSingleFunctions,
@@ -3266,8 +3329,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
-	/** Preview. The loader builds `poll()` from it, unless the class defines `poll()`. */
-	trigger?: IDeclarativePollingTrigger;
+	/** Preview. The loader builds the trigger methods from it. Methods that the class defines win. */
+	trigger?: IDeclarativePollingTrigger | IDeclarativeWebhookTrigger;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
@@ -3459,6 +3522,14 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$tool?: { name: string; parameters: string };
 	/** The stored cursor of a declarative polling trigger, or `{}` when there is none. */
 	$cursor?: IDataObject;
+	/** The webhook URL of a declarative webhook trigger. A manual run gives the test URL. */
+	$webhookUrl?: string;
+	/** The node static data of a declarative webhook trigger. */
+	$staticData?: IDataObject;
+	/** The values that `create.generate` of a declarative webhook trigger made. */
+	$generated?: Record<string, string>;
+	/** A registered webhook that `checkExists` of a declarative webhook trigger compares. */
+	$hook?: IDataObject;
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */
