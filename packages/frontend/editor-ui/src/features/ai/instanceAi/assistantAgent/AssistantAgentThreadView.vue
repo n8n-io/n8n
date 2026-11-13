@@ -704,6 +704,7 @@ function removeStagedNodes(chipId: string): void {
 						mode="inline"
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
+						show-first-message-preview
 						:agent-config="agentConfig"
 						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
