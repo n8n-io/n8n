@@ -1,5 +1,5 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { aiClientFetch } from '@n8n/ai-utilities';
+import { createAiClientFetch } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -18,8 +18,12 @@ vi.mock('@n8n/ai-utilities', async () => {
 		...actual,
 		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
 		getProxyAgent: vi.fn().mockImplementation(() => new MockProxyAgent()),
+		createAiClientFetch: vi.fn(),
 	};
 });
+
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
@@ -62,6 +66,7 @@ describe('EmbeddingsOpenAi', () => {
 	beforeEach(() => {
 		embeddingsOpenAi = new EmbeddingsOpenAi();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	afterEach(() => {
@@ -79,13 +84,14 @@ describe('EmbeddingsOpenAi', () => {
 			});
 
 			await embeddingsOpenAi.supplyData.call(mockContext, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(mockContext);
 
 			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'text-embedding-3-small',
 					apiKey: 'test-api-key',
 					configuration: expect.objectContaining({
-						fetch: aiClientFetch,
+						fetch: tracedFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: expect.any(MockProxyAgent),

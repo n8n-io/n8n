@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { aiClientFetch } from '@n8n/ai-utilities';
+import { createAiClientFetch } from '@n8n/ai-utilities';
 import { OpenAI as OpenAIClient } from 'openai';
 
 import { getConnectedTools, mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
@@ -356,7 +356,7 @@ export class OpenAiAssistant implements INodeType {
 				}
 
 				const client = new OpenAIClient({
-					fetch: aiClientFetch,
+					fetch: createAiClientFetch(this),
 					apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,

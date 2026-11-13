@@ -4,6 +4,7 @@ import { AzureChatOpenAI, ChatOpenAI } from '@langchain/openai';
 import {
 	aiClientFetch,
 	anthropicTokensUsageParser,
+	createAiClientFetch,
 	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -58,12 +59,19 @@ const setupMockContext = (
 		return undefined;
 	});
 	ctx.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+	ctx.helpers.getTraceHeaders = vi.fn().mockReturnValue({});
 	return ctx;
 };
 
 describe('LmChatAzureOpenAi', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+		// The real trace wrapper over the mocked transport, as createAiClientFetch builds it.
+		const { withTraceHeaders } =
+			await vi.importActual<typeof import('@n8n/ai-utilities')>('@n8n/ai-utilities');
+		vi.mocked(createAiClientFetch).mockImplementation((ctx) =>
+			withTraceHeaders(aiClientFetch, () => ctx.helpers.getTraceHeaders(), ctx.logger),
+		);
 	});
 
 	describe('node identity', () => {
@@ -518,7 +526,10 @@ describe('LmChatAzureOpenAi', () => {
 
 			const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
 			expect(params).toMatchObject({ anthropicApiKey: 'test-key' });
-			expect(params?.clientOptions?.fetch).toBe(aiClientFetch);
+			expect(vi.mocked(createAiClientFetch)).toHaveBeenCalledWith(ctx);
+			expect(params?.clientOptions?.fetch).toBe(
+				vi.mocked(createAiClientFetch).mock.results[0].value,
+			);
 			// Null keeps the SDK from reading ANTHROPIC_AUTH_TOKEN off the host.
 			expect(params?.clientOptions?.authToken).toBeNull();
 		});
@@ -573,6 +584,32 @@ describe('LmChatAzureOpenAi', () => {
 				expect(headers.has('x-api-key')).toBe(false);
 				expect(headers.get('content-type')).toBe('application/json');
 			}
+		});
+
+		it('should send the trace context alongside the Entra bearer', async () => {
+			const traceparent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+			vi.mocked(getBearerTokenProvider).mockReturnValue(vi.fn().mockResolvedValue('tok-1'));
+			const ctx = setupMockContext(
+				'azureEntraCognitiveServicesOAuth2Api',
+				entraFoundry,
+				{},
+				false,
+				'anthropic',
+			);
+			ctx.helpers.getTraceHeaders = vi.fn().mockReturnValue({ traceparent });
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+			const fetchImpl = vi.mocked(ChatAnthropic).mock.calls[0][0]?.clientOptions?.fetch;
+			await fetchImpl!('https://my-resource.services.ai.azure.com/anthropic/v1/messages', {
+				method: 'POST',
+				headers: { 'x-api-key': 'entra-id' },
+			});
+
+			expect(vi.mocked(createAiClientFetch)).toHaveBeenCalledWith(ctx);
+			const headers = new Headers(vi.mocked(aiClientFetch).mock.calls[0][1]?.headers);
+			expect(headers.get('traceparent')).toBe(traceparent);
+			expect(headers.get('Authorization')).toBe('Bearer tok-1');
+			expect(headers.has('x-api-key')).toBe(false);
 		});
 
 		it('should resolve the proxy against the Anthropic host', async () => {

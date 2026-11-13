@@ -1,7 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -94,7 +94,7 @@ export class LmChatLemonade implements INodeType {
 
 		// Build configuration object like official OpenAI node
 		const configuration: ClientOptions = {
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			baseURL: credentials.baseUrl,
 		};
 

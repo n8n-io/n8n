@@ -4,7 +4,11 @@
 
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+	createAiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -17,7 +21,7 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
 
 describe('LmChatOpenRouter', () => {
 	let node: LmChatOpenRouter;
@@ -51,10 +55,10 @@ describe('LmChatOpenRouter', () => {
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetProxyAgent.mockReturnValue({} as any);
-		// aiClientFetch wraps global fetch in production; mirror that so the
+		// The traced fetch wraps global fetch in production; mirror that so the
 		// OpenRouter adapter drives the test's globalThis.fetch stub.
-		mockedAiClientFetch.mockImplementation(
-			async (...args) => await (globalThis.fetch as typeof fetch)(...args),
+		mockedCreateAiClientFetch.mockReturnValue(
+			vi.fn(async (...args: Parameters<typeof fetch>) => await globalThis.fetch(...args)),
 		);
 		return ctx;
 	};
@@ -383,15 +387,17 @@ describe('LmChatOpenRouter', () => {
 			return MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
 		}
 
-		it('should delegate to the bounded aiClientFetch under the wrapper', async () => {
-			const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+		it('should delegate to the traced aiClientFetch under the wrapper', async () => {
+			globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+			const ctx = setupMockContext();
+			await node.supplyData.call(ctx, 0);
+			const wrappedFetch = MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
 
-			const wrappedFetch = await setupFetchWrapper(mockFetch);
 			await wrappedFetch('https://openrouter.ai/api/v1/models');
 
-			// The wrapper must route through aiClientFetch, not call fetch directly,
-			// so the outbound response stays bounded.
-			expect(mockedAiClientFetch).toHaveBeenCalled();
+			// The wrapper must not call fetch directly, so the response stays bounded and traced.
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
+			expect(mockedCreateAiClientFetch.mock.results[0].value).toHaveBeenCalled();
 		});
 
 		it.each<{ input: unknown; expected: string; label: string }>([

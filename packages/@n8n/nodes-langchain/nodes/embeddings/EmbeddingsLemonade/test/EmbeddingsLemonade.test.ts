@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenAIEmbeddings } from '@langchain/openai';
-import { aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
+import { createAiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
 import { createResultOk } from '@n8n/utils/result';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
@@ -14,7 +14,8 @@ vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
 
 const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 const egressFilter: NodeEgressFilter = {
@@ -60,20 +61,22 @@ describe('EmbeddingsLemonade', () => {
 	beforeEach(() => {
 		node = new EmbeddingsLemonade();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('supplyData', () => {
-		it('should wire the bounded aiClientFetch into OpenAIEmbeddings', async () => {
+		it('should wire the traced aiClientFetch into OpenAIEmbeddings', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('lemonadeApi');
 			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'nomic-embed-text',
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'http://localhost:8000/api/v1',
 					}),
 				}),
