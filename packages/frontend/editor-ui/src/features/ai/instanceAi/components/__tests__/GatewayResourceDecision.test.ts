@@ -19,6 +19,7 @@ const props = {
 	options: ['denyOnce', 'allowOnce', 'allowForSession'] as const,
 	threadId: 'thread-1',
 	inputThreadId: 'input-thread-1',
+	runtime: 'agents' as const,
 };
 
 describe('GatewayResourceDecision', () => {
@@ -38,6 +39,7 @@ describe('GatewayResourceDecision', () => {
 				thread_id: 'thread-1',
 				input_thread_id: 'input-thread-1',
 				type: 'resource-decision',
+				runtime: 'agents',
 			}),
 		);
 	});

@@ -445,6 +445,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 					:thread-id="thread.id"
 					:input-thread-id="chunk.item.toolCall.confirmation.inputThreadId"
+					runtime="instance-ai"
 					:failed-attempts="credentialFailures[chunk.item.toolCall.confirmation.requestId] ?? 0"
 					@decide="
 						(body, resolution) =>
@@ -564,6 +565,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 					data-test-id="instance-ai-gateway-confirmation-panel"
 					:thread-id="thread.id"
 					:input-thread-id="chunk.item.toolCall.confirmation.inputThreadId"
+					runtime="instance-ai"
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"

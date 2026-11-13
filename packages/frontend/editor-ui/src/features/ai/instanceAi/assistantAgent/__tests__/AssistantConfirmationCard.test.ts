@@ -48,8 +48,8 @@ vi.mock('../../components/InstanceAiMcpConnectCard.vue', () => ({
 function eventStub(testId: string, emitExpression: string) {
 	return {
 		default: {
-			props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
-			template: `<button data-test-id="${testId}" :data-project-id="projectId" @click="${emitExpression}" />`,
+			props: ['projectId', 'threadId', 'inputThreadId', 'runtime', 'outcome'],
+			template: `<button data-test-id="${testId}" :data-project-id="projectId" :data-runtime="runtime" @click="${emitExpression}" />`,
 		},
 	};
 }
@@ -62,9 +62,9 @@ vi.mock('../../components/InstanceAiCredentialSetup.vue', () =>
 );
 vi.mock('../../workflowSetup/InstanceAiWorkflowSetup.vue', () => ({
 	default: {
-		props: ['projectId', 'threadId', 'inputThreadId', 'outcome'],
+		props: ['projectId', 'threadId', 'inputThreadId', 'runtime', 'outcome'],
 		template: `<div>
-			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" @click="$emit('defer')" />
+			<button data-test-id="stub-workflow-setup" :data-project-id="projectId" :data-runtime="runtime" @click="$emit('defer')" />
 			<button data-test-id="stub-workflow-setup-apply" @click="$emit('apply', { nodeCredentials: { Slack: { slackApi: 'cred-1' } } })" />
 			<span data-test-id="stub-workflow-setup-outcome">{{ outcome?.state }}</span>
 		</div>`,
@@ -315,6 +315,18 @@ describe('AssistantConfirmationCard', () => {
 		]);
 	});
 
+	it.each([
+		['stub-workflow-setup', { setupRequests: [{ id: 'x' }] }],
+		['stub-credential-setup', { credentialRequests: [{ credentialType: 'slackApi' }] }],
+	])('passes the agents runtime to %s for its telemetry', (testId, fields) => {
+		const input = { requestId: 'req-s', message: 'Set up Slack', ...fields };
+		const { getByTestId } = renderComponent({
+			props: { input: input as AssistantConfirmationInput },
+		});
+
+		expect(getByTestId(testId)).toHaveAttribute('data-runtime', 'agents');
+	});
+
 	// Minimal payloads: the card only needs each field to choose its setup variant.
 	it.each<[string, string, Record<string, unknown>, Record<string, unknown>]>([
 		[
@@ -474,6 +486,18 @@ describe('AssistantConfirmationCard', () => {
 				],
 				skipped_inputs: [],
 			});
+		});
+
+		it('uses the request id as input id when the card has none, as the backend does', async () => {
+			const { getByTestId, accept } = renderInThread({ ...runApproval, inputThreadId: undefined });
+
+			await fireEvent.click(getByTestId('approval-card-allow-once'));
+			accept();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ input_thread_id: 'req-aa' }),
+			);
 		});
 
 		it('tracks always allow as approve_always', async () => {

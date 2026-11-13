@@ -85,7 +85,7 @@ const decide = vi.fn();
 function renderComponent(options: Parameters<typeof renderCard>[0] = {}) {
 	return renderCard({
 		...options,
-		props: { threadId: 'thread-1', onDecide: decide, ...options.props },
+		props: { threadId: 'thread-1', runtime: 'instance-ai', onDecide: decide, ...options.props },
 	});
 }
 

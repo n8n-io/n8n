@@ -23,6 +23,7 @@ import { N8nActionDropdown, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/de
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { AssistantRuntime } from '@n8n/telemetry';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -44,6 +45,8 @@ const props = defineProps<{
 	threadId: string;
 	/** Joins the telemetry with the "Builder asked for input" event of this card. */
 	inputThreadId?: string;
+	/** The Assistant runtime that showed the card. */
+	runtime: AssistantRuntime;
 	/**
 	 * Raised by the parent when it could not send the answer. The card shows the
 	 * form again, with the user's selections, so the user can try again.
@@ -528,6 +531,7 @@ function trackCredentialInput() {
 		input_thread_id: props.inputThreadId ?? '',
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
+		runtime: props.runtime,
 		provided_inputs: provided,
 		skipped_inputs: skipped,
 		num_tasks: props.credentialRequests.length,
