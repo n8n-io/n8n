@@ -6,6 +6,7 @@ import {
 	type INodeProperties,
 	type JsonObject,
 	NodeApiError,
+	requestPath,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 
@@ -156,7 +157,7 @@ export const objectOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						baseURL: 'https://storage.googleapis.com/upload/storage/v1',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/"}}',
 						qs: {
 							name: '={{$parameter["objectName"]}}',
 							uploadType: 'multipart',
@@ -255,7 +256,7 @@ export const objectOperations: INodeProperties[] = [
 										const accessToken = await fetchServiceAccountToken.call(this);
 										uploadSessionResponse = await this.helpers.httpRequest({
 											method: 'POST',
-											url: `/b/${bucketName}/o/`,
+											url: requestPath`/b/${bucketName}/o/`,
 											baseURL: 'https://storage.googleapis.com/upload/storage/v1',
 											qs: {
 												...requestOptions.qs,
@@ -275,7 +276,7 @@ export const objectOperations: INodeProperties[] = [
 											'googleCloudStorageOAuth2Api',
 											{
 												method: 'POST',
-												url: `/b/${bucketName}/o/`,
+												url: requestPath`/b/${bucketName}/o/`,
 												baseURL: 'https://storage.googleapis.com/upload/storage/v1',
 												qs: {
 													...requestOptions.qs,
@@ -360,7 +361,7 @@ export const objectOperations: INodeProperties[] = [
 									requestOptions.baseURL = 'https://storage.googleapis.com/storage/v1';
 									// GCS requires object names to be percent-encoded in the URL path.
 									// Without this, names containing '/', spaces, or '#' produce a 404.
-									requestOptions.url = `/b/${bucketName}/o/${encodeURIComponent(objectName)}`;
+									requestOptions.url = requestPath`/b/${bucketName}/o/${objectName}`.value;
 									requestOptions.qs = projection ? { projection } : {};
 									// Merge rather than replace: the service-account preSend has already put the
 									// bearer token on these headers, and dropping it makes this request anonymous.
@@ -397,7 +398,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						qs: {},
 					},
 				},
@@ -410,7 +411,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						returnFullResponse: true,
 						qs: {
 							alt: '={{$parameter["alt"]}}',
@@ -474,7 +475,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/"}}',
 						returnFullResponse: true,
 						qs: {},
 					},
@@ -538,7 +539,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + encodeURIComponent($parameter["objectName"])}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						qs: {},
 						body: {},
 					},

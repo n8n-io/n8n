@@ -6,7 +6,7 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { brandfetchApiRequest, fetchAndPrepareBinaryData } from '../../v1/GenericFunctions';
@@ -44,13 +44,13 @@ describe('BrandfetchV1', () => {
 
 		it('should make an authenticated API request to Brandfetch', async () => {
 			const method: IHttpRequestMethods = 'GET';
-			const resource = '/brands/n8n.io';
+			const resource = requestPath`/brands/n8n.io`;
 
 			await brandfetchApiRequest.call(mockThis, method, resource);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('brandfetchApi', {
 				method: 'GET',
-				url: 'https://api.brandfetch.io/v2/brands/n8n.io',
+				url: requestUrl`https://api.brandfetch.io/v2/brands/n8n.io`,
 				json: true,
 			});
 		});
@@ -59,14 +59,14 @@ describe('BrandfetchV1', () => {
 			await brandfetchApiRequest.call(
 				mockThis,
 				'POST',
-				'/brands/n8n.io',
+				requestPath`/brands/n8n.io`,
 				{ key: 'value' },
 				{ filter: 'logo' },
 			);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('brandfetchApi', {
 				method: 'POST',
-				url: 'https://api.brandfetch.io/v2/brands/n8n.io',
+				url: requestUrl`https://api.brandfetch.io/v2/brands/n8n.io`,
 				json: true,
 				body: { key: 'value' },
 				qs: { filter: 'logo' },
@@ -81,7 +81,7 @@ describe('BrandfetchV1', () => {
 			await brandfetchApiRequest.call(
 				mockThis,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{},
 				'https://cdn.brandfetch.io/logo.png',
@@ -104,17 +104,17 @@ describe('BrandfetchV1', () => {
 				message: 'Not found',
 			});
 
-			await expect(brandfetchApiRequest.call(mockThis, 'GET', '/brands/missing')).rejects.toThrow(
-				NodeApiError,
-			);
+			await expect(
+				brandfetchApiRequest.call(mockThis, 'GET', requestPath`/brands/missing`),
+			).rejects.toThrow(NodeApiError);
 		});
 
 		it('should wrap downstream errors as NodeApiError', async () => {
 			(mockThis.helpers.requestWithAuthentication as Mock).mockRejectedValue(new Error('boom'));
 
-			await expect(brandfetchApiRequest.call(mockThis, 'GET', '/brands/n8n.io')).rejects.toThrow(
-				NodeApiError,
-			);
+			await expect(
+				brandfetchApiRequest.call(mockThis, 'GET', requestPath`/brands/n8n.io`),
+			).rejects.toThrow(NodeApiError);
 		});
 	});
 

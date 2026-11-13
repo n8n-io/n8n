@@ -282,7 +282,12 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 	const parser = Container.get(N8nPackageParser);
 	const options = request(overrides);
 	return await orchestrator.plan({
-		context: { user: options.user, projectId: options.projectId!, folderId: null },
+		context: {
+			user: options.user,
+			projectId: options.projectId!,
+			folderId: null,
+			publicApi: false,
+		},
 		agents: await parser.getAgents(reader),
 		skills: await parser.getSkills(reader),
 		folders: [],
@@ -897,6 +902,34 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 	});
 });
 
+it('archives and restores a matched Agent to match the package', async () => {
+	const input = publishableFixture();
+	input.manifest.agents.splice(1);
+	const published = await importSelected(input, { publishingPolicy: 'match-source' });
+	expect(published.agentOutcomes[0].agent).toMatchObject({ isArchived: false });
+	expect(published.agentOutcomes[0].agent.activeVersionId).not.toBeNull();
+
+	source(input).isArchived = true;
+	const archived = await importSelected(input, { publishingPolicy: 'match-source' });
+	expect(archived.agentOutcomes[0]).toMatchObject({
+		status: 'updated',
+		agent: { isArchived: true, activeVersionId: null },
+		publishing: { state: 'unchanged' },
+	});
+
+	// An import replaces the definition of an agent that stays archived.
+	source(input).name = 'Renamed while archived';
+	const updated = await importSelected(input);
+	expect(updated.agentOutcomes[0].agent).toMatchObject({ isArchived: true });
+
+	source(input).isArchived = false;
+	const restored = await importSelected(input, { publishingPolicy: 'preserve-published-state' });
+	expect(restored.agentOutcomes[0].agent).toMatchObject({
+		isArchived: false,
+		activeVersionId: null,
+	});
+});
+
 describe('channels', () => {
 	const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
 
@@ -1133,6 +1166,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findByProjectId(project.id);
 		const result = await orchestrator.publishPackage({
 			user: member,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1161,6 +1195,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findById(current.id);
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1199,6 +1234,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 			});
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy: 'publish-all',
 			subWorkflowRequirements: undefined,

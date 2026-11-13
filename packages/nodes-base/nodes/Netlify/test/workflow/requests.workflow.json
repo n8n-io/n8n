@@ -1,0 +1,284 @@
+{
+	"name": "Netlify Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "deploy",
+				"operation": "cancel",
+				"deployId": "5f1e2d3c4b5a69788f9e0d1c"
+			},
+			"id": "netlify-0",
+			"name": "Deploy Cancel",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deploy",
+				"operation": "create",
+				"siteId": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+				"additionalFields": {
+					"branch": "main",
+					"title": "Release 1.2"
+				}
+			},
+			"id": "netlify-1",
+			"name": "Deploy Create",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deploy",
+				"operation": "get",
+				"siteId": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+				"deployId": "6a2b3c4d5e6f708192a3b4c5"
+			},
+			"id": "netlify-2",
+			"name": "Deploy Get",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deploy",
+				"operation": "getAll",
+				"siteId": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+				"returnAll": true
+			},
+			"id": "netlify-3",
+			"name": "Deploy Get Many",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "deploy",
+				"operation": "getAll",
+				"siteId": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+				"returnAll": false,
+				"limit": 1
+			},
+			"id": "netlify-4",
+			"name": "Deploy Get Some",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "site",
+				"operation": "delete",
+				"siteId": "8e1f2a3b-4c5d-4e6f-8a9b-0c1d2e3f4a5b"
+			},
+			"id": "netlify-5",
+			"name": "Site Delete",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "site",
+				"operation": "get",
+				"siteId": "3970e0fe-8564-4903-9a55-c5f8de49fb8b"
+			},
+			"id": "netlify-6",
+			"name": "Site Get",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "site",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "netlify-7",
+			"name": "Site Get Many",
+			"type": "n8n-nodes-base.netlify",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"netlifyApi": {
+					"id": "1",
+					"name": "Netlify account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Deploy Cancel": [
+			{
+				"json": {
+					"id": "5f1e2d3c4b5a69788f9e0d1c",
+					"state": "error"
+				}
+			}
+		],
+		"Deploy Create": [
+			{
+				"json": {
+					"id": "6a2b3c4d5e6f708192a3b4c5",
+					"state": "new"
+				}
+			}
+		],
+		"Deploy Get": [
+			{
+				"json": {
+					"id": "6a2b3c4d5e6f708192a3b4c5",
+					"state": "ready"
+				}
+			}
+		],
+		"Deploy Get Many": [
+			{
+				"json": {
+					"id": "6a2b3c4d5e6f708192a3b4c5"
+				}
+			},
+			{
+				"json": {
+					"id": "5f1e2d3c4b5a69788f9e0d1c"
+				}
+			}
+		],
+		"Deploy Get Some": [
+			{
+				"json": {
+					"id": "6a2b3c4d5e6f708192a3b4c5"
+				}
+			}
+		],
+		"Site Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Site Get": [
+			{
+				"json": {
+					"id": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+					"name": "docs"
+				}
+			}
+		],
+		"Site Get Many": [
+			{
+				"json": {
+					"id": "3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+					"name": "docs"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Deploy Cancel",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deploy Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deploy Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deploy Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Deploy Get Some",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Site Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Site Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Site Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

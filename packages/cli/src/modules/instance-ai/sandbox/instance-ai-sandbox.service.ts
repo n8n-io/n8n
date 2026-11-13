@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
-import { SandboxAcquisitionError } from '@n8n/agents/sandbox';
+import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
+import { getN8nVersion } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
@@ -24,7 +25,6 @@ import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
@@ -259,6 +259,9 @@ export class InstanceAiSandboxService {
 
 	private cacheGeneration = 0;
 
+	/** Run in which the last sandbox start of each thread failed, keyed by thread ID. */
+	private readonly failedStartRuns = new Map<string, string>();
+
 	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
 
 	private get logger(): Logger {
@@ -308,7 +311,7 @@ export class InstanceAiSandboxService {
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
 				snapshot: sandboxSnapshot || undefined,
-				n8nVersion: N8N_VERSION || undefined,
+				n8nVersion: getN8nVersion() || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,
@@ -533,7 +536,15 @@ export class InstanceAiSandboxService {
 		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config, {
+		// After a failed start the sandbox is usually still starting. Later starts in the
+		// same run only check on it, so each retry does not wait minutes again.
+		const runId = this.options.runState.getActiveRunId(threadId);
+		const quickStart =
+			config.provider === 'daytona' &&
+			runId !== undefined &&
+			this.failedStartRuns.get(threadId) === runId;
+
+		const sandbox = await createSandbox(quickStart ? { ...config, quickStart } : config, {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
@@ -548,6 +559,7 @@ export class InstanceAiSandboxService {
 				async () => await workspace.init(),
 			);
 		} catch (error) {
+			if (runId !== undefined) this.failedStartRuns.set(threadId, runId);
 			try {
 				await traceSandboxOperation(
 					'cleanup-failed-start',
@@ -556,6 +568,13 @@ export class InstanceAiSandboxService {
 				);
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
+			}
+			// A quick check that finds the sandbox still starting is expected, so it is not reported.
+			if (quickStart && error instanceof SandboxNotReadyError) {
+				throw new OperationalError(
+					`The sandbox is not ready yet. It can still be starting, so try again shortly. Reason: ${error.message}`,
+					{ cause: error },
+				);
 			}
 			// Only the generic transient wrap is downgraded to a non-reported warning.
 			// Classified subclasses (name conflict, sandbox not ready) keep their identity
@@ -568,6 +587,7 @@ export class InstanceAiSandboxService {
 			}
 			throw error;
 		}
+		this.failedStartRuns.delete(threadId);
 
 		const entry: RuntimeSandboxEntry = {
 			userId: user.id,

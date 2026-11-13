@@ -30,6 +30,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { getErrorCode } from './error-code.utils';
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { topLevelItemsWarning } from './top-level-items-warning';
 import {
@@ -406,6 +407,7 @@ export const createCreateWorkflowFromCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const workflowJson = result.workflow;
 			const { description: workflowDescription, truncated: descriptionTruncated } =

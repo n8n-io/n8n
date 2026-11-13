@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { brandfetchApiRequest, fetchAndPrepareBinaryData } from './GenericFunctions';
 
@@ -204,7 +204,7 @@ export class BrandfetchV2 implements INodeType {
 						qs.cachedOnly = true;
 					}
 
-					const requestOptions: IDataObject =
+					const requestOptions =
 						outputFormat === 'markdown'
 							? { json: false, headers: { accept: 'text/markdown' } }
 							: { headers: { accept: 'application/json' } };
@@ -212,10 +212,9 @@ export class BrandfetchV2 implements INodeType {
 					const response = await brandfetchApiRequest.call(
 						this,
 						'GET',
-						`/context/${encodeURIComponent(domain)}`,
+						requestPath`/context/${domain}`,
 						{},
 						qs,
-						undefined,
 						requestOptions,
 					);
 
@@ -239,7 +238,7 @@ export class BrandfetchV2 implements INodeType {
 
 				const type = this.getNodeParameter('type', i) as string;
 				const identifier = (this.getNodeParameter('identifier', i) as string).trim();
-				const resourcePath = `/brands/${encodeURIComponent(type)}/${encodeURIComponent(identifier)}`;
+				const resourcePath = requestPath`/brands/${type}/${identifier}`;
 
 				const response = await brandfetchApiRequest.call(this, 'GET', resourcePath);
 

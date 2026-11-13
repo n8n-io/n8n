@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { ref } from 'vue';
 
 import N8nButton from './Button.vue';
 import IconTextButton from '../IconTextButton/IconTextButton.vue';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import DropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
 
@@ -124,17 +127,60 @@ export const WithIcons: Story = {
 	args: {},
 };
 
+// Each shape is shown idle and in the toggled state, in one column, so a width change is visible.
 export const Loading: Story = {
 	render: () => ({
-		components: { N8nButton },
+		components: { N8nButton, N8nIcon, DropdownMenu },
+		setup() {
+			const loading = ref(true);
+			const menuItems: Array<DropdownMenuItemProps<string>> = [{ id: 'clone', label: 'Clone' }];
+			return { loading, menuItems, sizes: ['small', 'large'] };
+		},
 		template: `
-			<div style="display: flex; gap: 12px; align-items: center;">
-				<N8nButton variant="solid" size="medium" loading>Solid</N8nButton>
-				<N8nButton variant="brand" size="medium" loading>Brand</N8nButton>
-				<N8nButton variant="outline" size="medium" loading>Outline</N8nButton>
-				<N8nButton variant="ghost" size="medium" loading>Ghost</N8nButton>
-				<N8nButton variant="destructive" size="medium" loading>Destructive</N8nButton>
-				<N8nButton variant="success" size="medium" loading>Success</N8nButton>
+			<div style="display: flex; flex-direction: column; gap: 24px; align-items: flex-start;">
+				<N8nButton variant="outline" size="small" @click="loading = !loading">
+					Toggle loading
+				</N8nButton>
+				<div style="display: flex; gap: 12px; align-items: center;">
+					<N8nButton variant="solid" size="medium" :loading="loading">Solid</N8nButton>
+					<N8nButton variant="brand" size="medium" :loading="loading">Brand</N8nButton>
+					<N8nButton variant="outline" size="medium" :loading="loading">Outline</N8nButton>
+					<N8nButton variant="ghost" size="medium" :loading="loading">Ghost</N8nButton>
+					<N8nButton variant="destructive" size="medium" :loading="loading">Destructive</N8nButton>
+					<N8nButton variant="success" size="medium" :loading="loading">Success</N8nButton>
+				</div>
+				<div
+					v-for="size in sizes"
+					:key="size"
+					style="display: grid; grid-template-columns: repeat(7, max-content); gap: 12px; align-items: center;"
+				>
+					<span>{{ size }}</span>
+					<span>Label</span>
+					<span>Icon and label</span>
+					<span>Icon only</span>
+					<span>Icon, no icon-only</span>
+					<span>Icon slot</span>
+					<span>Dropdown trigger</span>
+					<template v-for="(state, row) in [false, loading]" :key="row">
+						<span>{{ state ? 'loading' : 'idle' }}</span>
+						<N8nButton variant="outline" :size="size" :loading="state">Save</N8nButton>
+						<N8nButton variant="outline" :size="size" :loading="state" icon="plus">Add item</N8nButton>
+						<N8nButton variant="outline" :size="size" :loading="state" icon="trash-2" icon-only aria-label="Delete" />
+						<N8nButton variant="outline" :size="size" :loading="state" icon="download" />
+						<N8nButton variant="outline" :size="size" :loading="state">
+							<template #icon><N8nIcon icon="plus" /></template>
+							Add item
+						</N8nButton>
+						<DropdownMenu :items="menuItems">
+							<template #trigger>
+								<N8nButton variant="outline" :size="size" :loading="state">
+									Actions
+									<N8nIcon icon="chevron-down" size="small" />
+								</N8nButton>
+							</template>
+						</DropdownMenu>
+					</template>
+				</div>
 			</div>
 		`,
 	}),

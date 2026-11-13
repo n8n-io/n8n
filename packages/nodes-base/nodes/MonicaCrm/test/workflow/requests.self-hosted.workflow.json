@@ -1,0 +1,58 @@
+{
+	"name": "Monica CRM Requests (Self-Hosted)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "303"
+			},
+			"id": "monica-0",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.monicaCrm",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"monicaCrmApi": {
+					"id": "1",
+					"name": "Monica CRM account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Contact Get": [
+			{
+				"json": {
+					"id": 303,
+					"first_name": "Nathan"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

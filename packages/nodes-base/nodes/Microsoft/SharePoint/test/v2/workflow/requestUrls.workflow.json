@@ -1,0 +1,530 @@
+{
+	"name": "SharePoint request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "51329261-8818-475b-b684-3d8df6c3176b",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "get",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"simplify": false
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 0],
+			"id": "40276377-a393-413f-8ab7-f5280127471d",
+			"name": "List Get",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"returnAll": true,
+				"simplify": false
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 200],
+			"id": "2d82193e-d54b-4fd0-b423-919684767fa4",
+			"name": "List Get Many",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "get",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"item": {
+					"__rl": true,
+					"value": "7",
+					"mode": "id"
+				},
+				"simplify": false
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 400],
+			"id": "c6ef8ea5-7b4c-4347-9058-2480df8a75da",
+			"name": "Item Get",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "getAll",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"returnAll": true,
+				"simplify": false
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 600],
+			"id": "ad4b99ed-a4c2-4ae6-975b-22b3207ab019",
+			"name": "Item Get Many",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "delete",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"item": {
+					"__rl": true,
+					"value": "8",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 800],
+			"id": "86bd6e8c-b989-4f9e-b185-5ffd259794d4",
+			"name": "Item Delete",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "create",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Title": "Quarterly review"
+					},
+					"matchingColumns": [],
+					"schema": []
+				}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 1000],
+			"id": "e4b510a8-6d81-4207-a288-ccd2193c7aaf",
+			"name": "Item Create",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "update",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"id": "7",
+						"Title": "Quarterly review (final)"
+					},
+					"matchingColumns": ["id"],
+					"schema": []
+				}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 1200],
+			"id": "25b06cbe-d7fe-42ac-9943-c9c57c5768cc",
+			"name": "Item Update",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "upsert",
+				"site": {
+					"__rl": true,
+					"value": "https://contoso.sharepoint.com/sites/Marketing",
+					"mode": "url"
+				},
+				"list": {
+					"__rl": true,
+					"value": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"mode": "id"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"Title": "Budget 2027"
+					},
+					"matchingColumns": ["Title"],
+					"schema": []
+				}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 1400],
+			"id": "bf2065fb-8c2f-4345-bc68-483374ddc734",
+			"name": "Item Upsert",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "01BYE5RZ2KXWOZ3HJCZVA2XJEFBJCB4WXT",
+					"mode": "id"
+				},
+				"file": {
+					"__rl": true,
+					"value": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [300, 1600],
+			"id": "cf790a25-bf72-4949-8f66-c528cbf330bc",
+			"name": "File Download",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "01BYE5RZ2KXWOZ3HJCZVA2XJEFBJCB4WXT",
+					"mode": "id"
+				},
+				"fileName": "report.txt"
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [600, 1600],
+			"id": "0daec4cb-c368-4b25-aca8-c10aa57ff067",
+			"name": "File Upload",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "update",
+				"site": {
+					"__rl": true,
+					"value": "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+					"mode": "id"
+				},
+				"folder": {
+					"__rl": true,
+					"value": "01BYE5RZ2KXWOZ3HJCZVA2XJEFBJCB4WXT",
+					"mode": "id"
+				},
+				"file": {
+					"__rl": true,
+					"value": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"mode": "id"
+				},
+				"fileName": "report-final.txt",
+				"changeFileContent": true
+			},
+			"type": "n8n-nodes-base.microsoftSharePoint",
+			"typeVersion": 2,
+			"position": [600, 1800],
+			"id": "86485fa8-f514-4123-8a99-60e7a80fedb9",
+			"name": "File Update",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "credential-id",
+					"name": "Microsoft account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "List Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Item Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"File Download": {
+			"main": [
+				[
+					{
+						"node": "File Upload",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"List Get": [
+			{
+				"json": {
+					"id": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"displayName": "Projects"
+				}
+			}
+		],
+		"List Get Many": [
+			{
+				"json": {
+					"id": "d7689e2b-941a-4cd3-bb24-55cddee54294",
+					"displayName": "Projects"
+				}
+			},
+			{
+				"json": {
+					"id": "f2c5a8b1-6a0e-4c6b-9d3e-2b8f1a7c4e90",
+					"displayName": "Documents"
+				}
+			}
+		],
+		"Item Get": [
+			{
+				"json": {
+					"id": "7",
+					"fields": {
+						"Title": "Quarterly review"
+					}
+				}
+			}
+		],
+		"Item Get Many": [
+			{
+				"json": {
+					"id": "7",
+					"fields": {
+						"Title": "Quarterly review"
+					}
+				}
+			}
+		],
+		"Item Delete": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		],
+		"Item Create": [
+			{
+				"json": {
+					"id": "9",
+					"fields": {
+						"Title": "Quarterly review"
+					}
+				}
+			}
+		],
+		"Item Update": [
+			{
+				"json": {
+					"id": "7",
+					"fields": {
+						"Title": "Quarterly review (final)"
+					}
+				}
+			}
+		],
+		"Item Upsert": [
+			{
+				"json": {
+					"id": "10",
+					"fields": {
+						"Title": "Budget 2027"
+					}
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {}
+			}
+		],
+		"File Upload": [
+			{
+				"json": {
+					"id": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB",
+					"name": "report.txt"
+				}
+			}
+		],
+		"File Update": [
+			{
+				"json": {
+					"id": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"name": "report-final.txt"
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,305 @@
+{
+	"name": "Webex request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b0500000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "create",
+				"destination": "room",
+				"roomId": "Y2lzY29zcGFyazovL3VzL1JPT00vYmJjZWIxYWQtNDNmMS0zYjU4LTkxNDctZjE0YmIwYzRkMTU0",
+				"text": "Hello",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b0500000-0000-4000-8000-000000000001",
+			"name": "message create",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "delete",
+				"messageId": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk"
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "b0500000-0000-4000-8000-000000000002",
+			"name": "message delete",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "get",
+				"messageId": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk"
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "b0500000-0000-4000-8000-000000000003",
+			"name": "message get",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "update",
+				"messageId": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk",
+				"markdown": false,
+				"text": "Hello again"
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "b0500000-0000-4000-8000-000000000004",
+			"name": "message update",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "meeting",
+				"operation": "create",
+				"title": "Standup",
+				"start": "2024-05-01T09:00:00",
+				"end": "2024-05-01T09:15:00",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "b0500000-0000-4000-8000-000000000005",
+			"name": "meeting create",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "meeting",
+				"operation": "delete",
+				"meetingId": "870f51ff287b41be84648412901e0402",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "b0500000-0000-4000-8000-000000000006",
+			"name": "meeting delete",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "meeting",
+				"operation": "get",
+				"meetingId": "870f51ff287b41be84648412901e0402",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "b0500000-0000-4000-8000-000000000007",
+			"name": "meeting get",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "meeting",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "b0500000-0000-4000-8000-000000000008",
+			"name": "meeting getAll",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "meeting",
+				"operation": "update",
+				"meetingId": "870f51ff287b41be84648412901e0402",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.ciscoWebex",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "b0500000-0000-4000-8000-000000000009",
+			"name": "meeting update",
+			"credentials": {
+				"ciscoWebexOAuth2Api": {
+					"id": "credId",
+					"name": "Webex account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"message create": [
+			{
+				"json": {
+					"id": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk"
+				}
+			}
+		],
+		"message delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"message get": [
+			{
+				"json": {
+					"id": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk"
+				}
+			}
+		],
+		"message update": [
+			{
+				"json": {
+					"id": "Y2lzY29zcGFyazovL3VzL01FU1NBR0UvOTJkYjNiZTAtNDNiZC0xMWU2LThhZTktZGQ1YjNkZmM1NjVk"
+				}
+			}
+		],
+		"meeting create": [
+			{
+				"json": {
+					"id": "870f51ff287b41be84648412901e0402"
+				}
+			}
+		],
+		"meeting delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"meeting get": [
+			{
+				"json": {
+					"id": "870f51ff287b41be84648412901e0402"
+				}
+			}
+		],
+		"meeting getAll": [
+			{
+				"json": {
+					"id": "870f51ff287b41be84648412901e0402"
+				}
+			}
+		],
+		"meeting update": [
+			{
+				"json": {
+					"id": "870f51ff287b41be84648412901e0402"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "message create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "message delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "message get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "message update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "meeting create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "meeting delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "meeting get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "meeting getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "meeting update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

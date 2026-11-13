@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import {
+	AgentTagMapping,
+	LIKE_ESCAPE_CLAUSE,
+	type ServiceAccountRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,13 +17,20 @@ import { AgentRepository } from '../repositories/agent.repository';
 
 const entityManager = mockEntityManager(Agent);
 const mockDataSource = { manager: entityManager };
+const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 
 describe('AgentRepository', () => {
 	let repository: AgentRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentRepository(mockDataSource as never, mock<TransactionRunner>());
+		globalConfig.tags.disabled = false;
+		repository = new AgentRepository(
+			mockDataSource as never,
+			mock<TransactionRunner>(),
+			globalConfig,
+			mock<ServiceAccountRepository>(),
+		);
 	});
 
 	describe('findByIdAndProjectId', () => {
@@ -29,7 +42,7 @@ describe('AgentRepository', () => {
 
 			expect(repository.findOne).toHaveBeenCalledWith({
 				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			});
 			expect(result).toBe(agent);
 		});
@@ -40,6 +53,19 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
 			expect(result).toBeNull();
+		});
+
+		it('omits the tags relation when tags are disabled', async () => {
+			globalConfig.tags.disabled = true;
+			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			await repository.findByIdAndProjectId('agent-1', 'project-1');
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1', projectId: 'project-1', scope: 'project' },
+				relations: { activeVersion: true },
+			});
 		});
 	});
 
@@ -52,7 +78,7 @@ describe('AgentRepository', () => {
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(Agent, {
 				where: { id: 'agent-1', scope: 'project' },
-				relations: { activeVersion: true },
+				relations: { activeVersion: true, tags: true },
 			});
 			expect(result).toBe(agent);
 		});
@@ -140,10 +166,13 @@ describe('AgentRepository', () => {
 				'agent.updatedAt',
 			]);
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
+				isArchived: false,
+			});
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
 				projectIds: ['project-1'],
 			});
-			expect(mockQb.andWhere).toHaveBeenCalledTimes(1);
+			expect(mockQb.andWhere).toHaveBeenCalledTimes(2);
 			expect(mockQb.take).not.toHaveBeenCalled();
 		});
 
@@ -154,7 +183,10 @@ describe('AgentRepository', () => {
 			await repository.findSummariesByProjectIds(null);
 
 			expect(mockQb.where).toHaveBeenCalledWith("agent.scope = 'project'");
-			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.projectId IN (:...projectIds)',
+				expect.anything(),
+			);
 		});
 
 		it('pushes all filters and the limit into the query', async () => {
@@ -190,6 +222,15 @@ describe('AgentRepository', () => {
 			skip: vi.fn().mockReturnThis(),
 			take: vi.fn().mockReturnThis(),
 			getManyAndCount: vi.fn().mockResolvedValue(result),
+			subQuery: vi.fn().mockReturnValue({
+				select: vi.fn().mockReturnThis(),
+				from: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				groupBy: vi.fn().mockReturnThis(),
+				having: vi.fn().mockReturnThis(),
+				getQuery: vi.fn().mockReturnValue('SUBQUERY_SQL'),
+			}),
+			setParameters: vi.fn().mockReturnThis(),
 		});
 
 		it('returns { count: 0, data: [] } immediately when projectIds is empty', async () => {
@@ -250,6 +291,74 @@ describe('AgentRepository', () => {
 			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
 				query: '%support%',
 			});
+		});
+
+		it('joins the tags relation when tags are enabled', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], { skip: 0, take: 10 } as never);
+
+			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.tags', 'tags');
+		});
+
+		it('skips the tags join when tags are disabled', async () => {
+			globalConfig.tags.disabled = true;
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], { skip: 0, take: 10 } as never);
+
+			expect(mockQb.leftJoinAndSelect).not.toHaveBeenCalledWith('agent.tags', 'tags');
+		});
+
+		it('filters agents that carry all the requested tag ids', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { tags: ['tag-1', 'tag-2'] },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id IN (SUBQUERY_SQL)');
+			expect(mockQb.setParameters).toHaveBeenCalledWith({
+				tagIds: ['tag-1', 'tag-2'],
+				tagCount: 2,
+			});
+		});
+
+		it('dedupes repeated tag ids before counting distinct mappings', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { tags: ['tag-1', 'tag-1', 'tag-2'] },
+			} as never);
+
+			expect(mockQb.setParameters).toHaveBeenCalledWith({
+				tagIds: ['tag-1', 'tag-2'],
+				tagCount: 2,
+			});
+		});
+
+		it('adds no tag filter clause when no tags are requested', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { query: 'support' },
+			} as never);
+
+			expect(mockQb.andWhere).not.toHaveBeenCalledWith(
+				'agent.id IN (SUBQUERY_SQL)',
+				expect.anything(),
+			);
 		});
 
 		describe('availableInChat filter', () => {
@@ -324,6 +433,81 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('overwriteTagMappings', () => {
+		// `managerFor` falls back to the repository's manager when the ctx the
+		// runner hands back carries no transaction, so the writes land on the
+		// mocked entity manager this test asserts against.
+		const makeTransactionRunner = () => {
+			const transactionRunner = mock<TransactionRunner>();
+			transactionRunner.run.mockImplementation(async (_ctx, cb) => await cb({ trx: undefined }));
+			return transactionRunner;
+		};
+
+		it('replaces the mappings in one runner transaction, deduping ids', async () => {
+			const transactionRunner = makeTransactionRunner();
+			const repository = new AgentRepository(
+				mockDataSource as never,
+				transactionRunner,
+				globalConfig,
+				mock<ServiceAccountRepository>(),
+			);
+
+			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
+
+			// The delete and the inserts share one transaction.
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentTagMapping, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.insert).toHaveBeenCalledWith(AgentTagMapping, [
+				{ agentId: 'agent-1', tagId: 'tag-1' },
+				{ agentId: 'agent-1', tagId: 'tag-2' },
+			]);
+		});
+
+		it('only deletes when the new tag list is empty', async () => {
+			const repository = new AgentRepository(
+				mockDataSource as never,
+				makeTransactionRunner(),
+				globalConfig,
+				mock<ServiceAccountRepository>(),
+			);
+
+			await repository.overwriteTagMappings('agent-1', []);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentTagMapping, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.insert).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findN8nChatListPaginated', () => {
+		it('excludes archived agents when the filter requests them', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findN8nChatListPaginated(null, ['p1'], {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true, includeArchived: true },
+			} as never);
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
+				isArchived: false,
+			});
+		});
+	});
+
 	describe('findChatReachableById', () => {
 		const makeSingleQb = (result: Agent | null = null) => ({
 			leftJoinAndSelect: vi.fn().mockReturnThis(),
@@ -379,15 +563,31 @@ describe('AgentRepository', () => {
 	});
 
 	describe('findMcpAvailabilityCandidates', () => {
-		it('filters only on the project scope when all agents are requested', async () => {
+		it('filters on the project scope and the archive state when all agents are requested', async () => {
 			const find = vi.spyOn(repository, 'find').mockResolvedValue([]);
 
 			await repository.findMcpAvailabilityCandidates({ all: true });
 
 			expect(find).toHaveBeenCalledWith({
 				select: ['id', 'projectId', 'availableInMCP'],
-				where: { scope: 'project' },
+				where: { scope: 'project', isArchived: false },
 			});
+		});
+	});
+
+	describe('setAvailableInMCP', () => {
+		it('updates only agents that are not archived and returns the affected count', async () => {
+			const update = vi
+				.spyOn(repository, 'update')
+				.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			const result = await repository.setAvailableInMCP(['a1', 'a2'], true);
+
+			expect(update).toHaveBeenCalledWith(
+				{ id: In(['a1', 'a2']), scope: 'project', isArchived: false },
+				expect.objectContaining({ availableInMCP: true }),
+			);
+			expect(result).toBe(1);
 		});
 	});
 

@@ -56,7 +56,7 @@ export async function executeBatch(
 
 	// Process HITL (Human-in-the-Loop) tool responses before running the agent
 	// If there are approved HITL tools, we need to execute the gated tools first
-	const hitlResult = processHitlResponses(response, startIndex);
+	const hitlResult = processHitlResponses(response, startIndex, batch.length);
 
 	if (hitlResult.hasApprovedHitlTools && hitlResult.pendingGatedToolRequest) {
 		// Return the gated tool request immediately

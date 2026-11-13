@@ -19,6 +19,17 @@ export class InstanceAiModule implements ModuleInterface {
 		// Workers and webhook processes only relay eligible failures to main.
 		if (!this.isMain()) return;
 
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			// Services inject the overrides when they are first resolved, so set them
+			// before anything resolves a service. Only an eval instance loads this code.
+			const { AssistantTurnOverrides } = await import('./turn-setup/assistant-turn-overrides.js');
+			const { EvalAssistantTurnOverrides } = await import(
+				'./eval/eval-assistant-turn-overrides.js'
+			);
+			Container.set(AssistantTurnOverrides, Container.get(EvalAssistantTurnOverrides));
+		}
+
 		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
 		const { SelfHealingConfigurationService } = await import(
 			'./self-healing/self-healing-configuration.service.js'
@@ -54,7 +65,6 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./assistant.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
-		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
 			await import('./eval/eval.controller.js');
 		}

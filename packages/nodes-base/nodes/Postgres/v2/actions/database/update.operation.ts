@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { createEventLoopYielder } from '@n8n/utils/promise/create-event-loop-yielder';
+
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -216,7 +218,9 @@ export async function execute(
 
 	const queries: QueryWithValues[] = [];
 	const errorItemsMap = new Map<number, INodeExecutionData>();
+	const yieldToEventLoop = createEventLoopYielder();
 	for (let i = 0; i < items.length; i++) {
+		await yieldToEventLoop();
 		try {
 			schema = this.getNodeParameter('schema', i, undefined, {
 				extractValue: true,

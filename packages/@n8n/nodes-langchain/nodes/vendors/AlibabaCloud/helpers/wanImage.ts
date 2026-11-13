@@ -1,13 +1,15 @@
-const MULTIMODAL_ENDPOINT = '/api/v1/services/aigc/multimodal-generation/generation';
-const IMAGE_GENERATION_ENDPOINT = '/api/v1/services/aigc/image-generation/generation';
-const TEXT2IMAGE_ENDPOINT = '/api/v1/services/aigc/text2image/image-synthesis';
-const IMAGE2IMAGE_ENDPOINT = '/api/v1/services/aigc/image2image/image-synthesis';
+import { requestPath, type RequestPath } from 'n8n-workflow';
+
+const MULTIMODAL_ENDPOINT = requestPath`/api/v1/services/aigc/multimodal-generation/generation`;
+const IMAGE_GENERATION_ENDPOINT = requestPath`/api/v1/services/aigc/image-generation/generation`;
+const TEXT2IMAGE_ENDPOINT = requestPath`/api/v1/services/aigc/text2image/image-synthesis`;
+const IMAGE2IMAGE_ENDPOINT = requestPath`/api/v1/services/aigc/image2image/image-synthesis`;
 
 const SIZE_2_5_PLUS = '1280*1280';
 const SIZE_2_2_AND_EARLIER = '1024*1024';
 
 export type WanImagePlan = {
-	endpoint: string;
+	endpoint: RequestPath;
 	async: boolean;
 	input: 'messages' | 'prompt';
 	attachImages: 'content' | 'input' | null;

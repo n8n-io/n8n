@@ -5,8 +5,16 @@ import type {
 	INodePropertyOptions,
 	JsonObject,
 	IRequestOptions,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	decodePathValue,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 interface ScriptsOptions {
 	script?: any;
@@ -28,6 +36,26 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
+export function toPathValue(version: number, value: string) {
+	return version < 1.1 ? decodePathValue(value) : value;
+}
+
+export function getApiUrl(host: string): RequestUrl {
+	const [, hostname = host, port, prefix = ''] =
+		/^([^/]+?)(?::(\d+))?(\/[^?#]*)?$/.exec(host) ?? [];
+	const prefixPath = prefix
+		.split('/')
+		.slice(1)
+		.reduce(
+			(path, part) => (part ? requestPath`${path}/${part}` : requestPath`${path}/`),
+			requestPath``,
+		);
+	const apiPath = requestPath`${prefixPath}/fmi/data/v1`;
+	return port
+		? requestUrl`https://${hostname}:${port}${apiPath}`
+		: requestUrl`https://${hostname}${apiPath}`;
+}
+
 export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -36,11 +64,8 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 	const login = credentials.login as string;
 	const password = credentials.password as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
-
 	// Reset all values
-	const requestOptions: IRequestOptions = {
-		uri: url,
+	const requestOptions: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		headers: {},
 		method: 'POST',
 		json: true,
@@ -61,7 +86,10 @@ export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions):
 	};
 
 	try {
-		const response = await this.helpers.request(requestOptions);
+		const response = await this.helpers.request({
+			...requestOptions,
+			uri: requestUrl`${getApiUrl(host)}/databases/${db}/sessions`,
+		});
 
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
@@ -109,11 +137,11 @@ export async function layoutsApiRequest(
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
-	const host = credentials.host as string;
+	const apiUrl = getApiUrl(credentials.host as string);
 	const db = credentials.db as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts`;
-	const options: IRequestOptions = {
+	const url = requestUrl`${apiUrl}/databases/${db}/layouts`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -139,13 +167,16 @@ export async function layoutsApiRequest(
 export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
-	const layout = this.getCurrentNodeParameter('layout') as string;
+	const layout = toPathValue(
+		this.getNode().typeVersion,
+		this.getCurrentNodeParameter('layout') as string,
+	);
 
-	const host = credentials.host as string;
+	const apiUrl = getApiUrl(credentials.host as string);
 	const db = credentials.db as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: IRequestOptions = {
+	const url = requestUrl`${apiUrl}/databases/${db}/layouts/${layout}`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -165,13 +196,16 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
-	const layout = this.getCurrentNodeParameter('layout') as string;
+	const layout = toPathValue(
+		this.getNode().typeVersion,
+		this.getCurrentNodeParameter('layout') as string,
+	);
 
-	const host = credentials.host as string;
+	const apiUrl = getApiUrl(credentials.host as string);
 	const db = credentials.db as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/layouts/${layout}`;
-	const options: IRequestOptions = {
+	const url = requestUrl`${apiUrl}/databases/${db}/layouts/${layout}`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -207,11 +241,11 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
-	const host = credentials.host as string;
+	const apiUrl = getApiUrl(credentials.host as string);
 	const db = credentials.db as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/scripts`;
-	const options: IRequestOptions = {
+	const url = requestUrl`${apiUrl}/databases/${db}/scripts`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 		},
@@ -232,13 +266,13 @@ export async function logout(
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
-	const host = credentials.host as string;
+	const apiUrl = getApiUrl(credentials.host as string);
 	const db = credentials.db as string;
 
-	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
+	const url = requestUrl`${apiUrl}/databases/${db}/sessions/${token}`;
 
 	// Reset all values
-	const requestOptions: IRequestOptions = {
+	const requestOptions: WithRequestTarget<IRequestOptions, 'uri'> = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',

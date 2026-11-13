@@ -12,6 +12,7 @@
     "lint": "oxlint --quiet",
     "lint:fix": "oxlint --fix",
     "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
     "test:dev": "vitest --watch",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "watch": "tsc -p tsconfig.build.json --watch"
@@ -23,6 +24,8 @@
   ],
   "dependencies": {
     "@n8n/engine": "workspace:*",
+    "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:"

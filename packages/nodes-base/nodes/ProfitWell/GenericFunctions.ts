@@ -6,33 +6,31 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function profitWellApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('profitWellApi');
-		let options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			headers: {
 				Authorization: credentials.accessToken,
 			},
 			method,
 			qs,
 			body,
-			uri: uri || `https://api.profitwell.com/v2${resource}`,
+			uri: requestUrl`https://api.profitwell.com/v2${resource}`,
 			json: true,
 		};
-
-		options = Object.assign({}, options, option);
 
 		return await this.helpers.request(options);
 	} catch (error) {

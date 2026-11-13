@@ -71,6 +71,10 @@ const config: KnipConfig = {
 				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
 				'@napi-rs/canvas',
 				'@napi-rs/image',
+				'get-system-fonts',
+				// docker/native-addons-smoke-check.mjs requires these from the n8n install under test.
+				'isolated-vm',
+				'sqlite3',
 				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
 				'@confluentinc/kafka-javascript',
 				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
@@ -99,6 +103,10 @@ const config: KnipConfig = {
 		'packages/@n8n/backend-services': pkg({
 			// ioredis-mock is loaded with vi.importActual, which knip does not link.
 			ignoreDependencies: ['ioredis-mock'],
+		}),
+		'packages/@n8n/backend-docs-site': pkg({
+			// The Astro prerender step resolves cookie at runtime. See the package README.
+			ignoreDependencies: ['cookie'],
 		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.

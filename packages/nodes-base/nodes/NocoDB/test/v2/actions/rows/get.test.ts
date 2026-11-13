@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/get.operation';
@@ -50,11 +51,32 @@ describe('NocoDB Rows Get Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/records/row1',
+				requestPath`/api/v3/data/base1/table1/records/row1`,
 				{},
 				{},
 			);
 			expect(result).toEqual([[{ id: 'row1', name: 'Test Row' }]]);
+		});
+
+		it('should encode the row ID in the request URL', async () => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((name: string) => {
+				if (name === 'projectId') return 'base1';
+				if (name === 'table') return 'table1';
+				if (name === 'id') return '12/13';
+				if (name === 'downloadAttachments') return false;
+				return undefined;
+			});
+			(apiRequest.call as Mock).mockResolvedValue({ id: 12 });
+
+			await execute.call(mockExecuteFunctions);
+
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/api/v3/data/base1/table1/records/12%2F13`,
+				{},
+				{},
+			);
 		});
 
 		it('should return data for a single row with attachments', async () => {
@@ -80,7 +102,7 @@ describe('NocoDB Rows Get Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/records/row1',
+				requestPath`/api/v3/data/base1/table1/records/row1`,
 				{},
 				{},
 			);

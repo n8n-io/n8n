@@ -39,5 +39,7 @@ describe('AgentRunnableStateService', () => {
 		expect(skillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(draft.skillRefs, draft.skills, {});
 		expect(result.outdatedSkillIds).toEqual(['pinned_older']);
 		expect(result).toMatchObject({ hasVersionHistory: true, hasPublishHistory: false });
+		expect(agent).not.toHaveProperty('isRunnable');
+		expect(agent).not.toHaveProperty('skills');
 	});
 });

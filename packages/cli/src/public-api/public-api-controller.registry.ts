@@ -44,7 +44,7 @@ import {
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
-import { resolvePublicApiClient } from '@/public-api/public-api-client';
+import { type PublicApiRequest, resolvePublicApiClient } from '@/public-api/public-api-client';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -349,6 +349,10 @@ export class PublicApiControllerRegistry {
 				return;
 			}
 
+			const publicApiClient = resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]);
+			// Handlers read it from the request, so each route does not resolve the header again.
+			(req as PublicApiRequest).publicApiClient = publicApiClient;
+
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
@@ -358,7 +362,7 @@ export class PublicApiControllerRegistry {
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
-					client: resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]),
+					client: publicApiClient,
 				});
 			}
 

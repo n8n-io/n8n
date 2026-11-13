@@ -31,4 +31,15 @@ describe('toPathSegment', () => {
 	it.each(['', '.', '..', null, undefined])('rejects %s', (input) => {
 		expect(() => toPathSegment(input)).toThrow('Invalid identifier');
 	});
+
+	it.each(['../x', 'a/../b', '..\\x', './x', 'x/..'])(
+		'should reject a value with a dot segment: %s',
+		(input) => {
+			expect(() => toPathSegment(input)).toThrow('Invalid identifier');
+		},
+	);
+
+	it.each(['a..b', '...', 'v1.0'])('should accept a value without a dot segment: %s', (input) => {
+		expect(toPathSegment(input)).toBe(input);
+	});
 });

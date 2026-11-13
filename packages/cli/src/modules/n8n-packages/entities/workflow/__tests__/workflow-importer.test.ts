@@ -39,6 +39,7 @@ const context = {
 	projectId: 'project-1',
 	folderId: 'fallback-folder',
 	droppedTagIds: new Set<string>(),
+	publicApi: false,
 } as WorkflowImportContext;
 
 describe('WorkflowImporter.apply', () => {
@@ -121,14 +122,14 @@ describe('WorkflowImporter.apply', () => {
 		expect(createWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
-			expect.objectContaining({ batchContext }),
+			expect.objectContaining({ batchContext, publicApi: false }),
 		);
 		expect(updateWorkflow).toHaveBeenCalledWith(
 			user,
 			expect.any(WorkflowEntity),
 			'existing-update',
 			{
-				publicApi: true,
+				publicApi: false,
 				source: 'import',
 				allowArchivedUpdate: false,
 				allowUnresolvedErrorWorkflow: true,
@@ -301,7 +302,7 @@ describe('WorkflowImporter.apply', () => {
 		const result = await importer.apply(context, plan, bindings);
 
 		expect(update).toHaveBeenCalledWith(user, expect.any(WorkflowEntity), 'existing', {
-			publicApi: true,
+			publicApi: false,
 			source: 'import',
 			allowArchivedUpdate: true,
 			allowUnresolvedErrorWorkflow: true,
@@ -311,46 +312,56 @@ describe('WorkflowImporter.apply', () => {
 		expect(result.outcomes[0]?.workflow).toBe(updated);
 	});
 
-	it('archives only after the content update succeeds', async () => {
-		const update = vi.fn<WorkflowService['update']>();
-		const archive = vi.fn<WorkflowService['archive']>();
-		const workflowService = mock<WorkflowService>({ update, archive });
-		const importer = new WorkflowImporter(
-			mock<WorkflowImportMatchService>(),
-			mock<WorkflowCreationService>(),
-			workflowService,
-			mock<WorkflowFinderService>(),
-		);
-		const existing = Object.assign(makeWorkflow('existing'), { isArchived: false });
-		const archived = Object.assign(makeWorkflow('existing'), { isArchived: true });
-		const plan: WorkflowImportPlan = {
-			items: [
-				{
-					action: 'update',
-					archiveTransition: 'archive',
-					sourceWorkflowId: 'source',
-					entity: Object.assign(makeWorkflow('source'), { isArchived: true }),
-					existing,
-					parentFolderId: null,
-					sourcePublished: false,
-					sourceArchived: true,
-					publishingAction: 'noop',
-				},
-			],
-			conflicts: [],
-			lineageConflicts: [],
-			idConflicts: [],
-			folderConflicts: [],
-			archiveForbidden: [],
-		};
-		update.mockResolvedValue(existing);
-		archive.mockResolvedValue(archived);
+	it.each([
+		{ transition: 'archive', options: { skipArchived: true, publicApi: 'editor_ui' } },
+		{ transition: 'unarchive', options: { publicApi: 'editor_ui' } },
+	] as const)(
+		'runs $transition only after the content update succeeds',
+		async ({ transition, options }) => {
+			const update = vi.fn<WorkflowService['update']>();
+			const transitionArchive = vi.fn<WorkflowService['archive']>();
+			const workflowService = mock<WorkflowService>({ update, [transition]: transitionArchive });
+			const importer = new WorkflowImporter(
+				mock<WorkflowImportMatchService>(),
+				mock<WorkflowCreationService>(),
+				workflowService,
+				mock<WorkflowFinderService>(),
+			);
+			const archive = transition === 'archive';
+			const existing = Object.assign(makeWorkflow('existing'), { isArchived: !archive });
+			const transitioned = Object.assign(makeWorkflow('existing'), { isArchived: archive });
+			const plan: WorkflowImportPlan = {
+				items: [
+					{
+						action: 'update',
+						archiveTransition: transition,
+						sourceWorkflowId: 'source',
+						entity: Object.assign(makeWorkflow('source'), { isArchived: archive }),
+						existing,
+						parentFolderId: null,
+						sourcePublished: false,
+						sourceArchived: archive,
+						publishingAction: 'noop',
+					},
+				],
+				conflicts: [],
+				lineageConflicts: [],
+				idConflicts: [],
+				folderConflicts: [],
+				archiveForbidden: [],
+			};
+			update.mockResolvedValue(existing);
+			transitionArchive.mockResolvedValue(transitioned);
 
-		const result = await importer.apply(context, plan, bindings);
+			const result = await importer.apply({ ...context, publicApi: 'editor_ui' }, plan, bindings);
 
-		expect(update.mock.invocationCallOrder[0]).toBeLessThan(archive.mock.invocationCallOrder[0]);
-		expect(result.outcomes[0]?.workflow).toBe(archived);
-	});
+			expect(update.mock.invocationCallOrder[0]).toBeLessThan(
+				transitionArchive.mock.invocationCallOrder[0],
+			);
+			expect(transitionArchive).toHaveBeenCalledWith(user, 'existing', options);
+			expect(result.outcomes[0]?.workflow).toBe(transitioned);
+		},
+	);
 
 	it('does not unarchive when the content update fails', async () => {
 		const update = vi.fn<WorkflowService['update']>();

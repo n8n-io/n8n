@@ -1,11 +1,12 @@
 import type { GetUserQueryDto, ListUsersQueryDto } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import { GLOBAL_MEMBER_ROLE, Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 import type { UserService } from '@/services/user.service';
 
 import { UsersPublicController } from '../users.public.controller';
@@ -16,7 +17,10 @@ describe('UsersPublicController', () => {
 	const projectService = mock<ProjectService>();
 	const eventService = mock<EventService>();
 
-	const caller = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'caller-id' }) });
+	const caller = mock<PublicApiRequest>({
+		user: mock<User>({ id: 'caller-id' }),
+		publicApiClient: 'editor_ui',
+	});
 
 	const buildPerson = (overrides: Partial<Person> = {}): Person =>
 		Object.assign(new Person(), {
@@ -83,7 +87,7 @@ describe('UsersPublicController', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-all-users', {
 				userId: caller.user.id,
-				publicApi: true,
+				publicApi: 'editor_ui',
 			});
 		});
 	});
@@ -153,7 +157,7 @@ describe('UsersPublicController', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-user', {
 				userId: caller.user.id,
-				publicApi: true,
+				publicApi: 'editor_ui',
 			});
 		});
 	});

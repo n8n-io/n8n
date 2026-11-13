@@ -23,8 +23,7 @@ import { LifecycleEventChannelSender } from '@/modules/engine-v2/execution-chann
 import type { RedisChannelPublisher } from '@/modules/engine-v2/execution-channel/redis-execution-channel-publisher';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
-import { PostHogClient } from '@/posthog';
-import { RedisClientService } from '@n8n/backend-services';
+import { RedisClientService, PostHogClient } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 

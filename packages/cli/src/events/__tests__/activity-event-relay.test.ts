@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, type PostHogClient } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	ActivityEventRepository,
@@ -12,7 +12,6 @@ import type {
 import type { INode } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { PostHogClient } from '@/posthog';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 
@@ -475,7 +474,7 @@ describe('ActivityEventRelay', () => {
 				credentialId: 'credential1',
 				credentialName: 'Team Slack',
 				credentialDescriptionLength: 0,
-				publicApi: true,
+				publicApi: 'other',
 				projectId: undefined,
 			});
 			await flushPromises();

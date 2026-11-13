@@ -11,8 +11,10 @@ import type {
 	IN8nHttpFullResponse,
 	IRequestOptions,
 	IPollFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestPath, requestUrl } from 'n8n-workflow';
 
 type SalesforceApiError = {
 	errorCode?: string;
@@ -26,23 +28,28 @@ type SalesforceApiErrorResponse = {
 
 const SALESFORCE_API_VERSION = 'v59.0';
 
+export const toPathValue = (version: number, value: string) =>
+	version < 1.2 ? decodePathValue(value) : value;
+
+type SalesforceRequestOption = Pick<IRequestOptions, 'headers' | 'formData'>;
+
 function getOptions(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any,
 	qs: IDataObject,
 	instanceUrl: string,
-): IRequestOptions {
-	const options: IRequestOptions = {
+): WithRequestTarget<IRequestOptions, 'uri'> {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: `${instanceUrl}/services/data/${SALESFORCE_API_VERSION}${endpoint}`,
+		uri: requestUrl`${instanceUrl}/services/data/${SALESFORCE_API_VERSION}${endpoint}`,
 		json: true,
 	};
 
@@ -59,10 +66,10 @@ function getOptions(
  * a header (e.g. `Sforce-Query-Options`) without dropping the `Content-Type`
  * header the request builder already set.
  */
-function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: IDataObject): void {
+function assignOptions(options: { headers?: IDataObject }, option: SalesforceRequestOption): void {
 	const { headers: extraHeaders, ...rest } = option;
 	if (extraHeaders) {
-		options.headers = { ...options.headers, ...(extraHeaders as IDataObject) };
+		options.headers = { ...options.headers, ...extraHeaders };
 	}
 	Object.assign(options, rest);
 }
@@ -84,12 +91,12 @@ function toFormData(fields: IDataObject): FormData {
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestPath,
+	option: SalesforceRequestOption = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
@@ -155,7 +162,7 @@ export async function salesforceApiRequest(
 			const credentials = await this.getCredentials<{
 				oauthTokenData: { instance_url: string };
 			}>(credentialsType);
-			const options = getOptions.call(
+			const options: WithRequestTarget<IRequestOptions, 'uri'> = getOptions.call(
 				this,
 				method,
 				uri || endpoint,
@@ -204,7 +211,7 @@ export async function salesforceApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -212,11 +219,13 @@ export async function salesforceApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let uri: string | undefined;
+	let uri: RequestPath | undefined;
 
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
-		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
+		uri = responseData.nextRecordsUrl
+			? requestPath`${endpoint}/${responseData.nextRecordsUrl.split('/').pop()}`
+			: undefined;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 

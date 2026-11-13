@@ -78,7 +78,7 @@ export const containerOperations: INodeProperties[] = [
 						qs: {
 							restype: 'container',
 						},
-						url: '=/{{ $parameter["container"] }}',
+						url: '=/{{ toPathSegment($parameter["container"]) }}',
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,
@@ -114,7 +114,7 @@ export const containerOperations: INodeProperties[] = [
 						qs: {
 							restype: 'container',
 						},
-						url: '=/{{ $parameter["container"] }}',
+						url: '=/{{ toPathSegment($parameter["container"]) }}',
 						headers: {
 							[HeaderConstants.X_MS_DATE]: '={{ new Date().toUTCString() }}',
 							[HeaderConstants.X_MS_VERSION]: XMsVersion,

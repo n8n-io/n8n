@@ -216,7 +216,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				// Telemetry-only; must not appear in the audit payload below.
 				credentialExportPolicy: 'expression-values-only',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -1457,7 +1457,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `credentials-created` event', () => {
+		it('should log on `credentials-created` event with `publicApi` as a boolean', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
 				credentialDescriptionLength: 0,
@@ -1470,7 +1470,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				credentialType: 'githubApi',
 				credentialId: 'cred456',
-				publicApi: false,
+				publicApi: 'editor_ui',
 				projectId: 'proj789',
 				projectType: 'Personal',
 			};
@@ -1487,7 +1487,7 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					credentialType: 'githubApi',
 					credentialId: 'cred456',
-					publicApi: false,
+					publicApi: true,
 					projectId: 'proj789',
 					projectType: 'Personal',
 				},
@@ -2154,7 +2154,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 			};
 
 			eventService.emit('public-api-key-created', event);
@@ -2180,7 +2180,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 				isOwn: true,
 			};
 
@@ -3718,6 +3718,37 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					before: 'production',
 					after: 'all',
+				},
+			});
+		});
+	});
+
+	describe('public API rate limit events', () => {
+		it('should log `public-api-rate-limit.updated` with redacted user and the changed values', () => {
+			const event: RelayEventMap['public-api-rate-limit-updated'] = {
+				user: {
+					id: 'user404',
+					email: 'admin7@example.com',
+					firstName: 'Seventh',
+					lastName: 'Admin',
+					role: { slug: 'global:admin' },
+				},
+				before: { globalReadLimit: 1200 },
+				after: { globalReadLimit: 100 },
+			};
+
+			eventService.emit('public-api-rate-limit-updated', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.public-api-rate-limit.updated',
+				payload: {
+					userId: 'user404',
+					_email: 'admin7@example.com',
+					_firstName: 'Seventh',
+					_lastName: 'Admin',
+					globalRole: 'global:admin',
+					before: { globalReadLimit: 1200 },
+					after: { globalReadLimit: 100 },
 				},
 			});
 		});
