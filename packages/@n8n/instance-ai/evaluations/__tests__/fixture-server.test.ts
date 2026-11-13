@@ -446,6 +446,58 @@ describe('openai fixture served to a real browser', () => {
 describe('gemini fixture served to a real browser', () => {
 	const fx = fixtureBrowser('googlePalmApi');
 
+	it('waits for a failed navigation to commit before loading the console', async () => {
+		const page = await fx.ctx.newPage();
+		let firstNavigation = true;
+		try {
+			await gotoFixturePage(
+				{
+					goto: async (url, options) => {
+						if (!firstNavigation) return await page.goto(url, options);
+						firstNavigation = false;
+						// A local port error creates the same pending Chromium error document.
+						// Translate only its error code to exercise the network-change handler.
+						try {
+							return await page.goto('http://127.0.0.1:1/');
+						} catch (error) {
+							if (!(error instanceof Error) || !error.message.includes('net::ERR_UNSAFE_PORT')) {
+								throw error;
+							}
+							throw new Error('net::ERR_NETWORK_CHANGED', { cause: error });
+						}
+					},
+					waitForURL: page.waitForURL.bind(page),
+				},
+				'https://aistudio.google.com/apikey',
+			);
+			expect(page.url()).toBe('https://aistudio.google.com/apikey');
+			expect(await page.getByRole('button', { name: 'Close guided tour' }).isVisible()).toBe(true);
+		} finally {
+			await page.close();
+		}
+	});
+
+	it('keeps the original network error when the browser has no error document', async () => {
+		const page = await fx.ctx.newPage();
+		const error = new Error('net::ERR_NETWORK_CHANGED');
+		try {
+			await expect(
+				gotoFixturePage(
+					{
+						goto: async () => {
+							throw error;
+						},
+						waitForURL: page.waitForURL.bind(page),
+					},
+					'https://aistudio.google.com/apikey',
+				),
+			).rejects.toBe(error);
+			expect(page.url()).toBe('about:blank');
+		} finally {
+			await page.close();
+		}
+	}, 5_000);
+
 	it('blocks the page behind BOTH overlays until each is dismissed', async () => {
 		const page = await fx.ctx.newPage();
 		await gotoFixturePage(page, 'https://aistudio.google.com/apikey');
