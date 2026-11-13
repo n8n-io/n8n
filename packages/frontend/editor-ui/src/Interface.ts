@@ -789,8 +789,7 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout'
-	| 'instance_ai';
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

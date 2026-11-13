@@ -409,21 +409,6 @@ const InstanceAiInputStub = defineComponent({
 				activePrefill.value = { ...prefill };
 			},
 			isPreparingSubmission,
-			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
-			submitSuggestion: (payload: {
-				promptKey: BaseTextKey;
-				suggestionId: string;
-				prefillType: InstanceAiPrefillType;
-			}) => {
-				const prompt = i18n.baseText(payload.promptKey);
-				// Mirrors the real submitSuggestion, which reports the entry id.
-				activePrefill.value = {
-					text: prompt,
-					prefillType: payload.prefillType,
-					prefillId: payload.suggestionId,
-				};
-				submit(prompt);
-			},
 			insertSuggestion: async (payload: {
 				promptKey: BaseTextKey;
 				suggestionId: string;
