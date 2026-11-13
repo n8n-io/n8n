@@ -1,7 +1,7 @@
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ledgerRow } from '../../../__tests__/ledger-rows';
 import { ExecutionLedgerRepository } from '../execution-ledger.repository';

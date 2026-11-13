@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
@@ -9,7 +9,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
 
-import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { InsightsService } from '@n8n/backend-module-insights';
 import { InsightsConfig } from '@n8n/backend-module-insights/config';
@@ -237,7 +236,7 @@ export class InstanceReportingService {
 			instanceId: this.instanceSettings.instanceId,
 			batchId: report.id,
 			...(this.config.instanceReportingLabel ? { label: this.config.instanceReportingLabel } : {}),
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 			dataPoints: report.dataPoints,
 			...(licenseCert ? { licenseCert } : {}),
 		};

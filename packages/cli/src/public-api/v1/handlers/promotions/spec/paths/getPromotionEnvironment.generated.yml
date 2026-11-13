@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Returns the environment with its provider summary and the state of its local checkout.
+
+  Requires the `promotions:read` API key scope.
 x-required-scope: promotions:read
 parameters:
   - schema:

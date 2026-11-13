@@ -1,6 +1,7 @@
 import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
 import { isBatchStepConfig, type GraphEdge, type WorkflowGraph } from './workflow-graph';
+import { createNodeLabeler } from './workflow-graph-queries';
 
 /** A loop, derived from the graph's marked back-edges. */
 export interface WorkflowLoop {
@@ -116,8 +117,8 @@ function isCyclic(members: Set<string>, edges: GraphEdge[]): boolean {
  *    leaving the member set is the one from that done slot.
  */
 export function validateLoops(graph: WorkflowGraph): void {
-	const namesById = new Map(graph.nodes.map((node) => [node.id, node.name]));
-	const name = (id: string) => namesById.get(id) ?? id;
+	const nodeIds = new Set(graph.nodes.map((node) => node.id));
+	const name = createNodeLabeler(graph);
 
 	// Prerequisites for everything below: colliding IDs would make both
 	// component membership and `(nodeId, iteration)` step identity ambiguous,
@@ -131,7 +132,7 @@ export function validateLoops(graph: WorkflowGraph): void {
 	}
 	for (const edge of graph.edges) {
 		for (const endpoint of [edge.from, edge.to]) {
-			if (!namesById.has(endpoint)) {
+			if (!nodeIds.has(endpoint)) {
 				throw new GraphValidationError(
 					`Edge ${name(edge.from)} -> ${name(edge.to)} references ${endpoint}, which is not a node in the graph`,
 				);

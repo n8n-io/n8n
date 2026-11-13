@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { SelfHealingResultActionResponse, SelfHealingResultDetail } from '@n8n/api-types';
+import type {
+	SelfHealingOriginalAction,
+	SelfHealingResultActionResponse,
+	SelfHealingResultDetail,
+} from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCallout, N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -11,6 +16,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -43,25 +49,66 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:tab': [tab: 'activity' | 'changes'] }>();
 
 const store = useSelfHealingResultStore();
-const { detail, workflow, loading, error, workflowError, pendingAction } = storeToRefs(store);
+const { detail, workflows, workflowIds, loading, error, workflowError, pendingAction } =
+	storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
+const telemetry = useTelemetry();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
 const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? false);
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
+let viewTracked = false;
 
-const workflowName = computed(
-	() =>
-		workflow.value?.name ??
-		detail.value?.suggestion?.payload.original.name ??
-		props.selection.workflowId,
-);
+/** Telemetry names for the buttons. */
+const ORIGINAL_ACTIONS = {
+	'approve-and-publish': 'publish',
+	chat: 'continue',
+	editor: 'open_editor',
+	dismiss: 'dismiss',
+} as const satisfies Record<SelfHealingResultAction, SelfHealingOriginalAction>;
+
+function resultTelemetry(result: SelfHealingResultDetail) {
+	return {
+		result_id: result.resultId,
+		workflow_id: result.workflowId,
+		project_id: result.projectId,
+		result_kind: result.outcome,
+	};
+}
+
+const workflowNames = computed(() => {
+	const listed = detail.value?.workflows ?? [];
+	const ids = new Set([...workflowIds.value, ...listed.map(({ workflowId }) => workflowId)]);
+	return new Map(
+		[...ids].map((id) => [
+			id,
+			workflows.value.get(id)?.name ??
+				listed.find(({ workflowId }) => workflowId === id)?.name ??
+				detail.value?.suggestions.find(({ workflowId }) => workflowId === id)?.payload.original
+					.name ??
+				id,
+		]),
+	);
+});
+const projectName = computed(() => {
+	const project = detail.value && workflows.value.get(detail.value.workflowId)?.homeProject;
+	if (!project) return undefined;
+	return project.type === 'personal'
+		? i18n.baseText('projects.menu.personal')
+		: (project.name ?? undefined);
+});
+// Approval publishes every workflow of the fix.
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
-	if (!workflow.value) return 'unknown';
-	return workflow.value.scopes.includes('workflow:publish') ? 'allowed' : 'denied';
+	const metadata = (detail.value?.suggestions ?? []).map(({ workflowId }) =>
+		workflows.value.get(workflowId),
+	);
+	if (metadata.some((workflow) => workflow && !workflow.scopes.includes('workflow:publish'))) {
+		return 'denied';
+	}
+	return metadata.every(Boolean) ? 'allowed' : 'unknown';
 });
 const errorKind = computed(() => {
 	if (error.value instanceof ResponseError) {
@@ -76,9 +123,27 @@ watch(
 	() => {
 		reconcileOnRetry = null;
 		chatRetry.value = null;
+		viewTracked = false;
 		void store.select(props.selection);
 	},
 	{ immediate: true },
+);
+
+// Track one view each time the user opens a result. An action or a refresh is not a new view.
+watch(
+	detail,
+	(shown) => {
+		if (!shown || viewTracked || shown.resultId !== props.selection.id) return;
+		viewTracked = true;
+		// Could not fix results close on creation and are not part of the engagement metrics.
+		if (shown.outcome === 'could_not_fix') return;
+
+		telemetry.track(TELEMETRY_EVENT.SELF_HEALING.USER_VIEWED_SELF_HEALING_RESULT, {
+			...resultTelemetry(shown),
+			current_state: shown.reviewState,
+		});
+	},
+	{ flush: 'post' },
 );
 
 /** A client error status means the server rejected the action, so nothing was saved. */
@@ -145,7 +210,7 @@ async function retryDetail() {
 	if (pendingAction.value) return;
 
 	const reconcile = reconcileOnRetry;
-	await store.refreshDetail(async (result) => {
+	await store.retryDetail(async (result) => {
 		if (!reconcile || reconcileOnRetry !== reconcile) return;
 
 		reconcileOnRetry = null;
@@ -168,13 +233,19 @@ async function onAction(action: SelfHealingResultAction) {
 	const target = { ...props.selection };
 	if (!store.beginAction(target, action)) return;
 
+	// Track the click before the request. The request can fail or lose its response.
+	telemetry.track(TELEMETRY_EVENT.SELF_HEALING.USER_CLICKED_SELF_HEALING_ACTION, {
+		...resultTelemetry(before),
+		original_action: ORIGINAL_ACTIONS[action],
+	});
+
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
 	const isContinuation = action === 'chat' || action === 'editor';
 
 	let reviewAction: SelfHealingReviewAction;
 	if (isContinuation) {
-		reviewAction = before.suggestion ? 'apply' : 'dismiss';
+		reviewAction = before.suggestions.length > 0 ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
 	}
@@ -189,9 +260,7 @@ async function onAction(action: SelfHealingResultAction) {
 		responseLost: boolean,
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		const closed =
-			result.reviewState === closedState ||
-			(action === 'dismiss' && result.reviewState === 'discarded');
+		const closed = result.reviewState === closedState;
 		if (!isSelected(target.id) || !closed) return false;
 
 		if (action === 'chat') {
@@ -210,9 +279,27 @@ async function onAction(action: SelfHealingResultAction) {
 				showMessage({
 					type: 'warning',
 					duration: 0,
-					title: i18n.baseText('inbox.selfHealing.action.publishError'),
+					title: i18n.baseText(
+						result.suggestions.length > 1
+							? 'inbox.selfHealing.action.publishErrorMultiple'
+							: 'inbox.selfHealing.action.publishError',
+					),
 					message: result.publishError,
 				});
+				if (result.restorationError) {
+					showMessage({
+						type: 'error',
+						duration: 0,
+						title: i18n.baseText('inbox.selfHealing.action.restorationError', {
+							interpolate: {
+								workflow:
+									workflowNames.value.get(result.restorationError.workflowId) ??
+									result.restorationError.workflowId,
+							},
+						}),
+						message: result.restorationError.error,
+					});
+				}
 			}
 
 			await openEditor(result.workflowId);
@@ -221,7 +308,12 @@ async function onAction(action: SelfHealingResultAction) {
 	}
 
 	try {
-		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+		const result = await reviewSelfHealingResult(
+			rootStore.restApiContext,
+			target,
+			reviewAction,
+			ORIGINAL_ACTIONS[action],
+		);
 
 		await continueAfterClose(result, false);
 		store.acceptResult(result);
@@ -239,7 +331,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 			const continued = await reconcile(current);
 			store.acceptResult(current);
-			if (isSelected(target.id)) void store.refreshWorkflow();
+			if (isSelected(target.id)) void store.refreshWorkflows();
 			if (continued) return;
 		} catch (readError) {
 			store.setError(target, readError);
@@ -275,7 +367,8 @@ async function onAction(action: SelfHealingResultAction) {
 		<template v-else>
 			<SelfHealingResultContent
 				:detail="detail"
-				:workflow-name="workflowName"
+				:workflow-names="workflowNames"
+				:project-name="projectName"
 				:tab="tab"
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"
@@ -287,7 +380,7 @@ async function onAction(action: SelfHealingResultAction) {
 					<N8nCallout v-if="workflowError" theme="warning">
 						{{ i18n.baseText('inbox.selfHealing.detail.metadataError') }}
 						<template #trailingContent>
-							<N8nButton variant="ghost" @click="store.refreshWorkflow()">{{
+							<N8nButton variant="ghost" @click="store.refreshWorkflows()">{{
 								i18n.baseText('generic.retry')
 							}}</N8nButton>
 						</template>

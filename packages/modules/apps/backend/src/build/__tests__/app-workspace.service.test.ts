@@ -58,7 +58,15 @@ function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
 	const service = new AppWorkspaceService(settings, config, archives, mock<Logger>());
 	const attempt = { attemptNumber: 1, startedAt: new Date() };
 	const build = async () =>
-		await service.build('project', appId, 'version', attempt, files, new AbortController().signal);
+		await service.build(
+			'project',
+			appId,
+			'version',
+			attempt,
+			files,
+			'dependency-key',
+			new AbortController().signal,
+		);
 	return { service, settings, sandbox, filesystem, archives, files, config, build };
 }
 
@@ -104,6 +112,7 @@ describe('AppWorkspaceService', () => {
 			expect.arrayContaining([
 				'flock',
 				'/workspace/app-build/build.lock',
+				'dependency-key',
 				String(config.maxBuildLogBytes),
 			]),
 			expect.objectContaining({
@@ -117,6 +126,13 @@ describe('AppWorkspaceService', () => {
 		expect(filesystem.writeFile).toHaveBeenCalledWith(
 			'/workspace/app-build/attempts/version-1/source.tgz',
 			Buffer.from('source'),
+			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
+		);
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/workspace/app-build/attempts/version-1/build.sh',
+			expect.stringContaining(
+				'npm ci --include=dev --ignore-scripts --no-audit --no-fund --prefer-offline',
+			),
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
 	});

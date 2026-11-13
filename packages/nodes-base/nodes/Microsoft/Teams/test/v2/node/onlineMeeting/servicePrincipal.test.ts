@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions, NodeParameterValueType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -21,7 +21,7 @@ vi.mock('../../../../v2/transport', async () => {
 const ORGANIZER = '11111111-2222-3333-4444-555555555555';
 const MEETING = 'MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi';
 const JOIN_URL = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0';
-const MEETINGS = `/v1.0/users/${ORGANIZER}/onlineMeetings`;
+const MEETINGS = requestPath`/v1.0/users/${ORGANIZER}/onlineMeetings`;
 
 const byId = { meetingId: { __rl: true, mode: 'id', value: MEETING } };
 const byUrl = { meetingId: { __rl: true, mode: 'url', value: JOIN_URL } };
@@ -60,14 +60,19 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 
 	it.each([
 		['create', createParams, 'POST', MEETINGS],
-		['get', byId, 'GET', `${MEETINGS}/${MEETING}`],
-		['createOrGet', { externalId: 'order-4711', options: {} }, 'POST', `${MEETINGS}/createOrGet`],
-		['deleteMeeting', byId, 'DELETE', `${MEETINGS}/${MEETING}`],
+		['get', byId, 'GET', requestPath`${MEETINGS}/${MEETING}`],
+		[
+			'createOrGet',
+			{ externalId: 'order-4711', options: {} },
+			'POST',
+			requestPath`${MEETINGS}/createOrGet`,
+		],
+		['deleteMeeting', byId, 'DELETE', requestPath`${MEETINGS}/${MEETING}`],
 		[
 			'update',
 			{ ...byId, updateFields: { subject: 'Renamed' } },
 			'PATCH',
-			`${MEETINGS}/${MEETING}`,
+			requestPath`${MEETINGS}/${MEETING}`,
 		],
 	])(
 		"%s addresses the organizer's meetings instead of /me",
@@ -131,7 +136,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 			'Insufficient privileges to complete the operation',
 		);
 		const calledPath = (transport.microsoftApiRequest as Mock).mock.calls[0][1] as string;
-		expect(calledPath).toBe(`/v1.0/me/onlineMeetings/${MEETING}`);
+		expect(calledPath).toEqual(requestPath`/v1.0/me/onlineMeetings/${MEETING}`);
 	});
 
 	it.each([
@@ -150,7 +155,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 		]);
 		expect(calls).toEqual([
 			['GET', MEETINGS],
-			[method, `${MEETINGS}/${MEETING}`],
+			[method, requestPath`${MEETINGS}/${MEETING}`],
 		]);
 	});
 
@@ -165,7 +170,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 			expect(transport.microsoftApiRequest).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/v1.0/users/alex@contoso.com',
+				requestPath`/v1.0/users/alex@contoso.com`,
 				{},
 				{ $select: 'id' },
 			);
@@ -252,7 +257,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 			await run('create', withJane);
 
 			expect(calls()).toEqual([
-				['GET', `/v1.0/users/${JANE}`],
+				['GET', requestPath`/v1.0/users/${JANE}`],
 				['POST', MEETINGS],
 			]);
 			expect((transport.microsoftApiRequest as Mock).mock.calls[1][2]).toEqual(
@@ -275,8 +280,8 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 			await run('create', { ...withJane, organizerId: 'alex@contoso.com' });
 
 			expect(calls()).toEqual([
-				['GET', `/v1.0/users/${JANE}`],
-				['GET', '/v1.0/users/alex@contoso.com'],
+				['GET', requestPath`/v1.0/users/${JANE}`],
+				['GET', requestPath`/v1.0/users/alex@contoso.com`],
 				['POST', MEETINGS],
 			]);
 			expect((transport.microsoftApiRequest as Mock).mock.calls[1][3]).toEqual({ $select: 'id' });
@@ -308,7 +313,7 @@ describe('Microsoft Teams V2 — onlineMeeting under the Service Principal crede
 			{ id: MEETING },
 		]);
 		const paths = (transport.microsoftApiRequest as Mock).mock.calls.map((call) => call[1]);
-		expect(paths).toEqual([MEETINGS, `/v1.0/users/${organizers[2]}/onlineMeetings`]);
+		expect(paths).toEqual([MEETINGS, requestPath`/v1.0/users/${organizers[2]}/onlineMeetings`]);
 	});
 
 	it.each([

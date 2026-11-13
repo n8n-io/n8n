@@ -83,3 +83,22 @@ export const updateResponse = {
 	field_3799031: 'testing',
 	field_3799032: true,
 };
+
+export const batchCreateResponse = {
+	items: [
+		{
+			id: 4,
+			order: '4.00000000000000000000',
+			field_3799030: 'Nathan',
+			field_3799031: '',
+			field_3799032: false,
+		},
+		{
+			id: 5,
+			order: '5.00000000000000000000',
+			field_3799030: 'Jan',
+			field_3799031: '',
+			field_3799032: false,
+		},
+	],
+};

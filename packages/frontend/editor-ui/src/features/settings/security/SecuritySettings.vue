@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useAsyncState } from '@vueuse/core';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
@@ -12,6 +11,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -224,7 +224,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-							<ElSwitch
+							<N8nSwitch
 								:model-value="settingsStore.isMFAEnforced"
 								size="large"
 								:disabled="isManagedByEnv"
@@ -233,7 +233,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										:model-value="settingsStore.isMFAEnforced"
 										size="large"
 										:disabled="true"
@@ -282,7 +282,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpaceSharing"
 								size="large"
@@ -291,7 +291,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpaceSharing"
 										size="large"
@@ -341,7 +341,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpacePublishing"
 								size="large"
@@ -350,7 +350,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpacePublishing"
 										size="large"

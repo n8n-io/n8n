@@ -5,19 +5,22 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter(
@@ -25,14 +28,14 @@ export async function googleApiRequest(
 		0,
 		'serviceAccount',
 	) as string;
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://translation.googleapis.com${resource}`,
+		uri: uri ?? requestUrl`https://translation.googleapis.com${resource}`,
 		json: true,
 	};
 	try {
@@ -63,7 +66,7 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

@@ -6,8 +6,10 @@ import type {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { requestPath, requestUrl, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 type NotionFunctions = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
@@ -21,16 +23,16 @@ export function isDataObject(value: unknown): value is IDataObject {
 export async function notionApiRequestV3(
 	this: NotionFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	try {
-		const options: IHttpRequestOptions = {
+		const options: WithRequestTarget<IHttpRequestOptions> = {
 			method,
 			qs,
 			body,
-			url: `https://api.notion.com/v1${resource}`,
+			url: requestUrl`https://api.notion.com/v1${resource}`,
 			json: true,
 			headers: {
 				[NOTION_VERSION_HEADER]: NOTION_API_VERSION,
@@ -55,7 +57,7 @@ export async function notionApiRequestAllItemsV3(
 	this: NotionFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<IDataObject[]> {
@@ -89,7 +91,7 @@ export async function getDataSourceProperties(this: NotionFunctions, dataSourceI
 	const dataSource = await notionApiRequestV3.call(
 		this,
 		'GET',
-		`/data_sources/${toPathSegment(dataSourceId)}`,
+		requestPath`/data_sources/${dataSourceId}`,
 	);
 	if (!isDataObject(dataSource.properties)) {
 		throw new NodeOperationError(this.getNode(), 'Notion did not return data source properties');

@@ -1,6 +1,6 @@
 import { EventService, JwtService } from '@n8n/backend-services';
 import { randomValidPassword, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
@@ -15,7 +15,7 @@ import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
+let owner: Person;
 let authOwnerAgent: SuperAgentTest;
 const ownerPassword = randomValidPassword();
 

@@ -83,6 +83,14 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
 
+	/**
+	 * Whether n8n gives each new agent its own service account, so users can
+	 * share credentials and other resources with the agent. Set the same value
+	 * on every main instance.
+	 */
+	@Env('N8N_AGENTS_SERVICE_ACCOUNTS_ENABLED')
+	serviceAccountsEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
@@ -150,6 +158,14 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
+
+	/**
+	 * Most requests that one IP address can send to the agent webhook channel in 5 minutes.
+	 * Each main instance counts its requests separately. Set to 0 to turn off the limit, for
+	 * example when one backend sends the requests of all your users.
+	 */
+	@Env('N8N_AGENTS_WEBHOOK_CHANNEL_RATE_LIMIT', nonnegativeIntSchema)
+	webhookChannelRateLimit: number = 300;
 
 	/**
 	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,

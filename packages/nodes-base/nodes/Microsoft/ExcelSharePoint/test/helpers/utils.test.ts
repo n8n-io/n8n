@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INode, RequestPath } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
@@ -78,10 +78,24 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 				const root = await resolveWorkbookRoot.call(ctx, 0);
 
-				expect(root).toBe(
-					'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive%201/items/ITEM%20123',
+				expect(root.value).toBe(
+					'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive%201/items/ITEM%20123',
 				);
 				expect(apiRequest).not.toHaveBeenCalled();
+			});
+
+			it('encodes a workbook ID with a slash as one path segment', async () => {
+				setParams(ctx, {
+					workbook: { mode: 'id', value: '01ABC/children' },
+					site: { mode: 'id', value: 'contoso.sharepoint.com,g1,g2' },
+					library: { mode: 'id', value: 'b!drive1' },
+				});
+
+				const root = await resolveWorkbookRoot.call(ctx, 0);
+
+				expect(root.value).toBe(
+					'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/01ABC%2Fchildren',
+				);
 			});
 
 			it('rejects an empty Site', async () => {
@@ -132,12 +146,12 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 				expect(apiRequest).toHaveBeenCalledWith(
 					'GET',
-					'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+					expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/mysite' }),
 					{},
 					{ $select: 'id' },
 				);
-				expect(root).toBe(
-					'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123',
+				expect(root.value).toBe(
+					'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123',
 				);
 			});
 		});
@@ -165,12 +179,12 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 				expect(apiRequest).toHaveBeenCalledWith(
 					'GET',
-					expect.stringMatching(/^\/v1\.0\/shares\/u!/),
+					expect.objectContaining({ value: expect.stringMatching(/^\/v1\.0\/shares\/u!/) }),
 					{},
 					{ $select: 'id,parentReference' },
 				);
-				expect(root).toBe(
-					'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123',
+				expect(root.value).toBe(
+					'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123',
 				);
 			});
 
@@ -185,7 +199,7 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 				// The caller (readRows' execute()) hoists this once per run and passes
 				// the same instance for every item — that's what makes it a per-run cache.
-				const workbookRootCache = new Map<string, string>();
+				const workbookRootCache = new Map<string, RequestPath>();
 				await resolveWorkbookRoot.call(ctx, 0, workbookRootCache);
 				await resolveWorkbookRoot.call(ctx, 1, workbookRootCache);
 
@@ -303,7 +317,7 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+				expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/mysite' }),
 				{},
 				{ $select: 'id' },
 			);
@@ -318,7 +332,25 @@ describe('Microsoft Excel (SharePoint) — helpers/utils', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites/contoso.sharepoint.com',
+				expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com' }),
+				{},
+				{ $select: 'id' },
+			);
+		});
+
+		it('encodes each site address path segment as one segment', async () => {
+			setParams(ctx, {
+				site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/a%2Fb%3Fc/My%20Team/' },
+			});
+			apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+
+			await resolveSiteId.call(ctx, 0);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				expect.objectContaining({
+					value: '/v1.0/sites/contoso.sharepoint.com:/sites/a%2Fb%3Fc/My%20Team',
+				}),
 				{},
 				{ $select: 'id' },
 			);

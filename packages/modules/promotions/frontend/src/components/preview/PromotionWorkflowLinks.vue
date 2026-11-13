@@ -5,7 +5,11 @@ import { computed } from 'vue';
 import type { ResourceKey } from '../../promotionPreview.selection';
 
 /** A list of workflow names. A click on a name opens the workflow's change card. */
-const props = defineProps<{ workflows: ReadonlyArray<{ key: ResourceKey; name: string }> }>();
+const props = defineProps<{
+	workflows: ReadonlyArray<{ key: ResourceKey; name: string }>;
+	/** One name per line, for a table cell. Otherwise the names form a sentence. */
+	list?: boolean;
+}>();
 
 const emit = defineEmits<{ inspect: [key: ResourceKey] }>();
 
@@ -25,7 +29,19 @@ const parts = computed(() => {
 </script>
 
 <template>
-	<span>
+	<span v-if="list" :class="$style.list">
+		<button
+			v-for="workflow in workflows"
+			:key="workflow.key"
+			type="button"
+			:class="$style.link"
+			data-test-id="promotion-preview-workflow-link"
+			@click="emit('inspect', workflow.key)"
+		>
+			{{ workflow.name }}
+		</button>
+	</span>
+	<span v-else>
 		<template v-for="(part, index) in parts" :key="index"
 			><button
 				v-if="part.key"
@@ -41,6 +57,13 @@ const parts = computed(() => {
 </template>
 
 <style module lang="scss">
+.list {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--5xs);
+}
+
 /* N8nLink has no light theme, so the names use the color of the text around them. */
 .link {
 	padding: 0;
@@ -48,6 +71,7 @@ const parts = computed(() => {
 	background: none;
 	color: inherit;
 	font: inherit;
+	text-align: inherit;
 	text-decoration: underline;
 	cursor: pointer;
 

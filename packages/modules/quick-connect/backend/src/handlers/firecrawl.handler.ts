@@ -1,6 +1,6 @@
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { FirecrawlQuickConnect } from '../quick-connect.config';
@@ -31,7 +31,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 		this.config = config;
 	}
 
-	async getCredentialData({ email }: User) {
+	async getCredentialData({ email }: Person) {
 		const secret = this.config!.backendFlowConfig.secret;
 		const response = await this.http.request<FirecrawlCreateUserResponse>({
 			url: `${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`,

@@ -1,7 +1,7 @@
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { ElSwitch } from 'element-plus';
+import { N8nSwitch } from '@n8n/design-system';
 import { useLogStreamingStore } from '../logStreaming.store';
 import EventDestinationCard from './EventDestinationCard.vue';
 
@@ -26,7 +26,7 @@ describe('EventDestinationCard save', () => {
 				renderStubDefaultSlot: true,
 			},
 		});
-		return { wrapper, store, toggle: wrapper.findComponent(ElSwitch) };
+		return { wrapper, store, toggle: wrapper.findComponent(N8nSwitch) };
 	}
 
 	it('keeps the saved switch state and shows the backend error on failure', async () => {

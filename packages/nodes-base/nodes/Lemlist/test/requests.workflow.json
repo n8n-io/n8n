@@ -1,0 +1,415 @@
+{
+	"name": "Lemlist request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "create",
+				"campaignId": "cam_A1B2C3D4E5F6G7H8I9",
+				"email": "nathan@n8n.io",
+				"additionalFields": {
+					"deduplicate": true
+				}
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Lead",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "delete",
+				"campaignId": "cam_A1B2C3D4E5F6G7H8I9",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Delete Lead",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Lead",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "unsubscribe",
+				"campaignId": "cam_A1B2C3D4E5F6G7H8I9",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Unsubscribe Lead",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unsubscribe",
+				"operation": "add",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Add Unsubscribe",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unsubscribe",
+				"operation": "delete",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Delete Unsubscribe",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "get"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Get Team",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getStats",
+				"campaignId": "cam_A1B2C3D4E5F6G7H8I9",
+				"startDate": "2024-01-01T00:00:00.000Z",
+				"endDate": "2024-01-31T00:00:00.000Z",
+				"timezone": "Europe/Berlin"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Get Campaign Stats",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "getCredits"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Team Credits",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "enrich",
+				"operation": "get",
+				"enrichId": "enr_Q1W2E3R4T5Y6U7I8"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Enrichment",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "enrich",
+				"operation": "enrichLead",
+				"leadId": "lea_Z9Y8X7W6V5U4T3S2",
+				"findEmail": true,
+				"verifyEmail": false,
+				"linkedinEnrichment": false,
+				"findPhone": false
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Enrich Lead",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "enrich",
+				"operation": "enrichPerson",
+				"findEmail": true,
+				"verifyEmail": false,
+				"linkedinEnrichment": false,
+				"findPhone": false,
+				"additionalFields": {
+					"email": "nathan@n8n.io"
+				}
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Enrich Person",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Lead": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Delete Lead": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Get Lead": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Unsubscribe Lead": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Add Unsubscribe": [
+			{
+				"json": {
+					"_id": "uns_K1L2M3N4O5P6Q7R8",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Delete Unsubscribe": [
+			{
+				"json": {
+					"_id": "uns_K1L2M3N4O5P6Q7R8",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get Team": [
+			{
+				"json": {
+					"_id": "tea_1A2B3C4D5E6F",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Get Campaign Stats": [
+			{
+				"json": {
+					"nbLeads": 42
+				}
+			}
+		],
+		"Get Team Credits": [
+			{
+				"json": {
+					"credits": 100
+				}
+			}
+		],
+		"Get Enrichment": [
+			{
+				"json": {
+					"id": "enr_Q1W2E3R4T5Y6U7I8"
+				}
+			}
+		],
+		"Enrich Lead": [
+			{
+				"json": {
+					"id": "enr_Q1W2E3R4T5Y6U7I8"
+				}
+			}
+		],
+		"Enrich Person": [
+			{
+				"json": {
+					"id": "enr_P1O2I3U4Y5T6R7E8"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Unsubscribe Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Unsubscribe",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Unsubscribe",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Team",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Campaign Stats",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Team Credits",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Enrichment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Enrich Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Enrich Person",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

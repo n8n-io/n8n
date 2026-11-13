@@ -1,7 +1,8 @@
 import { proxyFetch } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 

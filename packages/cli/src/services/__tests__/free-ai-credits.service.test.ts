@@ -1,6 +1,7 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { Person, ServiceAccount } from '@n8n/db';
+import { ForbiddenError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
@@ -38,23 +39,23 @@ describe('FreeAiCreditsService', () => {
 
 	describe('isEligible', () => {
 		it('returns true when AI credits are licensed, the base URL is set, Connect is off, and the user has not claimed', () => {
-			const user = { settings: {} } as User;
+			const person = Object.assign(new Person(), { settings: {} });
 
-			expect(service.isEligible(user)).toBe(true);
+			expect(service.isEligible(person)).toBe(true);
 		});
 
 		it('returns false when AI credits are not licensed', () => {
 			licenseState.isAiCreditsLicensed.mockReturnValue(false);
-			const user = { settings: {} } as User;
+			const person = Object.assign(new Person(), { settings: {} });
 
-			expect(service.isEligible(user)).toBe(false);
+			expect(service.isEligible(person)).toBe(false);
 		});
 
 		it('returns false when the AI assistant base URL is not configured', () => {
 			globalConfig.aiAssistant.baseUrl = '';
-			const user = { settings: {} } as User;
+			const person = Object.assign(new Person(), { settings: {} });
 
-			expect(service.isEligible(user)).toBe(false);
+			expect(service.isEligible(person)).toBe(false);
 
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 		});
@@ -62,28 +63,28 @@ describe('FreeAiCreditsService', () => {
 		it('returns false when n8n Connect is enabled and licensed', () => {
 			globalConfig.aiGateway.enabled = true;
 			licenseState.isAiGatewayLicensed.mockReturnValue(true);
-			const user = { settings: {} } as User;
+			const person = Object.assign(new Person(), { settings: {} });
 
-			expect(service.isEligible(user)).toBe(false);
+			expect(service.isEligible(person)).toBe(false);
 		});
 
 		it('returns true when n8n Connect is enabled but not licensed', () => {
 			globalConfig.aiGateway.enabled = true;
-			const user = { settings: {} } as User;
+			const person = Object.assign(new Person(), { settings: {} });
 
-			expect(service.isEligible(user)).toBe(true);
+			expect(service.isEligible(person)).toBe(true);
 		});
 
 		it('returns false when the user already claimed free credits', () => {
-			const user = { settings: { userClaimedAiCredits: true } } as User;
+			const person = Object.assign(new Person(), { settings: { userClaimedAiCredits: true } });
 
-			expect(service.isEligible(user)).toBe(false);
+			expect(service.isEligible(person)).toBe(false);
 		});
 	});
 
 	describe('claim', () => {
 		it('generates credits, creates a managed credential, and marks the user as claimed', async () => {
-			const user = { id: 'user123', settings: {} } as User;
+			const person = Object.assign(new Person(), { id: 'user123', settings: {} });
 			aiService.createFreeAiCredits.mockResolvedValue({
 				apiKey: 'sk-test',
 				url: 'https://proxy.n8n.io',
@@ -91,9 +92,9 @@ describe('FreeAiCreditsService', () => {
 			const credential = mock<Awaited<ReturnType<CredentialsService['createManagedCredential']>>>();
 			credentialsService.createManagedCredential.mockResolvedValue(credential);
 
-			const result = await service.claim(user, 'project123');
+			const result = await service.claim(person, 'project123');
 
-			expect(aiService.createFreeAiCredits).toHaveBeenCalledWith(user);
+			expect(aiService.createFreeAiCredits).toHaveBeenCalledWith(person.toIUser());
 			expect(credentialsService.createManagedCredential).toHaveBeenCalledWith(
 				{
 					name: FREE_AI_CREDITS_CREDENTIAL_NAME,
@@ -101,12 +102,21 @@ describe('FreeAiCreditsService', () => {
 					data: { apiKey: 'sk-test', url: 'https://proxy.n8n.io' },
 					projectId: 'project123',
 				},
-				user,
+				person,
 			);
 			expect(userService.updateSettings).toHaveBeenCalledWith('user123', {
 				userClaimedAiCredits: true,
 			});
 			expect(result).toBe(credential);
+		});
+
+		it('rejects a service account before it provisions anything', async () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), { id: 'sa-1' });
+
+			await expect(service.claim(serviceAccount, 'project123')).rejects.toThrow(ForbiddenError);
+			expect(aiService.createFreeAiCredits).not.toHaveBeenCalled();
+			expect(credentialsService.createManagedCredential).not.toHaveBeenCalled();
+			expect(userService.updateSettings).not.toHaveBeenCalled();
 		});
 	});
 });

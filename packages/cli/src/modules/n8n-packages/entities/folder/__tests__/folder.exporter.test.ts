@@ -51,7 +51,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 			basePrefix: 'projects/team-ligo',
 		});
 
@@ -70,7 +70,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: true,
+			includeArchived: true,
 		});
 
 		expect(workflowFinder.findWorkflowIdsByFolder).toHaveBeenCalledWith(['fld_1'], {
@@ -112,7 +112,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		// The folder's own target is passed as basePrefix, so workflows nest under it.
@@ -172,7 +172,7 @@ describe('FolderExporter', () => {
 			writer,
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(result.entries.map((e) => e.target)).toEqual([
@@ -220,7 +220,7 @@ describe('FolderExporter', () => {
 			writer: new CapturingWriter(),
 			includeTags: true,
 			versionPolicy: 'latest',
-			includeArchivedWorkflows: false,
+			includeArchived: false,
 		});
 
 		expect(workflowExporter.export).toHaveBeenCalledTimes(1);
@@ -243,7 +243,7 @@ describe('FolderExporter', () => {
 				writer: new CapturingWriter(),
 				includeTags: true,
 				versionPolicy: 'latest',
-				includeArchivedWorkflows: false,
+				includeArchived: false,
 			}),
 		).rejects.toThrow(/not found or not accessible/);
 	});

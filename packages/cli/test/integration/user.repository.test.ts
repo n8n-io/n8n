@@ -2,6 +2,8 @@ import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
+	type Person,
+	PersonRepository,
 	ProjectRelationRepository,
 	ServiceAccountRepository,
 	type User,
@@ -56,9 +58,9 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('createUserWithProject()', () => {
+	describe('PersonRepository.createPersonWithProject()', () => {
 		test('should create personal project for a user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:member' },
 			});
@@ -77,7 +79,7 @@ describe('UserRepository', () => {
 		});
 
 		test('should create personal project for a chat user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:chatUser' },
 			});
@@ -272,7 +274,7 @@ describe('UserRepository', () => {
 			const findOptions = findSpy.mock.calls[0][0];
 			findSpy.mockRestore();
 
-			const byId = new Map(users.map((user) => [user.id, user]));
+			const byId = new Map(users.map((user) => [user.id, user as Person]));
 			expect([...byId.keys()].sort()).toEqual(
 				[owner.id, member.id, ldapUser.id, pendingUser.id].sort(),
 			);

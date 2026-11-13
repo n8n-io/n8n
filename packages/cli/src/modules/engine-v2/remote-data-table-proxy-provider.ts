@@ -17,7 +17,8 @@ import type {
 	ListDataTableRowsOptions,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeOperationError, OperationalError, UserError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { z } from 'zod';
 
 import {

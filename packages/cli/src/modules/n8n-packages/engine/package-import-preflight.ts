@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { ImportOrchestrator, type ImportPlan } from './import-orchestrator';
 import { N8nPackageParser } from './n8n-package-parser';
 import { placeCredentialData } from './package-layout';
-import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
+import { credentialMissingModeCreates } from '../entities/credential/credential-missing-mode';
 import type { PackageReader } from '../io/package-reader';
 import type { BlockingIssue, ImportPlanMode } from '../n8n-packages.types';
 
@@ -45,7 +45,7 @@ export class PackageImportPreflight {
 	): Promise<ImportPlan[]> {
 		const missingCredentialIds = new Set(
 			plans.flatMap(({ input, credentialPlan }) =>
-				credentialMissingModeUsesPackageData(input.credentialRequest.missingMode)
+				credentialMissingModeCreates(input.credentialRequest.missingMode)
 					? [...credentialPlan.stubIds.keys()]
 					: [],
 			),
@@ -59,7 +59,7 @@ export class PackageImportPreflight {
 			plans = plans.map((plan) => {
 				const { input } = plan;
 				const { credentialRequest } = input;
-				if (!credentialMissingModeUsesPackageData(credentialRequest.missingMode)) return plan;
+				if (!credentialMissingModeCreates(credentialRequest.missingMode)) return plan;
 				return {
 					...plan,
 					input: {

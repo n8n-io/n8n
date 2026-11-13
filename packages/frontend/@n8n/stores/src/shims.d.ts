@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-export {};
+import type { FrontendSettings } from '@n8n/api-types';
 
 declare global {
 	interface ImportMeta {
@@ -15,5 +15,7 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
+		/** Public settings that the backend embeds in the page. See `EMBEDDED_SETTINGS_GLOBAL`. */
+		__n8nSettings?: FrontendSettings;
 	}
 }

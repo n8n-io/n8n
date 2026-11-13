@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, RequestPath } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { type UserTargetMessages, validateUserTargetId } from '../../../../GenericFunctions';
 import { optionalText, readTextParameter } from '../../helpers/parameters';
@@ -30,10 +30,10 @@ export const RECIPIENT_NOT_FOUND = {
 		'Select the user from the list, or check that the user ID or user principal name is correct and that the user exists in this Microsoft 365 tenant.',
 };
 
-export function recipientPath(this: IExecuteFunctions, i: number): string {
+export function recipientPath(this: IExecuteFunctions, i: number): RequestPath {
 	const recipient = readTextParameter.call(this, 'recipientId', i, true);
 	validateUserTargetId(recipient, this.getNode(), RECIPIENT_MESSAGES);
-	return `/v1.0/users/${encodeURIComponent(recipient)}/teamwork/sendActivityNotification`;
+	return requestPath`/v1.0/users/${recipient}/teamwork/sendActivityNotification`;
 }
 
 function isTeamsLink(value: string): boolean {

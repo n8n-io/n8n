@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import { isPerson, type Person } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -141,7 +141,7 @@ export class TokenExchangeService {
 
 	async embedLogin(
 		subjectToken: string,
-	): Promise<{ user: User; subject: string; issuer: string; kid: string }> {
+	): Promise<{ user: Person; subject: string; issuer: string; kid: string }> {
 		const { claims, resolvedKey } = await this.verifyToken(subjectToken, {
 			maxLifetimeSeconds: MAX_TOKEN_LIFETIME_SECONDS,
 		});
@@ -150,6 +150,13 @@ export class TokenExchangeService {
 			issuer: resolvedKey.issuer,
 			requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
 		});
+		// Embed login issues a browser session, and only a person has one.
+		if (!isPerson(user)) {
+			throw new TokenExchangeAuthError(
+				TokenExchangeFailureReason.RoleNotAllowed,
+				'A service account cannot sign in to the embedded editor',
+			);
+		}
 		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
 

@@ -1,0 +1,196 @@
+{
+	"name": "TravisCI Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "get",
+				"buildId": "86549912",
+				"additionalFields": {}
+			},
+			"id": "travisci-0",
+			"name": "Build Get",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"travisCiApi": {
+					"id": "1",
+					"name": "TravisCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"additionalFields": {}
+			},
+			"id": "travisci-1",
+			"name": "Build Get Many",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"travisCiApi": {
+					"id": "1",
+					"name": "TravisCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "cancel",
+				"buildId": "86549912"
+			},
+			"id": "travisci-2",
+			"name": "Build Cancel",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"travisCiApi": {
+					"id": "1",
+					"name": "TravisCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "restart",
+				"buildId": "86549912"
+			},
+			"id": "travisci-3",
+			"name": "Build Restart",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"travisCiApi": {
+					"id": "1",
+					"name": "TravisCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "build",
+				"operation": "trigger",
+				"slug": "n8n-io/n8n",
+				"branch": "master",
+				"additionalFields": {}
+			},
+			"id": "travisci-4",
+			"name": "Build Trigger",
+			"type": "n8n-nodes-base.travisCi",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"travisCiApi": {
+					"id": "1",
+					"name": "TravisCI account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Build Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Cancel",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Restart",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Build Trigger",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Build Get": [
+			{
+				"json": {
+					"id": 86549912,
+					"number": "1204",
+					"state": "passed"
+				}
+			}
+		],
+		"Build Get Many": [
+			{
+				"json": {
+					"id": 86549912,
+					"number": "1204",
+					"state": "passed"
+				}
+			}
+		],
+		"Build Cancel": [
+			{
+				"json": {
+					"build": {
+						"id": 86549912,
+						"number": "1204",
+						"state": "passed"
+					}
+				}
+			}
+		],
+		"Build Restart": [
+			{
+				"json": {
+					"build": {
+						"id": 86549912,
+						"number": "1204",
+						"state": "passed"
+					}
+				}
+			}
+		],
+		"Build Trigger": [
+			{
+				"json": {
+					"request": {
+						"id": 1
+					}
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

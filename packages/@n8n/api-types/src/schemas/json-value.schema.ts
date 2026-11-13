@@ -9,13 +9,14 @@ import { z } from 'zod';
  * Shared across agent-config and agent-eval schemas so validation cannot
  * diverge between the two surfaces.
  */
-export const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
-	z.union([
-		z.string(),
-		z.number(),
-		z.boolean(),
-		z.null(),
-		z.record(z.string(), jsonValueSchema),
-		z.array(jsonValueSchema),
-	]),
+export const jsonValueSchema = z.lazy(
+	(): z.ZodType<JsonValue> =>
+		z.union([
+			z.string(),
+			z.number(),
+			z.boolean(),
+			z.null(),
+			z.record(z.string(), jsonValueSchema),
+			z.array(jsonValueSchema),
+		]),
 );

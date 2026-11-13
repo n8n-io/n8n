@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { pushcutApiRequest } from './GenericFunctions';
@@ -57,7 +58,7 @@ export class PushcutTrigger implements INodeType {
 				const actionName = this.getNodeParameter('actionName');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/subscriptions';
+				const endpoint = requestPath`/subscriptions`;
 				const webhooks = await pushcutApiRequest.call(this, 'GET', endpoint, {});
 
 				for (const webhook of webhooks) {
@@ -74,7 +75,7 @@ export class PushcutTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const actionName = this.getNodeParameter('actionName');
 
-				const endpoint = '/subscriptions';
+				const endpoint = requestPath`/subscriptions`;
 
 				const body = {
 					actionName,
@@ -94,9 +95,8 @@ export class PushcutTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/subscriptions/${webhookData.webhookId}`;
-
 					try {
+						const endpoint = requestPath`/subscriptions/${webhookData.webhookId}`;
 						await pushcutApiRequest.call(this, 'DELETE', endpoint);
 					} catch (error) {
 						return false;

@@ -8,6 +8,8 @@ import {
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import { mockPerson } from '@test/mock-objects';
+
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
 	RoleMappingRuleListResponse,
@@ -115,6 +117,8 @@ describe('RoleMappingRuleController', () => {
 		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 		const patchBody = { expression: 'claims.updated === true' };
 		const req = mock<AuthenticatedRequest>();
+		const person = mockPerson();
+		req.user = person;
 		req.params = { id: ruleId };
 		req.body = patchBody;
 		const res = mock<Response>({
@@ -151,7 +155,7 @@ describe('RoleMappingRuleController', () => {
 				id: ruleId,
 				dto: patchBody,
 				userId: req.user.id,
-				userEmail: req.user.email,
+				userEmail: person.email,
 			});
 		});
 	});
@@ -160,6 +164,8 @@ describe('RoleMappingRuleController', () => {
 		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 		const moveBody = { targetIndex: 2 };
 		const req = mock<AuthenticatedRequest>();
+		const person = mockPerson();
+		req.user = person;
 		req.params = { id: ruleId };
 		const res = mock<Response>({
 			json: vi.fn().mockReturnThis(),
@@ -195,7 +201,7 @@ describe('RoleMappingRuleController', () => {
 				id: ruleId,
 				targetIndex: moveBody.targetIndex,
 				userId: req.user.id,
-				userEmail: req.user.email,
+				userEmail: person.email,
 			});
 		});
 	});
@@ -203,6 +209,8 @@ describe('RoleMappingRuleController', () => {
 	describe('delete', () => {
 		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 		const req = mock<AuthenticatedRequest>();
+		const person = mockPerson();
+		req.user = person;
 		req.params = { id: ruleId };
 		const res = mock<Response>({
 			json: vi.fn().mockReturnThis(),
@@ -235,7 +243,7 @@ describe('RoleMappingRuleController', () => {
 			expect(roleMappingRuleService.delete).toHaveBeenCalledWith({
 				id: ruleId,
 				userId: req.user.id,
-				userEmail: req.user.email,
+				userEmail: person.email,
 			});
 		});
 	});

@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { TlsOptions } from 'node:tls';
 import path from 'path';
 

@@ -20,6 +20,7 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:admin': 'Admin',
 	'global:member': 'Member',
 	'global:chatUser': 'Chat User',
+	'global:agent': 'Agent',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]: 'Project Admin',
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Project Editor',
@@ -38,6 +39,7 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'global:admin': 'Full control of the instance, including all workflows and credentials',
 	'global:member': 'Can create and use their own workflows and credentials',
 	'global:chatUser': 'Can only use workflows through the chat interface, not build them',
+	'global:agent': 'Identity of an agent. Gets access only through shares',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]:
 		'Full control of settings, members, workflows, credentials and executions',

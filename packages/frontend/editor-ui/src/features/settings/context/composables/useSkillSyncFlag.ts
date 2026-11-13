@@ -4,7 +4,7 @@ import { computed } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 /**
- * Whether the user sees Skill Sync: the Sources tab and "Connect to GitHub". The backend gates
+ * Whether the user sees Skill Sync: the source rows of the skills table and "Connect to GitHub". The backend gates
  * its routes with the same per-user flag. The server-evaluated flags carry the local overrides
  * (`N8N_FEATURE_FLAG_OVERRIDES`), so the flag also works with telemetry off.
  */

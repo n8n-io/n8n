@@ -6,6 +6,7 @@ import {
 	normalizeAgentRef,
 	PENDING_AGENT_METADATA_KEY,
 	clearedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	seedAgentBuilderTargetMetadata,
@@ -518,5 +519,34 @@ describe('threadAuthorizesAgentAdoption', () => {
 			false,
 		);
 		expect(threadAuthorizesAgentAdoption({ instanceAiAgentBuilderTarget: 7 }, target)).toBe(false);
+	});
+});
+
+describe('readAgentTargetsMetadata', () => {
+	it('reads the bound, pending and registered agents and the preview session', () => {
+		const metadata = {
+			...agentBuilderTargetMetadata([
+				{ agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' },
+			]),
+			[PENDING_AGENT_METADATA_KEY]: { agentId: 'agent-2', projectId: 'project-1' },
+			instanceAiAgentPreviewSession: { agentId: 'agent-1', threadId: 'session-1' },
+		};
+
+		expect(readAgentTargetsMetadata(metadata)).toEqual({
+			bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' },
+			pending: { agentId: 'agent-2', projectId: 'project-1' },
+			targets: [{ agentId: 'agent-1', projectId: 'project-1', name: 'Triage', ref: 'triage' }],
+			previewSession: { agentId: 'agent-1', threadId: 'session-1' },
+		});
+	});
+
+	it('reads malformed keys as not set', () => {
+		expect(
+			readAgentTargetsMetadata({
+				instanceAiAgentBuilderTarget: { agentId: 1 },
+				[PENDING_AGENT_METADATA_KEY]: 'agent-2',
+				instanceAiAgentBuilderTargets: [],
+			}),
+		).toEqual({ bound: undefined, pending: undefined, targets: [], previewSession: undefined });
 	});
 });

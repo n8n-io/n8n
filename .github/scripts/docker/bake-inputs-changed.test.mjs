@@ -21,6 +21,25 @@ describe('changedTargets', () => {
 		assert.deepEqual(changedTargets(before, after), []);
 	});
 
+	it('ignores the tag of a pinned image', () => {
+		const digest = `sha256:${'a'.repeat(64)}`;
+		const before = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.0@${digest}` }), ['base']);
+		const after = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26.13.0-abc123@${digest}` }), [
+			'base',
+		]);
+		assert.deepEqual(changedTargets(before, after), []);
+	});
+
+	it('reports a changed digest of a pinned image', () => {
+		const before = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26@sha256:${'a'.repeat(64)}` }), [
+			'base',
+		]);
+		const after = bakeInputs(plan({ RUNTIME_IMAGE: `n8nio/base:26@sha256:${'b'.repeat(64)}` }), [
+			'base',
+		]);
+		assert.deepEqual(changedTargets(before, after), ['base']);
+	});
+
 	it('reports a changed tag', () => {
 		const before = bakeInputs(plan({}), ['base']);
 		const after = bakeInputs(plan({}, { tags: ['n8nio/base:26-v3'] }), ['base']);

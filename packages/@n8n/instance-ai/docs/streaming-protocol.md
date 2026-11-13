@@ -468,7 +468,7 @@ interrupted-run sweep on startup, which converts orphaned `tool-call` entries
 into a terminal fact so the UI does not render a call that will never resolve.
 
 ```json
-{"type":"tool-interrupted","runId":"run_abc123","agentId":"agent-001","payload":{"toolCallId":"tc_abc123","error":"Interrupted by a process restart — effect unverified; verify before retrying."}}
+{"type":"tool-interrupted","runId":"run_abc123","agentId":"agent-001","payload":{"toolCallId":"tc_abc123","error":"n8n restarted while this step was running, for example after a crash or an update. The step may not have finished. Check its result before you try again."}}
 ```
 
 The frontend settles the matching tool call as terminated. The interrupted-run

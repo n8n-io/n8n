@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as click from '../../../actions/interaction/click.operation';
@@ -52,7 +53,7 @@ describe('Test Airtop, click operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/click',
+			requestPath`/sessions/test-session-123/windows/win-123/click`,
 			{
 				elementDescription: 'the login button',
 				configuration: {
@@ -100,7 +101,7 @@ describe('Test Airtop, click operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/click',
+			requestPath`/sessions/test-session-123/windows/win-123/click`,
 			{
 				configuration: {
 					visualAnalysis: {
@@ -125,7 +126,7 @@ describe('Test Airtop, click operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/click',
+			requestPath`/sessions/test-session-123/windows/win-123/click`,
 			{
 				configuration: {
 					clickType: 'click',
@@ -149,7 +150,7 @@ describe('Test Airtop, click operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/click',
+			requestPath`/sessions/test-session-123/windows/win-123/click`,
 			{
 				elementDescription: 'the login button',
 				configuration: {
@@ -169,7 +170,7 @@ describe('Test Airtop, click operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/click',
+			requestPath`/sessions/test-session-123/windows/win-123/click`,
 			{
 				elementDescription: 'the login button',
 				configuration: {

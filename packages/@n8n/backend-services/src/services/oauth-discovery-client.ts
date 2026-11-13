@@ -1,7 +1,7 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { createPublicKey } from 'node:crypto';
 import { z } from 'zod';
 

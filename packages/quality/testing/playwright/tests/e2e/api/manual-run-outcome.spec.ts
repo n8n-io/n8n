@@ -9,7 +9,7 @@ const TRIGGER_NAME = 'When clicking ‘Execute workflow’';
 test.describe(
 	'Manual run outcome',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should run a branching workflow and report its output through the executions API @engine:v2', async ({

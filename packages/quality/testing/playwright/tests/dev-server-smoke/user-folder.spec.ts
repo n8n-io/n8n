@@ -16,7 +16,7 @@ test.describe(
 	'Dev-server user folder',
 	{
 		annotation: [
-			{ type: 'owner', description: 'Catalysts' },
+			{ type: 'owner', description: 'Core Application' },
 			{
 				type: 'description',
 				description:

@@ -92,6 +92,12 @@ export const WORKFLOW_BUILDER_CUES: ContextCueSet = {
 			appliesWhen: 'Writing mock output or sample data for nodes in workflow SDK code.',
 		},
 		{
+			id: 'mock-output-sample-files',
+			text: "Never write file bytes or base64 in mock `output` or `fixtureOverrides`. Use `{ $sampleFile: 'image/png' }` where a field holds base64 file data, or `$binary: { data: 'image/png' }` on an item for a binary property. Supported types: `image/png`, `image/jpeg`, `audio/mpeg`, `application/pdf`.",
+			appliesWhen:
+				'Writing mock output for a node that returns an image, audio, PDF or other file, either as base64 in a field or as a binary property.',
+		},
+		{
 			id: 'mock-output-all-fields',
 			text: 'Mock `output` must include every field later read by `$json` expressions, including optional trigger fields used in filters (Slack `subtype`, `bot_id`).',
 			appliesWhen:

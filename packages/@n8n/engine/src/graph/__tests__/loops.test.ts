@@ -249,7 +249,9 @@ describe('validateLoops', () => {
 			{ from: 'x', to: 'a', isBackEdge: true },
 		]);
 
-		expect(() => validateLoops(graph)).toThrow(/not a batch node/);
+		expect(() => validateLoops(graph)).toThrow(
+			'Node "A" has a back-edge returning to it but is not a batch node',
+		);
 	});
 
 	it('rejects a back-edge into a slot other than 0 (rule 2)', () => {

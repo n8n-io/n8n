@@ -10,6 +10,7 @@ import type {
 	SkillSaveResponse,
 	SkillSortOption,
 	SkillSourceCheckResponse,
+	SkillSourceListItem,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -34,6 +35,12 @@ export type SkillListQuery = {
 	agentId?: string;
 	createdById?: string;
 	sortBy?: SkillSortOption;
+	/** `source` groups the synced skills under their source. */
+	groupBy?: 'source';
+	page?: number;
+	focusSourceId?: string;
+	/** Comma-separated ids of the sources that the user folded. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -160,19 +167,29 @@ export async function connectSkillSource(
 	);
 }
 
-/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
-/** Check now: checks the whole source of a synced skill for updates. */
-export async function checkSkillForUpdates(
+/** The sources that the user can see, for their rows in the skills table. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+/** Deletes a source and its synced skills. */
+export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+}
+
+/** Check for updates on one source. */
+export async function checkSkillSource(
 	context: IRestApiContext,
-	skillId: string,
+	sourceId: string,
 ): Promise<SkillSourceCheckResponse> {
 	return await makeRestApiRequest<SkillSourceCheckResponse>(
 		context,
 		'POST',
-		`${SOURCES_ENDPOINT}/skills/${skillId}/check`,
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
 	);
 }
 
+/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
 export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
 	await makeRestApiRequest<{ ok: true }>(
 		context,

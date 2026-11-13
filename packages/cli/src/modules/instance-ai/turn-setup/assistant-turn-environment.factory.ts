@@ -6,7 +6,7 @@ import {
 	PORTABLE_WORKSPACE_ROOT,
 } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -35,7 +35,6 @@ import { redactTelemetryProperties } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
-import { N8N_VERSION } from '@/constants';
 import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
@@ -44,7 +43,6 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
-import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiConversationHistoryService,
 	type ScopedConversationHistory,
@@ -58,6 +56,7 @@ import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
+import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assistantCreditsExhaustedError,
@@ -150,7 +149,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
-		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
@@ -180,7 +179,7 @@ export class AssistantTurnEnvironmentFactory {
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 		});
 
 		return {
@@ -322,11 +321,12 @@ export class AssistantTurnEnvironmentFactory {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
-			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
+			// Read per call: the overrides can change while the run is in progress.
+			getCredentialIdAllowlist: () => this.turnOverrides.getCredentialIdAllowlist(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
-				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
+				this.turnOverrides.shouldBypassCredentialTest(threadId, credentialId),
 			getCredentialTestTarget: (credentialType: string) =>
-				this.evalCredentialAllowlists.getTestTarget(threadId, credentialType),
+				this.turnOverrides.getCredentialTestTarget(threadId, credentialType),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,

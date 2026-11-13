@@ -2,7 +2,10 @@ operationId: getProjects
 tags:
   - Projects
 summary: Retrieve projects
-description: Retrieve projects from your instance.
+description: |-
+  Retrieve projects from your instance.
+
+  Requires the `project:list` API key scope.
 x-required-scope: project:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

@@ -3,6 +3,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
@@ -146,6 +147,37 @@ describe('getAutoSelectedCredential', () => {
 		const node = createNode({ type: 'n8n-nodes-base.noOp' });
 
 		expect(getAutoSelectedCredential(node)).toBeUndefined();
+	});
+
+	it('skips a credential whose type a policy blocks', () => {
+		nodeTypesStore.setNodeTypes([
+			{
+				...openAiNodeType,
+				credentials: [
+					{ name: 'openAiApi', required: true },
+					{ name: 'slackApi', required: true },
+				],
+			},
+		]);
+		credentialsStore.state.credentialTypes = {
+			openAiApi: openAiApiCredentialType,
+			slackApi: { ...openAiApiCredentialType, name: 'slackApi', displayName: 'Slack' },
+		};
+		credentialsStore.usableCredentials = {
+			openai: createCredential({ id: 'openai', name: 'OpenAI' }),
+			slack: createCredential({
+				id: 'slack',
+				name: 'Slack',
+				type: 'slackApi',
+				updatedAt: '2024-06-01T00:00:00.000Z',
+			}),
+		};
+		mockRestrictedCredentialTypes({ slackApi: 'instance' });
+
+		expect(getAutoSelectedCredential(createNode())).toEqual({
+			credentialType: 'openAiApi',
+			credential: { id: 'openai', name: 'OpenAI' },
+		});
 	});
 
 	it('only considers the override credential type when one is given', () => {

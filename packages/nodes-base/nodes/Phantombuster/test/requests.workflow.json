@@ -1,0 +1,176 @@
+{
+	"name": "[TEST] Phantombuster requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "4a58d85e-b2ce-5ea0-b9dd-ab825c10ee88",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"agentId": "4567891234567890"
+			},
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"id": "d30a6308-901f-5070-b171-abbe848b1ebb",
+			"name": "Delete Agent",
+			"credentials": {
+				"phantombusterApi": {
+					"id": "1",
+					"name": "Phantombuster account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"agentId": "4567891234567890"
+			},
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"id": "c2879dc3-71f6-5d9e-9276-88bce7e58498",
+			"name": "Get Agent",
+			"credentials": {
+				"phantombusterApi": {
+					"id": "1",
+					"name": "Phantombuster account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [260, 400],
+			"id": "a98a9336-5b77-5b3d-a07c-2aee43ecc403",
+			"name": "Get Agents",
+			"credentials": {
+				"phantombusterApi": {
+					"id": "1",
+					"name": "Phantombuster account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getOutput",
+				"agentId": "4567891234567890",
+				"resolveData": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [260, 600],
+			"id": "3823ff56-1a1e-5884-be8c-6b4f1527f8bf",
+			"name": "Get Output",
+			"credentials": {
+				"phantombusterApi": {
+					"id": "1",
+					"name": "Phantombuster account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "launch",
+				"agentId": "4567891234567890",
+				"resolveData": true,
+				"jsonParameters": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.phantombuster",
+			"typeVersion": 1,
+			"position": [260, 800],
+			"id": "20d7dc64-923a-5826-ad12-ea4cd6b88217",
+			"name": "Launch Agent",
+			"credentials": {
+				"phantombusterApi": {
+					"id": "1",
+					"name": "Phantombuster account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Agent": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Agent": [
+			{
+				"json": {
+					"id": "4567891234567890",
+					"name": "LinkedIn Profile Scraper"
+				}
+			}
+		],
+		"Get Agents": [
+			{
+				"json": {
+					"id": "4567891234567890",
+					"name": "LinkedIn Profile Scraper"
+				}
+			}
+		],
+		"Get Output": [
+			{
+				"json": {
+					"profileUrl": "https://www.linkedin.com/in/nathan"
+				}
+			}
+		],
+		"Launch Agent": [
+			{
+				"json": {
+					"id": "7891234567890123",
+					"status": "finished"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Delete Agent",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Agent",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Agents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Output",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Launch Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

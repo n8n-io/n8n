@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { Transaction, User, UserRepository } from '@n8n/db';
+import type { Person, Transaction, User, UserRepository } from '@n8n/db';
 import type { Inbound, RefusalReason, Refused, ResourceAdmission } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -487,7 +487,7 @@ describe('McpServerMiddlewareService', () => {
 			it('keeps the token and the email out of the log lines', async () => {
 				const apiKey = jwtService.sign('mcpApiKey', { sub: 'user-123', iss: 'n8n' });
 				mcpServerApiKeyService.verifyApiKey.mockResolvedValueOnce({
-					user: mock<User>({ id: 'user-123', email: 'alice@example.com' }),
+					user: mock<Person>({ id: 'user-123', email: 'alice@example.com' }),
 					caller: { authType: 'api_key' },
 					authMethod: 'api-key',
 				});

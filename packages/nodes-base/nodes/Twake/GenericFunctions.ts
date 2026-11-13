@@ -5,7 +5,10 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Twake
@@ -14,17 +17,16 @@ import type {
 export async function twakeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: object,
 	query?: IDataObject,
-	uri?: string,
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
+		uri: requestUrl`https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
 

@@ -15,6 +15,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type {
 	CredentialsEntity,
+	Person,
 	Project,
 	User,
 	WorkflowEntity,
@@ -56,10 +57,10 @@ import type { SaveCredentialFunction, SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow } from '../shared/utils/';
 
-let owner: User;
-let admin: User;
+let owner: Person;
+let admin: Person;
 let ownerPersonalProject: Project;
-let member: User;
+let member: Person;
 let memberPersonalProject: Project;
 let anotherMember: User;
 let anotherMemberPersonalProject: Project;

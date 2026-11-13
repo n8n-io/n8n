@@ -40,7 +40,7 @@ export interface SetupPanelExecutionResult {
 
 export function useSetupPanelExecution(options: {
 	workflowId: MaybeRefOrGetter<string | undefined>;
-	thread: Pick<ThreadRuntime, 'id' | 'messages' | 'sendMessage' | 'rememberManualExecution'>;
+	thread: Pick<ThreadRuntime, 'id' | 'artifactTurns' | 'sendMessage' | 'rememberManualExecution'>;
 }) {
 	const rootStore = useRootStore();
 	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
@@ -106,13 +106,9 @@ export function useSetupPanelExecution(options: {
 				workflow_id: workflowId,
 				thread_id: options.thread.id,
 			};
-			let agentExecutionId: string | undefined;
-			for (const message of options.thread.messages) {
-				if (message.agentTree)
-					agentExecutionId =
-						getExecutionResultsByWorkflow(message.agentTree).get(workflowId)?.executionId ??
-						agentExecutionId;
-			}
+			const agentExecutionId = getExecutionResultsByWorkflow(options.thread.artifactTurns).get(
+				workflowId,
+			)?.executionId;
 			const completed = createDeferredPromise<
 				Omit<SetupPanelExecutionResult, 'notified'> | undefined
 			>();

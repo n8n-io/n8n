@@ -25,11 +25,6 @@ export interface SkillImportPlan {
 	shared: SharedSkillWrite[];
 	/** The Agents that use a project or instance skill that the import writes. */
 	sharedUsers: Set<string>;
-	/**
-	 * How many times the import raised the revision of each Agent, keyed by Agent ID.
-	 * All plans of one package share this map.
-	 */
-	raisedRevisions: Map<string, number>;
 }
 
 export function skillIssue(
@@ -83,13 +78,4 @@ function instanceNameClash({
 }: SharedSkillWrite): AgentImportIssue[] {
 	const message = `Another instance skill of this package has the same name "${skill.skill.name}". Rename one of the skills.`;
 	return usedBy.map((agentId) => skillIssue(agentId, packageSkillId ?? skill.id, message));
-}
-
-/**
- * A skill write in one project raises the revision of the Agents in all projects that
- * follow the skill. Give all plans of the package one map, so each plan knows these raises.
- */
-export function shareRevisionRaises(plans: SkillImportPlan[]): void {
-	const raisedRevisions = new Map<string, number>();
-	for (const plan of plans) plan.raisedRevisions = raisedRevisions;
 }

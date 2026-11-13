@@ -3,8 +3,9 @@ import type {
 	IExecuteFunctions,
 	NodeOperationError,
 	NodeParameterValueType,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 
@@ -51,7 +52,8 @@ describe('Microsoft Teams V2, chat create participant rows', () => {
 
 	/** Graph doubles: `/me` is the caller, `routes` are the per-path replies, the rest 404s. */
 	const respond = (routes: Record<string, IDataObject> = {}, me: IDataObject = {}) => {
-		apiRequest.mockImplementation(async (method: string, resourcePath: string) => {
+		apiRequest.mockImplementation(async (method: string, path: RequestPath) => {
+			const resourcePath = path.value;
 			if (method === 'POST') return { id: 'created' };
 			if (resourcePath === '/v1.0/me') {
 				return { id: CALLER, userPrincipalName: ME_UPN, userType: 'Member', ...me };
@@ -117,7 +119,7 @@ describe('Microsoft Teams V2, chat create participant rows', () => {
 	});
 
 	it('refuses a chat whose only participant is the signed-in user', async () => {
-		respond({ [`/v1.0/users/${encodeURIComponent(ME_UPN)}`]: { id: CALLER } });
+		respond({ [`/v1.0/users/${ME_UPN}`]: { id: CALLER } });
 
 		await expect(
 			run({ chatType: 'oneOnOne', ...rows({ userId: ME_UPN, role: 'owner' }) }),
@@ -219,7 +221,12 @@ describe('Microsoft Teams V2, chat create participant rows', () => {
 
 		await run({ chatType: 'group', ...rows({ userId: JANE, role: 'owner', tenantId: '   ' }) });
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', `/v1.0/users/${JANE}`, {}, expect.anything());
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/v1.0/users/${JANE}`,
+			{},
+			expect.anything(),
+		);
 		expect(memberSent(1)).toEqual({
 			'@odata.type': '#microsoft.graph.aadUserConversationMember',
 			roles: ['owner'],

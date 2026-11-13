@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export type LakebaseWhereRule = { column?: string; condition?: string; value?: unknown };
 export type LakebaseSortRule = { column?: string; direction?: string };
