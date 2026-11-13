@@ -1,18 +1,18 @@
-<script setup lang="ts">
-import type { PolicyViolation } from '@n8n/api-types';
+<script setup lang="ts" generic="T extends PolicyViolationListItem">
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import PolicyViolationList from './PolicyViolationList.vue';
+import type { PolicyViolationListItem } from './policyViolations';
 
 defineProps<{
 	title: string;
 	description: string;
-	violations: PolicyViolation[];
-	isJumpable?: (violation: PolicyViolation) => boolean;
-	labelOf?: (violation: PolicyViolation) => string | undefined;
+	violations: T[];
+	isJumpable?: (violation: T) => boolean;
+	labelOf?: (violation: T) => string | undefined;
 }>();
 
-const emit = defineEmits<{ jump: [violation: PolicyViolation] }>();
+const emit = defineEmits<{ jump: [violation: T] }>();
 </script>
 
 <template>

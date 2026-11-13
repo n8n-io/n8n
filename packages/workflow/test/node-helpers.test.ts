@@ -5566,16 +5566,6 @@ describe('NodeHelpers', () => {
 			).toEqual(['virusTotalApi']);
 			expect(getDescription).not.toHaveBeenCalled();
 		});
-
-		it('should not resolve a named type the caller does not care about', () => {
-			const getDescription = vi.fn(() => description);
-			const node = makeNode({ parameters: { nodeCredentialType: 'githubApi' } });
-
-			expect(
-				getRequestedCredentialTypes(node, getDescription, { isRelevant: () => false }),
-			).toEqual([]);
-			expect(getDescription).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('getActiveCredentialTypes', () => {

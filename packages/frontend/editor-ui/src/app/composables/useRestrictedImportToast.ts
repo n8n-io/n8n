@@ -1,17 +1,13 @@
 import { h } from 'vue';
-import {
-	POLICY_VIOLATION_KIND,
-	POLICY_VIOLATION_SUBJECT_TYPE,
-	type PolicyViolation,
-} from '@n8n/api-types';
+import { POLICY_VIOLATION_KIND, POLICY_VIOLATION_SUBJECT_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import {
 	describeImportedRestrictions,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
-	getViolationVerdict,
 	PolicyViolationToastBody,
+	type PolicyViolationListItem,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { getRequestedCredentialTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
@@ -30,7 +26,7 @@ const RESTRICTED_IMPORT_TOAST_CLASS = 'content-toast restricted-import-toast';
 
 type DescriptionOf = (node: INode) => INodeTypeDescription | null;
 
-type RestrictionCheck = Pick<PolicyViolation, 'kind' | 'checkId' | 'subjectType'> & {
+type RestrictionCheck = Pick<PolicyViolationListItem, 'kind' | 'subjectType'> & {
 	typesOf: (node: INode, descriptionOf: DescriptionOf) => string[];
 	restrictionOf: (type: string) => TypeRestriction | null;
 };
@@ -38,19 +34,14 @@ type RestrictionCheck = Pick<PolicyViolation, 'kind' | 'checkId' | 'subjectType'
 const CHECKS: RestrictionCheck[] = [
 	{
 		kind: POLICY_VIOLATION_KIND.nodeTypeUnavailable,
-		checkId: 'node-type-availability',
 		subjectType: POLICY_VIOLATION_SUBJECT_TYPE.nodeType,
 		typesOf: (node) => [node.type],
 		restrictionOf: getNodeTypeRestriction,
 	},
 	{
 		kind: POLICY_VIOLATION_KIND.credentialTypeUnavailable,
-		checkId: 'credential-type-availability',
 		subjectType: POLICY_VIOLATION_SUBJECT_TYPE.credentialType,
-		typesOf: (node, descriptionOf) =>
-			getRequestedCredentialTypes(node, () => descriptionOf(node), {
-				isRelevant: (type) => getCredentialTypeRestriction(type) !== null,
-			}),
+		typesOf: (node, descriptionOf) => getRequestedCredentialTypes(node, () => descriptionOf(node)),
 		restrictionOf: getCredentialTypeRestriction,
 	},
 ];
@@ -82,16 +73,13 @@ export function useRestrictedImportToast() {
 		return [...byType].flatMap(([type, found]) => {
 			if (!found) return [];
 
-			const violation: PolicyViolation = {
+			const item: PolicyViolationListItem = {
 				kind: check.kind,
-				checkId: check.checkId,
-				message: type,
 				subject: type,
 				subjectType: check.subjectType,
 				scope: found.restriction.scope,
-				optInAvailable: found.restriction.optInAvailable,
 			};
-			return [{ violation, nodeIds: found.nodeIds }];
+			return [{ item, restriction: found.restriction, nodeIds: found.nodeIds }];
 		});
 	}
 
@@ -107,11 +95,11 @@ export function useRestrictedImportToast() {
 		for (const check of CHECKS) restricted.push(...findRestricted(nodes, check));
 		if (restricted.length === 0) return false;
 
-		const violations = restricted.map(({ violation }) => violation);
-		const nodeIdsByViolation = new Map(restricted.map((item) => [item.violation, item.nodeIds]));
+		const items = restricted.map(({ item }) => item);
+		const nodeIdsByItem = new Map(restricted.map(({ item, nodeIds }) => [item, nodeIds]));
 		const documentId = createWorkflowDocumentId(workflowsStore.workflowId);
-		const linkedNodeIds = (violation: PolicyViolation) =>
-			nodeIdsStillOnCanvas(documentId, nodeIdsByViolation.get(violation) ?? []);
+		const linkedNodeIds = (item: PolicyViolationListItem) =>
+			nodeIdsStillOnCanvas(documentId, nodeIdsByItem.get(item) ?? []);
 
 		activeToast?.close();
 		const handle: NotificationHandle = toast.showMessage(
@@ -124,16 +112,18 @@ export function useRestrictedImportToast() {
 				},
 				message: h(PolicyViolationToastBody, {
 					title: i18n.baseText('typeAvailabilityPolicies.importedRestricted.title', {
-						adjustToNumber: violations.length,
-						interpolate: { count: violations.length },
+						adjustToNumber: items.length,
+						interpolate: { count: items.length },
 					}),
-					description: describeImportedRestrictions(violations.map(getViolationVerdict)),
-					violations,
+					description: describeImportedRestrictions(
+						restricted.map(({ restriction }) => restriction),
+					),
+					violations: items,
 					labelOf,
-					isJumpable: (violation: PolicyViolation) => linkedNodeIds(violation).length > 0,
-					onJump: (violation: PolicyViolation) =>
+					isJumpable: (item: PolicyViolationListItem) => linkedNodeIds(item).length > 0,
+					onJump: (item: PolicyViolationListItem) =>
 						canvasEventBus.emit('nodes:select', {
-							ids: linkedNodeIds(violation),
+							ids: linkedNodeIds(item),
 							panIntoView: true,
 						}),
 				}),

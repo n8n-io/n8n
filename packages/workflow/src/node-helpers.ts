@@ -609,12 +609,11 @@ const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as 
 export function getRequestedCredentialTypes(
 	node: INode,
 	getNodeTypeDescription: () => INodeTypeDescription | null,
-	{ isRelevant = () => true }: { isRelevant?: (credentialType: string) => boolean } = {},
 ): string[] {
 	const types = new Set(Object.keys(node.credentials ?? {}));
 
 	const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
-		(value): value is string => typeof value === 'string' && value !== '' && isRelevant(value),
+		(value): value is string => typeof value === 'string' && value !== '',
 	);
 	if (named.length > 0) {
 		const active = getActiveCredentialTypes(node, getNodeTypeDescription());
