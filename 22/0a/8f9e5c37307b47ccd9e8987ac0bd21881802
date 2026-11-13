@@ -1,0 +1,31 @@
+.claude/plugins/n8n/agents/autodev-architecture-reviewer.md
+  s_2f7d745c1f33d3::t_2161fecab909ad 12-13
+.claude/plugins/n8n/agents/autodev-conventions-reviewer.md
+  s_2f7d745c1f33d3::t_86ae3956d61bc2 12-13
+.claude/plugins/n8n/agents/autodev-plan-reviewer.md
+  s_2f7d745c1f33d3::t_54b3bd4d706152 12-13
+.claude/plugins/n8n/agents/autodev-planner.md
+  s_2f7d745c1f33d3::t_bcb96b9988e8a1 10-11
+.claude/plugins/n8n/agents/autodev-security-reviewer.md
+  s_2f7d745c1f33d3::t_f05b033b0e0d8d 12-13
+.claude/plugins/n8n/agents/autodev-test-reviewer.md
+  s_2f7d745c1f33d3::t_199b29afac4a36 12-13
+.claude/plugins/n8n/agents/autodev-vue-reviewer.md
+  s_2f7d745c1f33d3::t_118d2bd76cd3f5 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "220a8f9e5c37307b47ccd9e8987ac0bd21881802",
+  "prompts": {},
+  "sessions": {
+    "s_2f7d745c1f33d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383bb0e3-c6b8-41c7-b230-9a9301010b08",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

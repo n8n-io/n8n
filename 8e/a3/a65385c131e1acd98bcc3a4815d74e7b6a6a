@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environments.spec.ts
+  s_029fc84d406534::t_19042cec4085f6 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ea3a65385c131e1acd98bcc3a4815d74e7b6a6a",
+  "prompts": {},
+  "sessions": {
+    "s_029fc84d406534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c696-46c1-76e0-b9ba-65ac5f50fe2c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
