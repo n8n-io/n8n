@@ -1,6 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
+import type { KnowledgeSandboxProviderRegistry } from '../../knowledge-sandbox-provider-registry';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
 import { KnowledgeRetrievalService } from '../knowledge-retrieval.service';
 import type { KnowledgeMirrorService } from '../mirror.service';
@@ -15,7 +16,8 @@ const scope: KnowledgeConsumerScope = { kind: 'agent', projectId: 'project-1', a
 describe('KnowledgeRetrievalService', () => {
 	const fileRepository = mock<KnowledgeFileRepository>();
 	const mirrorService = mock<KnowledgeMirrorService>();
-	const service = new KnowledgeRetrievalService(fileRepository, mirrorService);
+	const sandboxProvider = mock<KnowledgeSandboxProviderRegistry>();
+	const service = new KnowledgeRetrievalService(fileRepository, mirrorService, sandboxProvider);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -27,6 +29,29 @@ describe('KnowledgeRetrievalService', () => {
 		await expect(service.hasFiles(scope)).resolves.toBe(true);
 
 		expect(fileRepository.hasFilesForAgent).toHaveBeenCalledWith('agent-1', {});
+	});
+
+	it('warms the sandbox when the scope has files', async () => {
+		fileRepository.hasFilesForAgent.mockResolvedValue(true);
+
+		await service.warmSandbox(scope);
+
+		expect(sandboxProvider.warm).toHaveBeenCalledExactlyOnceWith(scope);
+	});
+
+	it('does not warm the sandbox of a scope without files', async () => {
+		fileRepository.hasFilesForAgent.mockResolvedValue(false);
+
+		await service.warmSandbox(scope);
+
+		expect(sandboxProvider.warm).not.toHaveBeenCalled();
+	});
+
+	it('destroys the sandbox on request without reading the file rows', async () => {
+		await service.destroySandbox(scope);
+
+		expect(sandboxProvider.destroy).toHaveBeenCalledExactlyOnceWith(scope);
+		expect(fileRepository.hasFilesForAgent).not.toHaveBeenCalled();
 	});
 
 	it('finds, searches and reads through the mirror with the scope unchanged', async () => {

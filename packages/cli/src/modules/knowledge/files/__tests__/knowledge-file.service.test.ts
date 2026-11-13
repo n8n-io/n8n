@@ -745,29 +745,6 @@ describe('KnowledgeFileService', () => {
 		});
 	});
 
-	it('warms the sandbox when the scope has files', async () => {
-		await agentFileRepository.save(makeAgentFile());
-
-		await service.warmSandbox(scope);
-
-		expect(sandboxProvider.warm).toHaveBeenCalledExactlyOnceWith(scope);
-	});
-
-	it('does not warm the sandbox of a scope without files', async () => {
-		await service.warmSandbox(scope);
-
-		expect(sandboxProvider.warm).not.toHaveBeenCalled();
-	});
-
-	it('destroys the sandbox on request without reading the file rows', async () => {
-		const hasFilesForAgent = vi.spyOn(agentFileRepository, 'hasFilesForAgent');
-
-		await service.destroySandbox(scope);
-
-		expect(sandboxProvider.destroy).toHaveBeenCalledExactlyOnceWith(scope);
-		expect(hasFilesForAgent).not.toHaveBeenCalled();
-	});
-
 	it('lists the files of the scope as DTOs', async () => {
 		const createdAt = new Date('2026-06-01T10:00:00.000Z');
 		await agentFileRepository.save(makeAgentFile({ id: 'file-1', createdAt }));

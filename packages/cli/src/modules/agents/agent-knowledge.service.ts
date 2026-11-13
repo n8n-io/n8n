@@ -10,6 +10,7 @@ import {
 import { cleanupUploadedTempFiles } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -26,6 +27,7 @@ export class AgentKnowledgeService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly knowledgeFileService: KnowledgeFileService,
+		private readonly knowledgeRetrievalService: KnowledgeRetrievalService,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
 		private readonly logger: Logger,
@@ -55,7 +57,7 @@ export class AgentKnowledgeService {
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		const scope = await this.scopeFor(agentId, projectId);
-		await this.knowledgeFileService.warmSandbox(scope);
+		await this.knowledgeRetrievalService.warmSandbox(scope);
 	}
 
 	/** Returns false when the agent has no file with this id, so nothing was deleted. */
@@ -85,7 +87,7 @@ export class AgentKnowledgeService {
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */
 	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
-		await this.knowledgeFileService.destroySandbox({ kind: 'agent', projectId, agentId });
+		await this.knowledgeRetrievalService.destroySandbox({ kind: 'agent', projectId, agentId });
 	}
 
 	/** Each write waits for, and blocks, the deletion of the project. */

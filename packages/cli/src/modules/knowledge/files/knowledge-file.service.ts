@@ -106,20 +106,6 @@ export class KnowledgeFileService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	/** Boots the sandbox of the scope ahead of use. A scope without files needs no sandbox. */
-	async warmSandbox(scope: KnowledgeConsumerScope): Promise<void> {
-		if (!(await this.hasFiles(scope))) {
-			return;
-		}
-
-		await this.sandboxProvider.warm(scope);
-	}
-
-	/** Deletes the sandbox of the scope. Reads no file row, so it also runs while the module is off. Never throws. */
-	async destroySandbox(scope: KnowledgeConsumerScope): Promise<void> {
-		await this.sandboxProvider.destroy(scope);
-	}
-
 	/**
 	 * Returns false when the scope has no file with this id, so nothing was deleted.
 	 * The fence guards only the mirror refresh that follows. The row delete does not run through it.
@@ -145,10 +131,10 @@ export class KnowledgeFileService {
 				});
 			});
 
-		if (await this.hasFiles(scope)) {
+		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
 			this.prewarmMirror(scope, writeFence);
 		} else {
-			await this.destroySandbox(scope);
+			await this.sandboxProvider.destroy(scope);
 		}
 
 		return true;
@@ -173,10 +159,6 @@ export class KnowledgeFileService {
 					});
 				});
 		}
-	}
-
-	private async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
 	}
 
 	private prewarmMirror(scope: KnowledgeConsumerScope, writeFence: KnowledgeWriteRunner): void {

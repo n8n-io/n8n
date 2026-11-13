@@ -14,6 +14,7 @@ import type {
 } from '@/modules/knowledge/files/knowledge-file.service';
 import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 
 import { AgentKnowledgeService } from '../agent-knowledge.service';
 import type { AgentProjectDeletionRepository } from '../repositories/agent-project-deletion.repository';
@@ -57,6 +58,7 @@ const uploadedFile: UploadedKnowledgeFile = {
 describe('AgentKnowledgeService', () => {
 	let agentRepository: Mocked<AgentRepository>;
 	let knowledgeFileService: Mocked<KnowledgeFileService>;
+	let knowledgeRetrievalService: Mocked<KnowledgeRetrievalService>;
 	let projectDeletion: Mocked<AgentProjectDeletionRepository>;
 	let logger: Mocked<Logger>;
 	let service: AgentKnowledgeService;
@@ -67,6 +69,7 @@ describe('AgentKnowledgeService', () => {
 		return new AgentKnowledgeService(
 			agentRepository,
 			knowledgeFileService,
+			knowledgeRetrievalService,
 			knowledgeAvailabilityService,
 			projectDeletion,
 			logger,
@@ -78,6 +81,7 @@ describe('AgentKnowledgeService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: agentId, projectId } as never);
 		knowledgeFileService = mock<KnowledgeFileService>();
+		knowledgeRetrievalService = mock<KnowledgeRetrievalService>();
 		projectDeletion = mock<AgentProjectDeletionRepository>();
 		projectDeletion.withWritableProject.mockImplementation(
 			async (_projectId, write, ctx = {}) => await write(ctx),
@@ -121,7 +125,7 @@ describe('AgentKnowledgeService', () => {
 	it('warms the knowledge sandbox of the agent through the knowledge module', async () => {
 		await expect(service.warmKnowledgeSandbox(agentId, projectId)).resolves.toBeUndefined();
 
-		expect(knowledgeFileService.warmSandbox).toHaveBeenCalledWith(scope);
+		expect(knowledgeRetrievalService.warmSandbox).toHaveBeenCalledWith(scope);
 	});
 
 	it.each([true, false])(
@@ -159,7 +163,7 @@ describe('AgentKnowledgeService', () => {
 	it('destroys the knowledge sandbox on request', async () => {
 		await service.destroyKnowledgeSandbox(projectId, agentId);
 
-		expect(knowledgeFileService.destroySandbox).toHaveBeenCalledWith(scope);
+		expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
 	});
 
 	it.each([
@@ -174,7 +178,7 @@ describe('AgentKnowledgeService', () => {
 
 		expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
 		expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
-		expect(knowledgeFileService.warmSandbox).not.toHaveBeenCalled();
+		expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
 	});
 
@@ -215,7 +219,7 @@ describe('AgentKnowledgeService', () => {
 			expect(knowledgeFileService.uploadFiles).not.toHaveBeenCalled();
 			expect(knowledgeFileService.listFiles).not.toHaveBeenCalled();
 			expect(knowledgeFileService.deleteFile).not.toHaveBeenCalled();
-			expect(knowledgeFileService.warmSandbox).not.toHaveBeenCalled();
+			expect(knowledgeRetrievalService.warmSandbox).not.toHaveBeenCalled();
 		});
 
 		it('keeps the stored blobs on agent deletion and warns, because the file entity is not registered', async () => {
@@ -231,7 +235,7 @@ describe('AgentKnowledgeService', () => {
 		it('still destroys the sandbox, which needs no module entity', async () => {
 			await service.destroyKnowledgeSandbox(projectId, agentId);
 
-			expect(knowledgeFileService.destroySandbox).toHaveBeenCalledWith(scope);
+			expect(knowledgeRetrievalService.destroySandbox).toHaveBeenCalledWith(scope);
 		});
 	});
 });
