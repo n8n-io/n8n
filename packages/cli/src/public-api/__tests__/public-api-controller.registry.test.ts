@@ -309,6 +309,31 @@ describe('PublicApiControllerRegistry', () => {
 		);
 	});
 
+	it('names a route by its template, so two ids share one route name', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const app = activate();
+		await request(app).get('/api/v1/widgets/w-1').expect(200);
+		await request(app).get('/api/v1/widgets/w-2').expect(200);
+
+		for (const path of ['/widgets/w-1', '/widgets/w-2']) {
+			await vi.waitFor(() =>
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'public-api-invoked',
+					expect.objectContaining({ path, route: 'GET /widgets/{widgetId}' }),
+				),
+			);
+		}
+	});
+
 	it('does not emit public-api-invoked for a call that fails authentication', async () => {
 		authStrategyRegistry.authenticate.mockResolvedValue({ authenticated: false, challenges: [] });
 
