@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { publicApiClientSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
@@ -106,6 +107,7 @@ export const WORKFLOW_TELEMETRY = defineTelemetryEvents({
 			user_id: z.string(),
 			workflow_id: z.string(),
 			public_api: z.boolean(),
+			public_api_client: publicApiClientSchema.optional(),
 			source: z.enum(['ui', 'api', 'n8n-mcp', 'n8n-ai', 'import', 'review-approval', 'cli']),
 			private_credentials_count: z.number(),
 			private_credential_types: z.array(z.string()),

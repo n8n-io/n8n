@@ -1,7 +1,7 @@
 import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createHash } from 'crypto';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { InstanceSettings } from '@/instance-settings';
 import { assertUnreachable } from '@/utils/assertions';

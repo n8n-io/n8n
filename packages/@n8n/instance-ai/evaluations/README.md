@@ -969,7 +969,7 @@ a server that drops it after a write.
 "requiresMemoryCompaction": true
 ```
 
-For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at 30k tokens of visible message content (`N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS`), which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
+For a case that is only meaningful once observational memory has compacted the thread — the Observer has written its observations and the early turns are masked out of the agent's window. Production compacts at shares of the model's context window, capped at 200k tokens (`N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS`), measured on the real request size, which is a conversation too long to hand-author, so the flag does two things per-thread, leaving every other case in the run alone:
 
 1. The harness sends a low `observerThresholdTokens` override with **every** turn of that thread. The flag means "compact as soon as there is anything to compact" — the seed does not have to hit a token number. The Observer's prompt, masking and cursor logic are the production ones at any threshold.
 2. After the build, the harness checks the premise held, and reports every expectation on the case **not judged** if it did not. That is an `incomplete` verdict — excluded from scoring, not a red.

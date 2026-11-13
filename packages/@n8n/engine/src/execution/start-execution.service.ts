@@ -1,5 +1,6 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import {
+	createNodeLabeler,
 	deriveLoops,
 	findTriggerNode,
 	getDescendantNodeIds,
@@ -204,6 +205,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	const loopByMember = new Map(
 		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
 	);
+	const name = createNodeLabeler(graph);
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
@@ -212,18 +214,18 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 		}
 		if (!reachable.has(nodeId)) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+				`Seeded step names node ${name(nodeId)}, which the trigger does not reach`,
 			);
 		}
 		const loop = loopByMember.get(nodeId);
 		if (loop) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+				`Seeded step names node ${name(nodeId)}, which is inside the loop of ${name(loop.batchNodeId)}; a loop member runs once per pass and cannot be seeded`,
 			);
 		}
 		if (passes.length !== 1) {
 			throw new GraphValidationError(
-				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
+				`Node ${name(nodeId)} is seeded with ${passes.length} passes, and a node outside a loop has one`,
 			);
 		}
 	}

@@ -2,7 +2,10 @@ operationId: updateFolder
 tags:
   - Folders
 summary: Update a folder
-description: Update folder name or parent folder.
+description: |-
+  Update folder name or parent folder.
+
+  Requires the `folder:update` API key scope.
 x-required-scope: folder:update
 parameters:
   - schema:

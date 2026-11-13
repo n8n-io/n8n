@@ -52,6 +52,8 @@ const nodeGroupSchema = z.object({
 export const serializedWorkflowSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
+	// Export omits an empty description. On import, an absent key clears the description.
+	description: z.string().nullable().optional(),
 	nodes: z.array(nodeSchema),
 	connections: connectionsSchema,
 	nodeGroups: z.array(nodeGroupSchema).optional(),

@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Derives the `secret_token` registered with Telegram's `setWebhook` for HITL

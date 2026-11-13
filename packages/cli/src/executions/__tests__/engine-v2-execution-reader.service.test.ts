@@ -326,6 +326,19 @@ describe('EngineV2ExecutionReader', () => {
 			expect(result?.workflowData.settings?.redactionPolicy).toBe('all');
 		});
 
+		it('should report the pin data the run used, the way v1 does', async () => {
+			const pinData = { Trigger: [{ json: { pinned: true } }] };
+			dataPlane.getExecution.mockResolvedValue(
+				snapshot({ workflow: workflowDocument({ pinData }) }),
+			);
+
+			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
+
+			expect(result?.data.resultData.pinData).toEqual(pinData);
+			// The editor reads the pin marker off `resultData`, not off the workflow.
+			expect(result?.workflowData).not.toHaveProperty('pinData');
+		});
+
 		it('should report the same narrow workflow projection the v1 path reports', async () => {
 			const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID]);
 

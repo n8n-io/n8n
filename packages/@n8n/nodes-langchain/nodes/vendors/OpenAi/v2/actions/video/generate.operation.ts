@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
 import type { VideoJob } from '../../../helpers/interfaces';
@@ -122,7 +122,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/videos', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/videos`, {
 		option: { formData },
 		headers: formData.getHeaders(),
 	})) as VideoJob;
@@ -130,7 +130,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const finalResponse = await pollUntilAvailable(
 		this,
 		async () => {
-			return (await apiRequest.call(this, 'GET', `/videos/${response.id}`)) as VideoJob;
+			return (await apiRequest.call(this, 'GET', requestPath`/videos/${response.id}`)) as VideoJob;
 		},
 		(response) => {
 			if (response.error) {
@@ -148,7 +148,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const contentResponse = await apiRequest.call(
 		this,
 		'GET',
-		`/videos/${finalResponse.id}/content`,
+		requestPath`/videos/${finalResponse.id}/content`,
 		{
 			option: {
 				useStream: true,

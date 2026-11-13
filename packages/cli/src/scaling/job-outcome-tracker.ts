@@ -38,8 +38,9 @@ const FAILED_RESPONSE: IExecuteResponsePromiseData = {
 };
 
 /**
- * Tracks the outcome of queued jobs on a `main` or `webhook` process, and lets
- * the process that enqueued a job wait for it.
+ * Tracks the outcome of queued jobs, and lets the process that enqueued a job
+ * wait for it. This is usually `main` or `webhook`, but a `worker` can also
+ * enqueue a job, e.g. for a workflow tool of an Agent.
  *
  * Bull's `job.finished()` is not used because it never settles when the
  * completion event is missed: `removeOnComplete` deletes the job before
@@ -80,8 +81,8 @@ export class JobOutcomeTracker {
 
 	/**
 	 * Record that the worker reported the job as finished, with the result when
-	 * the worker sent one. Bull broadcasts the message to every main and webhook
-	 * process, but only the process that enqueued the job ever pops the result.
+	 * the worker sent one. Bull broadcasts the message to every process, but
+	 * only the process that enqueued the job ever pops the result.
 	 */
 	recordFinished(queueName: string, jobId: JobId, executionId: string, result?: JobFinishedProps) {
 		const jobKey = toJobKey(queueName, jobId);

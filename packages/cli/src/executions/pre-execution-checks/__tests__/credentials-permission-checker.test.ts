@@ -1040,6 +1040,25 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		it("checks only the user's own access when asked to ignore the instance-wide scope", async () => {
+			const owner = mock<User>({ id: userId, role: GLOBAL_OWNER_ROLE });
+			userRepository.findOne.mockResolvedValueOnce(owner);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: "Alice's Gmail", exists: true, ownerProject: null },
+			]);
+
+			await expect(
+				permissionChecker.checkForUser(userId, [node], { ignoreGlobalUseScope: true }),
+			).rejects.toThrow(
+				'Node "Test Node" uses the credential "Alice\'s Gmail", which you cannot use',
+			);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				owner,
+				[credentialId],
+				{ ignoreGlobalUseScope: true },
+			);
+		});
+
 		it('should not throw when the user has access to the credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(
 				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
@@ -1372,6 +1391,22 @@ describe('CredentialsPermissionChecker', () => {
 			).resolves.toEqual([credentialId]);
 			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 		});
+	});
+
+	it("filterUsableThroughOwnAccess keeps only what the user's own access allows", async () => {
+		const user = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+			{ id: 'colleague', name: 'Their Gmail', exists: true, ownerProject: null },
+		]);
+
+		await expect(
+			permissionChecker.filterUsableThroughOwnAccess(user, [{ id: 'own' }, { id: 'colleague' }]),
+		).resolves.toEqual([{ id: 'own' }]);
+		expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+			user,
+			['own', 'colleague'],
+			{ ignoreGlobalUseScope: true },
+		);
 	});
 
 	describe('resolveInaccessibleCredentialIdsForUserId', () => {

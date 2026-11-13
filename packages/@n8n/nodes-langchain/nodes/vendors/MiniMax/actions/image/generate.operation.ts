@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ImageGenerationResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
@@ -134,7 +134,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.seed = options.seed;
 	}
 
-	const response = (await apiRequest.call(this, 'POST', '/v1/image_generation', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/v1/image_generation`, {
 		body,
 	})) as ImageGenerationResponse;
 

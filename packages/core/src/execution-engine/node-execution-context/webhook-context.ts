@@ -21,7 +21,8 @@ import type {
 	N8nOAuth2FlowResult,
 	N8nOAuth2RefreshResult,
 } from 'n8n-workflow';
-import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { SupplyDataContext } from './supply-data-context';

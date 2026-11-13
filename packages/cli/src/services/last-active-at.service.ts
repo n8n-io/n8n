@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest, UserRepository } from '@n8n/db';
+import { AuthenticatedRequest, Person, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { DateTime } from 'luxon';
@@ -31,7 +31,8 @@ export class LastActiveAtService {
 		if (!last || last !== dateNow) {
 			await this.userRepository
 				.createQueryBuilder()
-				.update()
+				// Only a person has `lastActiveAt`.
+				.update(Person)
 				.set({ lastActiveAt: now.toJSDate() })
 				.where('id = :id', { id: userId })
 				.execute();

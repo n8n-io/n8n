@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as load from '../../../actions/file/load.operation';
 import * as GenericFunctions from '../../../GenericFunctions';
 import * as transport from '../../../transport';
@@ -51,13 +52,13 @@ describe('Test Airtop, load file operation', () => {
 		const result = await load.execute.call(createMockExecuteFunction(baseNodeParameters), 0);
 
 		expect(apiRequestMock).toHaveBeenCalledTimes(2);
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', '/files/file-123/push', {
+		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', requestPath`/files/file-123/push`, {
 			sessionIds: ['test-session-123'],
 		});
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			'/sessions/test-session-123/windows/test-window-123/file-input',
+			requestPath`/sessions/test-session-123/windows/test-window-123/file-input`,
 			{
 				fileId: 'file-123',
 				elementDescription: 'the file upload box',
@@ -102,7 +103,7 @@ describe('Test Airtop, load file operation', () => {
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			'/sessions/test-session-123/windows/test-window-123/file-input',
+			requestPath`/sessions/test-session-123/windows/test-window-123/file-input`,
 			{
 				fileId: 'file-123',
 				elementDescription: '',
@@ -124,7 +125,7 @@ describe('Test Airtop, load file operation', () => {
 
 		// the file input should never be triggered when the push fails
 		expect(apiRequestMock).toHaveBeenCalledTimes(1);
-		expect(apiRequestMock).toHaveBeenCalledWith('POST', '/files/file-123/push', {
+		expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/files/file-123/push`, {
 			sessionIds: ['test-session-123'],
 		});
 	});

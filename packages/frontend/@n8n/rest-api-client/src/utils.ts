@@ -8,7 +8,8 @@ import type {
 	ResponseType,
 } from 'axios';
 import axios from 'axios';
-import { BaseError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { BaseError } from '@n8n/errors';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext, PublicApiContext } from './types';

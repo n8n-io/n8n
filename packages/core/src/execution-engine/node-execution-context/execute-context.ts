@@ -17,7 +17,8 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { buildHitlCallbackReference } from '@/utils/hitl-callback-reference';
 

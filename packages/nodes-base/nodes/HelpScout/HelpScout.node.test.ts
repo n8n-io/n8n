@@ -100,7 +100,7 @@ describe('HelpScout Node', () => {
 
 			expect(mockHelpscoutApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v2/conversations/conv-123/notes',
+				expect.objectContaining({ value: '/v2/conversations/conv-123/notes' }),
 				expect.objectContaining({
 					text: 'Test message',
 					customer: { id: 'customer-123' },
@@ -169,7 +169,7 @@ describe('HelpScout Node', () => {
 
 			expect(mockHelpscoutApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v2/conversations/conv-456/notes',
+				expect.objectContaining({ value: '/v2/conversations/conv-456/notes' }),
 				expect.objectContaining({
 					text: 'Test message with PDF',
 					customer: { email: 'customer@example.com' },
@@ -365,7 +365,7 @@ describe('HelpScout Node', () => {
 
 			expect(mockHelpscoutApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v2/conversations/conv-default/notes',
+				expect.objectContaining({ value: '/v2/conversations/conv-default/notes' }),
 				expect.objectContaining({
 					attachments: expect.arrayContaining([
 						expect.objectContaining({
@@ -425,7 +425,7 @@ describe('HelpScout Node', () => {
 
 			expect(mockHelpscoutApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/v2/conversations/conv-obj/notes',
+				expect.objectContaining({ value: '/v2/conversations/conv-obj/notes' }),
 				expect.objectContaining({
 					attachments: expect.arrayContaining([
 						expect.objectContaining({

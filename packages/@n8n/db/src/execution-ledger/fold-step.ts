@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ExecutionLedgerRow } from './execution-ledger-row';
 import type { OperationContext } from '../services/transaction';

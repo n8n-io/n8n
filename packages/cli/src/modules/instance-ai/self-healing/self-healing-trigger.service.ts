@@ -9,6 +9,7 @@ import {
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { TelemetryHelpers } from 'n8n-workflow';
 
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { Publisher } from '@n8n/backend-services';
@@ -27,7 +28,20 @@ export class SelfHealingTriggerService {
 	async onWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		if (!this.shouldHandleFailure(ctx)) return;
 
-		const failure = { workflowId: ctx.workflow.id, executionId: ctx.executionId };
+		const { error, lastNodeExecuted } = ctx.runData.data.resultData;
+		const failure: PubSubCommandMap['self-healing-failure'] = {
+			workflowId: ctx.workflow.id,
+			executionId: ctx.executionId,
+			// Telemetry facts. Send the error class and the node type only, never a message or a name.
+			workflowVersionId: ctx.workflow.versionId,
+			failedAt: (ctx.runData.stoppedAt ?? new Date()).toISOString(),
+			errorType: error?.name,
+			// Use the same order as the `Workflow execution count` telemetry: the last executed node first.
+			errorNodeType:
+				(lastNodeExecuted
+					? TelemetryHelpers.getNodeTypeForName(ctx.workflow, lastNodeExecuted)?.type
+					: undefined) ?? (error && 'node' in error ? error.node?.type : undefined),
+		};
 		if (this.instanceSettings.instanceType === 'main') {
 			// Admission is best-effort and must not delay execution completion.
 			void this.handleFailure(failure);

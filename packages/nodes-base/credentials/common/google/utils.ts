@@ -1,5 +1,6 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
-import { UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export function getGoogleServiceAccountCredentials(credentials: ICredentialDataDecryptedObject): {
 	client_email: string;

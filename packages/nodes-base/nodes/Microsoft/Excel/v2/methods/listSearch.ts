@@ -4,11 +4,11 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 
-import { getExcelCredentialType, microsoftApiRequest } from '../transport';
+import { getExcelCredentialType, microsoftApiRequest, toWorkbookId } from '../transport';
 
 // listSearch context throughout this file: the transport's trailing `0` is its
 // fallback read (getNodeParameter's 2nd arg here is a fallback, not an item index).
@@ -51,13 +51,13 @@ export async function searchWorkbooks(
 	}
 	const trimmed = filter?.trim() ?? '';
 	const q = trimmed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : trimmed;
-	const encodedQuery = trimmed === '' ? q : encodeURIComponent(escapeODataValue(q));
+	const quotedQuery = `'${escapeODataValue(q)}'`;
 
 	const response: DriveSearchResponse = paginationToken
 		? await microsoftApiRequest.call(
 				this,
 				'GET',
-				'',
+				requestPath``,
 				undefined,
 				undefined,
 				paginationToken, // paginationToken contains the full URL
@@ -67,7 +67,7 @@ export async function searchWorkbooks(
 		: await microsoftApiRequest.call(
 				this,
 				'GET',
-				`/drive/root/search(q='${encodedQuery}')`,
+				requestPath`/root/search(q=${quotedQuery})`,
 				undefined,
 				{
 					select: 'id,name,webUrl,file',
@@ -100,7 +100,7 @@ export async function getWorksheetsList(
 	this: ILoadOptionsFunctions,
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
-	const workbookId = workbookRLC.value as string;
+	const workbookId = toWorkbookId.call(this, workbookRLC.value as string);
 	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
@@ -112,7 +112,7 @@ export async function getWorksheetsList(
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets`,
+		requestPath`/items/${workbookId}/workbook/worksheets`,
 		undefined,
 		{
 			select: 'id,name',
@@ -137,7 +137,7 @@ export async function getWorksheetTables(
 	this: ILoadOptionsFunctions,
 ): Promise<INodeListSearchResult> {
 	const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
-	const workbookId = workbookRLC.value as string;
+	const workbookId = toWorkbookId.call(this, workbookRLC.value as string);
 	let workbookURL = (workbookRLC.cachedResultUrl as string) ?? '';
 
 	if (workbookURL.includes('1drv.ms')) {
@@ -153,7 +153,7 @@ export async function getWorksheetTables(
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
+		requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
 		undefined,
 		undefined,
@@ -170,7 +170,7 @@ export async function getWorksheetTables(
 		const { address } = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
+			requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
 			undefined,
 			{
 				select: 'address',

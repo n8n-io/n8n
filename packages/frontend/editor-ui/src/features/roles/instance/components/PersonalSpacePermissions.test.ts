@@ -1,9 +1,16 @@
 import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
+import { createTestingPinia } from '@pinia/testing';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import PersonalSpacePermissions from './PersonalSpacePermissions.vue';
 import { PERSONAL_SPACE_GROUPS, PERSONAL_SPACE_RESOURCES } from '../personalSpacePermissions';
 
 describe('PersonalSpacePermissions', () => {
+	beforeEach(() => {
+		createTestingPinia({ stubActions: false });
+		useSettingsStore().settings.activeModules = ['apps'];
+	});
+
 	it('renders View and Manage as checked, disabled groups that start collapsed', () => {
 		const { getByTestId } = renderComponent(PersonalSpacePermissions);
 
@@ -19,7 +26,18 @@ describe('PersonalSpacePermissions', () => {
 		}
 	});
 
-	it('expands a group to the six disabled resource permissions and collapses it again', async () => {
+	it('hides the Apps row when the module is inactive', async () => {
+		useSettingsStore().settings.activeModules = [];
+		const { getByTestId, queryByTestId } = renderComponent(PersonalSpacePermissions);
+
+		await userEvent.click(getByTestId('personal-space-toggle-view'));
+
+		expect(getByTestId('personal-space-view-agent')).toBeInTheDocument();
+		expect(queryByTestId('personal-space-view-app')).not.toBeInTheDocument();
+		expect(queryByTestId('personal-space-manage-app')).not.toBeInTheDocument();
+	});
+
+	it('expands a group to the disabled resource permissions and collapses it again', async () => {
 		const { getByTestId } = renderComponent(PersonalSpacePermissions);
 		const toggle = getByTestId('personal-space-toggle-manage');
 
@@ -38,6 +56,7 @@ describe('PersonalSpacePermissions', () => {
 		expect(list.textContent).toContain('Credentials');
 		expect(list.textContent).toContain('Data tables');
 		expect(list.textContent).toContain('Agents');
+		expect(list.textContent).toContain('Apps');
 		expect(list.textContent).toContain('Folders');
 		expect(list.textContent).toContain('Executions');
 		// The other group stays collapsed.

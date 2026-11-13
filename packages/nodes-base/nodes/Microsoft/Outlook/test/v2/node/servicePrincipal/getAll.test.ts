@@ -3,7 +3,7 @@ import nock from 'nock';
 
 const SELECT = 'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 
-// The transport encodes the mailbox once, so the outgoing path carries `user%40example.com`.
+// The outgoing path carries the mailbox as `user@example.com`.
 // login.microsoftonline.com is deliberately left un-nocked: the harness no-ops
 // preAuthentication, so any accidental real token mint would fail this test.
 describe('Test MicrosoftOutlookV2, Service Principal => message:getAll (paginated)', () => {
@@ -25,7 +25,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:getAll (paginate
 
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/user%40example.com/messages')
+			.get('/v1.0/users/user@example.com/messages')
 			.query({ $select: SELECT, $top: 100 })
 			.reply(200, {
 				'@odata.nextLink': page2Url,

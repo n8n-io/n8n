@@ -6,7 +6,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { EntityManager, withTransaction, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { INode } from 'n8n-workflow';
+import type { ExpressionViolation, INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
@@ -35,14 +35,39 @@ export class ChatHubToolService {
 		return await this.chatToolRepository.getEnabledByUserId(userId, trx);
 	}
 
+	async getEnabledToolDefinitions(userId: string, trx?: EntityManager): Promise<INode[]> {
+		const tools = await this.chatToolRepository.getEnabledByUserId(userId, trx);
+		return this.toRunnableDefinitions(tools);
+	}
+
 	async getToolDefinitionsForSession(sessionId: string, trx?: EntityManager): Promise<INode[]> {
 		const tools = await this.chatToolRepository.getToolsForSession(sessionId, trx);
-		return tools.map((t) => t.definition);
+		return this.toRunnableDefinitions(tools);
 	}
 
 	async getToolDefinitionsForAgent(agentId: string, trx?: EntityManager): Promise<INode[]> {
 		const tools = await this.chatToolRepository.getToolsForAgent(agentId, trx);
-		return tools.map((t) => t.definition);
+		return this.toRunnableDefinitions(tools);
+	}
+
+	/**
+	 * Skips stored tools that do not pass the current expression rules. Tools saved
+	 * before a rule change are otherwise run as stored. Editing or enabling a skipped
+	 * tool validates it again.
+	 */
+	private toRunnableDefinitions(tools: ChatHubTool[]): INode[] {
+		return tools
+			.filter((tool) => {
+				const violations = this.findExpressionViolations(tool.definition);
+				if (violations.length === 0) return true;
+
+				this.logger.warn('Skipping chat hub tool with unsupported expressions', {
+					toolId: tool.id,
+					paths: violations.map((v) => v.path),
+				});
+				return false;
+			})
+			.map((tool) => tool.definition);
 	}
 
 	async getToolIdsForSession(sessionId: string, trx?: EntityManager): Promise<string[]> {
@@ -90,7 +115,7 @@ export class ChatHubToolService {
 		}
 	}
 
-	private validateToolExpressions(definition: INode) {
+	private findExpressionViolations(definition: INode): ExpressionViolation[] {
 		let allowedExpressions: Set<string> | undefined;
 
 		try {
@@ -101,11 +126,11 @@ export class ChatHubToolService {
 			// If node type lookup fails assume no allowed expressions
 		}
 
-		const violations = findDisallowedChatToolExpressions(
-			definition.parameters,
-			'',
-			allowedExpressions,
-		);
+		return findDisallowedChatToolExpressions(definition.parameters, '', allowedExpressions);
+	}
+
+	private validateToolExpressions(definition: INode) {
+		const violations = this.findExpressionViolations(definition);
 		if (violations.length > 0) {
 			const paths = violations.map((v) => v.path).join(', ');
 			throw new BadRequestError(
@@ -161,9 +186,9 @@ export class ChatHubToolService {
 			}
 			if (updates.enabled !== undefined) {
 				if (updates.enabled) {
-					this.deprecatedNodesValidationService.validateOnCreate([
-						updates.definition ?? existingTool.definition,
-					]);
+					const definition = updates.definition ?? existingTool.definition;
+					this.validateToolExpressions(definition);
+					this.deprecatedNodesValidationService.validateOnCreate([definition]);
 				}
 				updateData.enabled = updates.enabled;
 			}

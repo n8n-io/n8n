@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { PolicyDecision } from '../policy-check';
 import type { PolicyCleared, PolicySubject } from '../policy-cleared';

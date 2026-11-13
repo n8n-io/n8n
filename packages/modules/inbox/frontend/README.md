@@ -9,6 +9,14 @@ Closed is a flat list with infinite scroll. Group collapse state persists per us
 Review decisions update the loaded rows and counts in place. Approving a selected
 review opens the Closed tab, as before.
 
+The Inbox selects the first item once for each tab visit, after the tab loads.
+A selection from a link or from the other tab stays.
+
+When self-healing is the only available source, an empty Inbox uses self-healing
+copy. The Open tab then reads `GET /self-healing/status`. If no configuration
+sends results to the user, the Open tab shows a Set up self-healing button. The
+button opens the Self-healing tab of the user's personal project.
+
 Assistant details live in `src/self-healing`. They show saved reports, workflow
 changes, review activity, and usage. Result actions use the existing self-healing
 API. Actions are available only while a result is open.
@@ -21,7 +29,11 @@ continuing does.
 Could not fix closes automatically and shows no actions.
 Continuation applies a suggestion to the workflow draft, or dismisses a result
 without one. It does not publish. The first successful action closes the result.
-The frontend then updates the Inbox and opens the destination.
+The frontend then updates the Inbox.
+A confirmed Apply and publish shows a toast with a link to the workflow.
+A confirmed Apply and publish or Discard and close then selects the next open item.
+When no loaded row remains in Waiting for review, the Inbox loads its next page first.
+Continue with Assistant and Continue with Editor open their destination.
 Chat uses the normal frontend Assistant handoff to create a private thread in the
 reviewer's personal project. A reviewer can lack read access to the result's
 project. The frontend loads the personal project before it closes the result.
@@ -63,8 +75,8 @@ yet. Turbo builds them first; the bare pnpm form does not.
   `@n8n/stores/settings.store`, not `@n8n/stores`.
 - The no-cross-module rule is currently a convention: the shared tsconfig base
   omits sibling modules from `paths`, which blocks an accidental import but not
-  a deliberate one (declaring the dependency makes it typecheck clean). The
-  ESLint rule that actually enforces it is CAT-3692.
+  a deliberate one (declaring the dependency makes it typecheck clean). No
+  rule enforces it yet. CAT-3692 tracks the Oxlint rule that will.
 
 ## Adding UI
 

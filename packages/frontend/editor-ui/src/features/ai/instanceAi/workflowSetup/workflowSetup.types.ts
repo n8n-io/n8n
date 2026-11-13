@@ -16,6 +16,8 @@ export interface WorkflowSetupSection {
 	setupHint?: InstanceAiCredentialSetupHint;
 	/** The user asked for a fresh credential: don't preselect an existing one. */
 	preferNewCredential?: boolean;
+	/** The credentials the server offers for this card: the ones the user can use through their own access. */
+	existingCredentials?: InstanceAiWorkflowSetupNode['existingCredentials'];
 }
 
 export interface WorkflowSetupApplyPayload {

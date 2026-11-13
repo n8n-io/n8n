@@ -1,6 +1,7 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
+import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -89,6 +90,7 @@ describe('PromotionsService', () => {
 	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
+	const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
 	const reviewsService = mock<PromotionReviewsService>();
@@ -175,6 +177,7 @@ describe('PromotionsService', () => {
 			projectRepository,
 			folderService,
 			mock(),
+			globalConfig,
 		);
 		service = new PromotionsService(
 			resolver,
@@ -658,7 +661,7 @@ describe('PromotionsService', () => {
 					includeVariableValues: true,
 					canExportVariableValues: true,
 					includeTags: true,
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					dependencyPolicy: ExportDependencyPolicy.Fail,
 					versionPolicy: ExportVersionPolicy.Latest,
 				},
@@ -1270,7 +1273,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({
 					projectIds: ['p1'],
 					projectWorkflowIds: ['w1', 'w2'],
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					canExportVariableValues: true,
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
 					versionPolicy: ExportVersionPolicy.Latest,
@@ -2243,11 +2246,12 @@ describe('PromotionsService', () => {
 		});
 
 		it('imports n8n with the fixed policy and counts the result by status', async () => {
-			const result = await service.apply(ENVIRONMENT_ID, actor);
+			const result = await service.apply(ENVIRONMENT_ID, actor, undefined, 'editor_ui');
 
 			expect(n8nPackagesService.planPackage).toHaveBeenCalledWith(
 				{
 					user: actor,
+					publicApi: 'editor_ui',
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
@@ -2559,7 +2563,12 @@ describe('PromotionsService', () => {
 				{ workflowIds: ['w1'], selectedWorkflowIds: ['w1'], deletedWorkflowIds: [] },
 				{ workflowIds: ['deleted'], selectedWorkflowIds: [], deletedWorkflowIds: ['deleted'] },
 			])('classifies $workflowIds for import or deletion', async (selection) => {
-				await service.applyProjectSelection('p1', actor, { workflowIds: selection.workflowIds });
+				await service.applyProjectSelection(
+					'p1',
+					actor,
+					{ workflowIds: selection.workflowIds },
+					'other',
+				);
 
 				expect(inventoryReader.read).toHaveBeenCalledExactlyOnceWith(
 					expect.any(GitCommitPackageReader),
@@ -2576,6 +2585,7 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						publicApi: 'other',
 						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',

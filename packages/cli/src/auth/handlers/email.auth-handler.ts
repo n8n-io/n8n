@@ -1,6 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { type Person, PersonRepository, User } from '@n8n/db';
+import { Person, PersonRepository } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable } from '@n8n/di';
@@ -9,9 +9,9 @@ import { AuthError } from '@n8n/errors';
 import { PasswordUtility } from '@/services/password.utility';
 
 @AuthHandler()
-export class EmailAuthHandler implements IPasswordAuthHandler<User> {
+export class EmailAuthHandler implements IPasswordAuthHandler<Person> {
 	readonly metadata = { name: 'email', type: 'password' as const };
-	readonly userClass: Constructable<User> = User;
+	readonly userClass: Constructable<Person> = Person;
 
 	constructor(
 		private readonly personRepository: PersonRepository,

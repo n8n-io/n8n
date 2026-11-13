@@ -15,6 +15,7 @@ import {
 	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
+	FREE_STICKY_Z_INDEX_OFFSET,
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
 	GROUP_NODE_Z_INDEX_COLLAPSED,
@@ -276,6 +277,15 @@ export function mapGroupsToVueFlowNodes({
 		});
 	}
 	return out;
+}
+
+/**
+ * Free stickies drop below expanded groups; group members keep their overlap
+ * z-index from `useWorkflowDocumentRenderData`. See the stacking contract in
+ * canvasNodeGroups.constants.ts.
+ */
+export function getStickyZIndex(overlapZIndex: number, isGroupMember: boolean): number {
+	return isGroupMember ? overlapZIndex : overlapZIndex + FREE_STICKY_Z_INDEX_OFFSET;
 }
 
 /**

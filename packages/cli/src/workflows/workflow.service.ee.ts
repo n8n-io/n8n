@@ -51,8 +51,9 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { NodeTypes } from '@/node-types';
@@ -95,6 +96,10 @@ type CredentialReferences = {
 export type CredentialGuardOptions = {
 	/** Allow content loaded at runtime only for users who can use every credential. */
 	allowUninspectableSource?: boolean;
+	/** What happens when a read-only node has edits. `restore` keeps the stored node `reject` fails the save. */
+	readOnlyNodeEdits?: 'restore' | 'reject';
+	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
+	unsentNodeFields?: readonly string[];
 };
 
 const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
@@ -186,9 +191,10 @@ export class EnterpriseWorkflowService {
 	): WorkflowWithSharingsMetaDataAndCredentials {
 		const workflowWithMetaData = this.ownershipService.addOwnedByAndSharedWith(workflow);
 
+		const { shared: _shared, ...enrichedWorkflow } = { ...workflow, ...workflowWithMetaData };
+
 		return {
-			...workflow,
-			...workflowWithMetaData,
+			...enrichedWorkflow,
 			usedCredentials: workflow.usedCredentials ?? [],
 		};
 	}
@@ -286,6 +292,7 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		user: User,
 		restoredNodes: INode[] = [],
+		guardOptions: Pick<CredentialGuardOptions, 'readOnlyNodeEdits' | 'unsentNodeFields'> = {},
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -298,7 +305,10 @@ export class EnterpriseWorkflowService {
 			{ workflowId },
 		);
 
-		const options = { allowUninspectableSource: this.canUseEveryCredential(user) };
+		const options = {
+			allowUninspectableSource: this.canUseEveryCredential(user),
+			...guardOptions,
+		};
 
 		// A node switched back to a credential the user cannot use is saved as the
 		// version that last stored it did, the same as a restore of that version.
@@ -409,9 +419,10 @@ export class EnterpriseWorkflowService {
 			return newWorkflowVersion;
 		}
 
-		// A node the user could not use before stays read only and is restored. A node
-		// the user could edit that now carries a credential they cannot use fails the
-		// save like a new node does; restoring it would drop the other edits silently.
+		// A node the user could not use before stays read only and is restored, or the
+		// save fails when the caller sets `readOnlyNodeEdits` to `reject`. A node the user could
+		// edit that now carries a credential they cannot use fails the save like a new
+		// node does; restoring it would drop the other edits silently.
 		const readOnlyNodeIds = new Set(
 			this.getNodesWithInaccessibleCreds(
 				previousWorkflowVersion,
@@ -463,20 +474,28 @@ export class EnterpriseWorkflowService {
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
-				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
-				throw new NodeOperationError(
-					node,
-					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
-				);
+
+				if (blockedBySource) {
+					throw new UninspectableSubworkflowSourceError(node);
+				}
+				throw this.inaccessibleCredentialsError(node);
 			}
 
-			// The editor allows these source settings to be edited. Reject changes
-			// instead of silently discarding them when we restore the stored node.
-			if (
-				blockedBySource &&
-				!isEqual(this.getNodeDefinition(node), this.getNodeDefinition(previousNode))
-			) {
-				throw new UninspectableSubworkflowSourceError(node);
+			const mustMatchStoredNode = blockedBySource || options.readOnlyNodeEdits === 'reject';
+
+			// The caller cannot send these fields, so the stored value would always look like a change.
+			const unsentNodeFields = options.unsentNodeFields ?? [];
+			const definitionChanged = !isEqual(
+				this.getNodeDefinition(node, unsentNodeFields),
+				this.getNodeDefinition(previousNode, unsentNodeFields),
+			);
+
+			// Reject changes instead of silently discarding them when we restore the stored node.
+			if (mustMatchStoredNode && definitionChanged) {
+				if (blockedBySource) {
+					throw new UninspectableSubworkflowSourceError(node);
+				}
+				throw this.inaccessibleCredentialsError(node);
 			}
 
 			this.logger.debug('Replacing node with previous version when saving updated workflow', {
@@ -550,11 +569,24 @@ export class EnterpriseWorkflowService {
 		return this.getNodeCredentialRefs(node).hasUninspectableSource;
 	}
 
+	private inaccessibleCredentialsError(node: INode): NodeOperationError {
+		return new NodeOperationError(
+			node,
+			`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
+		);
+	}
+
 	/**
 	 * Compare node behavior without treating editor formatting or allowed edits as changes.
 	 */
-	private getNodeDefinition(node: INode): Record<string, unknown> {
-		const definition: Record<string, unknown> = omit(node, FREELY_EDITABLE_NODE_FIELDS);
+	private getNodeDefinition(
+		node: INode,
+		unsentNodeFields: readonly string[] = [],
+	): Record<string, unknown> {
+		const definition: Record<string, unknown> = omit(node, [
+			...FREELY_EDITABLE_NODE_FIELDS,
+			...unsentNodeFields,
+		]);
 		definition.parameters = this.getDisplayedParameters(node);
 
 		const credentials = node.credentials ?? {};
@@ -881,7 +913,9 @@ export class EnterpriseWorkflowService {
 			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
 		);
 
-		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: false,
+		});
 		assertNoneOwnedBy([workflow], destinationProject);
 
 		const { transfer, publish } = await this.evaluateTransferInto(workflow, destinationProject.id);
@@ -909,7 +943,9 @@ export class EnterpriseWorkflowService {
 			throw new FolderNotFoundError(sourceFolderId);
 		}
 
-		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: true,
+		});
 
 		const preview: FolderTransferPreview = {
 			restricted: [],
@@ -930,6 +966,7 @@ export class EnterpriseWorkflowService {
 			{ withNodes: checksAnything },
 		);
 
+		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);
 		if (!checksAnything) return preview;
 
@@ -979,15 +1016,35 @@ export class EnterpriseWorkflowService {
 		return { transfer, publish };
 	}
 
-	private async getTransferDestination(user: User, destinationProjectId: string) {
+	/** Moving a folder moves its workflows, so the user needs `workflow:move` on each of them. */
+	private async assertCanMoveAll(user: User, workflows: WorkflowEntity[]) {
+		const movableWorkflowIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			workflows.map((workflow) => workflow.id),
+			user,
+			['workflow:move'],
+		);
+
+		if (workflows.some((workflow) => !movableWorkflowIds.has(workflow.id))) {
+			throw new ForbiddenError('You do not have permission to move every workflow in this folder.');
+		}
+	}
+
+	/** A folder move also creates folders in the destination, so it needs `folder:create` there too. */
+	private async getTransferDestination(
+		user: User,
+		destinationProjectId: string,
+		{ withFolders }: { withFolders: boolean },
+	) {
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
 			destinationProjectId,
-			['workflow:create'],
+			withFolders ? ['workflow:create', 'folder:create'] : ['workflow:create'],
 		);
 		NotFoundError.isDefinedAndNotNull(
 			destinationProject,
-			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+			withFolders
+				? `Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows and folders in it.`
+				: `Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
 		);
 
 		return destinationProject;
@@ -1044,15 +1101,9 @@ export class EnterpriseWorkflowService {
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
-		const destinationProject = await this.projectService.getProjectWithScope(
-			user,
-			destinationProjectId,
-			['workflow:create'],
-		);
-		NotFoundError.isDefinedAndNotNull(
-			destinationProject,
-			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
-		);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: true,
+		});
 
 		// 4. checks
 
@@ -1065,6 +1116,7 @@ export class EnterpriseWorkflowService {
 
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
 
+		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);
 
 		// 5. deactivate all workflows if necessary
@@ -1119,14 +1171,20 @@ export class EnterpriseWorkflowService {
 			// Reactivation may have failed partway with triggers already registered,
 			// in memory and as durable schedule jobs. Tear them down before the
 			// rollback below so the active version is still resolvable, or they
-			// keep firing a workflow marked inactive.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+			// keep firing a workflow marked inactive. A credential refusal registers
+			// nothing, and the teardown would call the trigger nodes with the refused credentials.
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
+				} catch (cleanupError) {
+					this.logger.error(
+						`Failed to roll back partial reactivation of workflow "${workflowId}"`,
+						{
+							workflowId,
+							error: cleanupError,
+						},
+					);
+				}
 			}
 
 			try {

@@ -1,0 +1,122 @@
+{
+	"name": "CircleCI request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b0500000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "pipeline",
+				"operation": "get",
+				"vcs": "github",
+				"projectSlug": "n8n-io/n8n",
+				"pipelineNumber": 42
+			},
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b0500000-0000-4000-8000-000000000001",
+			"name": "pipeline get",
+			"credentials": {
+				"circleCiApi": {
+					"id": "credId",
+					"name": "CircleCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "pipeline",
+				"operation": "getAll",
+				"vcs": "github",
+				"projectSlug": "n8n-io/n8n",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "b0500000-0000-4000-8000-000000000002",
+			"name": "pipeline getAll",
+			"credentials": {
+				"circleCiApi": {
+					"id": "credId",
+					"name": "CircleCI account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "pipeline",
+				"operation": "trigger",
+				"vcs": "github",
+				"projectSlug": "n8n-io/n8n",
+				"additionalFields": {
+					"branch": "master"
+				}
+			},
+			"type": "n8n-nodes-base.circleCi",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "b0500000-0000-4000-8000-000000000003",
+			"name": "pipeline trigger",
+			"credentials": {
+				"circleCiApi": {
+					"id": "credId",
+					"name": "CircleCI account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"pipeline get": [
+			{
+				"json": {
+					"id": "pipeline-42"
+				}
+			}
+		],
+		"pipeline getAll": [
+			{
+				"json": {
+					"id": "pipeline-42"
+				}
+			}
+		],
+		"pipeline trigger": [
+			{
+				"json": {
+					"id": "pipeline-43"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "pipeline get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "pipeline getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "pipeline trigger",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

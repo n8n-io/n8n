@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/space/get.operation';
@@ -49,8 +49,25 @@ describe('Confluence space:get operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('space', 0, '', { extractValue: true });
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
+		expect(apiRequest).toHaveBeenCalledWith('GET', requestPath`/wiki/api/v2/spaces/98432`, {}, {});
 		expect(result).toEqual(space);
+	});
+
+	it('should encode a space ID that contains a slash as one path segment', async () => {
+		apiRequest.mockResolvedValueOnce({});
+		const ctx = createContext({ space: { mode: 'id', value: '98432/pages' } });
+
+		await execute.call(ctx, 0);
+
+		expect(String(apiRequest.mock.calls[0][1])).toBe('/wiki/api/v2/spaces/98432%2Fpages');
+	});
+
+	it('should reject a space ID that is a dot segment', async () => {
+		const ctx = createContext({ space: { mode: 'id', value: '..' } });
+
+		await expect(execute.call(ctx, 0)).rejects.toThrow('Invalid identifier');
+
+		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
 	it('fetches a space referenced By ID', async () => {
@@ -59,7 +76,7 @@ describe('Confluence space:get operation', () => {
 
 		await execute.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/111', {}, {});
+		expect(apiRequest).toHaveBeenCalledWith('GET', requestPath`/wiki/api/v2/spaces/111`, {}, {});
 	});
 
 	it('passes the description format through when the option is set', async () => {
@@ -73,7 +90,7 @@ describe('Confluence space:get operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/spaces/111',
+			requestPath`/wiki/api/v2/spaces/111`,
 			{},
 			{ 'description-format': 'view' },
 		);

@@ -42,6 +42,7 @@ import {
 	isStream,
 	prepareRequestBody,
 	reduceAsync,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 	setAgentOptions,
@@ -905,6 +906,7 @@ export class HttpRequestV3 implements INodeType {
 
 						throw error;
 					} else {
+						removeRequestOptions(responseData.reason);
 						removeCircularRefs(responseData.reason as JsonObject);
 						// Return the actual reason as error
 						returnItems.push({

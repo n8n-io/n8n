@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -19,7 +20,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
 
-	await theHiveApiRequest.call(this, 'DELETE', `/v1/task/${taskId}`);
+	await theHiveApiRequest.call(this, 'DELETE', requestPath`/v1/task/${taskId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {
 		itemData: { item: i },

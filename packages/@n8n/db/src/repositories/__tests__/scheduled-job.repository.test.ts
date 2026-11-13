@@ -2,7 +2,7 @@ import type { DatabaseConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { In, IsNull, Not } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { ScheduledJob } from '../../entities';

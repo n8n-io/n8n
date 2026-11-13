@@ -51,6 +51,23 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return pins.map(({ skillId, skillVersionId }) => ({ skillId, skillVersionId }));
 	}
 
+	/** Read version pins for an agent list without loading skill content. */
+	async findPinsForVersions(
+		agentVersionIds: string[],
+		ctx: OperationContext,
+	): Promise<{ agentVersionId: string; skillId: string; skillVersionId: string }[]> {
+		const pins: { agentVersionId: string; skillId: string; skillVersionId: string }[] = [];
+		for (const ids of chunkIds(unique(agentVersionIds))) {
+			pins.push(
+				...(await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+					select: ['agentVersionId', 'skillId', 'skillVersionId'],
+					where: { agentVersionId: In(ids) },
+				})),
+			);
+		}
+		return pins;
+	}
+
 	/**
 	 * The skill ids one published agent version pins, in the order of the draft refs at
 	 * publish. Reads no version or file rows.

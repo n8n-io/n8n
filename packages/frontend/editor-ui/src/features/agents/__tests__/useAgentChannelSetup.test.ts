@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
 
-const { fetchCredentials, fetchProject, projectsStore } = vi.hoisted(() => ({
+const { fetchCredentials, fetchProject, openNewCredential, projectsStore } = vi.hoisted(() => ({
 	fetchCredentials: vi.fn(),
 	fetchProject: vi.fn(),
+	openNewCredential: vi.fn(),
 	projectsStore: {
 		currentProject: null as { id: string; scopes?: string[] } | null,
 		personalProject: null as { id: string; scopes?: string[] } | null,
@@ -22,7 +23,7 @@ vi.mock('@n8n/permissions', () => ({
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		isModalActiveById: {},
-		openNewCredential: vi.fn(),
+		openNewCredential,
 		openExistingCredential: vi.fn(),
 	}),
 }));
@@ -115,5 +116,24 @@ describe('useAgentChannelSetup', () => {
 
 		expect(setup.credentialPermissions.value.create).toBe(false);
 		expect(setup.getCredentials('example')).toEqual([]);
+	});
+
+	it('creates the requested credential type when the channel accepts several', () => {
+		const setup = useAgentChannelSetup({
+			projectId: () => 'project-1',
+			currentIntegration: () => ({
+				type: 'webhook',
+				label: 'Webhook',
+				icon: 'webhook',
+				credentialTypes: ['httpHeaderAuth', 'jwtAuth'],
+			}),
+			connectedCredentials: () => ({}),
+			fetchStatus: vi.fn().mockResolvedValue(undefined),
+		});
+
+		setup.createCredential('jwtAuth');
+
+		expect(openNewCredential).toHaveBeenCalledTimes(1);
+		expect(openNewCredential.mock.calls[0][0]).toBe('jwtAuth');
 	});
 });

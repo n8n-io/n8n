@@ -7,6 +7,7 @@ import { createServiceStack, writeDevEnvFile } from './service-stack';
 import type { CloudflaredResult } from './services/cloudflared';
 import type { KentResult } from './services/kent';
 import type { KeycloakResult } from './services/keycloak';
+import type { LiteLlmResult } from './services/litellm';
 import type { MailpitResult } from './services/mailpit';
 import type { NgrokResult } from './services/ngrok';
 import { services as SERVICE_REGISTRY } from './services/registry';
@@ -36,6 +37,14 @@ const log = {
 	warn: (msg: string) => console.warn(`${colors.yellow}⚠${colors.reset} ${msg}`),
 	header: (msg: string) => console.log(`\n${colors.bright}${colors.cyan}${msg}${colors.reset}\n`),
 };
+
+function printLiteLlm(result: LiteLlmResult) {
+	log.header('AI Gateway (LiteLLM)');
+	log.info(`Models: ${result.meta.models.join(', ')}`);
+	for (const { method, baseUrl, login } of result.meta.logins) {
+		log.info(`${method.padEnd(18)} ${colors.cyan}${baseUrl}${colors.reset}  ${login}`);
+	}
+}
 
 function showHelp() {
 	console.log(`
@@ -120,6 +129,7 @@ ${Object.keys(BASE_PERFORMANCE_PLANS)
   pnpm services --services postgres
   pnpm services --services postgres,redis
   pnpm services --services postgres,mailpit,proxy
+  pnpm services --services litellm
 
   ${colors.bright}# Parallel instances${colors.reset}
   npm run stack --name test-1
@@ -319,6 +329,9 @@ async function main() {
 				log.info(`Mailpit UI: ${colors.cyan}${mailpitResult.meta.apiBaseUrl}${colors.reset}`);
 			}
 
+			const liteLlmResult = stack.serviceResults.litellm as LiteLlmResult | undefined;
+			if (liteLlmResult) printLiteLlm(liteLlmResult);
+
 			console.log('');
 			log.info('Containers are running in the background');
 			log.info(`Run ${colors.bright}pnpm dev${colors.reset} in another terminal to start n8n`);
@@ -428,6 +441,9 @@ async function main() {
 			log.info(`Backend DSN: ${colors.cyan}${kentResult.meta.sentryDsn}${colors.reset}`);
 			log.info(`Frontend DSN: ${colors.cyan}${kentResult.meta.frontendDsn}${colors.reset}`);
 		}
+
+		const liteLlmResult = stack.serviceResults.litellm as LiteLlmResult | undefined;
+		if (liteLlmResult) printLiteLlm(liteLlmResult);
 
 		console.log('');
 		log.info('Containers are running in the background');

@@ -32,7 +32,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'POST',
-						url: '=/colls/{{ $parameter["container"] }}/docs',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs',
 						headers: {
 							[HeaderConstants.X_MS_DOCUMENTDB_IS_UPSERT]: 'True',
 						},
@@ -53,7 +53,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'DELETE',
-						url: '=/colls/{{ $parameter["container"] }}/docs/{{ $parameter["item"] }}',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs/{{ toPathSegment($parameter["item"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -79,7 +79,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'GET',
-						url: '=/colls/{{ $parameter["container"]}}/docs/{{$parameter["item"]}}',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs/{{ toPathSegment($parameter["item"]) }}',
 						headers: {
 							[HeaderConstants.X_MS_DOCUMENTDB_IS_UPSERT]: 'True',
 						},
@@ -97,7 +97,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/colls/{{ $parameter["container"] }}/docs',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs',
 					},
 					output: {
 						postReceive: [
@@ -120,7 +120,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/colls/{{ $parameter["container"] }}/docs',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs',
 						headers: {
 							'Content-Type': 'application/query+json',
 							'x-ms-documentdb-isquery': 'True',
@@ -152,7 +152,7 @@ export const description: INodeProperties[] = [
 					},
 					request: {
 						method: 'PUT',
-						url: '=/colls/{{ $parameter["container"] }}/docs/{{ $parameter["item"] }}',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}/docs/{{ toPathSegment($parameter["item"]) }}',
 						headers: {
 							'Content-Type': 'application/json-patch+json',
 						},

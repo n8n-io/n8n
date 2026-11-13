@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/page/update.operation';
@@ -36,8 +36,14 @@ describe('page:update', () => {
 	it('fetches the page and PUTs the new title and body with the incremented version', async () => {
 		const result = await execute.call(mockExecuteCtx(baseParams), 0);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(1, 'GET', '/wiki/api/v2/pages/123', {}, {});
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestPath`/wiki/api/v2/pages/123`,
+			{},
+			{},
+		);
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'New Title',
@@ -115,11 +121,11 @@ describe('page:update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ 'body-format': 'storage' },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'Draft Title',
@@ -143,7 +149,7 @@ describe('page:update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ 'body-format': 'storage' },
 		);
@@ -208,11 +214,11 @@ describe('page:update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{},
 			{ title: 'Old Title', limit: 250 },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(3, 'PUT', '/wiki/api/v2/pages/123', {
+		expect(apiRequest).toHaveBeenNthCalledWith(3, 'PUT', requestPath`/wiki/api/v2/pages/123`, {
 			id: '123',
 			status: 'current',
 			title: 'New Title',

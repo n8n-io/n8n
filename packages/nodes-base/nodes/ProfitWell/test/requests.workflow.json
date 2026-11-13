@@ -1,0 +1,132 @@
+{
+	"name": "ProfitWell request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "getSetting"
+			},
+			"id": "node-0",
+			"name": "Company Settings",
+			"type": "n8n-nodes-base.profitWell",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"profitWellApi": {
+					"id": "1",
+					"name": "ProfitWell API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "metric",
+				"operation": "get",
+				"type": "monthly",
+				"month": "2026-01",
+				"simple": false,
+				"options": {}
+			},
+			"id": "node-1",
+			"name": "Metric Monthly",
+			"type": "n8n-nodes-base.profitWell",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"profitWellApi": {
+					"id": "1",
+					"name": "ProfitWell API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "metric",
+				"operation": "get",
+				"type": "daily",
+				"month": "2026-01",
+				"simple": false,
+				"options": {}
+			},
+			"id": "node-2",
+			"name": "Metric Daily",
+			"type": "n8n-nodes-base.profitWell",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"profitWellApi": {
+					"id": "1",
+					"name": "ProfitWell API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Company Settings": [
+			{
+				"json": {
+					"currency": "usd"
+				}
+			}
+		],
+		"Metric Monthly": [
+			{
+				"json": {
+					"recurring_revenue": [
+						{
+							"date": "2026-01",
+							"value": 100
+						}
+					]
+				}
+			}
+		],
+		"Metric Daily": [
+			{
+				"json": {
+					"recurring_revenue": [
+						{
+							"date": "2026-01-01",
+							"value": 100
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Company Settings",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Metric Monthly",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Metric Daily",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

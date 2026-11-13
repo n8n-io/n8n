@@ -1,0 +1,354 @@
+{
+	"name": "[TEST] Paddle requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "dcc7767b-ef36-5102-bac9-b871a8f6acae",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "coupon",
+				"operation": "create",
+				"couponType": "checkout",
+				"discountType": "percentage",
+				"discountAmount": 10,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"id": "08fdee7a-dc94-5a04-b466-27307bf59cf6",
+			"name": "Create Coupon",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coupon",
+				"operation": "getAll",
+				"productId": "511234",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"id": "06ebdefd-90e4-5923-aeca-8c9e995a7b38",
+			"name": "Get Coupons",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coupon",
+				"operation": "update",
+				"updateBy": "couponCode",
+				"couponCode": "SAVE10",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 400],
+			"id": "6c39f89f-8e4b-5a95-bf70-b3a313cfb48b",
+			"name": "Update Coupon",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 600],
+			"id": "8846bb22-5eb0-5b4e-8ae9-736a0b263671",
+			"name": "Get Payments",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payment",
+				"operation": "reschedule",
+				"paymentId": 8936,
+				"date": "2026-11-15T00:00:00"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 800],
+			"id": "306f5f34-8012-58a4-86ca-e9e6a918cdd0",
+			"name": "Reschedule Payment",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "plan",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 1000],
+			"id": "ad866b25-f5fd-520d-ba36-8a6e5c9d7b04",
+			"name": "Get Plans",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "plan",
+				"operation": "get",
+				"planId": "9876"
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 1200],
+			"id": "77995e21-24fd-59e1-9335-de50be13376e",
+			"name": "Get Plan",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 1400],
+			"id": "adbe8a38-2d72-5db6-9a1a-789f919e5975",
+			"name": "Get Products",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 1600],
+			"id": "b74b425e-cc0b-5f2b-b2d1-718ceb99d61b",
+			"name": "Get Users",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.paddle",
+			"typeVersion": 1,
+			"position": [260, 1800],
+			"id": "157289e1-418a-5051-bc93-6588566f7b50",
+			"name": "Get Users Limit",
+			"credentials": {
+				"paddleApi": {
+					"id": "1",
+					"name": "Paddle account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Coupon": [
+			{
+				"json": {
+					"coupon": "SAVE10"
+				}
+			}
+		],
+		"Get Coupons": [
+			{
+				"json": {
+					"coupon": "SAVE10",
+					"discount_type": "percentage",
+					"discount_amount": 10
+				}
+			}
+		],
+		"Update Coupon": [
+			{
+				"json": {
+					"updated": 1
+				}
+			}
+		],
+		"Get Payments": [
+			{
+				"json": {
+					"id": 8936,
+					"subscription_id": 502198,
+					"amount": 10,
+					"currency": "USD",
+					"is_paid": 0
+				}
+			}
+		],
+		"Reschedule Payment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Plans": [
+			{
+				"json": {
+					"id": 9876,
+					"name": "Monthly",
+					"billing_type": "month"
+				}
+			}
+		],
+		"Get Plan": [
+			{
+				"json": {
+					"id": 9876,
+					"name": "Monthly",
+					"billing_type": "month"
+				}
+			}
+		],
+		"Get Products": [
+			{
+				"json": {
+					"id": 511234,
+					"name": "Pro plan",
+					"base_price": 10
+				}
+			}
+		],
+		"Get Users": [
+			{
+				"json": {
+					"subscription_id": 502198,
+					"plan_id": 9876,
+					"user_id": 425123,
+					"user_email": "nathan@example.com",
+					"state": "active"
+				}
+			}
+		],
+		"Get Users Limit": [
+			{
+				"json": {
+					"subscription_id": 502198,
+					"plan_id": 9876,
+					"user_id": 425123,
+					"user_email": "nathan@example.com",
+					"state": "active"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Coupon",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Coupons",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Coupon",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Payments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Reschedule Payment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Plans",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Plan",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Products",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Users",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Users Limit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -20,6 +20,8 @@ import AgentChannelTeamsSetupView from './teams/AgentChannelTeamsSetupView.vue';
 import { useTeamsChannelRuntime } from './teams/useTeamsChannelRuntime';
 import AgentChannelTelegramEditView from './telegram/AgentChannelTelegramEditView.vue';
 import AgentChannelTelegramSetup from './telegram/AgentChannelTelegramSetup.vue';
+import AgentChannelWebhookRemoveConfirmation from './webhook/AgentChannelWebhookRemoveConfirmation.vue';
+import AgentChannelWebhookSetup from './webhook/AgentChannelWebhookSetup.vue';
 import type {
 	AgentChannelPlatform,
 	AgentChannelRuntime,
@@ -217,6 +219,15 @@ const platforms = {
 				),
 			};
 		},
+	},
+	// One view for setup and edit: whether the channel holds a credential depends on its authentication.
+	webhook: {
+		type: 'webhook',
+		setupComponent: AgentChannelWebhookSetup,
+		editComponent: AgentChannelWebhookSetup,
+		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+		disconnectConfirmationComponent: AgentChannelWebhookRemoveConfirmation,
+		shouldConfirmDisconnect: () => true,
 	},
 	[N8N_CHAT_INTEGRATION_TYPE]: {
 		type: N8N_CHAT_INTEGRATION_TYPE,

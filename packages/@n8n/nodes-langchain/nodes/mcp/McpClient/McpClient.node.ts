@@ -63,6 +63,12 @@ export class McpClient implements INodeType {
 						value: 'bearerAuth',
 					},
 					{
+						name: 'Generic OAuth2 API',
+						value: 'oAuth2Api',
+						description:
+							'Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.',
+					},
+					{
 						name: 'Header Auth',
 						value: 'headerAuth',
 					},
@@ -89,7 +95,13 @@ export class McpClient implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api', 'multipleHeadersAuth'],
+						authentication: [
+							'headerAuth',
+							'bearerAuth',
+							'mcpOAuth2Api',
+							'oAuth2Api',
+							'multipleHeadersAuth',
+						],
 					},
 				},
 			},
@@ -268,7 +280,15 @@ export class McpClient implements INodeType {
 							textContent && 'text' in textContent
 								? textContent.text
 								: `Tool "${tool}" returned an error`;
-						throw new NodeOperationError(node, errorMessage, { itemIndex });
+						const serverMessage = `MCP server returned an error for tool "${tool}"`;
+						const description = `${errorMessage}\n\nCheck the tool parameters and permissions on the MCP server. If you use OAuth2, check that the credential has the required scopes for this operation.`;
+						const continueOnFail = this.continueOnFail();
+						throw new NodeOperationError(node, errorMessage, {
+							itemIndex,
+							// Keep the message used by existing continue-on-fail expressions.
+							message: continueOnFail ? errorMessage : serverMessage,
+							description: continueOnFail ? `${serverMessage}\n\n${description}` : description,
+						});
 					}
 
 					let binaryIndex = 0;
@@ -320,6 +340,7 @@ export class McpClient implements INodeType {
 							json: {
 								error: {
 									message: errorMessage,
+									description: e instanceof NodeOperationError ? e.description : undefined,
 									issues: e instanceof ZodError ? e.issues : undefined,
 								},
 							},
@@ -328,6 +349,10 @@ export class McpClient implements INodeType {
 							},
 						});
 						continue;
+					}
+
+					if (e instanceof NodeOperationError) {
+						throw e;
 					}
 
 					throw new NodeOperationError(node, errorMessage, {

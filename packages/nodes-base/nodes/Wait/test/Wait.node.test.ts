@@ -4,10 +4,10 @@ import { DateTime } from 'luxon';
 import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
-	UserError,
 	WAIT_INDEFINITELY,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { Wait } from '../Wait.node';
 

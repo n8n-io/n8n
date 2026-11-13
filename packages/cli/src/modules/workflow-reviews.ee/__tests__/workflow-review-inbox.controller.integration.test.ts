@@ -457,12 +457,7 @@ describe('GET /inbox', () => {
 		const response = await ownerAgent.get('/inbox').query({ state: 'open', limit: 15 }).expect(200);
 
 		const item = response.body.data.data.find((row: { id: string }) => row.id === request.id);
-		expect(item.requester).toEqual({
-			id: owner.id,
-			email: owner.email,
-			firstName: owner.firstName,
-			lastName: owner.lastName,
-		});
+		expect(item.requester).toEqual(owner.toIUser());
 		expect(item.reviewers).toEqual([
 			{
 				id: reviewer.id,

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/update.operation';
@@ -87,7 +88,7 @@ describe('NocoDB Rows Update Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'PATCH',
-			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 			[
 				{
 					id: '1',
@@ -161,7 +162,7 @@ describe('NocoDB Rows Update Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'PATCH',
-			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 			[
 				{
 					id: '1',

@@ -1,5 +1,5 @@
-import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode, RequestPath } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -27,7 +27,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 const SHEET1 = { id: '{00000000-0000-0000-0000-000000000001}', name: 'Sheet1' };
 const SHEET2 = { id: '{00000000-0000-0000-0000-000000000002}', name: 'Costs' };
 const TABLE1 = { id: '{00000000-0000-0000-0000-000000000011}', name: 'Table1' };
@@ -71,7 +71,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			// Graph quirk: `search`, not `$search`
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites',
+				requestPath`/v1.0/sites`,
 				{},
 				{ search: 'marketing', $select: 'id,displayName,webUrl' },
 			);
@@ -89,7 +89,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites',
+				requestPath`/v1.0/sites`,
 				{},
 				{ search: '*', $select: 'id,displayName,webUrl' },
 			);
@@ -117,7 +117,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			const secondPage = await searchSites.call(ctx, undefined, nextLink);
 
 			// The link is a complete address — passed through verbatim, never rebuilt
-			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 			expect(secondPage.results).toEqual([{ name: 'Two', value: 's2', url: undefined }]);
 			expect(secondPage.paginationToken).toBeUndefined();
 		});
@@ -174,7 +174,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives',
+				requestPath`/v1.0/sites/contoso.sharepoint.com,g1,g2/drives`,
 				{},
 				{ $select: 'id,name,webUrl' },
 			);
@@ -186,8 +186,8 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 		it('resolves a pasted Site address before listing libraries', async () => {
 			setParams({ site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' } });
-			apiRequest.mockImplementation(async (_method: string, resource: string) =>
-				resource.startsWith('/v1.0/sites/contoso.sharepoint.com:')
+			apiRequest.mockImplementation(async (_method: string, resource: RequestPath | string) =>
+				String(resource).startsWith('/v1.0/sites/contoso.sharepoint.com:')
 					? { id: 'contoso.sharepoint.com,g1,g2' }
 					: { value: [{ id: 'b!drive1', name: 'Documents' }] },
 			);
@@ -196,13 +196,13 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+				expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/mysite' }),
 				{},
 				{ $select: 'id' },
 			);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives',
+				requestPath`/v1.0/sites/contoso.sharepoint.com,g1,g2/drives`,
 				{},
 				{ $select: 'id,name,webUrl' },
 			);
@@ -230,7 +230,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			apiRequest.mockResolvedValueOnce({ value: [{ id: 'b!drive2', name: 'Reports' }] });
 			const secondPage = await searchLibraries.call(ctx, undefined, nextLink);
 
-			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 			expect(secondPage.paginationToken).toBeUndefined();
 		});
 	});
@@ -242,7 +242,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			library: { mode: 'id', value: 'b!drive1' },
 		};
 		const searchPath = (q: string) =>
-			`/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/root/search(q='${q}')`;
+			requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/root/search(q='${q}')`;
 		const SELECT = { $select: 'id,name,webUrl,file' };
 		const BOOK = { id: 'wb1', name: 'Budget.xlsx', webUrl: 'https://c.sharepoint.com/b', file: {} };
 		const BOOK_ITEM = { name: 'Budget.xlsx', value: 'wb1', url: 'https://c.sharepoint.com/b' };
@@ -265,7 +265,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			await searchWorkbooks.call(ctx);
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', searchPath('.xlsx%20OR%20.xlsm'), {}, SELECT);
+			expect(apiRequest).toHaveBeenCalledWith('GET', searchPath('.xlsx OR .xlsm'), {}, SELECT);
 		});
 
 		it('shows only workbook files from a listing that mixes in other types', async () => {
@@ -294,7 +294,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			apiRequest.mockResolvedValueOnce({ value: [] });
 			const secondPage = await searchWorkbooks.call(ctx, undefined, nextLink);
 
-			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 			expect(secondPage.paginationToken).toBeUndefined();
 		});
 
@@ -310,7 +310,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			const result = await searchWorkbooks.call(ctx, 'budget');
 
 			expect(apiRequest).toHaveBeenCalledTimes(2);
-			expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 			expect(result.results).toEqual([BOOK_ITEM]);
 		});
 
@@ -347,7 +347,9 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				SERVICE_PRINCIPAL_AUTH,
-				expect.objectContaining({ url: expect.stringContaining("/root/search(q='") }),
+				expect.objectContaining({
+					url: expect.objectContaining({ value: expect.stringContaining("/root/search(q='") }),
+				}),
 			);
 			expect(result.results).toEqual([BOOK_ITEM]);
 		});
@@ -362,7 +364,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				`${WORKBOOK_ROOT}/workbook/worksheets`,
+				requestPath`${WORKBOOK_ROOT}/workbook/worksheets`,
 				{},
 				{ $top: 100 },
 			);
@@ -395,7 +397,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			const result = await getSheets.call(ctx, 'cost');
 
 			expect(apiRequest).toHaveBeenCalledTimes(2);
-			expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', expect.anything(), {}, {}, nextLink);
 			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
 			expect(result.paginationToken).toBeUndefined();
 		});
@@ -432,7 +434,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			const result = await getSheets.call(ctx, undefined, nextLink);
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', '', {}, {}, nextLink);
+			expect(apiRequest).toHaveBeenCalledWith('GET', expect.anything(), {}, {}, nextLink);
 			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
 		});
 
@@ -459,7 +461,7 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables`,
+				requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables`,
 				{},
 				{ $top: 100 },
 			);

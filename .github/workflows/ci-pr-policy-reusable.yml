@@ -1,0 +1,27 @@
+name: 'CI: PR Policy'
+
+on:
+  workflow_call:
+    outputs:
+      skip-ci:
+        description: Whether this is an automated release PR that does not need CI
+        value: ${{ jobs.classify.outputs.skip-ci }}
+
+permissions: {}
+
+jobs:
+  classify:
+    name: Classify PR
+    runs-on: ubuntu-slim
+    outputs:
+      skip-ci: ${{ steps.policy.outputs.skip-ci }}
+    steps:
+      - name: Evaluate PR policy
+        id: policy
+        env:
+          SKIP_CI: >-
+            ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+            startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+            startsWith(github.event.pull_request.base.ref, 'release/') }}
+        run: echo "skip-ci=$SKIP_CI" >> "$GITHUB_OUTPUT"

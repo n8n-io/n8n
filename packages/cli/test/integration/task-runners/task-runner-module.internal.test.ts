@@ -1,8 +1,10 @@
+import { CodeExecutionBackend } from '@n8n/backend-services';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { InternalTaskRunnerDisconnectAnalyzer } from '@/task-runners/internal-task-runner-disconnect-analyzer';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+import { TaskRunnerCodeExecutionBackend } from '@/task-runners/task-runner-code-execution-backend';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 
@@ -38,6 +40,12 @@ describe('TaskRunnerModule in internal mode', () => {
 			const wsServer = Container.get(TaskBrokerWsServer);
 
 			expect(wsServer.getDisconnectAnalyzer()).toBeInstanceOf(InternalTaskRunnerDisconnectAnalyzer);
+		});
+
+		it('should use task runners as the code execution backend', async () => {
+			await module.start();
+
+			expect(Container.get(CodeExecutionBackend)).toBeInstanceOf(TaskRunnerCodeExecutionBackend);
 		});
 	});
 });

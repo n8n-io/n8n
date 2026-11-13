@@ -168,6 +168,30 @@ describe('readSkillFolder', () => {
 			expect(skippedFiles).toEqual(['references/a\0.md']);
 		});
 
+		it('skips a reference with a NUL character in its text, and lists it as one n8n cannot store', () => {
+			const { content, skippedFiles, unstorableFiles } = readSkillFolder('brand-voice', [
+				SKILL,
+				{ path: 'references/a.md', content: 'PNG\0data' },
+				{ path: 'references/b.md', content: 'Text' },
+				{ path: 'scripts/run.sh', content: 'x' },
+			]);
+
+			expect(content.files).toEqual([{ path: 'references/b.md', content: 'Text' }]);
+			expect(skippedFiles).toEqual(['references/a.md', 'scripts/run.sh']);
+			expect(unstorableFiles).toEqual(['references/a.md']);
+		});
+
+		it.each([
+			{ part: 'instructions', text: skillMd('name: n\ndescription: d', 'Use\0 this.') },
+			{ part: 'description', text: skillMd('name: n\ndescription: "d\\0"') },
+			{ part: 'frontmatter', text: skillMd('name: n\ndescription: d\nnote: "a\\0b"') },
+		])('refuses a SKILL.md with a NUL character in the $part', ({ text }) => {
+			const read = () => readSkillFolder('brand-voice', [{ path: 'SKILL.md', content: text }]);
+
+			expect(read).toThrow(SkillParseError);
+			expect(read).toThrow('SKILL.md has a NUL character, which n8n cannot store.');
+		});
+
 		it.each([
 			{ case: 'a ./ path', extra: ['references/a.md', './references/a.md'], at: 'references/a.md' },
 			{

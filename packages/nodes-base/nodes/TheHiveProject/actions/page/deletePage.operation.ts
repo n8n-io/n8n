@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -50,9 +51,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (location === 'case') {
 		const caseId = this.getNodeParameter('caseId', i, '', { extractValue: true }) as string;
-		endpoint = `/v1/case/${caseId}/page/${pageId}`;
+		endpoint = requestPath`/v1/case/${caseId}/page/${pageId}`;
 	} else {
-		endpoint = `/v1/page/${pageId}`;
+		endpoint = requestPath`/v1/page/${pageId}`;
 	}
 
 	await theHiveApiRequest.call(this, 'DELETE', endpoint);

@@ -50,6 +50,51 @@ const INPUT_RPC_TYPES = {
 } as const satisfies Record<string, BridgeMessage['type']>;
 type InputRpcType = (typeof INPUT_RPC_TYPES)[keyof typeof INPUT_RPC_TYPES];
 
+/**
+ * Creates a check that returns true when a name is a valid IANA timezone.
+ * The check remembers valid names, because luxon builds a new
+ * `Intl.DateTimeFormat` for each validation.
+ */
+function createTimezoneCheck(): (timezone: string) => boolean {
+	const validTimezones = new Set<string>();
+	return (timezone) => {
+		if (!validTimezones.has(timezone) && IANAZone.isValidZone(timezone)) {
+			validTimezones.add(timezone);
+		}
+		return validTimezones.has(timezone);
+	};
+}
+
+const isValidTimezone = createTimezoneCheck();
+
+/**
+ * Defines a property whose value is created on the first read and then kept.
+ * A write replaces the value, as with a plain data property.
+ */
+function defineLazyValue(
+	target: Record<string, unknown>,
+	key: string,
+	create: () => unknown,
+): void {
+	let value: unknown;
+	let isCreated = false;
+	defineProperty(target, key, {
+		get: () => {
+			if (!isCreated) {
+				value = create();
+				isCreated = true;
+			}
+			return value;
+		},
+		set: (newValue: unknown) => {
+			value = newValue;
+			isCreated = true;
+		},
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 // ============================================================================
 // Build Context Function
 // ============================================================================
@@ -138,7 +183,7 @@ export function buildContext(
 	callbacks: BridgeCallbacks,
 	timezone?: string,
 ): Record<string, unknown> {
-	if (timezone && !IANAZone.isValidZone(timezone)) {
+	if (timezone && !isValidTimezone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
 	Settings.defaultZone = timezone ?? 'system';
@@ -168,8 +213,13 @@ export function buildContext(
 	// already set via Settings.defaultZone above.
 	// -------------------------------------------------------------------------
 
-	target.$now = DateTime.now();
-	target.$today = DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+	// The dates are created on first read, because most expressions do not use them.
+	// Keep the zone now: a later evaluation can change Settings.defaultZone before that read.
+	const zone = Settings.defaultZone;
+	defineLazyValue(target, '$now', () => DateTime.now().setZone(zone));
+	defineLazyValue(target, '$today', () =>
+		DateTime.now().setZone(zone).set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
+	);
 
 	// -------------------------------------------------------------------------
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)

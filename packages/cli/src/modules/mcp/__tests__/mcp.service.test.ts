@@ -25,6 +25,7 @@ import {
 	AiPreferenceService,
 	CredentialsFinderService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -54,7 +55,6 @@ import { ExecutionListService } from '@/executions/execution-list.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { NodeCatalogService } from '@/node-catalog';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -81,6 +81,7 @@ import {
 } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
 import type { McpAuthContext, McpClientInfo, ToolDefinition } from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -171,6 +172,7 @@ describe('McpService', () => {
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
 			instanceWriteAccess,
+			mockInstance(McpPreferencesNoteService),
 		);
 	});
 
@@ -230,6 +232,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -443,6 +446,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -451,6 +455,7 @@ describe('McpService', () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+				'140_mcp_empty_preferences_note': 'variant',
 			});
 			const service = buildResolutionService({ postHogClient });
 
@@ -459,10 +464,26 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'variant',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
+
+		it.each([false, true, undefined])(
+			'labels a %s preferences note flag as unassigned',
+			async (flagValue) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue(
+					flagValue === undefined ? {} : { '140_mcp_empty_preferences_note': flagValue },
+				);
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					preferencesNoteVariant: 'unassigned',
+				});
+			},
+		);
 
 		it.each([true, false])(
 			'uses the same instance context answer for two users: %s',
@@ -602,6 +623,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -621,6 +643,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -1453,6 +1476,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1514,6 +1538,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1600,6 +1625,7 @@ describe('McpService', () => {
 					mockInstance(McpConfig),
 					mockInstance(ExecutionRedactionServiceProxy),
 					mockInstance(InstanceWriteAccessService),
+					mockInstance(McpPreferencesNoteService),
 				);
 			};
 

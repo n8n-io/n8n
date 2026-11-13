@@ -1,4 +1,6 @@
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
+import type { InstanceAiMessage } from '@n8n/api-types';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createRunExecutionData, type IPinData } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
@@ -34,7 +36,10 @@ const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
 const { telemetryTrackSpy } = vi.hoisted(() => ({ telemetryTrackSpy: vi.fn() }));
 
 const thread = reactive({
-	messages: [],
+	messages: [] as InstanceAiMessage[],
+	get artifactTurns() {
+		return toArtifactTurns(this.messages);
+	},
 	isStreaming: false,
 	isHydratingThread: false,
 	isSendingMessage: false,

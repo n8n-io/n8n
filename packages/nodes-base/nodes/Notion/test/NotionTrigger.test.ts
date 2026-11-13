@@ -1,5 +1,5 @@
 import moment from 'moment-timezone';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 import * as Transport from '../v3/transport';
@@ -131,7 +131,7 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequestV3).toHaveBeenCalledWith(
 				'POST',
-				'/data_sources/parent%2Fchild%3Fview%23section/query',
+				requestPath`/data_sources/parent%2Fchild%3Fview%23section/query`,
 				expect.objectContaining({ page_size: 1 }),
 			);
 		});
@@ -148,10 +148,9 @@ describe('NotionTrigger', () => {
 			expect(result).toBeNull();
 			expect(mockNotionApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/databases/parent%2Fchild%3Fview%23section/query',
+				requestPath`/databases/parent%2Fchild%3Fview%23section/query`,
 				expect.objectContaining({ page_size: 1 }),
 				{},
-				'',
 				expect.objectContaining({
 					headers: { 'Notion-Version': '2022-02-22' },
 				}),

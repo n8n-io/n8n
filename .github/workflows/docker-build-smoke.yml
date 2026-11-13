@@ -33,6 +33,7 @@ on:
       - 'package.json'
       - '.github/scripts/docker/edit-image-native-smoke-check.mjs'
       - '.github/scripts/docker/kafka-native-smoke-check.mjs'
+      - '.github/scripts/docker/native-addons-smoke-check.mjs'
       - '.github/scripts/docker/should-smoke-build.mjs'
       # These drive the build and the image distribution, so a change here can
       # break the chain without touching a Dockerfile.
@@ -53,6 +54,12 @@ concurrency:
 jobs:
   gate:
     name: 'Check for relevant changes'
+    if: >-
+      github.event_name != 'pull_request' || !(
+        github.event.pull_request.user.login == 'n8n-assistant[bot]' &&
+        startsWith(github.event.pull_request.head.ref, 'release-pr/') &&
+        startsWith(github.event.pull_request.base.ref, 'release/')
+      )
     runs-on: ubuntu-slim
     outputs:
       build: ${{ steps.gate.outputs.build }}

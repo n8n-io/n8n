@@ -464,7 +464,7 @@ describe('StartExecutionService', () => {
 			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 			await expect(service.start({ ...base, seededSteps: { a: [[], []] } })).rejects.toThrow(
-				/seeded with 2 passes/,
+				'Node "A" is seeded with 2 passes',
 			);
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
@@ -509,7 +509,7 @@ describe('StartExecutionService', () => {
 
 			await expect(
 				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [[]] } }),
-			).rejects.toThrow(/inside the loop of loop/);
+			).rejects.toThrow('inside the loop of "Loop"');
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 	});
