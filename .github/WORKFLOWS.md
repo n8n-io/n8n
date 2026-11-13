@@ -179,6 +179,7 @@ These only run if specific files changed:
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
 | `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
+| `docs/backend/**`, `packages/@n8n/backend-docs-site/**`                | `release-docs-backend.yml` (PR preview, master deploys to n8n-backend-docs.pages.dev) | master     |
 | `docker/docker-bake.hcl`, `docker/images/n8n-base/Dockerfile`, `docker/images/n8n-base/Dockerfile.debian`, `.github/scripts/docker/base-debian-smoke-check.mjs`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-base-image.yml` (builds only the bases whose inputs changed; publishes on master only) | any        |
 | `docker/docker-bake.hcl`, `docker/images/node-pc/Dockerfile`, `.github/scripts/docker/bake-inputs-changed.mjs` | `build-node-pc-image.yml` (builds only when its inputs changed; publishes on master only) | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
@@ -446,7 +447,7 @@ ci-master.yml
     └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
-    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (minor releases)
+    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (setup on minor releases; no-op otherwise)
     │                                 └──────────▶  release-publish-new-package.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
@@ -811,7 +812,7 @@ Workflows with `workflow_call` trigger:
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
-| `release-setup-trusted-publishing.yml` | none                                       | Find and configure unpublished workspace packages |
+| `release-setup-trusted-publishing.yml` | `setup_required`                           | Find and configure unpublished workspace packages |
 | `release-publish-new-package.yml`  | `package-path`                                | Publish and configure one package |
 
 ---

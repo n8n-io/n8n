@@ -28,6 +28,7 @@ import type {
 } from '../../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
+import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-overrides';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
@@ -88,6 +89,8 @@ function setup() {
 	// The real reporter, so that the tests see its filters. Sentry is the mock.
 	const sentry = mock<ErrorReporter>();
 	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
+	// The real default, so that the tests see "no override" unless a test sets one.
+	const turnOverrides = new AssistantTurnOverrides();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -101,9 +104,11 @@ function setup() {
 		tracer,
 		threadTabs,
 		errorReporter,
+		turnOverrides,
 	);
 	return {
 		provider,
+		turnOverrides,
 		sentry,
 		errorReporter,
 		adapterService,
@@ -187,13 +192,16 @@ describe('AssistantAgentProvider', () => {
 
 		const options = await provider.chatTurnOptions(user, thread, {
 			timeZone: 'UTC',
+			// The turn overrides supply these settings, so the client cannot set them.
 			mode: 'progressive',
+			promptVersion: 'default@1',
+			observerThresholdTokens: 5_000,
 		});
 
 		expect(options).toEqual({
 			runId: expect.stringMatching(/^run_/),
 			messageGroupId: expect.stringMatching(/^mg_/),
-			request: { timeZone: 'UTC', mode: 'progressive' },
+			request: { timeZone: 'UTC' },
 		});
 	});
 
@@ -287,6 +295,46 @@ describe('AssistantAgentProvider', () => {
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
 				buildMode: 'default',
 			});
+		});
+
+		it('reads no thread settings from the turn overrides by default', async () => {
+			const { provider, turnEnvironment } = setup();
+			const turn = startTurn({
+				options: {
+					...startTurn().options,
+					// Stored options of an older turn can still carry these fields.
+					request: {
+						mode: 'progressive',
+						promptVersion: 'default@1',
+						observerThresholdTokens: 5_000,
+					},
+				},
+			});
+
+			const handle = await provider.prepareTurn(turn);
+
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getBuildMode()).toBeUndefined();
+			expect(turnState.getPromptVersion()).toBeUndefined();
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: null });
+		});
+
+		it('reads the thread settings of the turn from the turn overrides', async () => {
+			const { provider, turnEnvironment, turnOverrides } = setup();
+			vi.spyOn(turnOverrides, 'getBuildMode').mockReturnValue('progressive');
+			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('progressive@1');
+
+			const handle = await provider.prepareTurn(startTurn());
+
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getBuildMode()).toBe('progressive');
+			expect(turnState.getPromptVersion()).toBe('progressive@1');
+			// The Assistant agent has no threshold override.
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(turnOverrides.getBuildMode).toHaveBeenCalledWith('thread-1');
+			expect(turnOverrides.getPromptVersion).toHaveBeenCalledWith('thread-1');
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'progressive@1' });
 		});
 
 		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {

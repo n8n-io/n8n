@@ -1055,12 +1055,22 @@ describe('Promote and Apply', () => {
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
 
-		const result = await service.continueApply(environments.apply.id, owner, {
-			expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
-			confirmDestructiveChanges: true,
-		});
+		const deleteProject = vi.spyOn(projectService, 'deleteProject');
+		const result = await service.continueApply(
+			environments.apply.id,
+			owner,
+			{
+				expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
+				confirmDestructiveChanges: true,
+			},
+			'editor_ui',
+		);
 		assert(result.status === 'applied');
 
+		expect(deleteProject).toHaveBeenCalledWith(owner, removedProject.id, {
+			publicApi: 'editor_ui',
+		});
+		deleteProject.mockRestore();
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
 		expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({
 			name: 'Orders',
@@ -1606,6 +1616,35 @@ describe('Apply a project selection', () => {
 		});
 		expect(await repository.count()).toBe(1);
 	});
+
+	it.each([
+		{ source: 'Runs nightly', target: 'Old description', expected: 'Runs nightly' },
+		{ source: null, target: 'Old description', expected: null },
+	])(
+		'applies a description-only change ($source) to the same workflow',
+		async ({ source, target, expected }) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(remote.bareDir);
+			await service.clone(environments.apply.id, owner);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['Order']);
+			const repository = Container.get(WorkflowRepository);
+			await repository.update(workflows[0].id, { description: source });
+			await exportPackageToRemote(remote);
+			await repository.update(workflows[0].id, { description: target });
+
+			const result = await service.applyProjectSelection(project.id, owner, {
+				workflowIds: [workflows[0].id],
+			});
+
+			expect(result).toMatchObject({
+				status: 'applied',
+				counts: { workflows: { created: 0, updated: 1 } },
+			});
+			expect((await repository.findOneByOrFail({ id: workflows[0].id })).description).toBe(
+				expected,
+			);
+		},
+	);
 
 	it('moves a selected workflow to the folder the branch places it in', async () => {
 		const remote = await createRemote();

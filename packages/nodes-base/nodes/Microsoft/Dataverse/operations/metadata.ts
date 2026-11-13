@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { escapeODataValue } from '../../../../utils/query-escaping';
 import { dataverseApiRequest, type DataverseQuery } from '../GenericFunctions';
@@ -60,7 +61,7 @@ async function fetchTableMetadata(
 	const response = await dataverseApiRequest(
 		ctx,
 		'GET',
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{},
 		{
 			$select: 'LogicalName,EntitySetName,PrimaryIdAttribute,TableType',
@@ -88,7 +89,7 @@ export async function resolveTableMetadataByLogicalNames(
 	const response = await dataverseApiRequest(
 		ctx,
 		'GET',
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{},
 		{
 			$select: 'LogicalName,EntitySetName,PrimaryIdAttribute,TableType',

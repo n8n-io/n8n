@@ -1,4 +1,4 @@
-import { NodeApiError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
+import { NodeApiError, type ILoadOptionsFunctions, type INode, requestPath } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import type { Mock } from 'vitest';
@@ -100,7 +100,7 @@ describe('Microsoft Teams v2 — getChats', () => {
 		// empty once 1:1 chats are filtered out of a default-sized page.
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/chats',
+			requestPath`/v1.0/chats`,
 			{},
 			{
 				$expand: 'members',
@@ -265,7 +265,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			{ $select: 'id,displayName,userPrincipalName' },
 			undefined,
@@ -283,7 +283,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			{
 				$select: 'id,displayName,userPrincipalName',
@@ -300,7 +300,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			{
 				$select: 'id,displayName,userPrincipalName',
@@ -316,7 +316,7 @@ describe('Microsoft Teams v2 - getUsers', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'',
+			requestPath`/v1.0/users`,
 			{},
 			{},
 			'https://graph.microsoft.com/v1.0/users?$skiptoken=abc',
@@ -420,7 +420,7 @@ describe('Microsoft Teams v2 - getChatMembers', () => {
 		expect(apiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/v1.0/chats/19:abc@thread.v2/members',
+			requestPath`/v1.0/chats/19:abc@thread.v2/members`,
 		);
 	});
 

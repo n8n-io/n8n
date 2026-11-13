@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { stampItemIndexOnError } from '../GenericFunctions';
 import { targetDescription } from './descriptions/TargetDescription';
@@ -130,7 +130,7 @@ export class MicrosoftToDo implements INodeType {
 					this,
 					'value',
 					'GET',
-					'/todo/lists',
+					requestPath`/todo/lists`,
 					0,
 				);
 				for (const list of lists) {
@@ -169,7 +169,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 							i,
 							body,
 							qs,
@@ -184,7 +184,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
-							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							i,
 							undefined,
 							qs,
@@ -200,7 +200,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
-							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							i,
 							undefined,
 							qs,
@@ -217,7 +217,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'value',
 								'GET',
-								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+								requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 								i,
 								undefined,
 								qs,
@@ -227,7 +227,7 @@ export class MicrosoftToDo implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
+								requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources`,
 								i,
 								undefined,
 								qs,
@@ -248,7 +248,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
-							`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}/linkedResources/${linkedResourceId}`,
 							i,
 							body,
 							qs,
@@ -294,7 +294,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/todo/lists/${taskListId}/tasks`,
+							requestPath`/todo/lists/${taskListId}/tasks`,
 							i,
 							body,
 							qs,
@@ -308,7 +308,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
-							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}`,
 							i,
 							undefined,
 							qs,
@@ -323,7 +323,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
-							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}`,
 							i,
 							undefined,
 							qs,
@@ -339,7 +339,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'value',
 								'GET',
-								`/todo/lists/${taskListId}/tasks/`,
+								requestPath`/todo/lists/${taskListId}/tasks/`,
 								i,
 								undefined,
 								qs,
@@ -349,7 +349,7 @@ export class MicrosoftToDo implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/todo/lists/${taskListId}/tasks/`,
+								requestPath`/todo/lists/${taskListId}/tasks/`,
 								i,
 								undefined,
 								qs,
@@ -392,7 +392,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
-							`/todo/lists/${taskListId}/tasks/${taskId}`,
+							requestPath`/todo/lists/${taskListId}/tasks/${taskId}`,
 							i,
 							body,
 							qs,
@@ -414,7 +414,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							'/todo/lists/',
+							requestPath`/todo/lists/`,
 							i,
 							body,
 							qs,
@@ -426,7 +426,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
-							`/todo/lists/${listId}`,
+							requestPath`/todo/lists/${listId}`,
 							i,
 							undefined,
 							qs,
@@ -439,7 +439,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
-							`/todo/lists/${listId}`,
+							requestPath`/todo/lists/${listId}`,
 							i,
 							undefined,
 							qs,
@@ -453,7 +453,7 @@ export class MicrosoftToDo implements INodeType {
 								this,
 								'value',
 								'GET',
-								'/todo/lists',
+								requestPath`/todo/lists`,
 								i,
 								undefined,
 								qs,
@@ -463,7 +463,7 @@ export class MicrosoftToDo implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								'/todo/lists',
+								requestPath`/todo/lists`,
 								i,
 								undefined,
 								qs,
@@ -481,7 +481,7 @@ export class MicrosoftToDo implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
-							`/todo/lists/${listId}`,
+							requestPath`/todo/lists/${listId}`,
 							i,
 							body,
 							qs,

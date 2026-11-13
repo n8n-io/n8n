@@ -5,12 +5,15 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function clockifyApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -19,14 +22,14 @@ export async function clockifyApiRequest(
 ): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		uri: `${BASE_URL}/${resource}`,
+		uri: requestUrl`${BASE_URL}/${resource}`,
 		json: true,
 		useQuerystring: true,
 	};
@@ -36,7 +39,7 @@ export async function clockifyApiRequest(
 export async function clockifyApiRequestAllItems(
 	this: IExecuteFunctions | IPollFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

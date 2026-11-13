@@ -13,7 +13,6 @@ describe('Assistant turn options', () => {
 		const options = createAssistantTurnOptions({
 			timeZone: 'Europe/Helsinki',
 			pushRef: 'push-1',
-			mode: 'progressive',
 			attachments: [
 				{ type: 'file', data: 'aGVsbG8=', mimeType: 'text/plain', fileName: 'notes.txt' },
 				{ type: 'workflow', id: 'wf-1', name: 'Digest' },
@@ -25,7 +24,6 @@ describe('Assistant turn options', () => {
 		expect(options.request).toEqual({
 			timeZone: 'Europe/Helsinki',
 			pushRef: 'push-1',
-			mode: 'progressive',
 			attachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
 		});
 	});
@@ -33,13 +31,60 @@ describe('Assistant turn options', () => {
 	it('drops a client context that does not parse and logs the invalid fields', () => {
 		const logger = mock<Logger>();
 
-		expect(createAssistantTurnOptions({ mode: 'not-a-mode' }, logger).request).toEqual({});
-		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { fields: ['mode'] });
-		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('not-a-mode');
+		expect(
+			createAssistantTurnOptions({ browserUseAvailable: 'not-a-boolean' }, logger).request,
+		).toEqual({});
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			fields: ['browserUseAvailable'],
+		});
+		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('not-a-boolean');
+	});
+
+	it('ignores the turn override fields in the client context and keeps the other fields', () => {
+		const logger = mock<Logger>();
+
+		const options = createAssistantTurnOptions(
+			{
+				timeZone: 'UTC',
+				pushRef: 'push-1',
+				browserUseAvailable: true,
+				// Values that are not valid must not drop the other fields either.
+				mode: 'not-a-mode',
+				promptVersion: '',
+				observerThresholdTokens: 1,
+			},
+			logger,
+		);
+
+		expect(options.request).toEqual({
+			timeZone: 'UTC',
+			pushRef: 'push-1',
+			browserUseAvailable: true,
+		});
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('ignores the turn override fields in stored options of older turns', () => {
+		const options = readAssistantTurnOptions({
+			runId: 'run-1',
+			messageGroupId: 'mg-1',
+			request: {
+				timeZone: 'UTC',
+				mode: 'progressive',
+				promptVersion: 'default@1',
+				observerThresholdTokens: 5_000,
+			},
+		});
+
+		expect(options).toEqual({
+			runId: 'run-1',
+			messageGroupId: 'mg-1',
+			request: { timeZone: 'UTC' },
+		});
 	});
 
 	it('reads back what it stored, so a resume keeps its run id', () => {
-		const options = createAssistantTurnOptions({ timeZone: 'UTC', promptVersion: 'default@1' });
+		const options = createAssistantTurnOptions({ timeZone: 'UTC', pushRef: 'push-1' });
 
 		const stored = deepCopy(serializeAssistantTurnOptions(options));
 

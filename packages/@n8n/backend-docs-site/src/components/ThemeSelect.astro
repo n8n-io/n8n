@@ -1,0 +1,80 @@
+---
+/**
+ * One button in place of the Starlight three-way select, as on the Lisette site.
+ * It writes the `starlight-theme` storage key that the Starlight theme provider reads on load.
+ * The sun shows in the light theme and the moon in the dark theme.
+ */
+---
+
+<button type="button" aria-label="Toggle color theme" data-theme-toggle>
+	<span class="sun">
+		<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24">
+			<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+				<circle cx="12" cy="12" r="4"></circle>
+				<path
+					d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+				></path>
+			</g>
+		</svg>
+	</span>
+	<span class="moon">
+		<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24">
+			<path
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="2"
+				d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"
+			></path>
+		</svg>
+	</span>
+</button>
+
+<style>
+	button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		color: var(--sl-color-gray-3);
+		cursor: pointer;
+		transition:
+			background-color 150ms,
+			color 150ms;
+	}
+
+	button:hover,
+	button:focus-visible {
+		background: var(--n8n-hover);
+		color: var(--sl-color-white);
+	}
+
+	span {
+		display: none;
+	}
+
+	:global([data-theme='light']) .sun,
+	:global([data-theme='dark']) .moon {
+		display: inline-flex;
+	}
+</style>
+
+<script>
+	document.addEventListener('click', (event) => {
+		const target = event.target as HTMLElement | null;
+		if (!target?.closest('[data-theme-toggle]')) return;
+		const root = document.documentElement;
+		const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+		root.dataset.theme = next;
+		try {
+			localStorage.setItem('starlight-theme', next);
+		} catch {
+			// Private windows can block storage. The theme still changes for this page.
+		}
+	});
+</script>

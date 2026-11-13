@@ -90,4 +90,19 @@ export class ServiceAccountRepository {
 			return { serviceAccount, project };
 		});
 	}
+
+	/**
+	 * Renames the account and its personal project in one transaction, because
+	 * the project takes the account name. The name must not be blank.
+	 */
+	async rename(id: string, name: string, ctx: OperationContext = {}) {
+		if (name.trim() === '') {
+			throw new UnexpectedError('A service account needs a name');
+		}
+
+		await this.table.runInTransaction(ctx, async (tx) => {
+			await tx.update(ServiceAccountDetails, { userId: id }, { name });
+			await tx.update(Project, { type: 'personal', creatorId: id }, { name });
+		});
+	}
 }

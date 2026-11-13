@@ -67,7 +67,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('POST');
-		expect(endpoint).toBe('/deals');
+		expect(String(endpoint)).toBe('/deals');
 		expect(body.owner_id).toBe(25455458);
 		expect(body).not.toHaveProperty('user_id');
 	});
@@ -88,7 +88,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('PATCH');
-		expect(endpoint).toBe('/deals/10');
+		expect(String(endpoint)).toBe('/deals/10');
 		expect(body.owner_id).toBe(25455458);
 		expect(body).not.toHaveProperty('user_id');
 	});
@@ -111,7 +111,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('GET');
-		expect(endpoint).toBe('/deals');
+		expect(String(endpoint)).toBe('/deals');
 		expect(qs.owner_id).toBe(25455458);
 		expect(qs).not.toHaveProperty('user_id');
 	});
@@ -134,7 +134,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('POST');
-		expect(endpoint).toBe('/activities');
+		expect(String(endpoint)).toBe('/activities');
 		expect(body.owner_id).toBe(25455458);
 		expect(body).not.toHaveProperty('user_id');
 	});
@@ -155,7 +155,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('PATCH');
-		expect(endpoint).toBe('/activities/10');
+		expect(String(endpoint)).toBe('/activities/10');
 		expect(body.owner_id).toBe(25455458);
 		expect(body).not.toHaveProperty('user_id');
 	});
@@ -178,7 +178,7 @@ describe('Pipedrive v2 maps user_id parameter to owner_id on outgoing requests',
 			IDataObject,
 		];
 		expect(method).toBe('GET');
-		expect(endpoint).toBe('/activities');
+		expect(String(endpoint)).toBe('/activities');
 		expect(qs.owner_id).toBe(25455458);
 		expect(qs).not.toHaveProperty('user_id');
 	});

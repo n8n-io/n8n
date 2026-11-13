@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { publicApiClientSchema } from '../schemas';
 import { setupTelemetryProperties } from '../setup-properties';
 
 const descriptionProperties = {
@@ -44,6 +45,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe('Set by the server. Existing editor events omit it.'),
 			public_api: z.boolean().optional().describe('Whether the server used the public API.'),
+			public_api_client: publicApiClientSchema.optional(),
 			has_description: descriptionProperties.has_description.optional(),
 			description_length: descriptionProperties.description_length.optional(),
 			user_id: z.string().optional(),

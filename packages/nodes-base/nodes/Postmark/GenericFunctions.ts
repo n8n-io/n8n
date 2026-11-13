@@ -7,31 +7,31 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function postmarkApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
-	option: IDataObject = {},
 ): Promise<any> {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
 		},
 		method,
 		body,
-		uri: 'https://api.postmarkapp.com' + endpoint,
+		uri: requestUrl`https://api.postmarkapp.com${endpoint}`,
 		json: true,
 	};
 	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	options = Object.assign({}, options, option);
 
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);

@@ -1,4 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mockDeep } from 'vitest-mock-extended';
@@ -19,7 +20,7 @@ vi.mock('../../transport', async () => {
 describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 	let ctx: DeepMockProxy<IExecuteFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
-	const workbookRoot = '/v1.0/sites/s/drives/d/items/i';
+	const workbookRoot = requestPath`/v1.0/sites/s/drives/d/items/i`;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -27,9 +28,9 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 	});
 
 	it('opens a session, runs send with the session header, then closes the session', async () => {
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
-			if (resource === `${workbookRoot}/workbook/closeSession`) return {};
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
+			if (resource.value === `${workbookRoot}/workbook/closeSession`) return {};
 			throw new Error(`unexpected request: ${resource}`);
 		});
 		const send = vi.fn().mockResolvedValue('done');
@@ -41,13 +42,13 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			`${workbookRoot}/workbook/createSession`,
+			requestPath`${workbookRoot}/workbook/createSession`,
 			{ persistChanges: true },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${workbookRoot}/workbook/closeSession`,
+			requestPath`${workbookRoot}/workbook/closeSession`,
 			{},
 			{},
 			undefined,
@@ -65,7 +66,7 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${workbookRoot}/workbook/closeSession`,
+			requestPath`${workbookRoot}/workbook/closeSession`,
 			{},
 			{},
 			undefined,
@@ -86,9 +87,9 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 	});
 
 	it("returns send's result even when closeSession itself fails", async () => {
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
-			if (resource === `${workbookRoot}/workbook/closeSession`) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
+			if (resource.value === `${workbookRoot}/workbook/closeSession`) {
 				throw new Error('closeSession unreachable');
 			}
 			throw new Error(`unexpected request: ${resource}`);
@@ -101,9 +102,9 @@ describe('Microsoft Excel (SharePoint) — helpers/sessions', () => {
 	});
 
 	it("propagates send's error, not closeSession's, when both fail", async () => {
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
-			if (resource === `${workbookRoot}/workbook/closeSession`) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value === `${workbookRoot}/workbook/createSession`) return { id: 'session-abc' };
+			if (resource.value === `${workbookRoot}/workbook/closeSession`) {
 				throw new Error('closeSession unreachable');
 			}
 			throw new Error(`unexpected request: ${resource}`);

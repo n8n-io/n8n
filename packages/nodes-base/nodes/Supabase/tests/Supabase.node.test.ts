@@ -7,6 +7,8 @@ import {
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
@@ -218,10 +220,48 @@ describe('Test Supabase Node', () => {
 				// the substituted value is percent-encoded (decodeURI alone leaves
 				// reserved-character escapes like %40/%2C untouched); the receiving
 				// server decodes it the same way before parsing the filter.
-				const endpointArg = supabaseApiRequest.mock.calls[0][1] as string;
-				expect(decodeURIComponent(endpointArg)).toBe(
+				const [, endpoint, , , filterString] = supabaseApiRequest.mock.calls[0];
+				expect(decodeURIComponent(`${endpoint.toString()}?${filterString}`)).toBe(
 					'/my_table?or=(email.eq."nobody@x.com,id.gt.0")',
 				);
+
+				supabaseApiRequest.mockRestore();
+			},
+		);
+
+		it.each(['getAll', 'delete', 'update'])(
+			'should send only the filter of the current item for %s',
+			async (operation) => {
+				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest').mockResolvedValue([]);
+				const parameters: IDataObject = {
+					resource: 'row',
+					operation,
+					returnAll: true,
+					filterType: 'string',
+					tableId: 'my_table',
+					dataToSend: 'defineBelow',
+					fieldsUi: { fieldValues: [] },
+				};
+				const fakeExecuteFunction = {
+					...createMockExecuteFunction(parameters),
+					getInputData: () => [{ json: {} }, { json: {} }],
+					getNodeParameter: (name: string, itemIndex: number, fallbackValue?: unknown) =>
+						name === 'filterString'
+							? `id=eq.${itemIndex + 1}`
+							: get(parameters, name, fallbackValue),
+				} as unknown as IExecuteFunctions;
+
+				await node.execute.call(fakeExecuteFunction);
+
+				expect(
+					supabaseApiRequest.mock.calls.map(([, endpoint, , , filterString]) => [
+						endpoint.toString(),
+						filterString,
+					]),
+				).toEqual([
+					['/my_table', 'id=eq.1'],
+					['/my_table', 'id=eq.2'],
+				]);
 
 				supabaseApiRequest.mockRestore();
 			},
@@ -404,7 +444,7 @@ describe('Test Supabase Node', () => {
 
 			expect(supabaseApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/my_table',
+				requestPath`/my_table`,
 				{},
 				expect.objectContaining({ order: 'id' }),
 				undefined,
@@ -450,7 +490,7 @@ describe('Test Supabase Node', () => {
 
 		expect(supabaseApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/my_table',
+			requestPath`/my_table`,
 			{},
 			{
 				and: '(created_at.gt."2025-01-02 08:03:43.952051+00",created_at.lt."2025-01-02 08:07:36.102231+00")',
@@ -483,7 +523,7 @@ describe('Test Supabase Node', () => {
 				headers: expect.objectContaining({
 					Prefer: 'return=representation',
 				}),
-				url: 'https://api.supabase.io/rest/v1/my_table',
+				url: requestUrl`https://api.supabase.io/rest/v1/my_table`,
 			}),
 		);
 	});
@@ -508,7 +548,7 @@ describe('Test Supabase Node', () => {
 					'Accept-Profile': 'custom_schema',
 					Prefer: 'return=representation',
 				}),
-				url: 'https://api.supabase.io/rest/v1/my_table',
+				url: requestUrl`https://api.supabase.io/rest/v1/my_table`,
 			}),
 		);
 	});
@@ -537,7 +577,7 @@ describe('Test Supabase Node', () => {
 					'Content-Profile': 'custom_schema',
 					Prefer: 'return=representation',
 				}),
-				url: 'https://api.supabase.io/rest/v1/my_table',
+				url: requestUrl`https://api.supabase.io/rest/v1/my_table`,
 			}),
 		);
 	});
@@ -571,9 +611,8 @@ describe('Test Supabase Node', () => {
 		const encodedNames = [
 			['a/b', '/a%2Fb'],
 			['a\\b', '/a%5Cb'],
-			['a?b=c', '/a%3Fb%3Dc'],
+			['a?b=c', '/a%3Fb=c'],
 			['a#b', '/a%23b'],
-			['../a', '/..%2Fa'],
 			['my table', '/my%20table'],
 		];
 
@@ -595,7 +634,7 @@ describe('Test Supabase Node', () => {
 
 				expect(supabaseApiRequest).toHaveBeenCalledWith(
 					'GET',
-					expectedEndpoint,
+					expect.objectContaining({ value: expectedEndpoint }),
 					expect.anything(),
 					expect.anything(),
 					undefined,
@@ -626,12 +665,12 @@ describe('Test Supabase Node', () => {
 
 				await node.execute.call(fakeExecuteFunction);
 
-				expect(supabaseApiRequest.mock.calls[0][1]).toBe('/a%2Fb');
+				expect(supabaseApiRequest.mock.calls[0][1].toString()).toBe('/a%2Fb');
 				supabaseApiRequest.mockRestore();
 			},
 		);
 
-		it.each(['', '.', '..'])(
+		it.each(['', '.', '..', '../a', 'a/../b'])(
 			'should reject the table name "%s" before any request is made',
 			async (tableId) => {
 				const supabaseApiRequest = vi.spyOn(utils, 'supabaseApiRequest');

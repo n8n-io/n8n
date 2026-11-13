@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { itemFields, itemOperations } from './ItemDescription';
@@ -140,7 +141,7 @@ export class WebflowV1 implements INodeType {
 						responseData = await webflowApiRequest.call(
 							this,
 							'POST',
-							`/collections/${collectionId}/items`,
+							requestPath`/collections/${collectionId}/items`,
 							body,
 							{ live },
 						);
@@ -156,7 +157,7 @@ export class WebflowV1 implements INodeType {
 						responseData = await webflowApiRequest.call(
 							this,
 							'DELETE',
-							`/collections/${collectionId}/items/${itemId}`,
+							requestPath`/collections/${collectionId}/items/${itemId}`,
 						);
 					} else if (operation === 'get') {
 						// ----------------------------------
@@ -170,7 +171,7 @@ export class WebflowV1 implements INodeType {
 						responseData = await webflowApiRequest.call(
 							this,
 							'GET',
-							`/collections/${collectionId}/items/${itemId}`,
+							requestPath`/collections/${collectionId}/items/${itemId}`,
 						);
 						responseData = responseData.items;
 					} else if (operation === 'getAll') {
@@ -188,7 +189,7 @@ export class WebflowV1 implements INodeType {
 							responseData = await webflowApiRequestAllItems.call(
 								this,
 								'GET',
-								`/collections/${collectionId}/items`,
+								requestPath`/collections/${collectionId}/items`,
 								{},
 								qs,
 							);
@@ -197,7 +198,7 @@ export class WebflowV1 implements INodeType {
 							responseData = await webflowApiRequest.call(
 								this,
 								'GET',
-								`/collections/${collectionId}/items`,
+								requestPath`/collections/${collectionId}/items`,
 								{},
 								qs,
 							);
@@ -233,7 +234,7 @@ export class WebflowV1 implements INodeType {
 						responseData = await webflowApiRequest.call(
 							this,
 							'PUT',
-							`/collections/${collectionId}/items/${itemId}`,
+							requestPath`/collections/${collectionId}/items/${itemId}`,
 							body,
 							{ live },
 						);

@@ -8,8 +8,8 @@ import type {
 	INodePropertyCollection,
 	INodePropertyOptions,
 } from 'n8n-workflow';
+import { type MetadataKeys, type TimeoutParams, type WeaviateClient } from 'weaviate-client';
 import { UnexpectedError } from '@n8n/errors';
-import { type TimeoutParams } from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
@@ -62,18 +62,21 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const args = this.args;
 
 		if (args.hybridQuery) {
+			const returnMetadata: MetadataKeys | undefined = args.hybridExplainScore
+				? ['explainScore']
+				: undefined;
 			const options = {
 				limit: k ?? undefined,
 				autoLimit: args.autoCutLimit ?? undefined,
 				alpha: args.alpha ?? undefined,
 				vector: query,
-				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				filters: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 				queryProperties: args.queryProperties
 					? args.queryProperties.split(',').map((prop) => prop.trim())
 					: undefined,
 				maxVectorDistance: args.maxVectorDistance ?? undefined,
 				fusionType: args.fusionType,
-				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
+				returnMetadata,
 			};
 			const content = await super.hybridSearch(args.hybridQuery, options);
 			return content.map((doc) => {
@@ -95,6 +98,15 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			k,
 			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 		);
+	}
+}
+
+/** Deletes the collection, or only the tenant when one is given. */
+async function clearCollection(client: WeaviateClient, collectionName: string, tenant?: string) {
+	if (!tenant) {
+		await client.collections.delete(collectionName);
+	} else {
+		await client.collections.get(collectionName).tenants.remove([{ name: tenant }]);
 	}
 }
 
@@ -368,6 +380,27 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			validFilter,
 		);
 	},
+	// Version 1.1+: runs once before the batches, so that later batches do not delete earlier ones
+	async beforeInsert(context, _embeddings, itemIndex) {
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			tenant?: string;
+			clearStore?: boolean;
+		};
+		if (!options.clearStore) return;
+
+		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
+			extractValue: true,
+		}) as string;
+		const credentials = await context.getCredentials('weaviateApi');
+		const client = await createWeaviateClient(credentials as WeaviateCredential);
+
+		try {
+			await clearCollection(client, collectionName, options.tenant);
+		} finally {
+			// This client is used only for the clear step, so release its connections
+			await client.close();
+		}
+	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const collectionName = context.getNodeParameter('weaviateCollection', itemIndex, '', {
 			extractValue: true,
@@ -394,13 +427,9 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			metadataKeys: metadataKeys as string[] | undefined,
 		};
 
-		if (options.clearStore) {
-			if (!options.tenant) {
-				await client.collections.delete(collectionName);
-			} else {
-				const collection = client.collections.get(collectionName);
-				await collection.tenants.remove([{ name: options.tenant }]);
-			}
+		// From version 1.1, beforeInsert clears the store once before the batches
+		if (options.clearStore && context.getNode().typeVersion < 1.1) {
+			await clearCollection(client, collectionName, options.tenant);
 		}
 
 		await WeaviateStore.fromDocuments(documents, embeddings, config);

@@ -151,6 +151,10 @@ of the digest that master published. See [docker/AGENTS.md](docker/AGENTS.md).
 
 **Monorepo Structure:** pnpm workspaces with Turbo build orchestration
 
+For an orientation to the backend (process roles, a map of the code, and
+walkthroughs of how workflows and agents run), read
+[docs/backend/README.md](docs/backend/README.md) when a task needs it.
+
 ### Package Structure
 
 The monorepo is organized into these key packages:
@@ -404,7 +408,7 @@ The root `pnpm dev` command does not start a server. See the
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `scripts/backend-module/backend-module-guide.md`
+   `docs/backend/how-to/build-a-backend-module.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/frontend/editor-ui` with i18n support. For a
    frontend feature module, obey
