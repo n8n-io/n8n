@@ -87,6 +87,8 @@ const Bed = struct {
     outbox_bytes: u64 = 1 << 20,
     /// Bytes of the stream ring: small in the test that drops lines.
     queue_bytes: usize = 1 << 20,
+    /// `--step-events-sample`: step lines of executions without data.
+    step_sample: u32 = 0,
     /// The path of the webhook route.
     hook_path: []const u8 = "/hook",
     /// The stream client that this test opened.
@@ -151,6 +153,7 @@ const Bed = struct {
             opts.module_bytes = 1 << 20;
             opts.max_modules = 4;
             opts.max_outbox_mb = 1;
+            opts.step_event_sample = b.step_sample;
             opts.event_queue_bytes = b.queue_bytes;
             opts.port = p;
             opts.admin_port = p + 1;
@@ -178,14 +181,15 @@ const Bed = struct {
         return request(b.a, b.public, "POST", b.hook_path, "", body);
     }
 
-    /// Load the module as workflow `id` with `saveData`, so its step events
-    /// go out too (spec 9.2). Identical bytes share the module index of
-    /// `--module`, so the route of the test still points at it.
-    fn loadWorkflow(b: *Bed, id: []const u8, wfm: []const u8) !Reply {
+    /// Load the module as workflow `id` with `saveData` as given, so its
+    /// step events carry data and become durable (spec 9.2). Identical bytes
+    /// share the module index of `--module`, so the route of the test still
+    /// points at it.
+    fn loadWorkflow(b: *Bed, id: []const u8, wfm: []const u8, save_data: bool) !Reply {
         const enc = std.base64.standard.Encoder;
         const b64 = try b.a.alloc(u8, enc.calcSize(wfm.len));
         _ = enc.encode(b64, wfm);
-        const body = try std.fmt.allocPrint(b.a, "{{\"versionId\":\"1\",\"module\":\"{s}\",\"active\":true,\"saveData\":true,\"webhookPrefix\":\"/w\"}}", .{b64});
+        const body = try std.fmt.allocPrint(b.a, "{{\"versionId\":\"1\",\"module\":\"{s}\",\"active\":true,\"saveData\":{s},\"webhookPrefix\":\"/w\"}}", .{ b64, if (save_data) "true" else "false" });
         const target = try std.fmt.allocPrint(b.a, "/_admin/workflows/{s}", .{id});
         return request(b.a, b.admin, "PUT", target, secret, body);
     }
@@ -474,7 +478,7 @@ test "outbox: the live stream keeps the order in which the events were published
     defer bed.deinit();
     const wfm = try tracedProgram(a);
     try bed.serve(&.{});
-    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, true)).status);
     // The client connects first: it then sees the lines as they are made.
     try bed.streamFirst(null, null, 5_000);
     // One manual run with tracing: started, trace, step started, step
@@ -503,6 +507,142 @@ test "outbox: the live stream keeps the order in which the events were published
     try t.expectEqualStrings("finished", types[4]);
 }
 
+test "outbox: a step and a trace line of an execution with data stay until the ack" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    // A ring of one small line: a best-effort step or trace line would soon
+    // drop, and these must not drop at all.
+    bed.queue_bytes = 64;
+    const wfm = try tracedProgram(a);
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, true)).status);
+    // `saveData` and `trace: true`: the execution has the data flag.
+    const run = try bed.adminCall("POST", "/_admin/executions", "{\"workflowId\":\"w1\",\"executionId\":\"77\",\"trigger\":{},\"trace\":true}");
+    try std.testing.expectEqual(@as(u16, 202), run.status);
+    // started, trace, step started, step completed, finished: five records.
+    try std.testing.expectEqual(@as(u64, 5), bed.lastSeq());
+    const text = try bed.openStream(0, 5);
+    const t = std.testing;
+    var types: [8][]const u8 = undefined;
+    var seqs: [8]u64 = undefined;
+    var n: usize = 0;
+    var it = std.mem.splitScalar(u8, text, '\n');
+    while (it.next()) |line| {
+        if (line.len == 0 or n == types.len) continue;
+        types[n] = kindOf(line);
+        const at = std.mem.indexOf(u8, line, "\"seq\":") orelse return error.NoSeq;
+        seqs[n] = std.fmt.parseInt(u64, digitsAt(line, at + 6), 10) catch return error.NoSeq;
+        n += 1;
+    }
+    try t.expectEqual(@as(usize, 5), n);
+    try t.expectEqualStrings("started", types[0]);
+    try t.expectEqualStrings("trace", types[1]);
+    try t.expectEqualStrings("step", types[2]);
+    try t.expectEqualStrings("step", types[3]);
+    try t.expectEqualStrings("finished", types[4]);
+    for (seqs[0..n], 0..) |sq, i| try t.expectEqual(@as(u64, @intCast(i + 1)), sq);
+    // Nothing dropped: no line of this execution was in the ring.
+    try t.expectEqual(@as(usize, 0), std.mem.count(u8, text, "\"type\":\"dropped\""));
+    // A restart before the ack sends every one of the five again.
+    bed.stopNow();
+    try bed.serve(&.{wfm});
+    const again = try bed.openStream(0, 5);
+    try t.expectEqual(@as(usize, 5), std.mem.count(u8, again, "\"seq\":"));
+    const trace_at = std.mem.indexOf(u8, again, "\"type\":\"trace\"") orelse return error.NoTrace;
+    const finish_at = std.mem.indexOf(u8, again, "\"type\":\"finished\"") orelse return error.NoFinish;
+    try t.expect(trace_at < finish_at);
+}
+
+test "outbox: saveData makes the step lines durable without trace" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    bed.queue_bytes = 64;
+    const wfm = try respondProgram(a);
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, true)).status);
+    bed.hook_path = "/w/hook";
+    try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
+    // started, step started, step completed, finished: four records, also
+    // without `trace`.
+    try std.testing.expectEqual(@as(u64, 4), bed.lastSeq());
+    const text = try bed.openStream(0, 4);
+    const t = std.testing;
+    var types: [8][]const u8 = undefined;
+    var seq: u64 = 0;
+    var n: usize = 0;
+    var it = std.mem.splitScalar(u8, text, '\n');
+    while (it.next()) |line| {
+        if (line.len == 0 or n == types.len) continue;
+        types[n] = kindOf(line);
+        const at = std.mem.indexOf(u8, line, "\"seq\":") orelse return error.NoSeq;
+        seq += 1;
+        try t.expectEqual(seq, std.fmt.parseInt(u64, digitsAt(line, at + 6), 10) catch 0);
+        n += 1;
+    }
+    try t.expectEqual(@as(usize, 4), n);
+    try t.expectEqualStrings("started", types[0]);
+    try t.expectEqualStrings("step", types[1]);
+    try t.expectEqualStrings("step", types[2]);
+    try t.expectEqualStrings("finished", types[3]);
+    // The step lines carry the node data, as n8n saves it.
+    try t.expect(std.mem.indexOf(u8, text, "\"args\":") != null);
+    try t.expect(std.mem.indexOf(u8, text, "\"result\":") != null);
+}
+
+test "outbox: without saveData the step lines of the sample are best effort" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var bed = try Bed.init(a);
+    defer bed.deinit();
+    // A ring that holds a few step lines only: the later ones drop.
+    bed.queue_bytes = 64;
+    // The sample makes the step lines of an execution without data go out.
+    bed.step_sample = 1;
+    const wfm = try respondProgram(a);
+    try bed.serve(&.{});
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, false)).status);
+    bed.hook_path = "/w/hook";
+    try bed.streamFirst(null, null, 5_000);
+    var i: u32 = 0;
+    while (i < 3) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook("{\"id\":7}")).status);
+    // Only started and finished are durable for each run.
+    try std.testing.expectEqual(@as(u64, 6), bed.lastSeq());
+    const text = try bed.readStream(1000, 500);
+    const t = std.testing;
+    var seq: u64 = 0;
+    var durable: u32 = 0;
+    var steps: u32 = 0;
+    var dropped: u32 = 0;
+    var it = std.mem.splitScalar(u8, text, '\n');
+    while (it.next()) |line| {
+        if (line.len == 0) continue;
+        if (std.mem.eql(u8, kindOf(line), "dropped")) {
+            dropped += 1;
+            continue;
+        }
+        const at = std.mem.indexOf(u8, line, "\"seq\":") orelse {
+            // A step line of an execution without data: no seq.
+            try t.expectEqualStrings("step", kindOf(line));
+            steps += 1;
+            continue;
+        };
+        seq += 1;
+        try t.expectEqual(seq, std.fmt.parseInt(u64, digitsAt(line, at + 6), 10) catch 0);
+        durable += 1;
+    }
+    try t.expectEqual(@as(u32, 6), durable);
+    // Some of the step lines were kept, and some dropped.
+    try t.expect(steps > 0);
+    try t.expect(dropped >= 1);
+}
+
 test "outbox: a slow client still gets the lines in publication order" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -514,7 +654,7 @@ test "outbox: a slow client still gets the lines in publication order" {
     // The 40 KB trigger lines of the runs must fit the outbox.
     bed.outbox_bytes = 8 << 20;
     try bed.serve(&.{});
-    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, true)).status);
     bed.hook_path = "/w/hook";
     // A client with a 1 KB receive buffer that reads nothing yet, and runs
     // whose `started` lines are 40 KB each: the shard's write fills the socket
@@ -525,7 +665,9 @@ test "outbox: a slow client still gets the lines in publication order" {
     const body = try std.fmt.allocPrint(a, "{{\"id\":7,\"pad\":\"{s}\"}}", .{pad});
     var i: u32 = 0;
     while (i < runs) : (i += 1) try std.testing.expectEqual(@as(u16, 200), (try bed.webhook(body)).status);
-    try std.testing.expectEqual(@as(u64, 2 * runs), bed.lastSeq());
+    // `saveData`: started, step started, step completed and finished, each
+    // one durable (spec 9.2).
+    try std.testing.expectEqual(@as(u64, 4 * runs), bed.lastSeq());
     const text = try bed.readStream(4 * runs, 10_000);
     const t = std.testing;
     // For each execution: started, then its step lines, then finished.
@@ -558,8 +700,10 @@ test "outbox: a slow client still gets the lines in publication order" {
             @memset(open[still..], "");
             continue;
         }
-        // A step line: its execution must not be finished yet.
+        // A step line: its execution must not be finished yet. The workflow
+        // has `saveData`, so the line is durable and carries its seq.
         try t.expect(std.mem.eql(u8, kind, "step"));
+        try t.expect(std.mem.indexOf(u8, line, "\"seq\":") != null);
         var open_run = false;
         for (open) |o| {
             if (o.len > 0 and std.mem.eql(u8, o, exec)) open_run = true;
@@ -576,12 +720,14 @@ test "outbox: a dropped best-effort line does not hold back the durable lines af
     const a = arena.allocator();
     var bed = try Bed.init(a);
     defer bed.deinit();
-    // A ring smaller than one step line: each one drops at once.
+    // A ring that holds a few step lines only: the later ones drop.
     bed.queue_bytes = 64;
+    // No `saveData`, so the step lines of the sample are best effort.
+    bed.step_sample = 1;
     const runs: u32 = 12;
     const wfm = try respondProgram(a);
     try bed.serve(&.{});
-    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, false)).status);
     bed.hook_path = "/w/hook";
     try bed.streamFirst(null, null, 5_000);
     var i: u32 = 0;
@@ -639,10 +785,11 @@ test "outbox: a slow stream client gets every durable line, and only best-effort
     // the durable lines must not.
     bed.queue_bytes = 1024;
     const wfm = try respondProgram(a);
-    // The workflow comes from the admin API, as n8n loads it: `saveData`
-    // makes its step events go out, and only those may be dropped.
+    // The workflow has no `saveData`: the outbox holds only started and
+    // finished, and the step lines of the sample are best effort.
+    bed.step_sample = 1;
     try bed.serve(&.{});
-    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm)).status);
+    try std.testing.expectEqual(@as(u16, 200), (try bed.loadWorkflow("w1", wfm, false)).status);
     bed.hook_path = "/w/hook";
     // No client reads the stream while the runs go, so the step lines of
     // these runs fill the small ring.

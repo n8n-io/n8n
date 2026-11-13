@@ -1976,6 +1976,21 @@ pub const Runner = struct {
         r.dur_seq = seq;
     }
 
+    /// A `step` or `trace` line (spec 9.2). The line of an execution with
+    /// data is durable: n8n saves the node data of that execution, so the
+    /// line stays in the outbox until n8n acks it. The lines of a watched or
+    /// sampled execution without data stay best effort.
+    fn publishNodeData(r: *Runner, a: core.Action, ev: admin.Event) !void {
+        std.debug.assert(ev == .step or ev == .trace);
+        if (!a.data) return r.publish(ev);
+        r.publishDurable(ev, syncOf(a.durability)) catch |e| switch (e) {
+            // More bytes than one record holds is a limit: the line goes out
+            // best effort, so a large result does not stop the execution.
+            error.EventTooLarge => r.publish(ev),
+            else => return e,
+        };
+    }
+
     /// The sync policy of a record: the durability tier of its workflow.
     fn syncOf(d: core.Durability) outbox.Sync {
         return switch (d) {
@@ -2003,12 +2018,12 @@ pub const Runner = struct {
                 const ss: core.StepStatus = @fromBackingInt(a.aux);
                 switch (ss) {
                     .waiting => try r.publishDurable(.{ .waiting = .{ .exec = exec, .step = step, .wait_till = @bitCast(a.conn) } }, syncOf(a.durability)),
-                    .started => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = "started", .args = a.payload } }),
-                    .completed => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = "completed", .result = a.payload } }),
-                    .failed, .retrying => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = admin.stepStatusName(ss), .err = if (a.payload.len > 0) a.payload else null } }),
+                    .started => try r.publishNodeData(a, .{ .step = .{ .exec = exec, .step = step, .status = "started", .args = a.payload } }),
+                    .completed => try r.publishNodeData(a, .{ .step = .{ .exec = exec, .step = step, .status = "completed", .result = a.payload } }),
+                    .failed, .retrying => try r.publishNodeData(a, .{ .step = .{ .exec = exec, .step = step, .status = admin.stepStatusName(ss), .err = if (a.payload.len > 0) a.payload else null } }),
                 }
             },
-            .trace_items => r.publish(.{ .trace = .{ .exec = exec, .item = a.payload } }),
+            .trace_items => try r.publishNodeData(a, .{ .trace = .{ .exec = exec, .item = a.payload } }),
             .dispatch => if (a.effect_kind == .approval) {
                 const m = st.moduleAt(a.module);
                 var url: [128]u8 = undefined;

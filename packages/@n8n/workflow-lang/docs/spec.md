@@ -1197,11 +1197,14 @@ the live client, with the durable and the best-effort lines mixed as they
 were published.
 
 * Durable events (`started`, `waiting`, `finished`, `staticData` and
-  `staticDataRejected`) go to the outbox. A durable line carries the seq of
-  its event, and it goes out only after the best-effort lines that came
-  before it.
-* The best-effort lines (`step`, `trace`, `service`) wait in a queue bounded
-  by `--event-queue-mb` (64 MB) and 1,048,576 lines. Each line carries the
+  `staticDataRejected`) go to the outbox. So do the `step` and `trace` events
+  of an execution that has data: `trace: true`, or the workflow PUT had
+  `saveData: true` (the flag that makes n8n save the node data). A durable
+  line carries the seq of its event, and it goes out only after the
+  best-effort lines that came before it.
+* The best-effort lines (`step` and `trace` of an execution without data, and
+  `service`) wait in a queue bounded by `--event-queue-mb` (64 MB) and
+  1,048,576 lines. Each line carries the
   seq of the last durable event published before it (its floor): the stream
   sends it only after that event. A line that the queue drops is skipped, and
   the lines after it still go. When the queue is full, the oldest `step` and
@@ -1237,7 +1240,9 @@ to the log dir before its line can reach the stream:
   `POST /_admin/executions` answer 503 `{ "error": "the event outbox is full" }`,
   and a due schedule fire is skipped with a warning in the output of the shard.
   Resumes, retries and running executions go on: a running execution can pass
-  the limit with its own events. The limit is for new work.
+  the limit with its own events. The limit is for new work. A `step` or
+  `trace` line larger than one record (64 MB) is the one exception: it goes
+  out best effort, so that its execution goes on.
 * n8n stores the last seq that it handled for each shard and sends it as
   `after=` when it connects again. It acks a seq only after its dispatcher
   handled that event, its database writes included, and it acks in batches.
