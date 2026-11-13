@@ -5711,5 +5711,201 @@
 				"Count": 4
 			}
 		]
+	},
+	"googleSheets sheet.append v4.0 define below without a schema": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "0",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!3:3",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sheet1!3:3",
+					"values": [["2024-01-01", "ada@example.com", "Ada"]]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"date": "2024-01-01",
+				"email": "ada@example.com",
+				"name": "Ada"
+			}
+		]
+	},
+	"googleSheets sheet.append v4.4 define below without a schema": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "`columns.schema` is required when `columns.mappingMode` is `defineBelow`"
+	},
+	"googleSheets sheet.append v4.7 columns in another order and one more in the sheet": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "0",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/Sheet1!3:3",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sheet1!3:3",
+					"values": [["c1", "a1", "b1", "e1", "d1", ""]]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"A": "a1",
+				"B": "b1",
+				"C": "c1",
+				"D": "d1",
+				"E": "e1"
+			}
+		]
+	},
+	"googleSheets sheet.append v4.7 with a column that the sheet no longer has": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/doc1/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"error": "Column names were updated after the node's setup"
 	}
 }

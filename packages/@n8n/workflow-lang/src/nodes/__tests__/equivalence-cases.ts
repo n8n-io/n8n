@@ -6,6 +6,7 @@
  */
 import type { EquivalenceCase } from './equivalence.ts';
 import { DATA_TABLE_CASES } from './data-table-cases.ts';
+import { SHEETS_APPEND_CASES } from './google-sheets-append-cases.ts';
 import { SHEETS_UPSERT_CASES } from './google-sheets-upsert-cases.ts';
 
 const rl = (value: string) => ({ __rl: true, mode: 'id', value });
@@ -2511,4 +2512,5 @@ export const EQUIVALENCE_CASES: EquivalenceCase[] = [
 	...handPorted,
 	...DATA_TABLE_CASES,
 	...SHEETS_UPSERT_CASES,
+	...SHEETS_APPEND_CASES,
 ];

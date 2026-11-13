@@ -145,9 +145,12 @@ const ADAPTERS: Record<
 			const missing = typeof key === 'string' && key !== 'row_number' && !(key in value);
 			return auto || missing ? { ...p, sheetsHost: true } : p;
 		}
-		// Append checks the columns of the sheet from version 4.4 (checkForSchemaChanges).
+		// Append checks the columns of the sheet from version 4.4 (checkForSchemaChanges),
+		// and sends the cells as RAW before version 4.1 (cellFormatDefault).
 		if ((p.resource ?? 'sheet') === 'sheet' && p.operation === 'append') {
-			return version >= 4.4 ? { ...p, schemaCheck: true } : p;
+			const out: Record<string, unknown> = version >= 4.4 ? { ...p, schemaCheck: true } : { ...p };
+			if (version < 4.1) out.legacyCellFormat = true;
+			return out;
 		}
 		// Append or update: before version 4.1 the cell format default is RAW, and before
 		// version 4 the parameters differ, so those versions run in the host.
