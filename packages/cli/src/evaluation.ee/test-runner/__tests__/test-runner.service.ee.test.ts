@@ -581,7 +581,7 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
 		});
 
-		test('should call workflowRunner.run with correct data in queue execution mode and manual offload', async () => {
+		test('should call workflowRunner.run with correct data in queue execution mode', async () => {
 			const queueModeConfig = mockInstance(ExecutionsConfig, { mode: 'queue' });
 			const testRunnerService = new TestRunnerService(
 				logger,
@@ -605,7 +605,6 @@ describe('TestRunnerService', () => {
 				ownershipService,
 				txRunner,
 			);
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
 			// Create workflow with a trigger node
 			const triggerNodeName = 'Dataset Trigger';
@@ -652,7 +651,7 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 
-			// In queue mode with offloading, executionData.executionData should not exist
+			// In queue mode, executionData.executionData should not exist
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
 
@@ -674,9 +673,6 @@ describe('TestRunnerService', () => {
 				operation: 'getRows',
 			});
 			expect(runCallArg).toHaveProperty('forceFullExecutionData', true);
-
-			// after reset
-			delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		});
 
 		test('should wait for execution to finish and return result', async () => {

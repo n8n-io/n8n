@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { binaryToBuffer } from '@n8n/backend-network';
 import { FsByteStore } from '@n8n/blob-storage';
 import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
@@ -7,7 +6,6 @@ import type { StringValue as TimeUnitValue } from 'ms';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
@@ -52,7 +50,7 @@ export class BinaryDataService {
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
 		if (!binaryData.id) {
-			throw new UnexpectedError('URL signing is not available in memory mode');
+			throw new UnexpectedError('URL signing is not available for inline binary data');
 		}
 
 		const signingPayload: BinaryData.SigningPayload = {
@@ -74,16 +72,7 @@ export class BinaryDataService {
 		binaryData: IBinaryData,
 		filePath: string,
 	) {
-		const manager = this.managers[this.mode];
-
-		if (!manager) {
-			const { size } = await stat(filePath);
-			binaryData.fileSize = prettyBytes(size);
-			binaryData.bytes = size;
-			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
-
-			return binaryData;
-		}
+		const manager = this.getManager(this.mode);
 
 		const metadata = {
 			fileName: binaryData.fileName,
@@ -105,16 +94,7 @@ export class BinaryDataService {
 		bufferOrStream: Buffer | Readable,
 		binaryData: IBinaryData,
 	) {
-		const manager = this.managers[this.mode];
-
-		if (!manager) {
-			const buffer = await binaryToBuffer(bufferOrStream);
-			binaryData.data = buffer.toString(BINARY_ENCODING);
-			binaryData.fileSize = prettyBytes(buffer.length);
-			binaryData.bytes = buffer.length;
-
-			return binaryData;
-		}
+		const manager = this.getManager(this.mode);
 
 		const metadata = {
 			fileName: binaryData.fileName,

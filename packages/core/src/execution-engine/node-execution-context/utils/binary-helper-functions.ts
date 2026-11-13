@@ -1,5 +1,6 @@
 import { binaryToBuffer, binaryToString } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import chardet from 'chardet';
 import { IncomingMessage } from 'http';
 import get from 'lodash/get';
@@ -21,7 +22,6 @@ import {
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
-import { UserError, UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -367,7 +367,4 @@ export const getBinaryHelperFunctions = (
 		await prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
 		await setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
-	copyBinaryFile: async () => {
-		throw new UserError('`copyBinaryFile` has been removed. Please upgrade this node.');
-	},
 });

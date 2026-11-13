@@ -1734,7 +1734,7 @@ describe('JobProcessor', () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'Tool HTTP Request',
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0] as [number, number],
@@ -1772,7 +1772,7 @@ describe('JobProcessor', () => {
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: {
-					name: 'toolHttpRequest',
+					name: 'httpRequestTool',
 					outputs: [NodeConnectionTypes.AiTool],
 					properties: [],
 				},
@@ -2145,7 +2145,7 @@ describe('JobProcessor', () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'Tool HTTP Request',
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0] as [number, number],
@@ -2190,7 +2190,7 @@ describe('JobProcessor', () => {
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: {
-					name: 'toolHttpRequest',
+					name: 'httpRequestTool',
 					outputs: [NodeConnectionTypes.AiTool],
 					properties: [],
 				},
@@ -3848,7 +3848,6 @@ describe('JobProcessor', () => {
 			const relay = new WebhookResponseRelay(
 				logger,
 				binaryDataService,
-				mock<BinaryDataConfig>({ mode }),
 				mock<ExecutionsConfig>({
 					webhookResponseRelaySizeMaxMiB,
 					webhookResponseRelayOffloadEnabled: true,
@@ -3862,7 +3861,7 @@ describe('JobProcessor', () => {
 		const processJobAndCaptureHooks = async (
 			webhookResponseRelaySizeMaxMiB: number,
 			jobData: Partial<Job['data']> = {},
-			mode: BinaryDataConfig['mode'] = 'default',
+			mode: BinaryDataConfig['mode'] = 'filesystem',
 		) => {
 			const { relay, binaryDataService } = buildRelay(webhookResponseRelaySizeMaxMiB, mode);
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -3939,19 +3938,6 @@ describe('JobProcessor', () => {
 					}),
 				}),
 			);
-		});
-
-		it('should refuse to relay a response over the size limit without a store', async () => {
-			const { hooks, job } = await processJobAndCaptureHooks(1);
-			const relayedBefore = (job.progress as Mock).mock.calls.length;
-
-			await expect(
-				hooks.runHook('sendResponse', [
-					{ body: { blob: 'x'.repeat(2 * 1024 * 1024) }, headers: {}, statusCode: 200 },
-				]),
-			).rejects.toThrow(WebhookResponseTooLargeError);
-
-			expect((job.progress as Mock).mock.calls).toHaveLength(relayedBefore);
 		});
 
 		it('should offload an MCP response over the size limit and relay a reference', async () => {

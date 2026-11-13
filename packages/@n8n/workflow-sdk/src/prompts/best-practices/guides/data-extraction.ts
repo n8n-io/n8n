@@ -31,7 +31,7 @@ When working with large amounts of information, n8n's display can be hard to vie
 
 ## Large File Handling
 
-Process files in batches or use sub-workflows to avoid memory issues. For large binary files, consider enabling filesystem mode (N8N_DEFAULT_BINARY_DATA_MODE=filesystem) if self-hosted, to store binary data on disk instead of memory.
+Process files in batches or use sub-workflows to avoid memory issues. Binary data is stored on disk (filesystem mode) by default when self-hosted; N8N_DEFAULT_BINARY_DATA_MODE can select another store such as s3.
 
 Processing too many items or large files at once can crash your instance. Always batch or split processing for large datasets to manage memory effectively.
 
@@ -59,10 +59,6 @@ Pitfalls:
 
 - Ensure the correct binary field name is specified in the node configuration
 - Verify file format compatibility before extraction
-
-### HTML Extract (n8n-nodes-base.htmlExtract)
-
-Purpose: Scrapes data from web pages using CSS selectors
 
 ### Split Out (n8n-nodes-base.splitOut)
 
@@ -101,6 +97,15 @@ Pitfalls:
 ### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Fetches data from APIs or web pages for extraction
+
+### HTML (n8n-nodes-base.html)
+
+Purpose: Extracts data from HTML returned by an HTTP Request
+
+Configuration:
+
+- Select the Extract HTML Content operation
+- JavaScript-rendered pages may return empty content because the HTTP Request node receives the initial HTML only
 
 ### Code (n8n-nodes-base.code)
 

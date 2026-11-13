@@ -3,7 +3,6 @@ import type {
 	PromotionResource,
 	PromotionResourceDependency,
 } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -16,7 +15,6 @@ import {
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
-import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { FolderService } from '@/services/folder.service';
 import {
@@ -32,13 +30,7 @@ import {
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import {
-	plannedChanges,
-	previewRevision,
-	toPreviewCheck,
-	withoutTagIds,
-	withoutTags,
-} from './apply-preview';
+import { plannedChanges, previewRevision, toPreviewCheck } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
@@ -95,7 +87,6 @@ export class ApplyPreviewService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderService: FolderService,
 		private readonly localEntities: LocalPackageEntities,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -142,13 +133,6 @@ export class ApplyPreviewService {
 		const check = plan
 			? this.check(plan, inventory, selection, moves)
 			: projectNotOnBranch(projectId, instance);
-		const manifest = plan?.manifest ?? (await reader.readManifest());
-		const tagsDisabled = this.globalConfig.tags.disabled;
-		const workflowPaths = new Set(
-			tagsDisabled
-				? (manifest?.workflows ?? []).map(({ target }) => entityFilePath('workflows', target))
-				: [],
-		);
 		const { resources, dependencies } = buildPreview({
 			operation: { direction: 'apply', planned: plan && plannedChanges(plan) },
 			projectIds: [projectId],
@@ -157,13 +141,11 @@ export class ApplyPreviewService {
 				blobByPath: new Map(instance.files.map(({ path, blobSha }) => [path, blobSha])),
 			},
 			desired: {
-				manifest: manifest && tagsDisabled ? withoutTags(manifest) : manifest,
+				manifest: plan?.manifest ?? (await reader.readManifest()),
 				blobByPath: new Map(
 					[...files].map(([path, content]) => [
 						`${PACKAGE_SUBFOLDER}/${path}`,
-						gitBlobSha(
-							workflowPaths.has(path) ? this.workflowFileForApply(content.toString()) : content,
-						),
+						gitBlobSha(content),
 					]),
 				),
 			},
@@ -171,11 +153,6 @@ export class ApplyPreviewService {
 		await this.addLocalState(resources);
 
 		return { resources, dependencies, check, revision: previewRevision(resources, check) };
-	}
-
-	/** A branch workflow file as Apply writes it. With workflow tags disabled, Apply keeps the local tags. */
-	workflowFileForApply(content: string): string {
-		return this.globalConfig.tags.disabled ? withoutTagIds(content) : content;
 	}
 
 	/**

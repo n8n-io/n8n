@@ -37,7 +37,7 @@ export interface ProviderRequestInfo {
 }
 
 // Generated image bytes must be REAL: workflows routinely pipe them into
-// image-processing nodes (Edit Image → GraphicsMagick), which crash on a
+// image-processing nodes such as Edit Image, which crash on a
 // truncated or 1×1 placeholder ("Insufficient image data"). The model cannot
 // author valid image bytes, so every b64_json is substituted with a decodable
 // drawable canvas.

@@ -7,7 +7,6 @@ import { fireEvent } from '@testing-library/vue';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
@@ -17,7 +16,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 describe('CanvasRunWorkflowButton', () => {
 	const renderComponent = createComponentRenderer(CanvasRunWorkflowButton, {
 		props: {
-			triggerNodes: [createTestNode({ type: MANUAL_CHAT_TRIGGER_NODE_TYPE })],
+			triggerNodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE })],
 			getNodeType: () => null,
 		},
 	});

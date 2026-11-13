@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-self-healing",
-  "version": "0.4.0",
+  "version": "1.2.1",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
