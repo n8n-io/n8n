@@ -1457,7 +1457,7 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `credentials-created` event', () => {
+		it('should log on `credentials-created` event with `publicApi` as a boolean', () => {
 			const event: RelayEventMap['credentials-created'] = {
 				credentialName: 'My GitHub account',
 				credentialDescriptionLength: 0,
@@ -1470,7 +1470,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				credentialType: 'githubApi',
 				credentialId: 'cred456',
-				publicApi: false,
+				publicApi: 'editor_ui',
 				projectId: 'proj789',
 				projectType: 'Personal',
 			};
@@ -1487,7 +1487,7 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'global:owner',
 					credentialType: 'githubApi',
 					credentialId: 'cred456',
-					publicApi: false,
+					publicApi: true,
 					projectId: 'proj789',
 					projectType: 'Personal',
 				},
@@ -2154,7 +2154,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 			};
 
 			eventService.emit('public-api-key-created', event);
@@ -2180,7 +2180,7 @@ describe('LogStreamingEventRelay', () => {
 					lastName: 'User',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				publicApi: true,
+				publicApi: false,
 				isOwn: true,
 			};
 

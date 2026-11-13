@@ -805,7 +805,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				credentialType,
 				credentialId,
-				publicApi,
+				publicApi: publicApi !== false,
 				projectId,
 				projectType,
 				isDynamic,
@@ -838,7 +838,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.data.read',
-			payload: { ...user, credentialType, credentialId, publicApi },
+			payload: { ...user, credentialType, credentialId, publicApi: publicApi !== false },
 		});
 	}
 
@@ -853,7 +853,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-list-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.list.data.read',
-			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
+			payload: {
+				...user,
+				credentialIds,
+				credentialCount,
+				chunk,
+				chunkCount,
+				publicApi: publicApi !== false,
+			},
 		});
 	}
 
