@@ -1,22 +1,15 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type { TSESTree } from '@typescript-eslint/utils';
-import { createRequire } from 'node:module';
 
 import {
 	isNodeTypeClass,
 	findClassProperty,
 	findObjectProperty,
 	createRule,
+	NodeConnectionTypes,
 } from '../utils/index.js';
 
-// n8n-workflow's ESM dist uses bare module specifiers that Node's native ESM
-// loader cannot resolve. Loading via CJS (createRequire) sidesteps this.
-const { NodeConnectionTypes } = createRequire(import.meta.url)('n8n-workflow') as {
-	NodeConnectionTypes: Record<string, string>;
-};
-
 // Reverse map: string value (e.g. 'main') → enum key name (e.g. 'Main').
-// Derived directly from NodeConnectionTypes so it stays in sync automatically.
 const VALUE_TO_ENUM_KEY: Record<string, string> = Object.fromEntries(
 	Object.entries(NodeConnectionTypes).map(([key, value]) => [value, key]),
 );
