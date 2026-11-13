@@ -2,7 +2,12 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { EngineRuntime, ExecutionResponseSender, LifecycleEventCallback } from '@n8n/engine';
+import type {
+	EngineRuntime,
+	EngineWorkQueues,
+	ExecutionResponseSender,
+	LifecycleEventCallback,
+} from '@n8n/engine';
 import {
 	AllowAllAdmittance,
 	createDataSource,
@@ -85,11 +90,12 @@ export class EngineV2Runtime {
 
 	async init(
 		senders: EngineV2ChannelSenders = { responseSender: noopExecutionResponseSender },
+		queues?: EngineWorkQueues,
 	): Promise<void> {
 		try {
 			await this.initDb();
 
-			this.initEngine(senders);
+			this.initEngine(senders, queues);
 
 			await this.initServer();
 		} catch (error) {
@@ -118,7 +124,10 @@ export class EngineV2Runtime {
 		await this.dataSource.runMigrations();
 	}
 
-	private initEngine({ responseSender, lifecycleEventSender }: EngineV2ChannelSenders): void {
+	private initEngine(
+		{ responseSender, lifecycleEventSender }: EngineV2ChannelSenders,
+		queues: EngineWorkQueues | undefined,
+	): void {
 		assert(this.dataSource, 'Engine v2 cannot start without a data source');
 
 		const stopping = new AbortController();
@@ -133,6 +142,7 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
+			queues,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)

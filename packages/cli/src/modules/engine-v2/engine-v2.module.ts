@@ -16,9 +16,9 @@ import { randomBytes } from 'node:crypto';
  * Main-only. In-process mode is regular mode only: the in-process engine uses
  * `InMemoryWorkQueue`, so its work does not survive the process and cannot be
  * shared with other mains or workers. In `remote` mode (`N8N_ENGINE_MODE`) a
- * separate `n8n engine` process hosts the data plane; this module then starts
- * only the control plane server, the client that dials the engine, and the Redis
- * subscriber of the execution channel.
+ * separate `n8n engine` process hosts the data plane, with its work queues in
+ * Redis; this module then starts only the control plane server, the client that
+ * dials the engine, and the Redis subscriber of the execution channel.
  */
 @BackendModule({ name: 'engine-v2', instanceTypes: ['main'] })
 export class EngineV2Module implements ModuleInterface {

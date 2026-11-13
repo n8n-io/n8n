@@ -4,11 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
-import { TypeOrmStepStore, type EngineStores } from '../../database';
+import { TypeOrmExecutionStore, TypeOrmStepStore, type EngineStores } from '../../database';
+import { generateId } from '../../database/generate-id';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
-import { InMemoryWorkQueue } from '../../queue';
+import { InMemoryWorkQueue, type OrchestrationMessage, type StepMessage } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
+
+const fakeQueue = <T>() => ({
+	publish: vi.fn(async (_message: T) => {}),
+	start: vi.fn(),
+	stop: vi.fn(async () => {}),
+});
 
 vi.mock('../../queue', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../../queue')>();
@@ -182,6 +189,61 @@ describe('createEngineRuntime', () => {
 		expect(InMemoryWorkQueue).toHaveBeenCalledTimes(2);
 		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(1, expect.anything(), { concurrency: 2 });
 		expect(InMemoryWorkQueue).toHaveBeenNthCalledWith(2, expect.anything(), { concurrency: 3 });
+	});
+
+	it('runs on the queues the host gives it and builds none of its own', async () => {
+		vi.mocked(InMemoryWorkQueue).mockClear();
+		const executionId = generateId();
+		vi.spyOn(TypeOrmExecutionStore.prototype, 'createExecution').mockResolvedValue();
+		// The wait sweeper publishes to the step queue without a database.
+		vi.spyOn(TypeOrmStepStore.prototype, 'nextWaitDeadline').mockResolvedValue(null);
+		vi.spyOn(TypeOrmStepStore.prototype, 'resumeDueSteps')
+			.mockResolvedValueOnce([{ id: 'step-1', executionId }])
+			.mockResolvedValue([]);
+		const orchestration = fakeQueue<OrchestrationMessage>();
+		const step = fakeQueue<StepMessage>();
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			waitSweepIntervalMs: 1,
+			queues: { orchestration, step },
+		});
+		engine.start();
+
+		try {
+			await request(engine.app)
+				.post('/api/workflow-executions')
+				.set('Authorization', `Bearer ${token}`)
+				.send({
+					workflowId: 'wf-1',
+					graph: { nodes: [{ id: 'trigger', name: 'Trigger', type: 'trigger' }], edges: [] },
+					workflow: {},
+					executionId,
+					callerContext: { hostMode: 'trigger' },
+				})
+				.expect(201);
+			await vi.waitFor(() =>
+				expect(step.publish).toHaveBeenCalledWith({
+					type: 'step:ready',
+					executionId,
+					stepId: 'step-1',
+				}),
+			);
+			expect(orchestration.publish).toHaveBeenCalledExactlyOnceWith({
+				type: 'execution:enqueued',
+				executionId,
+			});
+			expect(orchestration.start).toHaveBeenCalledOnce();
+			expect(step.start).toHaveBeenCalledOnce();
+		} finally {
+			await engine.stop();
+		}
+
+		expect(orchestration.stop).toHaveBeenCalledOnce();
+		expect(step.stop).toHaveBeenCalledOnce();
+		expect(InMemoryWorkQueue).not.toHaveBeenCalled();
 	});
 
 	it('starts and stops both workers', async () => {

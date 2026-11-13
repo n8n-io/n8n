@@ -271,7 +271,8 @@ remote mode and dials the engine over the stack network. The engine container
 runs `n8n engine`, has no `DB_*` env and no encryption key, resolves
 credentials through the main's control plane server, and keeps its own
 `n8n_engine` database on the dedicated `engine-postgres` service. Execution
-responses travel back to the main over the stack's Redis. Under that stack
+responses travel back to the main over the stack's Redis, and the engine keeps
+its work queues there too. Under that stack
 every workflow the API helpers create gets `settings.engineType = 'v2'`, so a
 spec proves parity without changes.
 

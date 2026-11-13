@@ -28,11 +28,33 @@ import {
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
-import type { OrchestrationMessage, StepMessage } from '../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../queue';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
 
-export interface EngineRuntimeOptions {
+/** The two queues the engine runs on. */
+export interface EngineWorkQueues {
+	orchestration: WorkQueue<OrchestrationMessage>;
+	step: WorkQueue<StepMessage>;
+}
+
+/** A host that gives the queues has already set their concurrency. */
+type EngineQueueOptions =
+	| {
+			/**
+			 * The queues to run on. The runtime starts and stops them. The host
+			 * closes their connections.
+			 */
+			queues: EngineWorkQueues;
+			concurrency?: never;
+	  }
+	| {
+			queues?: never;
+			/** How many handlers each in-memory queue runs at once. Defaults to 1 each. */
+			concurrency?: { step?: number; orchestration?: number };
+	  };
+
+interface EngineRuntimeBaseOptions {
 	/** The data plane database, already initialized and migrated. */
 	dataSource: DataSource;
 	admittance: AdmittanceService;
@@ -62,9 +84,10 @@ export interface EngineRuntimeOptions {
 	resumeSecret?: string;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
-	/** How many handlers each queue runs at once. Defaults to 1 each. */
-	concurrency?: { step?: number; orchestration?: number };
 }
+
+/** Without `queues`, the engine runs on in-memory queues. */
+export type EngineRuntimeOptions = EngineRuntimeBaseOptions & EngineQueueOptions;
 
 /** A built engine, ready for a host to serve. */
 export interface EngineRuntime {
@@ -93,6 +116,7 @@ export function createEngineRuntime({
 	externalDependencies,
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
+	queues,
 	concurrency = {},
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
@@ -105,10 +129,12 @@ export function createEngineRuntime({
 		);
 	}
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
-		concurrency: concurrency.orchestration,
-	});
-	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
+	const { orchestration: orchestrationQueue, step: stepQueue } = queues ?? {
+		orchestration: new InMemoryWorkQueue<OrchestrationMessage>(logger, {
+			concurrency: concurrency.orchestration,
+		}),
+		step: new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step }),
+	};
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
@@ -190,8 +216,9 @@ export function createEngineRuntime({
 
 		stop: async () => {
 			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
-			// only for whatever it is mid-handling; anything queued behind it is
-			// dropped, since the in-memory queues die with the process.
+			// only for whatever it is mid-handling. Anything queued behind it is
+			// dropped from an in-memory queue, and stays in a Redis queue for the
+			// next consumer.
 
 			// The sweeper stops first: it feeds the step queue, so nothing lands
 			// there after the workers have drained.
