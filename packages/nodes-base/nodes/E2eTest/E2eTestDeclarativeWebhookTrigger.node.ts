@@ -74,6 +74,17 @@ export class E2eTestDeclarativeWebhookTrigger implements INodeType {
 					},
 				},
 			},
+			handler: {
+				ping: { when: '={{ $webhookRequest.body.type === "ping" }}', response: 'pong' },
+				filter: {
+					allowed: '={{ $parameter.events }}',
+					actual: '={{ $webhookRequest.body.event }}',
+				},
+				output: {
+					postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }],
+					includeMeta: true,
+				},
+			},
 		},
 	};
 }

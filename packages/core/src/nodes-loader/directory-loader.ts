@@ -26,8 +26,8 @@ import { UnrecognizedCredentialTypeError } from '@/errors/unrecognized-credentia
 import { UnrecognizedNodeTypeError } from '@/errors/unrecognized-node-type.error';
 import { createDeclarativePoll } from '@/execution-engine/declarative-poll';
 import {
+	createDeclarativeWebhook,
 	createDeclarativeWebhookMethods,
-	declarativeWebhook,
 } from '@/execution-engine/declarative-webhook';
 
 import {
@@ -422,7 +422,14 @@ export abstract class DirectoryLoader implements NodeLoader {
 				...nodeType.webhookMethods,
 				default: { ...createDeclarativeWebhookMethods(nodeType, trigger), ...own },
 			};
-			nodeType.webhook ??= declarativeWebhook;
+			nodeType.webhook ??= createDeclarativeWebhook(trigger);
+			// `includeMeta` emits the request headers, so redact the credential headers.
+			if (trigger.handler?.output?.includeMeta) {
+				const fields = nodeType.description.sensitiveOutputFields ?? [];
+				nodeType.description.sensitiveOutputFields = [
+					...new Set([...fields, 'headers.authorization', 'headers.cookie']),
+				];
+			}
 		}
 
 		const { properties, polling, supportsCORS } = nodeType.description;

@@ -1223,6 +1223,25 @@ describe('DirectoryLoader declarative webhook trigger', () => {
 		expect(nodeType.webhookMethods?.setup).toBe(ownSetup);
 	});
 
+	it('marks the credential headers as sensitive when includeMeta is set', () => {
+		const nodeType = makeWebhookTriggerNode();
+		const { description } = nodeType;
+		description.sensitiveOutputFields = ['headers.cookie', 'body.token'];
+		if (description.trigger?.type === 'webhook') {
+			description.trigger.handler = { output: { includeMeta: true } };
+		}
+
+		expect(load(nodeType).description.sensitiveOutputFields).toEqual([
+			'headers.cookie',
+			'body.token',
+			'headers.authorization',
+		]);
+	});
+
+	it('adds no sensitive fields without includeMeta', () => {
+		expect(load(makeWebhookTriggerNode()).description.sensitiveOutputFields).toBeUndefined();
+	});
+
 	it('does not add webhook methods to a node without a trigger', () => {
 		const nodeType = makeWebhookTriggerNode();
 		delete nodeType.description.trigger;
