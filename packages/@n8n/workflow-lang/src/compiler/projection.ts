@@ -65,6 +65,9 @@ export function project(
 	const trigger = builder.trigger(def.options);
 	const body = def.run.body;
 	let exits: Exit[] = [{ node: trigger, output: 0 }];
+	// The run's trigger parameter holds the trigger's items: lists built from it read the trigger.
+	const param = def.run.parameters[1];
+	if (param) builder.seedSource(param.name, { node: trigger, output: 0 });
 	if (body && ts.isBlock(body)) {
 		const moduleStatements = sf.statements.filter((s) => ts.isVariableStatement(s));
 		exits = builder.statements([...moduleStatements, ...body.statements], exits);
@@ -314,6 +317,11 @@ class CanvasBuilder {
 	private statement(st: ts.Statement, incoming: Exit[]): Exit[] {
 		if (ts.isBlock(st)) return this.statements(st.statements, incoming);
 		if (ts.isIfStatement(st)) {
+			// `if (list.length > 0) { … }` without an else is the converter's guard for an empty
+			// input (a step with "continue on fail"), as `list.length > 0 ? … : []` is: no If node,
+			// the body reads the list's step.
+			const guard = this.emptyInputGuard(st);
+			if (guard) return this.statement(st.thenStatement, guard.exits);
 			const node = this.control(
 				'If',
 				'n8n-nodes-base.if',
@@ -572,6 +580,49 @@ class CanvasBuilder {
 		} else {
 			this.listSources.set(symbol, [{ node, output: 0 }]);
 		}
+	}
+
+	/** The run's trigger parameter and its exit, for the empty-input guard of a list built from it. */
+	private triggerParam: { symbol: ts.Symbol; exit: Exit } | undefined;
+
+	seedSource(name: ts.BindingName, exit: Exit) {
+		if (!ts.isIdentifier(name)) return;
+		const symbol = this.symbolOf(name);
+		if (symbol) this.triggerParam = { symbol, exit };
+	}
+
+	/** True when a variable's initializer reads the run's trigger parameter. */
+	private builtFromTrigger(symbol: ts.Symbol): boolean {
+		const t = this.triggerParam;
+		const decl = symbol.valueDeclaration;
+		if (!t || !decl || !ts.isVariableDeclaration(decl) || !decl.initializer) return false;
+		let found = false;
+		const visit = (n: ts.Node) => {
+			if (found) return;
+			if (ts.isIdentifier(n) && this.symbolOf(n) === t.symbol) found = true;
+			else ts.forEachChild(n, visit);
+		};
+		visit(decl.initializer);
+		return found;
+	}
+
+	/** The list sources of `if (<list>.length > 0)` with no else branch, or null. */
+	private emptyInputGuard(st: ts.IfStatement): { exits: Exit[] } | null {
+		if (st.elseStatement) return null;
+		const e = st.expression;
+		if (!ts.isBinaryExpression(e) || e.operatorToken.kind !== ts.SyntaxKind.GreaterThanToken)
+			return null;
+		if (!ts.isNumericLiteral(e.right) || e.right.text !== '0') return null;
+		const left = e.left;
+		if (!ts.isPropertyAccessExpression(left) || left.name.text !== 'length') return null;
+		if (!ts.isIdentifier(left.expression)) return null;
+		const symbol = this.symbolOf(left.expression);
+		if (!symbol) return null;
+		const exits = this.listSources.get(symbol);
+		if (exits) return this.fromMulti(exits) ? null : { exits };
+		return this.builtFromTrigger(symbol) && this.triggerParam
+			? { exits: [this.triggerParam.exit] }
+			: null;
 	}
 
 	/** True when the exits come from a step with several outputs. */
