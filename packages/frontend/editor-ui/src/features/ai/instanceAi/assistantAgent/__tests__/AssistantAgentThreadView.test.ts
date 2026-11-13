@@ -553,6 +553,7 @@ describe('AssistantAgentThreadView', () => {
 		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
 		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
 		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
 		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
 		onStreamEvent({ type: 'finish', finishReason: 'stop' });
 

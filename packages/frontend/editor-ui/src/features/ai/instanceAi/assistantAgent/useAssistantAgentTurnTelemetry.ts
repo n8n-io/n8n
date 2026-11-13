@@ -2,12 +2,15 @@ import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type AgentSseEvent } from '@n8n/api
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { computed, nextTick, onBeforeUnmount, watch } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 
 import { TIME } from '@/app/constants/durations';
-import type { AssistantMentionCounts } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
-import { instanceAiResponseNow } from '../instanceAi.responseTiming';
+import {
+	instanceAiResponseNow,
+	observeInstanceAiResponseRender,
+} from '../instanceAi.responseTiming';
+import type { AssistantAgentSentMessageContext } from './useAssistantAgentMessageTelemetry';
 
 /** Silence window after which an active run with no stream traffic counts as stalled. */
 export const GENERATION_STALL_TIMEOUT_MS = TIME.MINUTE;
@@ -21,20 +24,16 @@ const DISCARDED_FINISH_REASONS = new Set(['cancelled', 'error', 'guardrail', 'pa
 
 type ResponseKind = 'completed' | 'awaiting_input';
 
-/** The context of the user message that starts a run, as `User sent builder message` reports it. */
-export interface AssistantAgentSentMessageContext {
-	isFirstMessage: boolean;
-	mentionCounts: AssistantMentionCounts;
-	attachmentCount: number;
-	selectedElementCount: number;
-}
-
 interface SubmittedMessage {
 	startedAtEpochMs: number;
 	context: AssistantAgentSentMessageContext;
+	/** The server queued the message, so its run is still to start. */
+	queued: boolean;
 }
 
-interface PendingResponse extends SubmittedMessage {
+interface PendingResponse {
+	startedAtEpochMs: number;
+	context: AssistantAgentSentMessageContext;
 	runId: string;
 }
 
@@ -44,11 +43,15 @@ interface PendingResponse extends SubmittedMessage {
  *
  * A user message starts a sample. The run that the server starts for it binds
  * the sample to a run id. The sample ends when the run finishes or shows a card.
+ * The stream events carry no send id, so a sample binds only to a send that the
+ * server queued or that is still in flight.
  */
 export function useAssistantAgentTurnTelemetry(options: {
 	threadId: string;
 	/** The chat streams a run. */
 	isStreaming: () => boolean;
+	/** The chat posts a message and the server has not accepted it yet. */
+	isSubmitting: () => boolean;
 	/** The chat shows a card that the run waits on. */
 	hasOpenInteraction: () => boolean;
 }) {
@@ -62,16 +65,12 @@ export function useAssistantAgentTurnTelemetry(options: {
 	function trackSubmit(context: AssistantAgentSentMessageContext): void {
 		// A message sent during a run steers that run, so it gets no reply of its own.
 		if (options.isStreaming()) return;
-		submitted = { startedAtEpochMs: instanceAiResponseNow(), context };
-	}
-
-	async function observeRender(): Promise<{ atEpochMs: number; tabVisible: boolean }> {
-		await nextTick();
-		const tabVisible = document.visibilityState === 'visible';
-		if (tabVisible) {
-			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		// Two messages wait for a run, and the run events cannot tell them apart.
+		if (submitted?.queued) {
+			submitted = null;
+			return;
 		}
-		return { atEpochMs: instanceAiResponseNow(), tabVisible };
+		submitted = { startedAtEpochMs: instanceAiResponseNow(), context, queued: false };
 	}
 
 	function settle(responseKind: ResponseKind | null): void {
@@ -79,7 +78,7 @@ export function useAssistantAgentTurnTelemetry(options: {
 		pending = null;
 		if (!response || responseKind === null) return;
 
-		void observeRender().then(({ atEpochMs, tabVisible }) => {
+		void observeInstanceAiResponseRender().then(({ atEpochMs, tabVisible }) => {
 			if (disposed) return;
 			const { context } = response;
 			telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE, {
@@ -102,11 +101,19 @@ export function useAssistantAgentTurnTelemetry(options: {
 
 	function handleResponseEvent(event: AgentSseEvent): void {
 		switch (event.type) {
-			case 'execution-started':
-				if (!submitted) return;
-				pending = { ...submitted, runId: event.executionId };
+			case 'message-queued':
+				if (submitted) submitted.queued = true;
+				return;
+			case 'execution-started': {
+				// A send that failed before the server queued it leaves a stale sample.
+				// Card answers also start runs, so that sample must not bind to them.
+				if (submitted && (submitted.queued || options.isSubmitting())) {
+					const { startedAtEpochMs, context } = submitted;
+					pending = { startedAtEpochMs, context, runId: event.executionId };
+				}
 				submitted = null;
 				return;
+			}
 			case 'message-steered':
 				// The server added the message to a run that was already in progress.
 				submitted = null;

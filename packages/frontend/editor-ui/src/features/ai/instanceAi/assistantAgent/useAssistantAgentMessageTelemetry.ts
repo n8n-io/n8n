@@ -14,7 +14,14 @@ import {
 	type InstanceAiMessageAuthorship,
 	type InstanceAiPrefillPayload,
 } from '../prefills';
-import type { AssistantAgentSentMessageContext } from './useAssistantAgentTurnTelemetry';
+
+/** The context of the user message that starts a run, as `User sent builder message` reports it. */
+export interface AssistantAgentSentMessageContext {
+	isFirstMessage: boolean;
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
+	selectedElementCount: number;
+}
 
 /** A text that the host sends for the user. Its authorship is final. */
 export interface AssistantAgentHostSend {

@@ -247,6 +247,7 @@ const trace = useAssistantAgentTrace({
 const turnTelemetry = useAssistantAgentTurnTelemetry({
 	threadId: props.threadId,
 	isStreaming: () => panel.value?.isStreaming ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
 	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
 });
 

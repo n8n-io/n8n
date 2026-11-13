@@ -8,10 +8,10 @@ import { defineComponent, nextTick, ref } from 'vue';
 
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
+import type { AssistantAgentSentMessageContext } from '../useAssistantAgentMessageTelemetry';
 import {
 	GENERATION_STALL_TIMEOUT_MS,
 	useAssistantAgentTurnTelemetry,
-	type AssistantAgentSentMessageContext,
 } from '../useAssistantAgentTurnTelemetry';
 
 const { telemetryTrack, now } = vi.hoisted(() => ({
@@ -25,6 +25,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('../../instanceAi.responseTiming', () => ({
 	instanceAiResponseNow: () => now.value,
+	observeInstanceAiResponseRender: async () => ({ atEpochMs: now.value, tabVisible: true }),
 }));
 
 const RECEIVED = TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE;
@@ -43,8 +44,13 @@ const started: AgentSseEvent = {
 	sessionId: 'thread-1',
 };
 
+function queued(queueId: string): AgentSseEvent {
+	return { type: 'message-queued', queueId, sessionId: 'thread-1' };
+}
+
 function setup() {
 	const isStreaming = ref(false);
+	const isSubmitting = ref(false);
 	const hasOpenInteraction = ref(false);
 	let telemetry!: ReturnType<typeof useAssistantAgentTurnTelemetry>;
 	const wrapper = mount(
@@ -53,13 +59,22 @@ function setup() {
 				telemetry = useAssistantAgentTurnTelemetry({
 					threadId: 'thread-1',
 					isStreaming: () => isStreaming.value,
+					isSubmitting: () => isSubmitting.value,
 					hasOpenInteraction: () => hasOpenInteraction.value,
 				});
 				return () => null;
 			},
 		}),
 	);
-	return { telemetry, isStreaming, hasOpenInteraction, wrapper };
+	let sends = 0;
+	/** Sends a user message as the chat does: posted, then queued by the server. */
+	function send() {
+		telemetry.trackSubmit(context);
+		isSubmitting.value = true;
+		telemetry.handleStreamEvent(queued(`q-${++sends}`));
+		isSubmitting.value = false;
+	}
+	return { telemetry, send, isStreaming, isSubmitting, hasOpenInteraction, wrapper };
 }
 
 /** Lets the render check of a settled response run. */
@@ -90,9 +105,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 
 	describe('User received AI Assistant response', () => {
 		it('reports a completed run with the latency from the send', async () => {
-			const { telemetry, isStreaming } = setup();
+			const { telemetry, send, isStreaming } = setup();
 
-			telemetry.trackSubmit(context);
+			send();
 			isStreaming.value = true;
 			telemetry.handleStreamEvent(started);
 			telemetry.handleStreamEvent({ type: 'text-delta', id: 't1', delta: 'Hi' });
@@ -117,9 +132,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		});
 
 		it('reports a run that shows a card as awaiting input, once', async () => {
-			const { telemetry } = setup();
+			const { telemetry, send } = setup();
 
-			telemetry.trackSubmit(context);
+			send();
 			telemetry.handleStreamEvent(started);
 			telemetry.handleStreamEvent({
 				type: 'tool-call-suspended',
@@ -136,9 +151,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		it.each(['cancelled', 'error', 'guardrail'])(
 			'does not report a run that finishes as %s',
 			async (finishReason) => {
-				const { telemetry } = setup();
+				const { telemetry, send } = setup();
 
-				telemetry.trackSubmit(context);
+				send();
 				telemetry.handleStreamEvent(started);
 				telemetry.handleStreamEvent({ type: 'finish', finishReason });
 				await flushRender();
@@ -148,9 +163,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		);
 
 		it('does not report a run that ends with an error event', async () => {
-			const { telemetry } = setup();
+			const { telemetry, send } = setup();
 
-			telemetry.trackSubmit(context);
+			send();
 			telemetry.handleStreamEvent(started);
 			telemetry.handleStreamEvent({ type: 'error', message: 'boom' });
 			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
@@ -171,9 +186,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		});
 
 		it('does not report a message that the server steered into a running run', async () => {
-			const { telemetry } = setup();
+			const { telemetry, send } = setup();
 
-			telemetry.trackSubmit(context);
+			send();
 			telemetry.handleStreamEvent({
 				type: 'message-steered',
 				queueId: 'q-1',
@@ -191,6 +206,47 @@ describe('useAssistantAgentTurnTelemetry', () => {
 			const { telemetry } = setup();
 
 			telemetry.handleStreamEvent(started);
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			await flushRender();
+
+			expect(receivedCalls()).toHaveLength(0);
+		});
+
+		it('reports a run that starts before the server confirms the queue', async () => {
+			const { telemetry, isSubmitting } = setup();
+
+			telemetry.trackSubmit(context);
+			isSubmitting.value = true;
+			telemetry.handleStreamEvent(started);
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			await flushRender();
+
+			expect(receivedCalls()).toHaveLength(1);
+		});
+
+		it('does not bind a send that the server never accepted to a later card answer', async () => {
+			const { telemetry, isSubmitting } = setup();
+
+			// The post fails before the stream sends an event.
+			telemetry.trackSubmit(context);
+			isSubmitting.value = true;
+			isSubmitting.value = false;
+
+			telemetry.handleStreamEvent(started);
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			await flushRender();
+
+			expect(receivedCalls()).toHaveLength(0);
+		});
+
+		it('does not report when a second message is sent before the first run starts', async () => {
+			const { telemetry, send } = setup();
+
+			send();
+			send();
+			telemetry.handleStreamEvent(started);
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			telemetry.handleStreamEvent({ ...started, executionId: 'exec-2' });
 			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
 			await flushRender();
 
