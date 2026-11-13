@@ -657,3 +657,64 @@ describe('claimRunUsage on a thread without a current Assistant thread row', () 
 		);
 	});
 });
+
+describe('helperUsageClaimer', () => {
+	function serviceWithSpy() {
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService: createMockAiService(),
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+		const claim = vi.spyOn(service, 'claimRunUsage');
+		return { service, claim };
+	}
+
+	const report = {
+		helper: 'verification-simulation-fixtures',
+		model: 'anthropic/claude-haiku-5-5',
+		usage: { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 },
+		reportId: 'report-1',
+	};
+
+	it('claims the helper call under a dedupe key for each call', async () => {
+		const { service, claim } = serviceWithSpy();
+
+		await service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report);
+
+		expect(claim).toHaveBeenCalledWith(
+			fakeUser,
+			't1',
+			'run-1:helper:verification-simulation-fixtures:report-1',
+			[expect.objectContaining({ type: 'llmTokens', model: 'anthropic/claude-haiku-5-5' })],
+			'completed',
+			'chat',
+		);
+	});
+
+	it('returns the claimed credits and passes the self-healing source through', async () => {
+		const { service, claim } = serviceWithSpy();
+		claim.mockResolvedValueOnce(0.04);
+
+		await expect(
+			service.claimHelperUsage(fakeUser, 't1', 'run-1', report, 'self_healing'),
+		).resolves.toBe(0.04);
+		expect(claim).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			expect.anything(),
+			'completed',
+			'self_healing',
+		);
+	});
+
+	it('never throws when the claim fails', async () => {
+		const { service, claim } = serviceWithSpy();
+		claim.mockRejectedValueOnce(new Error('invalid quota'));
+
+		await expect(service.helperUsageClaimer(fakeUser, 't1', 'run-1')(report)).resolves.toBe(
+			undefined,
+		);
+	});
+});

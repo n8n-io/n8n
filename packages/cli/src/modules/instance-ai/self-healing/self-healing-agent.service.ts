@@ -28,6 +28,7 @@ import {
 	MAX_STEPS,
 	type BuilderUsageItem,
 	OutsideThreadProjectError,
+	type HelperModelUsageReport,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -183,6 +184,8 @@ export class SelfHealingAgentService {
 		let tracing: InstanceAiTraceContext | undefined;
 		let modelId: ModelConfig | undefined;
 		let stream: StreamRunResult | undefined;
+		// Helpers do not await their claims, so the run collects them for its total.
+		const helperClaims: Array<Promise<number | undefined>> = [];
 		let providerStream = false;
 		const result: SelfHealingRunResult = {
 			threadId,
@@ -222,7 +225,22 @@ export class SelfHealingAgentService {
 
 			const targets: Targets = new Map([[baseline.workflowId, baseline]]);
 			const candidateFiles: CandidateFiles = new Map();
-			const environment = await this.prepareEnvironment({ ...input, user }, targets, options);
+			const environment = await this.prepareEnvironment(
+				{ ...input, user },
+				targets,
+				options,
+				async (report) => {
+					const claim = this.credits.claimHelperUsage(
+						user,
+						threadId,
+						runId,
+						report,
+						'self_healing',
+					);
+					helperClaims.push(claim);
+					await claim;
+				},
+			);
 			modelId = environment.modelId;
 			const { context, proxy, admit } = environment;
 
@@ -315,8 +333,14 @@ export class SelfHealingAgentService {
 					result.status,
 					'self_healing',
 				);
+				// Claims never reject, so this waits for every helper claim of the run.
+				const helperCredits = (await Promise.all(helperClaims)).reduce<number>(
+					(sum, claimed) => sum + (claimed ?? 0),
+					0,
+				);
 				if ('credits' in result.usage) {
-					result.usage.credits = credits ?? null;
+					// A failed run claim keeps `null`, so a partial total never looks complete.
+					result.usage.credits = credits === undefined ? null : credits + helperCredits;
 				}
 			} catch (error) {
 				this.logger.warn('Could not claim self-healing usage.', {
@@ -436,6 +460,7 @@ export class SelfHealingAgentService {
 		input: SelfHealingRunInput,
 		targets: Targets,
 		options: SelfHealingRunOptions,
+		onHelperUsage: (report: HelperModelUsageReport) => Promise<void>,
 	) {
 		const { user } = input;
 		const { signal, runId, threadId } = options;
@@ -467,6 +492,7 @@ export class SelfHealingAgentService {
 			searchProxyConfig: proxy.searchProxyConfig,
 			modelId,
 			utilityModelId,
+			onHelperUsage,
 			modelFetch: this.models.getModelFetch(),
 			allowSendingParameterValues: shareParameters,
 		});

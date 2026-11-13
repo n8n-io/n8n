@@ -1,5 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+// Spy on the real classifier so the existing cases keep its behaviour.
+vi.mock('../classify-node-destructiveness.service', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../classify-node-destructiveness.service')>();
+	return { ...actual, classifyNodesForSimulation: vi.fn(actual.classifyNodesForSimulation) };
+});
+
 import { agentToolWorkflow } from '../../../__tests__/agent-tool-workflow';
 import type {
 	NodeSimulationVerdict,
@@ -9,6 +15,7 @@ import {
 	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
 	DECLARED_OUTPUT_SIMULATION_REASON,
 } from '../plan-verification-simulation';
+import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
 import { reconcileSimulationPlan } from '../reconcile-simulation-plan';
 import { type CredentialEntry, type CredentialMap } from '../resolve-credentials';
 
@@ -106,6 +113,39 @@ describe('reconcileSimulationPlan', () => {
 			);
 		},
 	);
+
+	it('passes the models and the usage callback to the classifier', async () => {
+		const workflow = agentToolWorkflow(3.1, 3);
+		workflow.nodes[2].parameters = { operation: 'send' };
+		workflow.nodes[2].credentials = { slackApi: { id: 'cred-1', name: 'Tool account' } };
+		const modelFetch = vi.fn();
+		const onModelUsage = vi.fn();
+
+		await reconcileSimulationPlan({
+			workflow,
+			buildOutcome: makeBuildOutcome({
+				mockedNodeNames: ['Write'],
+				mockedCredentialsByNode: { Write: ['slackApi'] },
+				nodeSimulationPlan: [mockedVerdict('Write')],
+			}),
+			availableCredentials: makeCredentialMap([
+				{ id: 'cred-1', name: 'Tool account', type: 'slackApi' },
+			]),
+			model: 'anthropic/claude-opus-5-5',
+			utilityModel: 'anthropic/claude-haiku-5-5',
+			modelFetch,
+			onModelUsage,
+		});
+
+		expect(classifyNodesForSimulation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: 'anthropic/claude-opus-5-5',
+				utilityModel: 'anthropic/claude-haiku-5-5',
+				modelFetch,
+				onModelUsage,
+			}),
+		);
+	});
 
 	it('returns undefined when the outcome has no mocked credentials', async () => {
 		const patch = await reconcileSimulationPlan({

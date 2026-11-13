@@ -51,6 +51,7 @@ export async function reconcileStaleCredentialPlan(args: {
 			model,
 			utilityModel: domainContext.utilityModelId,
 			modelFetch,
+			onModelUsage: domainContext.onHelperUsage,
 		});
 		if (!patch) return buildOutcome;
 

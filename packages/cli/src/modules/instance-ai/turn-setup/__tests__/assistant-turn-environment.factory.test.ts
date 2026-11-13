@@ -70,7 +70,7 @@ function createSetupFactory() {
 			resolveUtilityModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(() => undefined),
 		},
-		creditService: { claimRunUsage: vi.fn() },
+		creditService: { claimRunUsage: vi.fn(), helperUsageClaimer: vi.fn(() => vi.fn()) },
 		instanceAiErrorReporter: {
 			withBoundary: vi.fn(async (_c, _x, fn: () => unknown) => await fn()),
 		},
@@ -189,6 +189,24 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.sessionGrants.load).toHaveBeenCalledTimes(1);
 			expect(context.sessionApprovedToolKeys).toEqual(new Set(['tool:run']));
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
+		});
+
+		it('wires helper usage billing into the context', async () => {
+			const { factory, fields } = createSetupFactory();
+			const claimer = vi.fn();
+			fields.creditService.helperUsageClaimer.mockReturnValue(claimer);
+
+			await factory.create(params, createRuntime());
+
+			expect(fields.creditService.helperUsageClaimer).toHaveBeenCalledWith(
+				params.user,
+				params.threadId,
+				params.runId,
+			);
+			expect(fields.adapterService.createContext).toHaveBeenCalledWith(
+				params.user,
+				expect.objectContaining({ onHelperUsage: claimer }),
+			);
 		});
 
 		it('gives the trace of the turn to the error reports of the setup', async () => {

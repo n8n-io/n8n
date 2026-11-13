@@ -130,6 +130,26 @@ describe('generateSimulationFixtures', () => {
 		);
 	});
 
+	it('reports the token usage of the fixture call', async () => {
+		const usage = { promptTokens: 2000, completionTokens: 500, totalTokens: 2500 };
+		mockCreateEvalAgent.mockReturnValue({
+			generate: vi.fn().mockResolvedValue({ messages: [], usage }),
+		} as unknown as ReturnType<typeof createEvalAgent>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+		const onModelUsage = vi.fn().mockResolvedValue(undefined);
+
+		await generateSimulationFixtures({
+			model: MAIN_MODEL,
+			onModelUsage,
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		expect(onModelUsage).toHaveBeenCalledWith(
+			expect.objectContaining({ helper: 'verification-simulation-fixtures', usage }),
+		);
+	});
+
 	it('falls back to a placeholder for nodes the LLM omitted', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { id: 1 } }] }));
 		const result = await generateSimulationFixtures({
