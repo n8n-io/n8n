@@ -183,23 +183,49 @@ function asString(value: Json): Json {
 	return typeof value === 'object' ? JSON.stringify(value) : String(value);
 }`,
 	},
-	asNumber: {
+	describeValue: {
 		uses: [],
-		source: `/** The number rule of the Set node. A value that is not a number is an error. */
-function asNumber(value: Json): Json {
+		source: `/** A value as v1's \`getValueDescription\` names it in an error message. */
+function describeValue(value: Json): string {
+	if (value === null) return "'null'";
+	if (Array.isArray(value)) return 'array';
+	if (typeof value === 'object') return 'object';
+	return "'" + String(value) + "'";
+}`,
+	},
+	setTypeError: {
+		uses: ['describeValue'],
+		source: `/**
+ * The error of a Set field whose value fails the type conversion. The text is the one of v1
+ * (\`validateEntry\`), also the item index at its end.
+ */
+function setTypeError(value: Json, type: string, name: string, index: number): never {
+	throw new Error(
+		"'" + name + "' expects a " + type + ' but we got ' + describeValue(value) + ' [item ' + index + ']',
+	);
+}`,
+	},
+	asNumber: {
+		uses: ['setTypeError'],
+		source: `/**
+ * The number rule of the Set node. A value that is not a number is an error, or with
+ * \`ignore\` the value stays as it is.
+ */
+function asNumber(value: Json, name: string, index: number, ignore?: boolean): Json {
 	if (value == null) return null;
 	const n = Number(value);
 	// An empty string is 0, as n8n's Set node 3.4 gives it (\`Number('')\`).
-	if (typeof value === 'boolean' || isNaN(n)) {
-		throw new Error(\`'\${String(value)}' is not a number\`);
-	}
+	if (isNaN(n)) return ignore === true ? value : setTypeError(value, 'number', name, index);
 	return n;
 }`,
 	},
 	asBoolean: {
-		uses: [],
-		source: `/** The boolean rule of the Set node and of loose filter conditions. */
-function asBoolean(value: Json): Json {
+		uses: ['setTypeError'],
+		source: `/**
+ * The boolean rule of the Set node and of loose filter conditions. A value that is not a
+ * boolean is an error, or with \`ignore\` the value stays as it is.
+ */
+function asBoolean(value: Json, name: string, index: number, ignore?: boolean): Json {
 	if (value == null) return null;
 	if (typeof value === 'boolean') return value;
 	// tryToParseBoolean of n8n-workflow: "true" or "false" in any case, else a number 0 or 1.
@@ -213,7 +239,7 @@ function asBoolean(value: Json): Json {
 		if (n === 0) return false;
 		if (n === 1) return true;
 	}
-	throw new Error(\`'\${String(value)}' is not a boolean\`);
+	return ignore === true ? value : setTypeError(value, 'boolean', name, index);
 }`,
 	},
 	looseBoolean: {
@@ -226,7 +252,7 @@ function looseBoolean(value: Json, parse: boolean): Json {
 	if (value == null) return value;
 	if (parse) {
 		try {
-			return asBoolean(value);
+			return asBoolean(value, '', 0);
 		} catch (error) {
 			return Boolean(value);
 		}
@@ -235,18 +261,17 @@ function looseBoolean(value: Json, parse: boolean): Json {
 }`,
 	},
 	asJson: {
-		uses: ['parseJsLiteral'],
+		uses: ['parseJsLiteral', 'setTypeError'],
 		source: `/**
  * The array and object rule of the Set node (\`validateFieldType\`). A text is parsed as JSON.
  * An object also reads a JavaScript object literal (\`jsonParse\` with \`acceptJSObject\`), and an
- * array also reads JSON with single quotes.
+ * array also reads JSON with single quotes. With \`ignore\` a value that fails the conversion
+ * stays as it is.
  */
-function asJson(value: Json, kind: string, name: string): Json {
+function asJson(value: Json, kind: string, name: string, index: number, ignore?: boolean): Json {
 	if (value == null) return null;
-	const fail = (): Json => {
-		const got = typeof value === 'object' ? (Array.isArray(value) ? 'array' : 'object') : "'" + String(value) + "'";
-		throw new Error("'" + name + "' expects a " + kind + ' but we got ' + got);
-	};
+	const fail = (): Json =>
+		ignore === true ? value : setTypeError(value, kind, name, index);
 	if (kind === 'array') {
 		if (Array.isArray(value)) return value;
 		let parsed: Json = null;

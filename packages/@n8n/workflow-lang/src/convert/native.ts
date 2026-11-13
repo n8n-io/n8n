@@ -274,8 +274,16 @@ interface Field {
 	path: string;
 }
 
-/** The value code of one Set field, with the type rule of the Set node. */
-function fieldValue(c: NodeContext, f: Field, usage: { item: boolean; index: boolean }): string {
+/**
+ * The value code of one Set field, with the type rule of the Set node. A failed conversion throws
+ * with the item index, or with `ignoreErrors` the value stays as it is (v1 option).
+ */
+function fieldValue(
+	c: NodeContext,
+	f: Field,
+	usage: { item: boolean; index: boolean },
+	ignoreErrors: boolean,
+): string {
 	if (!isExpression(f.value)) {
 		const v = f.value;
 		switch (f.type) {
@@ -317,17 +325,22 @@ function fieldValue(c: NodeContext, f: Field, usage: { item: boolean; index: boo
 	usage.item ||= t.usage.item;
 	usage.index ||= t.usage.index;
 	const code = flat(t.code);
+	// v1 names the item index at the end of the message of a failed conversion.
+	const args = `${str(text(f.name, ''))}, ${INDEX}${ignoreErrors ? ', true' : ''}`;
 	switch (f.type) {
 		case 'number':
 			c.helper('asNumber');
-			return `asNumber(${code})`;
+			usage.index = true;
+			return `asNumber(${code}, ${args})`;
 		case 'boolean':
 			c.helper('asBoolean');
-			return `asBoolean(${code})`;
+			usage.index = true;
+			return `asBoolean(${code}, ${args})`;
 		case 'array':
 		case 'object':
 			c.helper('asJson');
-			return `asJson(${code}, ${str(f.type === 'array' ? 'array' : 'object')}, ${str(text(f.name, ''))})`;
+			usage.index = true;
+			return `asJson(${code}, ${str(f.type === 'array' ? 'array' : 'object')}, ${args})`;
 		case 'string':
 			if (unmarked(code).startsWith('`')) return code;
 			c.helper('asString');
@@ -357,6 +370,8 @@ export function lowerSet(c: NodeContext): void {
 	let fields: Field[] = [];
 	let rawJson: string | null = null;
 	const dot = opts.dotNotation !== false;
+	// The option is on the manual mode of version 3 and later (raw mode has no conversion).
+	const ignoreErrors = c.version >= 3 && opts.ignoreConversionErrors === true;
 	if (c.version >= 3) {
 		if (p.duplicateItem === true)
 			c.info('set', 'v1 duplicates items only in manual runs; the option has no effect.');
@@ -430,7 +445,7 @@ export function lowerSet(c: NodeContext): void {
 		c.helper('toText');
 		computedNames.set(k, `toText(${flat(t.code)})`);
 	});
-	const values = fields.map((f) => [f.name, fieldValue(c, f, usage)] as const);
+	const values = fields.map((f) => [f.name, fieldValue(c, f, usage, ignoreErrors)] as const);
 	let rawCode: string | null = null;
 	if (rawJson !== null) {
 		if (!rawJson.startsWith('=')) {
@@ -481,8 +496,13 @@ export function lowerSet(c: NodeContext): void {
 		dotted ||
 		rawCode !== null ||
 		computedNames.size > 0;
+	// v1 catches a failed item and continues with the error as its item (`continueOnFail`).
+	// The error output is not handled here, so the node fails under `continueErrorOutput`.
+	const continues =
+		c.node.onError === 'continueRegularOutput' ||
+		(c.node.onError === undefined && c.node.continueOnFail === true);
 	const params = mapParams(usage.index);
-	if (!needsBlock) {
+	if (!needsBlock && !continues) {
 		const entries: Array<[string, Code]> = values.map(([name, code]) => [name, raw(code)]);
 		const obj: Code = { kind: 'object', entries };
 		if (include === 'all') {
@@ -497,6 +517,7 @@ export function lowerSet(c: NodeContext): void {
 		return;
 	}
 	w.open(`const ${out}: Json[] = ${c.input}.map(${params} => {`);
+	if (continues) w.open('try {');
 	switch (include) {
 		case 'all':
 			c.helper('copyJson');
@@ -550,6 +571,12 @@ export function lowerSet(c: NodeContext): void {
 		w.line(`assignFields(item, ${rawCode}, ${String(dot)});`);
 	}
 	w.line('return item;');
+	if (continues) {
+		w.depth--;
+		w.open('} catch (error) {');
+		w.line('return { error: error.message };');
+		w.close();
+	}
 	w.close('});');
 }
 

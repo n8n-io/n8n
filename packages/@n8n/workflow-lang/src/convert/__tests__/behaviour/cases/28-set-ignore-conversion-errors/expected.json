@@ -1,0 +1,47 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Keep", "Fail"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"list": {
+							"a": 1
+						},
+						"numText": "12x",
+						"badNumber": "abc",
+						"flag": "maybe",
+						"name": "Ada"
+					}
+				}
+			]
+		],
+		"Keep": [
+			[
+				{
+					"body": {
+						"a": 1
+					},
+					"params": "12x",
+					"count": "abc",
+					"active": "maybe",
+					"label": "Ada"
+				}
+			]
+		],
+		"Fail": [
+			[
+				{
+					"error": "'count' expects a number but we got 'abc' [item 0]"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}
