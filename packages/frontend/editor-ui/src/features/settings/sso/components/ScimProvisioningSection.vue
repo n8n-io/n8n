@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import type { ScimConfigResponse } from '@n8n/api-types';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAlertDialog,
 	N8nButton,
-	N8nCopyInput,
 	N8nHeading,
-	N8nIconButton,
+	N8nInput,
 	N8nOption,
 	N8nPreviewBadge,
 	N8nSelect,
@@ -31,6 +31,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const { showError } = useToast();
+const clipboard = useClipboard();
 
 const config = ref<ScimConfigResponse | null>(null);
 /** The value in the select. The SSO page saves it with its other settings. */
@@ -40,6 +41,14 @@ const newToken = ref<string | null>(null);
 const saving = ref(false);
 const generatingToken = ref(false);
 const showRegenerateDialog = ref(false);
+const copied = ref({ baseUrl: false, token: false });
+
+/** Copies a value and shows the check icon for a moment, as the SAML settings do. */
+async function copyValue(value: string, field: keyof typeof copied.value) {
+	await clipboard.copy(value);
+	copied.value[field] = true;
+	setTimeout(() => (copied.value[field] = false), 2000);
+}
 
 const hasUnsavedChanges = computed(
 	() => config.value !== null && selectedEnabled.value !== config.value.enabled,
@@ -189,12 +198,28 @@ watch(
 					<small>{{ i18n.baseText('settings.sso.scim.baseUrl.description') }}</small>
 				</div>
 				<div :class="shared.settingsItemControl">
-					<N8nCopyInput
-						:value="config.baseUrl"
-						:label="i18n.baseText('settings.sso.scim.baseUrl.title')"
-						size="medium"
-						data-test-id="sso-scim-base-url"
-					/>
+					<!-- The same copy field as the Redirect URL and Entity ID above. -->
+					<div :class="shared.copyInputGroup">
+						<div :class="shared.copyInputField">
+							<N8nInput
+								:model-value="config.baseUrl"
+								type="text"
+								:readonly="true"
+								:aria-label="i18n.baseText('settings.sso.scim.baseUrl.title')"
+								data-test-id="sso-scim-base-url"
+							/>
+						</div>
+						<div :class="shared.copyButtonWrapper">
+							<N8nButton
+								variant="outline"
+								icon-only
+								:icon="copied.baseUrl ? 'check' : 'copy'"
+								:aria-label="i18n.baseText('generic.copy')"
+								data-test-id="sso-scim-base-url-copy"
+								@click="copyValue(config.baseUrl, 'baseUrl')"
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -204,29 +229,43 @@ watch(
 					<small>{{ tokenDescription }}</small>
 				</div>
 				<div :class="shared.settingsItemControl">
-					<div v-if="maskedToken" :class="$style.tokenAction">
-						<!-- The full token is only known right after it is created, so only then it can be copied. -->
-						<N8nCopyInput
-							:class="$style.tokenInput"
-							:value="newToken ?? maskedToken"
-							:display-value="maskedToken"
-							:allow-copy="newToken !== null"
-							:label="i18n.baseText('settings.sso.scim.token.title')"
-							size="medium"
-							redact
-							data-test-id="sso-scim-token"
-						/>
-						<N8nTooltip :content="i18n.baseText('settings.sso.scim.token.rotate')" placement="top">
-							<N8nIconButton
-								variant="ghost"
-								size="medium"
-								icon="refresh-cw"
-								:disabled="generatingToken"
-								:aria-label="i18n.baseText('settings.sso.scim.token.rotate')"
-								data-test-id="sso-scim-token-rotate"
-								@click="showRegenerateDialog = true"
+					<div v-if="maskedToken" :class="shared.copyInputGroup">
+						<div :class="shared.copyInputField">
+							<N8nInput
+								:model-value="maskedToken"
+								type="text"
+								:readonly="true"
+								:aria-label="i18n.baseText('settings.sso.scim.token.title')"
+								data-test-id="sso-scim-token"
 							/>
-						</N8nTooltip>
+						</div>
+						<!-- The full token is only known right after it is created, so only then it can be copied. -->
+						<div v-if="newToken" :class="shared.copyButtonWrapper">
+							<N8nButton
+								variant="outline"
+								icon-only
+								:icon="copied.token ? 'check' : 'copy'"
+								:aria-label="i18n.baseText('generic.copy')"
+								data-test-id="sso-scim-token-copy"
+								@click="copyValue(newToken, 'token')"
+							/>
+						</div>
+						<div :class="shared.copyButtonWrapper">
+							<N8nTooltip
+								:content="i18n.baseText('settings.sso.scim.token.rotate')"
+								placement="top"
+							>
+								<N8nButton
+									variant="outline"
+									icon-only
+									icon="refresh-cw"
+									:disabled="generatingToken"
+									:aria-label="i18n.baseText('settings.sso.scim.token.rotate')"
+									data-test-id="sso-scim-token-rotate"
+									@click="showRegenerateDialog = true"
+								/>
+							</N8nTooltip>
+						</div>
 					</div>
 					<N8nButton
 						v-else-if="config.enabled"
@@ -270,18 +309,5 @@ watch(
 	> * {
 		flex: 1 1 auto;
 	}
-}
-
-/* The token field takes the room that the rotate button leaves in the control. */
-.tokenAction {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	width: 100%;
-}
-
-.tokenInput {
-	flex: 1 1 auto;
-	min-width: 0;
 }
 </style>

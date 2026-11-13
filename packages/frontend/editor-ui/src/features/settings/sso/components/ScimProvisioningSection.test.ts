@@ -17,6 +17,11 @@ vi.mock('@n8n/rest-api-client/api/scim', () => ({
 	generateScimToken: async (...args: unknown[]) => await generateScimToken(...args),
 }));
 
+const clipboardCopy = vi.fn();
+vi.mock('@n8n/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: clipboardCopy }),
+}));
+
 const showError = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError }),
@@ -85,12 +90,8 @@ describe('ScimProvisioningSection', () => {
 		await waitFor(() =>
 			expect(getByRole('textbox', { name: 'Token' })).toHaveValue('n8n_scim_••••••••xzQn'),
 		);
-		const writeText = vi.fn().mockResolvedValue(undefined);
-		Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-		// The base URL row comes first, so the last copy button belongs to the token.
-		const copyButtons = screen.getAllByRole('button', { name: 'Copy' });
-		await userEvent.click(copyButtons[copyButtons.length - 1]);
-		await waitFor(() => expect(writeText).toHaveBeenCalledWith(NEW_TOKEN));
+		await userEvent.click(getByTestId('sso-scim-token-copy'));
+		expect(clipboardCopy).toHaveBeenCalledWith(NEW_TOKEN);
 	});
 
 	it('shows only the end of a token that exists, without copy', async () => {
@@ -101,14 +102,16 @@ describe('ScimProvisioningSection', () => {
 			tokenHint: 'abcd',
 		});
 
-		const { getByTestId, getByRole } = renderComponent({ props: { ssoEnabled: true } });
+		const { getByTestId, getByRole, queryByTestId } = renderComponent({
+			props: { ssoEnabled: true },
+		});
 
 		await waitFor(() =>
 			expect(getByRole('textbox', { name: 'Token' })).toHaveValue('n8n_scim_••••••••abcd'),
 		);
-		// Only the base URL can be copied: the full token is not known any more.
+		// The full token is not known any more, so it cannot be copied.
 		expect(getByTestId('sso-scim-token')).toBeInTheDocument();
-		expect(screen.getAllByRole('button', { name: 'Copy' })).toHaveLength(1);
+		expect(queryByTestId('sso-scim-token-copy')).not.toBeInTheDocument();
 	});
 
 	it('loads the config again when single sign-on changes', async () => {
