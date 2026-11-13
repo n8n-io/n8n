@@ -1,4 +1,5 @@
 import { render } from '@testing-library/vue';
+import { nextTick } from 'vue';
 
 import N8nScrollArea from './N8nScrollArea.vue';
 
@@ -153,6 +154,33 @@ describe('N8nScrollArea', () => {
 			return container.querySelector<HTMLElement>('[data-reka-scroll-area-viewport]')!;
 		}
 
+		function setMetric(element: HTMLElement, name: string, value: number) {
+			Object.defineProperty(element, name, { configurable: true, writable: true, value });
+		}
+
+		async function scrollVertically(viewport: HTMLElement, scrollTop: number) {
+			setMetric(viewport, 'scrollHeight', 200);
+			setMetric(viewport, 'clientHeight', 100);
+			setMetric(viewport, 'scrollTop', scrollTop);
+			viewport.dispatchEvent(new Event('scroll'));
+			await nextTick();
+		}
+
+		async function scrollHorizontally(viewport: HTMLElement, scrollLeft: number) {
+			setMetric(viewport, 'scrollWidth', 200);
+			setMetric(viewport, 'clientWidth', 100);
+			setMetric(viewport, 'scrollLeft', scrollLeft);
+			viewport.dispatchEvent(new Event('scroll'));
+			await nextTick();
+		}
+
+		function expectOnly(viewport: HTMLElement, fadeClass: string | undefined) {
+			for (const name of fadeClasses) {
+				if (name === fadeClass) expect(viewport).toHaveClass(name);
+				else expect(viewport).not.toHaveClass(name);
+			}
+		}
+
 		it('masks no edge by default', () => {
 			const wrapper = render(N8nScrollArea, { slots: { default: '<div>Test content</div>' } });
 
@@ -162,24 +190,70 @@ describe('N8nScrollArea', () => {
 			}
 		});
 
-		it.each([
-			['top', 'fadeTop'],
-			['bottom', 'fadeBottom'],
-			['left', 'fadeLeft'],
-			['right', 'fadeRight'],
-			['y', 'fadeY'],
-			['x', 'fadeX'],
-		] as const)('masks the %s edge on the viewport', (edgeFade, fadeClass) => {
+		it('masks no edge when the content fits', async () => {
 			const wrapper = render(N8nScrollArea, {
-				props: { edgeFade },
+				props: { edgeFade: 'y' },
 				slots: { default: '<div>Test content</div>' },
 			});
 
+			await nextTick();
+			expectOnly(getViewport(wrapper.container), undefined);
+		});
+
+		it('masks the bottom edge while content sits below the viewport', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'bottom' },
+				slots: { default: '<div>Test content</div>' },
+			});
 			const viewport = getViewport(wrapper.container);
-			expect(viewport).toHaveClass(fadeClass);
-			for (const otherClass of fadeClasses.filter((name) => name !== fadeClass)) {
-				expect(viewport).not.toHaveClass(otherClass);
-			}
+
+			await scrollVertically(viewport, 0);
+			expectOnly(viewport, 'fadeBottom');
+		});
+
+		it('clears the bottom edge at the end of the list', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'bottom' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollVertically(viewport, 100);
+			expectOnly(viewport, undefined);
+		});
+
+		it('masks only the hidden end of a vertical axis', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'y' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollVertically(viewport, 0);
+			expectOnly(viewport, 'fadeBottom');
+
+			await scrollVertically(viewport, 40);
+			expectOnly(viewport, 'fadeY');
+
+			await scrollVertically(viewport, 100);
+			expectOnly(viewport, 'fadeTop');
+		});
+
+		it('masks only the hidden end of a horizontal axis', async () => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade: 'x' },
+				slots: { default: '<div>Test content</div>' },
+			});
+			const viewport = getViewport(wrapper.container);
+
+			await scrollHorizontally(viewport, 0);
+			expectOnly(viewport, 'fadeRight');
+
+			await scrollHorizontally(viewport, 40);
+			expectOnly(viewport, 'fadeX');
+
+			await scrollHorizontally(viewport, 100);
+			expectOnly(viewport, 'fadeLeft');
 		});
 	});
 });
