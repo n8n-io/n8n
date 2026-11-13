@@ -7,6 +7,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { FolderFinderService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -450,7 +451,7 @@ it.each([undefined, true, false])(
 	},
 );
 
-it('exports the folder ancestors of a selected Agent', async () => {
+it('exports folder ancestors once for Agents that share a folder', async () => {
 	const folder = await createFolder(project, { name: 'Team', resourceType: 'agent' });
 	const childFolder = await createFolder(project, {
 		name: 'Support',
@@ -458,12 +459,23 @@ it('exports the folder ancestors of a selected Agent', async () => {
 		parentFolder: folder,
 	});
 	await repository.update(parent.id, { parentFolderId: childFolder.id });
+	await repository.update(child.id, { projectId: project.id, parentFolderId: childFolder.id });
+	const findChains = vi.spyOn(
+		Container.get(FolderFinderService),
+		'findFolderAncestorChainsForUser',
+	);
 	const writer = new CapturingWriter();
 
-	const result = await exporter.export({ user: owner, writer, agentIds: [parent.id] });
+	const result = await exporter.export({ user: owner, writer, agentIds: [parent.id, child.id] });
 
+	expect(findChains).toHaveBeenCalledExactlyOnceWith([childFolder.id], owner, ['folder:read']);
 	expect(result.folderEntries?.map(({ id }) => id)).toEqual([folder.id, childFolder.id]);
-	expect(result.agentEntries[0].target).toContain(`${result.folderEntries?.[1].target}/agents/`);
+	expect(result.agentEntries).toHaveLength(2);
+
+	for (const entry of result.agentEntries) {
+		expect(entry.target).toContain(`${result.folderEntries?.[1].target}/agents/`);
+	}
+
 	const serialized = writer.files
 		.filter(({ path }) => path.endsWith('/folder.json'))
 		.map(({ content }) => JSON.parse(content));

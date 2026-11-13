@@ -96,16 +96,23 @@ export class AgentSelectionExporter {
 			(request.existingFolderEntries ?? []).map((entry) => [entry.id, entry.target]),
 		);
 		result.folderEntries = [];
+		const folderIds = [
+			...new Set(
+				prepared.flatMap(({ snapshot }) =>
+					snapshot.parentFolderId ? [snapshot.parentFolderId] : [],
+				),
+			),
+		];
+		const chains = await this.folderFinder.findFolderAncestorChainsForUser(
+			folderIds,
+			request.user,
+			['folder:read'],
+		);
 
 		for (const { snapshot } of prepared) {
 			let prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
 
 			if (snapshot.parentFolderId) {
-				const chains = await this.folderFinder.findFolderAncestorChainsForUser(
-					[snapshot.parentFolderId],
-					request.user,
-					['folder:read'],
-				);
 				const chain = chains.get(snapshot.parentFolderId);
 
 				if (!chain?.length || chain[0].parentFolderId !== null) {
