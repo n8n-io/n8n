@@ -1,3 +1,7 @@
+import isEqual from 'lodash/isEqual';
+import { z } from 'zod';
+
+import { WORKFLOW_ENGINE_TYPES } from './constants';
 import type { IWorkflowSettings } from './interfaces';
 
 /**
@@ -38,3 +42,28 @@ export type VersionedWorkflowSettingKey = {
 }[keyof SettingsScopeMap];
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
+
+const VERSIONED_SETTING_DEFAULTS: Readonly<Required<VersionedWorkflowSettings>> = Object.freeze({
+	engineType: 'v1',
+});
+
+const versionedSettingsSchema = z
+	.object({
+		engineType: z.enum(WORKFLOW_ENGINE_TYPES).catch(VERSIONED_SETTING_DEFAULTS.engineType),
+	})
+	.catch(() => ({ ...VERSIONED_SETTING_DEFAULTS }));
+
+/**
+ * Returns the version-scoped settings, with the default for each setting that is missing
+ * or invalid. So a new version always stores its engine, and `v1` compares equal to no engine.
+ */
+export function pickVersionedSettings(settings: unknown): Required<VersionedWorkflowSettings> {
+	return versionedSettingsSchema.parse(settings);
+}
+
+export function versionedSettingsEqual(
+	settingsA?: IWorkflowSettings,
+	settingsB?: IWorkflowSettings,
+): boolean {
+	return isEqual(pickVersionedSettings(settingsA), pickVersionedSettings(settingsB));
+}
