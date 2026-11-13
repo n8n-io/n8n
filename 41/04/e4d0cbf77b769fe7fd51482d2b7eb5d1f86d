@@ -1,0 +1,56 @@
+packages/@n8n/cli/src/commands/promotion-environment/apply-continue.ts
+  s_761400fb6cd0de::t_d5e07824ae2930 3-12,17,21,29,47-53
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_761400fb6cd0de::t_27bbbd7d4e22f8 71,79-88
+  s_761400fb6cd0de::t_36c63a8dc1069d 89-90
+packages/@n8n/cli/README.md
+  s_761400fb6cd0de::t_f694c996715b7e 64
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_761400fb6cd0de::t_d4ed708c0bc7e5 64
+packages/@n8n/cli/src/commands/promotion-environment/list-apply-changes.ts
+  s_761400fb6cd0de::t_9089606390a365 1-35
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_761400fb6cd0de::t_d5e07824ae2930 4-7,53-57
+  s_761400fb6cd0de::t_3dc58040d3a6e5 3,58
+packages/@n8n/cli/src/commands/promotion-environment/apply.ts
+  s_761400fb6cd0de::t_d5e07824ae2930 3-12,17,22,30,36-46
+packages/@n8n/cli/src/client.ts
+  s_761400fb6cd0de::t_5dbbbdaeca8e63 9-12,167,463-476,483,488
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_761400fb6cd0de::t_d5e07824ae2930 4-7,59-63
+  s_761400fb6cd0de::t_8163e14f7f889e 3,64
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_761400fb6cd0de::t_bb991b9e9e95e4 74,84
+  s_761400fb6cd0de::t_d08bac53fac87b 4-5,150-229
+  s_761400fb6cd0de::t_1208cdad202fe5 230
+packages/@n8n/cli/src/index.ts
+  s_761400fb6cd0de::t_d4ed708c0bc7e5 50,130
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_761400fb6cd0de::t_d5e07824ae2930 23,44,55-59,64,130-133,155-163
+  s_761400fb6cd0de::t_f5913a342aafa6 164
+packages/@n8n/cli/docs/commands/promotions.md
+  s_761400fb6cd0de::t_f694c996715b7e 359-393,435-436,444,448-449,455,484-486,493-499,509-512,518-521,523,525-526,528,530
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_761400fb6cd0de::t_bb991b9e9e95e4 340-345
+  s_761400fb6cd0de::t_818c3dc13d7944 43-44,156-161,165,207-212,214,349,356,371-376,535,544,570-575,579
+  s_761400fb6cd0de::t_d08bac53fac87b 213,576-578
+  s_761400fb6cd0de::t_aeac2eeb15eafc 215-217,580-581
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_761400fb6cd0de::t_2403ebf2e99887 241-246,249-251,256-257,259-260,344-345,350-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4104e4d0cbf77b769fe7fd51482d2b7eb5d1f86d",
+  "prompts": {},
+  "sessions": {
+    "s_761400fb6cd0de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a89e874-3e31-4613-9a5a-8ebff2abeda9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
