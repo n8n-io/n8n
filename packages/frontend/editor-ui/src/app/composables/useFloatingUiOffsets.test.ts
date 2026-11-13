@@ -2,6 +2,8 @@ import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { useSidePanelStore } from '@n8n/frontend-module-ui-extensions';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -92,6 +94,24 @@ describe(useFloatingUiOffsets, () => {
 			},
 		);
 	});
+	describe('toastRightOffset', () => {
+		it('should move toasts left by the side panel rail, and by the panel while it is open', () => {
+			const { toastRightOffset } = useFloatingUiOffsets(workflowDocumentIdRef);
+			expect(toastRightOffset.value).toBe('0px');
+
+			useSettingsStore().setSettings({ ...defaultSettings, activeModules: ['ui-extensions'] });
+			const usersStore = useUsersStore();
+			usersStore.addUsers([{ id: 'u', email: 'a@b.c', isPending: false, mfaEnabled: false }]);
+			usersStore.currentUserId = 'u';
+			expect(toastRightOffset.value).toBe('40px');
+
+			const sidePanelStore = useSidePanelStore();
+			sidePanelStore.isOpen = true;
+			sidePanelStore.width = 300;
+			expect(toastRightOffset.value).toBe('340px');
+		});
+	});
+
 	describe('toastTopOffset', () => {
 		it('should place top toasts below the header and the banners', () => {
 			const { toastTopOffset } = useFloatingUiOffsets(workflowDocumentIdRef);

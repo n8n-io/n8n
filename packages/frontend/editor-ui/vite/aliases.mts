@@ -28,6 +28,11 @@ export const editorUiAliases = (editorUiDir: string, packagesDir: string): Alias
 		find: /^@n8n\/expression-runtime\/runtime-bundle\.iife\.js(\?.*)?$/,
 		replacement: `${resolve(packagesDir, '@n8n', 'expression-runtime', 'dist', 'bundle', 'runtime.iife.js')}$1`,
 	},
+	// The side panel view runtime, imported as strings (`?raw`) for the view frame.
+	{
+		find: /^@n8n\/ui-extension-runtime\/(runtime\.iife\.js|runtime\.css)(\?.*)?$/,
+		replacement: `${resolve(packagesDir, 'frontend', '@n8n', 'ui-extension-runtime', 'dist')}/$1$2`,
+	},
 	...appAliases(editorUiDir),
 	...shellAliases(packagesDir),
 ];

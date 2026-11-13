@@ -1,0 +1,50 @@
+{
+  "name": "@n8n/ui-extension-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The runtime that side panel views run on, inside their sandboxed iframe",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "vite build",
+    "build:unchecked": "vite build",
+    "test": "vitest run",
+    "test:changed": "janitor test-scoped",
+    "test:dev": "vitest",
+    "typecheck": "vue-tsc --noEmit",
+    "lint": "oxlint src --quiet",
+    "lint:fix": "oxlint src --fix",
+    "format": "biome format --write . && prettier --write src/ --ignore-path ../../../../.prettierignore",
+    "format:check": "biome ci . && prettier --check src/ --ignore-path ../../../../.prettierignore"
+  },
+  "exports": {
+    "./runtime.iife.js": "./dist/runtime.iife.js",
+    "./runtime.css": "./dist/runtime.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/design-system": "workspace:*",
+    "vue": "catalog:frontend",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@iconify/json": "catalog:",
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "sass": "^1.71.1",
+    "typescript": "catalog:",
+    "unplugin-icons": "catalog:frontend",
+    "vite": "catalog:",
+    "vite-svg-loader": "catalog:frontend",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

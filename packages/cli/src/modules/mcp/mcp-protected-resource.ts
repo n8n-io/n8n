@@ -26,6 +26,7 @@ import {
 	canReadMigrationReport,
 	isCommunityNodeInstallAvailable,
 	isMigrationReportAvailable,
+	isUiExtensionsAvailable,
 } from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
@@ -84,11 +85,13 @@ export class McpProtectedResource implements ProtectedResource {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = Container.get(SkillsGate).isEnabled;
 		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
+		const uiExtensionsAvailable = isUiExtensionsAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
 				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
-				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
+				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)) &&
+				(uiExtensionsAvailable || scope !== 'sidePanelView:write'),
 		);
 	}
 

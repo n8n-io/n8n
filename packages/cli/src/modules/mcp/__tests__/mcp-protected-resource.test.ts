@@ -260,6 +260,20 @@ describe('McpProtectedResource', () => {
 			expect(await resource.getScopeTools()).not.toHaveProperty('agent:read');
 			expect(await resource.getScopeTools()).not.toHaveProperty('agent:write');
 		});
+
+		it('advertises the side panel view scope while the ui-extensions module is active', async () => {
+			expect(resource.scopes).toContain('sidePanelView:write');
+			expect((await resource.getScopeTools())['sidePanelView:write']).toEqual([
+				'create_side_panel_view',
+			]);
+		});
+
+		it('drops the side panel view scope while the ui-extensions module is inactive', async () => {
+			moduleRegistry.isActive.mockImplementation((name) => name !== 'ui-extensions');
+
+			expect(resource.scopes).not.toContain('sidePanelView:write');
+			expect(await resource.getScopeTools()).not.toHaveProperty('sidePanelView:write');
+		});
 	});
 
 	describe('getResourceUrl', () => {

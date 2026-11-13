@@ -101,6 +101,7 @@ vi.mock('vue-router', async (importOriginal) => {
 function dispatchPostMessage(payload: Record<string, unknown>) {
 	window.dispatchEvent(
 		new MessageEvent('message', {
+			source: window,
 			data: JSON.stringify(payload),
 		}),
 	);
@@ -203,6 +204,96 @@ describe('usePostMessageHandler', () => {
 		});
 	});
 
+	describe('message source', () => {
+		const openWorkflowFrom = (source: MessageEventSource | null) =>
+			new MessageEvent('message', {
+				data: JSON.stringify({ command: 'openWorkflow', workflow: { nodes: [], connections: {} } }),
+				source,
+			});
+
+		const appendFrame = (doc: Document) => {
+			const frame = doc.createElement('iframe');
+			doc.body.appendChild(frame);
+			return frame;
+		};
+
+		afterEach(() => {
+			document.body.innerHTML = '';
+		});
+
+		it('ignores a command from a frame inside the editor, such as a side panel view', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+			const frame = appendFrame(document);
+
+			window.dispatchEvent(openWorkflowFrom(frame.contentWindow));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('ignores a command from a frame nested deeper inside the editor', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+			const outer = appendFrame(document);
+			const inner = appendFrame(outer.contentDocument!);
+
+			window.dispatchEvent(openWorkflowFrom(inner.contentWindow));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('ignores a command from a frame that was removed', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+			const frame = appendFrame(document);
+			const removedWindow = frame.contentWindow;
+			frame.remove();
+
+			window.dispatchEvent(openWorkflowFrom(removedWindow));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('ignores a command with no source', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(openWorkflowFrom(null));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('accepts a command that the editor window sends itself', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(openWorkflowFrom(window));
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+			cleanup();
+		});
+	});
+
 	describe('openWorkflow command', () => {
 		it('should call importWorkflowExact when openWorkflow message is received', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
@@ -212,6 +303,7 @@ describe('usePostMessageHandler', () => {
 
 			const workflow = { nodes: [], connections: {} };
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({ command: 'openWorkflow', workflow }),
 			});
 			window.dispatchEvent(messageEvent);
@@ -234,6 +326,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },
@@ -264,6 +357,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },
@@ -294,6 +388,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },
@@ -321,6 +416,7 @@ describe('usePostMessageHandler', () => {
 
 			const workflow = { id: 'real-wf-id', nodes: [], connections: {} };
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({ command: 'openWorkflow', workflow }),
 			});
 			window.dispatchEvent(messageEvent);
@@ -345,6 +441,7 @@ describe('usePostMessageHandler', () => {
 
 			const workflow = { id: 'real-wf-id', nodes: [], connections: {} };
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({ command: 'openWorkflow', workflow }),
 			});
 			window.dispatchEvent(messageEvent);
@@ -365,6 +462,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openWorkflow',
 					workflow: { nodes: [], connections: {} },
@@ -442,6 +540,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecution',
 					executionId: 'exec-1',
@@ -477,6 +576,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecution',
 					executionId: 'exec-1',
@@ -507,6 +607,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecution',
 					executionId: 'exec-1',
@@ -535,6 +636,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecution',
 					executionId: 'exec-1',
@@ -605,6 +707,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecution',
 					executionId: 'exec-1',
@@ -644,6 +747,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecutionPreview',
 					workflow: { nodes: [{ name: 'Node1' }], connections: {} },
@@ -686,6 +790,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecutionPreview',
 					workflow: {
@@ -720,6 +825,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({
 					command: 'openExecutionPreview',
 					workflow: { connections: {} },
@@ -802,7 +908,10 @@ describe('usePostMessageHandler', () => {
 			});
 			setup();
 
-			const messageEvent = new MessageEvent('message', { data: 123 });
+			const messageEvent = new MessageEvent('message', {
+				source: window,
+				data: 123,
+			});
 			window.dispatchEvent(messageEvent);
 
 			// Give async handlers time to run
@@ -819,6 +928,7 @@ describe('usePostMessageHandler', () => {
 			setup();
 
 			const messageEvent = new MessageEvent('message', {
+				source: window,
 				data: JSON.stringify({ action: 'something' }),
 			});
 			window.dispatchEvent(messageEvent);
@@ -851,6 +961,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },
@@ -875,6 +986,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },
@@ -899,6 +1011,7 @@ describe('usePostMessageHandler', () => {
 
 			window.dispatchEvent(
 				new MessageEvent('message', {
+					source: window,
 					data: JSON.stringify({
 						command: 'openWorkflow',
 						workflow: { nodes: [], connections: {} },

@@ -15,3 +15,17 @@ export function isPostMessageOriginAllowed(origin: string) {
 	}
 	return origin === window.location.origin || allowedOrigins.includes(origin);
 }
+
+/**
+ * Whether a `postMessage` command may come from this source: the editor window
+ * itself, or the page that embeds the editor. A frame inside the editor (such as
+ * a side panel view), a frame that was removed, and other windows are not trusted.
+ */
+export function isTrustedCommandSource(
+	source: MessageEventSource | null,
+	self: Pick<Window, 'parent'> = window,
+): boolean {
+	if (source === null) return false;
+	if (source === self) return true;
+	return self.parent !== self && source === self.parent;
+}

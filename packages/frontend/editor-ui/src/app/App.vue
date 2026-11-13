@@ -5,6 +5,7 @@ import AppModals from '@/app/components/app/AppModals.vue';
 import AppCommandBar from '@/app/components/app/AppCommandBar.vue';
 import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
+import AppSidePanel from '@/app/components/app/AppSidePanel.vue';
 import E2ETestModeMarker from '@/app/components/app/E2ETestModeMarker.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
@@ -33,6 +34,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
+import { useAppSidePanelLayout } from '@/app/composables/useAppSidePanelLayout';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type {
@@ -80,6 +82,8 @@ useTrialIntroModalAutoOpen();
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 useMcpDiscoveryEnrollment();
 // EOF Experiment cleanup
+
+const { isVisible: showSidePanel } = useAppSidePanelLayout();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -154,7 +158,10 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 			<WorkflowErrorNudge />
 		</template>
 		<template #aside>
-			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
+			<div :class="$style.aside">
+				<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />
+				<AppSidePanel v-if="showSidePanel" />
+			</div>
 		</template>
 	</BaseLayout>
 </template>
@@ -165,5 +172,11 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 .app {
 	height: 100vh;
 	overflow: hidden;
+}
+
+// The assistant panel and the side panel sit next to each other.
+.aside {
+	display: flex;
+	height: 100%;
 }
 </style>
