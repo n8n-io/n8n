@@ -57,7 +57,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 			getByRole('dialog', { name: 'Workflow version submitted for review' }),
 		).toBeInTheDocument();
 		expect(getByTestId('workflow-review-submitted-dialog')).toHaveTextContent(
-			'You can view your submission in your inbox',
+			'You can view your submission in your Inbox',
 		);
 
 		await userEvent.click(getByRole('button', { name: 'Got it' }));

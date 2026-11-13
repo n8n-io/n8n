@@ -124,7 +124,7 @@ function notifyResultClosed(
 			id: after.resultId,
 			state: 'closed',
 			updatedAt: after.updatedAt,
-			...(advance ? { advance } : {}),
+			advance,
 		});
 	}
 }
@@ -241,6 +241,13 @@ async function onAction(action: SelfHealingResultAction) {
 			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
+		} else if (
+			!responseLost &&
+			action === 'approve-and-publish' &&
+			result.publishError === undefined
+		) {
+			showPublished(result);
+			advance = true;
 		} else {
 			if (responseLost && action === 'approve-and-publish') {
 				showMessage({
@@ -274,10 +281,6 @@ async function onAction(action: SelfHealingResultAction) {
 						message: result.restorationError.error,
 					});
 				}
-			} else if (action === 'approve-and-publish') {
-				showPublished(result);
-				advance = true;
-				return true;
 			}
 
 			await openEditor(result.workflowId);

@@ -61,6 +61,12 @@ async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 
 beforeEach(() => vi.clearAllMocks());
 
+it('shows the Preview badge next to the heading', async () => {
+	const { view } = await renderSection();
+	expect(view.getByTestId('self-healing-preview-badge')).toBeInTheDocument();
+	expect(view.queryByTestId('self-healing-enterprise-readiness-badge')).not.toBeInTheDocument();
+});
+
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {
 	const { view, store } = await renderSection();
 	const pending = Promise.withResolvers<undefined>();
@@ -219,6 +225,7 @@ describe('personal tab', () => {
 
 	it('shows the configurations table without the settings create button', async () => {
 		const { view } = await renderPersonalTab([{ ...configuration }]);
+		expect(view.queryByTestId('self-healing-preview-badge')).not.toBeInTheDocument();
 
 		expect(await view.findByText('All workflows')).toBeVisible();
 		expect(view.queryByText('People to notify')).not.toBeInTheDocument();

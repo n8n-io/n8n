@@ -12,9 +12,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defineStore } from 'pinia';
 import { computed, reactive, ref } from 'vue';
 
-import { fetchInbox, fetchInboxSummary, fetchSelfHealingStatus } from './inbox.api';
+import { fetchInbox, fetchInboxSummary } from './inbox.api';
 import { INBOX_PAGE_LIMIT, type InboxItemChange, type InboxSectionKey } from './inbox.constants';
 import { toError } from './reviews/workflowReviews.utils';
+import { fetchSelfHealingStatus } from './self-healing/selfHealingResults.api';
 
 const sourceTypes: InboxSourceType[] = [
 	'workflow_review',
@@ -160,7 +161,14 @@ export const useInboxStore = defineStore('inbox', () => {
 	let summaryRequestSeq = 0;
 	// Unknown until loaded. A failed request keeps it unknown, so the Inbox shows no setup prompt.
 	const selfHealingStatus = ref<SelfHealingStatusDto | null>(null);
+	const selfHealingStatusLoading = ref(false);
 	let selfHealingStatusRequestSeq = 0;
+	// Workflow reviews need an enterprise license. Without them, self-healing decides the copy.
+	const showsSelfHealingEmptyState = computed(
+		() =>
+			disabledSources.value.includes('workflow_review') &&
+			!disabledSources.value.includes('self_healing_result'),
+	);
 
 	function removeDisabledSources(types: InboxSourceType[]) {
 		if (types.length === 0) return;
@@ -249,30 +257,39 @@ export const useInboxStore = defineStore('inbox', () => {
 	}
 
 	async function loadSelfHealingStatus() {
-		if (!enabled.value || disabledSources.value.includes('self_healing_result')) return;
+		// Only the self-healing empty state reads the status.
+		if (!enabled.value || !showsSelfHealingEmptyState.value) return;
 		const seq = ++selfHealingStatusRequestSeq;
+		selfHealingStatusLoading.value = true;
 		try {
 			const status = await fetchSelfHealingStatus(rootStore.restApiContext);
 			if (seq === selfHealingStatusRequestSeq) selfHealingStatus.value = status;
 		} catch {
 			if (seq === selfHealingStatusRequestSeq) selfHealingStatus.value = null;
+		} finally {
+			if (seq === selfHealingStatusRequestSeq) selfHealingStatusLoading.value = false;
 		}
 	}
 
-	/**
-	 * Picks the empty state copy. Workflow reviews need an enterprise license, so their
-	 * presence decides between review copy and self-healing copy.
-	 */
+	/** Picks the empty state copy. The setup prompt shows on the Open tab only. */
 	const emptyKind = computed<InboxEmptyKind>(() => {
-		const hasReviews = !disabledSources.value.includes('workflow_review');
-		const hasSelfHealing = !disabledSources.value.includes('self_healing_result');
-		if (hasReviews) return hasSelfHealing ? 'reviewsAndSelfHealing' : 'reviews';
-		if (!hasSelfHealing) return 'reviews';
+		if (!showsSelfHealingEmptyState.value) {
+			return disabledSources.value.includes('self_healing_result')
+				? 'reviews'
+				: 'reviewsAndSelfHealing';
+		}
 		const status = selfHealingStatus.value;
-		return status?.isReviewer === false && status.setupProjectId
+		return activeTab.value === 'open' && status?.isReviewer === false && status.setupProjectId
 			? 'selfHealingSetup'
 			: 'selfHealing';
 	});
+	// The Open empty state waits for the status, so its copy does not change after it renders.
+	const emptyKindPending = computed(
+		() =>
+			activeTab.value === 'open' &&
+			showsSelfHealingEmptyState.value &&
+			selfHealingStatusLoading.value,
+	);
 
 	async function fetchActiveTab() {
 		if (!enabled.value) return;
@@ -317,6 +334,7 @@ export const useInboxStore = defineStore('inbox', () => {
 		summaryRequestSeq++;
 		selfHealingStatusRequestSeq++;
 		selfHealingStatus.value = null;
+		selfHealingStatusLoading.value = false;
 		for (const list of Object.values(lists)) list.reset();
 		openCount.value = null;
 		closedCount.value = null;
@@ -341,6 +359,7 @@ export const useInboxStore = defineStore('inbox', () => {
 		disabledSources,
 		selfHealingStatus,
 		emptyKind,
+		emptyKindPending,
 		fetchSummary,
 		fetchActiveTab,
 		refreshListAndSummary,

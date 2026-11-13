@@ -1,5 +1,4 @@
 import type {
-	SelfHealingStatusDto,
 	GetInboxSummaryResponse,
 	InboxCategory,
 	InboxState,
@@ -18,10 +17,4 @@ export async function fetchInboxSummary(
 	context: IRestApiContext,
 ): Promise<GetInboxSummaryResponse> {
 	return await makeRestApiRequest(context, 'GET', '/inbox/summary');
-}
-
-export async function fetchSelfHealingStatus(
-	context: IRestApiContext,
-): Promise<SelfHealingStatusDto> {
-	return await makeRestApiRequest(context, 'GET', '/self-healing/status');
 }

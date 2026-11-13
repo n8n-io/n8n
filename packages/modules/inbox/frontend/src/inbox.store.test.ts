@@ -9,9 +9,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import * as api from './inbox.api';
+import * as selfHealingApi from './self-healing/selfHealingResults.api';
 import { createInboxListSlice, useInboxStore } from './inbox.store';
 
 vi.mock('./inbox.api');
+vi.mock('./self-healing/selfHealingResults.api');
 
 const waitingOrClosedRequest = vi.fn<typeof api.fetchInbox>();
 const authoredRequest = vi.fn<typeof api.fetchInbox>();
@@ -453,7 +455,7 @@ describe('empty state kind', () => {
 		[['workflow_review', 'self_healing_result'], 'reviewsAndSelfHealing'],
 	] as const)('uses review copy when workflow reviews are available: %j', async (types, kind) => {
 		setAvailableTypes([...types]);
-		vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue({
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
 			isReviewer: false,
 			setupProjectId: 'personal',
 		});
@@ -470,18 +472,18 @@ describe('empty state kind', () => {
 		[{ isReviewer: false, setupProjectId: null }, 'selfHealing'],
 	] as const)('uses self-healing copy for status %j', async (status, kind) => {
 		setAvailableTypes(['self_healing_result']);
-		vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue(status);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue(status);
 		const store = useInboxStore();
 		store.reset();
 		await store.refreshListAndSummary();
 
-		expect(api.fetchSelfHealingStatus).toHaveBeenCalledTimes(1);
+		expect(selfHealingApi.fetchSelfHealingStatus).toHaveBeenCalledTimes(1);
 		expect(store.emptyKind).toBe(kind);
 	});
 
 	it('shows no setup prompt when the status request fails', async () => {
 		setAvailableTypes(['self_healing_result']);
-		vi.mocked(api.fetchSelfHealingStatus).mockRejectedValue(new Error('offline'));
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockRejectedValue(new Error('offline'));
 		const store = useInboxStore();
 		store.reset();
 		await store.refreshListAndSummary();
@@ -489,12 +491,56 @@ describe('empty state kind', () => {
 		expect(store.emptyKind).toBe('selfHealing');
 	});
 
-	it('does not request the status when self-healing is unavailable', async () => {
-		setAvailableTypes(['workflow_review']);
+	it.each([[['workflow_review']], [['workflow_review', 'self_healing_result']]] as const)(
+		'does not request the status when the empty state does not use it: %j',
+		async (types) => {
+			setAvailableTypes([...types]);
+			const store = useInboxStore();
+			store.reset();
+			await store.refreshListAndSummary();
+
+			expect(selfHealingApi.fetchSelfHealingStatus).not.toHaveBeenCalled();
+			expect(store.emptyKindPending).toBe(false);
+		},
+	);
+
+	it('shows the setup prompt on the Open tab only', async () => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+			isReviewer: false,
+			setupProjectId: 'personal',
+		});
 		const store = useInboxStore();
 		store.reset();
 		await store.refreshListAndSummary();
+		store.activeTab = 'closed';
 
-		expect(api.fetchSelfHealingStatus).not.toHaveBeenCalled();
+		expect(store.emptyKind).toBe('selfHealing');
+	});
+
+	it.each([
+		['succeeds', async () => ({ isReviewer: false, setupProjectId: 'personal' })],
+		[
+			'fails',
+			async () => {
+				throw new Error('offline');
+			},
+		],
+	] as const)('is pending until the status request %s', async (_outcome, settle) => {
+		setAvailableTypes(['self_healing_result']);
+		const status = createDeferredPromise<null>();
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockImplementation(async () => {
+			await status.promise;
+			return await settle();
+		});
+		const store = useInboxStore();
+		store.reset();
+		const refresh = store.refreshListAndSummary();
+		await vi.waitFor(() => expect(store.isEmpty).toBe(true));
+
+		expect(store.emptyKindPending).toBe(true);
+		status.resolve(null);
+		await refresh;
+		expect(store.emptyKindPending).toBe(false);
 	});
 });

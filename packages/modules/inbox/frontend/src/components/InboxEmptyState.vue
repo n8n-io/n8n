@@ -19,8 +19,13 @@ const {
 	openCount,
 	closedCount,
 	emptyKind,
+	emptyKindPending,
 	selfHealingStatus,
 } = storeToRefs(store);
+// A next page that loads into an empty tab has no rows to show its progress.
+const loadingFirstRows = computed(
+	() => !hasItems.value && store.activeLists.some((list) => list.loadingMore),
+);
 const i18n = useI18n();
 const router = useRouter();
 const alertIcon = { type: 'icon', value: 'circle-alert' } as const;
@@ -29,31 +34,25 @@ const inboxIcon: EmptyStateIconCards = {
 	center: 'inbox',
 	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
 };
+const openBodyKeys = {
+	reviews: 'inbox.empty.body.open',
+	reviewsAndSelfHealing: 'inbox.empty.reviewsAndSelfHealing.body.open',
+	selfHealing: 'inbox.empty.selfHealing.body.open',
+} as const;
 const emptyCopy = computed(() => {
 	const tab = activeTab.value;
-	switch (emptyKind.value) {
-		case 'selfHealingSetup':
-			return {
-				heading: i18n.baseText('inbox.empty.setup.title'),
-				description: i18n.baseText('inbox.empty.setup.body'),
-				buttonText: i18n.baseText('inbox.empty.setup.button'),
-			};
-		case 'selfHealing':
-			return {
-				heading: i18n.baseText(`inbox.empty.${tab}`),
-				description: i18n.baseText(`inbox.empty.selfHealing.body.${tab}`),
-			};
-		case 'reviewsAndSelfHealing':
-			return {
-				heading: i18n.baseText(`inbox.empty.${tab}`),
-				description: i18n.baseText(`inbox.empty.reviewsAndSelfHealing.body.${tab}`),
-			};
-		default:
-			return {
-				heading: i18n.baseText(`inbox.empty.${tab}`),
-				description: i18n.baseText(`inbox.empty.body.${tab}`),
-			};
+	const kind = emptyKind.value;
+	if (kind === 'selfHealingSetup') {
+		return {
+			heading: i18n.baseText('inbox.empty.setup.title'),
+			description: i18n.baseText('inbox.empty.setup.body'),
+			buttonText: i18n.baseText('inbox.empty.setup.button'),
+		};
 	}
+	return {
+		heading: i18n.baseText(`inbox.empty.${tab}`),
+		description: i18n.baseText(tab === 'closed' ? 'inbox.empty.body.closed' : openBodyKeys[kind]),
+	};
 });
 
 function setUpSelfHealing() {
@@ -76,13 +75,17 @@ const noSelectionHeading = computed(() => {
 </script>
 
 <template>
-	<N8nLoading v-if="loading" :loading="true" :rows="3" />
+	<N8nLoading
+		v-if="loading || loadingFirstRows || (isEmpty && emptyKindPending)"
+		:loading="true"
+		:rows="3"
+	/>
 	<div v-else :class="$style.emptyStateWrapper">
 		<N8nEmptyState
 			v-if="initialLoadFailed && !hasItems"
 			:class="$style.emptyState"
 			:icon="alertIcon"
-			:heading="i18n.baseText('workflowReviews.error.load')"
+			:heading="i18n.baseText('inbox.loadError')"
 			:button-text="i18n.baseText('generic.retry')"
 			@click:button="store.fetchActiveTab()"
 		/>
@@ -104,8 +107,9 @@ const noSelectionHeading = computed(() => {
 			data-test-id="inbox-empty"
 			@click:button="setUpSelfHealing"
 		/>
+		<!-- Also covers a tab with no loaded rows and more pages to load. -->
 		<N8nEmptyState
-			v-else-if="hasItems"
+			v-else
 			:class="$style.emptyState"
 			:icon="inboxIcon"
 			:heading="noSelectionHeading"

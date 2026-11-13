@@ -1,16 +1,20 @@
+import type { SelfHealingStatusDto } from '@n8n/api-types';
 import { PERSONAL_SELF_HEALING_CONFIGURATION_VIEW } from '@n8n/frontend-constants/self-healing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { fireEvent } from '@testing-library/vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import * as api from '../inbox.api';
+import * as selfHealingApi from '../self-healing/selfHealingResults.api';
 import { useInboxStore } from '../inbox.store';
 import InboxEmptyState from './InboxEmptyState.vue';
 
 const render = createComponentRenderer(InboxEmptyState);
 
 vi.mock('../inbox.api');
+vi.mock('../self-healing/selfHealingResults.api');
 
 const emptyPage = {
 	data: [],
@@ -54,7 +58,7 @@ beforeEach(() => {
 		failedSources: [],
 		disabledSources: [],
 	});
-	vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue({
+	vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
 		isReviewer: false,
 		setupProjectId: 'personal',
 	});
@@ -81,6 +85,35 @@ it('opens a new personal configuration from the setup prompt', async () => {
 	);
 });
 
+it('shows no setup prompt on the Closed tab', async () => {
+	const { getByTestId, queryByRole } = await renderEmptyState(['self_healing_result'], 'closed');
+
+	expect(getByTestId('inbox-empty')).toHaveTextContent('No closed reviews');
+	expect(queryByRole('button')).not.toBeInTheDocument();
+});
+
+it('keeps the loading state until the status request settles', async () => {
+	const status = createDeferredPromise<SelfHealingStatusDto>();
+	vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockReturnValue(status.promise);
+	useSettingsStore().settings.inbox = {
+		enabled: true,
+		availableTypes: ['self_healing_result'],
+		failedTypes: [],
+	};
+	const store = useInboxStore();
+	store.reset();
+	const refresh = store.refreshListAndSummary();
+	const { getByTestId, queryByTestId } = render();
+	await vi.waitFor(() => expect(store.isEmpty).toBe(true));
+	expect(queryByTestId('inbox-empty')).not.toBeInTheDocument();
+
+	status.resolve({ isReviewer: false, setupProjectId: 'personal' });
+	await refresh;
+	await vi.waitFor(() =>
+		expect(getByTestId('inbox-empty')).toHaveTextContent('Get fixes for failed workflows'),
+	);
+});
+
 it.each([
 	[
 		'open',
@@ -89,7 +122,7 @@ it.each([
 	],
 	['closed', 'No closed reviews', 'Reviews that were approved or discarded appear here.'],
 ] as const)('shows self-healing copy on the %s tab once it is set up', async (tab, title, body) => {
-	vi.mocked(api.fetchSelfHealingStatus).mockResolvedValue({
+	vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
 		isReviewer: true,
 		setupProjectId: 'personal',
 	});

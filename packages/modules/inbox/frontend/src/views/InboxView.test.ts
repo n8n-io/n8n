@@ -4,6 +4,7 @@ import type {
 	InboxItem,
 	InboxSelfHealingItem,
 	InboxWorkflowReviewItem,
+	ListInboxResponse,
 	WorkflowReviewRequestDetail,
 } from '@n8n/api-types';
 import { createComponentRenderer, mockedStore, waitAllPromises } from '@n8n/frontend-test-utils';
@@ -366,6 +367,73 @@ describe('advancing after a decision', () => {
 		await waitAllPromises();
 		expect(router.currentRoute.value.fullPath).toBe('/inbox');
 	});
+
+	describe('when the last loaded Waiting item closes and Waiting has more pages', () => {
+		const nextResult = { ...resultItem(), id: 'res-2' };
+		const closeLastResult = () =>
+			reportResultChange({
+				type: 'self_healing_result',
+				id: 'req-1',
+				state: 'closed',
+				advance: true,
+			});
+
+		beforeEach(async () => {
+			await router.replace('/inbox/assistant-results/req-1?projectId=p1&workflowId=w1');
+			Object.assign(store.lists.waiting, {
+				items: [resultItem()],
+				hasLoaded: true,
+				hasMore: true,
+				nextCursor: 'c1',
+			});
+			store.lists.authored.hasLoaded = true;
+			store.reconcileItemChange.mockImplementation(() => {
+				store.lists.waiting.items = [];
+			});
+		});
+
+		it('loads the next Waiting page and selects its first item', async () => {
+			vi.mocked(inboxApi.fetchInbox).mockResolvedValue(inboxPage([nextResult]));
+			renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			expect(inboxApi.fetchInbox).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ category: 'waiting', cursor: 'c1' }),
+			);
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/inbox/assistant-results/res-2?projectId=p1&workflowId=w1',
+			);
+		});
+
+		it('keeps an item that the user selects while the page loads', async () => {
+			const nextPage = createDeferredPromise<ListInboxResponse>();
+			vi.mocked(inboxApi.fetchInbox).mockReturnValue(nextPage.promise);
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe('/inbox');
+			getByTestId('select-other-review').click();
+			await waitAllPromises();
+			nextPage.resolve(inboxPage([nextResult]));
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-2');
+		});
+
+		it('shows the no-selection state when the next page fails', async () => {
+			vi.mocked(inboxApi.fetchInbox).mockRejectedValue(new Error('offline'));
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe('/inbox');
+			expect(
+				getByText('Select a review from the list to see its activity and changes.'),
+			).toBeInTheDocument();
+		});
+	});
 });
 
 describe('first item selection', () => {
@@ -403,6 +471,29 @@ describe('first item selection', () => {
 		expect(router.currentRoute.value.fullPath).toBe('/inbox');
 	});
 
+	it('keeps an explicit clear that happens before the tab loads', async () => {
+		await router.replace('/inbox/reviews/req-2');
+		const { getByTestId } = renderComponent();
+		getByTestId('clear-review').click();
+		await waitAllPromises();
+		loadTab('waiting', [reviewItem()]);
+		loadTab('authored', []);
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox');
+	});
+
+	it('waits for a successful load after a failed one', async () => {
+		renderComponent();
+		loadTab('waiting', []);
+		loadTab('authored', []);
+		store.lists.waiting.failedRequest = 'list';
+		await waitAllPromises();
+		store.lists.waiting.failedRequest = null;
+		loadTab('waiting', [reviewItem()]);
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
+	});
+
 	it('does nothing when the active tab is empty', async () => {
 		renderComponent();
 		loadTab('waiting', []);
@@ -411,14 +502,28 @@ describe('first item selection', () => {
 		expect(router.currentRoute.value.fullPath).toBe('/inbox');
 	});
 
-	it('replaces a selection from the other tab after a tab switch', async () => {
+	it('keeps a selection from the other tab after a tab switch', async () => {
 		await router.replace('/inbox/reviews/req-1');
-		renderComponent();
+		const { getByTestId } = renderComponent();
 		loadTab('waiting', [reviewItem()]);
 		loadTab('authored', []);
 		await waitAllPromises();
+		getByTestId('select-closed-tab').click();
+		await waitAllPromises();
 		store.activeTab = 'closed';
-		await router.replace('/inbox/reviews/req-1?state=closed');
+		loadTab('closed', [{ ...resultItem(), state: 'closed' }]);
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1?state=closed');
+	});
+
+	it('selects the first item of the new tab when no item is selected', async () => {
+		const { getByTestId } = renderComponent();
+		loadTab('waiting', []);
+		loadTab('authored', []);
+		await waitAllPromises();
+		getByTestId('select-closed-tab').click();
+		await waitAllPromises();
+		store.activeTab = 'closed';
 		loadTab('closed', [{ ...resultItem(), state: 'closed' }]);
 		await waitAllPromises();
 		expect(router.currentRoute.value.path).toBe('/inbox/assistant-results/req-1');
@@ -645,6 +750,17 @@ function promotionItem(): InboxPromotionReviewItem {
 		hasConflicts: false,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
+	};
+}
+
+function inboxPage(data: InboxItem[]): ListInboxResponse {
+	return {
+		data,
+		nextCursor: null,
+		hasMore: false,
+		partial: false,
+		failedSources: [],
+		disabledSources: [],
 	};
 }
 

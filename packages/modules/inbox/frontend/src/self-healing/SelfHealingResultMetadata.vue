@@ -10,6 +10,7 @@ const props = defineProps<{
 	detail: SelfHealingResultDetail;
 	workflowNames: Map<string, string>;
 	statusLabel: string;
+	statusClass: 'fixReady' | 'needsAttention' | 'closed';
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -86,7 +87,10 @@ const usageRows = computed(() => {
 					i18n.baseText('inbox.selfHealing.metadata.status')
 				}}</N8nText>
 			</template>
-			<N8nText size="medium">{{ statusLabel }}</N8nText>
+			<div :class="$style.status">
+				<span :class="[$style.statusDot, $style[statusClass]]" aria-hidden="true" />
+				<N8nText size="medium">{{ statusLabel }}</N8nText>
+			</div>
 		</N8nCard>
 		<N8nCard :class="$style.card">
 			<div :class="$style.section">
@@ -117,8 +121,8 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-workflow-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-						<span :class="$style.workflowName">{{ workflowName }}</span>
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ workflowName }}</span>
 					</span>
 				</N8nLink>
 			</div>
@@ -137,8 +141,8 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-sub-workflow-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-						<span :class="$style.workflowName">{{ subWorkflow.name }}</span>
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ subWorkflow.name }}</span>
 					</span>
 				</N8nLink>
 			</div>
@@ -159,8 +163,8 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-execution-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="flag-hole" size="medium" :class="$style.workflowIcon" />
-						<span :class="$style.workflowName">{{
+						<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{
 							i18n.baseText('inbox.selfHealing.metadata.executionLink', {
 								interpolate: { id: detail.execution.id },
 							})
@@ -173,7 +177,7 @@ const usageRows = computed(() => {
 					:class="$style.link"
 					data-test-id="self-healing-execution-unavailable"
 				>
-					<N8nIcon icon="flag-hole" size="medium" :class="$style.workflowIcon" />
+					<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
 					<span>{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}</span>
 				</N8nText>
 			</div>
@@ -224,6 +228,32 @@ const usageRows = computed(() => {
 	}
 }
 
+/* Match the status row of workflow reviews. */
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.statusDot {
+	flex-shrink: 0;
+	width: var(--font-size--3xs);
+	height: var(--font-size--3xs);
+	border-radius: 50%;
+}
+
+.fixReady {
+	background-color: var(--color--green-500);
+}
+
+.needsAttention {
+	background-color: var(--color--yellow-500);
+}
+
+.closed {
+	background-color: var(--color--neutral-500);
+}
+
 .section {
 	display: flex;
 	flex-direction: column;
@@ -258,13 +288,13 @@ const usageRows = computed(() => {
 	text-decoration: underline;
 }
 
-.workflowIcon {
+.linkIcon {
 	flex-shrink: 0;
 	/* Align the icon with the first line, as in the prototype. */
 	margin-top: calc((1lh - 1em) / 2);
 }
 
-.workflowName {
+.linkLabel {
 	white-space: normal;
 	overflow-wrap: anywhere;
 }
