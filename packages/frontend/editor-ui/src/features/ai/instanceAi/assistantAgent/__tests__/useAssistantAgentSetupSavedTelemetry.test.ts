@@ -107,7 +107,9 @@ describe('useAssistantAgentSetupSavedTelemetry', () => {
 	});
 
 	it('sends no event for a setup tool call that the user did not answer in this view', async () => {
-		const { call } = setup();
+		const { telemetry, call } = setup();
+		// A different apply waits, so the watcher scans the chat and compares the request IDs.
+		telemetry.expectResult({ requestId: 'req-2', workflowId: 'wf-1', sections });
 
 		call().state = 'done';
 		call().output = appliedResult;
