@@ -22,7 +22,7 @@ const usage =
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
     \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
-    \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--test-clock]
+    \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
     \\        [--slots N] [--target-rate R --vendor-latency-ms L [--memory-mb M]]
@@ -343,6 +343,18 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--request-big-slots")) opts.request_big_slots = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--snap-mb")) opts.snap_bytes = @as(u64, try std.fmt.parseInt(u32, v, 10)) << 20;
         if (std.mem.eql(u8, k, "--event-queue-mb")) opts.event_queue_bytes = @as(usize, try std.fmt.parseInt(u32, v, 10)) << 20;
+        if (std.mem.eql(u8, k, "--max-outbox-mb")) {
+            // The retained lifecycle events of a shard; new work waits when
+            // they reach it (spec 9.2).
+            opts.max_outbox_mb = std.fmt.parseInt(u32, v, 10) catch {
+                std.debug.print("--max-outbox-mb takes a number of megabytes\n", .{});
+                std.process.exit(2);
+            };
+            if (opts.max_outbox_mb == 0) {
+                std.debug.print("--max-outbox-mb takes 1 or more megabytes\n", .{});
+                std.process.exit(2);
+            }
+        }
         if (std.mem.eql(u8, k, "--admin-secret-env")) {
             // The secret comes from the environment, never from argv.
             const secret = @import("shell/sys.zig").getenv(v) orelse {
@@ -531,5 +543,6 @@ test {
     _ = @import("shell/fuzz_test.zig");
     _ = @import("shell/loadgen.zig");
     _ = @import("shell/static_data_test.zig");
+    _ = @import("shell/outbox_test.zig");
     _ = @import("shell/binary_store.zig");
 }

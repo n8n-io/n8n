@@ -8,6 +8,9 @@ const logfmt = core_lib.logfmt;
 const Arena = core_lib.arena.Arena;
 const sys = @import("sys.zig");
 
+/// How long a due schedule fire waits when the outbox is full.
+const schedule_retry_ms: i64 = 200;
+
 /// Where log bytes go. The server writes files; the simulation keeps bytes
 /// in memory and can drop the unsynced tail to model a crash.
 pub const LogSink = struct {
@@ -152,6 +155,11 @@ pub const Shard = struct {
     replaying: bool = false,
     /// Print one line per schedule fire, for manual runs.
     log_fires: bool = false,
+    /// The outbox of this shard is full: new work must wait. A due schedule
+    /// fire is skipped then (spec 9.2), and resumes go on.
+    outbox_full: bool = false,
+    /// Due schedule fires that a full outbox skipped.
+    skipped_fires: u64 = 0,
     /// `recover` keeps the executions that finished in the log (the
     /// simulation compares them).
     collect_finished: bool = false,
@@ -247,14 +255,28 @@ pub const Shard = struct {
         // Due schedule slots become input events of this batch, so the log
         // records each fire and a replay repeats it.
         const free = cap - sh.batch_events.items.len;
-        const nsched = core.dueSchedules(&sh.st, now_ms, sh.batch_events.unusedCapacitySlice()[0..@min(free, 64)]);
+        const due = core.dueSchedules(&sh.st, now_ms, sh.batch_events.unusedCapacitySlice()[0..@min(free, 64)]);
+        // A full outbox refuses new work: a due fire is skipped, and the
+        // schedule keeps its next slot (spec 9.2).
+        var nsched = due;
+        if (due > 0 and sh.outbox_full) {
+            nsched = 0;
+            sh.skipped_fires += 1;
+            if (sh.skipped_fires == 1 or sh.skipped_fires % 1000 == 0) {
+                std.debug.print("shard {d}: the event outbox is full; {d} due schedule fire(s) skipped\n", .{ sh.st.cfg.shard_id, sh.skipped_fires });
+            }
+        }
         sh.batch_events.items.len += nsched;
         const evs = sh.batch_events.items;
         if (sh.log_fires) for (evs[evs.len - nsched ..]) |ev| {
             std.debug.print("schedule: module {d} trigger {d} slot {d}\n", .{ ev.aux, ev.seq, @as(i64, @bitCast(ev.conn)) });
         };
 
-        const out = try core.step(&sh.st, now_ms, evs, &sh.scratch);
+        var out = try core.step(&sh.st, now_ms, evs, &sh.scratch);
+        // A fire that waits for outbox room must not spin the loop.
+        if (due > 0 and nsched == 0 and (out.next_timer_ms == null or out.next_timer_ms.? <= now_ms + schedule_retry_ms)) {
+            out.next_timer_ms = now_ms + schedule_retry_ms;
+        }
         sh.batch_seq += 1;
         sh.counters.batches += 1;
         sh.counters.events += evs.len;
