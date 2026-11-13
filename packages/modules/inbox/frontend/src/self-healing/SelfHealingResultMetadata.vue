@@ -146,7 +146,7 @@ const usageRows = computed(() => {
 					</span>
 				</N8nLink>
 			</div>
-			<div :class="[$style.section, $style.executionSection]">
+			<div :class="$style.section">
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.execution')
 				}}</N8nText>
@@ -261,7 +261,8 @@ const usageRows = computed(() => {
 	min-width: 0;
 }
 
-.executionSection {
+/* Each later group in a card gets the same space above its title. */
+.section + .section {
 	margin-top: var(--spacing--2xs);
 }
 

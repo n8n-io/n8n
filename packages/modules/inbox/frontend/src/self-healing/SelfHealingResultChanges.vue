@@ -155,7 +155,9 @@ watch(
 		{{ i18n.baseText('inbox.selfHealing.changes.unavailable') }}
 	</N8nCallout>
 	<div v-else ref="panes" :class="$style.panes" data-test-id="self-healing-changes-list">
+		<!-- One workflow needs no navigation. -->
 		<N8nResizeWrapper
+			v-if="isMultiple"
 			:class="$style.treePane"
 			:style="{ width: `${treeResizer.width.value}px` }"
 			:resizer="treeResizer"
@@ -558,6 +560,9 @@ watch(
 }
 
 .single {
+	/* No tree pane is on the left, so the card starts at the edge of the content. */
+	padding-left: 0;
+
 	.card,
 	.body,
 	.diff {

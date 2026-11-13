@@ -123,7 +123,7 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-it('lists one workflow below its project with its diff in the same card layout', async () => {
+it('shows one workflow without the navigation, with its diff in the same card layout', async () => {
 	const view = await renderChanges(
 		{
 			suggestions: [suggestion()],
@@ -133,8 +133,8 @@ it('lists one workflow below its project with its diff in the same card layout',
 		'Operations',
 	);
 
-	expect(view.getByTestId('self-healing-changes-project')).toHaveTextContent('Operations');
-	expect(navItems(view)).toEqual([{ name: 'Daily report', unchanged: false, indent: '1' }]);
+	expect(view.queryByRole('navigation')).not.toBeInTheDocument();
+	expect(view.queryByTestId('self-healing-changes-nav-item')).not.toBeInTheDocument();
 	const card = within(view.getByTestId('self-healing-changes-card'));
 	expect(
 		card.getByRole('heading', { level: 3, name: 'Daily report Failing workflow' }),
