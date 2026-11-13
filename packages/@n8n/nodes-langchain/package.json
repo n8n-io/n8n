@@ -270,7 +270,7 @@
     "@langchain/qdrant": "1.0.1",
     "@langchain/redis": "1.1.1",
     "@langchain/textsplitters": "1.0.1",
-    "@langchain/weaviate": "1.0.1",
+    "@langchain/weaviate": "1.1.0",
     "@microsoft/agents-a365-runtime": "1.0.0",
     "@microsoft/agents-a365-tooling": "1.0.0",
     "@microsoft/agents-activity": "1.6.1",
@@ -327,7 +327,7 @@
     "tmp-promise": "catalog:",
     "uuid": "catalog:",
     "vm2": "catalog:",
-    "weaviate-client": "3.9.0",
+    "weaviate-client": "3.15.3",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
   },
