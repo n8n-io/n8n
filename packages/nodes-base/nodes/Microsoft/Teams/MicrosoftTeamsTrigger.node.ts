@@ -375,23 +375,30 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				// requests per 20 s for an app across all tenants, and the next listing reconciles.
 				// Where exactly one stored id on a required resource shows the stored secret, the node
 				// tries to renew it. A failure other than a 404 only warns, and the subscription keeps
-				// its expiry. ponytail: a 404 sends the listing error to core, as above, even when
-				// another stored id still covers the resource. The 404 needs a removal between the read
-				// and the renewal. Keep the covering id if that shows up.
+				// its expiry. A 404 means the subscription is gone: its id leaves the stored ids, and
+				// the stored subscriptions stay while another stored id still covers its resource. A
+				// throw here is costly: `delete()` also removes the stored secret, so the next attempt
+				// cannot keep anything without a listing.
 				let subscriptions: SubscriptionResponse[];
 				try {
 					subscriptions = await listOwnSubscriptions.call(this, webhookUrl);
 				} catch (error) {
-					const toRenew =
+					const cover =
 						clientState === undefined
 							? undefined
 							: await storedSubscriptionsCover.call(this, webhookUrl, clientState, event);
-					if (toRenew !== undefined && (await renewSubscriptions.call(this, toRenew)).size === 0) {
-						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
-							error: ensureError(error).message,
-						});
-						markPendingReconcile(webhookData, true);
-						return true;
+					if (cover !== undefined) {
+						const { gone } = await renewSubscriptions.call(this, cover.renew);
+						if (cover.covering.every((ids) => ids.some((id) => !gone.has(id)))) {
+							if (gone.size > 0) {
+								webhookData.subscriptionIds = storedIds.filter((id) => !gone.has(id));
+							}
+							logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
+								error: ensureError(error).message,
+							});
+							markPendingReconcile(webhookData, true);
+							return true;
+						}
 					}
 					throw error;
 				}

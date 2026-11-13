@@ -106,42 +106,45 @@ export async function deleteSubscriptions(
 }
 
 /**
- * Renews every id once, all in parallel, and returns the ids that Graph answered with 404. Pass
- * only ids whose secret is proven. Never throws: every other failure is warned, and that
- * subscription keeps its expiry until its own `reauthorizationRequired` renews it.
+ * Renews every id once, all in parallel. Returns the answer of each renewed id and the ids that
+ * Graph answered with 404. Pass only ids whose secret is proven. Never throws: every other failure
+ * is warned, and that subscription keeps its expiry until its own `reauthorizationRequired`
+ * renews it.
  */
 export async function renewSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
 	ids: Iterable<string>,
-): Promise<Set<string>> {
+): Promise<{ answers: Map<string, unknown>; gone: Set<string> }> {
 	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, 2000 across
 	// tenants. ponytail: the calls are not paced, and a 429 only warns. The PATCHes can still use up
 	// the budget of a create in the same 20 s: a re-create after a 404, or the creates of another
 	// activation. Pace the calls if that shows up.
-	const gone = await Promise.all(
+	const answers = new Map<string, unknown>();
+	const gone = new Set<string>();
+	await Promise.all(
 		[...new Set(ids)].map(async (id) => {
 			try {
-				await microsoftApiRequest.call(
+				const answer: unknown = await microsoftApiRequest.call(
 					this,
 					'PATCH',
 					buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]),
 					{ expirationDateTime: newSubscriptionExpiry() },
 				);
-				return [];
+				answers.set(id, answer);
 			} catch (error) {
 				if (error instanceof NodeApiError && error.httpCode === '404') {
 					logTrigger.call(this, 'debug', 'subscription gone', { subscriptionId: id });
-					return [id];
+					gone.add(id);
+					return;
 				}
 				logTrigger.call(this, 'warn', 'failed to renew subscription', {
 					subscriptionId: id,
 					error: ensureError(error).message,
 				});
-				return [];
 			}
 		}),
 	);
-	return new Set(gone.flat());
+	return { answers, gone };
 }
 
 // The reconcile removes an own subscription whose resource is missing from these lists, so
@@ -458,7 +461,7 @@ export async function reconcileSubscriptions(
 	if (renewKeepers && errors.length === 0) {
 		// A keeper that answers 404 is gone, so it is not deleted or stored. Its resource is
 		// created again.
-		const missing = await renewSubscriptions.call(this, keepers.values());
+		const { gone: missing } = await renewSubscriptions.call(this, keepers.values());
 		const lost = [...keepers].filter(([, id]) => missing.has(id)).map(([resource]) => resource);
 		for (const resource of lost) keepers.delete(resource);
 		const again = await createSubscriptions.call(this, webhookUrl, lost, clientState);
@@ -493,8 +496,9 @@ export async function reconcileSubscriptions(
 
 /**
  * Says whether the stored ids alone cover every required resource with a live subscription at
- * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
- * required resource, the one stored id whose answer shows the stored secret. Twins on one
+ * this URL. Returns `undefined` when they do not. Otherwise returns, for each required resource,
+ * the stored ids that cover it, and the ids to renew: for each required resource, the one stored
+ * id whose answer shows the stored secret. Twins on one
  * resource both cover, which is safer than core's cleanup, but proven twins are not returned:
  * the marked next reconcile keeps one. Unlike the reconcile, a twin that GET by id cannot prove
  * does not stop the renewal of a proven one. An answer with another clientState covers nothing,
@@ -507,14 +511,14 @@ export async function storedSubscriptionsCover(
 	webhookUrl: string,
 	clientState: string,
 	event: string,
-): Promise<string[] | undefined> {
+): Promise<{ covering: string[][]; renew: string[] } | undefined> {
 	let required: string[];
 	try {
 		required = [await getResourcePath.call(this, event)].flat();
 	} catch {
 		return undefined;
 	}
-	const covered = new Set<string>();
+	const covered = new Map<string, string[]>();
 	const proven = new Map<string, Set<string>>();
 	await Promise.all(
 		getStoredIds(this.getWorkflowStaticData('node')).map(async (id) => {
@@ -532,7 +536,7 @@ export async function storedSubscriptionsCover(
 					isLiveSubscription(answer) &&
 					(typeof answeredSecret !== 'string' || answeredSecret === clientState)
 				) {
-					covered.add(answer.resource);
+					covered.set(answer.resource, [...(covered.get(answer.resource) ?? []), id]);
 					if (answeredSecret === clientState && required.includes(answer.resource)) {
 						proven.set(answer.resource, (proven.get(answer.resource) ?? new Set<string>()).add(id));
 					}
@@ -550,7 +554,10 @@ export async function storedSubscriptionsCover(
 		}),
 	);
 	if (!required.every((resource) => covered.has(resource))) return undefined;
-	return [...proven.values()].filter((ids) => ids.size === 1).map(([id]) => id);
+	return {
+		covering: required.map((resource) => covered.get(resource) ?? []),
+		renew: [...proven.values()].filter((ids) => ids.size === 1).map(([id]) => id),
+	};
 }
 
 // Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
@@ -621,50 +628,33 @@ export async function handleLifecycleNotifications(
 		}
 	}
 
-	const renewed = new Set<string>();
-	const renewedEntries = new Map<string, SubscriptionResponse>();
-	for (const subscriptionId of toRenew) {
-		if (gone.has(subscriptionId)) continue;
+	const known = [...toRenew].filter((subscriptionId) => {
+		if (gone.has(subscriptionId)) return false;
 		// An own id that is not stored is an orphan; the reconcile below removes it.
-		if (!storedIds.includes(subscriptionId)) {
-			logTrigger.call(this, 'debug', 'skipped renewal: unknown subscription', {
-				subscriptionId: subscriptionId.slice(0, 64),
+		if (storedIds.includes(subscriptionId)) return true;
+		logTrigger.call(this, 'debug', 'skipped renewal: unknown subscription', {
+			subscriptionId: subscriptionId.slice(0, 64),
+		});
+		return false;
+	});
+	const renewal = await renewSubscriptions.call(this, known);
+	for (const subscriptionId of renewal.gone) gone.add(subscriptionId);
+	const renewed = new Set(renewal.answers.keys());
+	const renewedEntries = new Map<string, SubscriptionResponse>();
+	for (const [subscriptionId, answer] of renewal.answers) {
+		logTrigger.call(this, 'debug', 'renewed subscription', { subscriptionId });
+		// The answer stands in for a listing entry that can lag. A stored id at an old
+		// webhook URL must not become a keeper for the current URL through its answer.
+		if (
+			isSubscriptionResponse(answer) &&
+			answer.id === subscriptionId &&
+			answer.notificationUrl === webhookUrl
+		) {
+			renewedEntries.set(subscriptionId, answer);
+		} else {
+			logTrigger.call(this, 'debug', 'renewed subscription without a usable answer', {
+				subscriptionId,
 			});
-			continue;
-		}
-
-		try {
-			const answer: unknown = await microsoftApiRequest.call(
-				this,
-				'PATCH',
-				buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id: subscriptionId }]),
-				{ expirationDateTime: newSubscriptionExpiry() },
-			);
-			renewed.add(subscriptionId);
-			logTrigger.call(this, 'debug', 'renewed subscription', { subscriptionId });
-			// The answer stands in for a listing entry that can lag. A stored id at an old
-			// webhook URL must not become a keeper for the current URL through its answer.
-			if (
-				isSubscriptionResponse(answer) &&
-				answer.id === subscriptionId &&
-				answer.notificationUrl === webhookUrl
-			) {
-				renewedEntries.set(subscriptionId, answer);
-			} else {
-				logTrigger.call(this, 'debug', 'renewed subscription without a usable answer', {
-					subscriptionId,
-				});
-			}
-		} catch (error) {
-			if (error instanceof NodeApiError && error.httpCode === '404') {
-				gone.add(subscriptionId);
-				logTrigger.call(this, 'debug', 'subscription gone, will re-create', { subscriptionId });
-			} else {
-				logTrigger.call(this, 'warn', 'failed to renew subscription', {
-					subscriptionId,
-					error: ensureError(error).message,
-				});
-			}
 		}
 	}
 

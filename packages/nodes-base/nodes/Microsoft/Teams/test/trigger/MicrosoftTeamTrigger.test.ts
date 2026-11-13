@@ -125,7 +125,8 @@ describe('Microsoft Teams Trigger Node', () => {
 				(microsoftApiRequest.call as Mock).mockImplementation(
 					async (_ctx: unknown, method: string, path: RequestPath) => {
 						if (method === 'POST' && String(path) === '/v1.0/subscriptions') return { id: 'new' };
-						const answer = answers[`${method} ${String(path).slice('/v1.0/subscriptions/'.length)}`];
+						const answer =
+							answers[`${method} ${String(path).slice('/v1.0/subscriptions/'.length)}`];
 						if (answer instanceof Error) throw answer;
 						if (answer === undefined) {
 							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
@@ -569,16 +570,6 @@ describe('Microsoft Teams Trigger Node', () => {
 						renewed: ['sub1'],
 					},
 					{
-						when: 'even when another stored one without a clientState still covers',
-						params: { event: 'newChat' },
-						storedIds: ['sub1', 'sub2'],
-						answers: () => ({
-							'GET sub1': proven('sub1'),
-							'GET sub2': { ...own('sub2', '/me/chats', HOUR), clientState: null },
-						}),
-						renewed: ['sub1'],
-					},
-					{
 						when: 'even when the renewal on the other resource succeeds',
 						params: { event: 'newChannel', watchAllTeams: true },
 						storedIds: ['a', 'b'],
@@ -601,7 +592,8 @@ describe('Microsoft Teams Trigger Node', () => {
 						// Only the subscription listing fails: Watch All still reads the joined teams.
 						(microsoftApiRequestAllItems.call as Mock).mockImplementation(
 							async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
-								if (String(path) === '/v1.0/me/joinedTeams') return [{ id: 'team1' }, { id: 'team2' }];
+								if (String(path) === '/v1.0/me/joinedTeams')
+									return [{ id: 'team1' }, { id: 'team2' }];
 								throw error;
 							},
 						);
@@ -617,6 +609,31 @@ describe('Microsoft Teams Trigger Node', () => {
 						expect(ctx.logger.warn).not.toHaveBeenCalled();
 					},
 				);
+
+				// A throw runs `delete()`, which also removes the secret, so one lost subscription must
+				// not cost the stored one that still covers the resource.
+				it('drops a gone stored id and keeps the one that still covers its resource', async () => {
+					const staticData: Record<string, unknown> = {
+						subscriptionIds: ['sub1', 'sub2'],
+						webhookSecret: 'secret',
+					};
+					const ctx = hookCtx(staticData, { event: 'newChat' });
+					(microsoftApiRequestAllItems.call as Mock).mockRejectedValue(throttled(ctx));
+					routeGraph({
+						'GET sub1': proven('sub1'),
+						'GET sub2': { ...own('sub2', '/me/chats', HOUR), clientState: null },
+					});
+
+					await expect(checkExists(ctx)).resolves.toBe(true);
+					expect(calls('PATCH').map((call) => call[2])).toEqual(['/v1.0/subscriptions/sub1']);
+					expect(calls('DELETE')).toHaveLength(0);
+					expect(calls('POST')).toHaveLength(0);
+					expect(staticData).toEqual({
+						subscriptionIds: ['sub2'],
+						webhookSecret: 'secret',
+						pendingReconcile: true,
+					});
+				});
 
 				it('warns, keeps the stored ids and marks a retry when a renewal fails for another reason', async () => {
 					const staticData: Record<string, unknown> = {

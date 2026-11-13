@@ -878,9 +878,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 					},
 				);
 
-				await expect(renewSubscriptions.call(ctx, ['a', 'b', 'a'])).resolves.toEqual(
-					new Set(['b']),
-				);
+				await expect(renewSubscriptions.call(ctx, ['a', 'b', 'a'])).resolves.toEqual({
+					answers: new Map([['a', expect.objectContaining({ id: 'a' })]]),
+					gone: new Set(['b']),
+				});
 				expect(calls('PATCH').map((call) => call[2])).toEqual([
 					'/v1.0/subscriptions/a',
 					'/v1.0/subscriptions/b',
@@ -1452,7 +1453,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 					const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
 					(microsoftApiRequest.call as Mock).mockImplementation(
 						async (callCtx: unknown, callMethod: string, path: RequestPath, body?: unknown) => {
-							if (callMethod === method && String(path) === `/v1.0/subscriptions/${id}`) throw error;
+							if (callMethod === method && String(path) === `/v1.0/subscriptions/${id}`)
+								throw error;
 							return await baseline?.(callCtx, callMethod, path, body);
 						},
 					);
@@ -1785,7 +1787,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				// The answer has no clientState: it covers, but there is nothing proven to renew.
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toEqual([]);
+				).resolves.toEqual({ covering: [['sub1']], renew: [] });
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 				expect(staticData).toEqual({ subscriptionIds: ['sub1'], webhookSecret: 'secret' });
 				expect(ctx.logger.debug).not.toHaveBeenCalled();
@@ -1824,23 +1826,28 @@ describe('Microsoft Teams Helpers Functions', () => {
 					'the stored secret',
 					['sub1'],
 					{ sub1: answered('sub1', '/me/chats', 'secret') },
-					['sub1'],
+					{ covering: [['sub1']], renew: ['sub1'] },
 				],
-				['a null clientState', ['sub1'], { sub1: answered('sub1', '/me/chats', null) }, []],
+				[
+					'a null clientState',
+					['sub1'],
+					{ sub1: answered('sub1', '/me/chats', null) },
+					{ covering: [['sub1']], renew: [] },
+				],
 				[
 					'the stored secret, beside a proven id on a resource that is not required',
 					['sub1', 'x'],
 					{ sub1: answered('sub1', '/me/chats', 'secret'), x: answered('x', TEAM1, 'secret') },
-					['sub1'],
+					{ covering: [['sub1']], renew: ['sub1'] },
 				],
 				[
 					'the stored secret on two twins',
 					['a', 'b'],
 					{ a: answered('a', '/me/chats', 'secret'), b: answered('b', '/me/chats', 'secret') },
-					[],
+					{ covering: [['a', 'b']], renew: [] },
 				],
 			])(
-				'covers when Graph answers with %s and returns the ids to renew',
+				'covers when Graph answers with %s and returns the covering ids and the ids to renew',
 				async (_label, subscriptionIds, byId, expected) => {
 					const { ctx } = arrange({ staticData: { subscriptionIds, webhookSecret: 'secret' } });
 					answerById(byId);
@@ -1886,7 +1893,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				answerById({ a, b: subscription('b', TEAM2, minutes(60)) });
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChannel'),
-				).resolves.toEqual(['a']);
+				).resolves.toEqual({ covering: [['a'], ['b']], renew: ['a'] });
 			});
 
 			it('skips a stored id that fails validation without a request', async () => {
@@ -1897,7 +1904,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				await expect(
 					storedSubscriptionsCover.call(ctx, webhookUrl, 'secret', 'newChat'),
-				).resolves.toEqual([]);
+				).resolves.toEqual({ covering: [['sub1']], renew: [] });
 				expect(reads()).toEqual(['/v1.0/subscriptions/sub1']);
 			});
 
@@ -2545,7 +2552,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (callCtx: unknown, method: string, path: RequestPath, body?: Record<string, unknown>) =>
+					async (
+						callCtx: unknown,
+						method: string,
+						path: RequestPath,
+						body?: Record<string, unknown>,
+					) =>
 						method === 'PATCH'
 							? {
 									...subscription('s2', '/teams/team2/channels', minutes(60)),
