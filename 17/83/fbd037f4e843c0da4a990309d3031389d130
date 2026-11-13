@@ -1,0 +1,31 @@
+packages/cli/test/migration/1794568002958-add-skill-source-health.test.ts
+  s_89a39af4e4ecf8::t_3f018c63b0515b 13
+docs/generated/postgres-schema/public.skill_source.md
+  ai_agent 9
+packages/cli/src/modules/skills/__tests__/integration/skill-source-credentials.integration.test.ts
+  s_89a39af4e4ecf8::t_a787feb7c88f56 20,35,851-893
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_89a39af4e4ecf8::t_451b1b234918e9 194
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_89a39af4e4ecf8::t_a87ae08cd8ec4a 371,373-378,380
+packages/@n8n/db/src/migrations/common/1794568002958-AddSkillSourceHealth.ts
+  s_89a39af4e4ecf8::t_ca6d5bafe29bd5 19-20,33-38
+  s_89a39af4e4ecf8::t_3f018c63b0515b 18
+  s_89a39af4e4ecf8::t_7597b7b9a7307b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1783fbd037f4e843c0da4a990309d3031389d130",
+  "prompts": {},
+  "sessions": {
+    "s_89a39af4e4ecf8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cfc9-6e0a-7652-b14d-e92713b0f7ab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

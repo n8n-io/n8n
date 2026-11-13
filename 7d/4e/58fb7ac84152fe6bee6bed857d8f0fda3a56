@@ -1,0 +1,52 @@
+packages/frontend/editor-ui/src/app/composables/useFloatingUiOffsets.test.ts
+  s_85c95d3931e97d::t_948565471c6ad0 5-6,97-101,103-116
+  s_85c95d3931e97d::t_af32506ffade74 102
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPageContext.test.ts
+  s_85c95d3931e97d::t_19f22d3d8deb55 1-118
+packages/frontend/editor-ui/src/app/composables/useAppSidePanelLayout.test.ts
+  s_85c95d3931e97d::t_19f22d3d8deb55 1,3-23,25-58,63,65-67,70-71,73-74
+  s_85c95d3931e97d::t_af32506ffade74 2,24,59-62,64,68-69,72
+  s_85c95d3931e97d::t_f80f65eee0ba09 75-80
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.test.ts
+  s_85c95d3931e97d::t_f1a315e0b9be97 79-83,116,206-213
+  s_85c95d3931e97d::t_010964118de14f 214-215
+packages/frontend/editor-ui/src/app/composables/useAppSidePanelLayout.ts
+  s_85c95d3931e97d::t_6adefcac34d4bd 1-34
+packages/frontend/editor-ui/package.json
+  s_85c95d3931e97d::t_65a4b4d12ef056 80
+packages/frontend/editor-ui/vite/aliases.mts
+  s_85c95d3931e97d::t_65a4b4d12ef056 31-35
+packages/frontend/editor-ui/src/app/components/app/AppSidePanel.vue
+  s_85c95d3931e97d::t_65a4b4d12ef056 1-48
+packages/frontend/editor-ui/src/app/App.vue
+  s_85c95d3931e97d::t_f43a9aa39c2bf6 8,87,161-164,176-180
+  s_85c95d3931e97d::t_6adefcac34d4bd 37,86
+  s_85c95d3931e97d::t_a5ab29eb48512d 181
+packages/frontend/editor-ui/src/app/composables/useFloatingUiOffsets.ts
+  s_85c95d3931e97d::t_6adefcac34d4bd 8,28,45-47
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPageContext.ts
+  s_85c95d3931e97d::t_65a4b4d12ef056 1-75
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+  s_85c95d3931e97d::t_6adefcac34d4bd 62,95
+  s_85c95d3931e97d::t_e9e45e7308f815 21
+packages/frontend/editor-ui/src/app/components/app/AppSidePanel.test.ts
+  s_85c95d3931e97d::t_19f22d3d8deb55 1-43
+pnpm-lock.yaml
+  s_85c95d3931e97d::t_f2acafe7d14d98 7045-7047
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d4e58fb7ac84152fe6bee6bed857d8f0fda3a56",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
