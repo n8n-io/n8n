@@ -1,5 +1,5 @@
+import memoize from 'lodash/memoize';
 import {
-	NodeOperationError,
 	tryToParseNumber,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -7,6 +7,12 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	addCursorPredicate,
+	addCursorSortRule,
+	assertUniqueCursorColumn,
+	getStartAfter,
+} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -90,7 +96,10 @@ export async function execute(
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
-	const uniqueColumnsByTable = new Map<string, string[]>();
+	const uniqueColumnsOf = memoize(
+		async (schema: string, table: string) => await getUniqueKeyColumns(db, schema, table),
+		(schema, table) => `${schema}.${table}`,
+	);
 
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
@@ -134,42 +143,19 @@ export async function execute(
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
-			const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
-				{}) as IDataObject;
-			const column = String(cursor.column ?? '');
-			const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+			const { column, value } = getStartAfter(this, i);
 
 			if (column !== '') {
-				const tableKey = `${schema}.${table}`;
-				let uniqueColumns = uniqueColumnsByTable.get(tableKey);
-				if (!uniqueColumns) {
-					uniqueColumns = await getUniqueKeyColumns(db, schema, table);
-					uniqueColumnsByTable.set(tableKey, uniqueColumns);
-				}
-				if (!uniqueColumns.includes(column)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
-						{ itemIndex: i },
-					);
-				}
+				const uniqueColumns = await uniqueColumnsOf(schema, table);
+				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
 
 				if (value !== '') {
-					// addWhereClauses prepends ' WHERE '. Wrap its body so an OR chain
-					// stays grouped under the cursor AND.
-					const where = query.slice(base.length);
 					values.push(column, value);
 					const predicate = `$${values.length - 1}:name > $${values.length}`;
-					query = where
-						? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
-						: `${base} WHERE ${predicate}`;
+					query = addCursorPredicate(base, query, predicate);
 				}
 
-				// The walk is only correct with no Sort rules, or with Sort = cursor column ASC.
-				// The node does not guard this; the user owns the Sort rules.
-				rules = sortRules.some((rule) => rule.column === column)
-					? sortRules
-					: [...sortRules, { column, direction: 'ASC' }];
+				rules = addCursorSortRule(sortRules, column);
 			}
 		}
 

@@ -1,3 +1,4 @@
+import memoize from 'lodash/memoize';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,6 +7,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import {
+	addCursorPredicate,
+	addCursorSortRule,
+	assertUniqueCursorColumn,
+	getStartAfter,
+} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -89,7 +96,7 @@ export async function execute(
 	let returnData: INodeExecutionData[] = [];
 
 	const queries: QueryWithValues[] = [];
-	const uniqueColumnsByTable = new Map<string, string[]>();
+	const uniqueColumnsOf = memoize(async (table: string) => await getUniqueKeyColumns(pool, table));
 
 	for (let i = 0; i < inputItems.length; i++) {
 		try {
@@ -132,41 +139,18 @@ export async function execute(
 
 			const returnAll = this.getNodeParameter('returnAll', i, false);
 			if (!returnAll) {
-				const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
-					{}) as IDataObject;
-				const column = String(cursor.column ?? '');
-				const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+				const { column, value } = getStartAfter(this, i);
 
 				if (column !== '') {
-					let uniqueColumns = uniqueColumnsByTable.get(table);
-					if (!uniqueColumns) {
-						uniqueColumns = await getUniqueKeyColumns(pool, table);
-						uniqueColumnsByTable.set(table, uniqueColumns);
-					}
-					if (!uniqueColumns.includes(column.toLowerCase())) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
-							{ itemIndex: i },
-						);
-					}
+					const uniqueColumns = await uniqueColumnsOf(table);
+					assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table, true);
 
 					if (value !== '') {
-						// addWhereClauses prepends ' WHERE '. Wrap its body so an OR chain
-						// stays grouped under the cursor AND.
-						const where = query.slice(base.length);
-						const predicate = `${escapeSqlIdentifier(column)} > ?`;
-						query = where
-							? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
-							: `${base} WHERE ${predicate}`;
+						query = addCursorPredicate(base, query, `${escapeSqlIdentifier(column)} > ?`);
 						values.push(value);
 					}
 
-					// The walk is only correct with no Sort rules, or with Sort = cursor column ASC.
-					// The node does not guard this; the user owns the Sort rules.
-					rules = sortRules.some((rule) => rule.column.toLowerCase() === column.toLowerCase())
-						? sortRules
-						: [...sortRules, { column, direction: 'ASC' }];
+					rules = addCursorSortRule(sortRules, column, true);
 				}
 			}
 

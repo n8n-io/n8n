@@ -1,3 +1,4 @@
+import memoize from 'lodash/memoize';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -7,6 +8,12 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import type * as oracleDBTypes from 'oracledb';
 
+import {
+	addCursorPredicate,
+	addCursorSortRule,
+	assertUniqueCursorColumn,
+	getStartAfter,
+} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -91,7 +98,10 @@ export async function execute(
 	pool: oracleDBTypes.Pool,
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
-	const uniqueColumnsByTable = new Map<string, string[]>();
+	const uniqueColumnsOf = memoize(
+		async (schema: string, table: string) => await getUniqueKeyColumns(pool, schema, table),
+		(schema, table) => `${schema}.${table}`,
+	);
 
 	const conn = await pool.getConnection();
 	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
@@ -136,25 +146,11 @@ export async function execute(
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
-			const cursor = ((this.getNodeParameter('startAfter', i, {}) as IDataObject).values ??
-				{}) as IDataObject;
-			const column = String(cursor.column ?? '');
-			const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+			const { column, value } = getStartAfter(this, i);
 
 			if (column !== '') {
-				const tableKey = `${schema}.${table}`;
-				let uniqueColumns = uniqueColumnsByTable.get(tableKey);
-				if (!uniqueColumns) {
-					uniqueColumns = await getUniqueKeyColumns(pool, schema, table);
-					uniqueColumnsByTable.set(tableKey, uniqueColumns);
-				}
-				if (!uniqueColumns.includes(column)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Column "${column}" in table "${table}" is not unique. Start After needs a column with a single-column unique index or primary key`,
-						{ itemIndex: i },
-					);
-				}
+				const uniqueColumns = await uniqueColumnsOf(schema, table);
+				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
 				if (!columnMetaDataObject[column]) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -164,21 +160,12 @@ export async function execute(
 				}
 
 				if (value !== '') {
-					// addWhereClauses prepends ' WHERE '. Wrap its body so an OR chain
-					// stays grouped under the cursor AND.
-					const where = innerQuery.slice(base.length);
 					const predicate = `${quoteSqlIdentifier(column)} > :${values.length}`;
-					innerQuery = where
-						? `${base} WHERE (${where.slice(' WHERE '.length)}) AND ${predicate}`
-						: `${base} WHERE ${predicate}`;
+					innerQuery = addCursorPredicate(base, innerQuery, predicate);
 					addBindParam(columnMetaDataObject[column], value, values);
 				}
 
-				// The walk is only correct with no Sort rules, or with Sort = cursor column ASC.
-				// The node does not guard this; the user owns the Sort rules.
-				rules = sortRules.some((rule) => rule.column === column)
-					? sortRules
-					: [...sortRules, { column, direction: 'ASC' }];
+				rules = addCursorSortRule(sortRules, column);
 			}
 		}
 
