@@ -121,11 +121,12 @@ describe('TypeORMAgentMemory', () => {
 
 	it('logs and skips invalid native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
-		messageRepo.find.mockResolvedValueOnce([makeMessageRow()]);
+		messageRepo.findForThreadMemory.mockResolvedValueOnce([makeMessageRow()]);
 		const { memory, scopedLogger } = createMemory({ messageRepo });
 
 		await expect(memory.getMessages('thread-1')).resolves.toEqual([]);
 
+		expect(messageRepo.findForThreadMemory).toHaveBeenCalledWith('thread-1', undefined, {});
 		expect(scopedLogger.warn).toHaveBeenCalledWith(
 			'Skipping invalid Instance AI message row',
 			expect.objectContaining({
@@ -138,7 +139,7 @@ describe('TypeORMAgentMemory', () => {
 
 	it('normalizes persisted tool-call input when reading native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
-		messageRepo.find.mockResolvedValueOnce([
+		messageRepo.findForThreadMemory.mockResolvedValueOnce([
 			makeMessageRow({
 				content: JSON.stringify({
 					role: 'assistant',
@@ -177,9 +178,69 @@ describe('TypeORMAgentMemory', () => {
 		expect(getToolInputs(message)).toEqual([{ action: 'search' }, { value: ['a', 'b'] }, {}]);
 	});
 
+	it('returns limited thread memory oldest first and forwards the cutoff', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		const before = new Date('2026-06-04T09:00:00.000Z');
+		messageRepo.findForThreadMemory.mockResolvedValueOnce(
+			['newer', 'older'].map((id) =>
+				makeMessageRow({ id, content: JSON.stringify({ role: 'user', content: [] }) }),
+			),
+		);
+		const { memory } = createMemory({ messageRepo });
+
+		expect(
+			(await memory.getMessages('thread-1', { limit: 2, before })).map(({ id }) => id),
+		).toEqual(['older', 'newer']);
+		expect(messageRepo.findForThreadMemory).toHaveBeenCalledWith(
+			'thread-1',
+			{ limit: 2, before },
+			{},
+		);
+	});
+
+	it('keeps page lookahead handling and forwards the default limit and cursor', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		messageRepo.findThreadMessagePage
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce(
+				['newer', 'lookahead'].map((id) =>
+					makeMessageRow({ id, content: JSON.stringify({ role: 'user', content: [] }) }),
+				),
+			);
+		const { memory } = createMemory({ messageRepo });
+		await expect(memory.listMessages({ threadId: 'thread-1' })).resolves.toEqual({
+			messages: [],
+			hasMore: false,
+		});
+		expect(messageRepo.findThreadMessagePage).toHaveBeenCalledWith(
+			{ threadId: 'thread-1', limit: 50 },
+			{},
+		);
+		const before = { createdAt: new Date(), id: 'cursor' };
+		const page = await memory.listMessages({ threadId: 'thread-1', limit: 1, page: 2, before });
+		expect(page.messages.map(({ id }) => id)).toEqual(['newer']);
+		expect(page.hasMore).toBe(true);
+		expect(messageRepo.findThreadMessagePage).toHaveBeenLastCalledWith(
+			{ threadId: 'thread-1', limit: 1, page: 2, before },
+			{},
+		);
+	});
+
+	it('skips empty writes and deletes, and forwards message ids for deletion', async () => {
+		const messageRepo = mock<InstanceAiMessageRepository>();
+		const threadRepo = mock<InstanceAiThreadRepository>();
+		const { memory } = createMemory({ messageRepo, threadRepo });
+		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [] });
+		await memory.deleteMessages([]);
+		expect(messageRepo.saveMessageBatch).not.toHaveBeenCalled();
+		expect(threadRepo.update).not.toHaveBeenCalled();
+		expect(messageRepo.deleteByIds).not.toHaveBeenCalled();
+		await memory.deleteMessages(['message-1']);
+		expect(messageRepo.deleteByIds).toHaveBeenCalledWith(['message-1'], {});
+	});
+
 	it('normalizes tool-call input before saving native message rows', async () => {
 		const messageRepo = mock<InstanceAiMessageRepository>();
-		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
 		const { memory } = createMemory({ messageRepo });
 		const message: AgentDbMessage = {
 			id: 'message-1',
@@ -203,7 +264,15 @@ describe('TypeORMAgentMemory', () => {
 			messages: [message],
 		});
 
-		const [createdEntity] = messageRepo.create.mock.calls[0] as Array<{ content?: string }>;
+		const [[createdEntity]] = messageRepo.saveMessageBatch.mock.calls[0];
+		expect(createdEntity).toMatchObject({
+			id: message.id,
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			createdAt: message.createdAt,
+			updatedAt: message.createdAt,
+		});
+		expect(messageRepo.saveMessageBatch).toHaveBeenCalledWith([createdEntity], {});
 		const persisted = JSON.parse(createdEntity.content ?? '{}') as AgentDbMessage;
 		expect(getToolInputs(persisted)[0]).toEqual({
 			value: 'plain-text',
@@ -215,7 +284,6 @@ describe('TypeORMAgentMemory', () => {
 		// message id is written twice. The store must key each row on the message id (the
 		// primary key) so TypeORM's save() updates the existing row instead of duplicating.
 		const messageRepo = mock<InstanceAiMessageRepository>();
-		messageRepo.create.mockImplementation((entity) => entity as InstanceAiMessage);
 		const { memory } = createMemory({ messageRepo });
 
 		const message: AgentDbMessage = {
@@ -228,10 +296,7 @@ describe('TypeORMAgentMemory', () => {
 		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
 		await memory.saveMessages({ threadId: 'thread-1', resourceId: 'user-1', messages: [message] });
 
-		const savedIds = messageRepo.save.mock.calls.map(([entities]) => {
-			const [entity] = entities as Array<{ id: string }>;
-			return entity.id;
-		});
+		const savedIds = messageRepo.saveMessageBatch.mock.calls.map(([[entity]]) => entity.id);
 		// Both writes target the same primary key, so the DB upserts a single row.
 		expect(savedIds).toEqual(['message-1', 'message-1']);
 	});

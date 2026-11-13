@@ -31,7 +31,7 @@ import {
 	createSubAgentResourceIdPrefix,
 	type ThreadPatch,
 } from '@n8n/instance-ai';
-import { In, LessThan, Like } from '@n8n/typeorm';
+import { In, Like } from '@n8n/typeorm';
 import { z } from 'zod';
 
 import { ConflictError, ForbiddenError, UnexpectedError } from '@n8n/errors';
@@ -467,13 +467,7 @@ export class TypeORMAgentMemory
 		threadId: string,
 		opts?: { limit?: number; before?: Date },
 	): Promise<AgentDbMessage[]> {
-		const where = opts?.before ? { threadId, createdAt: LessThan(opts.before) } : { threadId };
-
-		const entities = await this.messageRepo.find({
-			where,
-			order: opts?.limit ? { createdAt: 'DESC', id: 'DESC' } : { createdAt: 'ASC', id: 'ASC' },
-			...(opts?.limit ? { take: opts.limit } : {}),
-		});
+		const entities = await this.messageRepo.findForThreadMemory(threadId, opts, {});
 
 		const ordered = opts?.limit ? entities.reverse() : entities;
 		return ordered.flatMap((entity) => {
@@ -494,19 +488,8 @@ export class TypeORMAgentMemory
 		page?: number;
 		before?: { createdAt: Date; id: string };
 	}): Promise<{ messages: AgentDbMessage[]; hasMore: boolean }> {
-		const { threadId, before } = args;
 		const limit = args.limit ?? 50;
-		const entities = await this.messageRepo.find({
-			where: before
-				? [
-						{ threadId, createdAt: LessThan(before.createdAt) },
-						{ threadId, createdAt: before.createdAt, id: LessThan(before.id) },
-					]
-				: { threadId },
-			order: { createdAt: 'DESC', id: 'DESC' },
-			take: limit + 1,
-			skip: before ? 0 : (args.page ?? 0) * limit,
-		});
+		const entities = await this.messageRepo.findThreadMessagePage({ ...args, limit }, {});
 
 		return {
 			messages: entities
@@ -527,9 +510,9 @@ export class TypeORMAgentMemory
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
-		const entities = args.messages.map((message) => {
+		const rows = args.messages.map((message) => {
 			const normalizedMessage = normalizeAgentMessage(message);
-			return this.messageRepo.create({
+			return {
 				id: normalizedMessage.id,
 				threadId: args.threadId,
 				content: JSON.stringify(normalizedMessage),
@@ -538,16 +521,16 @@ export class TypeORMAgentMemory
 				resourceId: args.resourceId,
 				createdAt: normalizedMessage.createdAt,
 				updatedAt: normalizedMessage.createdAt,
-			});
+			};
 		});
 
-		await this.messageRepo.save(entities);
+		await this.messageRepo.saveMessageBatch(rows, {});
 		await this.threadRepo.update(args.threadId, { updatedAt: new Date() });
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
 		if (messageIds.length === 0) return;
-		await this.messageRepo.delete({ id: In(messageIds) });
+		await this.messageRepo.deleteByIds(messageIds, {});
 	}
 
 	async getWorkingMemory(params: {
