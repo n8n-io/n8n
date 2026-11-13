@@ -81,7 +81,10 @@ export class SimulationBlockedError extends Error {
 
 interface McpServerRef {
 	name: string;
+	/** The real URL, to name the server of each request. Never sent to the simulator. */
 	url: string;
+	/** The redacted URL the simulator knows this server by. */
+	simulatorUrl?: string;
 }
 
 type ReplySource = 'world_state' | 'made_up';
@@ -365,10 +368,15 @@ export class SimulationSession {
 		const rawBody =
 			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
-		// Named from the real URL; the simulator only sees the URL without its query values.
-		const request = this.redactor.redact({ protocol: 'mcp', method, url: redactMcpUrl(url), body });
-		const reply = await this.ask(request, { mcpServerName: this.mcpServerForUrl(url) });
-		if (reply.outcome !== 'served') throw new Error('Unexpected MCP reply');
+		// Named from the real URL; the simulator only sees the redacted URL it knows the server by.
+		const server = this.mcpServerForUrl(url);
+		const simulatorUrl =
+			server?.simulatorUrl && redactMcpUrl(url) === redactMcpUrl(server.url)
+				? server.simulatorUrl
+				: redactMcpUrl(url);
+		const request = this.redactor.redact({ protocol: 'mcp', method, url: simulatorUrl, body });
+		const reply = await this.ask(request, { mcpServerName: server?.name });
+		if (reply.outcome !== 'served') throw new UnexpectedError('Unexpected MCP reply');
 		const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
 		return new Response(reply.status === 204 ? null : payload, {
 			status: reply.status,
@@ -384,8 +392,8 @@ export class SimulationSession {
 		return reply.body;
 	};
 
-	private mcpServerForUrl(url: string): string | undefined {
-		return this.mcpServers.find((server) => urlIsUnder(url, server.url))?.name;
+	private mcpServerForUrl(url: string): McpServerRef | undefined {
+		return this.mcpServers.find((server) => urlIsUnder(url, server.url));
 	}
 }
 

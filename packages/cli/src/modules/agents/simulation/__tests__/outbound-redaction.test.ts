@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { OutboundRedactor, redactMcpUrl } from '../outbound-redaction';
+import { OutboundRedactor, redactMcpUrl, simulatorMcpUrls } from '../outbound-redaction';
 
 const telegramToken = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
 
@@ -150,6 +150,40 @@ describe('OutboundRedactor', () => {
 		});
 	});
 
+	it.each(['abc123', 'my real secret'])(
+		'removes a short or spaced generic auth value (%s)',
+		async (secret) => {
+			const { redactor } = await redactorWithCredential({
+				name: 'Ocp-Apim-Subscription-Key',
+				value: secret,
+			});
+
+			const request = redactor.redact({
+				protocol: 'http',
+				method: 'GET',
+				url: 'https://api.example.com/v1/items',
+				headers: { 'Ocp-Apim-Subscription-Key': secret },
+			});
+
+			expect(JSON.stringify(request)).not.toContain(secret);
+		},
+	);
+
+	it('removes short values inside a custom auth JSON credential', async () => {
+		const { redactor } = await redactorWithCredential({
+			json: JSON.stringify({ headers: { 'X-Pin': 'p1n9' } }),
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://api.example.com/data',
+			headers: { 'X-Pin': 'p1n9' },
+		});
+
+		expect(JSON.stringify(request)).not.toContain('p1n9');
+	});
+
 	it('removes a query auth value under a plain parameter name', async () => {
 		const secret = 'AIzaSyD-plainQueryKey123';
 		const { redactor } = await redactorWithCredential({ name: 'key', value: secret });
@@ -229,5 +263,23 @@ describe('redactMcpUrl', () => {
 
 	it('keeps nothing of a URL it cannot parse', () => {
 		expect(redactMcpUrl('http://[bad')).toBe('[REDACTED MCP URL]');
+	});
+});
+
+describe('simulatorMcpUrls', () => {
+	it('adds the server name only when two redacted URLs are the same', () => {
+		const urls = simulatorMcpUrls([
+			{ name: 'acct_a', url: 'https://mcp.example.com/mcp?key=key-a' },
+			{ name: 'acct_b', url: 'https://mcp.example.com/mcp?key=key-b' },
+			{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+		]);
+
+		expect(urls.get('acct_a')).toBe(
+			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
+		);
+		expect(urls.get('acct_b')).toBe(
+			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
+		);
+		expect(urls.get('linear')).toBe('https://mcp.linear.app/mcp');
 	});
 });

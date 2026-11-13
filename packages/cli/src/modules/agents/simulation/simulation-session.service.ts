@@ -22,7 +22,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
-import { redactMcpUrl } from './outbound-redaction';
+import { simulatorMcpUrls } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
@@ -54,6 +54,8 @@ export class SimulationSessionService {
 
 	/** What each cached session last read from or wrote to its thread. */
 	private readonly knownStored = new WeakMap<SimulationSession, StoredTestChat | null>();
+
+	private readonly sessionKeys = new WeakMap<SimulationSession, string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -128,9 +130,8 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
-			mcpServers: agent.tools.flatMap((tool) =>
-				tool.kind === 'mcp' && tool.url ? [{ name: tool.toolName, url: tool.url }] : [],
-			),
+			// Real URLs, to name the server of each request; the simulator gets its own URL.
+			mcpServers: described.mcpServers,
 			recordTestChat: async (current, executionId) => {
 				await this.saveTestChat(current);
 				// Before the agent runs, so the execution is a test run even if the turn never ends.
@@ -140,6 +141,7 @@ export class SimulationSessionService {
 			previousWorld: savedWorld,
 		});
 		this.knownStored.set(session, asStored(stored ?? null));
+		this.sessionKeys.set(session, sessionKey(input));
 		this.sessions.set(sessionKey(input), session);
 		return session;
 	}
@@ -149,7 +151,26 @@ export class SimulationSessionService {
 	 * restarts and other mains continue the same test run. A failed write fails
 	 * the turn rather than letting a later turn run live.
 	 */
-	async saveTestChat(session: SimulationSession): Promise<void> {
+	/**
+	 * `onConflict: 'skip'` keeps the newer world another main stored since this session
+	 * last saw it; `'throw'` (before a turn runs) fails the turn instead of overwriting it.
+	 */
+	async saveTestChat(
+		session: SimulationSession,
+		{ onConflict = 'throw' }: { onConflict?: 'throw' | 'skip' } = {},
+	): Promise<void> {
+		if (await this.storedChanged(session)) {
+			this.dropSession(session);
+			if (onConflict === 'skip') {
+				this.logger.warn('[SafeTesting] Kept a newer simulated world stored by another turn', {
+					testChatId: session.testChatId,
+				});
+				return;
+			}
+			throw new UnexpectedError(
+				'This test chat changed somewhere else while this message was starting. Send it again.',
+			);
+		}
 		const stored = session.storedTestChat();
 		const result = await this.threadRepository.update(
 			{ id: session.testChatId },
@@ -160,6 +181,11 @@ export class SimulationSessionService {
 			throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
 		}
 		this.knownStored.set(session, asStored(stored));
+	}
+
+	private dropSession(session: SimulationSession): void {
+		const key = this.sessionKeys.get(session);
+		if (key !== undefined && this.sessions.get(key) === session) this.sessions.delete(key);
 	}
 
 	private async storedChanged(session: SimulationSession): Promise<boolean> {
@@ -184,6 +210,7 @@ export class SimulationSessionService {
 		const hostGaps = new Map<string, string>();
 
 		const tools: SimulatedTool[] = [];
+		const mcpUrls = simulatorMcpUrls(config.mcpServers ?? []);
 		// The runtime leaves disabled tools out, so the list does too.
 		const enabledConfig = {
 			...config,
@@ -193,18 +220,19 @@ export class SimulationSessionService {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
 			const server =
 				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
+			const simulatorUrl = server ? mcpUrls.get(server.name) : undefined;
 			// A server without a description is described by its URL, which can carry a key.
 			const description =
-				server && tool.description
-					? tool.description.split(server.url).join(redactMcpUrl(server.url))
+				server && simulatorUrl && tool.description
+					? tool.description.split(server.url).join(simulatorUrl)
 					: tool.description;
 			tools.push({
 				toolName: tool.name,
 				kind,
 				...(description ? { description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
-				// The simulator matches requests to servers by this URL, redacted the same way.
-				...(server ? { url: redactMcpUrl(server.url) } : {}),
+				// The simulator matches requests to servers by this URL; the session sends the same one.
+				...(simulatorUrl ? { url: simulatorUrl } : {}),
 			});
 			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
@@ -243,6 +271,11 @@ export class SimulationSessionService {
 				instructions: config.instructions ?? '',
 				tools,
 			},
+			mcpServers: (config.mcpServers ?? []).map((server) => ({
+				name: server.name,
+				url: server.url,
+				simulatorUrl: mcpUrls.get(server.name) ?? '',
+			})),
 			hostGaps,
 		};
 	}
@@ -345,6 +378,8 @@ export class SimulationSessionService {
 
 interface DescribedAgent {
 	agent: SimulatedAgent;
+	/** Configured MCP servers with their real URL and the URL the simulator sees. */
+	mcpServers: Array<{ name: string; url: string; simulatorUrl: string }>;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
 }

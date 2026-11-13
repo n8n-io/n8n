@@ -643,7 +643,7 @@ describe('AgentTestRunService', () => {
 				},
 			});
 			expect(simulationSessions.markExecutionSimulated).toHaveBeenCalledWith('execution-1');
-			expect(simulationSessions.saveTestChat).toHaveBeenCalledWith(session);
+			expect(simulationSessions.saveTestChat).toHaveBeenCalledWith(session, { onConflict: 'skip' });
 		});
 
 		it('resolves the session for a resumed draft run too', async () => {

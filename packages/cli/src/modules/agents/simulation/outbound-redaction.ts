@@ -24,6 +24,8 @@ const NON_SECRET_CREDENTIAL_KEYS: ReadonlySet<string> = new Set([
 	'version',
 	'apiversion',
 ]);
+// Where generic header and query auth keep the secret, whatever it looks like.
+const GENERIC_AUTH_SECRET_KEYS: ReadonlySet<string> = new Set(['value']);
 const NON_SECRET_CREDENTIAL_KEY_PATTERN =
 	/(url|uri|host|hostname|domain|subdomain|server|endpoint|region|environment|alloweddomains|allowedhttprequestdomains)$/i;
 const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
@@ -68,28 +70,31 @@ export class OutboundRedactor {
 		};
 	}
 
-	private collect(value: unknown, key?: string): void {
+	/** `known` marks values that are secret whatever their key: generic auth values and JSON. */
+	private collect(value: unknown, key?: string, known = false): void {
 		if (typeof value === 'string') {
-			this.collectString(value, key);
+			this.collectString(value, key, known);
 			return;
 		}
 		if (Array.isArray(value)) {
-			for (const item of value) this.collect(item, key);
+			for (const item of value) this.collect(item, key, known);
 		} else if (isRecord(value)) {
-			for (const [childKey, child] of Object.entries(value)) this.collect(child, childKey);
+			for (const [childKey, child] of Object.entries(value)) this.collect(child, childKey, known);
 		}
 	}
 
-	private collectString(value: string, key: string | undefined): void {
-		if (key && isSensitiveKey(key)) {
+	private collectString(value: string, key: string | undefined, known: boolean): void {
+		const secret =
+			known || (key !== undefined && (isSensitiveKey(key) || GENERIC_AUTH_SECRET_KEYS.has(key)));
+		if (secret) {
 			if (value.length >= MIN_SECRET_LENGTH) this.secrets.add(value);
 			return;
 		}
 		if (key && isNonSecretCredentialKey(key)) return;
-		// `httpCustomAuth.json` holds the headers and query values as a JSON string.
+		// `httpCustomAuth.json` holds the headers and query values as a JSON string: all secret.
 		const parsed = parseJsonObject(value);
 		if (parsed !== undefined) {
-			this.collect(parsed);
+			this.collect(parsed, undefined, true);
 			return;
 		}
 		if (value.length >= MIN_UNNAMED_SECRET_LENGTH && !/\s/.test(value)) this.secrets.add(value);
@@ -202,4 +207,29 @@ export function redactMcpUrl(url: string): string {
 function isPlainObject(value: object): boolean {
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * The URL the simulator sees for each MCP server, by server name. Servers whose redacted URLs
+ * are the same (one endpoint, two keys) get the server name added, so their requests stay apart.
+ */
+export function simulatorMcpUrls(
+	servers: Array<{ name: string; url: string }>,
+): Map<string, string> {
+	const redacted = servers.map((server) => ({ ...server, redacted: redactMcpUrl(server.url) }));
+	const counts = new Map<string, number>();
+	for (const { redacted: url } of redacted) counts.set(url, (counts.get(url) ?? 0) + 1);
+	return new Map(
+		redacted.map(({ name, redacted: url }) => [
+			name,
+			(counts.get(url) ?? 0) > 1 ? withServerName(url, name) : url,
+		]),
+	);
+}
+
+function withServerName(url: string, name: string): string {
+	if (url === REDACTED_MCP_URL) return `mcp-server://${encodeURIComponent(name)}`;
+	const parsed = new URL(url);
+	parsed.searchParams.set('n8n_mcp_server', name);
+	return parsed.toString();
 }

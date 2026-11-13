@@ -510,7 +510,8 @@ export class AgentTestRunService {
 		if (!session) return;
 		await Promise.all([
 			executionId ? this.simulationSessions.markExecutionSimulated(executionId) : undefined,
-			this.simulationSessions.saveTestChat(session),
+			// The turn already ran; a newer world stored by another turn is kept.
+			this.simulationSessions.saveTestChat(session, { onConflict: 'skip' }),
 		]);
 	}
 

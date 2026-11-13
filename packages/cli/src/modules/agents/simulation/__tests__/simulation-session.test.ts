@@ -350,6 +350,50 @@ describe('SimulationSession', () => {
 		expect(call).toMatchObject({ mcpServerName: 'docs' });
 	});
 
+	it('keeps two MCP servers on one endpoint apart, by name and by the URL the world sees', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const servers = [
+			{
+				name: 'acct_a',
+				url: 'https://mcp.example.com/mcp?key=key-a',
+				simulatorUrl: 'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
+			},
+			{
+				name: 'acct_b',
+				url: 'https://mcp.example.com/mcp?key=key-b',
+				simulatorUrl: 'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
+			},
+		];
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: servers.map((server) => ({
+				toolName: server.name,
+				kind: 'mcp' as const,
+				testability: 'simulated' as const,
+			})),
+			mcpServers: servers,
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+		const call = (server: (typeof servers)[number]): BuiltTool => ({
+			name: `${server.name}_search`,
+			description: '',
+			mcpTool: true,
+			mcpServerName: server.name,
+			handler: async () => await mcpFetch(server.url, { method: 'POST', body: '{}' }),
+		});
+
+		await runTool(session, call(servers[0]), 'tc-a');
+		await runTool(session, call(servers[1]), 'tc-b');
+
+		const [[first, firstCall], [second, secondCall]] = world.handleRequest.mock.calls;
+		expect(first.url).toBe(servers[0].simulatorUrl);
+		expect(second.url).toBe(servers[1].simulatorUrl);
+		expect(firstCall).toMatchObject({ mcpServerName: 'acct_a' });
+		expect(secondCall).toMatchObject({ mcpServerName: 'acct_b' });
+		expect(JSON.stringify(world.handleRequest.mock.calls)).not.toMatch(/key-a|key-b/);
+	});
+
 	it('leaves out provider tools and serves the fallback web search from the world', async () => {
 		const world = makeWorld({
 			outcome: 'served',
