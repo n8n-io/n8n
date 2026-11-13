@@ -534,6 +534,98 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		},
 	);
 
+	describe('with simple: false (non-2xx responses resolve instead of throwing)', () => {
+		const unauthorized = {
+			body: { message: 'Bad credentials' },
+			headers: {},
+			statusCode: 401,
+			statusMessage: 'Unauthorized',
+		};
+		const get = async (extra: Record<string, unknown> = {}) =>
+			await requestWithAuthentication.call(
+				mockThis,
+				'testPreAuth',
+				{ method: 'GET', uri: 'https://api.example.com/items', simple: false, ...extra },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			);
+
+		test('refreshes and resends on a resolved 401, returning the resent response', async () => {
+			proxyRequestToAxiosMock
+				.mockResolvedValueOnce(unauthorized)
+				.mockResolvedValueOnce({ ok: true });
+
+			const result = await get();
+
+			// The resend goes out with the caller's own options, so it returns only the body.
+			expect(result).toEqual({ ok: true });
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+			expect(proxyRequestToAxiosMock.mock.calls[0][3]).toMatchObject({
+				resolveWithFullResponse: true,
+			});
+			expect(proxyRequestToAxiosMock.mock.calls[1][3]).not.toHaveProperty(
+				'resolveWithFullResponse',
+			);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+				{ helpers: mockThis.helpers },
+				expect.anything(),
+				'testPreAuth',
+				mockNode,
+				true,
+			);
+		});
+
+		test('returns the 401 unchanged when the credential has nothing to refresh', async () => {
+			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(undefined);
+			proxyRequestToAxiosMock
+				.mockResolvedValueOnce(unauthorized)
+				.mockResolvedValueOnce(unauthorized);
+
+			expect(await get({ resolveWithFullResponse: true })).toBe(unauthorized);
+			expect(await get()).toEqual({ message: 'Bad credentials' });
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+		});
+
+		test.each([200, 403, 404, 500])(
+			'neither refreshes nor resends on a resolved %i and returns what the caller asked for',
+			async (statusCode) => {
+				const response = { body: { status: statusCode }, headers: {}, statusCode };
+				proxyRequestToAxiosMock.mockResolvedValueOnce(response).mockResolvedValueOnce(response);
+
+				expect(await get({ resolveWithFullResponse: true })).toBe(response);
+				expect(await get()).toEqual({ status: statusCode });
+				expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+				expect(mockAdditionalData.credentialsHelper.preAuthentication).not.toHaveBeenCalledWith(
+					expect.anything(),
+					expect.anything(),
+					expect.anything(),
+					expect.anything(),
+					true,
+				);
+			},
+		);
+
+		test('refreshes but does NOT resend a drained stream body on a resolved 401', async () => {
+			proxyRequestToAxiosMock.mockResolvedValueOnce(unauthorized);
+
+			const result = await get({
+				method: 'POST',
+				formData: { file: { value: Readable.from(['content']), options: { filename: 'a.txt' } } },
+			});
+
+			expect(result).toEqual({ message: 'Bad credentials' });
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'testPreAuth',
+				mockNode,
+				true,
+			);
+		});
+	});
+
 	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
 		const refusal = policyRefusal();
 		mockThis.getCredentials.mockRejectedValue(refusal);

@@ -294,8 +294,47 @@ export async function requestWithAuthentication(
 			node,
 		);
 		requestSent = true;
+		if (requestOptions.simple !== false) {
+			// oxlint-disable-next-line typescript/no-deprecated
+			return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		}
+
+		// With `simple: false` (the HTTP Request node's "Never Error") a rejected token resolves
+		// as a 401 response instead of throwing, so the catch below never refreshes it. Read the
+		// status and give a 401 the same refresh-and-resend a thrown 401 gets.
 		// oxlint-disable-next-line typescript/no-deprecated
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		const response = await proxyRequestToAxios(workflow, additionalData, node, {
+			...requestOptions,
+			resolveWithFullResponse: true,
+		});
+		if (response?.statusCode === 401) {
+			const refreshed = await additionalData.credentialsHelper.preAuthentication(
+				{ helpers: this.helpers },
+				credentialsDecrypted,
+				credentialsType,
+				node,
+				true,
+			);
+			if (refreshed) {
+				Object.assign(credentialsDecrypted, refreshed);
+				if (hasSingleUseBody(requestOptions)) {
+					this.logger.warn(
+						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Returning the original response instead.`,
+					);
+				} else {
+					requestOptions = await additionalData.credentialsHelper.authenticate(
+						credentialsDecrypted,
+						credentialsType,
+						requestOptions as IHttpRequestOptions,
+						workflow,
+						node,
+					);
+					// oxlint-disable-next-line typescript/no-deprecated
+					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+				}
+			}
+		}
+		return requestOptions.resolveWithFullResponse ? response : response?.body;
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
