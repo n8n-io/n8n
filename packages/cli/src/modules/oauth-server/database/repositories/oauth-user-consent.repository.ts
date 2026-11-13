@@ -1,7 +1,7 @@
 import type { McpClientConnectedPeriod } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThan, Or } from '@n8n/typeorm';
 
 import { UserConsent } from '../entities/oauth-user-consent.entity';
 
@@ -65,9 +65,23 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 		return await this.managerFor(ctx).findOneBy(UserConsent, { userId, clientId });
 	}
 
-	/** Stamps the last time the client used the user's grant. A missing grant is a no-op. */
-	async recordLastUsed(userId: string, clientId: string, usedAt: Date): Promise<void> {
-		await this.update({ userId, clientId }, { lastUsedAt: usedAt });
+	/**
+	 * Stamps the last time the client used the user's grant, in one conditional
+	 * update. The write happens only when the stored time is missing or older than
+	 * `minIntervalMs` before `usedAt`, so all mains share the throttle and the time
+	 * never moves backwards. A missing grant is a no-op.
+	 */
+	async recordLastUsed(
+		userId: string,
+		clientId: string,
+		usedAt: Date,
+		minIntervalMs: number,
+	): Promise<void> {
+		const staleBefore = new Date(usedAt.getTime() - minIntervalMs);
+		await this.update(
+			{ userId, clientId, lastUsedAt: Or(IsNull(), LessThan(staleBefore)) },
+			{ lastUsedAt: usedAt },
+		);
 	}
 
 	/**

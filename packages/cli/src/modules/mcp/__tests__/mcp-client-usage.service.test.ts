@@ -23,43 +23,29 @@ describe('McpClientUsageService', () => {
 		vi.useRealTimers();
 	});
 
-	it('records the last use time of the grant', () => {
+	it('records the use with a one-minute throttle that the database enforces', () => {
 		service.recordUse('user-1', 'client-1');
 
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith('user-1', 'client-1', NOW);
-	});
-
-	it('writes at most once a minute for the same grant', () => {
-		service.recordUse('user-1', 'client-1');
-		vi.advanceTimersByTime(59_000);
-		service.recordUse('user-1', 'client-1');
-
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
-
-		vi.advanceTimersByTime(1_000);
-		service.recordUse('user-1', 'client-1');
-
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
-		expect(userConsentRepository.recordLastUsed).toHaveBeenLastCalledWith(
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith(
 			'user-1',
 			'client-1',
-			new Date(NOW.getTime() + 60_000),
+			NOW,
+			60_000,
 		);
 	});
 
-	it('throttles each grant separately', () => {
+	it('leaves the throttle to the database, so every request reaches it', () => {
 		service.recordUse('user-1', 'client-1');
-		service.recordUse('user-1', 'client-2');
-		service.recordUse('user-2', 'client-1');
+		service.recordUse('user-1', 'client-1');
 
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(3);
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 
-	it('logs a failed write and retries on the next request', async () => {
+	it('logs a failed write and does not throw', async () => {
 		const error = new Error('db down');
 		userConsentRepository.recordLastUsed.mockRejectedValueOnce(error);
 
-		service.recordUse('user-1', 'client-1');
+		expect(() => service.recordUse('user-1', 'client-1')).not.toThrow();
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
 
 		expect(logger.warn).toHaveBeenCalledWith('Failed to update lastUsedAt on MCP client grant', {
@@ -67,9 +53,5 @@ describe('McpClientUsageService', () => {
 			clientId: 'client-1',
 			error,
 		});
-
-		service.recordUse('user-1', 'client-1');
-
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 });

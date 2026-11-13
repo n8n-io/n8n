@@ -107,7 +107,7 @@ describe('GET /rest/mcp/oauth-clients', () => {
 		});
 
 		const usedAt = new Date('2026-11-13T10:00:00.000Z');
-		await userConsentRepository.recordLastUsed(owner.id, client.id, usedAt);
+		await userConsentRepository.recordLastUsed(owner.id, client.id, usedAt, 60_000);
 
 		const mine = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
 
