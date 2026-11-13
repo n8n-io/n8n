@@ -1,0 +1,104 @@
+{
+	"name": "Wait Form Resume Input Test",
+	"active": true,
+	"nodes": [
+		{
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "start-wait-form-input-test",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"webhookId": "start-wait-form-input-test-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "name",
+							"name": "name",
+							"value": "Ada",
+							"type": "string"
+						},
+						{
+							"id": "capture-form-url",
+							"name": "formUrl",
+							"value": "={{ $execution.resumeFormUrl }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "greet",
+			"name": "Greet",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [500, 300]
+		},
+		{
+			"parameters": {
+				"resume": "form",
+				"formTitle": "Input Form",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Name",
+							"fieldType": "text",
+							"defaultValue": "={{ $json.name }}"
+						},
+						{
+							"fieldLabel": "Greeting",
+							"fieldType": "text",
+							"defaultValue": "={{ 'Hello ' + $('Greet').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "wait-form",
+			"name": "Wait for Form",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [700, 300]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "result",
+							"name": "result",
+							"value": "Form submitted successfully",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "result",
+			"name": "Result",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [900, 300]
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Greet", "type": "main", "index": 0 }]]
+		},
+		"Greet": {
+			"main": [[{ "node": "Wait for Form", "type": "main", "index": 0 }]]
+		},
+		"Wait for Form": {
+			"main": [[{ "node": "Result", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": { "executionOrder": "v1" },
+	"pinData": {}
+}

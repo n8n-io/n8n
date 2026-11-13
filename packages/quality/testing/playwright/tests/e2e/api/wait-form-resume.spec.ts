@@ -62,6 +62,41 @@ test.describe(
 			});
 		});
 
+		test.describe('input of the waiting node', () => {
+			test('renders the form with defaults resolved against the node input @engine:v2', async ({
+				api,
+			}) => {
+				const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(
+					'wait-form-resume-input.json',
+				);
+
+				const triggerResponse = await api.webhooks.trigger(`/webhook/${webhookPath}`, {
+					method: 'POST',
+				});
+				expect(triggerResponse.ok()).toBe(true);
+
+				const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting');
+				await api.workflows.assertLatestExecutionRoutedToEngine(workflowId);
+
+				const fullExecution = await api.workflows.getExecution(execution.id);
+				const executionData = flatted.parse(fullExecution.data);
+				const formUrl = executionData.resultData.runData.Greet[0].data.main[0][0].json
+					.formUrl as string;
+				const { pathname, search } = new URL(formUrl);
+
+				const formResponse = await api.webhooks.trigger(`${pathname}${search}`, {
+					maxNotFoundRetries: 0,
+				});
+				expect(formResponse.ok()).toBe(true);
+
+				// `$json` reads the waiting node's own input item, and `.item` follows
+				// its paired item back to the Set node. Both are empty without the input.
+				const html = await formResponse.text();
+				expect(html).toContain('value="Ada"');
+				expect(html).toContain('value="Hello Ada"');
+			});
+		});
+
 		test.describe('resume url endpoint redirect', () => {
 			test('should redirect a form-resume request from webhook-waiting to form-waiting', async ({
 				api,
