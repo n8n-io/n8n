@@ -2,6 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 
 import { configurePostgres } from '../../transport';
 import type { PostgresNodeCredentials } from '../helpers/interfaces';
+import { LIST_SCHEMAS_QUERY, LIST_TABLES_QUERY } from '../helpers/queries';
 import { parseParameterLoadingError } from '../helpers/utils';
 
 export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -11,9 +12,7 @@ export async function schemaSearch(this: ILoadOptionsFunctions): Promise<INodeLi
 
 		const { db } = await configurePostgres.call(this, credentials, options);
 
-		const response = await db.any(
-			'SELECT schema_name FROM information_schema.schemata ORDER BY schema_name',
-		);
+		const response = await db.any(LIST_SCHEMAS_QUERY);
 
 		return {
 			results: response.map((schema) => ({
@@ -37,10 +36,7 @@ export async function tableSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 			extractValue: true,
 		}) as string;
 
-		const response = await db.any(
-			'SELECT table_name FROM information_schema.tables WHERE table_schema=$1 ORDER BY table_name',
-			[schema],
-		);
+		const response = await db.any(LIST_TABLES_QUERY, [schema]);
 
 		return {
 			results: response.map((table) => ({
