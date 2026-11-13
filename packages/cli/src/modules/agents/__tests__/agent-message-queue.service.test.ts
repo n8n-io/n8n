@@ -1,3 +1,5 @@
+import type { Publisher } from '@n8n/backend-services';
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -27,6 +29,7 @@ import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
 import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
+import { testCluster } from './test-utils/cluster';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -54,12 +57,16 @@ describe('AgentMessageQueueService', () => {
 	const messages = mock<AgentMessageRepository>();
 	const steering = mock<AgentMessageSteeringService>();
 	const settingsService = mock<AgentsSettingsService>();
+	const publisher = mock<Publisher>();
+	const cluster = testCluster();
 
 	let systemAgents: SystemAgentRegistry;
 	let service: AgentMessageQueueService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.spyOn(cluster, 'shouldRelayAcrossProcesses').mockReturnValue(false);
+		publisher.publishCommand.mockResolvedValue();
 		systemAgents = new SystemAgentRegistry();
 		// The real policy: the setting covers every agent except a registered system agent.
 		settingsService.appliesTo.mockImplementation((agentId) => !systemAgents.has(agentId));
@@ -81,7 +88,29 @@ describe('AgentMessageQueueService', () => {
 			steering,
 			settingsService,
 			systemAgents,
+			cluster,
+			publisher,
+			mockLogger(),
 		);
+	});
+
+	describe('announceAvailable', () => {
+		it('kicks the local consumer and does not publish outside queue mode', () => {
+			const onAvailable = vi.fn();
+			service.onAvailable = onAvailable;
+			service.announceAvailable('thread-1');
+			expect(onAvailable).toHaveBeenCalledWith('thread-1');
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('tells other processes in queue mode', () => {
+			vi.spyOn(cluster, 'shouldRelayAcrossProcesses').mockReturnValue(true);
+			service.announceAvailable('thread-1');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-queue-available',
+				payload: { threadId: 'thread-1' },
+			});
+		});
 	});
 
 	describe('prepareSessionStop', () => {

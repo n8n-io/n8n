@@ -2,11 +2,11 @@ import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 
 import { Push } from '@/push';
 import { Publisher } from '@n8n/backend-services';
 
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
 
 type AgentUpdate = PushPayload<'agentUpdated'>;
@@ -18,7 +18,7 @@ export class AgentUpdateBroadcaster {
 		private readonly recipients: AgentPushRecipientsService,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly cluster: AgentClusterService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -38,12 +38,15 @@ export class AgentUpdateBroadcaster {
 
 		this.push.sendToUsers({ type: 'agentUpdated', data }, userIds, { excludePushRef });
 
-		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
-			await this.publisher.publishCommand({
-				command: 'relay-agent-update',
-				payload: { data, userIds, excludePushRef },
+		if (!this.cluster.shouldRelayAcrossProcesses()) return;
+		const payload = { data, userIds, excludePushRef };
+		if (!this.cluster.fitsInPubSubMessage(payload)) {
+			this.logger.warn('Skipped an agent update relay because the payload is too large', {
+				agentId: data.agentId,
 			});
+			return;
 		}
+		await this.publisher.publishCommand({ command: 'relay-agent-update', payload });
 	}
 
 	@OnPubSubEvent('relay-agent-update', { instanceType: 'main' })

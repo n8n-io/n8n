@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError } from '@n8n/errors';
@@ -46,10 +45,7 @@ function makeRuntime() {
 	};
 }
 
-function makeService({
-	multiMain = false,
-	sandboxEnabled = false,
-}: { multiMain?: boolean; sandboxEnabled?: boolean } = {}) {
+function makeService({ sandboxEnabled = false }: { sandboxEnabled?: boolean } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const publisher = mock<Publisher>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
@@ -57,14 +53,13 @@ function makeService({
 	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>({
 		isEnabled: () => sandboxEnabled,
 	});
-	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
 
 	publisher.publishCommand.mockResolvedValue();
 
 	const service = new AgentRuntimeCacheService(
 		mockLogger(),
 		agentRepository,
-		new AgentChangePublisher(publisher, globalConfig, mockLogger()),
+		new AgentChangePublisher(publisher, mockLogger()),
 		reconstructionService,
 		credentialsService,
 		sandboxRuntimeService,
@@ -688,10 +683,8 @@ describe('AgentRuntimeCacheService', () => {
 		).rejects.toThrow(OperationalError);
 	});
 
-	it('clears matching runtimes, closes them, and broadcasts only when multi-main is enabled', async () => {
-		const { service, agentRepository, publisher, reconstructionService } = makeService({
-			multiMain: true,
-		});
+	it('clears matching runtimes, closes them, and broadcasts the change to other processes', async () => {
+		const { service, agentRepository, publisher, reconstructionService } = makeService();
 		const runtime = makeRuntime();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
@@ -709,7 +702,7 @@ describe('AgentRuntimeCacheService', () => {
 	});
 
 	it('handles peer cache invalidation without rebroadcasting', () => {
-		const { service, publisher } = makeService({ multiMain: true });
+		const { service, publisher } = makeService();
 
 		service.handleAgentConfigChanged({ agentId });
 

@@ -73,6 +73,7 @@ export namespace PubSub {
 		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
 		export type CancelAgentBackgroundJob = ToCommand<'cancel-agent-background-job'>;
 		export type WakeAgentBackgroundJob = ToCommand<'wake-agent-background-job'>;
+		export type AgentQueueAvailable = ToCommand<'agent-queue-available'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
 		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
 		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
@@ -132,6 +133,7 @@ export namespace PubSub {
 		| Commands.ResumeAgentWorkflowTool
 		| Commands.CancelAgentBackgroundJob
 		| Commands.WakeAgentBackgroundJob
+		| Commands.AgentQueueAvailable
 		| Commands.RelayChatStreamEvent
 		| Commands.RelayInstanceAiEvent
 		| Commands.RelayInstanceAiTaskControl

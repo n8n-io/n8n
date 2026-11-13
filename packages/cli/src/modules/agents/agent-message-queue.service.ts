@@ -1,5 +1,7 @@
 import type { Message } from '@n8n/agents';
 import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { Publisher } from '@n8n/backend-services';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 
@@ -13,6 +15,7 @@ import {
 } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
@@ -90,7 +93,25 @@ export class AgentMessageQueueService {
 		private readonly steering: AgentMessageSteeringService,
 		private readonly settingsService: AgentsSettingsService,
 		private readonly systemAgents: SystemAgentRegistry,
+		private readonly cluster: AgentClusterService,
+		private readonly publisher: Publisher,
+		private readonly logger: Logger,
 	) {}
+
+	/**
+	 * Tell every consumer that a thread has committed work. The local consumer
+	 * kicks at once. Other processes get `agent-queue-available`. The periodic
+	 * scan stays the fallback when the message is lost.
+	 */
+	announceAvailable(threadId: string): void {
+		this.onAvailable?.(threadId);
+		if (!this.cluster.shouldRelayAcrossProcesses()) return;
+		void this.publisher
+			.publishCommand({ command: 'agent-queue-available', payload: { threadId } })
+			.catch((error: unknown) => {
+				this.logger.warn('Failed to announce queued agent message', { threadId, error });
+			});
+	}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
 	async enqueue(
@@ -151,7 +172,7 @@ export class AgentMessageQueueService {
 			throw error;
 		}
 		if (payload.kind !== 'integration') this.updates.notifyQueueUpdated(item.threadId);
-		this.onAvailable?.(item.threadId);
+		this.announceAvailable(item.threadId);
 		return { status: 'accepted', item };
 	}
 

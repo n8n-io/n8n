@@ -1,6 +1,5 @@
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import type { AgentSessionStopResponse } from '@n8n/api-types';
-import { ExecutionsConfig } from '@n8n/config';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
@@ -8,6 +7,7 @@ import { NotFoundError } from '@n8n/errors';
 import { Publisher } from '@n8n/backend-services';
 
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
@@ -21,7 +21,7 @@ export class AgentSessionStopService {
 		private readonly executionService: AgentExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly publisher: Publisher,
-		private readonly executionsConfig: ExecutionsConfig,
+		private readonly cluster: AgentClusterService,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly queuedStreams: AgentQueuedTestStreamService,
@@ -52,7 +52,7 @@ export class AgentSessionStopService {
 		const payload = { agentId, threadId, executionIds, queueIds };
 		this.onStopSession(payload);
 		try {
-			if (this.executionsConfig.mode === 'queue') {
+			if (this.cluster.shouldRelayAcrossProcesses()) {
 				await this.publisher.publishCommand({
 					command: 'stop-agent-session',
 					payload,
@@ -81,7 +81,7 @@ export class AgentSessionStopService {
 					queueIds,
 				};
 				this.onStopSession(payload);
-				if (this.executionsConfig.mode === 'queue')
+				if (this.cluster.shouldRelayAcrossProcesses())
 					await this.publisher.publishCommand({ command: 'stop-agent-session', payload });
 				if (thread.agentId)
 					await this.chatExecutionService.cancelProjectSessionWork(thread.agentId, thread.id);

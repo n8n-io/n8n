@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import { type PubSub, Publisher } from '@n8n/backend-services';
@@ -21,12 +20,14 @@ type AgentChange = Extract<
 export class AgentChangePublisher {
 	constructor(
 		private readonly publisher: Publisher,
-		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 	) {}
 
+	/**
+	 * Publish to every process. `publishCommand` is a no-op outside queue mode,
+	 * so a single main with workers also receives the change.
+	 */
 	async publish(change: AgentChange): Promise<void> {
-		if (!this.globalConfig.multiMainSetup.enabled) return;
 		try {
 			await this.publisher.publishCommand(change);
 		} catch (error) {

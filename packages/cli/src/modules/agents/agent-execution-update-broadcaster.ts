@@ -2,12 +2,12 @@ import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 
 import { Push } from '@/push';
-import { Publisher } from '@n8n/backend-services';
+import { type PubSub, Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentPushRecipientsService } from './agent-push-recipients.service';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { threadBelongsTo } from './utils/agent-thread-access';
@@ -21,7 +21,7 @@ export class AgentExecutionUpdateBroadcaster {
 		private readonly recipients: AgentPushRecipientsService,
 		private readonly push: Push,
 		private readonly publisher: Publisher,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly cluster: AgentClusterService,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -45,12 +45,7 @@ export class AgentExecutionUpdateBroadcaster {
 
 		this.push.sendToUsers({ type: 'agentExecutionUpdated', data }, userIds);
 
-		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
-			await this.publisher.publishCommand({
-				command: 'relay-agent-execution-update',
-				payload: { data, userIds },
-			});
-		}
+		await this.relay({ command: 'relay-agent-execution-update', payload: { data, userIds } });
 	}
 
 	notifyBackgroundJobsUpdated(agentId: string, threadId: string): void {
@@ -68,12 +63,10 @@ export class AgentExecutionUpdateBroadcaster {
 		if (userIds.length === 0) return;
 
 		this.push.sendToUsers({ type: 'agentBackgroundTasksUpdated', data }, userIds);
-		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
-			await this.publisher.publishCommand({
-				command: 'relay-agent-background-tasks-update',
-				payload: { data, userIds },
-			});
-		}
+		await this.relay({
+			command: 'relay-agent-background-tasks-update',
+			payload: { data, userIds },
+		});
 	}
 
 	notifyQueueUpdated(threadId: string): void {
@@ -89,12 +82,30 @@ export class AgentExecutionUpdateBroadcaster {
 		const userIds = await this.getRecipients(thread);
 		if (userIds.length === 0) return;
 		this.push.sendToUsers({ type: 'agentMessageQueueUpdated', data }, userIds);
-		if (this.instanceSettings.isWorker || this.instanceSettings.isMultiMain) {
-			await this.publisher.publishCommand({
-				command: 'relay-agent-message-queue-update',
-				payload: { data, userIds },
+		await this.relay({ command: 'relay-agent-message-queue-update', payload: { data, userIds } });
+	}
+
+	/** Browsers can be connected to any main. Oversized updates are skipped: clients refetch. */
+	private async relay(
+		command: Extract<
+			PubSub.Command,
+			{
+				command:
+					| 'relay-agent-execution-update'
+					| 'relay-agent-background-tasks-update'
+					| 'relay-agent-message-queue-update';
+			}
+		>,
+	): Promise<void> {
+		if (!this.cluster.shouldRelayAcrossProcesses()) return;
+		if (!this.cluster.fitsInPubSubMessage(command.payload)) {
+			this.logger.warn('Skipped an agent update relay because the payload is too large', {
+				command: command.command,
+				threadId: command.payload.data.threadId,
 			});
+			return;
 		}
+		await this.publisher.publishCommand(command);
 	}
 
 	@OnPubSubEvent('relay-agent-message-queue-update', { instanceType: 'main' })

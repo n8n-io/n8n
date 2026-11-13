@@ -161,7 +161,7 @@ describe('AgentTaskService', () => {
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
-			new AgentChangePublisher(publisher, globalConfig, logger),
+			new AgentChangePublisher(publisher, logger),
 			durableJobRegistrar,
 			new AgentSaveCompletionService(
 				mock<EventService>(),
@@ -856,12 +856,15 @@ describe('AgentTaskService', () => {
 			});
 		});
 
-		it('does not broadcast in single-main mode', async () => {
+		it('broadcasts with one main too, so workers in queue mode get the change', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ activeVersionId: null }));
 
 			await service.requestReconcile(AGENT_ID);
 
-			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-tasks-changed',
+				payload: { agentId: AGENT_ID },
+			});
 		});
 
 		it('routes to the durable registrar when durable scheduling is on, skipping crons and pubsub', async () => {

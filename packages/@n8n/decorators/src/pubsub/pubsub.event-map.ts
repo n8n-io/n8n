@@ -207,6 +207,14 @@ export type PubSubCommandMap = {
 		threadId: string;
 	};
 
+	/**
+	 * Tell processes that consume the agent message queue that a thread has new
+	 * work. The periodic scan stays the fallback when this message is lost.
+	 */
+	'agent-queue-available': {
+		threadId: string;
+	};
+
 	'clear-test-webhooks': {
 		webhookKey: string;
 		workflowEntity: IWorkflowBase;

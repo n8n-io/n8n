@@ -2,11 +2,11 @@ import { LockNamespace, LockService } from '@n8n/backend-common';
 import type { SerializableAgentState } from '@n8n/agents';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 
 import { NotFoundError } from '@n8n/errors';
 import { Publisher } from '@n8n/backend-services';
 
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
@@ -63,7 +63,7 @@ export class AgentChatExecutionService {
 		private readonly executionService: AgentExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly publisher: Publisher,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly cluster: AgentClusterService,
 		private readonly executionUpdates: AgentExecutionUpdateBroadcaster,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
@@ -132,7 +132,7 @@ export class AgentChatExecutionService {
 				const running = execution.status === 'running';
 				// Relay full cancellation even after the response ends.
 				// Another main can still be saving a new background job.
-				if (this.instanceSettings.isMultiMain && (running || context.scope !== 'foreground')) {
+				if (this.cluster.shouldRelayAcrossProcesses() && (running || context.scope !== 'foreground')) {
 					const { surface, scope, ...rest } = context;
 					await this.publisher.publishCommand({
 						command:

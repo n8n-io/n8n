@@ -173,12 +173,11 @@ export class AgentsModule implements ModuleInterface {
 				});
 		}
 
-		// Workers never receive inbound platform events: no webhook route, no polling
-		// loop. Holding channels there would connect adapters nothing reads and, now
-		// that startups are reported, publish status rows for a process that cannot
-		// serve the channel either way. Webhook instances do serve the agent webhook
-		// route, so they keep their channels.
-		if (instanceSettings.instanceType !== 'worker') {
+		// Only mains receive inbound platform events. The agent webhook route lives on
+		// an agents controller, and webhook processes do not mount controllers, so
+		// neither workers nor webhook processes can serve a channel. Holding channels
+		// there would connect adapters nothing reads and publish misleading status rows.
+		if (instanceSettings.instanceType === 'main') {
 			channelReconciler.init();
 		}
 

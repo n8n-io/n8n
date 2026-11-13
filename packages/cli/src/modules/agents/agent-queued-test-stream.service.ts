@@ -3,9 +3,9 @@ import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { InstanceSettings } from 'n8n-core';
-
 import { Publisher, Subscriber } from '@n8n/backend-services';
+
+import { AgentClusterService } from './agent-cluster.service';
 
 import type { initSseStream } from './agent-sse-stream';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
@@ -33,12 +33,12 @@ export class AgentQueuedTestStreamService {
 
 	constructor(
 		private readonly publisher: Publisher,
-		private readonly instanceSettings: InstanceSettings,
+		private readonly cluster: AgentClusterService,
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly logger: Logger,
 		subscriber: Subscriber,
 	) {
-		if (!this.instanceSettings.isMultiMain) return;
+		if (!this.cluster.shouldRelayAcrossProcesses()) return;
 		subscriber.getClient().on('close', () => {
 			for (const listener of this.listeners.values()) listener.close();
 		});
@@ -87,18 +87,29 @@ export class AgentQueuedTestStreamService {
 			this.listeners.get(queueId)?.close();
 			stopped.resolve();
 		};
-		if (this.instanceSettings.isMultiMain) {
+		const relay = this.cluster.shouldRelayAcrossProcesses();
+		if (relay) {
 			this.stopRelays.add(stop);
 			if (this.publisher.getClient().status !== 'ready') stop();
 		}
 		const send = (event: QueueStreamEvent['event']) => {
 			if (failed) return;
-			const payload = { queueId, sequence: ++sequence, event };
+			let payload: QueueStreamEvent = { queueId, sequence: ++sequence, event };
+			if (relay && !this.cluster.fitsInPubSubMessage(payload)) {
+				// An oversized event cannot cross processes. End the stream so that the
+				// client reads the recorded history instead.
+				this.logger.warn('Ended a queued agent stream because an event is too large to relay', {
+					queueId,
+				});
+				payload = { queueId, sequence, event: null };
+				failed = true;
+				clearInterval(heartbeat);
+			}
 			this.handleRelay(payload);
-			if (!this.instanceSettings.isMultiMain) return;
+			if (!relay) return;
 			pending = pending
 				.then(async () => {
-					if (!failed)
+					if (!failed || payload.event === null)
 						await this.publisher.publishCommand({ command: 'relay-agent-queued-chat', payload });
 				})
 				.catch((error: unknown) => {
@@ -106,7 +117,7 @@ export class AgentQueuedTestStreamService {
 					this.logger.warn('Failed to relay queued agent output', { queueId, error });
 				});
 		};
-		if (this.instanceSettings.isMultiMain && !failed) {
+		if (relay && !failed) {
 			heartbeat = setInterval(
 				() => send(undefined),
 				AgentQueuedTestStreamService.RELAY_HEARTBEAT_MS,
@@ -147,7 +158,7 @@ export class AgentQueuedTestStreamService {
 			const item = await this.repository.findDeliveryState(id);
 			if (item && (!item.execution || item.execution.status === 'running')) {
 				listener.recoveryDeadline = undefined;
-				if (item.execution && this.instanceSettings.isMultiMain) {
+				if (item.execution && this.cluster.shouldRelayAcrossProcesses()) {
 					listener.relayDeadline ??= Date.now() + AgentQueuedTestStreamService.RELAY_TIMEOUT_MS;
 					if (Date.now() >= listener.relayDeadline) listener.close();
 				}

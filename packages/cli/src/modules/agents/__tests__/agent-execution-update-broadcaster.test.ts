@@ -1,6 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
 import type { UserRepository } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
@@ -10,6 +9,7 @@ import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
+import { testCluster } from './test-utils/cluster';
 
 const update = {
 	projectId: 'project-1',
@@ -24,7 +24,9 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 	const roleService = mock<RoleService>();
 	const push = mock<Push>();
 	const publisher = mock<Publisher>();
-	const instanceSettings = mock<InstanceSettings>();
+	const cluster = testCluster();
+	const relayAcrossProcesses = (enabled: boolean) =>
+		vi.spyOn(cluster, 'shouldRelayAcrossProcesses').mockReturnValue(enabled);
 	const threadRepository = mock<AgentExecutionThreadRepository>();
 	const thread = mock<AgentExecutionThread>({
 		projectId: 'project-1',
@@ -40,22 +42,19 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		roleService.rolesWithScope.mockResolvedValue([]);
 		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['user-1', 'user-2']);
 		threadRepository.findOneBy.mockResolvedValue(thread);
-		Object.defineProperties(instanceSettings, {
-			isWorker: { value: false, configurable: true },
-			isMultiMain: { value: false, configurable: true },
-		});
+		relayAcrossProcesses(false);
 		broadcaster = new AgentExecutionUpdateBroadcaster(
 			logger,
 			new AgentPushRecipientsService(userRepository, roleService),
 			push,
 			publisher,
-			instanceSettings,
+			cluster,
 			threadRepository,
 		);
 	});
 
-	it('sends project-scoped invalidations locally and relays them from workers', async () => {
-		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
+	it('sends project-scoped invalidations locally and relays them in queue mode', async () => {
+		relayAcrossProcesses(true);
 
 		broadcaster.notify(update);
 
@@ -81,7 +80,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 	});
 
 	it('sends private execution, task, and queue updates only to the owner through the relay', async () => {
-		Object.defineProperty(instanceSettings, 'isWorker', { value: true, configurable: true });
+		relayAcrossProcesses(true);
 		threadRepository.findOneBy.mockResolvedValue({
 			...thread,
 			accessScope: 'user',
@@ -118,26 +117,32 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['agent:read']);
 	});
 
-	it.each(['isWorker', 'isMultiMain'] as const)(
-		'delivers parent task updates locally and relays them with %s',
-		async (mode) => {
-			Object.defineProperty(instanceSettings, mode, { value: true, configurable: true });
-			const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
-			broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
-			await vi.waitFor(() =>
-				expect(publisher.publishCommand).toHaveBeenCalledWith({
-					command: 'relay-agent-background-tasks-update',
-					payload: { data, userIds: ['user-1', 'user-2'] },
-				}),
-			);
-			expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentBackgroundTasksUpdated', data }, [
-				'user-1',
-				'user-2',
-			]);
-		},
-	);
+	it('delivers parent task updates locally and relays them in queue mode', async () => {
+		relayAcrossProcesses(true);
+		const data = { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' };
+		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
+		await vi.waitFor(() =>
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-agent-background-tasks-update',
+				payload: { data, userIds: ['user-1', 'user-2'] },
+			}),
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith({ type: 'agentBackgroundTasksUpdated', data }, [
+			'user-1',
+			'user-2',
+		]);
+	});
 
-	it('sends task updates without a relay on a single main', async () => {
+	it('delivers an oversized update locally and skips the relay', async () => {
+		relayAcrossProcesses(true);
+		vi.spyOn(cluster, 'fitsInPubSubMessage').mockReturnValueOnce(false);
+		broadcaster.notify(update);
+		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalledOnce());
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledOnce();
+	});
+
+	it('sends task updates without a relay outside queue mode', async () => {
 		broadcaster.notifyBackgroundJobsUpdated('agent-1', 'thread-1');
 		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalledOnce());
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
@@ -186,7 +191,7 @@ describe('AgentExecutionUpdateBroadcaster', () => {
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledTimes(1));
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 
-		Object.defineProperty(instanceSettings, 'isMultiMain', { value: true, configurable: true });
+		relayAcrossProcesses(true);
 		publisher.publishCommand.mockRejectedValueOnce(new Error('relay failed'));
 		broadcaster.notify(update);
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalledTimes(2));
