@@ -1183,14 +1183,25 @@ binary? })` answers the webhook request.
   report): n8n writes history by execution id, so a repeat does no harm.
 
 Events are written in the order the core makes them: for one execution,
-`started` comes first and `finished` last. Durable events (`started`,
-`waiting`, `finished`, `staticData` and `staticDataRejected`) go to the
-outbox, and the stream sends them from the outbox first in each pass, in seq
-order. The best-effort lines (`step`, `trace`, `service`) wait in a queue
-bounded by `--event-queue-mb` (64 MB) and 1,048,576 lines. When it is full,
-the oldest `step` and `trace` lines go, and the next client gets a `dropped`
-event with the count. That queue is in memory: best-effort lines not sent
-before a crash are lost. A durable event is never lost.
+`started` comes first and `finished` last. The stream keeps that order for
+the live client, with the durable and the best-effort lines mixed as they
+were published.
+
+* Durable events (`started`, `waiting`, `finished`, `staticData` and
+  `staticDataRejected`) go to the outbox. A durable line carries the seq of
+  its event, and it goes out only after the best-effort lines that came
+  before it.
+* The best-effort lines (`step`, `trace`, `service`) wait in a queue bounded
+  by `--event-queue-mb` (64 MB) and 1,048,576 lines. Each line carries the
+  seq of the last durable event published before it (its floor): the stream
+  sends it only after that event. A line that the queue drops is skipped, and
+  the lines after it still go. When the queue is full, the oldest `step` and
+  `trace` lines go, and the next client gets a `dropped` event with the
+  count. That queue is in memory: best-effort lines not sent before a crash
+  are lost. A durable event is never lost.
+* A client that connects with `after=` first gets its replay: the stored
+  durable events with a greater seq, in seq order. Live best-effort lines
+  follow after it.
 
 **The outbox.** Each durable event line carries two more members,
 `"shard": n` and `"seq": n`. A shard numbers its durable events from 1, and
@@ -1208,7 +1219,8 @@ to the log dir before its line can reach the stream:
   `none` does not fsync but still writes the record.
 * A slow stream client never loses a durable event: `wfrt` keeps a read cursor
   into the outbox of each shard and sends less until the client reads again
-  (backpressure, not loss). Only the best-effort lines use the bounded queue,
+  (backpressure, not loss). The order of publication still holds, also when a
+  write goes out in pieces. Only the best-effort lines use the bounded queue,
   so a `dropped` event counts only them.
 * `wfrt` deletes a segment file only when every record in it is acked.
 * `--max-outbox-mb <n>` (default 1024; 0 is invalid) bounds the stored events
