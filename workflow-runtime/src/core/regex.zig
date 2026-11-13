@@ -175,6 +175,23 @@ fn number(src: []const u21, i: *usize) ?u32 {
 
 const Name = struct { text: []const u21, group: u32 };
 
+/// The index of the `>` that ends a group name starting at `start`, or null
+/// when the name is not a group name. A name is an identifier: a letter, `$`
+/// or `_`, then also digits. Any code point above ASCII counts as a letter,
+/// which accepts more names than JavaScript does. The pre-scan and the parser
+/// both use this, so they count the same groups.
+fn nameEnd(src: []const u21, start: usize) ?usize {
+    var e = start;
+    while (e < src.len) : (e += 1) {
+        const d = src[e];
+        if (d == '>') return if (e > start) e else null;
+        const letter = (d >= 'a' and d <= 'z') or (d >= 'A' and d <= 'Z') or d == '$' or d == '_' or d >= 0x80;
+        const digit = d >= '0' and d <= '9';
+        if (!(letter or (digit and e > start))) return null;
+    }
+    return null;
+}
+
 /// Counts the capture groups and finds their names, skipping escapes and
 /// classes, so backreferences can name later groups.
 fn scanGroups(src: []const u21, names: []Name) struct { count: u32, named: u32 } {
@@ -198,13 +215,14 @@ fn scanGroups(src: []const u21, names: []Name) struct { count: u32, named: u32 }
             if (i + 1 >= src.len or src[i + 1] != '?') {
                 count += 1;
             } else if (i + 2 < src.len and src[i + 2] == '<' and i + 3 < src.len and src[i + 3] != '=' and src[i + 3] != '!') {
+                // An invalid name is a syntax error in the parser, so the count does not matter then.
+                const e = nameEnd(src, i + 3) orelse continue;
                 count += 1;
-                var e = i + 3;
-                while (e < src.len and src[e] != '>') e += 1;
                 if (named < names.len) {
                     names[named] = .{ .text = src[i + 3 .. e], .group = count };
                     named += 1;
                 }
+                i = e;
             }
         }
     }
@@ -477,11 +495,8 @@ const Compiler = struct {
                             try c.open(.look, k == '!');
                         } else if (k == '<' and c.peek(2) != '=' and c.peek(2) != '!') {
                             // A named group: the pre-scan has its name.
-                            c.pos += 2;
-                            while (c.peek(0)) |d| {
-                                c.pos += 1;
-                                if (d == '>') break;
-                            }
+                            const e = nameEnd(c.src, c.pos + 2) orelse return error.Syntax;
+                            c.pos = e + 1;
                             try c.open(.capture, false);
                         } else return error.Syntax;
                     } else try c.open(.capture, false);
@@ -1106,6 +1121,22 @@ test "rejects what the subset does not have" {
             return error.TestUnexpectedResult;
         } else |_| {}
     }
+}
+
+test "regression: a group name must be a name, so the scan and the parser count the same groups" {
+    const buf = try std.testing.allocator.alloc(u8, 4 << 20);
+    defer std.testing.allocator.free(buf);
+    var arena = Arena.init(buf);
+    // The parser took everything up to a later `>` as the name, and the pre-scan
+    // still counted the groups inside it.
+    const bad = [_][]const u8{ "(?<wR/(\\d+)-(?<w>\\w+)\\k<w>", "(?<a(b)>c)", "(?<>a)", "(?<1a>a)", "(?<a" };
+    for (bad) |p| {
+        const t = arena.begin();
+        defer t.end();
+        try std.testing.expectError(error.Syntax, compile(&arena, p, "i"));
+    }
+    const re = try compile(&arena, "(?<_a1$>x)(y)\\k<_a1$>", "");
+    try std.testing.expectEqual(@as(u32, 2), re.groups);
 }
 
 test "catastrophic backtracking stops at the step limit" {

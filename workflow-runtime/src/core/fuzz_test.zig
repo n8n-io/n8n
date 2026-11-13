@@ -331,6 +331,8 @@ test "fuzz regex compile and exec" {
         seed("[^\\s\\d]{2,3}?|x(?!y)") ++ seed("m") ++ seed("xy\nab c"),
         seed("😀.\\u{1F600}") ++ seed("u") ++ seed("😀x😀"),
         seed("") ++ seed("u") ++ seed("\xd7\xab\xf3\x4d\x56\xa8\xf2\x5d"),
+        // A past crash: a group name that is not a name, then groups up to a later `>`.
+        seed("(?<wR/(\\d+)-(?<w>\\w+)\\k<w>") ++ seed("i") ++ seed("ab"),
     } });
 }
 
