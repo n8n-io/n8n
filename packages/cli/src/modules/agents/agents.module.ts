@@ -3,7 +3,7 @@ import { AgentsConfig, GlobalConfig } from '@n8n/config';
 import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
@@ -157,6 +157,15 @@ export class AgentsModule implements ModuleInterface {
 		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
+
+		const { AgentClusterService } = await import('./agent-cluster.service.js');
+		const { warnIfAgentFilesAreLocal } = await import('./agent-storage-check.js');
+		warnIfAgentFilesAreLocal(
+			Container.get(AgentClusterService),
+			Container.get(BinaryDataConfig),
+			logger,
+		);
+
 		if (instanceSettings.instanceType === 'main') {
 			const { AgentMessageQueueConsumer } = await import(
 				'./agent-message-queue-consumer.service.js'
