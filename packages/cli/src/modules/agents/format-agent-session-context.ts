@@ -13,7 +13,7 @@ const MAX_TEXT_CHARS = 4_000;
 const MAX_TOOL_VALUE_CHARS = 2_000;
 const MAX_BLOCK_CHARS = 100_000;
 const TRUNCATION_FOOTER = '… [truncated]';
-export const TRANSCRIPT_PAGE_CHARS = 50_000;
+const TRANSCRIPT_PAGE_CHARS = 50_000;
 const TURN_START = '\n## Turn (';
 
 interface ValueLimits {
@@ -269,14 +269,14 @@ export function formatPreviewSessionContext(
 	return prefix + includedTurns.join('') + footer + closing;
 }
 
-export interface PreviewSessionContextPageOptions {
+interface AgentSessionTranscriptPageOptions {
 	executionId?: string;
 	maxToolValueLength?: number;
 	cursor?: string;
 	pageSize?: number;
 }
 
-export type PreviewSessionContextPage =
+export type AgentSessionTranscriptPage =
 	| { ok: true; transcript: string; nextCursor: string | null }
 	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' };
 
@@ -305,13 +305,14 @@ function findPageStart(transcript: string, cursor: string): number | null {
 }
 
 /**
- * Format one page of a preview session transcript. Text is complete and each
+ * Format one page of an Agent session transcript. Text is complete and each
  * tool value is cut at `maxToolValueLength`; 0 leaves tool values out. No turn
  * is left out: the pages joined in order give the complete transcript. A page
- * ends before a turn when the page stays at least half full. The cursor carries a digest of the text
- * before it, so a cursor from a session that changed since is rejected.
+ * ends before a turn when the page stays at least half full. The cursor carries
+ * a digest of the text before it, so a cursor from a session that changed since
+ * is rejected.
  */
-export function formatPreviewSessionContextPage(
+export function formatAgentSessionTranscriptPage(
 	thread: AgentSessionThread,
 	executions: AgentSessionTurn[],
 	{
@@ -319,8 +320,8 @@ export function formatPreviewSessionContextPage(
 		maxToolValueLength = MAX_TOOL_VALUE_CHARS,
 		cursor,
 		pageSize = TRANSCRIPT_PAGE_CHARS,
-	}: PreviewSessionContextPageOptions = {},
-): PreviewSessionContextPage {
+	}: AgentSessionTranscriptPageOptions = {},
+): AgentSessionTranscriptPage {
 	const scoped = selectScope(executions, executionId);
 	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
 

@@ -6,7 +6,7 @@ import type {
 type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 import {
 	formatPreviewSessionContext,
-	formatPreviewSessionContextPage,
+	formatAgentSessionTranscriptPage,
 	PREVIEW_CONTEXT_CLOSE_TAG,
 	PREVIEW_CONTEXT_OPEN_TAG,
 } from '../format-agent-session-context';
@@ -303,7 +303,7 @@ describe('formatPreviewSessionContext', () => {
 	});
 });
 
-describe('formatPreviewSessionContextPage', () => {
+describe('formatAgentSessionTranscriptPage', () => {
 	const UNLIMITED = Number.MAX_SAFE_INTEGER;
 
 	function readAllPages(
@@ -313,7 +313,7 @@ describe('formatPreviewSessionContextPage', () => {
 		const pages: string[] = [];
 		let cursor: string | undefined;
 		do {
-			const page = formatPreviewSessionContextPage(makeThread(), executions, {
+			const page = formatAgentSessionTranscriptPage(makeThread(), executions, {
 				...options,
 				cursor,
 			});
@@ -325,7 +325,7 @@ describe('formatPreviewSessionContextPage', () => {
 	}
 
 	function onePage(executions: AgentSessionTurn[], maxToolValueLength = UNLIMITED) {
-		const page = formatPreviewSessionContextPage(makeThread(), executions, {
+		const page = formatAgentSessionTranscriptPage(makeThread(), executions, {
 			maxToolValueLength,
 			pageSize: Number.POSITIVE_INFINITY,
 		});
@@ -356,6 +356,37 @@ describe('formatPreviewSessionContextPage', () => {
 		expect(transcript).toContain(`Assistant: ${assistantText}\n`);
 		expect(transcript).toContain(`  Input: {"query":"${'i'.repeat(90)}… [truncated]\n`);
 		expect(transcript).toContain(`  Output: "${'o'.repeat(99)}… [truncated]\n`);
+	});
+
+	it('returns complete stored input and cuts event values at maxToolValueLength', () => {
+		const transcript = onePage(
+			[
+				makeExecution({
+					inputMessages: [
+						{ id: 'input-1', role: 'user', content: [{ type: 'text', text: 's'.repeat(10_000) }] },
+					],
+					timeline: [
+						{ type: 'hitl-response', toolCallId: 'tc-1', response: 'h'.repeat(500), timestamp: 1 },
+						{ type: 'host-event', name: 'test.blob', payload: 'p'.repeat(500), timestamp: 2 },
+						{
+							type: 'background-task-signal',
+							timestamp: 3,
+							signal: {
+								tasks: [
+									{ id: 'job-1', title: 't'.repeat(500), kind: 'subagent', status: 'completed' },
+								],
+							},
+						},
+					],
+				}),
+			],
+			100,
+		);
+
+		expect(transcript).toContain(`User: ${'s'.repeat(10_000)}\n`);
+		expect(transcript).toContain(`Human response: "${'h'.repeat(99)}… [truncated]\n`);
+		expect(transcript).toContain(`Host event test.blob: "${'p'.repeat(99)}… [truncated]\n`);
+		expect(transcript).toMatch(/Background task results received: .{100}… \[truncated\]\n/);
 	});
 
 	it('leaves out tool inputs and outputs when maxToolValueLength is 0', () => {
@@ -435,31 +466,31 @@ describe('formatPreviewSessionContextPage', () => {
 			makeExecution({ id: 'exec-1', userMessage: 'a'.repeat(300) }),
 			makeExecution({ id: 'exec-2', userMessage: 'b'.repeat(300) }),
 		];
-		const first = formatPreviewSessionContextPage(makeThread(), executions, { pageSize: 700 });
+		const first = formatAgentSessionTranscriptPage(makeThread(), executions, { pageSize: 700 });
 		if (!first.ok || first.nextCursor === null) throw new Error('expected a next page');
 		expect(first.transcript).toContain('a'.repeat(300));
 		const cursor = first.nextCursor;
 
 		const changed = [makeExecution({ ...executions[0], status: 'error' }), executions[1]];
 
-		expect(formatPreviewSessionContextPage(makeThread(), executions, { cursor })).toMatchObject({
+		expect(formatAgentSessionTranscriptPage(makeThread(), executions, { cursor })).toMatchObject({
 			ok: true,
 		});
-		expect(formatPreviewSessionContextPage(makeThread(), changed, { cursor })).toEqual({
+		expect(formatAgentSessionTranscriptPage(makeThread(), changed, { cursor })).toEqual({
 			ok: false,
 			reason: 'invalid_cursor',
 		});
 		expect(
-			formatPreviewSessionContextPage(makeThread(), executions, { cursor, executionId: 'exec-2' }),
+			formatAgentSessionTranscriptPage(makeThread(), executions, { cursor, executionId: 'exec-2' }),
 		).toEqual({ ok: false, reason: 'invalid_cursor' });
 		expect(
-			formatPreviewSessionContextPage(makeThread(), executions, { cursor: 'not-a-cursor' }),
+			formatAgentSessionTranscriptPage(makeThread(), executions, { cursor: 'not-a-cursor' }),
 		).toEqual({ ok: false, reason: 'invalid_cursor' });
 	});
 
 	it('reports an unknown executionId', () => {
 		expect(
-			formatPreviewSessionContextPage(makeThread(), [makeExecution()], { executionId: 'missing' }),
+			formatAgentSessionTranscriptPage(makeThread(), [makeExecution()], { executionId: 'missing' }),
 		).toEqual({ ok: false, reason: 'execution_not_found' });
 	});
 });

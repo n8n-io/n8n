@@ -1967,6 +1967,36 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent.transcript).not.toContain('Output:');
 		});
 
+		it('returns only the requested turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain('scope: single turn, turns: 1');
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
 		it('reports a cursor that does not match the transcript', async () => {
 			agentContextService.readSession.mockResolvedValue(sessionDetail);
 

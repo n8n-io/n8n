@@ -42,7 +42,7 @@ import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { toSessionTitle } from '@/modules/agents/agent-session-read';
 import {
 	formatPreviewSessionContext,
-	formatPreviewSessionContextPage,
+	formatAgentSessionTranscriptPage,
 } from '@/modules/agents/format-agent-session-context';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
@@ -1069,7 +1069,7 @@ export class McpAgentToolsService {
 						return { ok: true, session, transcript };
 					}
 
-					const page = formatPreviewSessionContextPage(thread, detail.executions, {
+					const page = formatAgentSessionTranscriptPage(thread, detail.executions, {
 						executionId,
 						maxToolValueLength,
 						cursor,
