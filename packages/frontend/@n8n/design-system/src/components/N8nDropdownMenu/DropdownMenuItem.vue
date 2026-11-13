@@ -11,7 +11,7 @@ import {
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
 
-import { useScrollMask } from '../../composables/useScrollMask';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import Icon from '../N8nIcon/Icon.vue';
 import N8nLoading from '../N8nLoading';
 import {
@@ -66,7 +66,7 @@ const internalSubMenuOpen = ref(false);
 // so the parent's prop never finds it closed.
 const subMenuOpenedByParent = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
-const { scrollMaskAttrs } = useScrollMask(childrenContainerRef);
+const { canScrollBottom } = useScrollEdges(childrenContainerRef, { axis: 'vertical' });
 const subContentMaxHeight = ref<string>();
 
 const SUB_MENU_ITEM_GLIMPSE_RATIO = 0.5;
@@ -398,7 +398,7 @@ onBeforeUnmount(() => {
 									ref="childrenContainerRef"
 									:class="$style['children-container']"
 									data-menu-items
-									v-bind="scrollMaskAttrs"
+									:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
 								>
 									<template v-for="(child, childIndex) in props.children" :key="child.id">
 										<N8nDropdownMenuItem
@@ -448,7 +448,7 @@ onBeforeUnmount(() => {
 								ref="childrenContainerRef"
 								:class="$style['children-container']"
 								data-menu-items
-								v-bind="scrollMaskAttrs"
+								:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
 							>
 								<template v-for="(child, childIndex) in props.children" :key="child.id">
 									<N8nDropdownMenuItem

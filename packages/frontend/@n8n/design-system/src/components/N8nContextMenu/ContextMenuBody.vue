@@ -4,7 +4,7 @@ import { useCssModule, useTemplateRef } from 'vue';
 import type { ContextMenuId, ContextMenuNode, ContextMenuSlots } from './ContextMenu.types';
 import ContextMenuNodes from './ContextMenuNodes.vue';
 import { useI18n } from '../../composables/useI18n';
-import { useScrollMask } from '../../composables/useScrollMask';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nLoading from '../N8nLoading';
 
 defineOptions({ name: 'N8nContextMenuBody' });
@@ -26,11 +26,15 @@ const slots = defineSlots<Omit<ContextMenuSlots<T>, 'trigger'>>();
 const $style = useCssModule();
 const { t } = useI18n();
 const scrollRef = useTemplateRef<HTMLElement>('scrollRef');
-const { scrollMaskAttrs } = useScrollMask(scrollRef);
+const { canScrollBottom } = useScrollEdges(scrollRef, { axis: 'vertical' });
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.scroll" v-bind="scrollMaskAttrs">
+	<div
+		ref="scrollRef"
+		:class="$style.scroll"
+		:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+	>
 		<template v-if="loading">
 			<slot name="loading">
 				<div :class="$style.items">

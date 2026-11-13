@@ -2,7 +2,7 @@
 import { useDebounceFn } from '@vueuse/core';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
 
-import { useScrollMask } from '../../composables/useScrollMask';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import {
 	DropdownMenuExternalNavigationKey,
 	type DropdownMenuExternalNavigationController,
@@ -69,7 +69,7 @@ const slots = defineSlots<
 >();
 
 const itemsContainerRef = ref<HTMLElement | null>(null);
-const { scrollMaskAttrs } = useScrollMask(itemsContainerRef);
+const { canScrollBottom } = useScrollEdges(itemsContainerRef, { axis: 'vertical' });
 const searchRef = ref<{ focus: (options?: FocusOptions) => void } | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
@@ -401,7 +401,11 @@ defineExpose({ resetNavigation, highlightFirstItem });
 			</template>
 		</N8nDropdownMenuSearch>
 
-		<div ref="itemsContainerRef" :class="$style.items" v-bind="scrollMaskAttrs">
+		<div
+			ref="itemsContainerRef"
+			:class="$style.items"
+			:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+		>
 			<slot
 				:highlighted-index="highlightedIndex"
 				:open-sub-menu-index="openSubMenuIndex"

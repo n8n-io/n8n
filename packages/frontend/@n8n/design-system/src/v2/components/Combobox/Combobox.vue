@@ -15,7 +15,7 @@ import {
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSpinner from '@n8n/design-system/components/N8nSpinner/Spinner.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
-import { useScrollMask } from '@n8n/design-system/composables/useScrollMask';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
 
 import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
@@ -102,7 +102,7 @@ const inputRef = useTemplateRef<
 	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
 >('input');
 const viewportRef = useTemplateRef('viewportRef');
-const { scrollMaskAttrs } = useScrollMask(viewportRef);
+const { canScrollBottom } = useScrollEdges(viewportRef, { axis: 'vertical' });
 
 function getInputElement(): HTMLInputElement | undefined {
 	const element: unknown = inputRef.value?.$el;
@@ -492,7 +492,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				<ComboboxViewport
 					ref="viewportRef"
 					:class="$style.comboboxViewport"
-					v-bind="scrollMaskAttrs"
+					:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
 				>
 					<ComboboxEmpty :class="$style.comboboxEmpty" role="status">
 						{{ emptyText }}

@@ -9,7 +9,7 @@ import {
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, useId, watch } from 'vue';
 
-import { useScrollMask } from '../../composables/useScrollMask';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
@@ -84,7 +84,7 @@ const internalOpen = ref(props.defaultOpen ?? false);
 
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const listRef = ref<HTMLElement | null>(null);
-const { scrollMaskAttrs: listScrollMaskAttrs } = useScrollMask(listRef);
+const { canScrollBottom } = useScrollEdges(listRef, { axis: 'vertical' });
 const triggerRef = ref<InstanceType<typeof DropdownMenuTrigger> | null>(null);
 const searchableContentRef = ref<{ highlightFirstItem: () => void } | null>(null);
 const generatedContentId = `n8n-dropdown-menu-${useId()}`;
@@ -556,7 +556,12 @@ defineExpose({ open, close, highlightFirstItem, handleExternalKeydown, focusTrig
 						</template>
 					</DropdownMenuSearchableContent>
 
-					<div v-else ref="listRef" :class="$style.list" v-bind="listScrollMaskAttrs">
+					<div
+						v-else
+						ref="listRef"
+						:class="$style.list"
+						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+					>
 						<DropdownMenuItems
 							:items="items"
 							:loading="loading"

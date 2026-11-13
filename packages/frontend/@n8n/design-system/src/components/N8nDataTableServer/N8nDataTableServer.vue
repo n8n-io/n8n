@@ -49,7 +49,7 @@ import { ElSkeletonItem } from 'element-plus';
 import get from 'lodash/get.js';
 import { computed, h, shallowRef, useSlots, useTemplateRef, watch } from 'vue';
 
-import { useHorizontalScrollEdges } from '../../composables/useHorizontalScrollEdges';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nPagination, { PAGINATION_ALL_ITEMS_PER_PAGE } from '../N8nPagination';
 
@@ -268,7 +268,10 @@ function getPinnedCellBindings(column: Column<T, unknown>) {
 
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 const tableElement = useTemplateRef<HTMLTableElement>('tableElement');
-const { canScrollLeft, canScrollRight } = useHorizontalScrollEdges(scrollContainer, tableElement);
+const { canScrollLeft, canScrollRight } = useScrollEdges(scrollContainer, {
+	axis: 'horizontal',
+	content: tableElement,
+});
 
 const page = defineModel<number>('page', { default: 0 });
 watch(page, () => table.setPageIndex(page.value));
