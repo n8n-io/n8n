@@ -23,9 +23,6 @@ jobs:
     name: Vale
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: read
-      checks: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -37,7 +34,6 @@ jobs:
           files: docs/backend
           vale_flags: '--config=docs/backend/.vale.ini --minAlertLevel=warning'
           fail_on_error: true
-          reporter: github-pr-check
 
   links:
     name: Lychee
