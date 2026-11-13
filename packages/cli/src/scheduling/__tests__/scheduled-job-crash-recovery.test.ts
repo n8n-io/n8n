@@ -1,12 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { ScheduledTask, ScheduledTaskRepository } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
-import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { CrashStreak, ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
 import { ScheduledJobCrashRecovery } from '../scheduled-job-crash-recovery';
 
@@ -25,16 +22,12 @@ const streak = (workflowId: string, crashes: number, nodeId = 'node-1'): CrashSt
 describe('ScheduledJobCrashRecovery', () => {
 	function setup({
 		crashed = true,
-		isMultiMain = false,
 		workflowDeactivationEnabled = true,
 		streaks = [] as CrashStreak[],
 	} = {}) {
 		crashJournal.crashed = crashed;
-		const running = [mock<ScheduledTask>({ id: '1' })];
-		const tasks = mock<ScheduledTaskRepository>();
-		tasks.findRunningTasks.mockResolvedValue(running);
 		const journal = mock<ScheduledJobCrashJournal>();
-		journal.recordCrash.mockReturnValue(streaks);
+		journal.startSession.mockReturnValue(streaks);
 		const executionRecoveryService = mock<ExecutionRecoveryService>();
 		const logger = mockLogger();
 		const scopedLogger = vi.mocked(logger.scoped)('scheduler');
@@ -43,40 +36,18 @@ describe('ScheduledJobCrashRecovery', () => {
 			mock<ExecutionsConfig>({
 				recovery: { workflowDeactivationEnabled, maxLastExecutions: 3 },
 			}),
-			mock<InstanceSettings>({ hostId: 'main-1', isMultiMain }),
-			tasks,
 			journal,
 			executionRecoveryService,
 		);
-		return { recovery, running, tasks, journal, executionRecoveryService, logger: scopedLogger };
+		return { recovery, journal, executionRecoveryService, logger: scopedLogger };
 	}
 
-	it('does nothing when the last session shut down cleanly', async () => {
-		const { recovery, tasks, journal } = setup({ crashed: false });
+	it.each([true, false])('starts a session of the journal when crashed is %s', async (crashed) => {
+		const { recovery, journal } = setup({ crashed });
 
 		await recovery.recover();
 
-		expect(tasks.findRunningTasks).not.toHaveBeenCalled();
-		expect(journal.recordCrash).not.toHaveBeenCalled();
-	});
-
-	it('records every running occurrence as in flight on a single main', async () => {
-		const { recovery, tasks, journal, running } = setup();
-
-		await recovery.recover();
-
-		expect(tasks.findRunningTasks).toHaveBeenCalledWith(POLL_TRIGGER_TASK_TYPE, {});
-		expect(journal.recordCrash).toHaveBeenCalledWith(running);
-	});
-
-	it('records only the occurrences this host claimed in multi-main mode', async () => {
-		const { recovery, tasks } = setup({ isMultiMain: true });
-
-		await recovery.recover();
-
-		expect(tasks.findRunningTasks).toHaveBeenCalledWith(POLL_TRIGGER_TASK_TYPE, {
-			claimedBy: 'main-1',
-		});
+		expect(journal.startSession).toHaveBeenCalledWith(crashed);
 	});
 
 	it('deactivates a workflow whose job reached the crash threshold and clears its streaks', async () => {
@@ -102,13 +73,15 @@ describe('ScheduledJobCrashRecovery', () => {
 
 		await recovery.recover();
 
-		expect(journal.recordCrash).toHaveBeenCalled();
+		expect(journal.startSession).toHaveBeenCalled();
 		expect(executionRecoveryService.autoDeactivateWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('logs and returns when the check fails', async () => {
-		const { recovery, tasks, logger } = setup();
-		tasks.findRunningTasks.mockRejectedValue(new Error('db down'));
+		const { recovery, journal, logger } = setup();
+		journal.startSession.mockImplementation(() => {
+			throw new Error('disk full');
+		});
 
 		await expect(recovery.recover()).resolves.toBeUndefined();
 

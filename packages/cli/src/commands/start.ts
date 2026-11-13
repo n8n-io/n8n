@@ -460,7 +460,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// The runner provisions the durable system task jobs, so it must finish
 		// before the scheduler can claim one.
 		await this.initSystemTasks(await mainSystemTasks(this.globalConfig));
-		// Before the scheduler starts, so that its reaper has not recovered the rows yet.
+		// Before the scheduler starts, so that no job of this session is in flight yet.
 		await Container.get(ScheduledJobCrashRecovery).recover();
 		Container.get(DurableScheduler).start();
 

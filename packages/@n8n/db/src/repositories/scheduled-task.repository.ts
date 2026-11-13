@@ -638,21 +638,6 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.getMany();
 	}
 
-	/** The `running` rows of a task type whose handler started, or only those one host claimed. */
-	async findRunningTasks(
-		taskType: string,
-		options: { claimedBy?: string } = {},
-	): Promise<ScheduledTask[]> {
-		const query = this.createQueryBuilder('t')
-			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
-			.andWhere('t.taskType = :taskType', { taskType })
-			.andWhere('t.startedAt IS NOT NULL');
-		if (options.claimedBy !== undefined) {
-			query.andWhere('t.claimedBy = :claimedBy', { claimedBy: options.claimedBy });
-		}
-		return await query.getMany();
-	}
-
 	/**
 	 * Read queue health for the Prometheus scrape: the counts behind the queue-depth
 	 * gauges (`pending`, `due`, `running`) and the scheduling-lag gauge

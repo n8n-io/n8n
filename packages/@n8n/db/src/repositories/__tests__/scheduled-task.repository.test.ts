@@ -33,40 +33,4 @@ describe('ScheduledTaskRepository', () => {
 			expect(entityManager.delete).not.toHaveBeenCalled();
 		});
 	});
-
-	describe('findRunningTasks', () => {
-		const running = [{ id: '7' }] as ScheduledTask[];
-		const selectRunning = () => {
-			const qb = {
-				where: vi.fn().mockReturnThis(),
-				andWhere: vi.fn().mockReturnThis(),
-				getMany: vi.fn().mockResolvedValue(running),
-			};
-			entityManager.createQueryBuilder.mockReturnValue(qb as never);
-			return qb;
-		};
-
-		it('reads every running row of the task type whose handler started', async () => {
-			const qb = selectRunning();
-
-			const result = await repository.findRunningTasks('poll');
-
-			expect(qb.where).toHaveBeenCalledWith('t.status = :running', {
-				running: ScheduledTaskStatus.Running,
-			});
-			expect(qb.andWhere).toHaveBeenCalledTimes(2);
-			expect(qb.andWhere).toHaveBeenCalledWith('t.taskType = :taskType', { taskType: 'poll' });
-			expect(qb.andWhere).toHaveBeenCalledWith('t.startedAt IS NOT NULL');
-			expect(result).toBe(running);
-		});
-
-		it('reads only the rows one host claimed', async () => {
-			const qb = selectRunning();
-
-			const result = await repository.findRunningTasks('poll', { claimedBy: 'main-1' });
-
-			expect(qb.andWhere).toHaveBeenCalledWith('t.claimedBy = :claimedBy', { claimedBy: 'main-1' });
-			expect(result).toBe(running);
-		});
-	});
 });

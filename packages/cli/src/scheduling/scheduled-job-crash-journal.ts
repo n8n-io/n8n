@@ -11,7 +11,8 @@ import {
 	type WorkflowNodeTaskPayload,
 } from './workflow-node-task-payload';
 
-export interface RunningAttempt {
+/** One run of a scheduled job. */
+export interface JobAttempt {
 	id: string;
 	leaseEpoch: number;
 	payload: Record<string, unknown>;
@@ -24,44 +25,62 @@ export interface CrashStreak extends WorkflowNodeTaskPayload {
 
 interface JournalState {
 	streaks: Record<string, CrashStreak>;
-	counted: string[];
+	inFlight: Record<string, WorkflowNodeTaskPayload>;
 }
 
 const jobKey = ({ workflowId, nodeId }: WorkflowNodeTaskPayload) => `${workflowId}:${nodeId}`;
-const attemptKey = ({ id, leaseEpoch }: RunningAttempt) => `${id}:${leaseEpoch}`;
+const attemptKey = ({ id, leaseEpoch }: JobAttempt) => `${id}:${leaseEpoch}`;
 
-/** Counts, in a file next to the crash journal, crashes in a row with a scheduled job in flight. */
+/**
+ * Counts, in a file next to the crash journal, crashes in a row with a scheduled job in flight.
+ * The file lists the jobs in flight, because the scheduler rows do not show a poll that
+ * timed out but still runs.
+ */
 @Service()
 export class ScheduledJobCrashJournal {
 	private readonly file = `${journalFile}.scheduled-jobs`;
 
 	private streaks: Map<string, CrashStreak>;
 
-	private counted: Set<string>;
+	private inFlight: Map<string, WorkflowNodeTaskPayload>;
 
 	constructor(private readonly logger: Logger) {
 		this.logger = this.logger.scoped('scheduler');
-		const state = this.read() ?? { streaks: {}, counted: [] };
+		const state = this.read() ?? { streaks: {}, inFlight: {} };
 		this.streaks = new Map(Object.entries(state.streaks));
-		this.counted = new Set(state.counted);
+		this.inFlight = new Map(Object.entries(state.inFlight));
 	}
 
-	/** A job in flight extends its streak, a job not in flight loses it. An attempt counted before does not count again. */
-	recordCrash(running: RunningAttempt[]): CrashStreak[] {
-		const streaks = new Map<string, CrashStreak>();
-		for (const attempt of running) {
-			if (this.counted.has(attemptKey(attempt))) continue;
-			if (!isWorkflowNodeTaskPayload(attempt.payload)) continue;
-			const { workflowId, nodeId } = attempt.payload;
-			const key = jobKey(attempt.payload);
-			if (streaks.has(key)) continue;
-			const crashes = (this.streaks.get(key)?.crashes ?? 0) + 1;
-			streaks.set(key, { workflowId, nodeId, crashes });
+	/**
+	 * Call once at startup, before any job runs. After a crash, a job that was in flight
+	 * extends its streak and a job that was not loses it. Either way the previous
+	 * session's jobs stop being in flight.
+	 */
+	startSession(crashed: boolean): CrashStreak[] {
+		if (crashed) {
+			const streaks = new Map<string, CrashStreak>();
+			for (const job of this.inFlight.values()) {
+				const key = jobKey(job);
+				if (streaks.has(key)) continue;
+				streaks.set(key, { ...job, crashes: (this.streaks.get(key)?.crashes ?? 0) + 1 });
+			}
+			this.streaks = streaks;
 		}
-		this.streaks = streaks;
-		this.counted = new Set(running.map(attemptKey));
+		this.inFlight.clear();
 		this.write();
-		return [...streaks.values()];
+		return crashed ? [...this.streaks.values()] : [];
+	}
+
+	/** Returns the callback that marks the attempt as no longer in flight. */
+	recordStart(attempt: JobAttempt): () => void {
+		const { payload } = attempt;
+		if (!isWorkflowNodeTaskPayload(payload)) return () => {};
+		const key = attemptKey(attempt);
+		this.inFlight.set(key, { workflowId: payload.workflowId, nodeId: payload.nodeId });
+		this.write();
+		return () => {
+			if (this.inFlight.delete(key)) this.write();
+		};
 	}
 
 	recordCompletion(payload: Record<string, unknown>) {
@@ -93,7 +112,7 @@ export class ScheduledJobCrashJournal {
 	private write() {
 		const state: JournalState = {
 			streaks: Object.fromEntries(this.streaks),
-			counted: [...this.counted],
+			inFlight: Object.fromEntries(this.inFlight),
 		};
 		try {
 			writeFileSync(`${this.file}.tmp`, JSON.stringify(state));
@@ -106,13 +125,12 @@ export class ScheduledJobCrashJournal {
 	}
 }
 
+function isJob(value: unknown): value is WorkflowNodeTaskPayload {
+	return isRecord(value) && isWorkflowNodeTaskPayload(value);
+}
+
 function isCrashStreak(value: unknown): value is CrashStreak {
-	return (
-		isRecord(value) &&
-		typeof value.workflowId === 'string' &&
-		typeof value.nodeId === 'string' &&
-		typeof value.crashes === 'number'
-	);
+	return isRecord(value) && typeof value.crashes === 'number' && isJob(value);
 }
 
 function isJournalState(value: unknown): value is JournalState {
@@ -120,7 +138,7 @@ function isJournalState(value: unknown): value is JournalState {
 		isRecord(value) &&
 		isRecord(value.streaks) &&
 		Object.values(value.streaks).every(isCrashStreak) &&
-		Array.isArray(value.counted) &&
-		value.counted.every((attempt) => typeof attempt === 'string')
+		isRecord(value.inFlight) &&
+		Object.values(value.inFlight).every(isJob)
 	);
 }
