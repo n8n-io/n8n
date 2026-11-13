@@ -481,10 +481,10 @@ async function handleDataSharingToggle(value: boolean) {
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
-						:model-value="isSwitchOn"
+						:enabled="isSwitchOn"
 						:disabled="store.isSaving || isEnabling || isTestingCredential"
 						switch-test-id="n8n-agent-enable-toggle"
-						@update:model-value="onEnabledChange"
+						@update:enabled="onEnabledChange"
 					/>
 				</N8nSettingsRowGroup>
 				<N8nSettingsRowGroup v-if="isEnabled && (showCredentialsRows || showSandboxRow)">

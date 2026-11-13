@@ -9,7 +9,7 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 			},
 		});
 
@@ -21,13 +21,13 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 			},
 		});
 
 		await userEvent.click(getByRole('switch', { name: 'Enable Agents' }));
 
-		expect(emitted()['update:modelValue'][0]).toEqual([true]);
+		expect(emitted()['update:enabled'][0]).toEqual([true]);
 	});
 
 	it('shows the status badges when the flags are on', () => {
@@ -35,7 +35,7 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable workflow reviews',
 				description: 'Allow users to submit workflow versions for approval.',
-				modelValue: true,
+				enabled: true,
 				showPreviewBadge: true,
 				showEnterpriseReadinessBadge: true,
 			},
@@ -52,7 +52,7 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable workflow reviews',
 				description: 'Allow users to submit workflow versions for approval.',
-				modelValue: true,
+				enabled: true,
 			},
 		});
 
@@ -65,7 +65,7 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 			},
 		});
 
@@ -79,14 +79,14 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 			},
 		});
 
 		// user-event crashes when a label click activates the switch.
 		await fireEvent.click(getByText('Enable Agents'));
 
-		expect(emitted()['update:modelValue'][0]).toEqual([true]);
+		expect(emitted()['update:enabled'][0]).toEqual([true]);
 	});
 
 	it('toggles the switch from the description', async () => {
@@ -94,13 +94,13 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 			},
 		});
 
 		await fireEvent.click(getByText('Allow users to build and run agents.'));
 
-		expect(emitted()['update:modelValue'][0]).toEqual([true]);
+		expect(emitted()['update:enabled'][0]).toEqual([true]);
 	});
 
 	it('does not toggle from the title when the switch is disabled', async () => {
@@ -108,14 +108,14 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable Agents',
 				description: 'Allow users to build and run agents.',
-				modelValue: false,
+				enabled: false,
 				disabled: true,
 			},
 		});
 
 		await fireEvent.click(getByText('Enable Agents'));
 
-		expect(emitted()['update:modelValue']).toBeUndefined();
+		expect(emitted()['update:enabled']).toBeUndefined();
 	});
 
 	it('does not toggle from a status badge', async () => {
@@ -123,14 +123,14 @@ describe('N8nSettingsEnableRow', () => {
 			props: {
 				title: 'Enable workflow reviews',
 				description: 'Allow users to submit workflow versions for approval.',
-				modelValue: false,
+				enabled: false,
 				showPreviewBadge: true,
 			},
 		});
 
 		await userEvent.click(getByTestId('settings-enable-row-preview-badge'));
 
-		expect(emitted()['update:modelValue']).toBeUndefined();
+		expect(emitted()['update:enabled']).toBeUndefined();
 	});
 
 	it('renders a divider and leaves the card to the page', () => {

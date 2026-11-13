@@ -145,10 +145,10 @@ onMounted(async () => {
 				data-test-id="chat-hub-enabled-row"
 				:title="i18n.baseText('settings.chatHub.enabled.label')"
 				:description="i18n.baseText('settings.chatHub.enabled.description')"
-				:model-value="isChatEnabled"
+				:enabled="isChatEnabled"
 				:disabled="disabled"
 				switch-test-id="chat-hub-enabled-switch"
-				@update:model-value="onToggleEnabled"
+				@update:enabled="onToggleEnabled"
 			/>
 		</N8nSettingsRowGroup>
 

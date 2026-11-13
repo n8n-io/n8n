@@ -11,7 +11,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A settings row with a small switch. The switch matches the other switches on settings screens. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
+					'A settings row with a small switch. The switch matches the other switches on settings screens. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Bind `:enabled` and `@update:enabled`. The parent owns the value. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
 			},
 		},
 	},
@@ -34,7 +34,7 @@ export const Default: Story = {
 			return { args, enabled };
 		},
 		template: frame(
-			'<N8nSettingsRowGroup><N8nSettingsEnableRow v-bind="args" v-model="enabled" /></N8nSettingsRowGroup>',
+			'<N8nSettingsRowGroup><N8nSettingsEnableRow v-bind="args" :enabled="enabled" @update:enabled="enabled = $event" /></N8nSettingsRowGroup>',
 		),
 	}),
 };
@@ -57,27 +57,30 @@ export const WithBadges: Story = {
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--lg); max-width: 45rem;">
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
-						v-model="preview"
+						:enabled="preview"
 						title="With Preview"
 						description="Allow users to build and run agents on this instance."
 						show-preview-badge
+						@update:enabled="preview = $event"
 					/>
 				</N8nSettingsRowGroup>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
-						v-model="enterprise"
+						:enabled="enterprise"
 						title="With Enterprise"
 						description="Allow users to build and run agents on this instance."
 						show-enterprise-readiness-badge
+						@update:enabled="enterprise = $event"
 					/>
 				</N8nSettingsRowGroup>
 				<N8nSettingsRowGroup>
 					<N8nSettingsEnableRow
-						v-model="both"
+						:enabled="both"
 						title="With Both"
 						description="Allow users to build and run agents on this instance."
 						show-preview-badge
 						show-enterprise-readiness-badge
+						@update:enabled="both = $event"
 					/>
 				</N8nSettingsRowGroup>
 			</div>
@@ -98,7 +101,7 @@ export const LongDescription: Story = {
 			return { args, enabled };
 		},
 		template: frame(
-			'<N8nSettingsRowGroup><N8nSettingsEnableRow v-bind="args" v-model="enabled" /></N8nSettingsRowGroup>',
+			'<N8nSettingsRowGroup><N8nSettingsEnableRow v-bind="args" :enabled="enabled" @update:enabled="enabled = $event" /></N8nSettingsRowGroup>',
 		),
 	}),
 };
@@ -107,7 +110,7 @@ export const Disabled: Story = {
 	args: {
 		title: 'Enable Chat',
 		description: 'Chat is turned off for this instance.',
-		modelValue: false,
+		enabled: false,
 		disabled: true,
 	},
 	render: (args) => ({

@@ -69,11 +69,11 @@ function confirmDisable() {
 			<N8nSettingsEnableRow
 				:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
 				:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
-				:model-value="enabled"
+				:enabled="enabled"
 				:disabled="managedByEnv || isSaving"
 				show-preview-badge
 				switch-test-id="security-workflow-reviews-toggle"
-				@update:model-value="onToggle"
+				@update:enabled="onToggle"
 			/>
 		</N8nSettingsRowGroup>
 

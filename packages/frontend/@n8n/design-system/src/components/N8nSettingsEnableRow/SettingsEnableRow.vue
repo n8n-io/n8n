@@ -28,6 +28,20 @@ export interface SettingsEnableRowProps {
 	 * @default false
 	 */
 	showEnterpriseReadinessBadge?: boolean;
+	/**
+	 * Whether the setting is on.
+	 * The parent owns this value.
+	 * @default false
+	 */
+	enabled?: boolean;
+}
+
+export interface SettingsEnableRowEmits {
+	/**
+	 * The user turned the setting on or off.
+	 * The payload is the next value.
+	 */
+	'update:enabled': [value: boolean];
 }
 
 defineOptions({ name: 'N8nSettingsEnableRow' });
@@ -37,9 +51,10 @@ const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
 	switchTestId: undefined,
 	showPreviewBadge: false,
 	showEnterpriseReadinessBadge: false,
+	enabled: false,
 });
 
-const enabled = defineModel<boolean>({ default: false });
+const emit = defineEmits<SettingsEnableRowEmits>();
 
 const switchId = useId();
 const hasBadges = computed(() => props.showPreviewBadge || props.showEnterpriseReadinessBadge);
@@ -47,6 +62,10 @@ const hasBadges = computed(() => props.showPreviewBadge || props.showEnterpriseR
 const settingsSwitchProps = {
 	size: 'small',
 } as const;
+
+function onEnabledChange(value: boolean) {
+	emit('update:enabled', value);
+}
 </script>
 
 <template>
@@ -78,10 +97,11 @@ const settingsSwitchProps = {
 		<N8nSwitch
 			v-bind="settingsSwitchProps"
 			:id="switchId"
-			v-model="enabled"
+			:model-value="enabled"
 			:disabled="disabled"
 			:aria-label="title"
 			:data-test-id="switchTestId"
+			@update:model-value="onEnabledChange"
 		/>
 		<span :class="$style.divider" data-test-id="settings-row-divider" aria-hidden="true" />
 	</div>

@@ -439,10 +439,10 @@ watch(
 					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.opentelemetry.status.label')"
 						:description="statusDescription"
-						:model-value="displayedEnabled"
+						:enabled="displayedEnabled"
 						:disabled="isEnvManaged('enabled') || otelStore.saving || statusSaving"
 						switch-test-id="otel-enabled-toggle"
-						@update:model-value="onToggleEnabled"
+						@update:enabled="onToggleEnabled"
 					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
