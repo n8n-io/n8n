@@ -46,6 +46,11 @@ export class UiExtensionsSidePanel {
 		await expect(this.getContent()).toBeVisible();
 	}
 
+	async close(): Promise<void> {
+		if (await this.getContent().isVisible()) await this.getToggle().click();
+		await expect(this.getContent()).toBeHidden();
+	}
+
 	async selectTab(title: string): Promise<void> {
 		await this.getTab(title).click();
 	}

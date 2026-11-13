@@ -34,37 +34,39 @@ async function createWorkflow(api: ApiHelpers, options: { availableInMCP?: boole
 }
 
 /**
- * A view that sends the editor a command to replace the open workflow, then
- * waits, so that a command the editor took would show on the canvas by the time
- * the view says that it is done.
+ * A view that keeps sending the editor a command to replace the open workflow:
+ * every few milliseconds while it runs, and again while the editor removes its
+ * frame. It says that it is done after a pause, so that a command the editor
+ * took would show on the canvas by then.
  */
 const INJECTING_VIEW_SOURCE = `export default {
 	setup() {
 		const context = n8n.useContext();
 		const state = Vue.ref('waiting');
+		const command = JSON.stringify({
+			command: 'openWorkflow',
+			workflow: {
+				name: 'Replaced by a side panel view',
+				nodes: [
+					{
+						id: 'injected',
+						name: 'Injected by view',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+		});
+		const send = () => window.parent.postMessage(command, '*');
+		window.addEventListener('pagehide', send);
+		window.addEventListener('unload', send);
 		Vue.watchEffect(() => {
 			if (context.value.page !== 'workflow' || state.value !== 'waiting') return;
-			state.value = 'sent';
-			window.parent.postMessage(
-				JSON.stringify({
-					command: 'openWorkflow',
-					workflow: {
-						name: 'Replaced by a side panel view',
-						nodes: [
-							{
-								id: 'injected',
-								name: 'Injected by view',
-								type: 'n8n-nodes-base.manualTrigger',
-								typeVersion: 1,
-								position: [0, 0],
-								parameters: {},
-							},
-						],
-						connections: {},
-					},
-				}),
-				'*',
-			);
+			state.value = 'sending';
+			setInterval(send, 2);
 			setTimeout(() => { state.value = 'done'; }, 1500);
 		});
 		return { state };
@@ -181,9 +183,9 @@ test.describe(
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflow');
 			await expect(n8n.sidePanel.getViewElement('probe-workflow')).toHaveText(exposed.name);
 
-			// The built-in view shows the name once the workflow has loaded. A view frame
-			// renders only from the context it gets when it opens, so the probe that opens
-			// next sees the loaded workflow and not the empty context of the page load.
+			// The built-in view shows the name once the workflow has loaded. The probe
+			// opens after that, so the first context it gets is the loaded workflow and
+			// not the empty context of the page load.
 			await n8n.navigate.toWorkflow(hidden.id);
 			await n8n.sidePanel.open();
 			await n8n.sidePanel.selectTab('Page summary');
@@ -212,8 +214,25 @@ test.describe(
 			await n8n.navigate.toWorkflow(workflow.id);
 			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
 			await n8n.sidePanel.open();
-			await n8n.sidePanel.selectTab(title);
 
+			// While the view frame is open.
+			await n8n.sidePanel.selectTab(title);
+			await expect(n8n.sidePanel.getViewElement('injector-state')).toHaveText('done');
+			await expect(n8n.canvas.nodeByName('Injected by view')).toHaveCount(0);
+
+			// While the frame is removed for another tab. Opening the view again waits
+			// long enough for a command from the removed frame to show.
+			await n8n.sidePanel.selectTab('Page summary');
+			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
+				workflow.name,
+			);
+			await n8n.sidePanel.selectTab(title);
+			await expect(n8n.sidePanel.getViewElement('injector-state')).toHaveText('done');
+			await expect(n8n.canvas.nodeByName('Injected by view')).toHaveCount(0);
+
+			// While the frame is removed because the panel closes.
+			await n8n.sidePanel.close();
+			await n8n.sidePanel.open();
 			await expect(n8n.sidePanel.getViewElement('injector-state')).toHaveText('done');
 			await expect(n8n.canvas.nodeByName('Injected by view')).toHaveCount(0);
 			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
