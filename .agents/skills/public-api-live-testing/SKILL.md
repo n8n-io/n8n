@@ -78,8 +78,9 @@ N8N_USER_FOLDER=/tmp/n8n-test-instance N8N_PORT=5681 N8N_RUNNERS_BROKER_PORT=569
 # 3. In a different terminal, before step 4: wait until the instance is ready,
 #    then make sure the isolation works. /healthz answers 200 before the /rest
 #    routes exist; /healthz/readiness does not.
-until curl -sf http://localhost:5681/healthz/readiness >/dev/null; do sleep 1; done
-ls /tmp/n8n-test-instance/.n8n
+#    The wait stops after 2 minutes. If it fails, read the server log.
+curl --retry 120 --retry-delay 1 --retry-all-errors -sf http://localhost:5681/healthz/readiness >/dev/null \
+  && ls /tmp/n8n-test-instance/.n8n
 
 # 4. Create the owner. This also logs you in and saves the cookie.
 curl -c cookies.txt -X POST http://localhost:5681/rest/owner/setup \

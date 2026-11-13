@@ -120,10 +120,12 @@ async function main() {
 
 		// PUT — each case needs its own fresh workflow so ordering cannot leak state.
 		for (const testCase of bodyCases) {
-			const id = track(await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow));
+			const created = await api(apiKey, 'POST', '/api/v1/workflows', minimalWorkflow);
+			const id = track(created);
 			if (!id) {
-				results[`PUT:${testCase.name}`] = { status: 'SETUP_FAILED' };
-				continue;
+				throw new Error(
+					`PUT setup failed for ${testCase.name}, results are not comparable: ${created.status} ${JSON.stringify(created.body)}`,
+				);
 			}
 			const body = substituteProjectId(testCase.body, projectId);
 			results[`PUT:${testCase.name}`] = await api(apiKey, 'PUT', `/api/v1/workflows/${id}`, body);
@@ -156,8 +158,13 @@ async function main() {
 		console.log(`wrote ${Object.keys(results).length} results to ${outFile}`);
 	} finally {
 		// A shared instance, such as a Nathan preview, must not keep the test workflows.
-		for (const id of createdIds) await api(apiKey, 'DELETE', `/api/v1/workflows/${id}`);
-		console.log(`deleted ${createdIds.length} test workflows`);
+		const failed = [];
+		for (const id of createdIds) {
+			const response = await api(apiKey, 'DELETE', `/api/v1/workflows/${id}`);
+			if (response.status < 200 || response.status >= 300) failed.push(`${id}: ${response.status}`);
+		}
+		console.log(`deleted ${createdIds.length - failed.length} test workflows`);
+		if (failed.length) console.warn(`not deleted: ${failed.join(', ')}`);
 	}
 }
 
