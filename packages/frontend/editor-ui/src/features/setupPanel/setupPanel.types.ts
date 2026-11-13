@@ -1,4 +1,5 @@
 import type { INodeUi } from '@/Interface';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 /** One card per unique credential type — groups all nodes that need it */
 export interface CredentialTypeSetupState {
@@ -40,6 +41,8 @@ export interface NodeSetupState {
 	allNodesUsingCredential?: INodeUi[];
 	/** True when the credential was auto-applied (not manually selected by the user) */
 	isAutoApplied?: boolean;
+	/** Set when a policy restricts the node type. The card then offers to contact an admin or to replace the node. */
+	restriction?: TypeRestriction;
 }
 
 /** Groups a parent node with its subnode setup cards */

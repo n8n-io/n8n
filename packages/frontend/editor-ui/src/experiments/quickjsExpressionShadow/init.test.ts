@@ -5,9 +5,8 @@ import { Expression } from 'n8n-workflow';
 import {
 	DEFAULT_SAMPLE_RATE,
 	DEFAULT_TIMEOUT_MS,
-	IDLE_START_TIMEOUT_MS,
 	initializeQuickJsExpressionShadow,
-	notifyQuickJsShadowEditorReady,
+	preloadQuickJsExpressionShadow,
 	readShadowSettings,
 	stopQuickJsExpressionShadow,
 } from './init';
@@ -211,6 +210,7 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
 			expect.objectContaining({
+				quickjs_fe_event_version: '2',
 				quickjs_fe_init_status: 'ready',
 				quickjs_fe_startup_report: true,
 				quickjs_fe_evaluations: 0,
@@ -248,9 +248,7 @@ describe('initializeQuickJsExpressionShadow', () => {
 		);
 	});
 
-	it('sends the startup step durations, the start variant and the visibility', async () => {
-		vi.stubGlobal('requestIdleCallback', vi.fn());
-		vi.spyOn(Math, 'random').mockReturnValue(0.9);
+	it('sends the startup step durations and the visibility', async () => {
 		postHogStore.getFeatureFlagPayload.mockReturnValue({ sampleRate: 1 });
 		await initializeQuickJsExpressionShadow();
 		installedRunner().beforeLegacy({
@@ -266,8 +264,6 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
 			expect.objectContaining({
-				quickjs_fe_start_variant: 'boot',
-				quickjs_fe_idle_wait_ms: undefined,
 				quickjs_fe_bundle_import_ms: expect.any(Number),
 				quickjs_fe_wasm_ready_ms: expect.any(Number),
 				quickjs_fe_bridge_ready_ms: expect.any(Number),
@@ -307,17 +303,6 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(properties.quickjs_fe_wasm_ready_ms).toBeUndefined();
 		expect(properties.quickjs_fe_bridge_ready_ms).toBeUndefined();
 		expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
-	});
-
-	it('keeps a browser without requestIdleCallback out of the A/B test', async () => {
-		vi.mocked(Expression.createQuickJsShadowEvaluator).mockRejectedValue(new Error('stop'));
-
-		await initializeQuickJsExpressionShadow();
-
-		expect(track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
-			expect.objectContaining({ quickjs_fe_start_variant: 'boot_only' }),
-		);
 	});
 
 	describe('WASM file source', () => {
@@ -374,142 +359,114 @@ describe('initializeQuickJsExpressionShadow', () => {
 		});
 	});
 
-	describe('idle start variant', () => {
-		let idleCallback: (() => void) | undefined;
+	describe('preload', () => {
+		const flagOn = { '126_quickjs_expression_shadow': true };
 
-		beforeEach(() => {
-			idleCallback = undefined;
-			vi.stubGlobal(
-				'requestIdleCallback',
-				vi.fn((callback: () => void) => {
-					idleCallback = callback;
-					return 1;
-				}),
-			);
+		const resource = (transferSize: number) =>
+			({
+				name: 'https://acme.app.n8n.cloud/assets/emscripten-module-B1g2L2eS.wasm',
+				transferSize,
+				encodedBodySize: 503_000,
+			}) as PerformanceResourceTiming;
+
+		it('loads the WASM file before the shadow run starts', () => {
+			preloadQuickJsExpressionShadow(flagOn);
+
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
+			expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when the flag is off', () => {
+			preloadQuickJsExpressionShadow({ '126_quickjs_expression_shadow': false });
+			preloadQuickJsExpressionShadow(undefined);
+
+			expect(Expression.loadQuickJsWasm).not.toHaveBeenCalled();
+		});
+
+		it('preloads and starts without waiting for an idle callback', async () => {
+			vi.stubGlobal('requestIdleCallback', vi.fn());
 			vi.spyOn(Math, 'random').mockReturnValue(0);
-			notifyQuickJsShadowEditorReady();
-		});
 
-		it('starts the shadow engine when the browser is first idle', async () => {
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-			expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+			preloadQuickJsExpressionShadow(flagOn);
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
 
-			idleCallback?.();
-			await starting;
-			stopQuickJsExpressionShadow();
+			await initializeQuickJsExpressionShadow();
 
-			expect(window.requestIdleCallback).toHaveBeenCalledWith(expect.any(Function), {
-				timeout: IDLE_START_TIMEOUT_MS,
-			});
 			expect(Expression.setShadowRunner).toHaveBeenCalledWith(expect.anything());
-		});
-
-		it('waits for the editor start before it waits for the idle browser', async () => {
-			// A logout makes the next start wait for a new editor start.
-			stopQuickJsExpressionShadow();
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(postHogStore.getFeatureFlagPayload).toHaveBeenCalled());
-			await new Promise((resolve) => setTimeout(resolve, 0));
 			expect(window.requestIdleCallback).not.toHaveBeenCalled();
-
-			notifyQuickJsShadowEditorReady();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-			idleCallback?.();
-			await starting;
-			stopQuickJsExpressionShadow();
-
-			expect(Expression.setShadowRunner).toHaveBeenCalledWith(expect.anything());
 		});
 
-		it('stops waiting for an editor start that does not end', async () => {
-			stopQuickJsExpressionShadow();
-			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(postHogStore.getFeatureFlagPayload).toHaveBeenCalled());
+		it('loads the files only once when it is called again', () => {
+			preloadQuickJsExpressionShadow(flagOn);
+			preloadQuickJsExpressionShadow(flagOn);
 
-			await vi.advanceTimersByTimeAsync(IDLE_START_TIMEOUT_MS);
-			vi.useRealTimers();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-			idleCallback?.();
-			await starting;
-			stopQuickJsExpressionShadow();
-
-			expect(Expression.setShadowRunner).toHaveBeenCalledWith(expect.anything());
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
 		});
 
-		it('stops watching the tab when the user logs out before the editor start ends', async () => {
-			stopQuickJsExpressionShadow();
-			const removeListener = vi.spyOn(document, 'removeEventListener');
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(postHogStore.getFeatureFlagPayload).toHaveBeenCalled());
+		it('reports the source of a WASM file that loaded before the start', async () => {
+			preloadQuickJsExpressionShadow(flagOn);
+			const preloadObserver = FakePerformanceObserver.last;
+			preloadObserver?.deliver(resource(503_300));
+			vi.mocked(Expression.createQuickJsShadowEvaluator).mockRejectedValue(new Error('stop'));
 
-			stopQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-			idleCallback?.();
-			await starting;
+			await initializeQuickJsExpressionShadow();
 
-			expect(removeListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
-			expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+			expect(FakePerformanceObserver.last).toBe(preloadObserver);
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
+				expect.objectContaining({ quickjs_fe_wasm_source: 'network' }),
+			);
 		});
 
-		it('does not start when the user logs out before the browser is idle', async () => {
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
+		it.each([
+			['a start after a preload', true],
+			['a start without a preload', false],
+		])('reports %s', async (_, preloaded) => {
+			if (preloaded) {
+				preloadQuickJsExpressionShadow(flagOn);
+			}
 
-			stopQuickJsExpressionShadow();
-			idleCallback?.();
-			await starting;
-
-			expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
-		});
-
-		it('reports the idle variant', async () => {
-			vi.mocked(Expression.createQuickJsShadowEvaluator).mockRejectedValue(new Error('no wasm'));
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-
-			idleCallback?.();
-			await starting;
+			await initializeQuickJsExpressionShadow();
 
 			expect(track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
-				expect.objectContaining({
-					quickjs_fe_start_variant: 'idle',
-					quickjs_fe_idle_wait_ms: expect.any(Number),
+				expect.objectContaining({ quickjs_fe_preloaded: preloaded }),
+			);
+		});
+
+		it.each([
+			['the instance is not on Cloud', () => (settingsStore.isCloudDeployment = false)],
+			[
+				'QuickJS is the main engine',
+				() => vi.mocked(Expression.getActiveImplementation).mockReturnValue('quickjs'),
+			],
+			['PostHog has the flag off', () => postHogStore.isFeatureEnabled.mockReturnValue(false)],
+		])('stops the watch of the WASM file when %s', async (_, preventStart) => {
+			preloadQuickJsExpressionShadow(flagOn);
+			preventStart();
+
+			await initializeQuickJsExpressionShadow();
+
+			expect(FakePerformanceObserver.last?.disconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not throw when the browser cannot watch the files', () => {
+			vi.stubGlobal(
+				'PerformanceObserver',
+				vi.fn(() => {
+					throw new Error('not supported');
 				}),
 			);
+
+			expect(() => preloadQuickJsExpressionShadow(flagOn)).not.toThrow();
 		});
 
-		it('reports a tab that was hidden during the idle wait', async () => {
-			const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
-			vi.mocked(Expression.createQuickJsShadowEvaluator).mockRejectedValue(new Error('no wasm'));
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
-
-			visibility.mockReturnValue('hidden');
-			document.dispatchEvent(new Event('visibilitychange'));
-			visibility.mockReturnValue('visible');
-			document.dispatchEvent(new Event('visibilitychange'));
-			idleCallback?.();
-			await starting;
-
-			expect(track).toHaveBeenCalledWith(
-				TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
-				expect.objectContaining({ quickjs_fe_startup_visible: false }),
-			);
-		});
-
-		it('stops watching the tab when the user logs out before the browser is idle', async () => {
-			const removeListener = vi.spyOn(document, 'removeEventListener');
-			const starting = initializeQuickJsExpressionShadow();
-			await vi.waitFor(() => expect(idleCallback).toBeDefined());
+		it('stops the watch of the WASM file on logout', () => {
+			preloadQuickJsExpressionShadow(flagOn);
 
 			stopQuickJsExpressionShadow();
-			idleCallback?.();
-			await starting;
 
-			expect(removeListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+			expect(FakePerformanceObserver.last?.disconnect).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -527,6 +484,8 @@ describe('initializeQuickJsExpressionShadow', () => {
 
 		const properties = track.mock.calls.at(-1)?.[1] as Record<string, unknown>;
 		expect(Object.keys(properties).filter((key) => !key.startsWith('quickjs_fe_'))).toEqual([]);
+		expect(properties).not.toHaveProperty('quickjs_fe_start_variant');
+		expect(properties).not.toHaveProperty('quickjs_fe_idle_wait_ms');
 		expect(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED.getValidationError(
 				properties,

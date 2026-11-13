@@ -1,11 +1,18 @@
-import type { GetUserQueryDto, ListUsersQueryDto } from '@n8n/api-types';
+import type {
+	CreateUsersPublicDto,
+	DeleteUserQueryPublicDto,
+	GetUserQueryDto,
+	ListUsersQueryDto,
+} from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import { GLOBAL_MEMBER_ROLE, Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 import type { UserService } from '@/services/user.service';
 
 import { UsersPublicController } from '../users.public.controller';
@@ -16,7 +23,10 @@ describe('UsersPublicController', () => {
 	const projectService = mock<ProjectService>();
 	const eventService = mock<EventService>();
 
-	const caller = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'caller-id' }) });
+	const caller = mock<PublicApiRequest>({
+		user: mock<User>({ id: 'caller-id' }),
+		publicApiClient: 'editor_ui',
+	});
 
 	const buildPerson = (overrides: Partial<Person> = {}): Person =>
 		Object.assign(new Person(), {
@@ -83,7 +93,7 @@ describe('UsersPublicController', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-all-users', {
 				userId: caller.user.id,
-				publicApi: true,
+				publicApi: 'editor_ui',
 			});
 		});
 	});
@@ -153,8 +163,76 @@ describe('UsersPublicController', () => {
 
 			expect(eventService.emit).toHaveBeenCalledWith('user-retrieved-user', {
 				userId: caller.user.id,
-				publicApi: true,
+				publicApi: 'editor_ui',
 			});
+		});
+	});
+
+	describe('operation context on user changes', () => {
+		type Route = {
+			route: string;
+			call: (req: PublicApiRequest) => Promise<unknown>;
+			ctxPassed: () => OperationContext | undefined;
+		};
+
+		const routes: Route[] = [
+			{
+				route: 'createUser',
+				call: async (req) =>
+					await controller.createUser(req, mock<Response>(), [
+						{ email: 'new@example.com', role: 'global:member' },
+					] as CreateUsersPublicDto),
+				ctxPassed: () => userService.inviteUser.mock.calls[0][3],
+			},
+			{
+				route: 'deleteUser',
+				call: async (req) =>
+					await controller.deleteUser(req, mock<Response>(), 'user-id', {
+						transferId: 'project-id',
+					} as DeleteUserQueryPublicDto),
+				ctxPassed: () => userService.deleteUser.mock.calls[0][4],
+			},
+		];
+
+		const callRoute = async ({ call }: Route, ctx?: OperationContext) =>
+			await call(
+				Object.assign(mock<PublicApiRequest>({ user: mock<User>({ id: 'caller-id' }) }), {
+					ctx,
+					publicApiClient: 'other' as const,
+				}),
+			);
+
+		it.each(routes)('$route passes the operation context of the request', async (route) => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callRoute(route, ctx);
+
+			expect(route.ctxPassed()).toBe(ctx);
+		});
+
+		it.each(routes)(
+			'$route passes no operation context when the request has none',
+			async (route) => {
+				await callRoute(route, undefined);
+
+				expect(route.ctxPassed()).toBeUndefined();
+			},
+		);
+
+		it('deleteUser still passes the transfer project', async () => {
+			await controller.deleteUser(caller, mock<Response>(), 'user-id', {
+				transferId: 'project-id',
+			} as DeleteUserQueryPublicDto);
+
+			expect(userService.deleteUser).toHaveBeenCalledWith(
+				caller.user,
+				'user-id',
+				'project-id',
+				'editor_ui',
+				caller.ctx,
+			);
 		});
 	});
 });

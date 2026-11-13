@@ -2,8 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
-import type { Settings, SettingsRepository } from '@n8n/db';
+import type { OperationContext, Settings, SettingsRepository } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -164,24 +165,81 @@ describe('PublicApiRateLimitSettingsService', () => {
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
-		it('emits a policy event with only the user fields when rate limiting is turned on', async () => {
+		describe('event emission', () => {
 			const user = { ...actor, password: 'password-hash' };
 
-			await service.saveSettings(stored, user);
+			it.each([
+				{ change: 'on', from: false, to: true },
+				{ change: 'off', from: true, to: false },
+			])(
+				'emits only a policy event with the user fields when rate limiting is turned $change',
+				async ({ from, to }) => {
+					storeRow(JSON.stringify({ ...stored, enabled: from }));
 
-			expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
-				user: actor,
-				settingName: 'public_api_rate_limit',
-				value: true,
+					await service.saveSettings({ ...stored, enabled: to }, user);
+
+					expect(eventService.emit).toHaveBeenCalledTimes(1);
+					expect(eventService.emit).toHaveBeenCalledWith('instance-policies-updated', {
+						user: actor,
+						settingName: 'public_api_rate_limit',
+						value: to,
+					});
+				},
+			);
+
+			it('emits an update event with the user fields and only the changed values', async () => {
+				storeRow(JSON.stringify(stored));
+
+				await service.saveSettings(
+					{ ...stored, globalReadLimit: 20, endpointWriteWindowSeconds: 30 },
+					user,
+				);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('public-api-rate-limit-updated', {
+					user: actor,
+					before: { globalReadLimit: 50, endpointWriteWindowSeconds: 60 },
+					after: { globalReadLimit: 20, endpointWriteWindowSeconds: 30 },
+				});
+			});
+
+			it('emits no event when nothing changes', async () => {
+				storeRow(JSON.stringify(stored));
+
+				await service.saveSettings(stored, actor);
+
+				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			it('emits no update event for a value that an env var sets', async () => {
+				storeRow(JSON.stringify(stored));
+				vi.stubEnv('N8N_PUBLIC_API_RATE_LIMIT_GLOBAL_READ_LIMIT', '50');
+				config.globalReadLimit = 50;
+
+				await service.saveSettings({ ...stored, globalReadLimit: 20 }, actor);
+
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 		});
 
-		it('does not emit a policy event when only the limits change', async () => {
-			storeRow(JSON.stringify(stored));
+		it('passes the login id of the operation context to the policy event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
 
-			await service.saveSettings({ ...stored, globalReadLimit: 20 }, actor);
+			await service.saveSettings(stored, actor, ctx);
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-policies-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.saveSettings(stored, actor);
+
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(payload).toMatchObject({ loginId: undefined });
 		});
 	});
 

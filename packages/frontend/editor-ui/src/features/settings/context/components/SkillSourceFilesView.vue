@@ -2,7 +2,7 @@
 // The right pane of the import review: the files of one skill as plain text, with the findings
 // of the security check marked where they are. The review pane polish (CONTEXT-431) replaces it.
 import type { DiscoveredSkill, SkillScanFinding } from '@n8n/api-types';
-import { computed } from 'vue';
+import { computed, useId, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 
@@ -17,6 +17,18 @@ type Segment = { text: string; finding?: SkillScanFinding };
 type Line = { number: number; segments: Segment[] };
 
 const findings = computed(() => props.skill.check?.findings ?? []);
+const fileSections = useTemplateRef<HTMLElement[]>('fileSections');
+const fileIdPrefix = useId();
+
+function fileId(path: string): string {
+	return `${fileIdPrefix}-${encodeURIComponent(path)}`;
+}
+
+function goToFile(path: string) {
+	const section = fileSections.value?.find((element) => element.id === fileId(path));
+	section?.scrollIntoView({ block: 'start', inline: 'nearest' });
+	section?.focus({ preventScroll: true });
+}
 
 /** The full path of a file in the source, as the user knows it from GitHub. */
 function pathInSource(path: string): string {
@@ -109,47 +121,77 @@ const unplacedFindings = computed(() => {
 
 <template>
 	<div :class="$style.pane" data-test-id="skill-source-preview">
-		<ul v-if="unplacedFindings.length > 0" :class="$style.findings">
-			<li v-for="(finding, index) in unplacedFindings" :key="index">
-				<N8nText
-					size="small"
-					:color="finding.severity === 'blocked' ? 'danger' : 'warning'"
-					data-test-id="skill-source-unplaced-finding"
-					>{{ unplacedText(finding) }}</N8nText
-				>
-			</li>
-		</ul>
-		<section v-if="skippedFiles.length > 0" :class="$style.skipped">
+		<nav
+			v-if="files.length > 1"
+			:class="$style.fileIndex"
+			:aria-label="i18n.baseText('settings.context.skills.connect.review.files')"
+			data-test-id="skill-source-file-index"
+		>
 			<N8nText size="small" bold>
-				{{ i18n.baseText('settings.context.skills.connect.review.skippedFiles') }}
+				{{ i18n.baseText('settings.context.skills.connect.review.files') }}
 			</N8nText>
-			<ul>
-				<li
-					v-for="line in skippedFiles"
-					:key="line"
-					:class="$style.skippedFile"
-					data-test-id="skill-source-skipped-file"
-				>
-					{{ line }}
+			<ul :class="$style.fileList">
+				<li v-for="file in files" :key="file.path">
+					<N8nLink
+						:href="`#${encodeURIComponent(fileId(file.path))}`"
+						target="_self"
+						:class="$style.fileLink"
+						size="small"
+						theme="text"
+						:underline="false"
+						@click.prevent="goToFile(file.path)"
+					>
+						{{ file.path }}
+					</N8nLink>
 				</li>
 			</ul>
-		</section>
-		<section
-			v-for="file in files"
-			:key="file.path"
-			:class="$style.file"
-			data-test-id="skill-source-file"
-		>
-			<header :class="$style.fileHeader">
-				<N8nIcon icon="file-text" size="small" color="text-light" />
-				<N8nText size="small" :class="$style.path" data-test-id="skill-source-file-path">{{
-					pathInSource(file.path)
-				}}</N8nText>
-				<N8nLink :href="fileUrl(file.path)" new-window size="small">
-					{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
-				</N8nLink>
-			</header>
-			<pre :class="$style.text"><code><span
+		</nav>
+		<div :class="$style.content" data-test-id="skill-source-file-content">
+			<ul v-if="unplacedFindings.length > 0" :class="$style.findings">
+				<li v-for="(finding, index) in unplacedFindings" :key="index">
+					<N8nText
+						size="small"
+						:color="finding.severity === 'blocked' ? 'danger' : 'warning'"
+						data-test-id="skill-source-unplaced-finding"
+						>{{ unplacedText(finding) }}</N8nText
+					>
+				</li>
+			</ul>
+			<section v-if="skippedFiles.length > 0" :class="$style.skipped">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('settings.context.skills.connect.review.skippedFiles') }}
+				</N8nText>
+				<ul>
+					<li
+						v-for="line in skippedFiles"
+						:key="line"
+						:class="$style.skippedFile"
+						data-test-id="skill-source-skipped-file"
+					>
+						{{ line }}
+					</li>
+				</ul>
+			</section>
+			<section
+				v-for="file in files"
+				:id="fileId(file.path)"
+				:key="file.path"
+				ref="fileSections"
+				:class="$style.file"
+				:aria-label="pathInSource(file.path)"
+				tabindex="-1"
+				data-test-id="skill-source-file"
+			>
+				<header :class="$style.fileHeader">
+					<N8nIcon icon="file-text" size="small" color="text-light" />
+					<N8nText size="small" :class="$style.path" data-test-id="skill-source-file-path">{{
+						pathInSource(file.path)
+					}}</N8nText>
+					<N8nLink :href="fileUrl(file.path)" new-window size="small">
+						{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
+					</N8nLink>
+				</header>
+				<pre :class="$style.text"><code><span
 				v-for="line in file.lines"
 				:key="line.number"
 				:class="$style.line"
@@ -162,15 +204,16 @@ const unplacedFindings = computed(() => {
 				:title="ruleText(segment.finding.rule)"
 				data-test-id="skill-source-finding-mark"
 			>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
-		</section>
-		<N8nText
-			v-if="skill.previewTruncated"
-			size="small"
-			color="text-light"
-			data-test-id="skill-source-preview-truncated"
-		>
-			{{ i18n.baseText('settings.context.skills.connect.review.truncated') }}
-		</N8nText>
+			</section>
+			<N8nText
+				v-if="skill.previewTruncated"
+				size="small"
+				color="text-light"
+				data-test-id="skill-source-preview-truncated"
+			>
+				{{ i18n.baseText('settings.context.skills.connect.review.truncated') }}
+			</N8nText>
+		</div>
 	</div>
 </template>
 
@@ -178,8 +221,49 @@ const unplacedFindings = computed(() => {
 .pane {
 	display: flex;
 	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+
+.fileIndex {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	flex-shrink: 0;
+	max-height: 30%;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-bottom: var(--border);
+}
+
+.fileList {
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	overflow-y: auto;
+	list-style: none;
+}
+
+.fileLink {
+	display: block;
+	padding: var(--spacing--3xs);
+	border-radius: var(--radius);
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
+
+	&:hover,
+	&:focus-visible {
+		background-color: var(--background--hover);
+	}
+}
+
+.content {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
 	gap: var(--spacing--sm);
+	min-height: 0;
 	padding: var(--spacing--sm);
+	overflow-y: auto;
 }
 
 .findings,
@@ -201,6 +285,7 @@ const unplacedFindings = computed(() => {
 }
 
 .file {
+	flex-shrink: 0;
 	border: var(--border);
 	border-radius: var(--radius);
 }

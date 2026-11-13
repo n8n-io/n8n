@@ -44,6 +44,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
 
 const tags = ['Projects'];
@@ -159,12 +160,17 @@ export class ProjectsPublicController {
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteProject(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Query _query: DeleteProjectQueryPublicDto,
 	): Promise<void> {
-		await this.projectService.deleteProject(req.user, projectId);
+		await this.projectService.deleteProject(
+			req.user,
+			projectId,
+			{ publicApi: req.publicApiClient },
+			req.ctx,
+		);
 	}
 
 	@Get('/:projectId/users')
@@ -211,14 +217,22 @@ export class ProjectsPublicController {
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async addUsersToProject(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body body: AddProjectMembersPublicDto,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 
-		await this.projectService.addUsersToProject(req.user, projectId, body.relations);
+		await this.projectService.addUsersToProject(
+			{
+				user: req.user,
+				projectId,
+				relations: body.relations,
+				publicApi: req.publicApiClient,
+			},
+			req.ctx,
+		);
 	}
 
 	@Patch('/:projectId/users/:userId')

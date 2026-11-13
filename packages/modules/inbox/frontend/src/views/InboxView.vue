@@ -24,6 +24,7 @@ const { activeTab, openCount, closedCount } = storeToRefs(store);
 const sections = computed(() =>
 	store.activeSectionKeys.map((key) => ({ key, ...store.lists[key] })),
 );
+const activeItems = computed(() => sections.value.flatMap((section) => section.items));
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -96,6 +97,25 @@ watch(
 	{ immediate: true },
 );
 
+// Select the first item once per tab visit: on entry, and when the user switches tabs.
+// An existing selection always stays. This includes a deep link and an item from the other tab.
+// The value is the tab the selection is for, so a load of the previous tab does not use it up.
+let autoSelectTab: 'open' | 'closed' | null = activeTab.value;
+// A failed load does not count, so the first-item selection waits for a successful retry.
+const activeTabLoaded = computed(
+	() =>
+		!store.loading && !store.initialLoadFailed && store.activeLists.every((list) => list.hasLoaded),
+);
+watch(
+	[activeTabLoaded, activeTab],
+	([loaded, tab]) => {
+		if (!loaded || autoSelectTab !== tab || !isOnInbox()) return;
+		autoSelectTab = null;
+		if (!selection.value && activeItems.value[0]) onSelect(activeItems.value[0]);
+	},
+	{ flush: 'post' },
+);
+
 function onSelect(item: InboxItem) {
 	void router.replace(inboxItemLocation(item, route));
 }
@@ -105,7 +125,14 @@ function onClearSelection() {
 	for (const key of ['projectId', 'workflowId']) delete query[key];
 	void router.replace({ name: INBOX_VIEW, query });
 }
+function onUserClearSelection() {
+	// An explicit clear also cancels a selection that still waits for the list or for a page.
+	autoSelectTab = null;
+	nextPageSelection++;
+	onClearSelection();
+}
 function onActiveTabChange(tab: 'open' | 'closed') {
+	autoSelectTab = tab;
 	const query = { ...route.query };
 	if (tab === 'closed') query.state = tab;
 	else delete query.state;
@@ -118,8 +145,18 @@ function onDetailTabChange(tab: 'activity' | 'changes') {
 	else delete query.tab;
 	void router.replace({ query });
 }
+function nextItemAfter(change: InboxItemChange) {
+	const items = activeItems.value;
+	const index = items.findIndex(({ type, id }) => type === change.type && id === change.id);
+	// A deep link can open an item that is not in the loaded rows.
+	if (index === -1) return items[0];
+	return items[index + 1] ?? items[index - 1];
+}
+
 function onItemChange(change: InboxItemChange) {
 	if (!change.state && !isActive()) return;
+	// Read the neighbor before the closed row leaves the list.
+	const next = change.advance ? nextItemAfter(change) : undefined;
 	// A successful decision still updates shared state after this view unmounts.
 	store.reconcileItemChange(change);
 	if (!isOnInbox()) return;
@@ -129,14 +166,38 @@ function onItemChange(change: InboxItemChange) {
 	}
 	const currentRoute = router.currentRoute.value;
 	const selected = selectionFromRoute(currentRoute);
-	if (
+	const closesSelectedOpenItem =
 		change.state === 'closed' &&
 		activeTab.value !== 'closed' &&
 		selected?.type === change.type &&
-		selected.id === change.id
-	) {
+		selected.id === change.id;
+	if (!closesSelectedOpenItem) return;
+	if (!change.advance) {
+		// The item keeps its selection and moves to the Closed tab.
 		void router.replace({ query: { ...currentRoute.query, state: 'closed' } });
+	} else if (store.lists.waiting.items.length === 0 && store.lists.waiting.hasMore) {
+		onClearSelection();
+		void selectFromNextWaitingPage(change, next);
+	} else if (next) {
+		onSelect(next);
+	} else {
+		onClearSelection();
 	}
+}
+
+// Only the latest close selects from the next page. An explicit clear cancels it.
+let nextPageSelection = 0;
+// Assistant fixes arrive in Waiting, so its next page comes before a row in Authored.
+async function selectFromNextWaitingPage(closed: InboxItemChange, fallback?: InboxItem) {
+	const { waiting } = store.lists;
+	const request = ++nextPageSelection;
+	await waiting.loadMore();
+	if (request !== nextPageSelection || !isActive() || activeTab.value !== 'open') return;
+	// A selection the user made while the page loaded wins.
+	const selected = selectionFromRoute(router.currentRoute.value);
+	if (selected && (selected.type !== closed.type || selected.id !== closed.id)) return;
+	const next = waiting.items[0] ?? fallback;
+	if (next) onSelect(next);
 }
 
 watch(
@@ -171,7 +232,7 @@ onBeforeUnmount(() => {
 					:open-count="openCount"
 					:closed-count="closedCount"
 					@select="onSelect"
-					@clear="onClearSelection"
+					@clear="onUserClearSelection"
 					@update:active-tab="onActiveTabChange"
 					@load-more="(section) => store.lists[section].loadMore()"
 					@retry="(section) => store.lists[section].retry()"

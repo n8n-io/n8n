@@ -311,7 +311,7 @@
     "jsonwebtoken": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
-    "mammoth": "1.12.1",
+    "mammoth": "1.12.3",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
     "mysql2": "catalog:",

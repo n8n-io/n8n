@@ -12,7 +12,8 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import type { Folder, Project } from '@n8n/db';
+import type { Folder, OperationContext, Project } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import {
 	ProjectRepository,
 	SharedWorkflowRepository,
@@ -23,6 +24,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
@@ -988,6 +990,64 @@ describe('Package import workflow conflict policy', () => {
 	});
 });
 
+describe('Package import workflow description', () => {
+	const importDescription = async (
+		description: string | null | undefined,
+		conflictPolicy: ImportConflictPolicy = ImportConflictPolicy.NewVersion,
+	) => {
+		const owner = await createOwner();
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-desc', name: 'Described', description: 'Old description' }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-desc', name: 'Described', description }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+			conflictPolicy,
+		});
+		return await Container.get(WorkflowRepository).findOneByOrFail({ id: 'wf-desc' });
+	};
+
+	it('gives a created workflow the package description', async () => {
+		const owner = await createOwner();
+
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-new', name: 'New', description: 'From the source' }),
+			]),
+			idPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: 'wf-new' });
+		expect(stored.description).toBe('From the source');
+	});
+
+	it('gives an updated workflow the package description', async () => {
+		const stored = await importDescription('New description');
+
+		expect(stored.description).toBe('New description');
+	});
+
+	it('clears the description of an updated workflow when the package has none', async () => {
+		const stored = await importDescription(undefined);
+
+		expect(stored.description).toBeNull();
+	});
+
+	it('keeps the description of a workflow that the import skips', async () => {
+		const stored = await importDescription('New description', ImportConflictPolicy.Skip);
+
+		expect(stored.description).toBe('Old description');
+	});
+});
+
 describe('Package import rejection cases', () => {
 	async function singleWorkflowPackage(): Promise<Buffer> {
 		return await buildImportPackageBuffer([serializedWorkflow({ id: 'wf-x', name: 'X' })]);
@@ -1135,7 +1195,7 @@ describe('Package import rejection cases', () => {
 });
 
 describe('Package import event emission', () => {
-	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
+	it("emits workflow-created per workflow with the request's public API client, plus one n8n-package-imported on success", async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -1143,6 +1203,7 @@ describe('Package import event emission', () => {
 		try {
 			await importPackage({
 				user: owner,
+				publicApi: 'editor_ui',
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-event-1', name: 'Event One' }),
 					serializedWorkflow({ id: 'wf-event-2', name: 'Event Two' }),
@@ -1152,10 +1213,10 @@ describe('Package import event emission', () => {
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
 			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
-			expect(createdEvents).toHaveLength(2);
-			expect(
-				createdEvents.every(([, payload]) => (payload as { source: string }).source === 'import'),
-			).toBe(true);
+			expect(createdEvents.map(([, payload]) => payload)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(importedEvents).toHaveLength(1);
 
 			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
@@ -1223,6 +1284,33 @@ describe('Package import event emission', () => {
 					requirements: 0,
 				},
 			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('adds the login of the operation context to the import events', async () => {
+		const owner = await createOwner();
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		try {
+			await importPackage({
+				user: owner,
+				ctx,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-login-1', name: 'Login One' }),
+				]),
+			});
+
+			const loginIdOfEvent = (eventName: string) =>
+				emitSpy.mock.calls
+					.filter(([name]) => name === eventName)
+					.map(([, payload]) => (payload as { loginId?: string }).loginId);
+			expect(loginIdOfEvent('workflow-created')).toEqual(['login-1']);
+			expect(loginIdOfEvent('n8n-package-imported')).toEqual(['login-1']);
 		} finally {
 			emitSpy.mockRestore();
 		}
@@ -2306,14 +2394,11 @@ describe('credential-missing-mode: create-stub', () => {
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
 
-	it('does not require the API key credential:create scope for create-stub', async () => {
-		const owner = await createOwner();
-
-		const result = await importPackage({
-			user: owner,
-			credentialMissingMode: 'create-stub',
-			apiKeyScopes: ['workflow:import'],
-			packageBuffer: await buildImportPackageBuffer(
+	it.each(['create-stub', 'create-with-values'] as const)(
+		'requires the credential:create scope when %s creates a credential, and writes nothing without it',
+		async (credentialMissingMode) => {
+			const owner = await createOwner();
+			const packageBuffer = await buildImportPackageBuffer(
 				[
 					serializedWorkflowWithCredential({
 						id: 'wf-missing-cred',
@@ -2323,11 +2408,28 @@ describe('credential-missing-mode: create-stub', () => {
 					}),
 				],
 				{ sourceId },
-			),
-		});
+			);
 
-		expect(result.credentials.stubbed).toEqual(['missing-cred']);
-	});
+			await expect(
+				importPackage({
+					user: owner,
+					credentialMissingMode,
+					apiKeyScopes: ['workflow:import'],
+					packageBuffer,
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(await Container.get(CredentialsRepository).count()).toBe(0);
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+			const result = await importPackage({
+				user: owner,
+				credentialMissingMode,
+				apiKeyScopes: ['workflow:import', 'credential:create'],
+				packageBuffer,
+			});
+			expect(result.credentials.stubbed).toEqual(['missing-cred']);
+		},
+	);
 });
 
 describe('credential-missing-mode: create-with-values', () => {
@@ -2711,40 +2813,6 @@ describe('credential-missing-mode: create-with-values', () => {
 		expect(result.credentials.seeded).toEqual([]);
 		expect(result.credentials.incomplete).toEqual([]);
 		expect(await Container.get(CredentialsRepository).count()).toBe(1);
-	});
-
-	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
-		const owner = await createOwner();
-		const packageBuffer = await buildImportPackageBuffer(
-			[
-				serializedWorkflowWithCredential({
-					id: 'wf-missing-cred',
-					name: 'Missing cred workflow',
-					credentialId: 'missing-cred',
-					credentialName: 'Missing GitHub',
-				}),
-			],
-			{ sourceId },
-		);
-
-		await expect(
-			importPackage({
-				user: owner,
-				credentialMissingMode: 'create-with-values',
-				apiKeyScopes: ['workflow:import'],
-				packageBuffer,
-			}),
-		).rejects.toThrow(ForbiddenError);
-		expect(await Container.get(CredentialsRepository).count()).toBe(0);
-		expect(await Container.get(WorkflowRepository).count()).toBe(0);
-
-		const result = await importPackage({
-			user: owner,
-			credentialMissingMode: 'create-with-values',
-			apiKeyScopes: ['workflow:import', 'credential:create'],
-			packageBuffer,
-		});
-		expect(result.credentials.stubbed).toEqual(['missing-cred']);
 	});
 
 	it('does not require the credential:create scope when every credential resolves', async () => {

@@ -24,30 +24,9 @@ describe('prompt profiles', () => {
 		);
 	});
 
-	it('selects the progressive skill variants', async () => {
-		const selected = resolvePromptProfile({ mode: 'progressive' });
-		const result = await loadInstanceAiPromptSkills(selected.profile);
-		expect(result.disabledTools).toEqual([]);
-		await expect(result.source.loadSkill('progressive-building')).resolves.toBeNull();
-		expect((await result.source.loadSkill('workflow-builder'))?.version).toBe(
-			'progressive-building@1',
-		);
-		expect(describePromptProfile(selected, result.source)).toEqual({
-			version: 'progressive@1',
-			systemPromptVersion: 'instance-agent@1',
-			skillVariants: ['progressive-building@1'],
-			skillsHash: result.source.registry.skillsHash,
-		});
-	});
-
-	it('honors explicit versions before mode and reports retired-version fallback', () => {
-		expect(resolvePromptProfile({ version: 'default@1', mode: 'progressive' }).profile.mode).toBe(
-			'default',
-		);
-		expect(resolvePromptProfile({ version: 'progressive@1', mode: 'default' }).profile.mode).toBe(
-			'progressive',
-		);
-		const retired = resolvePromptProfile({ version: 'retired@1', mode: 'progressive' });
+	it('selects the default without a version and reports retired-version fallback', () => {
+		expect(resolvePromptProfile({}).profile.version).toBe('default@1');
+		const retired = resolvePromptProfile({ version: 'retired@1' });
 		expect(retired.profile.version).toBe('default@1');
 		expect(retired.fallbackFrom).toBe('retired@1');
 		expect(() => assertInstanceAiPromptVersion('retired@1')).toThrow(
@@ -58,7 +37,6 @@ describe('prompt profiles', () => {
 	it('varies only the communication style in the concise profile', async () => {
 		const concise = resolvePromptProfile({ version: 'concise@1' });
 		expect(concise.fallbackFrom).toBeUndefined();
-		expect(concise.profile.mode).toBe('default');
 
 		// Skills must be untouched: the concise profile carries no skill variants.
 		const result = await loadInstanceAiPromptSkills(concise.profile);

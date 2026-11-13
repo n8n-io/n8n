@@ -2,7 +2,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, User, Project, Folder } from '@n8n/db';
+import type { EntityManager, User, Project, Folder, OperationContext } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -19,6 +19,7 @@ import { v4 as uuid } from 'uuid';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
+import { loginIdOf } from '@/events/login-id';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -28,6 +29,7 @@ import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -152,12 +154,13 @@ export class WorkflowCreationService {
 			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
-			publicApi?: boolean;
+			publicApi?: PublicApiCaller;
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
 			batchContext?: WorkflowCreateBatchContext;
 		} = {},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
 		const {
 			tagIds,
@@ -326,12 +329,12 @@ export class WorkflowCreationService {
 
 		const savedWorkflow = await this.workflowRepository.runInTransaction(
 			{ policyCleared: cleared },
-			async (transactionManager, ctx) => {
+			async (transactionManager, trxCtx) => {
 				project = await this.projectService.getProjectWithScope(
 					user,
 					effectiveProjectId,
 					['workflow:create'],
-					ctx,
+					trxCtx,
 				);
 
 				if (project === null) {
@@ -366,7 +369,7 @@ export class WorkflowCreationService {
 					);
 				}
 
-				const workflow = await this.workflowRepository.createContent(newWorkflow, ctx);
+				const workflow = await this.workflowRepository.createContent(newWorkflow, trxCtx);
 
 				const newSharedWorkflow = this.sharedWorkflowRepository.create({
 					role: 'workflow:owner',
@@ -426,6 +429,7 @@ export class WorkflowCreationService {
 			projectType: project.type,
 			uiContext,
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		return savedWorkflow;

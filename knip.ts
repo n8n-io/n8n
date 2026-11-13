@@ -104,6 +104,10 @@ const config: KnipConfig = {
 			// ioredis-mock is loaded with vi.importActual, which knip does not link.
 			ignoreDependencies: ['ioredis-mock'],
 		}),
+		'packages/@n8n/backend-docs-site': pkg({
+			// The Astro prerender step resolves cookie at runtime. See the package README.
+			ignoreDependencies: ['cookie'],
+		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
 			ignoreDependencies: ['@types/psl'],
@@ -186,10 +190,6 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
-				// .oxlintrc.json names these plugins; @n8n/oxlint-config provides them.
-				'@stylistic/eslint-plugin',
-				'eslint-plugin-lodash',
-				'eslint-plugin-unused-imports',
 			],
 		}),
 		'packages/frontend/@n8n/storybook': pkg({

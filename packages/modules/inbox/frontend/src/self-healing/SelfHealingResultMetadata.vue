@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import type { SelfHealingResultDetail } from '@n8n/api-types';
-import {
-	N8nAssistantAvatar,
-	N8nCard,
-	N8nIcon,
-	N8nLink,
-	N8nText,
-	N8nTimeAgo,
-} from '@n8n/design-system';
+import { N8nAssistantAvatar, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,6 +10,7 @@ const props = defineProps<{
 	detail: SelfHealingResultDetail;
 	workflowNames: Map<string, string>;
 	statusLabel: string;
+	statusClass: 'fixReady' | 'needsAttention' | 'closed';
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
@@ -93,9 +87,12 @@ const usageRows = computed(() => {
 					i18n.baseText('inbox.selfHealing.metadata.status')
 				}}</N8nText>
 			</template>
-			<N8nText size="medium">{{ statusLabel }}</N8nText>
+			<div :class="$style.status">
+				<span :class="[$style.statusDot, $style[statusClass]]" aria-hidden="true" />
+				<N8nText size="medium">{{ statusLabel }}</N8nText>
+			</div>
 		</N8nCard>
-		<N8nCard :class="[$style.card, $style.peopleCard]">
+		<N8nCard :class="$style.card">
 			<div :class="$style.section">
 				<N8nText bold color="text-light" size="medium">{{
 					i18n.baseText('inbox.selfHealing.metadata.createdBy')
@@ -106,16 +103,6 @@ const usageRows = computed(() => {
 						i18n.baseText('inbox.selfHealing.metadata.assistant')
 					}}</N8nText>
 				</div>
-			</div>
-			<div :class="$style.section">
-				<N8nText bold color="text-light" size="medium">{{
-					i18n.baseText('inbox.selfHealing.metadata.completed')
-				}}</N8nText>
-				<N8nText size="medium">
-					<time :datetime="detail.completedAt"
-						><N8nTimeAgo :date="detail.completedAt" :locale="rootStore.defaultLocale"
-					/></time>
-				</N8nText>
 			</div>
 		</N8nCard>
 		<N8nCard :class="$style.card">
@@ -134,8 +121,8 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-workflow-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-						<span :class="$style.workflowName">{{ workflowName }}</span>
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ workflowName }}</span>
 					</span>
 				</N8nLink>
 			</div>
@@ -154,8 +141,8 @@ const usageRows = computed(() => {
 					data-test-id="self-healing-sub-workflow-link"
 				>
 					<span :class="$style.link">
-						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
-						<span :class="$style.workflowName">{{ subWorkflow.name }}</span>
+						<N8nIcon icon="workflow" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{ subWorkflow.name }}</span>
 					</span>
 				</N8nLink>
 			</div>
@@ -175,19 +162,23 @@ const usageRows = computed(() => {
 					:class="$style.plainLink"
 					data-test-id="self-healing-execution-link"
 				>
-					{{
-						i18n.baseText('inbox.selfHealing.metadata.executionLink', {
-							interpolate: { id: detail.execution.id },
-						})
-					}}
+					<span :class="$style.link">
+						<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
+						<span :class="$style.linkLabel">{{
+							i18n.baseText('inbox.selfHealing.metadata.executionLink', {
+								interpolate: { id: detail.execution.id },
+							})
+						}}</span>
+					</span>
 				</N8nLink>
 				<N8nText
 					v-else
-					size="small"
-					color="text-light"
+					size="medium"
+					:class="$style.link"
 					data-test-id="self-healing-execution-unavailable"
 				>
-					{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}
+					<N8nIcon icon="flag-hole" size="medium" :class="$style.linkIcon" />
+					<span>{{ i18n.baseText('inbox.selfHealing.metadata.executionUnavailable') }}</span>
 				</N8nText>
 			</div>
 		</N8nCard>
@@ -204,8 +195,8 @@ const usageRows = computed(() => {
 					:class="$style.measurement"
 					:data-test-id="`self-healing-usage-${row.key}`"
 				>
-					<N8nText tag="dt" size="small" color="text-light">{{ row.label }}</N8nText>
-					<N8nText tag="dd" size="small">{{ row.value }}</N8nText>
+					<N8nText tag="dt" size="medium">{{ row.label }}</N8nText>
+					<N8nText tag="dd" size="medium">{{ row.value }}</N8nText>
 				</div>
 			</dl>
 		</N8nCard>
@@ -231,13 +222,36 @@ const usageRows = computed(() => {
 	border-color: var(--border-color);
 	background-color: transparent;
 
+	/* Match the title-to-value gap of the sections inside the card body. */
 	> div {
-		gap: var(--spacing--4xs);
+		gap: var(--spacing--2xs);
 	}
 }
 
-.peopleCard {
-	--n8n--card-body--gap: var(--spacing--sm);
+/* Match the status row of workflow reviews. */
+.status {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.statusDot {
+	flex-shrink: 0;
+	width: var(--font-size--3xs);
+	height: var(--font-size--3xs);
+	border-radius: 50%;
+}
+
+.fixReady {
+	background-color: var(--color--blue-500);
+}
+
+.needsAttention {
+	background-color: var(--color--yellow-500);
+}
+
+.closed {
+	background-color: var(--color--neutral-500);
 }
 
 .section {
@@ -245,6 +259,11 @@ const usageRows = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	min-width: 0;
+}
+
+/* Each later group in a card gets the same space above its title. */
+.section + .section {
+	margin-top: var(--spacing--2xs);
 }
 
 .person,
@@ -257,7 +276,12 @@ const usageRows = computed(() => {
 
 .link {
 	align-items: flex-start;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
+}
+
+/* The text link theme uses a lighter shade. Values in this rail use the regular text color. */
+.plainLink .link {
+	color: var(--text-color);
 }
 
 .plainLink:hover,
@@ -265,13 +289,13 @@ const usageRows = computed(() => {
 	text-decoration: underline;
 }
 
-.workflowIcon {
+.linkIcon {
 	flex-shrink: 0;
 	/* Align the icon with the first line, as in the prototype. */
 	margin-top: calc((1lh - 1em) / 2);
 }
 
-.workflowName {
+.linkLabel {
 	white-space: normal;
 	overflow-wrap: anywhere;
 }
@@ -279,7 +303,7 @@ const usageRows = computed(() => {
 .usage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	margin: 0;
 }
 

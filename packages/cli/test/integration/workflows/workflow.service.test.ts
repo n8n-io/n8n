@@ -131,8 +131,6 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		workflowPublicationNotifier,
-		mock(), // scheduleTriggerJobRegistrar
-		mock(), // pollTriggerJobRegistrar
 		mock(), // workflowScheduledJobOwner
 		mock(), // durableJobProvisioner
 		workflowPublishedVersionRepository,
@@ -296,6 +294,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 		const previousActiveVersionId = workflow.activeVersionId;
+		const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
 
 		const updatedWorkflow = await workflowService.update(
 			owner,
@@ -313,13 +312,23 @@ describe('update()', () => {
 				connections: {},
 			} as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+			{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 		);
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(updatedWorkflow.versionId);
 		expect(updatedWorkflow.activeVersionId).not.toBe(previousActiveVersionId);
 		expect(updatedWorkflow.activeVersion?.versionId).toBe(updatedWorkflow.versionId);
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: updatedWorkflow.versionId,
+				source: 'api',
+				publicApi: 'other',
+			},
+			{},
+		);
 	});
 
 	test('saves the API update as a draft when an open review blocks re-publication', async () => {
@@ -350,7 +359,7 @@ describe('update()', () => {
 					connections: {},
 				} as WorkflowEntity,
 				workflow.id,
-				{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+				{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 			),
 		).rejects.toMatchObject({
 			httpStatusCode: 409,
@@ -377,14 +386,20 @@ describe('update()', () => {
 			owner,
 			{ settings: { timezone: 'Europe/Berlin' } } as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true },
+			{ forceSave: true, publicApi: 'editor_ui', source: 'api' },
 		);
 
-		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
-			versionId: workflow.activeVersionId,
-			source: 'ui',
-			publishHistory: 'none',
-		});
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: workflow.activeVersionId,
+				source: 'api',
+				publicApi: 'editor_ui',
+				publishHistory: 'none',
+			},
+			{},
+		);
 	});
 
 	test('should save workflow history version with backfilled data when nodes change', async () => {

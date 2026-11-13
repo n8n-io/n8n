@@ -4702,6 +4702,10 @@ export interface IUserSettings {
 	mcpJsonNudge?: {
 		impressions: number;
 	};
+	mcpPreferencesNote?: {
+		impressions: number;
+		lastShownAt?: number;
+	};
 }
 
 export interface IProcessedDataConfig {

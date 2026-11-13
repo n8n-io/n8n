@@ -29,6 +29,7 @@
     "dev:fe:editor": "turbo run dev --env-mode=loose --filter=n8n-editor-ui",
     "dev:design-system": "turbo run dev --env-mode=loose --log-prefix=none --filter=@n8n/design-system",
     "dev:e2e": "pnpm --filter=n8n-playwright dev --ui",
+    "docs:backend": "pnpm --filter @n8n/backend-docs-site dev",
     "dev-metrics:opt-in": "node scripts/dev-metrics/setup.mjs --enable",
     "dev-metrics:status": "node scripts/dev-metrics/setup.mjs --status",
     "dev-metrics:reset": "node scripts/dev-metrics/setup.mjs --reset",

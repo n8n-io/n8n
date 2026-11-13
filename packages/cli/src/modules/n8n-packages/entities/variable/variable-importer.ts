@@ -138,12 +138,16 @@ export class VariableImporter {
 			}
 
 			try {
-				await this.variablesService.create(context.user, {
-					key: creation.name,
-					type: 'string',
-					value: creation.value ?? '',
-					...(creation.projectId ? { projectId: creation.projectId } : {}),
-				});
+				await this.variablesService.create(
+					context.user,
+					{
+						key: creation.name,
+						type: 'string',
+						value: creation.value ?? '',
+						...(creation.projectId ? { projectId: creation.projectId } : {}),
+					},
+					context.ctx,
+				);
 				// A bundled-but-empty value still leaves the user something to fill in, so it is a stub.
 				if (creation.value) {
 					created.push(creation.name);
@@ -170,9 +174,12 @@ export class VariableImporter {
 			// Nothing to write if another writer deleted the row, or an earlier scope already applied it.
 			if (!current || current.value === overwrite.value) continue;
 
-			await this.variablesService.update(context.user, overwrite.variableId, {
-				value: overwrite.value,
-			});
+			await this.variablesService.update(
+				context.user,
+				overwrite.variableId,
+				{ value: overwrite.value },
+				context.ctx,
+			);
 			updated.push(overwrite.name);
 		}
 

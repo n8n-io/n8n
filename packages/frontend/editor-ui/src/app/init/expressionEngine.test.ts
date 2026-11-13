@@ -43,6 +43,33 @@ describe('initializeExpressionEngine', () => {
 		expect(Expression.initExpressionEngine).not.toHaveBeenCalled();
 	});
 
+	it('starts the engine once when a second call comes while the first one runs', async () => {
+		let finishStart: () => void = () => {};
+		vi.mocked(Expression.initExpressionEngine).mockImplementationOnce(
+			async () =>
+				await new Promise<void>((resolve) => {
+					finishStart = resolve;
+				}),
+		);
+
+		const first = initializeExpressionEngine('quickjs');
+		const second = initializeExpressionEngine('quickjs');
+		await vi.waitFor(() => expect(Expression.initExpressionEngine).toHaveBeenCalled());
+		finishStart();
+		await Promise.all([first, second]);
+
+		expect(Expression.initExpressionEngine).toHaveBeenCalledTimes(1);
+	});
+
+	it('starts the engine again after a failed start', async () => {
+		vi.mocked(Expression.initExpressionEngine).mockRejectedValueOnce(new Error('no wasm'));
+		await expect(initializeExpressionEngine('quickjs')).rejects.toThrow('no wasm');
+
+		await initializeExpressionEngine('quickjs');
+
+		expect(Expression.initExpressionEngine).toHaveBeenCalledTimes(2);
+	});
+
 	// An older instance, or one whose settings call failed, sends no engine at all.
 	it('leaves the legacy evaluator when the setting is absent', async () => {
 		await initializeExpressionEngine(undefined);
