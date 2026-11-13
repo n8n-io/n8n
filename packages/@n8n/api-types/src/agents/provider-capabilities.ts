@@ -61,6 +61,8 @@ export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
 	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
 	promptCaching: false | 'ttl' | true;
+	/** Whether the provider has selectable processing tiers (`config.serviceTier`). OpenAI only. */
+	serviceTier?: boolean;
 	webSearch: false | NativeWebSearchCanonicalTool;
 	providerTools: ReadonlyArray<NativeWebSearchCanonicalTool | 'openai.image_generation'>;
 	/**
@@ -92,6 +94,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	openai: {
 		thinking: 'reasoningEffort',
 		promptCaching: true,
+		serviceTier: true,
 		webSearch: 'openai.web_search',
 		providerTools: ['openai.web_search', 'openai.image_generation'],
 		attachments: { image: true, pdf: true, audio: false },
@@ -219,6 +222,11 @@ export function getModelPromptCachingCapability(
 ): ProviderCapabilities['promptCaching'] {
 	if (isRoutedAnthropicModel(modelId)) return 'ttl';
 	return PROVIDER_CAPABILITIES[getProviderPrefix(modelId)]?.promptCaching ?? false;
+}
+
+/** Whether the model's provider offers a service tier setting. */
+export function getModelServiceTierCapability(modelId: string): boolean {
+	return PROVIDER_CAPABILITIES[getProviderPrefix(modelId)]?.serviceTier ?? false;
 }
 
 /** Attachment support of a provider. Unknown providers support none. */

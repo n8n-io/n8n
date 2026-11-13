@@ -35,6 +35,7 @@ import {
 	type AgentJsonMemoryConfig,
 	type AgentJsonToolConfig,
 	type AgentJsonSkillConfig,
+	getModelServiceTierCapability,
 } from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 import { createHash } from 'crypto';
@@ -298,7 +299,7 @@ export async function buildFromJson(
 		}
 		const executionOptions: ExecutionOptions = {
 			...(config.config.maxIterations ? { maxIterations: config.config.maxIterations } : {}),
-			...(config.config.serviceTier && getProviderPrefix(config.model) === 'openai'
+			...(config.config.serviceTier && getModelServiceTierCapability(config.model)
 				? { providerOptions: { openai: { serviceTier: config.config.serviceTier } } }
 				: {}),
 		};
