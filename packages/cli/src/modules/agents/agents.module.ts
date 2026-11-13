@@ -31,6 +31,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
+		await import('./agent-skill-trial.controller.js');
 		await import('./agent-knowledge.controller.js');
 		await import('./agent-memory.controller.js');
 		await import('./agent-publish.controller.js');

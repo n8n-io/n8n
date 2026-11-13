@@ -46,6 +46,14 @@ vi.mock('./SkillSourceConnectDialog.vue', () => ({
 	},
 }));
 
+vi.mock('@/features/agents/components/AgentSkillTrialDialog.vue', () => ({
+	default: {
+		props: ['item', 'projectId'],
+		emits: ['close', 'save'],
+		template: `<div data-test-id="trial-dialog">{{ item.name }} {{ projectId }}<button @click="$emit('save')">Save after trial</button><button @click="$emit('close')">Close trial</button></div>`,
+	},
+}));
+
 const item: SkillCatalogItem = {
 	id: 'acme/skills/pdf',
 	name: 'pdf',
@@ -66,7 +74,7 @@ describe('SkillsDiscover', () => {
 		vi.clearAllMocks();
 		createTestingPinia();
 		mockedStore(useProjectsStore).myProjects = [
-			mock<ProjectListItem>({ id: 'personal-1', scopes: ['agent:create'] }),
+			mock<ProjectListItem>({ id: 'personal-1', scopes: ['agent:execute', 'projectSkill:list'] }),
 		];
 		state.imported = true;
 		state.push.mockResolvedValue(undefined);
@@ -121,71 +129,36 @@ describe('SkillsDiscover', () => {
 		expect(createAgent).not.toHaveBeenCalled();
 	});
 
-	it('creates a draft with the imported local skill and opens Agent Test', async () => {
+	it('opens an unsaved trial without importing a skill or creating an agent', async () => {
 		const view = await search();
 		await userEvent.click(view.getByTestId('skill-catalog-try'));
-		await userEvent.click(view.getByTestId('finish-import'));
-		await waitFor(() =>
-			expect(createAgent).toHaveBeenCalledWith(expect.anything(), 'personal-1', 'Try pdf', {
-				config: {
-					name: 'Try pdf',
-					instructions: expect.any(String),
-					skills: [{ type: 'skill', id: 'local-skill' }],
-					integrations: [],
-				},
-			}),
-		);
-		await waitFor(() =>
-			expect(state.push).toHaveBeenCalledWith({
-				name: 'AgentBuilderView',
-				params: { projectId: 'personal-1', agentId: 'test-agent' },
-				query: { openPreview: 'true' },
-			}),
-		);
-	});
-
-	it('does not create a test agent when no skill was imported', async () => {
-		state.imported = false;
-		const view = await search();
-		await userEvent.click(view.getByTestId('skill-catalog-try'));
-		await userEvent.click(view.getByTestId('finish-import'));
-		expect(getSkill).not.toHaveBeenCalled();
-		expect(createAgent).not.toHaveBeenCalled();
-	});
-
-	it('uses the saved skill when Try follows Save on the same page', async () => {
-		const view = await search();
-		await userEvent.click(view.getByTestId('skill-catalog-save'));
-		await userEvent.click(view.getByTestId('finish-import'));
-		await userEvent.click(view.getByTestId('skill-catalog-try'));
-		await waitFor(() => expect(createAgent).toHaveBeenCalledTimes(1));
+		expect(view.getByTestId('trial-dialog')).toHaveTextContent('pdf personal-1');
 		expect(view.queryByTestId('import-dialog')).not.toBeInTheDocument();
-		expect(getSkill).toHaveBeenCalledWith(expect.anything(), 'local-skill');
+		expect(createAgent).not.toHaveBeenCalled();
+		expect(getSkill).not.toHaveBeenCalled();
+		expect(state.push).not.toHaveBeenCalled();
 	});
 
-	it('reopens the same draft when navigation fails', async () => {
-		state.push.mockRejectedValueOnce(new Error('Navigation failed'));
+	it('imports only when Save is chosen from the trial', async () => {
 		const view = await search();
 		await userEvent.click(view.getByTestId('skill-catalog-try'));
-		await userEvent.click(view.getByTestId('finish-import'));
-		await waitFor(() => expect(state.showError).toHaveBeenCalled());
-		await userEvent.click(view.getByRole('button', { name: 'Open test agent' }));
-		await waitFor(() => expect(state.push).toHaveBeenCalledTimes(2));
-		expect(createAgent).toHaveBeenCalledTimes(1);
+		await userEvent.click(view.getByRole('button', { name: 'Save after trial' }));
+		expect(view.queryByTestId('trial-dialog')).not.toBeInTheDocument();
+		expect(view.getByTestId('import-dialog')).toHaveTextContent(item.githubUrl);
+		expect(view.getByTestId('import-intent')).toHaveTextContent('save');
 	});
 
-	it('keeps the saved skill available when Agent creation fails', async () => {
-		vi.mocked(createAgent).mockRejectedValueOnce(new Error('Failed'));
+	it('can close a trial and open another one without saving', async () => {
 		const view = await search();
 		await userEvent.click(view.getByTestId('skill-catalog-try'));
-		await userEvent.click(view.getByTestId('finish-import'));
-		await waitFor(() => expect(state.showError).toHaveBeenCalled());
-		await userEvent.click(view.getByRole('button', { name: 'Open test agent' }));
-		await waitFor(() => expect(createAgent).toHaveBeenCalledTimes(2));
-		expect(getSkill).toHaveBeenCalledTimes(1);
+		await userEvent.click(view.getByRole('button', { name: 'Close trial' }));
+		expect(view.queryByTestId('trial-dialog')).not.toBeInTheDocument();
+		await userEvent.click(view.getByTestId('skill-catalog-try'));
+		expect(view.getByTestId('trial-dialog')).toBeInTheDocument();
+		expect(view.emitted('connected')).toBeUndefined();
 	});
 
-	it('does not offer Try without permission to create an agent', async () => {
+	it('does not offer Try without permission to run agents', async () => {
 		mockedStore(useProjectsStore).myProjects = [
 			mock<ProjectListItem>({ id: 'personal-1', scopes: [] }),
 		];

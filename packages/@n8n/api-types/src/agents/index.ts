@@ -14,6 +14,7 @@ export * from './skill-names';
 export * from './child-trace';
 export type * from './background-job';
 export * from './inline-agent-config.schema';
+export * from './skill-trial.schema';
 export * from './sanitize-agent-json-config';
 export * from './sanitize-agent-tool-name';
 export * from './slack';

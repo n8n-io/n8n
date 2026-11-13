@@ -7,7 +7,6 @@ import {
 	type SkillCatalogItem,
 	type SkillCatalogSummary,
 	type SkillCatalogView,
-	type SkillDetail,
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,21 +25,14 @@ import {
 } from '@n8n/design-system';
 
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
-import { createAgent } from '@/features/agents/composables/useAgentApi';
-import { AGENT_BUILDER_VIEW, OPEN_PREVIEW_PARAM } from '@/features/agents/constants';
+import AgentSkillTrialDialog from '@/features/agents/components/AgentSkillTrialDialog.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from './SkillSourceConnectDialog.vue';
 import SkillCatalogDetail from './SkillCatalogDetail.vue';
-import {
-	browseSkillCatalog,
-	getSkillCatalogMetadata,
-	getSkill,
-	searchSkillCatalog,
-} from '../skills.api';
+import { browseSkillCatalog, getSkillCatalogMetadata, searchSkillCatalog } from '../skills.api';
 import { categoryLabel } from '../skillCatalog.utils';
 import { parseScope } from '../skills.utils';
 
@@ -56,10 +48,9 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
-const sourceControlStore = useSourceControlStore();
 const router = useRouter();
 const route = useRoute();
-const { showError, showMessage } = useToast();
+const { showMessage } = useToast();
 
 const query = ref('');
 const items = ref<SkillCatalogItem[]>([]);
@@ -67,12 +58,8 @@ const loading = ref(false);
 const searched = ref(false);
 const loadFailed = ref(false);
 const selected = ref<SkillCatalogItem>();
-const intent = ref<'save' | 'try'>('save');
 const connectOpen = ref(false);
-const creatingAgent = ref(false);
-const savedTrialId = ref<string>();
-const savedForTrial = ref<SkillDetail>();
-const testAgent = ref<{ projectId: string; agentId: string }>();
+const trialOpen = ref(false);
 const importedSkills = ref(new Map<string, string>());
 const view = ref<SkillCatalogView>('popular');
 const category = ref<SkillCatalogCategory | 'all'>('all');
@@ -224,15 +211,13 @@ const trialScopes = computed(() =>
 		return (
 			scope.scope === 'project' &&
 			!!scope.projectId &&
-			!sourceControlStore.preferences.branchReadOnly &&
-			permissions.agent.create === true
+			permissions.agent.execute === true &&
+			permissions.projectSkill.list === true
 		);
 	}),
 );
-const importScopes = computed(() =>
-	intent.value === 'try' ? trialScopes.value : props.scopeOptions,
-);
-const busy = computed(() => creatingAgent.value || connectOpen.value);
+const trialProjectId = computed(() => parseScope(trialScopes.value[0]?.value ?? '').projectId);
+const busy = computed(() => trialOpen.value || connectOpen.value);
 
 async function search(term = query.value) {
 	query.value = term;
@@ -244,79 +229,31 @@ async function search(term = query.value) {
 }
 
 function startImport(item: SkillCatalogItem, action: 'save' | 'try') {
-	if (busy.value || (action === 'try' && !trialScopes.value.length)) return;
+	if (busy.value || (action === 'try' && !trialProjectId.value)) return;
 	selected.value = item;
-	intent.value = action;
-	savedTrialId.value = undefined;
-	savedForTrial.value = undefined;
-	testAgent.value = undefined;
-	const importedId = importedSkills.value.get(item.id);
-	if (action === 'try' && importedId) {
-		savedTrialId.value = importedId;
-		void openTestAgent();
-		return;
-	}
-	connectOpen.value = true;
+	if (action === 'try') trialOpen.value = true;
+	else connectOpen.value = true;
 }
 
-async function openTestAgent() {
-	if (!savedTrialId.value || creatingAgent.value) return;
-	creatingAgent.value = true;
-	try {
-		const skill =
-			savedForTrial.value ?? (await getSkill(rootStore.restApiContext, savedTrialId.value));
-		savedForTrial.value = skill;
-		const projectId = skill.projectId ?? parseScope(trialScopes.value[0]?.value ?? '').projectId;
-		if (!projectId)
-			throw new Error(i18n.baseText('settings.context.skills.catalog.noTrialProject'));
-		if (!testAgent.value) {
-			const name = i18n.baseText('settings.context.skills.catalog.testAgentName', {
-				interpolate: { name: skill.skill.name },
-			});
-			const agent = await createAgent(rootStore.restApiContext, projectId, name, {
-				config: {
-					name,
-					instructions: i18n.baseText('settings.context.skills.catalog.testInstructions'),
-					skills: [{ type: 'skill', id: skill.id }],
-					integrations: [],
-				},
-			});
-			// If navigation fails, retry opens the same draft instead of creating another one.
-			testAgent.value = { projectId, agentId: agent.id };
-		}
-		await router.push({
-			name: AGENT_BUILDER_VIEW,
-			params: testAgent.value,
-			query: { [OPEN_PREVIEW_PARAM]: 'true' },
-		});
-	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.catalog.testError'));
-	} finally {
-		creatingAgent.value = false;
-	}
+function saveAfterTrial() {
+	trialOpen.value = false;
+	if (selected.value) startImport(selected.value, 'save');
 }
 
-async function onConnected(result: SkillSourceConnected) {
+function onConnected(result: SkillSourceConnected) {
 	emit('connected', result);
 	if (result.response.imported.length !== 1 || !selected.value) return;
 	const imported = result.response.imported[0];
 	importedSkills.value.set(selected.value.id, imported.skillId);
-	if (intent.value !== 'try') return;
-	// Read the saved scope and ID. The external catalog ID is never an Agent skill ref.
-	savedTrialId.value = imported.skillId;
-	await openTestAgent();
 }
 
-async function onExisting(skillId: string) {
+function onExisting(skillId: string) {
 	if (!selected.value) return;
 	importedSkills.value.set(selected.value.id, skillId);
 	showMessage({
 		type: 'success',
 		title: i18n.baseText('settings.context.skills.catalog.alreadySaved'),
 	});
-	if (intent.value !== 'try') return;
-	savedTrialId.value = skillId;
-	await openTestAgent();
 }
 </script>
 
@@ -513,17 +450,19 @@ async function onExisting(skillId: string) {
 				i18n.baseText('settings.context.skills.catalog.limits')
 			}}</N8nText>
 		</div>
-		<N8nCallout v-if="savedTrialId" theme="info" data-test-id="skill-catalog-saved-for-trial">
-			{{ i18n.baseText('settings.context.skills.catalog.savedForTrial') }}
-			<N8nButton variant="outline" :loading="creatingAgent" @click="openTestAgent">{{
-				i18n.baseText('settings.context.skills.catalog.openTest')
-			}}</N8nButton>
-		</N8nCallout>
+		<AgentSkillTrialDialog
+			v-if="trialOpen && selected && trialProjectId"
+			:item="selected"
+			:project-id="trialProjectId"
+			@close="trialOpen = false"
+			@save="saveAfterTrial"
+		/>
+
 		<SkillSourceConnectDialog
 			v-model:open="connectOpen"
-			:scope-options="importScopes"
+			:scope-options="scopeOptions"
 			:catalog-skill="selected"
-			:intent="intent"
+			intent="save"
 			@connected="onConnected"
 			@existing="onExisting"
 			@open-source="emit('openSource', $event)"

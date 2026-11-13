@@ -18,6 +18,7 @@ describe('public API', () => {
 			'SkillService',
 			'SkillSourceCredentials',
 			'SkillSourceCredentialsProxy',
+			'SkillSourceService',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',

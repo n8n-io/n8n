@@ -1,4 +1,5 @@
 export { SkillService } from './services/skill.service';
+export { SkillSourceService } from './services/skill-source.service';
 export { SkillAccessService } from './services/skill-access.service';
 export { SkillRuntimeService } from './services/skill-runtime.service';
 export { SkillsGate } from './services/skills-gate';

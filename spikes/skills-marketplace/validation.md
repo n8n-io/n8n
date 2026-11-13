@@ -74,3 +74,12 @@ The preview needed IPv4-first DNS on this host. A normal Node request stalled on
 - Catalog and detail pages had no browser console errors. Layout checks passed at 1360 and 1024 pixels. The existing Settings sidebar leaves too little content width at 390 pixels; phone support needs a change to the shared Settings shell.
 
 Screenshots: [popular catalog](evidence/rich-discover-desktop.png), [skill detail](evidence/rich-detail-desktop.png), and [filtered trending catalog](evidence/rich-trending-filtered.png).
+
+## Unsaved skill trial — November 13, 2026
+
+- 34 focused tests passed: trial service (8), route access and DTOs (2), read-only source preparation (5), public exports (1), trial dialog (5), and discovery actions (13). The service tests cover project access, changed content, overlapping runs, cancellation, cleanup, and failed skill loads.
+- API types built. The backend compiled with `build:unchecked`. Changed-file Biome, Prettier, type-aware backend Oxlint, frontend Oxlint, ESLint, and Stylelint passed. Full frontend typechecking and the full suite remain for CI.
+- The local demo has a development model credential. A real Claude Sonnet 5.5 run loaded `coreyhaines31/marketingskills/copywriting` and returned homepage copy. The final browser run completed in 5.3 seconds and displayed `Skill loaded`.
+- Database row counts stayed unchanged for skills, source connections, agents, executions, messages, and checkpoints across two model runs. Only the existing budget accounting tables gained records.
+- The trial dialog was checked at 375 × 667 and the desktop viewport. The prompt, model picker, result, and footer remain usable. Light mode was checked. A separate dark-mode browser pass remains for review.
+- This update runs locally at `http://127.0.0.1:5681/settings/context/skills`. The hosted preview still runs the previous import-and-create-draft flow.

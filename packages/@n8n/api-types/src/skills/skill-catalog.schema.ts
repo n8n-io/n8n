@@ -23,11 +23,13 @@ export class BrowseSkillCatalogQueryDto extends Z.class({
 	view: z.enum(['popular', 'trending']).default('popular'),
 }) {}
 
+export const skillCatalogIdSchema = z
+	.string()
+	.max(512)
+	.regex(/^[a-zA-Z0-9][a-zA-Z0-9-]*\/[a-zA-Z0-9_][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/);
+
 export class GetSkillCatalogQueryDto extends Z.class({
-	id: z
-		.string()
-		.max(512)
-		.regex(/^[a-zA-Z0-9][a-zA-Z0-9-]*\/[a-zA-Z0-9_][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/),
+	id: skillCatalogIdSchema,
 }) {}
 
 /** Catalog identity stays separate from the ID of an imported skill. */

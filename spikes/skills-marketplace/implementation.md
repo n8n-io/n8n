@@ -1,6 +1,6 @@
 # Working Skills.sh integration
 
-The Skills Hub has a Discover tab with popular and trending skills, category filters, search, and an in-app detail page. Save and Try use the existing GitHub importer. The integration uses the existing `136_skill_sync` opt-in flag. No database migration is needed.
+The Skills Hub has a Discover tab with popular and trending skills, category filters, search, and an in-app detail page. Save uses the existing GitHub importer. Try reuses its reader and scanner, then runs an unsaved agent. The integration uses the existing `136_skill_sync` opt-in flag. No database migration is needed.
 
 This is a working discovery pilot. The API access and content limits in [the research report](README.md) still apply.
 
@@ -9,35 +9,26 @@ This is a working discovery pilot. The API access and content limits in [the res
 1. Open Settings → Context → Skills → Discover.
 2. Browse the popular list, switch to Trending, filter a category, or search for a task. Cards show the author description, repository, install count, and an official badge when Skills.sh supplies one.
 3. Open a skill inside n8n. Review its purpose, instructions, files, declared requirements, license, and available audit results. GitHub adds repository stars, topics, and the last push date. Select Save skill or Try skill from either the card or detail page.
-4. Choose a scope. The dialog has the repository prefilled. GitHub credentials remain optional for public sources.
-5. Review the matching skill in the existing GitHub import dialog. The review shows the author description, content, scanner findings, and omitted files.
-6. Save imports the selected skill and keeps it in the Skills Hub. Try imports it, creates a draft agent with its local skill ID, and opens Agent Test.
+4. For Save, choose a scope and review the matching skill in the GitHub import dialog. Save stores the skill and source connection.
+5. For Try, review the current GitHub instructions, enter a task, and select Run test. The dialog selects an available model credential. The user can change it.
+6. Read the response in the dialog. Save skill remains a separate action.
 
-Try keeps both the skill and the draft. It does not publish an agent or start a model call. The user can select a model and add required tools in the builder.
-
-If the same skill is already saved, the dialog checks its scope, source, name, and GitHub path. It reuses that saved version. It does not update the content in the background. If Agent creation fails after import, the skill stays saved and the user can retry. If navigation fails after creation, retry opens the same draft.
+Try runs one text-only prompt with the existing inline agent runtime. It does not save a skill, source connection, agent, or chat history. Each run starts fresh. It can load the skill and supported Markdown references. It has no connected apps, shell, browser, or uploaded files.
 
 ```mermaid
 sequenceDiagram
     actor User
     participant Hub as Skills Hub
-    participant Catalog as n8n catalog endpoint
-    participant Skills as Skills.sh
-    participant Import as Existing GitHub importer
-    participant Agent as Agent builder
-    User->>Hub: Search
-    Hub->>Catalog: Query in an allowed scope
-    Catalog->>Skills: Bounded public search
-    Skills-->>Hub: Validated catalog records
-    User->>Hub: Save or Try
-    Hub->>Import: Discover repository
-    Import-->>User: Review the matching skill
-    User->>Import: Import selected skill
-    Import-->>Hub: Saved local skill ID
-    opt Try
-        Hub->>Agent: Create draft with local skill reference
-        Agent-->>User: Open Test and model setup
-    end
+    participant Reader as GitHub reader and scanner
+    participant Agent as Inline agent runtime
+    User->>Hub: Try skill
+    Hub->>Reader: Read current content
+    Reader-->>Hub: Checked skill and content hash
+    User->>Hub: Enter task and run
+    Hub->>Reader: Read and check the content hash
+    Hub->>Agent: Run with selected model and embedded skill
+    Agent-->>Hub: Response and skill load status
+    Hub-->>User: Show result; offer Save separately
 ```
 
 ## Implementation
@@ -53,7 +44,11 @@ sequenceDiagram
 | Skills Hub | `SkillsDiscover.vue` loads the popular list on entry. It displays 12 cards at a time and enriches visible descriptions with up to three concurrent requests. `SkillCatalogDetail.vue` provides Overview, Instructions, and Files tabs. A `catalogSkill` URL parameter supports direct links and browser navigation. |
 | Categories | Deterministic n8n rules use the skill name first and the author description second. The UI labels these as n8n groupings. These are provisional categories, not author claims or a Skills.sh taxonomy. |
 | GitHub review | `SkillSourceConnectDialog.vue` accepts a catalog item. It imports only one exact name match, using the opaque key returned by GitHub discovery. It rejects missing and ambiguous matches. |
-| Agent draft | The existing `createAgent` API accepts a partial configuration. The request passes the stored skill ID. It leaves model selection to the existing defaults and builder. |
+| Trial API | Project-scoped prepare and run routes require Agent execution and skill list access. Prepare allows 10 requests per user per minute. Run allows five. A user can have one active trial per main process. |
+| Trial content | `SkillSourceService.readPublicSkill` reuses discovery, exact-name matching, parsing, and scanning. Blocked content cannot run. A changed content hash requires the user to reopen the trial. |
+| Trial runtime | `AgentSkillTrialService` embeds the checked skill in an inline runtime. It uses the existing model resolver and user-scoped credential provider. It closes the runtime after each result or error. |
+| Trial bounds | Each request has a 90-second deadline, six model iterations, and a 2,048-token output limit per call. The existing budget guardrail stops further calls after the session reaches $0.25. This is a between-call limit, not a hard invoice cap. Disconnecting the client cancels the run. |
+| Trial UI | `AgentSkillTrialDialog.vue` uses the existing Agent modal and model picker. It shows instructions, scanner notes, a prompt, and a Markdown result. Save opens the existing importer. |
 
 The detail page displays the Skills.sh snapshot. The app still reads all imported files from GitHub and reviews them again before saving. It does not execute the Skills CLI or interpret the catalog slug as a GitHub folder.
 
@@ -68,13 +63,13 @@ The detail page displays the Skills.sh snapshot. The app still reads all importe
 - Install counts are popularity data. They do not measure runs or success.
 - The existing importer allows one repository connection per scope. It blocks adding another skill from that repository once connected. The integration keeps that rule. A later import-more feature must reuse the stored connection and its access checks.
 - The existing importer preserves `SKILL.md` and supported Markdown references. It omits other files, including scripts and some license files. The review lists omissions. [CONTEXT-481](https://linear.app/n8n/issue/CONTEXT-481) tracks broader file support.
-- A skill may require tools that an n8n agent does not have. Try opens setup; it does not guarantee the skill can run without changes.
+- A skill may require scripts or external tools. The trial supports text tasks and Markdown references only. Full agent setup, multi-turn chat, attachments, and tool connections remain future work.
 - The GitHub discovery cap and folder-depth limit can prevent a catalog match. Missing or ambiguous matches stop the import.
 - GitHub and Skills.sh can change independently. A catalog result can be stale. The importer reads and scans the current GitHub content again before it saves.
 
 ## Validation and preview
 
-[Validation results](validation.md) record automated and live checks. Screenshots show [live discovery](evidence/working-discover.png) and [the created test agent](evidence/working-trial.png).
+[Validation results](validation.md) record automated and live checks. Earlier screenshots show [live discovery](evidence/working-discover.png) and [the original saved-agent flow](evidence/working-trial.png). The one-shot trial replaces that flow.
 
 The review instance runs at `http://127.0.0.1:5681/settings/context/skills`. The backend uses port 5679. Both listeners use loopback. The database and test account are separate from the user's n8n data.
 

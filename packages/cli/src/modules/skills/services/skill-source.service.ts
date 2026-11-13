@@ -187,6 +187,35 @@ export class SkillSourceService {
 		}
 	}
 
+	/** Read and check one public skill without connecting its source or saving it. */
+	async readPublicSkill(user: User, url: string, name: string) {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.parse({ url }, user, null);
+		const discovered = await this.discoverAll(source);
+		const reads = await this.readAll(source, discovered);
+		const matches = reads.filter((read) => read.fetched?.content.name === name);
+		if (matches.length !== 1) {
+			throw new SkillSourceRequestError(
+				'not_found',
+				'Could not match this listing to one GitHub skill. Open its repository to check the name.',
+			);
+		}
+		const match = matches[0];
+		if (!match.skill || !match.fetched || !match.check || match.check.verdict === 'blocked') {
+			throw new SkillSourceRequestError(
+				'parse_error',
+				'This skill did not pass the content checks. Review its instructions and files on GitHub.',
+			);
+		}
+		return {
+			skill: match.skill,
+			contentHash: skillContentHash(match.fetched.content),
+			revision: match.fetched.revision,
+			check: match.check,
+			skippedFiles: match.fetched.skippedFiles,
+		};
+	}
+
 	/**
 	 * Connects the source in the scope and imports the picked skills, in one transaction. A
 	 * picked skill that cannot come in, such as one with a taken name, is reported and the
