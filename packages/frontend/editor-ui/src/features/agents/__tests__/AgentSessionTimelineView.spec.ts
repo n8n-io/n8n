@@ -291,7 +291,7 @@ describe('AgentSessionTimelineView', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata').trigger).toEqual(
+		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata')?.trigger).toEqual(
 			expect.objectContaining({ label: 'API', icon: 'plug' }),
 		);
 	});
