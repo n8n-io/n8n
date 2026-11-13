@@ -146,7 +146,6 @@ export default defineConfig({
 
 		// TODO: Remove this
 		'typescript/ban-ts-comment': 'off',
-		'import/no-cycle': 'warn',
 		'no-ex-assign': 'warn',
 		'no-case-declarations': 'warn',
 		'no-fallthrough': 'warn',
