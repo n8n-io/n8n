@@ -203,6 +203,67 @@ describe('usePostMessageHandler', () => {
 		});
 	});
 
+	describe('message source', () => {
+		const openWorkflowFrom = (source: MessageEventSource | null) =>
+			new MessageEvent('message', {
+				data: JSON.stringify({ command: 'openWorkflow', workflow: { nodes: [], connections: {} } }),
+				source,
+			});
+
+		const appendFrame = (doc: Document) => {
+			const frame = doc.createElement('iframe');
+			doc.body.appendChild(frame);
+			return frame;
+		};
+
+		afterEach(() => {
+			document.body.innerHTML = '';
+		});
+
+		it('ignores a command from a frame inside the editor, such as a side panel view', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+			const frame = appendFrame(document);
+
+			window.dispatchEvent(openWorkflowFrom(frame.contentWindow));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('ignores a command from a frame nested deeper inside the editor', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+			const outer = appendFrame(document);
+			const inner = appendFrame(outer.contentDocument!);
+
+			window.dispatchEvent(openWorkflowFrom(inner.contentWindow));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+			cleanup();
+		});
+
+		it('accepts a command that the editor window sends itself', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(openWorkflowFrom(window));
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+			cleanup();
+		});
+	});
+
 	describe('openWorkflow command', () => {
 		it('should call importWorkflowExact when openWorkflow message is received', async () => {
 			const { setup, cleanup } = usePostMessageHandler({
