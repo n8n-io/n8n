@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/views/WorkflowHistory.test.ts
+  s_9e3e49ba438d88::t_b6dc142a2ad75e 371
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryContent.test.ts
+  s_9e3e49ba438d88::t_b6dc142a2ad75e 126,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a564d1ae34e6582d52d0bc91d81c367d190010fb",
+  "prompts": {},
+  "sessions": {
+    "s_9e3e49ba438d88": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d3ff-7677-7313-b9ee-d29f03a2b16c",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
