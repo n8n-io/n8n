@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { computed, nextTick, ref, watch } from 'vue';
 
 import {
@@ -10,6 +11,7 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	type DialogProps,
+	type DialogSize,
 } from './index';
 import { N8nAlertDialog } from '../N8nAlertDialog';
 import N8nButton from '../N8nButton/Button.vue';
@@ -25,6 +27,7 @@ import N8nText from '../N8nText/Text.vue';
 const meta = {
 	title: 'Core/Dialog',
 	component: N8nDialog,
+	tags: ['visual'],
 	parameters: {
 		docs: {
 			description: { component: 'A modal container for focused tasks and decisions.' },
@@ -1427,3 +1430,41 @@ export const StackedDialogs: Story = {
 	}),
 	args: {},
 } satisfies Story;
+
+/*
+ * Open states for the visual tests. Each story clicks the trigger of an
+ * existing story and waits until the dialog shows. The dialog teleports to
+ * `body`, so the screenshot is of the full viewport.
+ */
+const openStory = (story: Story, triggerLabel: string): Story => ({
+	...story,
+	parameters: { ...story.parameters, visual: { target: 'viewport' } },
+	play: async ({ canvasElement }) => {
+		await userEvent.click(within(canvasElement).getByRole('button', { name: triggerLabel }));
+		await waitFor(
+			async () => await expect(within(document.body).getByRole('dialog')).toBeVisible(),
+		);
+	},
+});
+
+export const DefaultOpen = openStory(Default, 'Open Dialog');
+export const MultilineTitleOpen = openStory(MultilineTitle, 'Open Dialog');
+export const WithoutHeaderOpen = openStory(WithoutHeader, 'Text');
+export const WithoutFooterOpen = openStory(WithoutFooter, 'Open Dialog');
+export const ScrollableContentOpen = openStory(ScrollableContent, 'Full height');
+export const FormOpen = openStory(Form, 'Edit profile');
+
+// One open story for each size. `DefaultOpen` shows `medium`.
+const sizeOpen = (size: DialogSize) =>
+	openStory(
+		{ ...Default, args: { ...Default.args, size, header: `${size} Dialog` } },
+		'Open Dialog',
+	);
+
+export const SizeSmallOpen = sizeOpen('small');
+export const SizeLargeOpen = sizeOpen('large');
+export const SizeXLargeOpen = sizeOpen('xlarge');
+export const Size2XLargeOpen = sizeOpen('2xlarge');
+export const SizeFitOpen = sizeOpen('fit');
+export const SizeFullOpen = sizeOpen('full');
+export const SizeCoverOpen = sizeOpen('cover');

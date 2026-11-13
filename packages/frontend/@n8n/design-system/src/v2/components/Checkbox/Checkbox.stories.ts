@@ -7,6 +7,7 @@ import Checkbox from './Checkbox.vue';
 const meta = {
 	title: 'Core/Checkbox',
 	component: Checkbox,
+	tags: ['visual'],
 	parameters: {
 		docs: {
 			source: { type: 'dynamic' },
@@ -44,6 +45,11 @@ export const Default = {
 		label: 'Label',
 		disabled: false,
 		indeterminate: false,
+	},
+	parameters: {
+		visual: {
+			states: [{ name: 'focus', action: 'focus', selector: '[role="checkbox"]' }],
+		},
 	},
 } satisfies Story;
 
