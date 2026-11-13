@@ -3,10 +3,10 @@ import type { N8NStack } from 'n8n-containers/stack';
 import { nanoid } from 'nanoid';
 import { setTimeout as wait } from 'node:timers/promises';
 
-import { expect, test } from '../../../fixtures/base';
-import type { PromotionsApiHelper } from '../../../services/promotions-api-helper';
-import { TestError } from '../../../Types';
-import { generateUniqueRepoName } from '../../../utils/source-control-helper';
+import { expect, test } from '../../../../fixtures/base';
+import type { PromotionsApiHelper } from '../../../../services/promotions-api-helper';
+import { TestError } from '../../../../Types';
+import { generateUniqueRepoName } from '../../../../utils/source-control-helper';
 
 const PROMOTION_SCOPES: ApiKeyScope[] = [
 	'promotions:create',
@@ -26,9 +26,10 @@ const CLEANUP_TIMEOUT_MS = 15_000;
 // Long enough for a cleanup message to reach the other main, if one was sent.
 const MESSAGE_WINDOW_MS = 3_000;
 
+// The stack takes its mains from the project. PR CI runs `multi-main:e2e` with
+// two mains. On single-main projects the test skips.
 test.use({
 	capability: {
-		mains: 2,
 		services: ['gitea'],
 		env: {
 			TEST_ISOLATION: 'promotion-checkout-cleanup-multi-main',
@@ -54,9 +55,13 @@ test.describe(
 	() => {
 		test('removes the checkout on the other main after a change through one main', async ({
 			createApiForMain,
+			mainUrls,
 			n8nContainer,
 			services,
 		}) => {
+			// eslint-disable-next-line playwright/no-skipped-test -- runtime topology guard, not a disabled test
+			test.skip(mainUrls.length < 2, 'requires a multi-main cluster (2+ mains)');
+
 			const [mainZeroApi, mainOneApi] = await Promise.all([
 				createApiForMain(0),
 				createApiForMain(1),
