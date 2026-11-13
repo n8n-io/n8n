@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/errors';
 import type { IExecuteData, IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import { mock, mockDeep, mockReset } from 'vitest-mock-extended';
@@ -66,6 +67,20 @@ describe('Google Gemini message model identity', () => {
 		expect(executeFunctionsMock.setMetadata).toHaveBeenCalledExactlyOnceWith({
 			tokenUsage: { inputTokens: 10, outputTokens: 5 },
 		});
+	});
+
+	it('should report the block reason when Gemini blocks the prompt', async () => {
+		executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({
+			promptFeedback: {
+				blockReason: 'PROHIBITED_CONTENT',
+				blockReasonMessage: 'The prompt is not allowed',
+			},
+		});
+
+		const result = execute.call(executeFunctionsMock, 0);
+
+		await expect(result).rejects.toBeInstanceOf(UserError);
+		await expect(result).rejects.toThrow('Gemini blocked the prompt (reason: PROHIBITED_CONTENT)');
 	});
 
 	it('should reject a successful Gemini 3 Flash response when a Gemma model is configured', async () => {

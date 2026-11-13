@@ -6,6 +6,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
+import { assertResponseHasCandidates } from './candidates';
 import type { Content, GenerateContentResponse } from './interfaces';
 import { downloadFile, getCredentialHostname, uploadFile } from './utils';
 import { apiRequest, modelPath } from '../transport';
@@ -110,6 +111,8 @@ export async function baseAnalyze(
 		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 		{ body },
 	)) as GenerateContentResponse;
+
+	assertResponseHasCandidates(response);
 
 	if (simplify) {
 		return response.candidates.map((candidate) => ({
