@@ -328,14 +328,19 @@ export class PublicApiControllerRegistry {
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
 				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
-				this.emitInvocationOnFinish(res, {
-					userId,
-					path: toRequestPath(prefix, req),
-					method: req.method,
-					route: routeName,
-					apiVersion,
-					userAgent: req.headers['user-agent'],
-					client: publicApiClient,
+
+				// Invocation event must be emitted after the response is sent, so that the event's result matches the actual response.
+				res.once('finish', () => {
+					this.eventService.emit('public-api-invoked', {
+						userId,
+						path: toRequestPath(prefix, req),
+						method: req.method,
+						route: routeName,
+						apiVersion,
+						userAgent: req.headers['user-agent'],
+						client: publicApiClient,
+						result: toPublicApiResult(res.statusCode),
+					});
 				});
 			}
 
