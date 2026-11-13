@@ -1,10 +1,12 @@
 import type { JSONSchema7 } from 'json-schema';
+import { randomUUID } from 'node:crypto';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import {
 	BaseChatModel,
 	getParametersJsonSchema,
 	parseSSEStream,
+	type FinishReason,
 	type TokenUsage,
 	type Tool,
 	type ToolCall,
@@ -54,6 +56,8 @@ interface OpenAIResponsesRequest {
 	max_output_tokens?: number;
 	temperature?: number;
 	top_p?: number;
+	presence_penalty?: number;
+	frequency_penalty?: number;
 	tools?: OpenAITool[];
 	tool_choice?: OpenAIToolChoice;
 	parallel_tool_calls?: boolean;
@@ -62,13 +66,21 @@ interface OpenAIResponsesRequest {
 	metadata?: Record<string, unknown>;
 }
 
+type OpenAIResponseStatus =
+	| 'completed'
+	| 'failed'
+	| 'in_progress'
+	| 'cancelled'
+	| 'queued'
+	| 'incomplete';
+
 interface OpenAIResponsesResponse {
 	id: string;
 	object: string;
 	created_at: string;
 	model: string;
 	output: ResponsesOutputItem[];
-	status: string;
+	status: OpenAIResponseStatus;
 	usage?: {
 		input_tokens: number;
 		output_tokens: number;
@@ -80,7 +92,8 @@ interface OpenAIResponsesResponse {
 			reasoning_tokens?: number;
 		};
 	};
-	incomplete_details?: Record<string, unknown>;
+	incomplete_details?: { reason?: 'max_output_tokens' | 'content_filter' } | null;
+	error?: { code?: string; message?: string } | null;
 	metadata?: Record<string, unknown>;
 	user?: string;
 	service_tier?: string;
@@ -99,7 +112,7 @@ type ResponsesOutputItem =
 	| {
 			type: 'function_call';
 			id?: string;
-			call_id: string;
+			call_id?: string;
 			name: string;
 			arguments: string;
 	  }
@@ -117,7 +130,9 @@ interface OpenAIStreamEvent {
 	delta?: string;
 	output_index?: number;
 	item?: Record<string, unknown>;
-	response?: Record<string, unknown>;
+	response?: Partial<OpenAIResponsesResponse>;
+	usage?: OpenAIResponsesResponse['usage'];
+	message?: string;
 }
 
 // Helpers
@@ -191,18 +206,10 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 						name: contentPart.toolName,
 						arguments: contentPart.input,
 					});
-				} else if (contentPart.type === 'reasoning') {
-					inputItems.push({
-						type: 'message',
-						role: 'assistant',
-						content: [
-							{
-								type: 'output_text',
-								text: contentPart.text,
-							},
-						],
-					});
 				}
+				// Reasoning is not sent back. OpenAI can only reuse reasoning with its
+				// encrypted payload, which this model does not request, and as assistant
+				// text the model would read it as part of its own answer.
 			}
 		}
 
@@ -276,7 +283,7 @@ function parseResponsesOutput(output: ResponsesOutputItem[]): {
 		if (item.type === 'function_call') {
 			try {
 				toolCalls.push({
-					id: item.call_id,
+					id: toolCallId(item),
 					name: item.name,
 					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
 					argumentsRaw: item.arguments,
@@ -312,9 +319,66 @@ function parseTokenUsage(
 		: undefined;
 }
 
+function toolCallId({ call_id: callId, id }: { call_id?: unknown; id?: unknown }): string {
+	const hasCallId = typeof callId === 'string' && callId !== '';
+	const hasItemId = typeof id === 'string' && id !== '';
+	switch (true) {
+		case hasCallId:
+			return callId;
+		case !hasCallId && hasItemId:
+			return id;
+		default:
+			// Some OpenAI-compatible servers send no ID. The generated one pairs the
+			// call with its result when the conversation is sent back.
+			return `call_${randomUUID()}`;
+	}
+}
+
+function toFinishReason(
+	response: Partial<OpenAIResponsesResponse>,
+	hasToolCalls: boolean,
+): FinishReason {
+	const isIncomplete = response.status === 'incomplete';
+	const isFiltered = response.incomplete_details?.reason === 'content_filter';
+	switch (true) {
+		case isIncomplete && isFiltered:
+			return 'content-filter';
+		case isIncomplete && !isFiltered:
+			return 'length';
+		case !isIncomplete && hasToolCalls:
+			return 'tool-calls';
+		case !isIncomplete && !hasToolCalls && response.status === 'completed':
+			return 'stop';
+		default:
+			return 'other';
+	}
+}
+
+function responseFailedError(response: Partial<OpenAIResponsesResponse> | undefined): Error {
+	return new Error(`The model response failed: ${response?.error?.message ?? 'no error details'}`);
+}
+
+function isResponsesResponse(body: unknown): body is OpenAIResponsesResponse {
+	return (
+		typeof body === 'object' && body !== null && 'output' in body && Array.isArray(body.output)
+	);
+}
+
+function definedHeaders(
+	headers: Readonly<ChatModelConfig['headers']>,
+): Record<string, string> | undefined {
+	if (!headers) return undefined;
+	const result: Record<string, string> = {};
+	for (const [name, value] of Object.entries(headers)) {
+		if (value !== undefined) result[name] = value;
+	}
+	return result;
+}
+
 interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
 	baseURL?: string;
+	toolChoice?: OpenAIToolChoice;
 
 	providerTools?: ProviderTool[];
 }
@@ -325,12 +389,14 @@ interface RequestConfig {
 		url: string,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
 		url: string,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: AsyncIterableIterator<Buffer | Uint8Array> }>;
 }
 
@@ -346,35 +412,49 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
 	}
 
-	private getTools(config?: OpenAIChatModelConfig) {
-		const ownTools = this.tools;
-		const providerTools = config?.providerTools ?? this.defaultConfig?.providerTools ?? [];
-		return [...ownTools, ...providerTools].map(genericToolToResponsesTool);
-	}
-
-	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
-		const merged = this.mergeConfig(config);
+	private buildRequestBody(
+		messages: Message[],
+		config: OpenAIChatModelConfig,
+		stream: boolean,
+	): OpenAIResponsesRequest {
 		const { instructions, input } = genericMessagesToResponsesInput(messages);
-		const tools = this.getTools(config);
-		const requestBody: OpenAIResponsesRequest = {
+		const providerTools = config.providerTools ?? this.defaultConfig?.providerTools ?? [];
+		const tools = [...this.tools, ...providerTools];
+		// The Responses API has no parameter for stop sequences, a seed or top-k
+		// sampling, so those options are not sent.
+		return {
 			model: this.modelId,
 			input,
 			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
+			max_output_tokens: config.maxTokens,
+			temperature: config.temperature,
+			top_p: config.topP,
+			presence_penalty: config.presencePenalty,
+			frequency_penalty: config.frequencyPenalty,
+			tools: tools.map(genericToolToResponsesTool),
+			tool_choice: config.toolChoice,
 			parallel_tool_calls: true,
 			store: false,
-			stream: false,
+			stream,
 		};
+	}
 
+	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
 		const response = await this.requests.httpRequest(
 			'POST',
 			`${this.baseURL}/responses`,
-			requestBody,
+			this.buildRequestBody(messages, merged, false),
+			definedHeaders(merged.headers),
+			merged.abortSignal,
 		);
-		const body = response.body as OpenAIResponsesResponse;
+		const body = response.body;
+		if (!isResponsesResponse(body)) {
+			throw new Error('Unexpected response from the Responses API: the body has no output array');
+		}
+		if (body.status === 'failed') {
+			throw responseFailedError(body);
+		}
 
 		const { text, toolCalls } = parseResponsesOutput(body.output);
 
@@ -423,7 +503,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 		return {
 			id: body.id,
-			finishReason: body.status === 'completed' ? 'stop' : 'other',
+			finishReason: toFinishReason(body, toolCalls.length > 0),
 			usage,
 			message,
 			rawResponse: body,
@@ -432,32 +512,18 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 	}
 
 	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
-		const merged = this.mergeConfig(config) as OpenAIChatModelConfig;
-		const { instructions, input } = genericMessagesToResponsesInput(messages);
-
-		const tools = this.getTools(config);
-
-		const requestBody: OpenAIResponsesRequest = {
-			model: this.modelId,
-			input,
-			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
-			parallel_tool_calls: true,
-			store: false,
-			stream: true,
-		};
-
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
 		const streamResponse = await this.requests.openStream(
 			'POST',
 			`${this.baseURL}/responses`,
-			requestBody,
+			this.buildRequestBody(messages, merged, true),
+			definedHeaders(merged.headers),
+			merged.abortSignal,
 		);
 		const streamBody = streamResponse.body;
 
 		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
+		let hasToolCalls = false;
 
 		for await (const event of parseOpenAIStreamEvents(streamBody)) {
 			const type = event.type;
@@ -511,9 +577,10 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 					const idx = event.output_index ?? 0;
 					const buf = toolCallBuffers[idx];
 					if (buf) {
+						hasToolCalls = true;
 						yield {
 							type: 'tool-call-delta',
-							id: (item.call_id as string) ?? (item.id as string),
+							id: toolCallId(item),
 							name: buf.name,
 							argumentsDelta: buf.arguments,
 						};
@@ -521,14 +588,22 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 				}
 			}
 
-			if (type === 'response.done' || type === 'response.completed') {
-				const responseData =
-					(event.response as unknown as OpenAIResponsesResponse) ??
-					(event as unknown as OpenAIResponsesResponse);
+			if (type === 'response.failed') {
+				throw responseFailedError(event.response);
+			}
+
+			if (type === 'error') {
+				throw new Error(`The model stream failed: ${event.message ?? 'no error details'}`);
+			}
+
+			const isFinished =
+				type === 'response.done' || type === 'response.completed' || type === 'response.incomplete';
+			if (isFinished) {
+				const status = type === 'response.incomplete' ? 'incomplete' : 'completed';
 				yield {
 					type: 'finish',
-					finishReason: 'stop',
-					usage: parseTokenUsage(responseData.usage),
+					finishReason: toFinishReason({ status, ...event.response }, hasToolCalls),
+					usage: parseTokenUsage(event.response?.usage ?? event.usage),
 				};
 			}
 		}

@@ -573,11 +573,13 @@ export function createMockHttpRequests() {
 			url: string,
 			body?: object,
 			headers?: Record<string, string>,
+			abortSignal?: AbortSignal,
 		) => {
 			const response = await axios({
 				method,
 				url,
 				data: body,
+				signal: abortSignal,
 				headers: {
 					...headers,
 					'Content-Type': 'application/json',
@@ -598,11 +600,13 @@ export function createMockHttpRequests() {
 			url: string,
 			body?: object,
 			headers?: Record<string, string>,
+			abortSignal?: AbortSignal,
 		) => {
 			const response = await axios({
 				method,
 				url,
 				data: body,
+				signal: abortSignal,
 				headers: {
 					...headers,
 					'Content-Type': 'application/json',

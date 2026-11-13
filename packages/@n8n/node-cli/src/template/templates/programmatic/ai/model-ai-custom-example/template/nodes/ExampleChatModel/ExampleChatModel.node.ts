@@ -70,7 +70,7 @@ export class ExampleChatModel implements INodeType {
 		const model = new OpenAIChatModel(
 			modelName,
 			{
-				httpRequest: async (method, url: RequestUrl, body, headers) => {
+				httpRequest: async (method, url: RequestUrl, body, headers, abortSignal) => {
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'exampleApi',
@@ -79,13 +79,14 @@ export class ExampleChatModel implements INodeType {
 							method,
 							body,
 							headers,
+							abortSignal,
 						},
 					);
 					return {
 						body: response,
 					};
 				},
-				openStream: async (method, url: RequestUrl, body, headers) => {
+				openStream: async (method, url: RequestUrl, body, headers, abortSignal) => {
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'exampleApi',
@@ -94,6 +95,7 @@ export class ExampleChatModel implements INodeType {
 							url,
 							body,
 							headers,
+							abortSignal,
 							encoding: 'stream',
 						},
 					);

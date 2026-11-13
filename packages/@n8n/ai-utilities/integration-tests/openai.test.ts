@@ -1,7 +1,10 @@
 import { createAgent, HumanMessage } from 'langchain';
 import nock from 'nock';
+import assert from 'node:assert';
+import { Readable } from 'node:stream';
 
 import { LangchainChatModelAdapter } from 'src';
+import type { Message, StreamChunk } from 'src';
 
 import { OpenAIChatModel } from './openai';
 import {
@@ -229,7 +232,7 @@ describe('OpenAI Integration with Langchain Agent', () => {
 			total_tokens: 61,
 		});
 		const responseMetadata2 = message2.response_metadata as Record<string, unknown>;
-		expect(responseMetadata2.finish_reason).toBe('stop');
+		expect(responseMetadata2.finish_reason).toBe('tool-calls');
 
 		const { message: message3 } = getChunkData(chunks[2]);
 		expect(message3.content).toBe("It's always sunny in Tokyo!");
@@ -276,5 +279,312 @@ describe('OpenAI Integration with Langchain Agent', () => {
 		}
 
 		expect(nock.isDone()).toBe(true);
+	});
+});
+
+describe('OpenAIChatModel', () => {
+	const baseURL = 'https://api.openai.com/v1';
+	const userMessage: Message = { role: 'user', content: [{ type: 'text', text: 'Hi' }] };
+	const apiErrorMessage = 'model crashed';
+	const traceId = 'trace-1';
+	const createModel = () => new OpenAIChatModel('gpt-4o', createMockHttpRequests(), { baseURL });
+
+	const sseEvents = (...events: object[]) => {
+		const lines = events.map((event) => `data: ${JSON.stringify(event)}\n\n`);
+		return [200, Readable.from(lines), { 'Content-Type': 'text/event-stream' }] as const;
+	};
+
+	const collect = async (stream: AsyncIterable<StreamChunk>) => {
+		const chunks: StreamChunk[] = [];
+		for await (const chunk of stream) chunks.push(chunk);
+		return chunks;
+	};
+
+	afterEach(() => {
+		nock.abortPendingRequests();
+		nock.cleanAll();
+	});
+
+	describe('abort signal', () => {
+		it('should cancel a pending generate request', async () => {
+			nock(baseURL).post('/responses').delay(10_000).reply(200, mockFinalResponse);
+			const controller = new AbortController();
+
+			const result = createModel().generate([userMessage], { abortSignal: controller.signal });
+			controller.abort();
+
+			await expect(result).rejects.toThrow('canceled');
+		});
+
+		it('should cancel an open stream', async () => {
+			const stalled = new Readable({ read() {} });
+			stalled.push(
+				`data: ${JSON.stringify({ type: 'response.output_text.delta', delta: 'Hello' })}\n\n`,
+			);
+			nock(baseURL)
+				.post('/responses')
+				.reply(200, () => stalled, { 'Content-Type': 'text/event-stream' });
+			const controller = new AbortController();
+
+			const stream = createModel().stream([userMessage], { abortSignal: controller.signal });
+			const iterator = stream[Symbol.asyncIterator]();
+			await expect(iterator.next()).resolves.toMatchObject({ value: { delta: 'Hello' } });
+			controller.abort();
+
+			await expect(iterator.next()).rejects.toThrow('canceled');
+		});
+	});
+
+	it('should not send reasoning back as assistant text', async () => {
+		let input: unknown;
+		nock(baseURL)
+			.post('/responses', (body: { input: unknown }) => {
+				input = body.input;
+				return true;
+			})
+			.reply(200, mockFinalResponse);
+
+		await createModel().generate([
+			userMessage,
+			{
+				role: 'assistant',
+				content: [
+					{ type: 'reasoning', text: 'Thinking about it' },
+					{ type: 'text', text: 'Hello' },
+				],
+			},
+			{ role: 'user', content: [{ type: 'text', text: 'Again' }] },
+		]);
+
+		expect(input).toEqual([
+			{ role: 'user', content: 'Hi' },
+			{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hello' }] },
+			{ role: 'user', content: 'Again' },
+		]);
+	});
+
+	describe('failed responses', () => {
+		it('should throw when a response has the failed status', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(200, {
+					...mockFinalResponse,
+					status: 'failed',
+					output: [],
+					error: { code: 'server_error', message: apiErrorMessage },
+				});
+
+			await expect(createModel().generate([userMessage])).rejects.toThrow(
+				`The model response failed: ${apiErrorMessage}`,
+			);
+		});
+
+		it('should throw on a response.failed stream event', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(
+					...sseEvents(
+						{ type: 'response.output_text.delta', delta: 'Hel' },
+						{
+							type: 'response.failed',
+							response: { status: 'failed', error: { message: apiErrorMessage } },
+						},
+					),
+				);
+
+			await expect(collect(createModel().stream([userMessage]))).rejects.toThrow(
+				`The model response failed: ${apiErrorMessage}`,
+			);
+		});
+
+		it('should throw on an error stream event', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(...sseEvents({ type: 'error', code: 'server_error', message: 'overloaded' }));
+
+			await expect(collect(createModel().stream([userMessage]))).rejects.toThrow(
+				'The model stream failed: overloaded',
+			);
+		});
+	});
+
+	it('should keep the default provider tools when a call sets them to undefined', async () => {
+		let sent: Record<string, unknown> = {};
+		nock(baseURL)
+			.post('/responses', (body: Record<string, unknown>) => {
+				sent = body;
+				return true;
+			})
+			.reply(200, mockFinalResponse);
+		const model = new OpenAIChatModel('gpt-4o', createMockHttpRequests(), {
+			baseURL,
+			providerTools: [{ type: 'provider', name: 'web_search', args: {} }],
+		});
+
+		await model.generate([userMessage], { providerTools: undefined });
+
+		expect(sent.tools).toEqual([{ type: 'web_search' }]);
+	});
+
+	it('should send the supported call options and headers', async () => {
+		let sent: Record<string, unknown> = {};
+		nock(baseURL)
+			.post('/responses', (body: Record<string, unknown>) => {
+				sent = body;
+				return true;
+			})
+			.matchHeader('x-trace-id', traceId)
+			.reply(200, mockFinalResponse);
+
+		await createModel().generate([userMessage], {
+			maxTokens: 50,
+			temperature: 0.2,
+			topP: 0.9,
+			toolChoice: 'required',
+			headers: { 'x-trace-id': traceId, 'x-unset': undefined },
+			stopSequences: ['END'],
+			seed: 42,
+			topK: 5,
+			presencePenalty: 0.5,
+			frequencyPenalty: 0.5,
+		});
+
+		expect(sent, 'stop sequences, seed and top-k have no Responses API parameter').toEqual({
+			model: 'gpt-4o',
+			input: 'Hi',
+			max_output_tokens: 50,
+			temperature: 0.2,
+			top_p: 0.9,
+			presence_penalty: 0.5,
+			frequency_penalty: 0.5,
+			tools: [],
+			tool_choice: 'required',
+			parallel_tool_calls: true,
+			store: false,
+			stream: false,
+		});
+	});
+
+	describe('finish reason', () => {
+		it.each([
+			[{ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } }, 'length'],
+			[
+				{ status: 'incomplete', incomplete_details: { reason: 'content_filter' } },
+				'content-filter',
+			],
+			[{ status: 'completed' }, 'stop'],
+		])('should map %j to %s', async (fields, finishReason) => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(200, { ...mockFinalResponse, ...fields });
+
+			const result = await createModel().generate([userMessage]);
+
+			expect(result.finishReason).toBe(finishReason);
+		});
+
+		it('should report tool calls', async () => {
+			nock(baseURL).post('/responses').reply(200, mockToolCallResponse);
+
+			const result = await createModel().generate([userMessage]);
+
+			expect(result.finishReason).toBe('tool-calls');
+		});
+
+		it('should report a truncated stream as length', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(
+					...sseEvents(
+						{ type: 'response.output_text.delta', delta: 'Hel' },
+						{
+							type: 'response.incomplete',
+							response: {
+								status: 'incomplete',
+								incomplete_details: { reason: 'max_output_tokens' },
+							},
+						},
+					),
+				);
+
+			const chunks = await collect(createModel().stream([userMessage]));
+
+			expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'length' });
+		});
+
+		it('should read usage from the top level of a response.done event', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(
+					...sseEvents({
+						type: 'response.done',
+						usage: { input_tokens: 3, output_tokens: 2, total_tokens: 5 },
+					}),
+				);
+
+			const chunks = await collect(createModel().stream([userMessage]));
+
+			expect(chunks.at(-1)).toMatchObject({
+				type: 'finish',
+				usage: { promptTokens: 3, completionTokens: 2, totalTokens: 5 },
+			});
+		});
+	});
+
+	it.each([
+		['malformed JSON', '{"id": "resp_bad", "output": ['],
+		['a body without output', { id: 'resp_bad', status: 'completed' }],
+	])('should throw a clear error for %s', async (_, body) => {
+		nock(baseURL).post('/responses').reply(200, body, { 'Content-Type': 'application/json' });
+
+		await expect(createModel().generate([userMessage])).rejects.toThrow(
+			'Unexpected response from the Responses API: the body has no output array',
+		);
+	});
+
+	it('should give a streamed tool call without an ID a generated one and send it back', async () => {
+		const functionCall = {
+			type: 'function_call',
+			name: 'get_weather',
+			arguments: '{"city":"Tokyo"}',
+		};
+		nock(baseURL)
+			.post('/responses')
+			.reply(
+				...sseEvents(
+					{ type: 'response.output_item.added', output_index: 0, item: functionCall },
+					{ type: 'response.output_item.done', output_index: 0, item: functionCall },
+					{ type: 'response.completed', response: { status: 'completed' } },
+				),
+			);
+		let input: unknown;
+		nock(baseURL)
+			.post('/responses', (body: { input: unknown }) => {
+				input = body.input;
+				return true;
+			})
+			.reply(200, mockFinalResponse);
+		const model = createModel();
+
+		const chunks = await collect(model.stream([userMessage]));
+		const id = chunks.find((chunk) => chunk.type === 'tool-call-delta')?.id;
+		expect(id).toMatch(/^call_/);
+		assert(id);
+
+		await model.generate([
+			userMessage,
+			{
+				role: 'assistant',
+				content: [{ type: 'tool-call', toolCallId: id, toolName: 'get_weather', input: '{}' }],
+			},
+			{ role: 'tool', content: [{ type: 'tool-result', toolCallId: id, result: 'sunny' }] },
+		]);
+
+		expect(input).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ type: 'function_call', call_id: id }),
+				expect.objectContaining({ type: 'function_call_output', call_id: id }),
+			]),
+		);
 	});
 });
