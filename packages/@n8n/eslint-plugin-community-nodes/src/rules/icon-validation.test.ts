@@ -20,6 +20,9 @@ const mockSvgFiles = [
 	'ValidIcon.dark.svg',
 	'SameIcon.svg',
 	'github.svg',
+	'Logo.jpg',
+	'Logo.dark.webp',
+	'Logo.gif',
 ];
 
 function setupMockFileSystem() {
@@ -223,6 +226,27 @@ ruleTester.run('icon-validation', IconValidationRule, {
 			filename: nodeFilePath,
 			code: createNodeCode('file:icons/NonExistent.svg', true),
 			errors: [{ messageId: 'iconFileNotFound', data: { iconPath: 'icons/NonExistent.svg' } }],
+		},
+		{
+			name: 'node icon in an image format that n8n does not show',
+			filename: nodeFilePath,
+			code: createNodeCode('file:icons/Logo.jpg', true),
+			errors: [{ messageId: 'unsupportedIconFormat', data: { iconPath: 'icons/Logo.jpg' } }],
+		},
+		{
+			name: 'dark icon variant in an image format that n8n does not show',
+			filename: nodeFilePath,
+			code: createNodeCode(
+				{ light: 'file:icons/ValidIcon.svg', dark: 'file:icons/Logo.dark.webp' },
+				true,
+			),
+			errors: [{ messageId: 'unsupportedIconFormat', data: { iconPath: 'icons/Logo.dark.webp' } }],
+		},
+		{
+			name: 'credential icon in an image format that n8n does not show',
+			filename: credentialFilePath,
+			code: createCredentialCode('file:icons/Logo.gif'),
+			errors: [{ messageId: 'unsupportedIconFormat', data: { iconPath: 'icons/Logo.gif' } }],
 		},
 		{
 			name: 'credential missing icon property',
