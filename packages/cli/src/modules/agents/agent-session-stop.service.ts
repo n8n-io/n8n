@@ -8,7 +8,7 @@ import { Publisher } from '@n8n/backend-services';
 
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentClusterService } from './agent-cluster.service';
-import { AgentExecutionService } from './agent-execution.service';
+import { AgentExecutionService, type DurableStopRequest } from './agent-execution.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
@@ -27,7 +27,20 @@ export class AgentSessionStopService {
 		private readonly queuedStreams: AgentQueuedTestStreamService,
 		private readonly attachments: AgentChatAttachmentService,
 		private readonly threads: AgentExecutionThreadRepository,
-	) {}
+	) {
+		this.executionService.onDurableStopRequest((request) => this.applyDurableStop(request));
+	}
+
+	/** Apply a stop request that the heartbeat of a local turn found on its row. */
+	private applyDurableStop({ executionId, agentId, threadId, stopRequest }: DurableStopRequest) {
+		if (stopRequest === 'session') {
+			this.onStopSession({ agentId, threadId, executionIds: [executionId], queueIds: [] });
+			return;
+		}
+		if (!this.chatExecutionService.abortLocalExecution(executionId, stopRequest)) {
+			this.executionService.stopExecution(executionId);
+		}
+	}
 
 	async stopSession(
 		projectId: string,

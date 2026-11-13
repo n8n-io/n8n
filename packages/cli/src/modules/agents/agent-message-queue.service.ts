@@ -283,6 +283,12 @@ export class AgentMessageQueueService {
 			if (!thread) throw new NotFoundError('Session not found');
 			const running = await this.executionRepository.findRunningByThread(threadId, ctx);
 			const pending = await this.repository.listPending(threadId, ctx);
+			// The owner's heartbeat applies the stop if the pub/sub message is lost.
+			await this.executionRepository.requestStop(
+				running.map(({ id }) => id),
+				'session',
+				ctx,
+			);
 			await this.repository.discardPendingForSession(threadId, ctx);
 			const attachmentIds: string[] = [];
 			for (const item of pending) {

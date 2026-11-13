@@ -20,11 +20,13 @@
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false | [public.agent_background_job](public.agent_background_job.md) [public.agent_execution](public.agent_execution.md) [public.agent_execution_message_links](public.agent_execution_message_links.md) [public.agent_message_queue](public.agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
+| ownerKey | varchar(64) |  | true |  |  | Instance registry key of the process that runs the turn; null for turns recorded before this column |
 | parentExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution of the parent turn that delegated this run. Null for a top-level turn |
 | promptTokens | integer |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | timestamp(3) with time zone |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
+| stopRequest | varchar(16) |  | true |  |  | Durable stop request read by the heartbeat: foreground (stop the response), all (stop the turn and its background jobs) or session (stop the session) |
 | stoppedAt | timestamp(3) with time zone |  | true |  |  |  |
 | storedAt | varchar(2) | 'db'::character varying | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
@@ -39,6 +41,7 @@
 | ---- | ---- | ---------- |
 | CHK_agent_execution_hitlStatus | CHECK | CHECK ((("hitlStatus")::text = ANY ((ARRAY['suspended'::character varying, 'resumed'::character varying])::text[]))) |
 | CHK_agent_execution_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'success'::character varying, 'error'::character varying, 'cancelled'::character varying, 'interrupted'::character varying, 'awaiting'::character varying])::text[]))) |
+| CHK_agent_execution_stopRequest | CHECK | CHECK ((("stopRequest")::text = ANY ((ARRAY['foreground'::character varying, 'all'::character varying, 'session'::character varying])::text[]))) |
 | CHK_agent_execution_storedAt | CHECK | CHECK ((("storedAt")::text = ANY ((ARRAY['db'::character varying, 'fs'::character varying, 's3'::character varying, 'az'::character varying])::text[]))) |
 | FK_add2432fb6034cc18b6af299dce | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | FK_agent_execution_parentExecutionId | FOREIGN KEY | FOREIGN KEY ("parentExecutionId") REFERENCES agent_execution(id) ON DELETE SET NULL |
@@ -90,11 +93,13 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_64_ ownerKey
   varchar_36_ parentExecutionId FK
   integer promptTokens
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
+  varchar_16_ stopRequest
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK

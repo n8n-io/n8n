@@ -130,9 +130,19 @@ export class AgentChatExecutionService {
 				if (this.cancelLocal(context)) return true;
 
 				const running = execution.status === 'running';
+				// The owner's heartbeat applies the stop if the pub/sub message is lost.
+				if (running && this.cluster.shouldRelayAcrossProcesses()) {
+					await this.executionRepository.requestStop(
+						[context.executionId],
+						context.scope === 'foreground' ? 'foreground' : 'all',
+					);
+				}
 				// Relay full cancellation even after the response ends.
 				// Another main can still be saving a new background job.
-				if (this.cluster.shouldRelayAcrossProcesses() && (running || context.scope !== 'foreground')) {
+				if (
+					this.cluster.shouldRelayAcrossProcesses() &&
+					(running || context.scope !== 'foreground')
+				) {
 					const { surface, scope, ...rest } = context;
 					await this.publisher.publishCommand({
 						command:
@@ -211,6 +221,22 @@ export class AgentChatExecutionService {
 			chatSurfaceMemoryResourceId(context.surface, context.userId),
 		);
 
+		return true;
+	}
+
+	/**
+	 * Abort a local turn by id, for a durable stop request found by the
+	 * heartbeat. The requester already checked access and cancelled the
+	 * background jobs of an `all` stop.
+	 */
+	abortLocalExecution(executionId: string, scope: 'foreground' | 'all'): boolean {
+		const execution = this.executions.get(executionId);
+		if (!execution) return false;
+		execution.controller.abort(
+			scope === 'foreground'
+				? new DOMException('Response stopped', 'AbortError')
+				: PARENT_TASK_CANCELLED_REASON,
+		);
 		return true;
 	}
 

@@ -154,4 +154,26 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Where the timeline payload is stored: 'db' (inline column), 'fs', 's3', or 'az'. */
 	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
 	storedAt: ExecutionDataStorageLocation;
+
+	/**
+	 * Instance registry key of the process that runs the turn. The sweeper
+	 * interrupts the turn when this process leaves the registry. Null for turns
+	 * recorded before this column, or when the registry is not available.
+	 */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	ownerKey: string | null;
+
+	/**
+	 * Durable stop request. The heartbeat of the owner reads it, so a stop
+	 * still applies when its pub/sub message is lost.
+	 */
+	@Column({ type: 'varchar', length: 16, nullable: true })
+	stopRequest: AgentExecutionStopRequest | null;
 }
+
+/**
+ * - `foreground`: stop the response only.
+ * - `all`: stop the turn and its background jobs.
+ * - `session`: stop the session.
+ */
+export type AgentExecutionStopRequest = 'foreground' | 'all' | 'session';
