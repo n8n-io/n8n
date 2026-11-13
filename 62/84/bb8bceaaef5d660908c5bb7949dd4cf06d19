@@ -1,0 +1,37 @@
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_2b79be32e16d90::t_187dd51e6d3dd8 197,223-260,262-263,273
+  s_2b79be32e16d90::t_89e303a4e5ea58 194-196
+  s_2b79be32e16d90::t_b8cc6749aff75f 261
+  s_2b79be32e16d90::t_473fecb3a59261 264-266,270-272
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_2b79be32e16d90::t_f453d6d1f9d382 1
+  s_2b79be32e16d90::t_7f166632c49242 193-198,215
+  s_2b79be32e16d90::t_90682435032fac 212-214
+  s_2b79be32e16d90::t_56e7b5516cffd2 216-218
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  s_2b79be32e16d90::t_fd95ba8ee214a5 1
+  s_2b79be32e16d90::t_813ab443c0325d 113-114
+  s_2b79be32e16d90::t_48ac419b89af35 110-112
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  s_2b79be32e16d90::t_bbeb467b384df1 2,148
+  s_2b79be32e16d90::t_ac340d0e7a8c2f 978-1056
+  s_2b79be32e16d90::t_a21775f2831463 71
+  s_2b79be32e16d90::t_c89ec8046f93f3 149-151
+  s_2b79be32e16d90::t_2645e26f47101b 975-977
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6284bb8bceaaef5d660908c5bb7949dd4cf06d19",
+  "prompts": {},
+  "sessions": {
+    "s_2b79be32e16d90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1bc869e-cff1-4653-b1dc-931ab08a9506",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

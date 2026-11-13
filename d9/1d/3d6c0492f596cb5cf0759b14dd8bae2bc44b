@@ -1,0 +1,27 @@
+.github/scripts/workflow-validation.test.mjs
+  s_1d07df41cc8ca5::t_c165438bbc45dd 478,481-482,486-501
+  s_1d07df41cc8ca5::t_78f7373c61e5aa 450
+  s_1d07df41cc8ca5::t_7791c5510de964 483
+.github/workflows/release-setup-trusted-publishing.yml
+  s_1d07df41cc8ca5::t_c165438bbc45dd 5-10,19-24,34,36-39,41,45,54,58
+.github/workflows/release-publish.yml
+  s_1d07df41cc8ca5::t_c165438bbc45dd 60,62-63
+.github/WORKFLOWS.md
+  s_1d07df41cc8ca5::t_c165438bbc45dd 449,814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d91d3d6c0492f596cb5cf0759b14dd8bae2bc44b",
+  "prompts": {},
+  "sessions": {
+    "s_1d07df41cc8ca5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2be3b43affeLL7PU0nEynnQTs",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

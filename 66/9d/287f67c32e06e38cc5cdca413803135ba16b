@@ -1,0 +1,126 @@
+packages/cli/src/modules/skills/controllers/skill-source.controller.ts
+  s_89a39af4e4ecf8::t_cc3cc0f508ca1b 3,101,107-111,118-120
+  s_89a39af4e4ecf8::t_b9fec0dd606745 99-100
+  s_89a39af4e4ecf8::t_b3ff49871654d8 102-106,112-117
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_89a39af4e4ecf8::t_c82be6ee443320 300
+  s_89a39af4e4ecf8::t_9e9cec487b4780 298-299,303-306
+packages/cli/test/migration/1794488303980-add-skill-source-health.test.ts
+  s_89a39af4e4ecf8::t_b3ff49871654d8 24-28,34-37,42-44,46-49,51-52,59-64,66-72,75-82,93-94,96-98,104-110,120-123
+  s_89a39af4e4ecf8::t_5222ab42d17b5d 45,50,95
+  s_89a39af4e4ecf8::t_d16cea376a9776 1-23,29-33,38-41,53-58,65,73-74,83-92,99-103,111-119,124-126
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_89a39af4e4ecf8::t_b3bddd8e971915 332,341-342,350-355
+  s_89a39af4e4ecf8::t_f0d83b927dc4a1 631-642,647-649
+  s_89a39af4e4ecf8::t_fa012c9e9a92eb 361-369,375-376
+  s_89a39af4e4ecf8::t_02fcf2c241df3b 643-646
+  s_89a39af4e4ecf8::t_2004f5d6b22eb7 608-630
+  s_89a39af4e4ecf8::t_b3ff49871654d8 343-349,356-358,370-374,377-381
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.vue
+  s_89a39af4e4ecf8::t_1e3d2cfcd99df0 185-189
+  s_89a39af4e4ecf8::t_ee3d9ca2b47841 28,63,206
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceCredentialDialog.vue
+  s_89a39af4e4ecf8::t_c82be6ee443320 71,78-79
+  s_89a39af4e4ecf8::t_1e3d2cfcd99df0 3-16,37-44,47-62,67-70,81-82,88-96,99-102,110-112,135-147,154,157-162,164-166,169-182
+  s_89a39af4e4ecf8::t_8906dc484b41d6 150-153,155
+  s_89a39af4e4ecf8::t_5f7491d4386df5 156
+  s_89a39af4e4ecf8::t_09c62dfa9007fd 1,17-36,45-46,63-65,72-77,80,83-87,97-98,103-109,113-134,148-149,163,167-168,183-193
+  s_89a39af4e4ecf8::t_ff876bcb700fe1 2,66
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_89a39af4e4ecf8::t_b3ff49871654d8 196-199,203-210
+  s_89a39af4e4ecf8::t_ee3d9ca2b47841 195,200-202,211
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_89a39af4e4ecf8::t_ee3d9ca2b47841 165-172,199-200
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceCredentialDialog.test.ts
+  s_89a39af4e4ecf8::t_9f9d233f6045fc 7-10,43,45,52-66,74-78,82-84
+  s_89a39af4e4ecf8::t_43c5562bd43bba 67-73,79-81
+  s_89a39af4e4ecf8::t_b3ff49871654d8 15-31,39-41,48-50,90-92
+  s_89a39af4e4ecf8::t_ff684fad6a645a 1-6,11-14,32-38,42,44,46-47,51,85-89,93-103
+packages/cli/src/modules/skills/__tests__/integration/skill-source-credentials.integration.test.ts
+  s_89a39af4e4ecf8::t_b3bddd8e971915 7,30,699-704,712-718,722,735-736,754-756,763-767,772-781,791-797,801-804,847-851,864
+  s_89a39af4e4ecf8::t_b3ff49871654d8 705-711,719-721,723-734,739-746,748-751,757-762,768-771,782-785,787-790,798-800,805-816,852-863,865-867
+  s_89a39af4e4ecf8::t_a11e9695170cfa 786
+  s_89a39af4e4ecf8::t_4bb63d0c1611d8 42,817-846
+  s_89a39af4e4ecf8::t_fa012c9e9a92eb 737-738,747,752-753
+packages/cli/src/modules/skills/database/entities/skill-source-connection.entity.ts
+  s_89a39af4e4ecf8::t_25e823acfe5dc2 44-51
+packages/cli/src/modules/skills/__tests__/skill-sync.service.test.ts
+  s_89a39af4e4ecf8::t_35f6184e7a7d5e 124-125,154-168
+  s_89a39af4e4ecf8::t_b3ff49871654d8 149-153
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_89a39af4e4ecf8::t_1e3d2cfcd99df0 791-794,832-836,1107-1112
+  s_89a39af4e4ecf8::t_09c62dfa9007fd 63,788-790,795-796,831,837-838,1067
+packages/cli/src/modules/skills/database/repositories/skill-source.repository.ts
+  s_89a39af4e4ecf8::t_5222ab42d17b5d 318,337
+  s_89a39af4e4ecf8::t_b3ff49871654d8 69-72,110,302-313,316-317,319-330,338,340,342-343,359,364-382,384-392,394-411,417
+  s_89a39af4e4ecf8::t_02fcf2c241df3b 8,35,341,360-363,412-416
+  s_89a39af4e4ecf8::t_a11e9695170cfa 344-346,351
+  s_89a39af4e4ecf8::t_79826b0caa2d8e 335
+  s_89a39af4e4ecf8::t_b9fec0dd606745 347-350
+  s_89a39af4e4ecf8::t_2004f5d6b22eb7 352-358,383,393
+packages/@n8n/telemetry/src/events/context.ts
+  s_89a39af4e4ecf8::t_c6bcb5fbc63129 471-472,475-477,480-483,486-487,505-506
+  s_89a39af4e4ecf8::t_b3ff49871654d8 473-474,484-485,488-503
+  s_89a39af4e4ecf8::t_79826b0caa2d8e 76,504
+  s_89a39af4e4ecf8::t_cc3cc0f508ca1b 478-479
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.test.ts
+  s_89a39af4e4ecf8::t_b3ff49871654d8 69-77,79-81,85-87
+  s_89a39af4e4ecf8::t_b9fec0dd606745 25
+  s_89a39af4e4ecf8::t_ff876bcb700fe1 15,18,29,34,39,51,64,68,78,82-84,88-89
+packages/cli/src/modules/skills/database/entities/skill-source-link.entity.ts
+  s_89a39af4e4ecf8::t_25e823acfe5dc2 57-60
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.test.ts
+  s_89a39af4e4ecf8::t_ff876bcb700fe1 1358
+  s_89a39af4e4ecf8::t_b9fec0dd606745 1607-1612,1620-1623,1655
+  s_89a39af4e4ecf8::t_9e65b1684cc7fe 1613-1619
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_89a39af4e4ecf8::t_09c62dfa9007fd 4110-4115,4117,4119-4121,4129
+  s_89a39af4e4ecf8::t_a11e9695170cfa 4123
+packages/cli/src/modules/skills/utils/skill-source-health.ts
+  s_89a39af4e4ecf8::t_b3ff49871654d8 4-7
+  s_89a39af4e4ecf8::t_9476b7bd307c7f 10
+packages/cli/src/modules/skills/services/skill-source.service.ts
+  s_89a39af4e4ecf8::t_cc3cc0f508ca1b 20,23,61,126,234,238,270,277,282-288,294,299,302,309-310,316-322,327
+  s_89a39af4e4ecf8::t_b3ff49871654d8 240-242,245-250,264-269,278-281,289-293,295-298,300-301,303-308,311-315,323-326
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  s_89a39af4e4ecf8::t_9e65b1684cc7fe 506-508
+  s_89a39af4e4ecf8::t_ff876bcb700fe1 359,413
+  s_89a39af4e4ecf8::t_f0d83b927dc4a1 499-505,509-511
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceHealth.vue
+  s_89a39af4e4ecf8::t_ee3d9ca2b47841 4,59-60
+  s_89a39af4e4ecf8::t_1e3d2cfcd99df0 8-9,33-37,48-58
+packages/cli/src/modules/skills/__tests__/skills-telemetry.test.ts
+  s_89a39af4e4ecf8::t_a483699591bd49 167-186
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_89a39af4e4ecf8::t_9c2ed5d1f26845 138,249,251-252,572-576
+  s_89a39af4e4ecf8::t_a11e9695170cfa 63-64
+  s_89a39af4e4ecf8::t_c6bcb5fbc63129 214-216,219-220,225-227,243-244,284,299,302,326,342,348-349,393,401,412,417
+  s_89a39af4e4ecf8::t_35f6184e7a7d5e 570-571
+  s_89a39af4e4ecf8::t_5222ab42d17b5d 388,392
+  s_89a39af4e4ecf8::t_cc3cc0f508ca1b 217-218
+  s_89a39af4e4ecf8::t_02fcf2c241df3b 34,232-236,239-240
+  s_89a39af4e4ecf8::t_b3ff49871654d8 221-224,228-231,237-238,241-242,270-274,289-295,343-347,385-387,389
+packages/cli/src/modules/skills/services/skills-telemetry.service.ts
+  s_89a39af4e4ecf8::t_c6bcb5fbc63129 190-194,198-202
+  s_89a39af4e4ecf8::t_b3ff49871654d8 187-189,195-197
+packages/@n8n/db/src/migrations/common/1794488303980-AddSkillSourceHealth.ts
+  s_89a39af4e4ecf8::t_b7f25797aa1db3 1-3,28-29,40-41
+  s_89a39af4e4ecf8::t_b3ff49871654d8 14-16,18-26,31-39
+  s_89a39af4e4ecf8::t_879ded9b14ec31 4-13,17,27,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "669d287f67c32e06e38cc5cdca413803135ba16b",
+  "prompts": {},
+  "sessions": {
+    "s_89a39af4e4ecf8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cfc9-6e0a-7652-b14d-e92713b0f7ab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

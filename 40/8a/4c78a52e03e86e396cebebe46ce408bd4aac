@@ -1,0 +1,94 @@
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 26
+packages/cli/src/modules/n8n-packages/__tests__/import-package-policy.integration.test.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 266
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_5f5efe371ad2e2::t_2dfab500d3eba7 587,617,739,769
+  s_5f5efe371ad2e2::t_cafb4fe0cdcf4e 78
+  s_5f5efe371ad2e2::t_969b09134fc424 597,627,744-749,778
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_5f5efe371ad2e2::t_cd42e3cc75bffa 514,528-531
+  s_5f5efe371ad2e2::t_9e7409cd581426 14-19
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 1640
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 73
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_5f5efe371ad2e2::t_02288933a8c90c 64
+  s_5f5efe371ad2e2::t_371aadc331d955 130,748,750,757,762,772,775,785,788,878,883,899,912,950,991,1000,1014,1030
+  s_5f5efe371ad2e2::t_9e7409cd581426 1001-1007
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_5f5efe371ad2e2::t_9e7409cd581426 285-290
+  s_5f5efe371ad2e2::t_d7d2e4d1fd94c9 1141,1170,1209
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 129
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_5f5efe371ad2e2::t_3dcfea59d541cc 6-7,298-299,344-345,461-462
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 23
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_5f5efe371ad2e2::t_3dcfea59d541cc 128,709
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-remover.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 12
+packages/cli/src/modules/n8n-packages/__tests__/export-stable-targets.integration.test.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 52
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_5f5efe371ad2e2::t_4abbe5a5963a0f 237
+  s_5f5efe371ad2e2::t_3dcfea59d541cc 422
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 119
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_5f5efe371ad2e2::t_639ee30a69e46f 161-164,195-197
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-importer.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 18
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 37
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_5f5efe371ad2e2::t_b8b37da139b538 2246,2251,2563-2568,2585
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/import-request.ts
+  s_5f5efe371ad2e2::t_a4146e5c7f659b 27
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-publisher.test.ts
+  s_5f5efe371ad2e2::t_163f8dbacd7c86 128,183,264,329,341
+  s_5f5efe371ad2e2::t_ef60f316b93dde 309,318-321
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-importer.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 19
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_5f5efe371ad2e2::t_f558431567ae68 292,303,333,336
+packages/cli/src/modules/n8n-packages/entities/credential/__tests__/credential-importer.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 54-59
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_5f5efe371ad2e2::t_3dcfea59d541cc 68-77,234
+  s_5f5efe371ad2e2::t_4abbe5a5963a0f 176
+packages/cli/src/modules/promotions.ee/apply-preview.service.ts
+  s_5f5efe371ad2e2::t_969b09134fc424 19
+  s_5f5efe371ad2e2::t_371aadc331d955 56,61,129-130
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-importer.test.ts
+  s_5f5efe371ad2e2::t_f558431567ae68 42,125,132,305,315-354,356,358-364
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-planning.integration.test.ts
+  s_5f5efe371ad2e2::t_8ac69395de784c 126
+packages/cli/src/public-api/v1/controllers/n8n-packages.public.controller.ts
+  s_5f5efe371ad2e2::t_969b09134fc424 132,189
+  s_5f5efe371ad2e2::t_2dfab500d3eba7 118,168
+  s_5f5efe371ad2e2::t_cafb4fe0cdcf4e 39
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_5f5efe371ad2e2::t_46719465641720 1146,1156-1160
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-publisher.ts
+  s_5f5efe371ad2e2::t_163f8dbacd7c86 8
+  s_5f5efe371ad2e2::t_4abbe5a5963a0f 35,67,85,167,192,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "408a4c78a52e03e86e396cebebe46ce408bd4aac",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+docs/generated/postgres-schema/README.md
+  s_9af1b09aa006a5::t_8c3fae9042d82d 24,672
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_9af1b09aa006a5::t_bcd6eb16c5e3ea 154
+docs/generated/postgres-schema/public.agent_execution.md
+  s_9af1b09aa006a5::t_d8bfba34c9ba7c 25,51,97
+docs/generated/postgres-schema/public.agent_execution_message_links.md
+  s_9af1b09aa006a5::t_fcb37c1f9814ef 69
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  s_9af1b09aa006a5::t_fb4fd5641bcefa 135
+docs/generated/postgres-schema/public.agent_message_queue.md
+  s_9af1b09aa006a5::t_21865c1c1a78a1 88
+docs/generated/sqlite-schema/README.md
+  s_9af1b09aa006a5::t_68f27e92092d4f 24,658
+docs/generated/sqlite-schema/agent_background_job.md
+  s_9af1b09aa006a5::t_02791381ec11ae 156
+docs/generated/sqlite-schema/agent_execution.md
+  s_9af1b09aa006a5::t_b41b4ffaa644d7 9,36,100
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  s_9af1b09aa006a5::t_88e1d5949697f5 77
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_9af1b09aa006a5::t_babd59a23621c0 135
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_9af1b09aa006a5::t_48df8dc4f8c9ad 91
+packages/@n8n/api-types/src/agent-sse.ts
+  s_9af1b09aa006a5::t_c62de32ba25339 29,145-146
+packages/@n8n/api-types/src/index.ts
+  s_9af1b09aa006a5::t_8725674b08461e 1088-1101
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9af1b09aa006a5::t_dae06a66141c59 1-57
+packages/@n8n/db/src/migrations/common/1794511143370-AddSimulatedToAgentExecution.ts
+  s_9af1b09aa006a5::t_8daacbf2213623 1-28
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9af1b09aa006a5::t_16b422e5fb1334 54,95
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9af1b09aa006a5::t_3b7453b0745f13 93-94,1702,1821,2281-2305
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9af1b09aa006a5::t_0580d8a84d2ac9 21,145-174
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_9af1b09aa006a5::t_c43fc94bcdbf9e 633-657
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_9af1b09aa006a5::t_e76aac7fe4de1c 19-20,77-78,90,96,561-675
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9af1b09aa006a5::t_6b1200884000b7 92,125-130,158-159,230-231,325-332,617,619-623,861-862,1465,1772,2067-2074
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_9af1b09aa006a5::t_e77ce8e6bb5170 30,55-59,144-145,324,359
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9af1b09aa006a5::t_8e29d9fbadbe94 833-835
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_9af1b09aa006a5::t_03df95ef037022 161,222
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9af1b09aa006a5::t_e8de57653b7578 8,24-25,48,61-73,137,179,241,248,255-259,271,276,286,388-413,418-422,426,432-433,440-441,448,453-460,492-517
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_9af1b09aa006a5::t_5d53a80529813e 154-157
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_9af1b09aa006a5::t_7ca2eef1b125f6 1,45-46,78-82
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_9af1b09aa006a5::t_41a0129339bfde 1-38
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_9af1b09aa006a5::t_50cc9080dc9879 1-182
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_247510c1a46f99 1-153
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9af1b09aa006a5::t_a918fbca5e7773 1-286
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9af1b09aa006a5::t_81080612379152 1-90
+packages/cli/src/modules/agents/simulation/safe-testing-flag-gate.ts
+  s_9af1b09aa006a5::t_2266ca2042cca5 1-19
+packages/cli/src/modules/agents/simulation/simulation-backend-registry.ts
+  s_9af1b09aa006a5::t_9712ead0f471f3 1-21
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9af1b09aa006a5::t_0704c7b116ea14 1-118
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_5d824a2ff0a9c6 1-364
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_9af1b09aa006a5::t_f218851dab6da8 1-88
+packages/cli/src/modules/agents/types/agent-steering.ts
+  s_9af1b09aa006a5::t_78d3c6dda61fa7 2,6-14
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9af1b09aa006a5::t_57ab4efd218ced 1-91
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9af1b09aa006a5::t_90767e1067cbe7 1-105
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_9af1b09aa006a5::t_2dd66d04a3ae7d 20-21,107
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_9af1b09aa006a5::t_118cc424bb2f4a 87-88,105-118
+packages/quality/policy/code-health/src/rules/agents-instance-ai-boundary.rule.ts
+  s_9af1b09aa006a5::t_b5cc177bd8d4f9 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3346a6fc3cb1b237123abe8a390aaa7d842437a9",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

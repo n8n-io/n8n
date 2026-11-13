@@ -1,0 +1,29 @@
+packages/@n8n/api-types/src/index.ts
+  s_9af1b09aa006a5::t_0c3ac9dcce94e5 1105
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9af1b09aa006a5::t_28d5b886acf1aa 73-76
+packages/cli/src/modules/agents/__tests__/agent-test-run.controller.test.ts
+  s_9af1b09aa006a5::t_94a204d7795309 1-40
+packages/cli/src/modules/agents/agent-test-run.controller.ts
+  s_9af1b09aa006a5::t_27aec6d11a9ec3 1-29
+packages/cli/src/modules/agents/agents.module.ts
+  s_9af1b09aa006a5::t_998dc9e20de8a5 38
+packages/cli/src/modules/agents/simulation/safe-testing-flag-gate.ts
+  s_9af1b09aa006a5::t_1258a2447b7183 5,20-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb1b87320881ffec73b90d5b47f591544bf8962f",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
