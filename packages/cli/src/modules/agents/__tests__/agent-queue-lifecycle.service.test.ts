@@ -4,16 +4,19 @@ import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentAppTurnService } from '../agent-app-turn.service';
 import type { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
+import type { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
 import { AgentQueueLifecycle } from '../queue/agent-queue-lifecycle.service';
+import type { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue, AgentTurnJobHandlers } from '../queue/agent-turn-queue.service';
 
 describe('AgentQueueLifecycle', () => {
 	const turnQueue = mock<AgentTurnQueue>();
 	const consumer = mock<AgentMessageQueueConsumer>();
-	const chatResume = mock<AgentChatResumeService>();
+	const remoteTurns = mock<AgentRemoteTurnService>();
 	let registry: InstanceRegistryProxyService;
 	const refreshRegistration = vi.fn(async () => {});
 
@@ -22,10 +25,13 @@ describe('AgentQueueLifecycle', () => {
 			mock<AgentTurnPlacement>(placement),
 			turnQueue,
 			consumer,
-			chatResume,
+			remoteTurns,
 			registry,
 			{ workerConcurrency: 3 } as AgentsConfig,
 			mockLogger(),
+			mock<AgentChatResumeService>(),
+			mock<WebhookChannelService>(),
+			mock<AgentAppTurnService>(),
 		);
 	}
 
@@ -68,7 +74,7 @@ describe('AgentQueueLifecycle', () => {
 		await handlers.drain({ threadId: 'thread' });
 		expect(consumer.drainForJob).toHaveBeenCalledWith('thread');
 		await handlers.request({ requestId: 'request' });
-		expect(chatResume.runRequest).toHaveBeenCalledWith('request');
+		expect(remoteTurns.runRequest).toHaveBeenCalledWith('request');
 	});
 
 	it('withdraws the capability on shutdown', async () => {

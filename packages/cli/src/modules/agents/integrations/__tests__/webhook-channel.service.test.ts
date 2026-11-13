@@ -17,6 +17,7 @@ import type { AgentsSettingsService } from '../../agents-settings.service';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { ProjectAgent } from '../../entities/agent.entity';
+import type { AgentRemoteTurnService } from '../../queue/agent-remote-turn.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { AgentCredentialLookupService } from '../agent-credential-lookup.service';
 import type { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
@@ -77,6 +78,8 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		(agentId) => `https://n8n.example.com/agent-webhook/${agentId}`,
 	);
 	const logger = mock<Logger>();
+	const remoteTurns = mock<AgentRemoteTurnService>();
+	remoteTurns.result.mockResolvedValue({ outcome: 'local' });
 	const service = new WebhookChannelService(
 		agentRepository,
 		settings,
@@ -88,6 +91,7 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		checkpointStorage,
 		urlService,
 		logger,
+		remoteTurns,
 	);
 	const respond = async (
 		body: unknown = { input: 'Hi' },
@@ -114,6 +118,7 @@ function makeService(agent: ProjectAgent | null = makeAgent()) {
 		credentials,
 		checkpointStorage,
 		logger,
+		remoteTurns,
 	};
 }
 
@@ -792,5 +797,94 @@ describe('WebhookChannelService', () => {
 		await respond({ input: 'Hi' }, {}, abort.signal);
 
 		expect(logger.error).not.toHaveBeenCalled();
+	});
+
+	describe('in agent queue mode', () => {
+		it('sends the checked message to a worker and returns its reply', async () => {
+			const { respond, remoteTurns, orchestrator } = makeService();
+			remoteTurns.result.mockResolvedValue({
+				outcome: 'done',
+				result: { status: 200, body: { id: 'resp-1' } },
+			});
+
+			await expect(respond({ input: 'Hi', conversation: 'c-1' })).resolves.toEqual({
+				status: 200,
+				body: { id: 'resp-1' },
+			});
+			expect(remoteTurns.result).toHaveBeenCalledWith(
+				{
+					kind: 'webhook-respond',
+					agentId: 'agent-1',
+					input: 'Hi',
+					conversationId: 'c-1',
+					approvalBaseUrl: 'https://n8n.example.com/agent-webhook/agent-1',
+				},
+				expect.any(AbortSignal),
+			);
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('sends nothing to a worker when the caller fails authentication', async () => {
+			const { respond, credentials, remoteTurns } = makeService(
+				makeAgent({ integrations: [webhook('headerAuth')] }),
+			);
+			credentials.decryptForProject.mockResolvedValue({ name: 'X-Api-Key', value: 'key-1' });
+
+			await expect(respond({ input: 'Hi' }, { 'x-api-key': 'key-2' })).resolves.toMatchObject({
+				status: 403,
+			});
+			expect(remoteTurns.result).not.toHaveBeenCalled();
+		});
+
+		it('returns 503 and does not run the turn again when the worker is lost', async () => {
+			const { respond, remoteTurns, orchestrator } = makeService();
+			remoteTurns.result.mockResolvedValue({ outcome: 'lost' });
+
+			const reply = await respond();
+
+			expect(reply.status).toBe(503);
+			expect(reply.body).toMatchObject({ error: { code: 'agent_unavailable' } });
+			expect(orchestrator.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('sends the decision to a worker', async () => {
+			const { decide, remoteTurns } = makeService();
+			remoteTurns.result.mockResolvedValue({ outcome: 'done', result: { status: 200, body: {} } });
+
+			await decide({ approved: true });
+
+			expect(remoteTurns.result).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'webhook-decide',
+					conversationId: 'c-1',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					decision: expect.objectContaining({ approved: true }),
+				}),
+				expect.any(AbortSignal),
+			);
+		});
+
+		it('runs a message on the worker and stores the reply as JSON', async () => {
+			const { remoteTurns, orchestrator } = makeService();
+			const handler = remoteTurns.handle.mock.calls.find(
+				([kind]) => kind === 'webhook-respond',
+			)?.[1];
+			if (handler?.mode !== 'result') throw new Error('No result handler');
+
+			const result = await handler.run(
+				{
+					kind: 'webhook-respond',
+					agentId: 'agent-1',
+					input: 'Hi',
+					approvalBaseUrl: 'https://n8n.example.com/agent-webhook/agent-1',
+				} as never,
+				{ requestId: 'request-1', abortSignal: new AbortController().signal },
+			);
+
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalledOnce();
+			expect(result).toMatchObject({ status: 200 });
+			expect(JSON.stringify(result.body)).toContain('"text":"Hello"');
+		});
 	});
 });

@@ -39,6 +39,7 @@ import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
 import type { UserRepository } from '@n8n/db';
@@ -133,15 +134,17 @@ function makeController() {
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 		plans,
 		new AgentChatResumeService(
-			mockLogger(),
-			testCluster(),
-			mock<AgentTurnPlacement>({ workersAvailable: async () => false }),
-			mock<AgentTurnQueue>(),
-			mock<AgentTurnRequestRepository>(),
-			previewStreams,
 			mock<UserRepository>(),
 			agentTestRunService,
 			agentExecutionOrchestratorService,
+			new AgentRemoteTurnService(
+				mockLogger(),
+				testCluster(),
+				mock<AgentTurnPlacement>({ dispatchEnabled: false }),
+				mock<AgentTurnQueue>(),
+				mock<AgentTurnRequestRepository>(),
+				previewStreams,
+			),
 		),
 	);
 

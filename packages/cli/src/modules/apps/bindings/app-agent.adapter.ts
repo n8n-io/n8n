@@ -1,12 +1,11 @@
 import type {
 	AgentChatMessagesResponse,
-	AgentSseEvent,
 	AppAgentBinding,
 	AppAgentChatRequest,
 	AppAgentResumeRequest,
 	AppDescribedAgentBinding,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
 import {
 	AppAgentPort,
 	AppRuntimeError,
@@ -15,15 +14,10 @@ import {
 } from '@n8n/backend-module-apps';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
-import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
+import { toResumeJson } from '@/modules/agents/queue/agent-turn-request.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
-
-/** `integrationType` and execution `source` of turns that an app starts. */
-export const APP_AGENT_INTEGRATION_TYPE = 'app';
-
-const VISITOR_ERROR_MESSAGE = 'The agent could not answer.';
 
 interface BoundAgent {
 	agentId: string;
@@ -36,24 +30,21 @@ async function agentServices() {
 	const [
 		{ AgentsService },
 		{ AgentExecutionOrchestratorService },
+		{ AgentAppTurnService },
 		{ N8NCheckpointStorage },
-		{ hashAgentSandboxPrincipal },
-		{ emitChunkEvents },
 		{ withOpenSuspensions },
 	] = await Promise.all([
 		import('@/modules/agents/agents.service.js'),
 		import('@/modules/agents/agent-execution-orchestrator.service.js'),
+		import('@/modules/agents/agent-app-turn.service.js'),
 		import('@/modules/agents/integrations/n8n-checkpoint-storage.js'),
-		import('@/modules/agents/agent-sandbox-principal.js'),
-		import('@/modules/agents/agent-sse-stream.js'),
 		import('@/modules/agents/utils/messages-envelope.js'),
 	]);
 	return {
 		agents: Container.get(AgentsService),
 		orchestrator: Container.get(AgentExecutionOrchestratorService),
+		turns: Container.get(AgentAppTurnService),
 		checkpoints: Container.get(N8NCheckpointStorage),
-		hashAgentSandboxPrincipal,
-		emitChunkEvents,
 		withOpenSuspensions,
 	};
 }
@@ -67,13 +58,12 @@ async function agentPublishService() {
  * Agent chat for app bindings. Runs act as the app project. Memory is scoped to
  * the app and the visitor, so a visitor never reads another visitor's thread.
  * Background tasks are off: a background job wake cannot reach an app visitor.
+ * This adapter checks the binding and the visitor. `AgentAppTurnService` runs
+ * the turn, on an agent worker in agent queue mode.
  */
 @Service()
 export class AppAgentAdapter extends AppAgentPort {
-	constructor(
-		private readonly moduleRegistry: ModuleRegistry,
-		private readonly logger: Logger,
-	) {
+	constructor(private readonly moduleRegistry: ModuleRegistry) {
 		super();
 	}
 
@@ -152,21 +142,18 @@ export class AppAgentAdapter extends AppAgentPort {
 			);
 		}
 
-		const stream = services.orchestrator.executeForChatPublished({
-			agentId: bound.agentId,
-			projectId: bound.projectId,
-			message: request.message,
-			memory,
-			integrationType: APP_AGENT_INTEGRATION_TYPE,
-			allowBackgroundTasks: false,
-			sandboxPrincipalHash: services.hashAgentSandboxPrincipal({
-				type: 'project-session',
+		const events = services.turns.events(
+			{
+				kind: 'app-chat',
+				agentId: bound.agentId,
 				projectId: bound.projectId,
-				sessionId: memory.threadId,
-			}),
-			abortSignal: signal,
-		});
-		return { events: this.toEvents(stream, request.sessionId, services.emitChunkEvents) };
+				sessionId: request.sessionId,
+				message: request.message,
+				memory,
+			},
+			signal,
+		);
+		return { events };
 	}
 
 	/** `expectedMemory` stops a visitor from resuming a run on another thread. */
@@ -181,20 +168,20 @@ export class AppAgentAdapter extends AppAgentPort {
 		this.requirePublished(bound);
 		const { threadId } = this.memoryScope(ctx, bound, request.sessionId);
 
-		const stream = services.orchestrator.resumeForChat({
-			agentId: bound.agentId,
-			projectId: bound.projectId,
-			runId: request.runId,
-			toolCallId: request.toolCallId,
-			resumeData: request.resumeData,
-			usePublishedVersion: true,
-			integrationType: APP_AGENT_INTEGRATION_TYPE,
-			allowBackgroundTasks: false,
-			expectedMemory: { threadId },
-			source: APP_AGENT_INTEGRATION_TYPE,
-			abortSignal: signal,
-		});
-		return { events: this.toEvents(stream, request.sessionId, services.emitChunkEvents) };
+		const events = services.turns.events(
+			{
+				kind: 'app-resume',
+				agentId: bound.agentId,
+				projectId: bound.projectId,
+				sessionId: request.sessionId,
+				runId: request.runId,
+				toolCallId: request.toolCallId,
+				resumeData: toResumeJson(request.resumeData),
+				threadId,
+			},
+			signal,
+		);
+		return { events };
 	}
 
 	/** An unknown session reads as empty, so the app cannot learn which sessions exist. */
@@ -251,39 +238,5 @@ export class AppAgentAdapter extends AppAgentPort {
 	private memoryScope(ctx: AppCallContext, bound: BoundAgent, sessionId: string) {
 		const resourceId = `app:${ctx.appId}:user:${ctx.userId}`;
 		return { threadId: `${bound.agentId}:${resourceId}:${sessionId}`, resourceId };
-	}
-
-	private async *toEvents(
-		stream: AsyncGenerator<AgentExecutionStreamChunk>,
-		sessionId: string,
-		emitChunkEvents: (
-			chunk: AgentExecutionStreamChunk,
-			send: (event: AgentSseEvent) => void,
-		) => void,
-	): AsyncGenerator<AgentSseEvent> {
-		const pending: AgentSseEvent[] = [];
-		const push = (event: AgentSseEvent) => pending.push(event);
-		let suspended = false;
-		try {
-			for await (const chunk of stream) {
-				emitChunkEvents(
-					chunk.type === 'error'
-						? { type: 'error', error: new Error(this.messageForVisitor(chunk.error)) }
-						: chunk,
-					push,
-				);
-				suspended ||= chunk.type === 'tool-call-suspended';
-				yield* pending.splice(0);
-			}
-			if (!suspended) yield { type: 'done', sessionId };
-		} catch (error) {
-			yield { type: 'error', message: this.messageForVisitor(error) };
-		}
-	}
-
-	private messageForVisitor(error: unknown): string {
-		if (error instanceof UserError) return error.message;
-		this.logger.error('App agent turn failed.', { error });
-		return VISITOR_ERROR_MESSAGE;
 	}
 }

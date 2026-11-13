@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_turn_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(32) NOT NULL, "payload" text NOT NULL, "claimedBy" varchar(64), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
+CREATE TABLE "agent_turn_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(32) NOT NULL, "payload" text NOT NULL, "claimedBy" varchar(64), "result" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')))
 ```
 
 </details>
@@ -20,6 +20,7 @@ CREATE TABLE "agent_turn_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind"
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(32) |  | false |  |  |  |
 | payload | TEXT |  | false |  |  |  |
+| result | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
@@ -47,6 +48,7 @@ erDiagram
   varchar_36_ id PK
   varchar_32_ kind
   TEXT payload
+  TEXT result
   datetime_3_ updatedAt
 }
 ```

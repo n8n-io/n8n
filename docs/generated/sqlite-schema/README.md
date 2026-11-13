@@ -37,7 +37,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
-| [agent_turn_request](agent_turn_request.md) | 6 |  | table |
+| [agent_turn_request](agent_turn_request.md) | 7 |  | table |
 | [agent_version_skill_dependency](agent_version_skill_dependency.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
 | [agents](agents.md) | 19 |  | table |
@@ -848,6 +848,7 @@ erDiagram
   varchar_36_ id PK
   varchar_32_ kind
   TEXT payload
+  TEXT result
   datetime_3_ updatedAt
 }
 "agent_version_skill_dependency" {

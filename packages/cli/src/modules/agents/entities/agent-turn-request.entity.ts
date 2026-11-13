@@ -1,5 +1,6 @@
 import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
+import type { JsonObject } from 'n8n-workflow';
 
 import type { AgentTurnRequestPayload } from '../queue/agent-turn-request.types';
 
@@ -26,4 +27,10 @@ export class AgentTurnRequest extends WithTimestamps {
 		comment: 'Instance key of the process that claimed the turn; NULL means pending',
 	})
 	claimedBy: string | null;
+
+	@JsonColumn({
+		nullable: true,
+		comment: 'Outcome of a turn whose caller waits for one reply; NULL until the turn ends',
+	})
+	result: JsonObject | null;
 }

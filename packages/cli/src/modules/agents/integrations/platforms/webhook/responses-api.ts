@@ -18,6 +18,7 @@ const ERROR_TYPES = {
 	404: 'not_found_error',
 	409: 'conflict_error',
 	500: 'server_error',
+	503: 'server_error',
 } as const;
 
 export type WebhookChannelErrorStatus = keyof typeof ERROR_TYPES;

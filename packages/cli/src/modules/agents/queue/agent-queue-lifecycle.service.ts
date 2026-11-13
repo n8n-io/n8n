@@ -5,8 +5,11 @@ import { AgentsConfig } from '@n8n/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
+import { AgentAppTurnService } from '../agent-app-turn.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
+import { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
+import { AgentRemoteTurnService } from './agent-remote-turn.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
 
@@ -27,10 +30,15 @@ export class AgentQueueLifecycle {
 		private readonly placement: AgentTurnPlacement,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly consumer: AgentMessageQueueConsumer,
-		private readonly chatResume: AgentChatResumeService,
+		private readonly remoteTurns: AgentRemoteTurnService,
 		private readonly registry: InstanceRegistryProxyService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
+		// Each of these registers the request kinds it runs when it is built, so a
+		// worker must build them before it pulls request jobs.
+		_chatResume: AgentChatResumeService,
+		_webhookChannel: WebhookChannelService,
+		_appTurns: AgentAppTurnService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -38,6 +46,7 @@ export class AgentQueueLifecycle {
 	async startOnMain(): Promise<void> {
 		if (!this.placement.dispatchEnabled) return;
 		await this.turnQueue.init();
+		this.remoteTurns.removeStaleRequests();
 		await this.advertise(AGENT_QUEUE_DISPATCH_CAPABILITY);
 		this.logger.info('Agent queue mode is on. This main sends agent turns to agent workers.');
 	}
@@ -49,7 +58,7 @@ export class AgentQueueLifecycle {
 		const concurrency = this.agentsConfig.workerConcurrency;
 		this.turnQueue.process(concurrency, {
 			drain: async ({ threadId }) => await this.consumer.drainForJob(threadId),
-			request: async ({ requestId }) => await this.chatResume.runRequest(requestId),
+			request: async ({ requestId }) => await this.remoteTurns.runRequest(requestId),
 		});
 		await this.advertise(AGENT_TURNS_CAPABILITY);
 		this.logger.info('This worker runs agent turns', { concurrency });

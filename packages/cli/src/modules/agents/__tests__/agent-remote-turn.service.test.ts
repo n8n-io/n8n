@@ -1,0 +1,216 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
+import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
+import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
+import type {
+	AgentTurnRequestPayload,
+	AgentWebhookRespondRequest,
+} from '../queue/agent-turn-request.types';
+import type {
+	AgentTurnRequestRepository,
+	AgentTurnRequestState,
+} from '../repositories/agent-turn-request.repository';
+import { testCluster } from './test-utils/cluster';
+
+// The main polls with `sleep`. A virtual clock steps through the timeouts without waiting.
+let now = 0;
+vi.mock('node:timers/promises', () => ({
+	setTimeout: vi.fn(async (ms: number) => {
+		now += ms;
+		await new Promise((resolve) => setImmediate(resolve));
+	}),
+}));
+
+const payload: AgentWebhookRespondRequest = {
+	kind: 'webhook-respond',
+	agentId: 'agent-1',
+	input: 'Hi',
+	approvalBaseUrl: 'https://n8n.example.com/agent-webhook/agent-1',
+};
+
+/** An in-memory `agent_turn_request` table. */
+function fakeRequests() {
+	const rows = new Map<string, AgentTurnRequestState & { payload: AgentTurnRequestPayload }>();
+	const requests = mock<AgentTurnRequestRepository>();
+	requests.createPending.mockImplementation(async (id, value) => {
+		rows.set(id, { payload: value, claimedBy: null, result: null });
+	});
+	requests.claim.mockImplementation(async (id, key) => {
+		const row = rows.get(id);
+		if (!row || row.claimedBy !== null) return null;
+		row.claimedBy = key;
+		return row.payload;
+	});
+	requests.isPending.mockImplementation(async (id) => rows.get(id)?.claimedBy === null);
+	requests.findState.mockImplementation(async (id) => {
+		const row = rows.get(id);
+		return row ? { claimedBy: row.claimedBy, result: row.result } : null;
+	});
+	requests.complete.mockImplementation(async (id, result) => {
+		const row = rows.get(id);
+		if (row) row.result = result;
+	});
+	requests.remove.mockImplementation(async (id) => {
+		rows.delete(id);
+	});
+	requests.removeOlderThan.mockResolvedValue(0);
+	return { requests, rows };
+}
+
+describe('AgentRemoteTurnService', () => {
+	let turnQueue: ReturnType<typeof mock<AgentTurnQueue>>;
+	let requests: ReturnType<typeof mock<AgentTurnRequestRepository>>;
+	let rows: ReturnType<typeof fakeRequests>['rows'];
+
+	/** One process. Processes made by one test share the queue and the table. */
+	function setup({
+		workers = true,
+		instanceKey = 'main-a',
+		activeInstanceKeys = ['main-a', 'worker-a'],
+	}: { workers?: boolean; instanceKey?: string; activeInstanceKeys?: string[] } = {}) {
+		return new AgentRemoteTurnService(
+			mockLogger(),
+			testCluster({ instanceKey, activeInstanceKeys }),
+			mock<AgentTurnPlacement>({ dispatchEnabled: true, workersAvailable: async () => workers }),
+			turnQueue,
+			requests,
+			mock<AgentQueuedTestStreamService>(),
+		);
+	}
+
+	beforeEach(() => {
+		turnQueue = mock<AgentTurnQueue>();
+		({ requests, rows } = fakeRequests());
+		now = 1_000_000;
+		vi.spyOn(Date, 'now').mockImplementation(() => now);
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	describe('result', () => {
+		it('runs the turn here when no agent worker is up', async () => {
+			const service = setup({ workers: false });
+
+			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
+				outcome: 'local',
+			});
+			expect(requests.createPending).not.toHaveBeenCalled();
+		});
+
+		it('returns the result that a worker stores, and removes the row', async () => {
+			const main = setup();
+			const worker = setup({ instanceKey: 'worker-a' });
+			const run = vi.fn(async () => ({ status: 200, body: { ok: true } }));
+			worker.handle('webhook-respond', { mode: 'result', run });
+			turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
+				setImmediate(() => {
+					worker.runRequest(requestId).catch(() => {});
+				});
+			});
+
+			const outcome = await main.result(payload, new AbortController().signal);
+
+			expect(outcome).toEqual({ outcome: 'done', result: { status: 200, body: { ok: true } } });
+			expect(run).toHaveBeenCalledWith(
+				payload,
+				expect.objectContaining({ requestId: expect.any(String) }),
+			);
+			expect(rows.size).toBe(0);
+		});
+
+		it('claims the turn itself when no worker claims it in time', async () => {
+			const service = setup();
+
+			const outcome = await service.result(payload, new AbortController().signal);
+
+			expect(outcome).toEqual({ outcome: 'local' });
+			expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentTurnPlacement.FALLBACK_WAIT_MS);
+			expect(requests.claim).toHaveBeenCalledWith(expect.any(String), 'main-a');
+		});
+
+		it('runs the turn itself when the job cannot be sent', async () => {
+			const service = setup();
+			turnQueue.enqueueRequest.mockRejectedValue(new Error('Redis unavailable'));
+
+			await expect(service.result(payload, new AbortController().signal)).resolves.toEqual({
+				outcome: 'local',
+			});
+		});
+
+		it('reports a lost worker when the worker that claimed the turn leaves the registry', async () => {
+			const service = setup({ activeInstanceKeys: ['main-a'] });
+			turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
+				await requests.claim(requestId, 'worker-gone');
+			});
+
+			const outcome = await service.result(payload, new AbortController().signal);
+
+			expect(outcome).toEqual({ outcome: 'lost' });
+			expect(rows.size).toBe(0);
+		});
+
+		it('removes the row when the caller leaves, so the worker stops the turn', async () => {
+			const service = setup();
+			const abort = new AbortController();
+			turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
+				await requests.claim(requestId, 'worker-a');
+				setImmediate(() => abort.abort());
+			});
+
+			await expect(service.result(payload, abort.signal)).resolves.toEqual({ outcome: 'left' });
+			expect(rows.size).toBe(0);
+		});
+	});
+
+	describe('runRequest', () => {
+		it('does nothing when another process claimed the request', async () => {
+			const service = setup({ instanceKey: 'worker-a' });
+			const run = vi.fn();
+			service.handle('webhook-respond', { mode: 'result', run });
+			await requests.createPending('request-1', payload);
+			await requests.claim('request-1', 'main-a');
+
+			await service.runRequest('request-1');
+
+			expect(run).not.toHaveBeenCalled();
+		});
+
+		it('drops a request of a kind that this process cannot run', async () => {
+			const service = setup({ instanceKey: 'worker-a' });
+			await requests.createPending('request-1', payload);
+
+			await service.runRequest('request-1');
+
+			expect(rows.size).toBe(0);
+		});
+
+		it('aborts the turn when the main removes the row', async () => {
+			vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+			try {
+				const service = setup({ instanceKey: 'worker-a' });
+				let signal: AbortSignal | undefined;
+				service.handle('webhook-respond', {
+					mode: 'result',
+					run: async (_, context) => {
+						signal = context.abortSignal;
+						rows.delete('request-1');
+						await vi.advanceTimersByTimeAsync(AgentRemoteTurnService.WANTED_CHECK_INTERVAL_MS);
+						return {};
+					},
+				});
+				await requests.createPending('request-1', payload);
+
+				await service.runRequest('request-1');
+
+				expect(signal?.aborted).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+});

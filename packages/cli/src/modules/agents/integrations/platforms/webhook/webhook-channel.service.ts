@@ -13,7 +13,7 @@ import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
-import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, type INodeParameters, type JsonObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -25,6 +25,12 @@ import { hashAgentSandboxPrincipal } from '../../../agent-sandbox-principal';
 import { AgentTurnAlreadyRunningError } from '../../../agent-turn-already-running.error';
 import { AgentsSettingsService } from '../../../agents-settings.service';
 import type { ProjectAgent } from '../../../entities/agent.entity';
+import { AgentRemoteTurnService } from '../../../queue/agent-remote-turn.service';
+import {
+	toResumeJson,
+	type AgentWebhookDecideRequest,
+	type AgentWebhookRespondRequest,
+} from '../../../queue/agent-turn-request.types';
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	findPendingStandardApproval,
@@ -61,6 +67,17 @@ interface WebhookConversation {
 
 type Suspension = Extract<AgentExecutionStreamChunk, { type: 'tool-call-suspended' }>;
 
+/** A worker stores the reply as JSON, so the status and the body reach the main intact. */
+const toResultJson = (reply: WebhookChannelReply): JsonObject =>
+	jsonParse<JsonObject>(JSON.stringify({ status: reply.status, body: reply.body ?? null }));
+
+const LOST_TURN_ERROR = () =>
+	new WebhookChannelError(
+		503,
+		'agent_unavailable',
+		'The agent stopped before it could answer. Send the request again.',
+	);
+
 const approvalNotFound = () =>
 	new WebhookChannelError(
 		404,
@@ -74,6 +91,10 @@ const approvalNotFound = () =>
  * rejects a second turn while one runs in the same conversation. An action that
  * needs approval stops the run, and the reply gives a URL for the decision. New
  * input in the conversation cancels the action instead.
+ *
+ * In agent queue mode, the main that serves the request checks the caller and
+ * the body, then an agent worker runs the turn and stores the reply. No
+ * credential or header leaves the main.
  */
 @Service()
 export class WebhookChannelService {
@@ -88,7 +109,19 @@ export class WebhookChannelService {
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly urlService: UrlService,
 		private readonly logger: Logger,
-	) {}
+		private readonly remoteTurns: AgentRemoteTurnService,
+	) {
+		this.remoteTurns.handle('webhook-respond', {
+			mode: 'result',
+			run: async (payload, { abortSignal }) =>
+				toResultJson(await this.runRespond(payload, abortSignal)),
+		});
+		this.remoteTurns.handle('webhook-decide', {
+			mode: 'result',
+			run: async (payload, { abortSignal }) =>
+				toResultJson(await this.runDecide(payload, abortSignal)),
+		});
+	}
 
 	async respond(request: {
 		agentId: string;
@@ -96,10 +129,36 @@ export class WebhookChannelService {
 		body: unknown;
 		abortSignal: AbortSignal;
 	}): Promise<WebhookChannelReply> {
-		return await this.reply(request.abortSignal, async () => {
+		let payload: AgentWebhookRespondRequest;
+		try {
 			const { agent, channel } = await this.findChannel(request.agentId);
 			await this.authenticate(agent, channel, request.headers);
 			const { input, conversationId } = parseResponsesRequest(request.body);
+			payload = {
+				kind: 'webhook-respond',
+				agentId: agent.id,
+				input,
+				conversationId,
+				approvalBaseUrl: this.urlService.getAgentWebhookUrl(agent.id),
+			};
+		} catch (error) {
+			return this.errorReply(request.abortSignal, error);
+		}
+		return await this.dispatch(
+			payload,
+			request.abortSignal,
+			async () => await this.runRespond(payload, request.abortSignal),
+		);
+	}
+
+	/** Runs one webhook message in this process. The caller is already authenticated. */
+	async runRespond(
+		payload: AgentWebhookRespondRequest,
+		abortSignal: AbortSignal,
+	): Promise<WebhookChannelReply> {
+		const { input, conversationId, approvalBaseUrl } = payload;
+		return await this.reply(abortSignal, approvalBaseUrl, async () => {
+			const agent = await this.findPublishedAgent(payload.agentId);
 			const conversation = await this.resolveConversation(agent.id, conversationId);
 			// A caller that lost the reply has no approval URL, so new input drops the waiting action.
 			// The next history load marks the action as not done.
@@ -120,7 +179,7 @@ export class WebhookChannelService {
 				}),
 				// A background job wake has no way to reach the caller.
 				allowBackgroundTasks: false,
-				abortSignal: request.abortSignal,
+				abortSignal,
 			});
 			return {
 				agent,
@@ -151,12 +210,40 @@ export class WebhookChannelService {
 		body: unknown;
 		abortSignal: AbortSignal;
 	}): Promise<WebhookChannelReply> {
-		return await this.reply(request.abortSignal, async () => {
+		let payload: AgentWebhookDecideRequest;
+		try {
 			const { agent, channel } = await this.findChannel(request.agentId);
 			await this.authenticate(agent, channel, request.headers);
-			const conversation = await this.resolveConversation(agent.id, request.conversationId);
-			const decision = parseApprovalDecision(request.body);
-			const { runId, toolCallId } = request;
+			payload = {
+				kind: 'webhook-decide',
+				agentId: agent.id,
+				conversationId: request.conversationId,
+				runId: request.runId,
+				toolCallId: request.toolCallId,
+				decision: toResumeJson(parseApprovalDecision(request.body)),
+				approvalBaseUrl: this.urlService.getAgentWebhookUrl(agent.id),
+			};
+		} catch (error) {
+			return this.errorReply(request.abortSignal, error);
+		}
+		return await this.dispatch(
+			payload,
+			request.abortSignal,
+			async () => await this.runDecide(payload, request.abortSignal),
+		);
+	}
+
+	/** Runs one approval decision in this process. The caller is already authenticated. */
+	async runDecide(
+		payload: AgentWebhookDecideRequest,
+		abortSignal: AbortSignal,
+	): Promise<WebhookChannelReply> {
+		return await this.reply(abortSignal, payload.approvalBaseUrl, async () => {
+			const agent = await this.findPublishedAgent(payload.agentId);
+			const conversation = await this.resolveConversation(agent.id, payload.conversationId);
+			// The main parsed the decision, so this parse only restores its type.
+			const decision = parseApprovalDecision(payload.decision);
+			const { runId, toolCallId } = payload;
 			const pending = { agentId: agent.id, conversation, runId, toolCallId };
 			const approval = await this.findPendingApproval(pending);
 			if (!approval) throw approvalNotFound();
@@ -178,7 +265,7 @@ export class WebhookChannelService {
 				// The resume rejects a run of another conversation.
 				expectedMemory: conversation.memory,
 				allowBackgroundTasks: false,
-				abortSignal: request.abortSignal,
+				abortSignal,
 			});
 			return {
 				agent,
@@ -196,9 +283,40 @@ export class WebhookChannelService {
 		});
 	}
 
+	/**
+	 * Runs the turn on an agent worker when one is up, else in this process. A
+	 * worker that leaves before it stores the reply gives a 503, because the
+	 * turn runs at most once.
+	 */
+	private async dispatch(
+		payload: AgentWebhookRespondRequest | AgentWebhookDecideRequest,
+		abortSignal: AbortSignal,
+		runHere: () => Promise<WebhookChannelReply>,
+	): Promise<WebhookChannelReply> {
+		const remote = await this.remoteTurns.result(payload, abortSignal);
+		switch (remote.outcome) {
+			case 'local':
+				return await runHere();
+			case 'done':
+				return { status: Number(remote.result.status), body: remote.result.body ?? null };
+			case 'left':
+				return { status: 500, body: null };
+			case 'lost':
+				return this.errorReply(abortSignal, LOST_TURN_ERROR());
+		}
+	}
+
+	private errorReply(abortSignal: AbortSignal, error: unknown): WebhookChannelReply {
+		// The caller left, so nothing reads the reply, and the abort is not a failure.
+		if (abortSignal.aborted) return { status: 500, body: null };
+		const channelError = this.toChannelError(error);
+		return { status: channelError.status, body: channelError.toBody() };
+	}
+
 	/** Reads the run that `start` begins or resumes, and renders the reply or the error. */
 	private async reply(
 		abortSignal: AbortSignal,
+		approvalBaseUrl: string,
 		start: () => Promise<{
 			agent: ProjectAgent;
 			conversation: WebhookConversation;
@@ -208,7 +326,12 @@ export class WebhookChannelService {
 		const createdAt = new Date();
 		try {
 			const { agent, conversation, stream } = await start();
-			const { text, approvals } = await this.finishTurn(agent.id, conversation, stream);
+			const { text, approvals } = await this.finishTurn(
+				agent.id,
+				conversation,
+				stream,
+				approvalBaseUrl,
+			);
 			return {
 				status: 200,
 				body: toResponseBody({
@@ -219,11 +342,17 @@ export class WebhookChannelService {
 				}),
 			};
 		} catch (error) {
-			// The caller left, so nothing reads the reply, and the abort is not a failure.
-			if (abortSignal.aborted) return { status: 500, body: null };
-			const channelError = this.toChannelError(error);
-			return { status: channelError.status, body: channelError.toBody() };
+			return this.errorReply(abortSignal, error);
 		}
+	}
+
+	/** The main checked the channel. A worker only checks that the agent is still published. */
+	private async findPublishedAgent(agentId: string): Promise<ProjectAgent> {
+		const agent = await this.agentRepository.findById(agentId);
+		if (!agent || agent.activeVersionId === null) {
+			throw new WebhookChannelError(404, 'agent_not_found', 'No published agent with this URL');
+		}
+		return agent;
 	}
 
 	private async findChannel(agentId: string) {
@@ -315,6 +444,7 @@ export class WebhookChannelService {
 		agentId: string,
 		conversation: WebhookConversation,
 		stream: AsyncIterable<AgentExecutionStreamChunk>,
+		approvalBaseUrl: string,
 	): Promise<{ text: string; approvals: WebhookApprovalRequest[] }> {
 		const { text, suspensions } = await this.readSegment(stream);
 		const approvals: WebhookApprovalRequest[] = [];
@@ -332,7 +462,7 @@ export class WebhookChannelService {
 				toolCallId: suspension.toolCallId,
 				payload,
 				url: [
-					this.urlService.getAgentWebhookUrl(agentId),
+					approvalBaseUrl,
 					'approvals',
 					...[conversation.id, suspension.runId, suspension.toolCallId].map(encodeURIComponent),
 				].join('/'),

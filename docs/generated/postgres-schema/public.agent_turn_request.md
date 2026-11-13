@@ -9,6 +9,7 @@
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(32) |  | false |  |  | Kind of turn, for example chat-resume |
 | payload | json |  | false |  |  | Input of the turn and the identity that runs it |
+| result | json |  | true |  |  | Outcome of a turn whose caller waits for one reply; NULL until the turn ends |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -40,6 +41,7 @@ erDiagram
   varchar_36_ id
   varchar_32_ kind
   json payload
+  json result
   timestamp_3__with_time_zone updatedAt
 }
 ```

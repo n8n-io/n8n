@@ -4,8 +4,7 @@ import { jsonParse } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import type { Publisher, Subscriber } from '@n8n/backend-services';
 
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -13,9 +12,13 @@ import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.servic
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentStreamChannel } from '../queue/agent-stream-channel.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
+import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
-import type { AgentChatResumeRequest } from '../queue/agent-turn-request.types';
+import type {
+	AgentChatResumeRequest,
+	AgentTurnRequestPayload,
+} from '../queue/agent-turn-request.types';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
 import { testCluster } from './test-utils/cluster';
@@ -78,13 +81,18 @@ describe('AgentChatResumeService', () => {
 	let userRepository: ReturnType<typeof mock<UserRepository>>;
 	let testRuns: ReturnType<typeof mock<AgentTestRunService>>;
 	let service: AgentChatResumeService;
+	let remoteTurns: AgentRemoteTurnService;
 
 	function setup({ workers }: { workers: boolean }) {
-		placement = mock<AgentTurnPlacement>({ workersAvailable: async () => workers });
+		placement = mock<AgentTurnPlacement>({
+			dispatchEnabled: true,
+			workersAvailable: async () => workers,
+		});
 		turnQueue = mock<AgentTurnQueue>();
 		requests = mock<AgentTurnRequestRepository>();
 		requests.removeOlderThan.mockResolvedValue(0);
 		requests.remove.mockResolvedValue();
+		requests.findState.mockResolvedValue({ claimedBy: 'instance-a', result: null });
 		userRepository = mock<UserRepository>();
 		userRepository.findByIdWithRole.mockResolvedValue(user);
 		testRuns = mock<AgentTestRunService>();
@@ -102,16 +110,19 @@ describe('AgentChatResumeService', () => {
 			mock<Subscriber>(),
 			mock<AgentStreamChannel>({ enabled: false }),
 		);
-		service = new AgentChatResumeService(
+		remoteTurns = new AgentRemoteTurnService(
 			mockLogger(),
 			testCluster({ instanceKey: 'instance-a' }),
 			placement,
 			turnQueue,
 			requests,
 			streams,
+		);
+		service = new AgentChatResumeService(
 			userRepository,
 			testRuns,
 			mock<AgentExecutionOrchestratorService>(),
+			remoteTurns,
 		);
 	}
 
@@ -139,7 +150,7 @@ describe('AgentChatResumeService', () => {
 
 	it('relays the events of a worker that claims the request', async () => {
 		setup({ workers: true });
-		const pending = new Map<string, AgentChatResumeRequest>();
+		const pending = new Map<string, AgentTurnRequestPayload>();
 		requests.createPending.mockImplementation(async (id, payload) => {
 			pending.set(id, payload);
 		});
@@ -151,7 +162,9 @@ describe('AgentChatResumeService', () => {
 		requests.isPending.mockImplementation(async (id) => pending.has(id));
 		turnQueue.enqueueRequest.mockImplementation(async (requestId) => {
 			// The worker picks the job up after the main starts to wait.
-			setImmediate(() => void service.runRequest(requestId));
+			setImmediate(() => {
+				remoteTurns.runRequest(requestId).catch(() => {});
+			});
 		});
 		const writes: string[] = [];
 
@@ -201,7 +214,7 @@ describe('AgentChatResumeService', () => {
 		expect(requests.claim).not.toHaveBeenCalled();
 		const events = sentEvents(writes);
 		expect(events).toEqual([expect.objectContaining({ type: 'error' })]);
-		expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentChatResumeService.RELAY_TIMEOUT_MS);
+		expect(now - 1_000_000).toBeGreaterThanOrEqual(AgentRemoteTurnService.RELAY_TIMEOUT_MS);
 	});
 
 	describe('runRequest', () => {
@@ -209,7 +222,7 @@ describe('AgentChatResumeService', () => {
 			setup({ workers: true });
 			requests.claim.mockResolvedValue(null);
 
-			await service.runRequest('request-1');
+			await remoteTurns.runRequest('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 			expect(requests.remove).not.toHaveBeenCalled();
@@ -220,7 +233,7 @@ describe('AgentChatResumeService', () => {
 			requests.claim.mockResolvedValue(request);
 			userRepository.findByIdWithRole.mockResolvedValue(null);
 
-			await service.runRequest('request-1');
+			await remoteTurns.runRequest('request-1');
 
 			expect(testRuns.resumePreparedDraftRun).not.toHaveBeenCalled();
 			expect(requests.remove).toHaveBeenCalledWith('request-1');

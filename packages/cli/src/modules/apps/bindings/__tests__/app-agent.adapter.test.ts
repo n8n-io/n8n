@@ -6,10 +6,12 @@ import { Container } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
+import { AgentAppTurnService } from '@/modules/agents/agent-app-turn.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import type { AgentRemoteTurnService } from '@/modules/agents/queue/agent-remote-turn.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AppAgentAdapter } from '../app-agent.adapter';
@@ -53,9 +55,19 @@ function setup({ active = true, published = true } = {}) {
 	Container.set(AgentsService, agents);
 	Container.set(AgentExecutionOrchestratorService, orchestrator);
 	Container.set(N8NCheckpointStorage, checkpoints);
+	const remoteTurns = mock<AgentRemoteTurnService>();
+	remoteTurns.canDispatch.mockResolvedValue(false);
+	Container.set(
+		AgentAppTurnService,
+		new AgentAppTurnService(
+			mock<Logger>({ scoped: () => mock<Logger>() }),
+			orchestrator,
+			remoteTurns,
+		),
+	);
 	const moduleRegistry = mock<ModuleRegistry>();
 	moduleRegistry.isActive.mockReturnValue(active);
-	const adapter = new AppAgentAdapter(moduleRegistry, mock<Logger>());
+	const adapter = new AppAgentAdapter(moduleRegistry);
 	return { adapter, agents, orchestrator, checkpoints };
 }
 
@@ -63,8 +75,7 @@ describe('AppAgentAdapter', () => {
 	// The adapter imports these lazily. The first import of their module graph is slow.
 	beforeAll(async () => {
 		await Promise.all([
-			import('@/modules/agents/agent-sandbox-principal.js'),
-			import('@/modules/agents/agent-sse-stream.js'),
+			import('@/modules/agents/agent-app-turn.service.js'),
 			import('@/modules/agents/utils/messages-envelope.js'),
 		]);
 	}, 60_000);
@@ -277,18 +288,15 @@ describe('AppAgentAdapter', () => {
 		orchestrator.executeForChatPublished.mockImplementation(async function* () {});
 		const other: AppCallContext = { ...userCtx, userId: 'user-2' };
 
-		await adapter.chat(
-			userCtx,
-			'agent-1',
-			{ message: 'Hi', sessionId: SESSION },
-			new AbortController().signal,
-		);
-		await adapter.chat(
-			other,
-			'agent-1',
-			{ message: 'Hi', sessionId: SESSION },
-			new AbortController().signal,
-		);
+		for (const ctx of [userCtx, other]) {
+			const turn = await adapter.chat(
+				ctx,
+				'agent-1',
+				{ message: 'Hi', sessionId: SESSION },
+				new AbortController().signal,
+			);
+			await collect(turn.events);
+		}
 
 		const [first, second] = orchestrator.executeForChatPublished.mock.calls.map(
 			([config]) => config,
@@ -339,12 +347,13 @@ describe('AppAgentAdapter', () => {
 		const { adapter, orchestrator } = setup();
 		orchestrator.resumeForChat.mockImplementation(async function* () {});
 
-		await adapter.resume(
+		const turn = await adapter.resume(
 			userCtx,
 			'agent-1',
 			{ sessionId: SESSION, runId: 'r1', toolCallId: 't1', resumeData: { approved: true } },
 			new AbortController().signal,
 		);
+		await collect(turn.events);
 
 		expect(orchestrator.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({

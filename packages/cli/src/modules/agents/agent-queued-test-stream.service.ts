@@ -70,7 +70,10 @@ export class AgentQueuedTestStreamService {
 	}
 
 	/** Attach the browser stream to a queue item. Disconnecting detaches delivery only. */
-	subscribe(queueId: string, stream: ReturnType<typeof initSseStream>) {
+	subscribe(
+		queueId: string,
+		stream: Pick<ReturnType<typeof initSseStream>, 'send' | 'abortSignal' | 'close'>,
+	) {
 		const done = createDeferredPromise();
 		const close = () => {
 			this.listeners.delete(queueId);
