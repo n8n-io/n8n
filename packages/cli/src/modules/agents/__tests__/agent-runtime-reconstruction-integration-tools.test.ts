@@ -50,7 +50,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -142,7 +142,6 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<N8NCheckpointStorage>(),
@@ -155,7 +154,7 @@ function makeRuntimeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
