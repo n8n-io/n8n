@@ -20,6 +20,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	createCredentials,
@@ -1188,6 +1189,43 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		});
 		expect(workflow2InDb).toBeDefined();
 		expect(workflow2InDb?.parentFolder?.id).toBe(childFolder.id);
+	});
+
+	test('rolls back workflow and child folder relocation when folder removal fails', async () => {
+		const project = await createTeamProject('test', owner);
+		const source = await createFolder(project);
+		const target = await createFolder(project);
+		const child = await createFolder(project, { parentFolder: source });
+		const workflow = await createWorkflow({ parentFolder: source }, owner);
+		const relocate = folderRepository.relocateChildrenAndDelete.bind(folderRepository);
+		const removal = vi
+			.spyOn(folderRepository, 'relocateChildrenAndDelete')
+			.mockImplementationOnce(async (...args) => {
+				await relocate(...args);
+
+				throw new Error('Folder removal failed');
+			});
+
+		try {
+			await expect(
+				Container.get(FolderService).deleteFolder(owner, source.id, project.id, {
+					transferToFolderId: target.id,
+				}),
+			).rejects.toThrow('Folder removal failed');
+
+			expect(await folderRepository.existsBy({ id: source.id })).toBe(true);
+			expect(await folderRepository.findOneByOrFail({ id: child.id })).toMatchObject({
+				parentFolderId: source.id,
+			});
+			expect(
+				await workflowRepository.findOneOrFail({
+					where: { id: workflow.id },
+					relations: ['parentFolder'],
+				}),
+			).toMatchObject({ parentFolder: { id: source.id }, isArchived: false });
+		} finally {
+			removal.mockRestore();
+		}
 	});
 
 	test('should not transfer folder contents when transfer folder does not exist', async () => {

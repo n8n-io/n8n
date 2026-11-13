@@ -5,18 +5,17 @@ import {
 	type FolderTagMappingRepository,
 	type TransactionRunner,
 	type User,
-	type WorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
-import type { WorkflowService } from '@/workflows/workflow.service';
 import { FolderContentService, type FolderContentHandler } from '../folder-content.service';
 import { FolderService } from '../folder.service';
+import type { WorkflowFolderService } from '../workflow-folder.service';
 
 vi.mock('@/workflows/workflow.service', () => ({ WorkflowService: class {} }));
 
-describe('Agent folder operations', () => {
+describe.each(['workflow', 'agent'] as const)('%s folder operations', (resourceType) => {
 	const user = mock<User>();
 	const repository = mock<FolderRepository>();
 	const handler = mock<FolderContentHandler>();
@@ -27,20 +26,23 @@ describe('Agent folder operations', () => {
 	function folder(
 		id: string,
 		parentFolderId: string | null = null,
-		resourceType: 'agent' | 'workflow' = 'agent',
+		folderResourceType: 'agent' | 'workflow' = resourceType,
 	) {
-		return Object.assign(new Folder(), { id, name: id, parentFolderId, resourceType });
+		return Object.assign(new Folder(), {
+			id,
+			name: id,
+			parentFolderId,
+			resourceType: folderResourceType,
+		});
 	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		const content = new FolderContentService();
-		content.setAgentHandler(handler);
+		const content = new FolderContentService(mock<WorkflowFolderService>());
+		content.register(resourceType, handler);
 		service = new FolderService(
 			repository,
 			mock<FolderTagMappingRepository>(),
-			mock<WorkflowRepository>(),
-			mock<WorkflowService>(),
 			events,
 			content,
 			transactions,
@@ -50,7 +52,7 @@ describe('Agent folder operations', () => {
 		transactions.run.mockImplementation(async (ctx, callback) => await callback(ctx));
 	});
 
-	it('relocates direct Agents and child folders in one transaction', async () => {
+	it('relocates direct contents and child folders in one transaction', async () => {
 		await service.deleteFolder(user, 'source', 'project', { transferToFolderId: PROJECT_ROOT });
 
 		expect(handler.assertAccess).toHaveBeenCalledWith(user, 'project', 'update');
@@ -59,7 +61,7 @@ describe('Agent folder operations', () => {
 		expect(repository.relocateChildrenAndDelete).toHaveBeenCalledWith(
 			'source',
 			'project',
-			'agent',
+			resourceType,
 			null,
 			{},
 		);
@@ -67,7 +69,7 @@ describe('Agent folder operations', () => {
 		expect(handler.moveArchivedToRoot).not.toHaveBeenCalled();
 	});
 
-	it('keeps all folders and memberships when Agent archival fails', async () => {
+	it('keeps all folders and memberships when content archival fails', async () => {
 		handler.archiveContents.mockRejectedValue(new Error('Archive failed'));
 
 		await expect(service.deleteFolder(user, 'source', 'project', {})).rejects.toThrow(
@@ -83,19 +85,24 @@ describe('Agent folder operations', () => {
 		expect(events.emit).not.toHaveBeenCalled();
 	});
 
-	it('archives the subtree before moving its Agents to root and deleting its folders', async () => {
+	it('archives the subtree before moving its contents to root and deleting its folders', async () => {
 		await service.deleteFolder(user, 'source', 'project', {});
 
 		expect(repository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith(
 			'source',
 			'project',
-			'agent',
+			resourceType,
 		);
 		expect(handler.archiveContents).toHaveBeenCalledWith(user, 'project', ['source', 'child']);
 		expect(transactions.run).toHaveBeenCalledOnce();
 		expect(handler.moveArchivedToRoot).toHaveBeenCalledWith('project', ['source', 'child'], {});
 		expect(handler.relocate).not.toHaveBeenCalled();
-		expect(repository.deleteFolderSubtree).toHaveBeenCalledWith('source', 'project', 'agent', {});
+		expect(repository.deleteFolderSubtree).toHaveBeenCalledWith(
+			'source',
+			'project',
+			resourceType,
+			{},
+		);
 		expect(handler.archiveContents.mock.invocationCallOrder[0]).toBeLessThan(
 			handler.moveArchivedToRoot.mock.invocationCallOrder[0],
 		);
@@ -106,7 +113,11 @@ describe('Agent folder operations', () => {
 
 	it('rejects a relocation into the other resource tree before writes', async () => {
 		repository.findOneOrFailFolderInProject.mockImplementation(async (id) =>
-			folder(id, null, id === 'target' ? 'workflow' : 'agent'),
+			folder(
+				id,
+				null,
+				id === 'target' ? (resourceType === 'agent' ? 'workflow' : 'agent') : resourceType,
+			),
 		);
 
 		await expect(
@@ -129,10 +140,27 @@ describe('Agent folder operations', () => {
 
 	it('rejects an invalid folder name before persistence', async () => {
 		await expect(
-			service.createFolder({ name: '../Folder', resourceType: 'agent' }, 'project'),
+			service.createFolder({ name: '../Folder', resourceType }, 'project'),
 		).rejects.toThrow();
 
 		expect(repository.save).not.toHaveBeenCalled();
+	});
+
+	it('counts contents across the subtree for the selected resource type', async () => {
+		handler.directCounts.mockResolvedValue(
+			new Map([
+				['source', 2],
+				['child', 3],
+			]),
+		);
+
+		expect(await service.findFolderWithContentCounts('source', 'project')).toEqual({
+			folder: folder('source'),
+			totalSubFolders: 1,
+			totalWorkflows: resourceType === 'workflow' ? 5 : 0,
+			totalAgents: resourceType === 'agent' ? 5 : 0,
+		});
+		expect(handler.directCounts).toHaveBeenCalledWith('project', ['source', 'child']);
 	});
 
 	describe('folder paths', () => {

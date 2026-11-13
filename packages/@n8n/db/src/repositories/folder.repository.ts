@@ -402,25 +402,6 @@ export class FolderRepository extends Repository<Folder> {
 		});
 	}
 
-	async moveAllToFolder(
-		fromFolderId: string,
-		toFolderId: string,
-		tx: EntityManager,
-	): Promise<void> {
-		await tx.update(
-			Folder,
-			{ parentFolder: { id: fromFolderId } },
-			{
-				parentFolder:
-					toFolderId === PROJECT_ROOT
-						? null
-						: {
-								id: toFolderId,
-							},
-			},
-		);
-	}
-
 	async transferAllFoldersToProject(
 		fromProjectId: string,
 		toProjectId: string,

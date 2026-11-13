@@ -11,13 +11,7 @@ import type {
 	FolderWithWorkflowAndSubFolderCountAndPath,
 	User,
 } from '@n8n/db';
-import {
-	Folder,
-	FolderTagMappingRepository,
-	FolderRepository,
-	TransactionRunner,
-	WorkflowRepository,
-} from '@n8n/db';
+import { Folder, FolderTagMappingRepository, FolderRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -25,7 +19,6 @@ import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
-import { WorkflowService } from '@/workflows/workflow.service';
 import { FolderContentService } from './folder-content.service';
 
 export interface SimpleFolderNode {
@@ -39,8 +32,6 @@ export class FolderService {
 	constructor(
 		private readonly folderRepository: FolderRepository,
 		private readonly folderTagMappingRepository: FolderTagMappingRepository,
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowService: WorkflowService,
 		private readonly eventService: EventService,
 		private readonly folderContentService: FolderContentService,
 		private readonly transactionRunner: TransactionRunner,
@@ -153,9 +144,9 @@ export class FolderService {
 	): Promise<void> {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
-		if (folder.resourceType === 'agent') {
-			await this.folderContentService.getAgentHandler().assertAccess(user, projectId, operation);
-		}
+		await this.folderContentService
+			.getHandler(folder.resourceType)
+			.assertAccess?.(user, projectId, operation);
 	}
 
 	async assertAgentContentAccess(
@@ -163,7 +154,7 @@ export class FolderService {
 		projectId: string,
 		operation: 'read' | 'update' | 'delete',
 	): Promise<void> {
-		await this.folderContentService.getAgentHandler().assertAccess(user, projectId, operation);
+		await this.folderContentService.getHandler('agent').assertAccess?.(user, projectId, operation);
 	}
 
 	async validateDestination(
@@ -222,25 +213,6 @@ export class FolderService {
 		);
 	}
 
-	/**
-	 * Moves all workflows in a folder to the root of the project and archives them,
-	 * flattening the folder structure.
-	 *
-	 * If any workflows were active this will also deactivate those workflows.
-	 */
-	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
-		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
-			folderId,
-			projectId,
-		);
-
-		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, { skipArchived: true });
-		}
-
-		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
-	}
-
 	async deleteFolder(
 		user: User,
 		folderId: string,
@@ -248,29 +220,44 @@ export class FolderService {
 		{ transferToFolderId }: DeleteFolderDto,
 	): Promise<FolderResourceType> {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
+		const handler = this.folderContentService.getHandler(folder.resourceType);
+		await handler.assertAccess?.(user, projectId, transferToFolderId ? 'update' : 'delete');
 
-		if (folder.resourceType === 'agent') {
-			await this.deleteAgentFolder(user, folder, projectId, transferToFolderId);
+		if (transferToFolderId) {
+			await this.validateRelocation(folder, projectId, transferToFolderId);
+			const destination = transferToFolderId === PROJECT_ROOT ? null : transferToFolderId;
 
-			return folder.resourceType;
+			await this.transactionRunner.run({}, async (ctx) => {
+				await handler.relocate(projectId, folder.id, destination, ctx);
+				await this.folderRepository.relocateChildrenAndDelete(
+					folder.id,
+					projectId,
+					folder.resourceType,
+					destination,
+					ctx,
+				);
+			});
+		} else {
+			const descendants = await this.folderRepository.getAllFolderIdsInHierarchy(
+				folder.id,
+				projectId,
+				folder.resourceType,
+			);
+			const folderIds = [folder.id, ...descendants];
+			await handler.archiveContents(user, projectId, folderIds);
+
+			await this.transactionRunner.run({}, async (ctx) => {
+				await handler.moveArchivedToRoot(projectId, folderIds, ctx);
+				await this.folderRepository.deleteFolderSubtree(
+					folder.id,
+					projectId,
+					folder.resourceType,
+					ctx,
+				);
+			});
 		}
 
-		if (!transferToFolderId) {
-			await this.flattenAndArchive(user, folderId, projectId);
-			await this.folderRepository.delete({ id: folderId });
-			this.eventService.emit('folder-deleted', { folderId, projectId });
-
-			return folder.resourceType;
-		}
-
-		await this.validateRelocation(folder, projectId, transferToFolderId);
-
-		await this.folderRepository.manager.transaction(async (tx) => {
-			await this.folderRepository.moveAllToFolder(folderId, transferToFolderId, tx);
-			await this.workflowRepository.moveAllToFolder(folderId, transferToFolderId, tx);
-			await tx.delete(Folder, { id: folderId });
-		});
-		this.eventService.emit('folder-deleted', { folderId, projectId });
+		this.eventService.emit('folder-deleted', { folderId: folder.id, projectId });
 
 		return folder.resourceType;
 	}
@@ -294,47 +281,6 @@ export class FolderService {
 		if (this.isDescendant(folder.id, path)) {
 			throw new UserError('Cannot transfer folder contents to a descendant');
 		}
-	}
-
-	private async deleteAgentFolder(
-		user: User,
-		folder: Folder,
-		projectId: string,
-		targetId?: string,
-	): Promise<void> {
-		const handler = this.folderContentService.getAgentHandler();
-		await handler.assertAccess(user, projectId, targetId ? 'update' : 'delete');
-
-		if (targetId) {
-			await this.validateRelocation(folder, projectId, targetId);
-			const destination = targetId === PROJECT_ROOT ? null : targetId;
-
-			await this.transactionRunner.run({}, async (ctx) => {
-				await handler.relocate(projectId, folder.id, destination, ctx);
-				await this.folderRepository.relocateChildrenAndDelete(
-					folder.id,
-					projectId,
-					'agent',
-					destination,
-					ctx,
-				);
-			});
-		} else {
-			const descendants = await this.folderRepository.getAllFolderIdsInHierarchy(
-				folder.id,
-				projectId,
-				'agent',
-			);
-			const folderIds = [folder.id, ...descendants];
-			await handler.archiveContents(user, projectId, folderIds);
-
-			await this.transactionRunner.run({}, async (ctx) => {
-				await handler.moveArchivedToRoot(projectId, folderIds, ctx);
-				await this.folderRepository.deleteFolderSubtree(folder.id, projectId, 'agent', ctx);
-			});
-		}
-
-		this.eventService.emit('folder-deleted', { folderId: folder.id, projectId });
 	}
 
 	async transferAllFoldersToProject(
@@ -365,76 +311,21 @@ export class FolderService {
 	}> {
 		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
-		if (folder.resourceType === 'agent') {
-			const descendants = await this.folderRepository.getAllFolderIdsInHierarchy(
-				folderId,
-				projectId,
-				'agent',
-			);
-			const counts = await this.folderContentService
-				.getAgentHandler()
-				.directCounts(projectId, [folderId, ...descendants]);
-			const totalAgents = [...counts.values()].reduce((total, count) => total + count, 0);
-
-			return { folder, totalSubFolders: descendants.length, totalWorkflows: 0, totalAgents };
-		}
-
-		const baseQuery = this.folderRepository
-			.createQueryBuilder('folder')
-			.select('folder.id', 'id')
-			.where('folder.id = :folderId', { folderId });
-
-		const recursiveQuery = this.folderRepository
-			.createQueryBuilder('f')
-			.select('f.id', 'id')
-			.innerJoin('folder_path', 'fp', 'f.parentFolderId = fp.id');
-
-		// Count all folders in the hierarchy (excluding the root folder)
-		const subFolderCountQuery = this.folderRepository
-			.createQueryBuilder('folder')
-			.addCommonTableExpression(
-				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
-				'folder_path',
-				{ recursive: true },
-			)
-			.select('COUNT(DISTINCT folder.id) - 1', 'count')
-			.where((qb) => {
-				const subQuery = qb.subQuery().select('fp.id').from('folder_path', 'fp').getQuery();
-				return `folder.id IN ${subQuery}`;
-			})
-			.setParameters({
-				folderId,
-			});
-
-		// Count workflows in the folder and all subfolders
-		const workflowCountQuery = this.workflowRepository
-			.createQueryBuilder('workflow')
-			.select('COUNT(workflow.id)', 'count')
-			.where('workflow.isArchived = :isArchived', { isArchived: false })
-			.andWhere((qb) => {
-				const folderQuery = qb.subQuery().from('folder_path', 'fp').select('fp.id').getQuery();
-				return `workflow.parentFolderId IN ${folderQuery}`;
-			})
-			.addCommonTableExpression(
-				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
-				'folder_path',
-				{ recursive: true },
-			)
-			.setParameters({
-				folderId,
-			});
-
-		// Execute both queries in parallel
-		const [subFolderResult, workflowResult] = await Promise.all([
-			subFolderCountQuery.getRawOne<{ count: string }>(),
-			workflowCountQuery.getRawOne<{ count: string }>(),
-		]);
+		const descendants = await this.folderRepository.getAllFolderIdsInHierarchy(
+			folderId,
+			projectId,
+			folder.resourceType,
+		);
+		const counts = await this.folderContentService
+			.getHandler(folder.resourceType)
+			.directCounts(projectId, [folderId, ...descendants]);
+		const totalContents = [...counts.values()].reduce((total, count) => total + count, 0);
 
 		return {
 			folder,
-			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
-			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
-			totalAgents: 0,
+			totalSubFolders: descendants.length,
+			totalWorkflows: folder.resourceType === 'workflow' ? totalContents : 0,
+			totalAgents: folder.resourceType === 'agent' ? totalContents : 0,
 		};
 	}
 
@@ -469,7 +360,7 @@ export class FolderService {
 		// eslint-disable-next-line prefer-const
 		let [folders, count] = await this.folderRepository.getManyAndCount(options);
 		if (options.resourceType === 'agent' && folders.length > 0) {
-			const counts = await this.folderContentService.getAgentHandler().directCounts(
+			const counts = await this.folderContentService.getHandler('agent').directCounts(
 				projectId,
 				folders.map(({ id }) => id),
 			);

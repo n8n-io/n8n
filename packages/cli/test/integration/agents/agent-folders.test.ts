@@ -43,7 +43,7 @@ beforeEach(async () => {
 	agents = Container.get(AgentRepository);
 	folders = Container.get(FolderRepository);
 	service = Container.get(FolderService);
-	Container.get(FolderContentService).setAgentHandler(Container.get(AgentFolderService));
+	Container.get(FolderContentService).register('agent', Container.get(AgentFolderService));
 	await agents.delete({});
 	await Container.get(AgentThreadRepository).delete({});
 	await testDb.truncate(['Folder', 'ProjectRelation', 'Project']);
