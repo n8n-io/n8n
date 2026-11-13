@@ -225,6 +225,7 @@ function makeRuntime(
 		agentId,
 		telemetryConfiguration: telemetryContext.configuration,
 		toolAccessCheckedAt: Date.now(),
+		runtimeRevision: 0,
 	};
 }
 
