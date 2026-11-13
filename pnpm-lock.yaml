@@ -7586,9 +7586,6 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
-      zod:
-        specifier: 3.25.76
-        version: 3.25.76
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -7617,6 +7614,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/modules/data-table/backend:
     dependencies:
