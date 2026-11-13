@@ -25,6 +25,7 @@ export {
 	CodeExecutionBackend,
 	type CodeExecutionBackendStatus,
 	type CodeTaskRequest,
+	toCodeTaskRequest,
 } from './code-execution/code-execution-backend';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';

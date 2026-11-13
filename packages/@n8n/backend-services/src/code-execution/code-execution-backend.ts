@@ -17,7 +17,7 @@ import type {
 export interface CodeTaskRequest {
 	additionalData: IWorkflowExecuteAdditionalData;
 	/** The language of the task, for example `javascript` or `python`. */
-	jobType: string;
+	taskType: string;
 	settings: unknown;
 	executeFunctions: IExecuteFunctions;
 	inputData: ITaskDataConnections;
@@ -32,6 +32,47 @@ export interface CodeTaskRequest {
 	mode: WorkflowExecuteMode;
 	envProviderState: EnvProviderState;
 	executeData?: IExecuteData;
+}
+
+/** Builds a code task request from the arguments of `IWorkflowExecuteAdditionalData.startRunnerTask`. */
+export function toCodeTaskRequest(
+	...[
+		additionalData,
+		taskType,
+		settings,
+		executeFunctions,
+		inputData,
+		node,
+		workflow,
+		runExecutionData,
+		runIndex,
+		itemIndex,
+		activeNodeName,
+		connectionInputData,
+		siblingParameters,
+		mode,
+		envProviderState,
+		executeData,
+	]: Parameters<IWorkflowExecuteAdditionalData['startRunnerTask']>
+): CodeTaskRequest {
+	return {
+		additionalData,
+		taskType,
+		settings,
+		executeFunctions,
+		inputData,
+		node,
+		workflow,
+		runExecutionData,
+		runIndex,
+		itemIndex,
+		activeNodeName,
+		connectionInputData,
+		siblingParameters,
+		mode,
+		envProviderState,
+		executeData,
+	};
 }
 
 export type CodeExecutionBackendStatus =

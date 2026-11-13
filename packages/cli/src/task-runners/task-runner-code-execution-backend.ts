@@ -18,7 +18,7 @@ export class TaskRunnerCodeExecutionBackend extends CodeExecutionBackend {
 	async runTask<T, E = unknown>(request: CodeTaskRequest): Promise<Result<T, E>> {
 		return await this.taskRequester.startTask<T, E>(
 			request.additionalData,
-			request.jobType,
+			request.taskType,
 			request.settings,
 			request.executeFunctions,
 			request.inputData,

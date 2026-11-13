@@ -142,6 +142,20 @@ describe('EngineAdditionalDataBuilder', () => {
 	});
 
 	describe('code tasks', () => {
+		it('fails to construct when no code execution backend is set', () => {
+			expect(
+				() =>
+					new EngineAdditionalDataBuilder(
+						urlService,
+						globalConfig,
+						eventService,
+						mock<SsrfProtectionConfig>(),
+						ssrfProtectionService,
+						undefined as unknown as CodeExecutionBackend,
+					),
+			).toThrow('Code execution backend is not set');
+		});
+
 		it('asks the code execution backend whether it can run the task type', () => {
 			codeExecutionBackend.getStatus.mockReturnValue({ available: true });
 
@@ -179,7 +193,7 @@ describe('EngineAdditionalDataBuilder', () => {
 			expect(result).toEqual({ ok: true, result: [] });
 			expect(codeExecutionBackend.runTask).toHaveBeenCalledExactlyOnceWith({
 				additionalData: data,
-				jobType: 'javascript',
+				taskType: 'javascript',
 				settings: {},
 				executeFunctions,
 				inputData: { main: [] },

@@ -9,6 +9,7 @@ import {
 	UrlService,
 	RuntimeCredentialProxyService,
 	WorkflowPublishedDataService,
+	toCodeTaskRequest,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -23,7 +24,6 @@ import {
 } from 'n8n-core';
 import type {
 	AiEvent,
-	EnvProviderState,
 	ExecuteAgentData,
 	ExecuteAgentInvocationContext,
 	ExecuteAgentSource,
@@ -35,14 +35,12 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IWorkflowExecutionTelemetryMetadata,
-	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
@@ -1010,43 +1008,8 @@ export async function getBase({
 			return executionData?.data;
 		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
-		async startRunnerTask(
-			additionalData: IWorkflowExecuteAdditionalData,
-			jobType: string,
-			settings: unknown,
-			executeFunctions: IExecuteFunctions,
-			inputData: ITaskDataConnections,
-			node: INode,
-			workflow: Workflow,
-			runExecutionData: IRunExecutionData,
-			runIndex: number,
-			itemIndex: number,
-			activeNodeName: string,
-			connectionInputData: INodeExecutionData[],
-			siblingParameters: INodeParameters,
-			mode: WorkflowExecuteMode,
-			envProviderState: EnvProviderState,
-			executeData?: IExecuteData,
-		) {
-			return await Container.get(CodeExecutionBackend).runTask({
-				additionalData,
-				jobType,
-				settings,
-				executeFunctions,
-				inputData,
-				node,
-				workflow,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				siblingParameters,
-				mode,
-				envProviderState,
-				executeData,
-			});
-		},
+		startRunnerTask: async (...args) =>
+			await Container.get(CodeExecutionBackend).runTask(toCodeTaskRequest(...args)),
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
 		},

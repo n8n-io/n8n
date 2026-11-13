@@ -2250,7 +2250,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(result).toEqual({ ok: true, result: [] });
 				expect(codeExecutionBackend.runTask).toHaveBeenCalledExactlyOnceWith({
 					additionalData,
-					jobType: 'javascript',
+					taskType: 'javascript',
 					settings: { code: 'return []' },
 					executeFunctions,
 					inputData: { main: [] },

@@ -25,7 +25,7 @@ describe('TaskRunnerCodeExecutionBackend', () => {
 		taskRequester.startTask.mockResolvedValue({ ok: true, result: [{ json: {} }] });
 		const request: CodeTaskRequest = {
 			additionalData: mock<IWorkflowExecuteAdditionalData>(),
-			jobType: 'javascript',
+			taskType: 'javascript',
 			settings: { code: 'return []' },
 			executeFunctions: mock<IExecuteFunctions>(),
 			inputData: { main: [] },
