@@ -22,13 +22,7 @@ import {
 	PostHogClient,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	type OperationContext,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { type OperationContext, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -277,7 +271,6 @@ export class McpService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly folderFinderService: FolderFinderService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly executionListService: ExecutionListService,
 		private readonly dataTableProxyService: DataTableProxyService,
@@ -610,7 +603,7 @@ export class McpService {
 
 		const getExecutionTool = createGetExecutionTool(
 			user,
-			this.executionRepository,
+			this.executionService,
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
