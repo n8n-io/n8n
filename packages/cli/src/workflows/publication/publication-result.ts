@@ -98,5 +98,10 @@ export type PublicationResult =
 			type: 'failed';
 			error: Error;
 			triggerStatuses?: TriggerPublicationStatus[];
+			/** A refusal left triggers running. Store their state under the previous version. */
+			previousTriggerState?: {
+				versionId: string;
+				triggerStatuses: TriggerPublicationStatus[];
+			};
 			teardownFailures?: TriggerTeardownFailure[];
 	  };

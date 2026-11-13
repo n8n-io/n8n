@@ -449,6 +449,70 @@ describe('PublicationStatusReporter', () => {
 		);
 	});
 
+	test('preserves running trigger rows on refusal while reporting the requested version failure', async () => {
+		const error = new Error('Credential access changed');
+		await reporter.report(makeRecord(), {
+			type: 'failed',
+			error,
+			previousTriggerState: {
+				versionId: 'v-1',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Live', status: 'activated', triggerKind: 'in-memory' },
+					{
+						nodeId: 'c',
+						nodeName: 'Missing',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: error.message,
+					},
+				],
+			},
+			triggerStatuses: [
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+		});
+
+		expect(triggerStatusRepository.replaceForWorkflow).toHaveBeenCalledWith(
+			'wf-1',
+			[
+				{
+					nodeId: 'a',
+					versionId: 'v-1',
+					status: 'activated',
+					triggerKind: 'in-memory',
+					errorMessage: null,
+				},
+				{
+					nodeId: 'c',
+					versionId: 'v-1',
+					status: 'failed',
+					triggerKind: 'in-memory',
+					errorMessage: error.message,
+				},
+			],
+			operationContext,
+		);
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, operationContext);
+		expect(retryStateRepository.suppressRetry).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+			operationContext,
+		);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'workflowFailedToActivate',
+				data: { workflowId: 'wf-1', errorMessage: error.message, nodeId: 'b' },
+			},
+			userIds,
+		);
+	});
+
 	test('failed with several failed triggers pushes no nodeId', async () => {
 		const errorMessage =
 			'Triggers failed to activate: "Schedule": cron unavailable; "Cron": bad cron';

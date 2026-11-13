@@ -40,6 +40,47 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		expect(claimedAgain).toBeNull();
 	});
 
+	it('reads the latest publication outcome instead of an older completed request', async () => {
+		await repository.enqueue('wf-1', 'v-1', 'publish');
+		const first = await repository.claimNextPendingRecord();
+		assert(first);
+		await repository.markCompleted(first.id);
+		await repository.enqueue('wf-1', 'v-2', 'publish');
+		await repository.enqueue('wf-2', 'other-version', 'publish');
+
+		expect(await repository.findLatestByWorkflowId('wf-1')).toMatchObject({
+			publishedVersionId: 'v-2',
+			status: 'pending',
+		});
+		const second = await repository.claimNextPendingRecord();
+		assert(second);
+		await repository.markFailed(second.id, 'Invalid interval');
+		expect(await repository.findLatestByWorkflowId('wf-1')).toMatchObject({
+			publishedVersionId: 'v-2',
+			status: 'failed',
+			errorMessage: 'Invalid interval',
+		});
+		expect(await repository.findLatestByWorkflowId('unknown')).toBeNull();
+	});
+
+	it.each(['completed', 'failed', 'partial_success'] as const)(
+		'keeps the %s outcome timestamp at or after the request timestamp',
+		async (status) => {
+			await repository.enqueue('wf-1', 'v-1', 'publish');
+			const record = await repository.claimNextPendingRecord();
+			assert(record);
+
+			if (status === 'completed') await repository.markCompleted(record.id);
+			else if (status === 'failed') await repository.markFailed(record.id, 'Activation failed');
+			else await repository.markPartialSuccess(record.id, 'Some triggers failed');
+
+			const outcome = await repository.findLatestByWorkflowId('wf-1');
+			assert(outcome);
+			expect(outcome.status).toBe(status);
+			expect(outcome.updatedAt.getTime()).toBeGreaterThanOrEqual(record.createdAt.getTime());
+		},
+	);
+
 	it('clears retry suppression when a user explicitly enqueues a publication', async () => {
 		const workflow = await createWorkflow();
 		await retryStateRepository.suppressRetry(workflow.id, workflow.versionId);

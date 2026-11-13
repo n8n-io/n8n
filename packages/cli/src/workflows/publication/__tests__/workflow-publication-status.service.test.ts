@@ -1,10 +1,11 @@
-import type {
-	OperationContext,
-	Transaction,
-	WorkflowPublicationOutbox,
-	WorkflowPublicationOutboxRepository,
-	WorkflowPublicationTriggerStatus,
-	WorkflowPublicationTriggerStatusRepository,
+import {
+	UNPUBLISH_VERSION_SENTINEL,
+	type OperationContext,
+	type Transaction,
+	type WorkflowPublicationOutbox,
+	type WorkflowPublicationOutboxRepository,
+	type WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -259,6 +260,222 @@ describe('WorkflowPublicationStatusService', () => {
 			triggerStatusRepository.getStatusCountsByWorkflowIds.mockResolvedValue(new Map());
 			await service.getListStatusesByWorkflowIds(['wf-a']);
 			expect(outboxRepository.findInFlightByWorkflowId).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('publication outcomes for callers', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(makeOutbox());
+			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('reports a terminal failure even when it has no trigger rows', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+				makeOutbox({ status: 'failed', errorMessage: 'Published version not found' }),
+			);
+
+			await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+				status: 'failed',
+				versionId: 'v-2',
+				liveVersionId: null,
+				errorMessage: 'Published version not found',
+			});
+		});
+
+		it('keeps a completed unpublish inactive even when its record names the old version', async () => {
+			await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+				status: 'not_published',
+				liveVersionId: null,
+			});
+		});
+
+		it('keeps settled trigger errors available after outbox cleanup', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(null);
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ status: 'failed', errorMessage: 'Invalid interval' }),
+			]);
+
+			await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+				status: 'failed',
+				versionId: 'v-2',
+				liveVersionId: null,
+				errorMessage: 'Invalid interval',
+				triggers: [{ status: 'failed', errorMessage: 'Invalid interval' }],
+			});
+			await expect(service.waitForPublication(WORKFLOW_ID, 'v-2')).resolves.toMatchObject({
+				status: 'failed',
+				versionId: 'v-2',
+				errorMessage: 'Invalid interval',
+			});
+		});
+
+		it.each([
+			{ status: 'failed', publishedVersionId: 'v-1' },
+			{ status: 'failed', publishedVersionId: 'v-2' },
+			{ status: 'partial_success', publishedVersionId: 'v-1' },
+			{ status: 'partial_success', publishedVersionId: 'v-2' },
+		] as const)(
+			'ignores an older retained $status outcome for $publishedVersionId after a newer success',
+			async ({ status, publishedVersionId }) => {
+				outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+					makeOutbox({
+						status,
+						publishedVersionId,
+						errorMessage: 'Old activation error',
+						updatedAt: new Date('2026-11-01T00:00:00Z'),
+					}),
+				);
+				triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+					makeRow({ updatedAt: new Date('2026-11-02T00:00:00Z') }),
+				]);
+
+				await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+					status: 'published',
+					versionId: 'v-2',
+					liveVersionId: 'v-2',
+					errorMessage: null,
+				});
+				await expect(service.waitForPublication(WORKFLOW_ID, 'v-2')).resolves.toMatchObject({
+					status: 'published',
+					versionId: 'v-2',
+				});
+			},
+		);
+
+		it('reports a newer failure that leaves the previous version running', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+				makeOutbox({
+					status: 'failed',
+					errorMessage: 'Published version not found',
+					updatedAt: new Date('2026-11-02T00:00:00Z'),
+				}),
+			);
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+				makeRow({ versionId: 'v-1', updatedAt: new Date('2026-11-01T00:00:00Z') }),
+			]);
+
+			await expect(service.waitForPublication(WORKFLOW_ID, 'v-2')).resolves.toMatchObject({
+				status: 'failed',
+				versionId: 'v-2',
+				liveVersionId: 'v-1',
+				errorMessage: 'Published version not found',
+			});
+		});
+
+		it.each(['v-2', UNPUBLISH_VERSION_SENTINEL])(
+			'stops waiting when a completed unpublish replaces the request with %s',
+			async (publishedVersionId) => {
+				outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+					makeOutbox({ publishedVersionId }),
+				);
+				await expect(service.getLatestStatus(WORKFLOW_ID)).resolves.toMatchObject({
+					status: 'not_published',
+					versionId: publishedVersionId === UNPUBLISH_VERSION_SENTINEL ? null : publishedVersionId,
+				});
+				const onRejected = vi.fn();
+				const result = service.waitForPublication(WORKFLOW_ID, 'v-2');
+				void result.catch(onRejected);
+
+				await vi.advanceTimersByTimeAsync(100);
+
+				expect(onRejected).toHaveBeenCalledWith(
+					expect.objectContaining({ message: expect.stringContaining('replaced this request') }),
+				);
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+
+		it('does not confirm success from another live version', async () => {
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([makeRow({ versionId: 'v-1' })]);
+			const settled = vi.fn();
+			const result = service.waitForPublication(WORKFLOW_ID, 'v-2');
+			void result.then(settled);
+
+			await vi.advanceTimersByTimeAsync(100);
+			expect(settled).not.toHaveBeenCalled();
+
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([makeRow({ versionId: 'v-2' })]);
+			await vi.advanceTimersByTimeAsync(100);
+			await expect(result).resolves.toMatchObject({ status: 'published', liveVersionId: 'v-2' });
+		});
+
+		it.each(['failed', 'partial_success'] as const)(
+			'waits for the requested version before returning %s',
+			async (status) => {
+				const record = makeOutbox({ status: 'in_progress' });
+				outboxRepository.findLatestByWorkflowId.mockResolvedValue(record);
+				outboxRepository.findInFlightByWorkflowId.mockResolvedValue(record);
+				triggerStatusRepository.findByWorkflowId.mockResolvedValue([makeRow({ versionId: 'v-1' })]);
+				const settled = vi.fn();
+				const result = service.waitForPublication(WORKFLOW_ID, 'v-2');
+				void result.then(settled);
+
+				await vi.advanceTimersByTimeAsync(100);
+				expect(settled).not.toHaveBeenCalled();
+
+				outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+					makeOutbox({ status, errorMessage: 'Invalid interval' }),
+				);
+				outboxRepository.findInFlightByWorkflowId.mockResolvedValue(null);
+				triggerStatusRepository.findByWorkflowId.mockResolvedValue([
+					makeRow({ status: 'failed', errorMessage: 'Invalid interval' }),
+					...(status === 'partial_success' ? [makeRow({ nodeId: 'valid' })] : []),
+				]);
+				await vi.advanceTimersByTimeAsync(100);
+
+				await expect(result).resolves.toMatchObject({
+					status: status === 'failed' ? 'failed' : 'partial',
+					versionId: 'v-2',
+					errorMessage: 'Invalid interval',
+				});
+				expect(vi.getTimerCount()).toBe(0);
+			},
+		);
+
+		it('does not accept another version as the requested publication outcome', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+				makeOutbox({ publishedVersionId: 'v-3' }),
+			);
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([makeRow({ versionId: 'v-3' })]);
+
+			await expect(service.waitForPublication(WORKFLOW_ID, 'v-2')).rejects.toThrow(
+				'Another publication replaced this request',
+			);
+		});
+
+		it('stops polling at the deadline and returns a pending status', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(makeOutbox({ status: 'pending' }));
+			const result = service.waitForPublication(WORKFLOW_ID, 'v-2');
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await expect(result).resolves.toMatchObject({
+				status: 'in_progress',
+				versionId: 'v-2',
+				pendingVersionId: 'v-2',
+			});
+			const calls = outboxRepository.findLatestByWorkflowId.mock.calls.length;
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(outboxRepository.findLatestByWorkflowId).toHaveBeenCalledTimes(calls);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		it('bounds the wait even when a status read does not finish', async () => {
+			outboxRepository.findLatestByWorkflowId.mockReturnValue(new Promise(() => {}));
+			const result = service.waitForPublication(WORKFLOW_ID, 'v-2');
+
+			await vi.advanceTimersByTimeAsync(5_000);
+			await expect(result).resolves.toMatchObject({
+				status: 'in_progress',
+				pendingVersionId: 'v-2',
+			});
+			expect(outboxRepository.findLatestByWorkflowId).toHaveBeenCalledTimes(1);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 	});
 

@@ -1,3 +1,4 @@
+import { WorkflowPublicationStatusSchema } from '@n8n/api-types';
 import type {
 	IConnections,
 	INode,
@@ -181,18 +182,26 @@ export const toNodeGroupSummary = (
 
 const FULL_DETAIL_ONLY_NOTE = "Only included when detailLevel is 'full'.";
 
+export const workflowPublicationStatusOutputSchema = WorkflowPublicationStatusSchema.extend({
+	versionId: z.string().nullable().describe('The version in the latest publication request'),
+	errorMessage: z.string().nullable().describe('The activation error, if publication failed'),
+});
+
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
 		.object({
 			id: z.string(),
 			name: z.string().nullable(),
-			active: z.boolean(),
+			active: z.boolean().describe('Whether the workflow has a live version'),
+			publicationStatus: workflowPublicationStatusOutputSchema.optional(),
 			isArchived: z.boolean(),
 			versionId: z.string().describe('The current workflow version ID'),
 			activeVersionId: z
 				.string()
 				.nullable()
-				.describe('The active workflow version ID, if available'),
+				.describe(
+					'The published version ID. Check publicationStatus to confirm trigger activation.',
+				),
 			triggerCount: z.number(),
 			nodeCount: z
 				.number()

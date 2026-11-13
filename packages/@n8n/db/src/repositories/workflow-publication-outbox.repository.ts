@@ -14,6 +14,7 @@ import {
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { dbNowLiteral } from '../utils/dialect-time';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
 /** Sqlite bound-variable budget per statement (ids + the reason); safely under every build's cap. */
@@ -42,6 +43,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 			status: In([Status.InProgress, Status.Pending]),
 		});
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
+	}
+
+	/** Get the latest request, including its terminal outcome, for publication callers. */
+	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
 	}
 
 	/**
@@ -505,10 +511,15 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		warningMessage?: string,
 	): Promise<void> {
 		const manager = this.managerFor(ctx);
+		// Match trigger-row precision so callers can compare publication outcomes.
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Completed, errorMessage: warningMessage ?? null },
+			{
+				status: Status.Completed,
+				errorMessage: warningMessage ?? null,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
@@ -519,7 +530,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.Failed, errorMessage },
+			{
+				status: Status.Failed,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Failed);
 	}
@@ -539,7 +554,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		const result = await manager.update(
 			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
-			{ status: Status.PartialSuccess, errorMessage },
+			{
+				status: Status.PartialSuccess,
+				errorMessage,
+				updatedAt: () => dbNowLiteral(this.globalConfig.database.type === 'postgresdb'),
+			},
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.PartialSuccess);
 	}
