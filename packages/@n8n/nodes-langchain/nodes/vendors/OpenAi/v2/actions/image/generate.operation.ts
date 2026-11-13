@@ -16,20 +16,16 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
-		default: 'dall-e-3',
+		default: 'gpt-image-2.6-sunburst',
 		description: 'The model to use for image generation',
 		options: [
 			{
-				name: 'DALL·E 2',
-				value: 'dall-e-2',
+				name: 'GPT Image 2.6 Sunburst',
+				value: 'gpt-image-2.6-sunburst',
 			},
 			{
-				name: 'DALL·E 3',
-				value: 'dall-e-3',
-			},
-			{
-				name: 'GPT Image 1',
-				value: 'gpt-image-1',
+				name: 'GPT Image 2.6 Flare',
+				value: 'gpt-image-2.6-flare',
 			},
 		],
 		displayOptions: {
@@ -40,7 +36,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		...modelRLC('imageGenerateModelSearch'),
-		default: { mode: 'list', value: 'gpt-image-1-mini' },
+		default: { mode: 'list', value: 'gpt-image-2.6-sunburst' },
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 2.2 } }],
