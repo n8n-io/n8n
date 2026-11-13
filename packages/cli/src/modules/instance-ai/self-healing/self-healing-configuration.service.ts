@@ -64,10 +64,18 @@ export class SelfHealingConfigurationService {
 	}
 
 	async getStatus(user: User): Promise<SelfHealingStatusDto> {
-		const [isReviewer, personalProject] = await Promise.all([
-			this.configurations.isReviewerOfAny(user.id),
+		const [projectRoles, workflowRoles, personalProject] = await Promise.all([
+			this.roles.rolesWithScope('project', REVIEWER_SCOPES),
+			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES),
 			this.projects.getPersonalProjectForUser(user.id),
 		]);
+		// The same access rule as the result Inbox, so the status agrees with the list.
+		const isReviewer = await this.configurations.canReceiveResults({
+			user,
+			globalScopes: REVIEWER_SCOPES,
+			projectRoles,
+			workflowRoles,
+		});
 		return { isReviewer, setupProjectId: personalProject?.id ?? null };
 	}
 

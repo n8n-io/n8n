@@ -7,6 +7,7 @@ import {
 	Project,
 	ProjectRelation,
 	SharedWorkflow,
+	SharedWorkflowRepository,
 	TransactionRunner,
 	User,
 	WorkflowEntity,
@@ -23,6 +24,7 @@ import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from './self-healing-configuration-workflow.entity';
 import { SelfHealingInvestigation } from './self-healing-investigation.entity';
+import type { SelfHealingInboxAccess } from './self-healing-result.repository';
 
 type ReviewerRoles = {
 	projectRoleSlugs: string[];
@@ -153,7 +155,11 @@ function whereCoversWorkflow<T extends ObjectLiteral>(
 
 @Service()
 export class SelfHealingConfigurationRepository extends BaseRepository<SelfHealingConfiguration> {
-	constructor(dataSource: DataSource, tx: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		tx: TransactionRunner,
+		private readonly sharedWorkflows: SharedWorkflowRepository,
+	) {
 		super(SelfHealingConfiguration, dataSource.manager, tx);
 	}
 
@@ -420,10 +426,24 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		await this.managerFor(ctx).delete(SelfHealingConfiguration, { id });
 	}
 
-	async isReviewerOfAny(userId: string) {
+	/**
+	 * Tells whether a configuration can send a result to the user. The user must be a
+	 * reviewer and must have edit access to a workflow that the configuration covers.
+	 */
+	async canReceiveResults({ user, ...roles }: SelfHealingInboxAccess) {
+		const accessible = this.sharedWorkflows.buildSharedWorkflowIdsSubquery(user, roles);
 		const query = this.manager
 			.createQueryBuilder(SelfHealingConfiguration, 'configuration')
-			.setParameter('reviewerId', userId);
+			.innerJoin(
+				SharedWorkflow,
+				'owner',
+				'owner.projectId = configuration.projectId AND owner.role = :ownerRole',
+				{ ownerRole: 'workflow:owner' },
+			)
+			.where(`owner.workflowId IN (${accessible.getQuery()})`)
+			.setParameters(accessible.getParameters())
+			.setParameter('reviewerId', user.id);
+		whereCoversWorkflow(query, 'configuration', 'owner.workflowId');
 		return await whereReviewer(query, 'configuration', ':reviewerId').getExists();
 	}
 

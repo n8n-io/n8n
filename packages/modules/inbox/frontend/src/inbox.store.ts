@@ -63,6 +63,7 @@ export function createInboxListSlice(
 		partial: false,
 	});
 	let requestSeq = 0;
+	let pageRequest: Promise<void> | null = null;
 
 	function applyResponse(page: ListInboxResponse, append: boolean) {
 		onPage?.(page, append);
@@ -76,6 +77,7 @@ export function createInboxListSlice(
 
 	async function fetchList() {
 		const seq = ++requestSeq;
+		pageRequest = null;
 		state.items = [];
 		state.nextCursor = null;
 		state.hasMore = false;
@@ -96,14 +98,13 @@ export function createInboxListSlice(
 		}
 	}
 
-	async function loadMore() {
-		if (state.loading || state.loadingMore || !state.hasMore || !state.nextCursor) return;
+	async function loadPage(cursor: string) {
 		const seq = ++requestSeq;
 		state.loadingMore = true;
 		state.error = null;
 		state.failedRequest = null;
 		try {
-			const page = await requestPage(state.nextCursor);
+			const page = await requestPage(cursor);
 			if (seq === requestSeq) applyResponse(page, true);
 		} catch (error) {
 			if (seq !== requestSeq) return;
@@ -115,12 +116,26 @@ export function createInboxListSlice(
 		}
 	}
 
+	async function loadMore() {
+		// A second caller waits for the page that already loads.
+		if (pageRequest) return await pageRequest;
+		if (state.loading || !state.hasMore || !state.nextCursor) return;
+		const request = loadPage(state.nextCursor);
+		pageRequest = request;
+		try {
+			await request;
+		} finally {
+			if (pageRequest === request) pageRequest = null;
+		}
+	}
+
 	function removeSources(types: InboxSourceType[]) {
 		state.items = state.items.filter((item) => !types.includes(item.type));
 	}
 
 	function reset() {
 		requestSeq++;
+		pageRequest = null;
 		state.items = [];
 		state.hasLoaded = false;
 		state.nextCursor = null;
@@ -163,12 +178,15 @@ export const useInboxStore = defineStore('inbox', () => {
 	const selfHealingStatus = ref<SelfHealingStatusDto | null>(null);
 	const selfHealingStatusLoading = ref(false);
 	let selfHealingStatusRequestSeq = 0;
-	// Workflow reviews need an enterprise license. Without them, self-healing decides the copy.
-	const showsSelfHealingEmptyState = computed(
-		() =>
-			disabledSources.value.includes('workflow_review') &&
-			!disabledSources.value.includes('self_healing_result'),
-	);
+	// Self-healing decides the copy only when it is the one source that the Inbox shows.
+	const showsSelfHealingEmptyState = computed(() => {
+		const disabled = disabledSources.value;
+		return (
+			disabled.includes('workflow_review') &&
+			disabled.includes('promotion_review') &&
+			!disabled.includes('self_healing_result')
+		);
+	});
 
 	function removeDisabledSources(types: InboxSourceType[]) {
 		if (types.length === 0) return;

@@ -368,6 +368,15 @@ describe('advancing after a decision', () => {
 		expect(router.currentRoute.value.fullPath).toBe('/inbox');
 	});
 
+	it('selects the first open item when the closed item is not in the loaded rows', async () => {
+		await router.replace('/inbox/reviews/req-9');
+		store.lists.waiting.items = [reviewItem(), other];
+		renderComponent();
+		reportChange({ type: 'workflow_review', id: 'req-9', state: 'closed', advance: true });
+		await waitAllPromises();
+		expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-1');
+	});
+
 	describe('when the last loaded Waiting item closes and Waiting has more pages', () => {
 		const nextResult = { ...resultItem(), id: 'res-2' };
 		const closeLastResult = () =>
@@ -402,6 +411,44 @@ describe('advancing after a decision', () => {
 				expect.anything(),
 				expect.objectContaining({ category: 'waiting', cursor: 'c1' }),
 			);
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/inbox/assistant-results/res-2?projectId=p1&workflowId=w1',
+			);
+		});
+
+		it('loads the next Waiting page before it selects an Authored item', async () => {
+			store.lists.authored.items = [other];
+			vi.mocked(inboxApi.fetchInbox).mockResolvedValue(inboxPage([nextResult]));
+			renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe(
+				'/inbox/assistant-results/res-2?projectId=p1&workflowId=w1',
+			);
+		});
+
+		it('selects the Authored item when the next Waiting page has no rows', async () => {
+			store.lists.authored.items = [other];
+			vi.mocked(inboxApi.fetchInbox).mockResolvedValue(inboxPage([]));
+			renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-2');
+		});
+
+		it('waits for a page that the user already started to load', async () => {
+			const nextPage = createDeferredPromise<ListInboxResponse>();
+			vi.mocked(inboxApi.fetchInbox).mockReturnValue(nextPage.promise);
+			renderComponent();
+			await waitAllPromises();
+			void store.lists.waiting.loadMore();
+			closeLastResult();
+			await waitAllPromises();
+			nextPage.resolve(inboxPage([nextResult]));
+			await waitAllPromises();
+			expect(inboxApi.fetchInbox).toHaveBeenCalledTimes(1);
 			expect(router.currentRoute.value.fullPath).toBe(
 				'/inbox/assistant-results/res-2?projectId=p1&workflowId=w1',
 			);

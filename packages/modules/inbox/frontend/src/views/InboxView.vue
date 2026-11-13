@@ -104,9 +104,7 @@ let autoSelectTab: 'open' | 'closed' | null = activeTab.value;
 // A failed load does not count, so the first-item selection waits for a successful retry.
 const activeTabLoaded = computed(
 	() =>
-		!store.loading &&
-		!store.initialLoadFailed &&
-		store.activeSectionKeys.every((key) => store.lists[key].hasLoaded),
+		!store.loading && !store.initialLoadFailed && store.activeLists.every((list) => list.hasLoaded),
 );
 watch(
 	[activeTabLoaded, activeTab],
@@ -149,7 +147,8 @@ function onDetailTabChange(tab: 'activity' | 'changes') {
 function nextItemAfter(change: InboxItemChange) {
 	const items = activeItems.value;
 	const index = items.findIndex(({ type, id }) => type === change.type && id === change.id);
-	if (index === -1) return undefined;
+	// A deep link can open an item that is not in the loaded rows.
+	if (index === -1) return items[0];
 	return items[index + 1] ?? items[index - 1];
 }
 
@@ -175,24 +174,26 @@ function onItemChange(change: InboxItemChange) {
 	if (!change.advance) {
 		// The item keeps its selection and moves to the Closed tab.
 		void router.replace({ query: { ...currentRoute.query, state: 'closed' } });
+	} else if (store.lists.waiting.items.length === 0 && store.lists.waiting.hasMore) {
+		onClearSelection();
+		void selectFromNextWaitingPage(change, next);
 	} else if (next) {
 		onSelect(next);
 	} else {
 		onClearSelection();
-		void selectFromNextWaitingPage(change);
 	}
 }
 
-// Assistant fixes arrive in Waiting, so only that section loads its next page.
-async function selectFromNextWaitingPage(closed: InboxItemChange) {
+// Assistant fixes arrive in Waiting, so its next page comes before a row in Authored.
+async function selectFromNextWaitingPage(closed: InboxItemChange, fallback?: InboxItem) {
 	const { waiting } = store.lists;
-	if (waiting.items.length > 0 || !waiting.hasMore) return;
 	await waiting.loadMore();
 	if (!isActive() || activeTab.value !== 'open') return;
 	// A selection the user made while the page loaded wins.
 	const selected = selectionFromRoute(router.currentRoute.value);
 	if (selected && (selected.type !== closed.type || selected.id !== closed.id)) return;
-	if (waiting.items[0]) onSelect(waiting.items[0]);
+	const next = waiting.items[0] ?? fallback;
+	if (next) onSelect(next);
 }
 
 watch(

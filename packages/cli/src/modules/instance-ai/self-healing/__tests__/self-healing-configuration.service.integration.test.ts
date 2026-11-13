@@ -484,6 +484,21 @@ it('reports whether a configuration sends results to the current user', async ()
 	expect(await status(member)).toMatchObject({ isReviewer: false });
 });
 
+it('does not report a reviewer who cannot edit a covered workflow', async () => {
+	const { user, project, url, input } = await fixture();
+	const viewer = await createMember();
+	await linkUserToProject(viewer, project, 'project:viewer');
+	await server
+		.authAgentFor(user)
+		.post(url)
+		.send({ ...input, includeAllProjectMembers: true })
+		.expect(200);
+
+	const { body } = await server.authAgentFor(viewer).get('/self-healing/status').expect(200);
+
+	expect(body.data).toMatchObject({ isReviewer: false });
+});
+
 async function expectNoConfigurationAccess(user: User, projectId: string, id: number) {
 	const agent = server.authAgentFor(user);
 	const url = `/projects/${projectId}/self-healing-configurations`;

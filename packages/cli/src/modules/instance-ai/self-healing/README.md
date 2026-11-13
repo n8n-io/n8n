@@ -415,6 +415,9 @@ It reads counts through `countForInbox()`. Both use current reviewer membership,
 suggestion workflow.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
+`GET /self-healing/status` tells the Inbox whether a configuration can send results to the current user.
+It applies the reviewer and workflow edit access rules of the result list.
+It also returns the ID of the user's personal project, where the Inbox offers the setup.
 Open and Closed derive from `reviewState`.
 Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.

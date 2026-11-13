@@ -251,6 +251,25 @@ it.each([
 	},
 );
 
+it.each([
+	['an open Assistant result', result(), 'Fix ready'],
+	['a closed Assistant result', result({ state: 'closed' }), 'Closed'],
+	['a workflow review', review(), 'Waiting for review'],
+])('names the status of %s in the dot tooltip', (_name, item, text) => {
+	const { getByRole } = renderComponent({
+		props: { sections: [section('waiting', { items: [item] })] },
+		global: {
+			stubs: {
+				N8nTooltip: {
+					props: ['content'],
+					template: '<span data-tooltip :data-content="content"><slot /></span>',
+				},
+			},
+		},
+	});
+	const dot = within(getByRole('list')).getByRole('img');
+	expect(dot.closest<HTMLElement>('[data-tooltip]')?.dataset.content).toBe(text);
+});
 it('renders promotion review rows with the branch as fallback title and the GitLab problem', () => {
 	const promotion = (props: Partial<InboxPromotionReviewItem>): InboxPromotionReviewItem => ({
 		type: 'promotion_review',

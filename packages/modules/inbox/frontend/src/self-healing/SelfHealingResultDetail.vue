@@ -220,9 +220,6 @@ async function onAction(action: SelfHealingResultAction) {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
-	// A confirmed publish or dismissal stays in the Inbox and moves on to the next item.
-	let advance = false;
-
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
 	 * So the chat waits for an explicit start, and publication stays unconfirmed.
@@ -233,8 +230,10 @@ async function onAction(action: SelfHealingResultAction) {
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
 		const closed = result.reviewState === closedState;
-		if (!isSelected(target.id) || !closed) return false;
+		if (!isSelected(target.id) || !closed) return { continued: false, advance: false };
 
+		// A confirmed publish or dismissal stays in the Inbox and moves on to the next item.
+		let advance = false;
 		if (action === 'dismiss') {
 			advance = !responseLost;
 		} else if (action === 'chat') {
@@ -285,19 +284,19 @@ async function onAction(action: SelfHealingResultAction) {
 
 			await openEditor(result.workflowId);
 		}
-		return true;
+		return { continued: true, advance };
 	}
 
 	try {
 		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
 
-		await continueAfterClose(result, false);
+		const { advance } = await continueAfterClose(result, false);
 		store.acceptResult(result);
 		notifyResultClosed(before, result, onItemChange, advance);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		const reconcile = async (current: SelfHealingResultDetail) => {
-			const continued = !isRejected(cause) && (await continueAfterClose(current, true));
+			const continued = !isRejected(cause) && (await continueAfterClose(current, true)).continued;
 			notifyResultClosed(before, current, onItemChange);
 			return continued;
 		};
