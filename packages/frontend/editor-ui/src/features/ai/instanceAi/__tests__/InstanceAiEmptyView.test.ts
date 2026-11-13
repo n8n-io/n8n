@@ -1206,7 +1206,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('renders the default empty state for the control variant', () => {
-		const { getByTestId, queryByTestId } = renderView();
+		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
