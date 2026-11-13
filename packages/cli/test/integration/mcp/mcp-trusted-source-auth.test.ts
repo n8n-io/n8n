@@ -131,12 +131,15 @@ const probe = async (token?: string) => {
 
 /** Every line the authentication edge wrote, from the pipeline, the admission or the middleware. */
 const authLines = (logger: Logger) =>
-	[...vi.mocked(logger.info).mock.calls, ...vi.mocked(logger.warn).mock.calls].filter(([message]) =>
-		message.startsWith('Inbound authentication'),
-	);
+	[
+		...vi.mocked(logger.debug).mock.calls,
+		...vi.mocked(logger.info).mock.calls,
+		...vi.mocked(logger.warn).mock.calls,
+	].filter(([message]) => message.startsWith('Inbound authentication'));
 
 const spyOnLogger = () => {
 	const logger = Container.get(Logger);
+	vi.spyOn(logger, 'debug');
 	vi.spyOn(logger, 'info');
 	vi.spyOn(logger, 'warn');
 	return logger;
@@ -314,6 +317,7 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 		];
 
 		for (const token of tokens) {
+			vi.mocked(logger.debug).mockClear();
 			vi.mocked(logger.info).mockClear();
 			vi.mocked(logger.warn).mockClear();
 			await probe(token);

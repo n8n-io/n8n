@@ -250,7 +250,7 @@ describe('InboundAuthPipeline', () => {
 
 			await pipeline.run(extracted);
 
-			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.debug).not.toHaveBeenCalled();
 		});
 	});
 });
