@@ -570,7 +570,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_REVIEWED_SKILL_UPDATE: {
 		name: 'User reviewed skill update',
 		description:
-			'A user accepted or skipped a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,

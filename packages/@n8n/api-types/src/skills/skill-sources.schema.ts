@@ -325,11 +325,6 @@ export class AcceptSkillSourceUpdatesDto extends Z.class({
 	reviewedWarnings: z.boolean().default(false),
 }) {}
 
-/** Hides only the content the user reviewed. */
-export class SkipSkillSourceUpdateDto extends Z.class({
-	contentHash: reviewedUpdate.contentHash,
-}) {}
-
 export class SkillSourceCommitQueryDto extends Z.class({
 	revision: z.string().min(1).max(255),
 }) {}

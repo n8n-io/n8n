@@ -3,6 +3,7 @@ import type {
 	DiscoveredSkill,
 	SkillPendingUpdate,
 	SkillSourceListItem,
+	SkillUpdateAgents,
 	SkillUpdateCommit,
 	SkillUpdateReview,
 } from '@n8n/api-types';
@@ -97,9 +98,9 @@ const commitTitle = computed(
 const sourceLine = computed(() =>
 	[props.source.label, props.source.ref].filter(Boolean).join(' · '),
 );
-const impact = computed(() => {
-	if (!detail.value) return '';
-	const { agents, hiddenAgentCount } = detail.value;
+const impact = computed(() => (detail.value ? impactText(detail.value) : ''));
+
+function impactText({ agents, hiddenAgentCount }: SkillUpdateAgents): string {
 	if (!agents.length && !hiddenAgentCount)
 		return i18n.baseText('settings.context.skills.updates.noFollowers');
 	return [
@@ -117,7 +118,7 @@ const impact = computed(() => {
 	]
 		.filter(Boolean)
 		.join(' ');
-});
+}
 
 function isStale(cause: unknown) {
 	return cause instanceof ResponseError && cause.meta?.reason === 'stale';
@@ -214,26 +215,10 @@ async function accept() {
 			})),
 			reviewedWarnings: reviewed.value,
 		});
-		const names = result.agents.map(({ name }) => name).join(', ');
 		const description = [
-			names
-				? i18n.baseText('settings.context.skills.updates.followers', {
-						interpolate: { agents: names },
-					})
-				: '',
-			result.hiddenAgentCount
-				? i18n.baseText('settings.context.skills.updates.hiddenFollowers', {
-						interpolate: { count: result.hiddenAgentCount },
-						adjustToNumber: result.hiddenAgentCount,
-					})
-				: '',
-			!names && !result.hiddenAgentCount
-				? i18n.baseText('settings.context.skills.updates.noFollowers')
-				: '',
+			impactText(result),
 			i18n.baseText('settings.context.skills.updates.publishedUnchanged'),
-		]
-			.filter(Boolean)
-			.join(' ');
+		].join(' ');
 		showMessage({
 			type: 'success',
 			dangerouslyUseHTMLString: false,

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-// Imports show the full files. Updates use the workflow diff viewer and show flagged excerpts.
 import type { DiscoveredSkill, SkillScanFinding, SkillUpdateFile } from '@n8n/api-types';
 import { computed, useId, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';

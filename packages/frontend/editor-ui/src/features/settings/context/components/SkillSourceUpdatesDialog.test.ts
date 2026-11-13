@@ -104,23 +104,6 @@ beforeEach(() => {
 });
 const render = () => renderDialog({ props: { source }, pinia });
 
-it('loads a stored diff and accepts exactly the reviewed hash and base version', async () => {
-	const view = render();
-	await view.findByText('Update skills');
-	await waitFor(() =>
-		expect(store.fetchSourceUpdate).toHaveBeenCalledWith('source-1', 'docx', {
-			contentHash: 'a'.repeat(64),
-			baseVersionId: 'v1',
-		}),
-	);
-	await userEvent.click(view.getByTestId('skill-updates-accept'));
-	expect(store.acceptSourceUpdates).toHaveBeenCalledWith('source-1', {
-		updates: [{ skillId: 'docx', contentHash: 'a'.repeat(64), baseVersionId: 'v1' }],
-		reviewedWarnings: false,
-	});
-	await waitFor(() => expect(view.emitted().close).toHaveLength(1));
-});
-
 it('requires acknowledgment of selected warnings and marks their changed lines', async () => {
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [update('docx', 'needs_review')],
@@ -163,7 +146,12 @@ it('accepts only checked updates and disables acceptance when none are selected'
 		commit: null,
 	});
 	const view = render();
+	await view.findByText('Update skills');
 	const first = await view.findByRole('checkbox', { name: 'first' });
+	expect(store.fetchSourceUpdate).toHaveBeenCalledWith('source-1', 'first', {
+		contentHash: 'a'.repeat(64),
+		baseVersionId: 'v1',
+	});
 	const later = view.getByRole('checkbox', { name: 'later' });
 	const accept = view.getByTestId('skill-updates-accept');
 	expect(view.queryByRole('button', { name: 'Skip this update' })).not.toBeInTheDocument();

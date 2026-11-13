@@ -183,24 +183,6 @@ describe('Skill source checks', () => {
 			return { ...imported, reviewed: await review(imported.sourceId) };
 		};
 
-		it('saves the reviewed content and revision without another remote request', async () => {
-			const { sourceId, docx, reviewed } = await changed();
-			const revision = (await linkOf(docx)).pendingRevision;
-			const requests = { ...github.requests };
-			github.failWith = 503;
-			await accept(sourceId, reviewed);
-			expect(await findLatestSkillVersion(docx)).toMatchObject({
-				version: 2,
-				instructions: 'Updated docx.',
-				sourceRevision: revision,
-			});
-			expect(await linkOf(docx)).toMatchObject({
-				pendingContentHash: null,
-				baseContentHash: reviewed.updates.find((update) => update.skillId === docx)?.contentHash,
-			});
-			expect(github.requests).toEqual(requests);
-		});
-
 		it('keeps unselected updates pending and compares newer content with the saved version', async () => {
 			const { sourceId, docx, xlsx, reviewed } = await changed();
 			await accept(sourceId, {
@@ -271,41 +253,33 @@ describe('Skill source checks', () => {
 			expect(telemetry.mock.calls.every(([props]) => props.status === 'failure')).toBe(true);
 		});
 
-		it.each(['accept', 'skip'] as const)(
-			'does not restore an update after %s clears the pending hash',
-			async (action) => {
-				const { sourceId, docx } = await importAll();
-				const oldRead = await linkOf(docx);
-				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.') });
-				await sync().checkAll();
-				const pending = await linkOf(docx);
-				const reviewed = await review(sourceId);
-				if (action === 'accept') await accept(sourceId, reviewed);
-				else
-					await editor
-						.post(`/skill-sources/${sourceId}/updates/${docx}/skip`)
-						.send({ contentHash: pending.pendingContentHash })
-						.expect(200);
-				const stored = await Container.get(SkillSourceRepository).storePending(
-					docx,
-					{
-						content: pending.pendingContent,
-						contentHash: pending.pendingContentHash!,
-						scan: pending.pendingScan!,
-						revision: pending.pendingRevision!,
-						state: 'update_available',
-					},
-					oldRead,
-				);
-				expect(stored).toBe(false);
-				await sync().checkAll();
-				expect((await linkOf(docx)).pendingContentHash).toBeNull();
-				expect((await findLatestSkillVersion(docx))?.version).toBe(action === 'accept' ? 2 : 1);
-				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'A subsequent update.') });
-				await sync().checkAll();
-				expect((await linkOf(docx)).pendingContentHash).not.toBeNull();
-			},
-		);
+		it('does not restore an update after acceptance clears the pending hash', async () => {
+			const { sourceId, docx } = await importAll();
+			const oldRead = await linkOf(docx);
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.') });
+			await sync().checkAll();
+			const pending = await linkOf(docx);
+			const reviewed = await review(sourceId);
+			await accept(sourceId, reviewed);
+			const stored = await Container.get(SkillSourceRepository).storePending(
+				docx,
+				{
+					content: pending.pendingContent,
+					contentHash: pending.pendingContentHash!,
+					scan: pending.pendingScan!,
+					revision: pending.pendingRevision!,
+					state: 'update_available',
+				},
+				oldRead,
+			);
+			expect(stored).toBe(false);
+			await sync().checkAll();
+			expect((await linkOf(docx)).pendingContentHash).toBeNull();
+			expect((await findLatestSkillVersion(docx))?.version).toBe(2);
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'A subsequent update.') });
+			await sync().checkAll();
+			expect((await linkOf(docx)).pendingContentHash).not.toBeNull();
+		});
 
 		it('requires acknowledgment for warnings and never accepts blocked content', async () => {
 			const { sourceId, docx } = await importAll();
@@ -330,14 +304,14 @@ describe('Skill source checks', () => {
 			expect(detail.body.data.files).toEqual([]);
 		});
 
-		it('shows frontmatter and removed references, then replaces all stored content', async () => {
+		it('reviews and saves all stored content and its revision without another remote request', async () => {
 			github.push('acme/skills', {
 				'skills/docx/SKILL.md':
 					'---\nname: docx\ndescription: docx description\nlicense: MIT\n---\nFollow docx.',
 				'skills/docx/references/style.md': 'Old reference',
 			});
 			const { sourceId, docx } = await importAll();
-			github.push('acme/skills', { 'skills/docx/SKILL.md': skillMd('docx', 'Follow docx.') });
+			github.push('acme/skills', { 'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.') });
 			await sync().checkAll();
 			const reviewed = await review(sourceId);
 			const update = reviewed.updates[0];
@@ -354,12 +328,21 @@ describe('Skill source checks', () => {
 					{ path: 'references/style.md', before: 'Old reference', after: '', status: 'removed' },
 				]),
 			);
+			const requests = { ...github.requests };
+			github.failWith = 503;
 			await accept(sourceId, reviewed);
 			expect(await findLatestSkillVersion(docx)).toMatchObject({
 				version: 2,
+				instructions: 'Updated docx.',
+				sourceRevision: update.revision,
 				frontmatter: null,
 				files: [],
 			});
+			expect(await linkOf(docx)).toMatchObject({
+				pendingContentHash: null,
+				baseContentHash: update.contentHash,
+			});
+			expect(github.requests).toEqual(requests);
 		});
 
 		it('rejects scope name clashes before saving', async () => {
@@ -370,6 +353,10 @@ describe('Skill source checks', () => {
 			expect(reviewed.updates[0].nameClash).toEqual({ name: 'xlsx', where: 'scope' });
 			expect((await accept(sourceId, reviewed, 409)).body.meta.reason).toBe('name_clash');
 			expect((await findLatestSkillVersion(docx))?.version).toBe(1);
+			expect(await linkOf(docx)).toMatchObject({
+				state: 'update_available',
+				pendingContentHash: reviewed.updates[0].contentHash,
+			});
 		});
 
 		it('does not disclose agent names when a rename clashes in an agent', async () => {
@@ -504,10 +491,6 @@ describe('Skill source checks', () => {
 				await agent
 					.post(`/skill-sources/${sourceId}/updates/accept`)
 					.send({ updates: [{ skillId: docx, contentHash, baseVersionId }] })
-					.expect(status);
-				await agent
-					.post(`/skill-sources/${sourceId}/updates/${docx}/skip`)
-					.send({ contentHash })
 					.expect(status);
 			}
 		});

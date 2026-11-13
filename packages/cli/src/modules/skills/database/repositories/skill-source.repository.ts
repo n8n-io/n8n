@@ -265,18 +265,6 @@ export class SkillSourceRepository {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/** A later check must observe the skipped hash before it can write the link. */
-	async skipPending(skillId: string, read: SkillSyncSnapshot): Promise<boolean> {
-		if (!read.pendingContentHash) return false;
-		const result = await this.links
-			.managerFor({})
-			.update(SkillSourceLink, snapshotCondition(skillId, read), {
-				...clearedPending,
-				skippedContentHash: read.pendingContentHash,
-			});
-		return (result.affected ?? 0) > 0;
-	}
-
 	/**
 	 * The sync state and the source of each synced skill among `skillIds`. A skill without a
 	 * link is absent.

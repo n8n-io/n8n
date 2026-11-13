@@ -1,7 +1,6 @@
 import {
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
-	SkipSkillSourceUpdateDto,
 	SkillSourceCommitQueryDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
@@ -140,17 +139,5 @@ export class SkillSourceController {
 		@Body payload: AcceptSkillSourceUpdatesDto,
 	) {
 		return await this.skillSyncService.acceptUpdates(req.user, sourceId, payload);
-	}
-
-	@Post('/:sourceId/updates/:skillId/skip')
-	async skipUpdate(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('sourceId') sourceId: string,
-		@Param('skillId') skillId: string,
-		@Body payload: SkipSkillSourceUpdateDto,
-	) {
-		await this.skillSyncService.skipUpdate(req.user, sourceId, skillId, payload.contentHash);
-		return { ok: true };
 	}
 }

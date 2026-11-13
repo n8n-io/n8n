@@ -19,6 +19,17 @@ it('keeps common lines and marks changed words', () => {
 	]);
 });
 
+it('finds the common lines between edits', () => {
+	const { lines } = diffText('keep\ndrop\nkeep too', 'new\nkeep\nkeep too\nend');
+	expect(lines.map((line) => `${line.type}:${line.text}`)).toEqual([
+		'added:new',
+		'equal:keep',
+		'removed:drop',
+		'equal:keep too',
+		'added:end',
+	]);
+});
+
 it.each([
 	['', 'one\ntwo', 2, 0],
 	['one\ntwo', '', 0, 2],

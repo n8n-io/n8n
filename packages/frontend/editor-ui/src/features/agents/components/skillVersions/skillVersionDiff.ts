@@ -1,8 +1,7 @@
 import { diffText, type DiffCount, type DiffLine } from '@n8n/utils/diff-text';
 import type { AgentSkill } from '../../types';
 
-export type { DiffCount, DiffSegment, DiffLine } from '@n8n/utils/diff-text';
-export { diffLines, diffWords } from '@n8n/utils/diff-text';
+export type { DiffCount, DiffLine } from '@n8n/utils/diff-text';
 
 /** A reference file that only one version has. */
 export type FileStatus = 'added' | 'removed';

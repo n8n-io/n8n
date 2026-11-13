@@ -77,11 +77,6 @@ export function diffWords(from: string, to: string): { from: DiffSegment[]; to: 
 	return { from: segments(a, keptA), to: segments(b, keptB) };
 }
 
-/** The lines of two texts as equal, removed and added lines, in reading order. */
-export function diffLines(from: string, to: string): DiffLine[] {
-	return diffText(from, to).lines;
-}
-
 export function diffText(from: string, to: string): DiffCount & { lines: DiffLine[] } {
 	const a = toLines(from);
 	const b = toLines(to);

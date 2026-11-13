@@ -236,9 +236,6 @@ export class SkillSyncService {
 					}
 					const content = pendingContent(link);
 					if (!content || !link.pendingRevision) throw staleUpdate();
-					if (await this.nameClash(row, content.name, ctx)) {
-						throw new SkillSourceRequestError('name_clash', 'This skill name is already in use.');
-					}
 					selected.push({ ...current, content, revision: link.pendingRevision });
 				}
 				const saved = [];
@@ -337,33 +334,6 @@ export class SkillSyncService {
 		};
 	}
 
-	async skipUpdate(
-		user: User,
-		sourceId: string,
-		skillId: string,
-		contentHash: string,
-	): Promise<void> {
-		const { source } = await this.requireReview(user, sourceId);
-		const link = await this.sourceRepository.findLinkBySkillId(skillId);
-		if (!link || link.sourceId !== sourceId || link.pendingContentHash !== contentHash)
-			throw staleUpdate();
-		const scan = pendingScan(link);
-		const skipped = await this.sourceRepository.skipPending(skillId, link);
-		await this.skillsTelemetry.reviewedUpdate(
-			{
-				provider: source.type,
-				kind: 'update',
-				action: 'skip',
-				verdict: scan.verdict,
-				bulk: false,
-				status: skipped ? 'success' : 'failure',
-				...(!skipped ? { reason: 'stale' as const } : {}),
-			},
-			user.id,
-		);
-		if (!skipped) throw staleUpdate();
-	}
-
 	private async requireReview(user: User, sourceId: string) {
 		await this.flagGate.assertEnabled(user);
 		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
@@ -400,10 +370,9 @@ export class SkillSyncService {
 	private async nameClash(
 		row: ResolvedSkillRow,
 		name: string,
-		ctx: OperationContext = {},
 	): Promise<SkillPendingUpdate['nameClash']> {
 		try {
-			await this.skills.assertCanRename(row.skill.id, row.skill, row.version.name, name, ctx);
+			await this.skills.assertCanRename(row.skill.id, row.skill, row.version.name, name);
 			return null;
 		} catch (error) {
 			if (error instanceof SkillNameTakenError) return { name, where: 'scope' };
