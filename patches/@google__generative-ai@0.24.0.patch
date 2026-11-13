@@ -11,7 +11,7 @@ index c60cda15f27354022b081eafe65cbaae181fe98f..20613cdb520320792a72bd8b88ff4bfa
  
  /**
 diff --git a/dist/index.js b/dist/index.js
-index 61b2c3916d97f9f3f1c8f2f6970790e2048c5219..b750e72f179ffb9473e925ec9febb1f5cc3a1974 100644
+index 61b2c3916d97f9f3f1c8f2f6970790e2048c5219..6d5505ec7727f23bb9a3ccaabde8ac77a112b363 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -389,7 +389,7 @@ async function makeModelRequest(model, task, apiKey, stream, body, requestOption
@@ -23,8 +23,22 @@ index 61b2c3916d97f9f3f1c8f2f6970790e2048c5219..b750e72f179ffb9473e925ec9febb1f5
  }
  async function makeRequest(url, fetchOptions, fetchFn = fetch) {
      let response;
+@@ -412,8 +412,12 @@ function handleResponseError(e, url) {
+     }
+     else if (!(e instanceof GoogleGenerativeAIFetchError ||
+         e instanceof GoogleGenerativeAIRequestInputError)) {
+-        err = new GoogleGenerativeAIError(`Error fetching from ${url.toString()}: ${e.message}`);
++        // n8n: keep the network cause (e.g. a connect timeout), which "fetch failed" alone hides
++        const cause = e.cause;
++        const detail = (cause === null || cause === void 0 ? void 0 : cause.message) ? ` (${cause.code ? `${cause.code}: ` : ""}${cause.message})` : "";
++        err = new GoogleGenerativeAIError(`Error fetching from ${url.toString()}: ${e.message}${detail}`);
+         err.stack = e.stack;
++        err.cause = e;
+     }
+     throw err;
+ }
 diff --git a/dist/index.mjs b/dist/index.mjs
-index a69a3b17ccb9a4351bdae232c6ecf586fbbdc020..10f9f73f50222ed67574d7e2c2cdc2c2605f2211 100644
+index a69a3b17ccb9a4351bdae232c6ecf586fbbdc020..c9ad06d3c11abaa370e52ef3d13b3c4e8ca32553 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -387,7 +387,7 @@ async function makeModelRequest(model, task, apiKey, stream, body, requestOption
@@ -36,3 +50,17 @@ index a69a3b17ccb9a4351bdae232c6ecf586fbbdc020..10f9f73f50222ed67574d7e2c2cdc2c2
  }
  async function makeRequest(url, fetchOptions, fetchFn = fetch) {
      let response;
+@@ -410,8 +410,12 @@ function handleResponseError(e, url) {
+     }
+     else if (!(e instanceof GoogleGenerativeAIFetchError ||
+         e instanceof GoogleGenerativeAIRequestInputError)) {
+-        err = new GoogleGenerativeAIError(`Error fetching from ${url.toString()}: ${e.message}`);
++        // n8n: keep the network cause (e.g. a connect timeout), which "fetch failed" alone hides
++        const cause = e.cause;
++        const detail = (cause === null || cause === void 0 ? void 0 : cause.message) ? ` (${cause.code ? `${cause.code}: ` : ""}${cause.message})` : "";
++        err = new GoogleGenerativeAIError(`Error fetching from ${url.toString()}: ${e.message}${detail}`);
+         err.stack = e.stack;
++        err.cause = e;
+     }
+     throw err;
+ }
