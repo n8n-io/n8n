@@ -273,6 +273,8 @@ export async function startEngine(
 			socket,
 			'--shards',
 			'1',
+			// The test bed gives each run the start clock of the recorded run.
+			'--test-clock',
 			'--gym-env',
 			'--ca-file',
 			caFile,
@@ -344,6 +346,8 @@ export async function startLocalEngine(
 			socket,
 			'--shards',
 			'1',
+			// The test bed gives each run the start clock of the recorded run.
+			'--test-clock',
 		],
 		{ ...process.env, WFRT_ADMIN_SECRET: wfrtSecret, TZ: 'UTC' },
 		join(work, 'out', 'wfrt.log'),

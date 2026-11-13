@@ -162,6 +162,138 @@ test "manual run with a given id and trace" {
     try testing.expectEqual(core.LogMode.skip, h.st.log_modes[0]);
 }
 
+/// `run(t) { return { t: ctx.now() } }`: the time the execution reads.
+fn nowModule(gpa: std.mem.Allocator) ![]u8 {
+    var a: Asm = .{ .gpa = gpa, .meta = "{}" };
+    defer a.deinit();
+    a.beginFunc();
+    try a.emitBc(.now, 1, 0);
+    try a.emit(.newobj, 0, 2, 0, 0);
+    try a.emit(.setprop, 0, 2, try a.str("t"), 1);
+    try a.emit(.ret, 0, 2, 0, 0);
+    try a.endFunc("run", 1, 3, 0);
+    return a.finish();
+}
+
+/// `run(t) { await approval(t); return { t: ctx.now() } }`: the execution
+/// parks (approvals always do), so the test bed can restore it.
+fn parkedModule(gpa: std.mem.Allocator) ![]u8 {
+    var a: Asm = .{ .gpa = gpa, .meta = "{}" };
+    defer a.deinit();
+    const ask = try a.step("Ask", .approval);
+    a.beginFunc();
+    try a.emitBc(.loadi, 1, ask);
+    try a.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.approval), 2, 1, 0);
+    try a.emitBc(.now, 3, 0);
+    try a.emit(.newobj, 0, 4, 0, 0);
+    try a.emit(.setprop, 0, 4, try a.str("t"), 3);
+    try a.emit(.ret, 0, 4, 0, 0);
+    try a.endFunc("run", 1, 5, 0);
+    return a.finish();
+}
+
+/// `run(t) { await wait({ <key>: <value> }); return {} }`.
+fn waitModule(gpa: std.mem.Allocator, key: []const u8, value: f64) ![]u8 {
+    var a: Asm = .{ .gpa = gpa, .meta = "{}" };
+    defer a.deinit();
+    const wait = try a.step("Wait", .wait);
+    a.beginFunc();
+    try a.emit(.newobj, 0, 1, 0, 0);
+    try a.emitBc(.loadk, 2, try a.number(value));
+    try a.emit(.setprop, 0, 1, try a.str(key), 2);
+    try a.emitBc(.loadi, 3, wait);
+    try a.emit(.@"suspend", @backingInt(@import("module.zig").EffectKind.wait), 4, 3, 1);
+    try a.emit(.newobj, 0, 5, 0, 0);
+    try a.emit(.ret, 0, 5, 0, 0);
+    try a.endFunc("run", 1, 6, 0);
+    return a.finish();
+}
+
+test "CLOCK-OFFSET: a run reads the time the test bed gives it" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var h = try Harness.init(a);
+    try testing.expectEqual(@as(u32, 200), try h.load("wf", "v1", false, try nowModule(a)));
+    // No offset: the run reads the shard clock.
+    const plain = try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("1").?, .conn = 3, .payload = "wf\nv1\nnull" }});
+    try testing.expectEqual(@as(i64, 1020), h.st.now_ms);
+    try testing.expectEqualStrings("{\"t\":1020}", find(plain, .finished).?.payload);
+    // One day earlier, and the shard clock does not move: timers, retries,
+    // schedules and rate limits stay on real time.
+    const shifted = try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("2").?, .conn = 3, .payload = "clock:-86400000\nwf\nv1\nnull" }});
+    try testing.expectEqual(@as(i64, 1030), h.st.now_ms);
+    try testing.expectEqualStrings("{\"t\":-86398970}", find(shifted, .finished).?.payload);
+    // A line that is not the offset, and one that is too large, start nothing.
+    try testing.expectEqual(@as(u32, 400), replyStatus(try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("3").?, .conn = 3, .payload = "clock:one\nwf\nv1\nnull" }})));
+    try testing.expectEqual(@as(u32, 400), replyStatus(try h.tick(&.{.{ .kind = .manual, .exec_id = core.parseExecId("4").?, .conn = 3, .payload = "clock:315360000001\nwf\nv1\nnull" }})));
+}
+
+test "CLOCK-OFFSET: a wait date is on the run clock, a duration is not" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var h = try Harness.init(a);
+    const now: i64 = 1_000_000;
+    const offset: i64 = -86_400_000;
+    // The date is 5 s after the clock of the run: the timer ends 5 s after
+    // the shard's now, not 5 s minus the offset (which would be 0).
+    const until: f64 = @floatFromInt(now + offset + 5_000);
+    try testing.expectEqual(@as(u32, 200), try h.load("abs", "v1", false, try waitModule(a, "until", until)));
+    try testing.expectEqual(@as(u32, 200), try h.load("rel", "v1", false, try waitModule(a, "duration", 5_000)));
+    h.scratch.reset();
+    var out = try core.step(&h.st, now, &.{.{ .kind = .manual, .exec_id = core.parseExecId("11").?, .conn = 3, .payload = "clock:-86400000\nabs\nv1\nnull" }}, &h.scratch);
+    try testing.expectEqual(@as(?i64, now + 5_000), out.next_timer_ms);
+    // A relative wait of 5 s is 5 s, whatever the clock of the run says.
+    h.scratch.reset();
+    out = try core.step(&h.st, now, &.{.{ .kind = .manual, .exec_id = core.parseExecId("12").?, .conn = 3, .payload = "clock:-86400000\nrel\nv1\nnull" }}, &h.scratch);
+    try testing.expectEqual(@as(?i64, now + 5_000), out.next_timer_ms);
+}
+
+test "CLOCK-OFFSET: a restored execution keeps its clock" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var h = try Harness.init(a);
+    try testing.expectEqual(@as(u32, 200), try h.load("wf", "v1", false, try parkedModule(a)));
+    const id = core.parseExecId("21").?;
+    const acts = try h.tick(&.{.{ .kind = .manual, .exec_id = id, .conn = 3, .payload = "clock:-86400000\nwf\nv1\nnull" }});
+    try testing.expectEqual(@as(u32, 202), replyStatus(acts));
+    // The approval evicts the execution: its snapshot holds the offset.
+    const snap = try a.dupe(u8, find(acts, .snapshot).?.payload);
+    const done = try h.tick(&.{ .{ .kind = .restore, .exec_id = id, .payload = snap }, .{ .kind = .effect_ok, .exec_id = id, .seq = 0, .payload = "true" } });
+    try testing.expectEqual(@as(i64, 1030), h.st.now_ms);
+    try testing.expectEqualStrings("{\"t\":-86398970}", find(done, .finished).?.payload);
+}
+
+test "CLOCK-OFFSET: a log replay of the start gives the same clock" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const bytes = try nowModule(a);
+    const payload = "clock:-86400000\nv1-wf\nv1\nnull";
+    const id = core.parseExecId("31").?;
+    var h = try Harness.init(a);
+    try testing.expectEqual(@as(u32, 200), try h.load("v1-wf", "v1", false, bytes));
+    const live = find(try h.tick(&.{.{ .kind = .manual, .exec_id = id, .conn = 3, .payload = payload }}), .finished).?;
+    // The offset is data in the event: the log record of that batch replays
+    // on a second shard at the same `now_ms` with the same clock.
+    const logfmt = @import("logfmt.zig");
+    var buf: [4096]u8 = undefined;
+    const events = [_]core.Event{.{ .kind = .manual, .exec_id = id, .conn = 3, .payload = payload }};
+    const rec = logfmt.encode(&buf, 1, h.st.now_ms, &events);
+    var reader: logfmt.Reader = .{ .bytes = rec };
+    const batch = reader.next().?;
+    var decoded: [8]core.Event = undefined;
+    const replayed = try logfmt.decodeEvents(batch, &decoded);
+    var h2 = try Harness.init(a);
+    try testing.expectEqual(@as(u32, 200), try h2.load("v1-wf", "v1", false, bytes));
+    h2.now = batch.header.now_ms - 10; // `tick` adds 10.
+    const again = find(try h2.tick(replayed), .finished).?;
+    try testing.expectEqualStrings(live.payload, again.payload);
+    try testing.expectEqualStrings("{\"t\":-86398980}", again.payload);
+}
+
 test "module store compacts when full" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();

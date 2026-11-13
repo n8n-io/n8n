@@ -99,6 +99,9 @@ pub const Options = struct {
     /// `--step-events-sample`: step events of unwatched executions for 1 in N
     /// executions (0: none, spec 9.2).
     step_event_sample: u32 = 0,
+    /// `--test-clock`: `POST /_admin/executions` accepts `clockOffsetMs`
+    /// (CLOCK-OFFSET). Only a test bed sets this flag.
+    test_clock: bool = false,
     /// `--max-modules`: loaded modules of one shard. Each workflow version
     /// takes one while it is current or an execution uses it, also an
     /// execution that waits or needs attention.
@@ -1633,8 +1636,10 @@ pub const Runner = struct {
                 r.events.appendAssumeCapacity(.{ .kind = .set_vars, .conn = conn, .payload = p });
             },
             .start_execution => {
-                const m = admin.manualEvent(a, req.body) catch |e| return r.adminReply(idx, if (e == error.OutOfMemory) 503 else 400, switch (e) {
+                const m = admin.manualEvent(a, req.body, r.opts.test_clock) catch |e| return r.adminReply(idx, if (e == error.OutOfMemory) 503 else 400, switch (e) {
                     error.BadExecutionId => "{\"error\":\"executionId must be a numeric string\"}",
+                    error.ClockDisabled => admin.clock_disabled_body,
+                    error.BadClockOffset => admin.clock_range_body,
                     error.OutOfMemory => busy_body,
                     else => "{\"error\":\"bad execution body\"}",
                 });

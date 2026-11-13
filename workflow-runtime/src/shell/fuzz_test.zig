@@ -523,11 +523,18 @@ fn fuzzAdmin(_: void, smith: *Smith) !void {
         defer parsed.deinit();
         if (!std.mem.eql(u8, parsed.value.object.get("workflowId").?.string, "wf")) return error.WrongWorkflowId;
     } else |_| {}
-    if (admin.manualEvent(gpa, body)) |m| {
-        defer gpa.free(m.payload);
-        if (m.exec_id & core.given_id_flag == 0) return error.ManualIdNotGiven;
-        if (std.mem.count(u8, m.payload, "\n") < 2) return error.ManualPayloadShape;
-    } else |_| {}
+    for ([_]bool{ false, true }) |test_clock| {
+        if (admin.manualEvent(gpa, body, test_clock)) |m| {
+            defer gpa.free(m.payload);
+            if (m.exec_id & core.given_id_flag == 0) return error.ManualIdNotGiven;
+            if (std.mem.count(u8, m.payload, "\n") < 2) return error.ManualPayloadShape;
+            // The clock offset (CLOCK-OFFSET) is bounded, is on the first
+            // line of the payload, and needs the flag of the test bed.
+            if (m.clock_offset_ms > core.max_clock_offset_ms or m.clock_offset_ms < -core.max_clock_offset_ms) return error.ClockOutOfRange;
+            if (m.clock_offset_ms != 0 and !test_clock) return error.ClockWithoutFlag;
+            if (m.clock_offset_ms != 0 and !std.mem.startsWith(u8, m.payload, core.clock_offset_prefix)) return error.ClockNotInPayload;
+        } else |_| {}
+    }
     var head_buf: [256]u8 = undefined;
     const head = head_buf[0..smith.slice(&head_buf)];
     if (admin.authorized(head, "s3cret-s3cret-s3cret") and std.mem.indexOf(u8, head, "s3cret-s3cret-s3cret") == null) return error.AuthWithoutSecret;

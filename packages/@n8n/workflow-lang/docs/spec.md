@@ -969,11 +969,20 @@ port needs `--shards 1`. Bodies are JSON. Errors are `{ "error": s }`.
 | `GET /_admin/workflows` | — | `[{ workflowId, versionId, active, executions, routes: ["POST /webhook/…"], schedules }]`. `executions` counts the live and parked executions of the current version |
 | `PUT /_admin/credentials` | the credentials document of section 7 | 200. Replaces the global credentials, in memory only |
 | `PUT /_admin/variables` | `{ "<key>": "<value>" }` | 200; 400 when it is not an object. Replaces the variables (`$vars`, 9.5). The log keeps them |
-| `POST /_admin/executions` | `{ "workflowId": s, "versionId"?: s, "executionId": s, "trigger": <value>, "trace"?: bool }` | 202 `{ "executionId": s }`. Starts one execution of the current version (manual run), also when the workflow is not active. 400: the id is not a numeric string. 404: unknown workflow. 409: `versionId` is not the current version, or a live or parked execution has the id |
+| `POST /_admin/executions` | `{ "workflowId": s, "versionId"?: s, "executionId": s, "trigger": <value>, "trace"?: bool, "clockOffsetMs"?: int }` | 202 `{ "executionId": s }`. Starts one execution of the current version (manual run), also when the workflow is not active. 400: the id is not a numeric string, or `clockOffsetMs` has no `--test-clock`. 404: unknown workflow. 409: `versionId` is not the current version, or a live or parked execution has the id |
 | `DELETE /_admin/executions/<executionId>` | — | 202. Cancels a live or parked execution (`finished` with status `cancelled`). 404 when unknown |
 | `GET /_admin/events` | — | A stream of newline-separated JSON events (9.2), `content-type: application/x-ndjson`. One client at a time; a second gets 409 |
 | `POST /_admin/resume/<executionId>/<effectSeq>?signature=<s>` | the resume value | 202 `{ "status": "resumed" }`. Completes the waiting effect (an approval) with the body. 403: the signature is missing or wrong. 404: unknown execution |
 | `POST /_admin/resume/<executionId>?signature=<s>` | the resume value | The same, for the one approval that the execution waits for now (9.4). 409 when it waits for none or several |
+
+**Test clock (CLOCK-OFFSET).** `POST /_admin/executions` takes
+`clockOffsetMs`, an integer of at most 10 years in ms in either direction.
+The execution then reads `Date.now()` and `new Date()` at its own start
+clock, `now + offset`. Timers, retries and schedules stay on real time, and
+so does the length of a wait, also of one that names a date. The offset is data of the logged
+start event, so a replay and a restore of a parked execution read the same
+clock. Only a test bed sets it: without `wfrt serve --test-clock`, a request
+with the field is 400.
 
 The public port also accepts `POST /resume/<executionId>/<effectSeq>?signature=<s>`
 (the `resumeUrl` of a `waiting` event) and `POST /resume/<executionId>?signature=<s>`.

@@ -10,6 +10,7 @@ const module = @import("module.zig");
 const multipart = @import("multipart.zig");
 const tz = @import("tz.zig");
 const cron = @import("cron.zig");
+const core = @import("core.zig");
 const Asm = @import("asm.zig").Asm;
 const Arena = @import("arena.zig").Arena;
 const Smith = std.testing.Smith;
@@ -235,6 +236,33 @@ test "fuzz webhook body" {
     try std.testing.fuzz({}, fuzzWebhookBody, .{ .corpus = &.{ seed("a=1&b=%zz&c=+"), seed("--B\r\nContent-Disposition: form-data; name=\"f\"; filename=\"x\"\r\n\r\n\x00\xff\r\n--B--") } });
 }
 
+// ---- manual event payload ----------------------------------------------------------
+
+fn fuzzManual(_: void, smith: *Smith) !void {
+    const payload = input_buf[0..smith.slice(&input_buf)];
+    const m = core.manualPayload(payload) orelse return;
+    // An accepted payload has a bounded offset, its rest is a slice of the
+    // input, and a payload with the line lost it.
+    if (m.clock_offset_ms > core.max_clock_offset_ms or m.clock_offset_ms < -core.max_clock_offset_ms) return error.ClockOutOfRange;
+    if (m.rest.len > payload.len) return error.RestOutsideInput;
+    if (std.mem.startsWith(u8, payload, core.clock_offset_prefix) and m.rest.len > 0) {
+        const nl = std.mem.indexOfScalar(u8, payload, '\n').?;
+        if (m.rest.ptr != payload.ptr + nl + 1) return error.LineNotRemoved;
+    }
+}
+
+test "fuzz manual payload" {
+    try std.testing.fuzz({}, fuzzManual, .{ .corpus = &.{
+        seed("wf\nv1\nnull"),
+        seed("clock:-86400000\nwf\nv1\nnull"),
+        seed("clock:315360000000\nwf\n\n{}"),
+        seed("clock:315360000001\nwf\n\n{}"),
+        seed("clock:one\nwf\n\n{}"),
+        seed("clock:"),
+        seed("clock:1.5\n\n\n"),
+    } });
+}
+
 // ---- TZif and cron ------------------------------------------------------------------
 
 var zone: tz.Zone = .{};
@@ -324,16 +352,18 @@ fn fuzzRegex(_: void, smith: *Smith) !void {
 }
 
 test "fuzz regex compile and exec" {
-    try std.testing.fuzz({}, fuzzRegex, .{ .corpus = &.{
-        seed("(a|b)*c") ++ seed("g") ++ seed("aabbc abc"),
-        seed("^(?:(\\d+)-)?(?<w>\\w+)\\k<w>$") ++ seed("") ++ seed("12-abab"),
-        seed("(?=(a+))a*b\\1") ++ seed("i") ++ seed("AAAB"),
-        seed("[^\\s\\d]{2,3}?|x(?!y)") ++ seed("m") ++ seed("xy\nab c"),
-        seed("😀.\\u{1F600}") ++ seed("u") ++ seed("😀x😀"),
-        seed("") ++ seed("u") ++ seed("\xd7\xab\xf3\x4d\x56\xa8\xf2\x5d"),
-        // A past crash: a group name that is not a name, then groups up to a later `>`.
-        seed("(?<wR/(\\d+)-(?<w>\\w+)\\k<w>") ++ seed("i") ++ seed("ab"),
-    } });
+    try std.testing.fuzz({}, fuzzRegex, .{
+        .corpus = &.{
+            seed("(a|b)*c") ++ seed("g") ++ seed("aabbc abc"),
+            seed("^(?:(\\d+)-)?(?<w>\\w+)\\k<w>$") ++ seed("") ++ seed("12-abab"),
+            seed("(?=(a+))a*b\\1") ++ seed("i") ++ seed("AAAB"),
+            seed("[^\\s\\d]{2,3}?|x(?!y)") ++ seed("m") ++ seed("xy\nab c"),
+            seed("😀.\\u{1F600}") ++ seed("u") ++ seed("😀x😀"),
+            seed("") ++ seed("u") ++ seed("\xd7\xab\xf3\x4d\x56\xa8\xf2\x5d"),
+            // A past crash: a group name that is not a name, then groups up to a later `>`.
+            seed("(?<wR/(\\d+)-(?<w>\\w+)\\k<w>") ++ seed("i") ++ seed("ab"),
+        },
+    });
 }
 
 // ---- JSON.parse error messages ------------------------------------------------------
