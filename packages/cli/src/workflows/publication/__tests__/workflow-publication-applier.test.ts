@@ -9,6 +9,7 @@ import type {
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
 import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType } from 'n8n-workflow';
@@ -16,6 +17,7 @@ import { WebhookPathTakenError } from 'n8n-workflow';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeTypes } from '@/node-types';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -26,6 +28,7 @@ import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
@@ -48,6 +51,8 @@ describe('WorkflowPublicationApplier', () => {
 		ownerId: workflowId,
 	}));
 	const durableJobProvisioner = mock<DurableJobProvisioner>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -63,6 +68,8 @@ describe('WorkflowPublicationApplier', () => {
 		ownershipService,
 		workflowScheduledJobOwner,
 		durableJobProvisioner,
+		credentialsPermissionChecker,
+		workflowPublisherService,
 	);
 
 	function makeRecord(
@@ -153,6 +160,8 @@ describe('WorkflowPublicationApplier', () => {
 		// `clearAllMocks` keeps implementations, so restore the clearing default.
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
+		credentialsPermissionChecker.check.mockResolvedValue();
+		workflowPublisherService.findPublisherUserIdForAccessCheck.mockResolvedValue('publisher-1');
 	});
 
 	test('skips with workflow-not-found when the workflow is gone', async () => {
@@ -281,6 +290,100 @@ describe('WorkflowPublicationApplier', () => {
 				ownerType: 'workflow',
 				ownerId: 'wf-1',
 			});
+		});
+	});
+
+	describe('credential access', () => {
+		const refusal = () => new UserError('Node "a" does not have access to the credential');
+
+		test('checks every node of the new version, sub-nodes included, as its publisher', async () => {
+			const trigger = triggerNode('a');
+			// A trigger can load this sub-node with its credential in the webhook phase.
+			const subNode = triggerNode('tool', {
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				credentials: { httpBearerAuth: { id: 'cred-1', name: 'Owner token' } },
+			});
+			const nodes = [trigger, subNode];
+			workflowHistoryRepository.findOneBy.mockResolvedValue({
+				...newVersion,
+				nodes,
+				setUpdateDate: () => {},
+			});
+			setTriggerSets([], [trigger]);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowPublisherService.findPublisherUserIdForAccessCheck).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				nodes,
+				'publisher-1',
+			);
+		});
+
+		// At startup, the triggers register again with the current state of access.
+		test('checks again when the trigger diff is empty', async () => {
+			const trigger = triggerNode('a');
+			setTriggerSets([trigger], [{ ...trigger }]);
+			credentialsPermissionChecker.check.mockRejectedValue(refusal());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('failed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test('fails the record without registering triggers when the check refuses', async () => {
+			setTriggerSets([], [triggerNode('a'), triggerNode('b')]);
+			credentialsPermissionChecker.check.mockRejectedValue(refusal());
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerStatuses: [
+					{ nodeId: 'a', status: 'failed', errorMessage: refusal().message },
+					{ nodeId: 'b', status: 'failed', errorMessage: refusal().message },
+				],
+			});
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		// A transient error is no verdict, so the record must be retried.
+		test('propagates an error that is not a refusal', async () => {
+			credentialsPermissionChecker.check.mockRejectedValue(new Error('db down'));
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('db down');
+
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		// Refusing on a failed lookup would make a transient error final.
+		test('propagates a failed publisher lookup so the record is retried', async () => {
+			setTriggerSets([], [triggerNode('a')]);
+			workflowPublisherService.findPublisherUserIdForAccessCheck.mockRejectedValue(
+				new Error('db down'),
+			);
+
+			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('db down');
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		test('does not check while unpublishing', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(
+				makeWorkflow({ active: true, activeVersionId: null }),
+			);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 		});
 	});
 

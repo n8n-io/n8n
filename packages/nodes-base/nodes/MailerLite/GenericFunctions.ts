@@ -7,27 +7,29 @@ import type {
 	JsonObject,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { CustomField } from './v2/MailerLite.Interface';
 
 export async function mailerliteApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs,
 		url:
 			this.getNode().typeVersion === 1
-				? `https://api.mailerlite.com/api/v2${path}`
-				: `https://connect.mailerlite.com/api${path}`,
+				? requestUrl`https://api.mailerlite.com/api/v2${path}`
+				: requestUrl`https://connect.mailerlite.com/api${path}`,
 		json: true,
 	};
 	try {
@@ -44,7 +46,7 @@ export async function mailerliteApiRequest(
 export async function mailerliteApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -75,7 +77,7 @@ export async function getCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const endpoint = '/fields';
+	const endpoint = requestPath`/fields`;
 	const fieldsResponse = await mailerliteApiRequest.call(this, 'GET', endpoint);
 
 	if (this.getNode().typeVersion === 1) {

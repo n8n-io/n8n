@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as search from '../../../../v2/actions/record/search.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
@@ -102,7 +103,7 @@ describe('Test AirtableV2, search operation', () => {
 		expect(transport.apiRequestAllItems).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequestAllItems).toHaveBeenCalledWith(
 			'GET',
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{},
 			{
 				fields: ['foo', 'bar'],
@@ -151,7 +152,7 @@ describe('Test AirtableV2, search operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{},
 			{ fields: ['foo', 'bar'], filterByFormula: 'foo', maxRecords: 1 },
 		);

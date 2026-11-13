@@ -1,5 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
+import { toListValue } from '../helpers/utils';
 import { splunkApiJsonRequest } from '../transport';
 
 export async function searchReports(
@@ -12,14 +14,14 @@ export async function searchReports(
 		qs.search = filter;
 	}
 
-	const endpoint = '/services/saved/searches';
+	const endpoint = requestPath`/services/saved/searches`;
 	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
 		results: (response as IDataObject[]).map((entry: IDataObject) => {
 			return {
 				name: entry.name as string,
-				value: entry.id as string,
+				value: toListValue(this.getNode().typeVersion, entry.id as string),
 				url: entry.entryUrl as string,
 			};
 		}),
@@ -36,7 +38,7 @@ export async function searchJobs(
 		qs.search = filter;
 	}
 
-	const endpoint = '/services/search/jobs';
+	const endpoint = requestPath`/services/search/jobs`;
 	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
@@ -60,14 +62,14 @@ export async function searchUsers(
 		qs.search = filter;
 	}
 
-	const endpoint = '/services/authentication/users';
+	const endpoint = requestPath`/services/authentication/users`;
 	const response = await splunkApiJsonRequest.call(this, 'GET', endpoint, undefined, qs);
 
 	return {
 		results: (response as IDataObject[]).map((entry: IDataObject) => {
 			return {
 				name: entry.name as string,
-				value: entry.id as string,
+				value: toListValue(this.getNode().typeVersion, entry.id as string),
 				url: entry.entryUrl as string,
 			};
 		}),

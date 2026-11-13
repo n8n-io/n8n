@@ -5,18 +5,21 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleBigQueryApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter(
@@ -25,14 +28,14 @@ export async function googleBigQueryApiRequest(
 		'serviceAccount',
 	) as string;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://bigquery.googleapis.com/bigquery${resource}`,
+		uri: uri ?? requestUrl`https://bigquery.googleapis.com/bigquery${resource}`,
 		json: true,
 	};
 	try {
@@ -71,7 +74,7 @@ export async function googleBigQueryApiRequest(
 export async function googleBigQueryApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

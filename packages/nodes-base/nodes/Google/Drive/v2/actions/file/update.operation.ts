@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -182,7 +182,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			await googleApiRequest.call(
 				this,
 				'PATCH',
-				`/upload/drive/v3/files/${fileId}`,
+				requestPath`/upload/drive/v3/files/${fileId}`,
 				fileContent,
 				{
 					uploadType: 'media',
@@ -200,7 +200,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			const resumableUpload = await googleApiRequest.call(
 				this,
 				'PATCH',
-				`/upload/drive/v3/files/${fileId}`,
+				requestPath`/upload/drive/v3/files/${fileId}`,
 				undefined,
 				{ uploadType: 'resumable', supportsAllDrives: true },
 				undefined,
@@ -266,7 +266,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const responseData = await googleApiRequest.call(
 		this,
 		'PATCH',
-		`/drive/v3/files/${fileId}`,
+		requestPath`/drive/v3/files/${fileId}`,
 		body,
 		qs,
 	);

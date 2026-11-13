@@ -6,36 +6,39 @@ import type {
 	INodeExecutionData,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
 ): Promise<any> {
 	const credentials = await this.getCredentials('microsoftOutlookOAuth2Api');
 
-	let apiUrl = `https://graph.microsoft.com/v1.0/me${resource}`;
+	let apiUrl: RequestUrl = requestUrl`https://graph.microsoft.com/v1.0/me${resource}`;
 	// If accessing shared mailbox
 	if (credentials.useShared && credentials.userPrincipalName) {
-		apiUrl = `https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
+		apiUrl = requestUrl`https://graph.microsoft.com/v1.0/users/${credentials.userPrincipalName}${resource}`;
 	}
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		uri: apiUrl,
 	};
 	try {
 		Object.assign(options, option);
@@ -48,7 +51,11 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(
+			this,
+			'microsoftOutlookOAuth2Api',
+			uri ? { ...options, uri } : options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -58,7 +65,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -91,7 +98,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -192,14 +199,14 @@ export async function downloadAttachments(
 				this,
 				'value',
 				'GET',
-				`/messages/${message.id}/attachments`,
+				requestPath`/messages/${message.id}/attachments`,
 				{},
 			);
 			for (const [index, attachment] of attachments.entries()) {
 				const response = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					requestPath`/messages/${message.id}/attachments/${attachment.id}/$value`,
 					undefined,
 					{},
 					undefined,

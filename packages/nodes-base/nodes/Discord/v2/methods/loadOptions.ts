@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { checkAccessToGuild } from '../helpers/utils';
 import { discordApiRequest } from '../transport';
@@ -14,13 +15,13 @@ export async function getRoles(this: ILoadOptionsFunctions): Promise<INodeProper
 		const userGuilds = (await discordApiRequest.call(
 			this,
 			'GET',
-			'/users/@me/guilds',
+			requestPath`/users/@me/guilds`,
 		)) as IDataObject[];
 
 		checkAccessToGuild(this.getNode(), guildId, userGuilds);
 	}
 
-	let response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/roles`);
+	let response = await discordApiRequest.call(this, 'GET', requestPath`/guilds/${guildId}/roles`);
 
 	const operations = this.getNodeParameter('operation') as string;
 
@@ -30,7 +31,7 @@ export async function getRoles(this: ILoadOptionsFunctions): Promise<INodeProper
 		}) as string;
 
 		const userRoles = ((
-			await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`)
+			await discordApiRequest.call(this, 'GET', requestPath`/guilds/${guildId}/members/${userId}`)
 		).roles || []) as string[];
 
 		response = response.filter((role: IDataObject) => {

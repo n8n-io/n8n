@@ -12,7 +12,6 @@ import {
 	UserRepository,
 	PersonRepository,
 	AuthenticatedRequest,
-	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import {
@@ -147,10 +146,10 @@ export class UsersController {
 		}
 
 		if (
-			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			person.role.slug === GLOBAL_OWNER_ROLE.slug
+			person.role.slug === GLOBAL_OWNER_ROLE.slug &&
+			req.user.role.slug !== GLOBAL_OWNER_ROLE.slug
 		) {
-			throw new ForbiddenError('Admin cannot reset password of global owner');
+			throw new ForbiddenError('Only the owner can reset the password of the global owner');
 		}
 
 		const link = this.authService.generatePasswordResetUrl(person);

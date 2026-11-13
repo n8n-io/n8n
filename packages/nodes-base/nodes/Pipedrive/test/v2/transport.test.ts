@@ -1,6 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	pipedriveApiRequest,
@@ -34,14 +34,32 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: {},
 			});
 
-			await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {});
+			await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/deals`, {});
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
 				expect.objectContaining({
-					uri: 'https://api.pipedrive.com/api/v2/deals',
+					uri: requestUrl`https://api.pipedrive.com/api/v2/deals`,
 				}),
 			);
+		});
+
+		it('should encode a path value that contains a slash', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({
+				success: true,
+				data: { id: 1 },
+			});
+
+			await pipedriveApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/deals/${'8/persons'}`,
+				{},
+			);
+
+			expect(
+				String(mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0][1].uri),
+			).toBe('https://api.pipedrive.com/api/v2/deals/8%2Fpersons');
 		});
 
 		it('should use v1 base URL when apiVersion is v1', async () => {
@@ -54,7 +72,7 @@ describe('Pipedrive v2 Transport', () => {
 			await pipedriveApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/leads',
+				requestPath`/leads`,
 				{},
 				{},
 				{
@@ -65,7 +83,7 @@ describe('Pipedrive v2 Transport', () => {
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
 				expect.objectContaining({
-					uri: 'https://api.pipedrive.com/v1/leads',
+					uri: requestUrl`https://api.pipedrive.com/v1/leads`,
 				}),
 			);
 		});
@@ -78,7 +96,7 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: {},
 			});
 
-			await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {});
+			await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/deals`, {});
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveOAuth2Api',
@@ -93,7 +111,12 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: { next_cursor: 'abc123' },
 			});
 
-			const result = await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {});
+			const result = await pipedriveApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/deals`,
+				{},
+			);
 
 			expect(result).toEqual({
 				additionalData: { next_cursor: 'abc123' },
@@ -108,7 +131,12 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: {},
 			});
 
-			const result = await pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {});
+			const result = await pipedriveApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/deals`,
+				{},
+			);
 
 			expect(result.data).toEqual([]);
 		});
@@ -120,7 +148,7 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: {},
 			});
 
-			await pipedriveApiRequest.call(mockExecuteFunctions, 'POST', '/deals', {
+			await pipedriveApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/deals`, {
 				title: 'New Deal',
 			});
 
@@ -139,7 +167,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/files/1/download',
+				requestPath`/files/1/download`,
 				{},
 				{},
 				{ downloadFile: true },
@@ -161,7 +189,7 @@ describe('Pipedrive v2 Transport', () => {
 			});
 
 			await expect(
-				pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {}),
+				pipedriveApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/deals`, {}),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -171,7 +199,7 @@ describe('Pipedrive v2 Transport', () => {
 			);
 
 			await expect(
-				pipedriveApiRequest.call(mockExecuteFunctions, 'GET', '/deals', {}),
+				pipedriveApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/deals`, {}),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -185,7 +213,7 @@ describe('Pipedrive v2 Transport', () => {
 			await pipedriveApiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/files',
+				requestPath`/files`,
 				{},
 				{},
 				{ formData: { file: 'binary-data' } },
@@ -222,7 +250,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequestAllItemsCursor.call(
 				mockExecuteFunctions,
 				'GET',
-				'/deals',
+				requestPath`/deals`,
 				{},
 			);
 
@@ -240,7 +268,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequestAllItemsCursor.call(
 				mockExecuteFunctions,
 				'GET',
-				'/deals',
+				requestPath`/deals`,
 				{},
 			);
 
@@ -258,7 +286,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequestAllItemsCursor.call(
 				mockExecuteFunctions,
 				'GET',
-				'/deals',
+				requestPath`/deals`,
 				{},
 			);
 
@@ -273,7 +301,12 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: {},
 			});
 
-			await pipedriveApiRequestAllItemsCursor.call(mockExecuteFunctions, 'GET', '/deals', {});
+			await pipedriveApiRequestAllItemsCursor.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/deals`,
+				{},
+			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
@@ -305,7 +338,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequestAllItemsOffset.call(
 				mockExecuteFunctions,
 				'GET',
-				'/leadFields',
+				requestPath`/leadFields`,
 				{},
 			);
 
@@ -320,12 +353,19 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: { pagination: { more_items_in_collection: false } },
 			});
 
-			await pipedriveApiRequestAllItemsOffset.call(mockExecuteFunctions, 'GET', '/leadFields', {});
+			await pipedriveApiRequestAllItemsOffset.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/leadFields`,
+				{},
+			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
 				expect.objectContaining({
-					uri: expect.stringContaining('https://api.pipedrive.com/v1'),
+					uri: expect.objectContaining({
+						value: expect.stringContaining('https://api.pipedrive.com/v1'),
+					}),
 				}),
 			);
 		});
@@ -337,7 +377,12 @@ describe('Pipedrive v2 Transport', () => {
 				additional_data: { pagination: { more_items_in_collection: false } },
 			});
 
-			await pipedriveApiRequestAllItemsOffset.call(mockExecuteFunctions, 'GET', '/leadFields', {});
+			await pipedriveApiRequestAllItemsOffset.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/leadFields`,
+				{},
+			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
@@ -357,7 +402,7 @@ describe('Pipedrive v2 Transport', () => {
 			const result = await pipedriveApiRequestAllItemsOffset.call(
 				mockExecuteFunctions,
 				'GET',
-				'/leadFields',
+				requestPath`/leadFields`,
 				{},
 			);
 
@@ -393,7 +438,7 @@ describe('Pipedrive v2 Transport', () => {
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
 				expect.objectContaining({
-					uri: expect.stringContaining('/api/v2/dealFields'),
+					uri: expect.objectContaining({ value: expect.stringContaining('/api/v2/dealFields') }),
 				}),
 			);
 		});
@@ -425,7 +470,9 @@ describe('Pipedrive v2 Transport', () => {
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
 				expect.objectContaining({
-					uri: expect.stringContaining('https://api.pipedrive.com/v1/leadFields'),
+					uri: expect.objectContaining({
+						value: expect.stringContaining('https://api.pipedrive.com/v1/leadFields'),
+					}),
 				}),
 			);
 		});

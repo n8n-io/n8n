@@ -124,6 +124,8 @@ export * from './workflow-diff';
 export * from './connections-diff';
 export * from './workflow-environments-helper';
 export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
+export { decodePathValue, requestPath, requestUrl } from './request-target';
+export type { RequestPath, RequestUrl } from './request-target';
 
 export type {
 	DocMetadata,

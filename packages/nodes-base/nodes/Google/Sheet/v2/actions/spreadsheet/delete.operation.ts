@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { wrapData } from '../../../../../../utils/utilities';
 import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
@@ -77,10 +78,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		await apiRequest.call(
 			this,
 			'DELETE',
-			'',
+			requestPath``,
 			{},
 			{},
-			`https://www.googleapis.com/drive/v3/files/${documentId}`,
+			requestUrl`https://www.googleapis.com/drive/v3/files/${documentId}`,
 		);
 
 		const executionData = this.helpers.constructExecutionMetaData(wrapData({ success: true }), {

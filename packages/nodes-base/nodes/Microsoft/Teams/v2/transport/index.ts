@@ -1,5 +1,10 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	buildMicrosoftGraphPath,
@@ -51,10 +56,10 @@ export {
  * (App `Team.ReadBasic.All`). OAuth2 keeps the per-user `/v1.0/me/joinedTeams`.
  * Shared by `getTeams` (listSearch) and `fetchAllTeams` (trigger).
  */
-export function joinedTeamsEndpoint(this: MicrosoftGraphContext): string {
+export function joinedTeamsEndpoint(this: MicrosoftGraphContext): RequestPath {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
-		? '/v1.0/teams'
-		: '/v1.0/me/joinedTeams';
+		? requestPath`/v1.0/teams`
+		: requestPath`/v1.0/me/joinedTeams`;
 }
 
 /**

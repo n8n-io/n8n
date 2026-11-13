@@ -6,26 +6,29 @@ import type {
 	IDataObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { Eq } from './QueryFunctions';
 
 export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Pick<IRequestOptions, 'formData'> = {},
 ) {
 	const credentials = await this.getCredentials('theHiveApi');
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/api${resource}`,
+		uri: uri ?? requestUrl`${credentials.url}/api${resource}`,
 		body,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
@@ -144,9 +147,10 @@ export async function prepareCustomFields(
 		// Get Custom Field Types from TheHive
 		const credentials = await this.getCredentials('theHiveApi');
 		const version = credentials.apiVersion;
-		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
+		const endpoint =
+			version === 'v1' ? requestPath`/customField` : requestPath`/list/custom_fields`;
 
-		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
+		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint);
 
 		// Convert TheHive3 response to the same format as TheHive 4
 		// [{name, reference, type}]

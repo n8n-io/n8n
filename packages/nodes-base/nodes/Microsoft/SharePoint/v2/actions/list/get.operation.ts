@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
@@ -70,7 +70,7 @@ export async function execute(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}`,
+		requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}`,
 		{},
 		qs,
 	);

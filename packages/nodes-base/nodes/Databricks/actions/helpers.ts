@@ -1,6 +1,13 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
+import {
+	decodePathValue,
+	NodeApiError,
+	NodeOperationError,
+	UserError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,
@@ -9,9 +16,12 @@ import type {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	ISupplyDataFunctions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
 
-import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
+import { DATABRICKS_PARTNER_USER_AGENT, LITERAL_PATH_VERSION } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
@@ -21,6 +31,10 @@ export type DatabricksContext =
 	| IPollFunctions
 	| ISupplyDataFunctions;
 export type DatabricksCredentialType = 'databricksApi' | 'databricksOAuth2Api';
+export type DatabricksRequestOptions = Pick<
+	IHttpRequestOptions,
+	'method' | 'body' | 'qs' | 'headers' | 'json' | 'encoding' | 'returnFullResponse'
+>;
 
 const RATE_LIMIT_MAX_RETRIES = 3;
 const RATE_LIMIT_FALLBACK_DELAY_MS = 1_000;
@@ -34,10 +48,48 @@ const RATE_LIMIT_MAX_DELAY_MS = 30_000;
 export async function databricksApiRequest(
 	context: DatabricksContext,
 	credentialType: DatabricksCredentialType,
+	url: RequestUrl,
+	options: DatabricksRequestOptions,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
+	const requestOptions: WithRequestTarget<IHttpRequestOptions> = {
+		method: options.method,
+		url,
+		body: options.body,
+		qs: options.qs,
+		json: options.json,
+		encoding: options.encoding,
+		returnFullResponse: options.returnFullResponse,
+		headers: options.headers,
+	};
+	return await sendDatabricksRequest(
+		context,
+		credentialType,
+		requestOptions,
+		additionalCredentialOptions,
+	);
+}
+
+/**
+ * For Lakebase Data API requests only. Their URLs are already built with
+ * `toPathSegment` and can carry a query, which `requestUrl` does not accept.
+ */
+export async function databricksApiRequestWithUrl(
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
 	options: IHttpRequestOptions,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
-	const requestOptions: IHttpRequestOptions = {
+	return await sendDatabricksRequest(context, credentialType, options, additionalCredentialOptions);
+}
+
+async function sendDatabricksRequest(
+	context: DatabricksContext,
+	credentialType: DatabricksCredentialType,
+	options: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+	additionalCredentialOptions?: IAdditionalCredentialOptions,
+): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
+	const requestOptions = {
 		...options,
 		headers: {
 			...options.headers,
@@ -106,6 +158,18 @@ export function withGenieDeepLink(
 		...response.body,
 		deep_link: `${host}/genie/rooms/${encodeURIComponent(spaceId)}${chat}${query}`,
 	};
+}
+
+export function toRequestPath(path: string, version: number): RequestPath {
+	return path
+		.split('/')
+		.reduce(
+			(result, part) =>
+				part
+					? requestPath`${result}/${version < LITERAL_PATH_VERSION ? decodePathValue(part) : part}`
+					: requestPath`${result}/`,
+			requestPath``,
+		);
 }
 
 // Body text comes from whatever server `host` points at
@@ -429,13 +493,12 @@ export async function fetchDatabricksPage<T>(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	credentialType: 'databricksApi' | 'databricksOAuth2Api',
 	host: string,
-	path: string,
+	path: RequestPath,
 	qs: IDataObject,
 	pageToken?: string,
 ): Promise<T> {
-	return await databricksApiRequest(context, credentialType, {
+	return await databricksApiRequest(context, credentialType, requestUrl`${host}${path}`, {
 		method: 'GET',
-		url: `${host}${path}`,
 		qs: pageToken ? { ...qs, page_token: pageToken } : { ...qs },
 		headers: { Accept: 'application/json' },
 		json: true,

@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { fileFields, fileOperations } from './FileDescription';
 import { formFields, formOperations } from './FormDescription';
@@ -108,7 +108,7 @@ export class KoBoToolbox implements INodeType {
 					const formId = this.getNodeParameter('formId', i) as string;
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}`,
+							url: requestPath`/api/v2/assets/${formId}`,
 						}),
 					];
 				}
@@ -128,7 +128,7 @@ export class KoBoToolbox implements INodeType {
 					const formFilterOptions = this.getNodeParameter('filters', i);
 
 					responseData = await koBoToolboxApiRequest.call(this, {
-						url: '/api/v2/assets/',
+						url: requestPath`/api/v2/assets/`,
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000),
 							...(formFilterOptions.filter && { q: formFilterOptions.filter }),
@@ -150,7 +150,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'PATCH',
-							url: `/api/v2/assets/${formId}/deployment/`,
+							url: requestPath`/api/v2/assets/${formId}/deployment/`,
 						}),
 					];
 				}
@@ -171,7 +171,7 @@ export class KoBoToolbox implements INodeType {
 					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${formId}/data/`,
+						url: requestPath`/api/v2/assets/${formId}/data/`,
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000),
 							...(filterJson && { query: filterJson }),
@@ -216,7 +216,7 @@ export class KoBoToolbox implements INodeType {
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}/data/${submissionId}`,
+							url: requestPath`/api/v2/assets/${formId}/data/${submissionId}`,
 							qs: {
 								...(options.fields && {
 									fields: JSON.stringify(parseStringList(options.fields as string)),
@@ -253,7 +253,7 @@ export class KoBoToolbox implements INodeType {
 
 					await koBoToolboxApiRequest.call(this, {
 						method: 'DELETE',
-						url: `/api/v2/assets/${formId}/data/${id}`,
+						url: requestPath`/api/v2/assets/${formId}/data/${id}`,
 					});
 
 					responseData = [
@@ -271,7 +271,7 @@ export class KoBoToolbox implements INodeType {
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}/data/${submissionId}/validation_status/`,
+							url: requestPath`/api/v2/assets/${formId}/data/${submissionId}/validation_status/`,
 						}),
 					];
 				}
@@ -286,7 +286,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'PATCH',
-							url: `/api/v2/assets/${formId}/data/${submissionId}/validation_status/`,
+							url: requestPath`/api/v2/assets/${formId}/data/${submissionId}/validation_status/`,
 							body: {
 								'validation_status.uid': status,
 							},
@@ -306,7 +306,7 @@ export class KoBoToolbox implements INodeType {
 					//          Hook: getAll
 					// ----------------------------------
 					responseData = await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${formId}/hooks/`,
+						url: requestPath`/api/v2/assets/${formId}/hooks/`,
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000),
 						},
@@ -321,7 +321,7 @@ export class KoBoToolbox implements INodeType {
 					const hookId = this.getNodeParameter('hookId', i) as string;
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}/hooks/${hookId}`,
+							url: requestPath`/api/v2/assets/${formId}/hooks/${hookId}`,
 						}),
 					];
 				}
@@ -334,7 +334,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'PATCH',
-							url: `/api/v2/assets/${formId}/hooks/${hookId}/retry/`,
+							url: requestPath`/api/v2/assets/${formId}/hooks/${hookId}/retry/`,
 						}),
 					];
 				}
@@ -349,7 +349,7 @@ export class KoBoToolbox implements INodeType {
 					const status = this.getNodeParameter('status', i, null);
 
 					responseData = await koBoToolboxApiRequest.call(this, {
-						url: `/api/v2/assets/${formId}/hooks/${hookId}/logs/`,
+						url: requestPath`/api/v2/assets/${formId}/hooks/${hookId}/logs/`,
 						qs: {
 							...(startDate && { start: startDate }),
 							...(endDate && { end: endDate }),
@@ -368,7 +368,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'PATCH',
-							url: `/api/v2/assets/${formId}/hooks/${hookId}/logs/${logId}/retry/`,
+							url: requestPath`/api/v2/assets/${formId}/hooks/${hookId}/logs/${logId}/retry/`,
 						}),
 					];
 				}
@@ -383,7 +383,7 @@ export class KoBoToolbox implements INodeType {
 				if (operation === 'getAll') {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}/files`,
+							url: requestPath`/api/v2/assets/${formId}/files`,
 							qs: {
 								file_type: 'form_media',
 							},
@@ -398,7 +398,7 @@ export class KoBoToolbox implements INodeType {
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
-							url: `/api/v2/assets/${formId}/files/${fileId}`,
+							url: requestPath`/api/v2/assets/${formId}/files/${fileId}`,
 						}),
 					];
 
@@ -411,7 +411,7 @@ export class KoBoToolbox implements INodeType {
 						};
 
 						const response = await koBoToolboxRawRequest.call(this, {
-							url: `/api/v2/assets/${formId}/files/${fileId}/content`,
+							url: requestPath`/api/v2/assets/${formId}/files/${fileId}/content`,
 							encoding: 'arraybuffer',
 						});
 
@@ -431,7 +431,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'DELETE',
-							url: `/api/v2/assets/${formId}/files/${fileId}`,
+							url: requestPath`/api/v2/assets/${formId}/files/${fileId}`,
 						}),
 					];
 				}
@@ -463,7 +463,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							method: 'POST',
-							url: `/api/v2/assets/${formId}/files/`,
+							url: requestPath`/api/v2/assets/${formId}/files/`,
 							body,
 						}),
 					];

@@ -1,5 +1,6 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
+import { createResultError } from '@n8n/utils/result';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import {
@@ -119,6 +120,23 @@ describe('EmbeddingsAwsBedrock', () => {
 			'https://bedrock-runtime.eu-west-2.amazonaws.com',
 			keepAliveAgentOptions,
 		);
+	});
+
+	it('applies the execution egress filter to the override endpoint', async () => {
+		mockedResolveAwsCredentials.mockResolvedValue({
+			region: 'us-east-1',
+			credentials: { accessKeyId: 'a', secretAccessKey: 'b' },
+			bedrockRuntimeEndpoint: 'http://127.0.0.1:8080',
+		});
+		const ctx = mockContext('amazon.titan-embed-text-v1');
+		const filterError = new Error('target not allowed');
+		ctx.helpers.getSecureEgressFilter = vi.fn().mockReturnValue({
+			...ctx.helpers.getSecureEgressFilter(),
+			validateUrl: async () => createResultError(filterError),
+		});
+		const node = new EmbeddingsAwsBedrock();
+
+		await expect(node.supplyData.call(ctx, 0)).rejects.toBe(filterError);
 	});
 
 	it('uses the region-specific domain for the China partition endpoint', async () => {
@@ -407,9 +425,9 @@ describe('EmbeddingsAwsBedrock', () => {
 			profiles: Promise<unknown> | unknown,
 			applicationProfiles: Promise<unknown> | unknown = { inferenceProfileSummaries: [] },
 		) =>
-			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
-				if (options.url.startsWith('/foundation-models')) return await foundation;
-				return options.url.includes('type=APPLICATION')
+			vi.fn().mockImplementation(async (_credentialsType: string, options: { url: unknown }) => {
+				if (String(options.url).startsWith('/foundation-models')) return await foundation;
+				return String(options.url).includes('type=APPLICATION')
 					? await applicationProfiles
 					: await profiles;
 			});

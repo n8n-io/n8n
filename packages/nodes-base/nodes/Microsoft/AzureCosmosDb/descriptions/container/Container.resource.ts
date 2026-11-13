@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/colls/{{ $parameter["container"] }}',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}',
 					},
 					output: {
 						postReceive: [
@@ -64,7 +64,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/colls/{{ $parameter["container"] }}',
+						url: '=/colls/{{ toPathSegment($parameter["container"]) }}',
 					},
 					output: {
 						postReceive: [handleError, simplifyData],

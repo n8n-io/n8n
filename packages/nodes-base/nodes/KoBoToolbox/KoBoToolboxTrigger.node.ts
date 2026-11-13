@@ -1,5 +1,6 @@
 import {
 	NodeConnectionTypes,
+	requestPath,
 	type IDataObject,
 	type IHookFunctions,
 	type INodeType,
@@ -81,7 +82,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const formId = this.getNodeParameter('formId') as string;
 				const webhooks = await koBoToolboxApiRequest.call(this, {
-					url: `/api/v2/assets/${formId}/hooks/`,
+					url: requestPath`/api/v2/assets/${formId}/hooks/`,
 				});
 				for (const webhook of webhooks || []) {
 					if (webhook.endpoint === webhookUrl && webhook.active === true) {
@@ -100,7 +101,7 @@ export class KoBoToolboxTrigger implements INodeType {
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
-					url: `/api/v2/assets/${formId}/hooks/`,
+					url: requestPath`/api/v2/assets/${formId}/hooks/`,
 					body: {
 						name: `n8n webhook id ${workflow.id}: ${workflow.name}`,
 						endpoint: webhookUrl,
@@ -122,7 +123,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				try {
 					await koBoToolboxApiRequest.call(this, {
 						method: 'DELETE',
-						url: `/api/v2/assets/${formId}/hooks/${webhookData.webhookId}`,
+						url: requestPath`/api/v2/assets/${formId}/hooks/${webhookData.webhookId}`,
 					});
 				} catch (error) {
 					return false;
