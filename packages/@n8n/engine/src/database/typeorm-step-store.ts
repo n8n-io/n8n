@@ -5,7 +5,9 @@ import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
+	isLiveExecutionStatus,
 	stepKeyId,
+	type ExecutionStatus,
 	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
@@ -191,9 +193,40 @@ export class TypeOrmStepStore implements StepStore {
 		// `wait_till` is derived from the declaration in the same statement that
 		// writes it, so the column the sweep reads can never disagree with the
 		// declaration it fires.
-		return await this.transition(id, 'running', 'waiting', {
-			waitDeclaration,
-			waitTill: waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+		//
+		// The execution-row lock orders the suspension with the write that ends
+		// the execution. A wait that lands first is cancelled by the sweep that
+		// follows the end. A wait that comes after the end cancels the step here,
+		// because nothing resumes a wait in an ended execution.
+		return await this.repo.manager.transaction(async (manager) => {
+			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
+				`SELECT status FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR SHARE`,
+				[id],
+			);
+			if (!execution) return false;
+
+			if (!isLiveExecutionStatus(execution.status)) {
+				await manager.update(
+					WorkflowStepExecution,
+					{ id, status: 'running' },
+					{ status: 'cancelled' },
+				);
+				return false;
+			}
+
+			const result = await manager.update(
+				WorkflowStepExecution,
+				{ id, status: 'running' },
+				{
+					waitDeclaration,
+					waitTill:
+						waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+					status: 'waiting',
+				},
+			);
+			return result.affected === 1;
 		});
 	}
 

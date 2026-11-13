@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
+	ExecutionStatus,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -43,7 +44,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	/** Steps FK to an execution, so create a parent row first. */
 	async function createExecution(
-		overrides: { workflowId?: string; status?: 'running' | 'completed' | 'failed' } = {},
+		overrides: { workflowId?: string; status?: ExecutionStatus } = {},
 	): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
@@ -438,6 +439,54 @@ describe('workflow_step_execution table (integration)', () => {
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
 		expect(found.waitDeclaration).toBeNull();
+	});
+
+	it.each<[ExecutionStatus, StepStatus, boolean]>([
+		['running', 'waiting', true],
+		['waiting', 'waiting', true],
+		['completed', 'cancelled', false],
+		['failed', 'cancelled', false],
+		['cancelled', 'cancelled', false],
+	])(
+		'TypeOrmStepStore.suspendStep in a %s execution moves a running step to %s',
+		async (executionStatus, stepStatus, recorded) => {
+			const executionId = await createExecution({ status: executionStatus });
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+			const wait = { resumeAt: '2099-01-01T00:00:00.000Z', outputsAtDeadline: [] };
+			expect(await store.suspendStep(id, wait)).toBe(recorded);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(stepStatus);
+			// a cancelled step has no deadline for the sweep to fire
+			expect(found.waitTill !== null).toBe(recorded);
+		},
+	);
+
+	it('TypeOrmStepStore.suspendStep waits out a concurrently committing cancellation and cancels the step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+		// A cancelExecution mid-transaction, with the row lock held and the status
+		// uncommitted. Without the lock, the suspension would read `running`.
+		const cancellation = dataSource.createQueryRunner();
+		await cancellation.connect();
+		await cancellation.startTransaction();
+		await cancellation.query("UPDATE workflow_execution SET status = 'cancelled' WHERE id = $1", [
+			executionId,
+		]);
+
+		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
+		await new Promise((resolve) => setTimeout(resolve, 150));
+		await cancellation.commitTransaction();
+		await cancellation.release();
+
+		expect(await suspend).toBe(false);
+		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
 	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {

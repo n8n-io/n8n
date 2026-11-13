@@ -123,6 +123,8 @@ export interface StepStore {
 	 * Record a wait: persist `wait_declaration` and move the step to `waiting`. A
 	 * compare-and-set on `running`, as `completeStep` — but `waiting` is no
 	 * outcome, so nothing plans behind the step and nothing counts it settled.
+	 * If the execution has ended, the step is cancelled instead and the call
+	 * returns `false`: nothing resumes a wait in an ended execution.
 	 */
 	suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean>;
 
