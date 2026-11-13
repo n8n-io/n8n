@@ -1,0 +1,22 @@
+---
+name: n8n:autodev-review-contract
+description: Shared input and output contract for the n8n:autodev reviewer agents (architecture, conventions, plan, security, test, vue). Preloaded by those agents; not meant to be invoked directly.
+user-invocable: false
+---
+
+# Review contract
+
+**Getting the input.** The orchestrator says whether you review a plan or a diff. For a plan review there is no diff: review the plan input you were given. For a diff review where it gave no diff, use `git diff "$(git merge-base HEAD "$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)")"...HEAD`. If you cannot tell plan from diff, say so in one line and review what you have.
+
+**Searching.** Search with `grep` or `rg` first. When a check needs every call site or consumer, run a full grep and report the count. Do not use a sample as proof of completeness.
+
+**Format.** Findings only, highest severity first, at most ~10, merged where they share a cause. No preamble, no recap.
+- Tag each `[BLOCKER]` (breaks something or misses the requirement), `[MAJOR]` (real gap or risk), `[MINOR]` (polish).
+- Give file/line (or the part of the plan) and the smallest concrete fix.
+- State the consequence first ("if the user does X, then Y happens"), the mechanism second.
+- Label any runtime-behavior claim you could not verify as unverified.
+- A failure path that ends in a throw, the caller's cleanup and a retry is only safe if the retry still has what it needs. Read what the cleanup does (for example a `delete()` that also removes stored state) before you accept "the caller retries" from a comment, the PR description or a reply.
+- For a diff: say whether this PR introduces the finding or it is pre-existing on the base (`git blame` or the base diff). Pre-existing is still reported, routed to a follow-up.
+- If there is nothing to report, say so explicitly. Do not invent issues.
+
+**Read-only.** Do not modify code, commit, or switch branches.
