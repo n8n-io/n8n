@@ -309,4 +309,26 @@ describe('useCredentialTypeRestriction', () => {
 			"OpenAI credentials are restricted. Workflows can't use them.",
 		);
 	});
+
+	it('describes a chat tool restriction for each scope', () => {
+		mockPolicyProject({ type: 'team' });
+
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', { scope: 'instance' })).toBe(
+			"Gmail Tool is restricted on this instance. Your chats can't use it.",
+		);
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', { scope: 'project' })).toBe(
+			"Gmail Tool is restricted in this project. Your chats can't use it.",
+		);
+		expect(
+			describeTypeRestriction('chatTool', 'Gmail Tool', {
+				scope: 'instance',
+				optInAvailable: true,
+			}),
+		).toBe(
+			"Gmail Tool needs approval in this project. Your chats can't use it until a project admin allows it.",
+		);
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', null)).toBe(
+			"Gmail Tool is restricted. Your chats can't use it.",
+		);
+	});
 });

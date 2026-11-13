@@ -22,6 +22,7 @@ import {
 	N8nLink,
 	N8nText,
 	N8nTooltip,
+	type IconName,
 } from '@n8n/design-system';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -113,6 +114,8 @@ const props = withDefaults(
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Shows this plain icon in the empty state instead of the agent's icon tile. */
+		emptyStateIcon?: IconName;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
 		/**
@@ -1138,12 +1141,17 @@ const displayedMessagingState = computed(() =>
 	isPreviewingFirstMessage.value ? 'waitingFirstChunk' : messagingState.value,
 );
 
+// A new n8n Chat has no history, so its first load does not hide the empty state.
+// No hand-off waits behind the load either: this page shows one as a bubble at once.
+const isLoadingNewChat = computed(
+	() => props.centerEmptyState && props.newSession && isLoadingHistory.value,
+);
 const isCenteredEmpty = computed(
 	() =>
 		props.centerEmptyState &&
 		props.newSession &&
 		displayedMessages.value.length === 0 &&
-		!isStreaming.value,
+		(!isStreaming.value || isLoadingNewChat.value),
 );
 
 watch(isStreaming, (v) => emit('update:streaming', v));
@@ -1647,6 +1655,10 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/** A message is sent and the server has not started the reply yet. */
+	isSubmitting: computed(() => isSubmitting.value),
+	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */
+	isAwaitingUserAnswer: computed(() => hasOpenInteraction.value && !hasOpenWaitCard.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
 	isBusy: computed(
 		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
@@ -1733,7 +1745,7 @@ onBeforeUnmount(() => {
 		<template
 			v-if="
 				displayedMessages.length === 0 &&
-				!isStreaming &&
+				((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
 				!stopNotice &&
 				!preparingSummary &&
 				!summaryMissing &&
@@ -1741,7 +1753,7 @@ onBeforeUnmount(() => {
 			"
 		>
 			<slot name="empty-state">
-				<AgentChatEmptyState :agent-config="agentConfig" />
+				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
 			</slot>
 		</template>
 		<AgentChatMessageList

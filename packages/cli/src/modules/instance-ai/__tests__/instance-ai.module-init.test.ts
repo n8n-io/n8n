@@ -35,6 +35,7 @@ const {
 	loadConfigurationController,
 	loadEvalController,
 	loadAssistantAgentController,
+	loadAssistantAgentEvalController,
 } = vi.hoisted(() => ({
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
@@ -42,6 +43,7 @@ const {
 	loadConfigurationController: vi.fn(),
 	loadEvalController: vi.fn(),
 	loadAssistantAgentController: vi.fn(),
+	loadAssistantAgentEvalController: vi.fn(),
 }));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
@@ -91,6 +93,10 @@ vi.mock('../self-healing/self-healing-configurations.controller', () => {
 });
 vi.mock('../assistant-agent/assistant-agent.controller', () => {
 	loadAssistantAgentController();
+	return {};
+});
+vi.mock('../eval/assistant-agent-eval.controller', () => {
+	loadAssistantAgentEvalController();
 	return {};
 });
 vi.mock('../eval/eval.controller', () => {
@@ -388,6 +394,32 @@ describe('InstanceAiModule.init', () => {
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 
 		expect(Container.get(AssistantTurnOverrides)).toBeInstanceOf(EvalAssistantTurnOverrides);
+	});
+
+	it('registers the Assistant agent eval overrides and routes only on an eval instance', async () => {
+		const { config, investigations } = setup();
+		Container.set(AssistantTurnOverrides, new AssistantTurnOverrides());
+		config.assistantAgentEnabled = true;
+		const evalOverrides = mockInstance(EvalAssistantTurnOverrides);
+		const overridesAtRegistration: unknown[] = [];
+		mockInstance(SystemAgentRegistrationService).register.mockImplementation(async () => {
+			overridesAtRegistration.push(Container.get(AssistantTurnOverrides));
+		});
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		Object.defineProperty(modules, 'eligibleModules', { get: () => ['instance-ai', 'agents'] });
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(overridesAtRegistration[0]).not.toBe(evalOverrides);
+		expect(loadAssistantAgentEvalController).not.toHaveBeenCalled();
+
+		config.evalInstance = true;
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		// The provider resolves the overrides at registration, so they must be set before.
+		expect(overridesAtRegistration[1]).toBe(evalOverrides);
+		expect(loadAssistantAgentEvalController).toHaveBeenCalledOnce();
 	});
 
 	it('starts reconciliation after the interrupted-run sweep finishes', async () => {

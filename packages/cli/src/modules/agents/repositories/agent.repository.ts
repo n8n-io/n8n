@@ -588,13 +588,35 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.values({ id, name, scope: 'instance', projectId: null, schema: null })
 			.orIgnore()
 			.execute();
-		const existing = await this.findOneOrFail({ select: ['id', 'name', 'scope'], where: { id } });
+		const existing = await this.findOneOrFail({
+			select: ['id', 'name', 'scope', 'identityId'],
+			where: { id },
+		});
 		if (existing.scope !== 'instance') {
 			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
 		}
 		if (existing.name !== name) {
-			await this.update({ id, scope: 'instance' }, { name });
+			await this.runInTransaction({}, async (tx, ctx) => {
+				await tx.update(Agent, { id, scope: 'instance' }, { name });
+				await this.renameIdentity(existing, name, ctx);
+			});
 		}
+	}
+
+	async findIdentityId(id: string): Promise<string | null> {
+		const agent = await this.findOne({ select: ['identityId'], where: { id } });
+		return agent?.identityId ?? null;
+	}
+
+	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
+	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ identityId })
+			.where('id = :id AND "identityId" IS NULL', { id })
+			.execute();
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findDependencyIndexAgentIdsBatch(
