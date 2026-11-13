@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { ref } from 'vue';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
@@ -12,6 +14,12 @@ const mocks = vi.hoisted(() => ({
 	moveAgent: vi.fn(),
 	push: vi.fn(),
 	fetchFavorites: vi.fn(),
+	toggleFavorite: vi.fn(),
+	createAgent: vi.fn(),
+	isFavorite: false,
+	canCreate: true,
+	canUpdate: true,
+	canDelete: true,
 }));
 
 vi.mock('@/features/core/folders/folders.api', () => mocks);
@@ -20,7 +28,14 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	invalidateProjectAgentsListCache: vi.fn(),
 }));
 vi.mock('../composables/useAgentPermissions', () => ({
-	useAgentPermissions: () => ({ canUpdate: ref(true), canDelete: ref(true) }),
+	useAgentPermissions: () => ({
+		canCreate: ref(mocks.canCreate),
+		canUpdate: ref(mocks.canUpdate),
+		canDelete: ref(mocks.canDelete),
+	}),
+}));
+vi.mock('../composables/useCreateAgent', () => ({
+	useCreateAgent: () => ({ createAgent: mocks.createAgent }),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
@@ -29,7 +44,11 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({ isFoldersFeatureEnabled: true }),
 }));
 vi.mock('@/app/stores/favorites.store', () => ({
-	useFavoritesStore: () => ({ isFavorite: () => false, fetchFavorites: mocks.fetchFavorites }),
+	useFavoritesStore: () => ({
+		isFavorite: () => mocks.isFavorite,
+		fetchFavorites: mocks.fetchFavorites,
+		toggleFavorite: mocks.toggleFavorite,
+	}),
 }));
 vi.mock('@n8n/composables/useToast', () => ({ useToast: () => ({ showError: vi.fn() }) }));
 vi.mock('vue-router', () => ({
@@ -39,15 +58,17 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({ query: {} }),
 }));
-vi.mock('../components/AgentFolderDialog.vue', () => ({ default: { template: '<div />' } }));
-vi.mock('@n8n/design-system', () => ({
+vi.mock('../components/AgentFolderDialog.vue', () => ({
+	default: { name: 'AgentFolderDialog', props: ['action', 'projectId'], template: '<div />' },
+}));
+vi.mock('@n8n/design-system', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/design-system')>()),
 	N8nCard: {
 		template: '<div><slot name="header"/><slot/><slot name="footer"/><slot name="append"/></div>',
 	},
 	N8nText: { template: '<span><slot/></span>' },
 	N8nTimeAgo: { props: ['date'], template: '<time :datetime="date">{{ date }}</time>' },
 	N8nIcon: { template: '<i />' },
-	N8nActionToggle: { template: '<button data-testid="folder-actions">Actions</button>' },
 }));
 
 const folderDates = {
@@ -66,11 +87,22 @@ const folder: ChangeLocationSearchResponseItem = {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	mocks.isFavorite = false;
+	mocks.canCreate = true;
+	mocks.canUpdate = true;
+	mocks.canDelete = true;
 	mocks.getFolderPath.mockResolvedValue([{ id: 'parent', name: 'Support', children: [] }]);
 });
 
+let currentWrapper: { unmount: () => void } | undefined;
+
+afterEach(() => {
+	currentWrapper?.unmount();
+});
+
 function render(folders = [folder]) {
-	return mount(AgentFolderBrowser, {
+	const wrapper = mount(AgentFolderBrowser, {
+		attachTo: document.body,
 		props: {
 			projectId: 'project',
 			folderId: 'parent',
@@ -79,15 +111,154 @@ function render(folders = [folder]) {
 			folderPermissions: { create: true, update: true, delete: true },
 		},
 	});
+	currentWrapper = wrapper;
+
+	return wrapper;
+}
+
+async function openMenu(wrapper: ReturnType<typeof render>) {
+	await flushPromises();
+	await userEvent.click(wrapper.get('[data-test-id="folder-card-actions"] button').element);
+
+	return await screen.findByRole('menu');
 }
 
 describe('AgentFolderBrowser', () => {
 	it('keeps keyboard actions on the folder menu from opening the folder', async () => {
 		const wrapper = render();
 		await flushPromises();
-		await wrapper.get('[data-testid="folder-actions"]').trigger('keydown', { key: 'Enter' });
+		await wrapper
+			.get('[data-test-id="folder-card-actions"] button')
+			.trigger('keydown', { key: 'Enter' });
 
 		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it('matches the workflow folder menu order and labels', async () => {
+		const wrapper = render();
+		await openMenu(wrapper);
+
+		expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+			'Open',
+			'Create folder inside',
+			'Create Agent inside',
+			'Favorite',
+			'Rename',
+			'Move',
+			'Delete',
+		]);
+		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it('opens the selected folder from the menu in the Agent tree', async () => {
+		const wrapper = render();
+		await openMenu(wrapper);
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Open', exact: true }));
+
+		expect(mocks.push).toHaveBeenCalledExactlyOnceWith({
+			name: PROJECT_AGENTS,
+			params: { projectId: 'project' },
+			query: { folderId: 'child' },
+		});
+	});
+
+	it('creates an Agent inside the selected folder', async () => {
+		const wrapper = render();
+		await openMenu(wrapper);
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Create Agent inside' }));
+
+		expect(mocks.createAgent).toHaveBeenCalledExactlyOnceWith(
+			'dropdown',
+			'project',
+			undefined,
+			'child',
+		);
+		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it('creates a subfolder inside the selected folder', async () => {
+		const wrapper = render();
+		await openMenu(wrapper);
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Create folder inside' }));
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toEqual({
+			mode: 'create',
+			parentFolderId: 'child',
+		});
+		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ label: 'Rename', mode: 'rename' },
+		{ label: 'Move', mode: 'moveFolder' },
+		{ label: 'Delete', mode: 'delete' },
+	])('opens the $label action for the selected folder', async ({ label, mode }) => {
+		const wrapper = render();
+		await openMenu(wrapper);
+		await userEvent.click(screen.getByRole('menuitem', { name: label, exact: true }));
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toEqual(
+			expect.objectContaining({ mode, id: 'child', name: 'Triage' }),
+		);
+		expect(mocks.push).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])(
+		'uses shared folder favorites when already favorited is %s',
+		async (isFavorite) => {
+			mocks.isFavorite = isFavorite;
+			const wrapper = render();
+			await openMenu(wrapper);
+			await userEvent.click(
+				screen.getByRole('menuitem', { name: isFavorite ? 'Unfavorite' : 'Favorite' }),
+			);
+
+			expect(mocks.toggleFavorite).toHaveBeenCalledExactlyOnceWith('child', 'folder');
+			expect(mocks.push).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps unavailable actions visible and disables writes in read-only mode', async () => {
+		mocks.canCreate = false;
+		mocks.canUpdate = false;
+		mocks.canDelete = false;
+		const wrapper = render();
+		await wrapper.setProps({ folderPermissions: { create: false, update: false, delete: false } });
+		await openMenu(wrapper);
+
+		for (const name of [
+			'Create folder inside',
+			'Create Agent inside',
+			'Rename',
+			'Move',
+			'Delete',
+		]) {
+			const item = screen.getByRole('menuitem', { name, exact: true });
+			expect(item).toHaveAttribute('aria-disabled', 'true');
+			await userEvent.click(item);
+		}
+
+		expect(screen.getByRole('menuitem', { name: 'Open', exact: true })).not.toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+		expect(screen.getByRole('menuitem', { name: 'Favorite', exact: true })).not.toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+		expect(mocks.createAgent).not.toHaveBeenCalled();
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toBeNull();
+	});
+
+	it('keeps relocation available when the user can update Agents but cannot archive them', async () => {
+		mocks.canDelete = false;
+		const wrapper = render();
+		await openMenu(wrapper);
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Delete', exact: true }));
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toEqual(
+			expect.objectContaining({ mode: 'delete', canRelocate: true, canDelete: false }),
+		);
 	});
 
 	it('opens a nested folder in the Agent tree', async () => {

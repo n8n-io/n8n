@@ -43,6 +43,18 @@ describe('useCreateAgent', () => {
 		mocks.folderId = undefined;
 	});
 
+	it('creates inside the selected folder instead of the currently open folder', () => {
+		mocks.folderId = 'parent-folder';
+
+		useCreateAgent().createAgent('dropdown', 'project-1', undefined, 'selected-folder');
+
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({ query: { folderId: 'selected-folder' } }),
+		);
+		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('dropdown', expect.any(String));
+		mocks.folderId = undefined;
+	});
+
 	it('mints an id, tracks the click, and pushes the builder route for it', () => {
 		const { createAgent } = useCreateAgent();
 

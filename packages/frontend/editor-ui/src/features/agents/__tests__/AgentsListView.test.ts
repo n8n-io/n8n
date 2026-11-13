@@ -20,6 +20,8 @@ const experimentVariant = ref<'control' | 'test' | undefined>('control');
 const trackTemplatesExposure = vi.fn();
 const foldersEnabled = ref(false);
 const folderReadAllowed = ref(true);
+const folderWriteAllowed = ref(false);
+const branchReadOnly = ref(false);
 const navigation = ref<{ projectId?: string; folderId?: string }>({});
 
 const mocks = vi.hoisted(() => ({
@@ -114,10 +116,25 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 			{
 				id: 'project-1',
 				get scopes() {
-					return folderReadAllowed.value ? ['folder:list'] : [];
+					return [
+						...(folderReadAllowed.value ? ['folder:list'] : []),
+						...(folderWriteAllowed.value
+							? ['folder:create', 'folder:update', 'folder:delete']
+							: []),
+					];
 				},
 			},
 		],
+	}),
+}));
+
+vi.mock('@/features/integrations/sourceControl.ee/sourceControl.store', () => ({
+	useSourceControlStore: () => ({
+		preferences: {
+			get branchReadOnly() {
+				return branchReadOnly.value;
+			},
+		},
 	}),
 }));
 
@@ -242,7 +259,7 @@ const mountView = async () => {
 			stubs: {
 				AgentFolderBrowser: {
 					name: 'AgentFolderBrowser',
-					props: ['folders'],
+					props: ['folders', 'folderPermissions'],
 					data: () => ({ breadcrumbs: [] }),
 					template:
 						'<div><div v-for="folder in folders" :key="folder.id" data-test-id="agent-folder-card">{{ folder.name }}</div></div>',
@@ -288,6 +305,8 @@ afterEach(() => {
 beforeEach(() => {
 	foldersEnabled.value = false;
 	folderReadAllowed.value = true;
+	folderWriteAllowed.value = false;
+	branchReadOnly.value = false;
 	mocks.routeFolderId = undefined;
 	mocks.getProjectFolders.mockResolvedValue({ data: [], count: 0 });
 });
@@ -304,6 +323,29 @@ describe('AgentsListView — folder pagination', () => {
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('disables folder mutations in a read-only branch while keeping folder browsing', async () => {
+		folderWriteAllowed.value = true;
+		mocks.getProjectFolders.mockResolvedValue({ data: [folder('support')], count: 1 });
+		const wrapper = await mountView();
+		const browser = wrapper.findComponent({ name: 'AgentFolderBrowser' });
+
+		expect(browser.props('folderPermissions')).toMatchObject({
+			create: true,
+			update: true,
+			delete: true,
+		});
+
+		branchReadOnly.value = true;
+		await flushPromises();
+
+		expect(browser.props('folderPermissions')).toMatchObject({
+			create: false,
+			update: false,
+			delete: false,
+		});
+		expect(browser.exists()).toBe(true);
 	});
 
 	it('keeps the archive filter while browsing and searching a folder', async () => {

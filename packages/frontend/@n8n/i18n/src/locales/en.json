@@ -996,6 +996,7 @@
 	"chatHub.message.actions.stopReading": "Stop reading",
 	"agents.builder.chatMode.archived": "Unarchive this agent to test it",
 	"agents.folders.create": "Create folder",
+	"agents.folders.createAgentInside": "Create Agent inside",
 	"agents.folders.rename": "Rename folder",
 	"agents.folders.move": "Move to folder",
 	"agents.folders.moveAgent": "Move Agent",

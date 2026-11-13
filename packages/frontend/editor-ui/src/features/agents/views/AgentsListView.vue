@@ -12,6 +12,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
@@ -71,6 +72,7 @@ const folderId = computed(() =>
 	typeof route.query.folderId === 'string' ? route.query.folderId : null,
 );
 const projectsStore = useProjectsStore();
+const sourceControlStore = useSourceControlStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
 const uiStore = useUIStore();
@@ -112,11 +114,12 @@ const folderPermissions = computed(() => {
 	const project = getResourcePermissions(
 		projectsStore.myProjects.find((item) => item.id === projectId.value)?.scopes,
 	).folder;
+	const canWrite = !sourceControlStore.preferences.branchReadOnly;
 
 	return {
-		create: Boolean(global.create || project.create),
-		update: Boolean(global.update || project.update),
-		delete: Boolean(global.delete || project.delete),
+		create: canWrite && Boolean(global.create || project.create),
+		update: canWrite && Boolean(global.update || project.update),
+		delete: canWrite && Boolean(global.delete || project.delete),
 		list: Boolean(global.list || project.list),
 	};
 });

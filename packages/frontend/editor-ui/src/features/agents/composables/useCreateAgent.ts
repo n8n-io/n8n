@@ -29,7 +29,12 @@ export function useCreateAgent() {
 	const route = useRoute();
 	const agentTelemetry = useAgentTelemetry();
 
-	function createAgent(source: AgentCreateSource, projectId: string, starter?: AgentStarter): void {
+	function createAgent(
+		source: AgentCreateSource,
+		projectId: string,
+		starter?: AgentStarter,
+		parentFolderId?: string,
+	): void {
 		const agentId = generateNanoId();
 		unsavedAgentIds.add(agentId);
 		const templateId = starter?.kind === 'template' ? starter.templateId : undefined;
@@ -38,14 +43,19 @@ export function useCreateAgent() {
 		} else {
 			agentTelemetry.trackClickedNewAgent(source, agentId);
 		}
+
+		const folderId =
+			parentFolderId ??
+			(route?.name === PROJECT_AGENTS &&
+			route.params.projectId === projectId &&
+			typeof route.query.folderId === 'string'
+				? route.query.folderId
+				: undefined);
+
 		void router.push({
 			name: AGENT_BUILDER_VIEW,
 			params: { projectId, agentId },
-			...(route?.name === PROJECT_AGENTS &&
-			route.params.projectId === projectId &&
-			typeof route.query.folderId === 'string'
-				? { query: { folderId: route.query.folderId } }
-				: {}),
+			...(folderId ? { query: { folderId } } : {}),
 			state: {
 				[PENDING_AGENT_ID_STATE]: agentId,
 				...(starter ? { [PENDING_AGENT_STARTER_STATE]: starter } : {}),

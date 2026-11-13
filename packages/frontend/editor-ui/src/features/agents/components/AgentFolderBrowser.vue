@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionToggle, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import FolderCardSubtitle from '@/features/core/folders/components/FolderCardSubtitle.vue';
+import FolderCardActions from '@/features/core/folders/components/FolderCardActions.vue';
+import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
 import { moveFolder } from '@/features/core/folders/folders.api';
 import type { ChangeLocationSearchResponseItem } from '@/features/core/folders/folders.types';
 import { PROJECT_ROOT } from 'n8n-workflow';
@@ -15,6 +17,7 @@ import { moveAgent } from '../composables/useAgentApi';
 import { PROJECT_AGENTS } from '../constants';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentFolderBreadcrumb } from '../composables/useAgentFolderBreadcrumb';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import AgentFolderDialog, { type AgentFolderAction } from './AgentFolderDialog.vue';
 
 const props = defineProps<{
@@ -31,7 +34,8 @@ const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
 const route = useRoute();
-const { canUpdate, canDelete } = useAgentPermissions(() => props.projectId);
+const { canCreate, canUpdate, canDelete } = useAgentPermissions(() => props.projectId);
+const { createAgent } = useCreateAgent();
 const path = useAgentFolderBreadcrumb(toRef(props, 'projectId'), toRef(props, 'folderId'));
 const action = ref<AgentFolderAction | null>(null);
 const dragged = ref<{ type: 'agent' | 'folder'; id: string } | null>(null);
@@ -44,40 +48,58 @@ function navigate(id: string) {
 	});
 }
 
-function actionsFor(folder: ChangeLocationSearchResponseItem) {
-	return [
-		{
-			value: 'favorite',
-			label: i18n.baseText(
-				favorites.isFavorite(folder.id, 'folder') ? 'favorites.remove' : 'favorites.add',
-			),
-		},
-		...(props.folderPermissions.create
-			? [{ value: 'create', label: i18n.baseText('agents.folders.create') }]
-			: []),
-		...(props.folderPermissions.update && canUpdate.value
-			? [
-					{ value: 'rename', label: i18n.baseText('agents.folders.rename') },
-					{ value: 'moveFolder', label: i18n.baseText('agents.folders.move') },
-				]
-			: []),
-		...(props.folderPermissions.delete && (canDelete.value || canUpdate.value)
-			? [{ value: 'delete', label: i18n.baseText('agents.folders.deleteTitle'), destructive: true }]
-			: []),
-	];
-}
+const folderActions = computed(() => [
+	{ value: FOLDER_LIST_ITEM_ACTIONS.OPEN, label: i18n.baseText('generic.open'), disabled: false },
+	{
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+		label: i18n.baseText('folders.actions.create'),
+		disabled: !props.folderPermissions.create,
+	},
+	{
+		value: FOLDER_LIST_ITEM_ACTIONS.CREATE_AGENT,
+		label: i18n.baseText('agents.folders.createAgentInside'),
+		disabled: !canCreate.value,
+	},
+	{
+		value: FOLDER_LIST_ITEM_ACTIONS.RENAME,
+		label: i18n.baseText('generic.rename'),
+		disabled: !props.folderPermissions.update || !canUpdate.value,
+	},
+	{
+		value: FOLDER_LIST_ITEM_ACTIONS.MOVE,
+		label: i18n.baseText('folders.actions.moveToFolder'),
+		disabled: !props.folderPermissions.update || !canUpdate.value,
+	},
+	{
+		value: FOLDER_LIST_ITEM_ACTIONS.DELETE,
+		label: i18n.baseText('generic.delete'),
+		disabled: !props.folderPermissions.delete || (!canDelete.value && !canUpdate.value),
+	},
+]);
 
 function onAction(value: string, folder: ChangeLocationSearchResponseItem) {
-	if (value === 'favorite') {
-		void favorites.toggleFavorite(folder.id, 'folder');
+	const selectedAction = folderActions.value.find((item) => item.value === value);
+
+	if (!selectedAction || selectedAction.disabled) {
+		return;
+	}
+
+	if (value === 'open') {
+		navigate(folder.id);
+
+		return;
+	}
+
+	if (value === 'create_agent') {
+		createAgent('dropdown', props.projectId, undefined, folder.id);
 
 		return;
 	}
 
 	if (value === 'create') action.value = { mode: 'create', parentFolderId: folder.id };
-	if (value === 'rename' || value === 'moveFolder' || value === 'delete') {
+	if (value === 'rename' || value === 'move' || value === 'delete') {
 		action.value = {
-			mode: value,
+			mode: value === 'move' ? 'moveFolder' : value,
 			canRelocate: canUpdate.value,
 			canDelete: canDelete.value,
 			id: folder.id,
@@ -174,13 +196,13 @@ defineExpose({
 				/>
 			</template>
 			<N8nText v-if="search" size="small" color="text-light">{{ folder.path.join(' / ') }}</N8nText>
-			<template #append
-				><N8nActionToggle
-					:actions="actionsFor(folder)"
+			<template #append>
+				<FolderCardActions
+					:folder="folder"
+					:actions="folderActions"
 					@action="onAction($event, folder)"
-					@click.stop
-					@keydown.stop
-			/></template>
+				/>
+			</template>
 		</N8nCard>
 		<AgentFolderDialog
 			:project-id="projectId"

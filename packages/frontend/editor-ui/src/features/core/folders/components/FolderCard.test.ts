@@ -6,6 +6,7 @@ import FolderCard from './FolderCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { FolderResource, UserAction } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -142,6 +143,57 @@ describe('FolderCard', () => {
 		expect(deleteAction).toBeInTheDocument();
 		await userEvent.click(deleteAction);
 		expect(emitted('folderOpened')).toEqual([[{ folder: DEFAULT_FOLDER }]]);
+	});
+
+	it('keeps Favorite before Rename in the shared folder menu', async () => {
+		const { getByRole, getAllByRole } = renderComponent({
+			props: {
+				actions: [
+					{ value: 'open', label: 'Open' },
+					{ value: 'create', label: 'Create folder inside' },
+					{ value: 'create_workflow', label: 'Create workflow inside' },
+					{ value: 'rename', label: 'Rename' },
+					{ value: 'move', label: 'Move' },
+					{ value: 'delete', label: 'Delete' },
+				],
+			},
+		});
+		await userEvent.click(getByRole('button', { name: 'More', exact: true }));
+
+		expect(getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+			'Open',
+			'Create folder inside',
+			'Create workflow inside',
+			'Favorite',
+			'Rename',
+			'Move',
+			'Delete',
+		]);
+	});
+
+	it('uses shared favorites without navigating or forwarding a folder action', async () => {
+		const favoritesStore = useFavoritesStore();
+		vi.spyOn(favoritesStore, 'isFavorite').mockReturnValue(true);
+		const toggleFavorite = vi.spyOn(favoritesStore, 'toggleFavorite').mockResolvedValue();
+		const { getByRole, emitted } = renderComponent();
+		await userEvent.click(getByRole('button', { name: 'More', exact: true }));
+		await userEvent.click(getByRole('menuitem', { name: 'Unfavorite', exact: true }));
+
+		expect(toggleFavorite).toHaveBeenCalledExactlyOnceWith('1', 'folder');
+		expect(emitted('action')).toBeUndefined();
+		expect(emitted('folderOpened')).toBeUndefined();
+		expect(useRouter().push).not.toHaveBeenCalled();
+	});
+
+	it('keeps the workflow MCP submenu and forwards its actions', async () => {
+		const { getByRole, findByTestId, emitted } = renderComponent({
+			props: { showMcpAccessActions: true },
+		});
+		await userEvent.click(getByRole('button', { name: 'More', exact: true }));
+		await userEvent.hover(getByRole('menuitem', { name: 'Manage MCP access' }));
+		await userEvent.click(await findByTestId('action-enableMcpAccess'));
+
+		expect(emitted('action')).toEqual([[{ action: 'enableMcpAccess', folderId: '1' }]]);
 	});
 
 	describe('navigation base-path handling', () => {

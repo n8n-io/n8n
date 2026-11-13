@@ -31,6 +31,16 @@ List folders before Agents, as workflow lists do. Use one total, page size, and
 pager for both resource types. Fill the remaining page slots with Agents when a
 page contains the last folders. Keep the global overview flat.
 
+## Folder action menus
+
+Use the shared `FolderCardActions` for workflow and Agent folder cards. Keep
+the same trigger, menu width, labels, and neutral Delete treatment. Order Agent
+actions as Open, Create folder inside, Create Agent inside, Favorite, Rename,
+Move, and Delete. Keep unavailable actions visible and disabled. Keep Open and
+Favorite available in read-only branches. Keep MCP access actions specific to
+workflow folders. Create the Agent in the selected folder through the existing
+Agent creation flow.
+
 ## Folder moves
 
 Match the workflow move dialog. Name the Agent or folder in the title. Show the
