@@ -484,6 +484,8 @@ export default defineConfig(
 								'!@/events/maps/',
 								'!@/events/maps/system-task-metrics.event-map',
 								'!@/modules/',
+								'!@/modules/agents/',
+								'!@/modules/agents/agent-execution-probe',
 								'!@/modules/instance-ai/',
 								'!@/modules/instance-ai/instance-ai-run-probe',
 								'!@/services/',

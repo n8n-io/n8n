@@ -9,6 +9,7 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentExecutionMetrics } from '../agent-execution-metrics';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -96,6 +97,7 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 }
 
 const projectDeletion = mock<AgentProjectDeletionRepository>();
+const executionMetrics = mock<AgentExecutionMetrics>();
 projectDeletion.withWritableProject.mockImplementation(
 	async (_projectId, write, ctx = {}) => await write(ctx),
 );
@@ -161,6 +163,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			new SystemAgentRegistry(),
 			projectDeletion,
+			executionMetrics,
 		);
 	});
 
@@ -977,6 +980,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				executionMetrics,
 			);
 
 			const record = makeMessageRecord({
@@ -1084,6 +1088,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					executionMetrics,
 				);
 
 				const record = makeMessageRecord({
@@ -1564,6 +1569,66 @@ describe('AgentExecutionService', () => {
 			},
 		];
 
+		describe('metrics', () => {
+			const params: RecordMessageParams = {
+				threadId: 'thread-1',
+				agentId: 'child-agent',
+				agentName: 'Agent',
+				projectId: 'project-1',
+				userMessage: 'Run',
+				record: makeMessageRecord(),
+				source: 'subagent',
+				hitlStatus: 'suspended',
+				threadMetadata: { parentThreadId: 'parent-thread', parentAgentId: 'root-agent' },
+			};
+
+			it('reports the stored outcome with the root agent of a delegated run', async () => {
+				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+				await service.finalizeExecution('execution-1', params);
+
+				expect(executionMetrics.stopped).toHaveBeenCalledWith('execution-1');
+				expect(executionMetrics.finished).toHaveBeenCalledWith(
+					{ agentId: 'child-agent', parentAgentId: 'root-agent' },
+					{ status: 'success', hitlStatus: 'suspended' },
+					params.record,
+				);
+			});
+
+			it('does not report an outcome that failed to store', async () => {
+				agentExecutionRepository.updateIfRunning.mockRejectedValue(new Error('db down'));
+
+				await expect(service.finalizeExecution('execution-1', params)).rejects.toThrow('db down');
+
+				expect(executionMetrics.finished).not.toHaveBeenCalled();
+			});
+
+			it('reports an execution that the sweep interrupted, with the agents of its thread', async () => {
+				agentExecutionThreadRepository.findOneBy.mockResolvedValue(
+					makeThread({ agentId: 'child-agent', parentAgentId: 'root-agent' }),
+				);
+
+				const finalized = await service.finalizeInterruptedExecution(
+					{
+						id: 'execution-1',
+						threadId: 'thread-1',
+						startedAt: new Date(0),
+						updatedAt: new Date(0),
+						timeline: null,
+					},
+					new Date(),
+				);
+
+				expect(finalized).toBe(true);
+				await vi.waitFor(() =>
+					expect(executionMetrics.interrupted).toHaveBeenCalledWith({
+						agentId: 'child-agent',
+						parentAgentId: 'root-agent',
+					}),
+				);
+			});
+		});
+
 		it('records a task approval suspension as awaiting and skips turn telemetry', async () => {
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 			const record = makeMessageRecord({ timeline: approvalTimeline });
@@ -1784,6 +1849,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				executionMetrics,
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

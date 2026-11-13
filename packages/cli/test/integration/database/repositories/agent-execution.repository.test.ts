@@ -34,6 +34,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
+import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
 import type { Publisher } from '@n8n/backend-services';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -232,6 +233,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			mock<AgentExecutionMetrics>(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
