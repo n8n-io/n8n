@@ -21,7 +21,10 @@ export class AppsHostingService {
 			next();
 			return;
 		}
-		res.set('Cache-Control', 'no-store');
+		res.set({
+			'Cache-Control': 'no-store',
+			'Content-Security-Policy': this.hosts.contentSecurityPolicy(req),
+		});
 		if (!this.hosts.namespace(req) && !this.hosts.previewNamespace(req)) {
 			res.sendStatus(404);
 			return;
