@@ -552,3 +552,208 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
 	});
 });
+
+const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+
+/** Injects a different trace span for each call, so a retry is distinguishable. */
+const otelWithSpans = () => {
+	let calls = 0;
+	return {
+		injectTraceHeaders: vi.fn(
+			(_executionId: string, _nodeName: string | undefined, headers: Record<string, string>) => {
+				calls += 1;
+				Object.assign(headers, {
+					traceparent: TRACEPARENT.replace(/-01$/, `-0${calls}`),
+				});
+			},
+		),
+		extractInboundBaggage: vi.fn(),
+	};
+};
+
+describe('httpRequestWithAuthentication trace headers', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const request = vi.fn();
+	const requests = vi.fn();
+	const outboundHttp = mock<OutboundHttp>({ requests });
+	const options: IHttpRequestOptions = { method: 'GET', url: 'https://api.example.com/items' };
+
+	const send = async () =>
+		await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			{ ...options },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
+		Container.set(OutboundHttp, outboundHttp);
+		mockNode.name = 'test-node';
+		mockAdditionalData.executionId = 'exec-1';
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = otelWithSpans();
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		// A new object with only the credential header, so trace headers must be added after it
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => ({
+				...(requestOptions as IHttpRequestOptions),
+				headers: { Authorization: 'Bearer x' },
+			}),
+		);
+	});
+
+	test('sends the trace headers together with the credential header', async () => {
+		request.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(request.mock.calls[0][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/^00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-/),
+		});
+		expect(mockAdditionalData.otel?.injectTraceHeaders).toHaveBeenCalledWith(
+			'exec-1',
+			'test-node',
+			expect.any(Object),
+		);
+	});
+
+	test('sends the trace headers again on the retry after a 401', async () => {
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(request.mock.calls[1][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/-02$/),
+		});
+	});
+
+	test('sends no trace headers when otel is not configured', async () => {
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = undefined;
+		request.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request.mock.calls[0][0].headers).toEqual({ Authorization: 'Bearer x' });
+	});
+
+	test('sends no trace headers when the execution has no id', async () => {
+		mockAdditionalData.executionId = undefined;
+		request.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request.mock.calls[0][0].headers).toEqual({ Authorization: 'Bearer x' });
+	});
+});
+
+describe('requestWithAuthentication (legacy) trace headers', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const proxyRequestToAxiosMock = vi.mocked(proxyRequestToAxios);
+
+	const send = async () =>
+		await requestWithAuthentication.call(
+			mockThis,
+			'testPreAuth',
+			{ method: 'GET', uri: 'https://api.example.com/items' },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+	const sentHeaders = (call: number) =>
+		(proxyRequestToAxiosMock.mock.calls[call][3] as { headers?: unknown }).headers;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		mockNode.name = 'test-node';
+		mockAdditionalData.executionId = 'exec-1';
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = otelWithSpans();
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ accessToken: 'stale' });
+		mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
+			accessToken: 'fresh',
+		});
+		// A new object with only the credential header, so trace headers must be added after it
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => ({
+				...(requestOptions as IHttpRequestOptions),
+				headers: { Authorization: 'Bearer x' },
+			}),
+		);
+	});
+
+	test('sends the trace headers together with the credential header', async () => {
+		proxyRequestToAxiosMock.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(sentHeaders(0)).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/^00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-/),
+		});
+		expect(mockAdditionalData.otel?.injectTraceHeaders).toHaveBeenCalledWith(
+			'exec-1',
+			'test-node',
+			expect.any(Object),
+		);
+	});
+
+	test('sends the trace headers again on the retry after a 401', async () => {
+		const error401 = Object.assign(new Error('401 - token expired'), {
+			response: { status: 401 },
+		});
+		proxyRequestToAxiosMock.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+		expect(sentHeaders(1)).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/-02$/),
+		});
+	});
+
+	test('sends no trace headers when otel is not configured', async () => {
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = undefined;
+		proxyRequestToAxiosMock.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(sentHeaders(0)).toEqual({ Authorization: 'Bearer x' });
+	});
+
+	test('sends no trace headers when the execution has no id', async () => {
+		mockAdditionalData.executionId = undefined;
+		proxyRequestToAxiosMock.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(sentHeaders(0)).toEqual({ Authorization: 'Bearer x' });
+	});
+});

@@ -26,6 +26,7 @@ import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
+import { addTraceHeaders, getTraceHeaders } from './trace-headers';
 
 export const getRequestHelperFunctions = (
 	workflow: Workflow,
@@ -68,17 +69,8 @@ export const getRequestHelperFunctions = (
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
-	const getTraceHeaders = (): Record<string, string> => {
-		const { otel, executionId } = additionalData;
-		if (!otel?.injectTraceHeaders || !executionId) return {};
-
-		const headers: Record<string, string> = {};
-		otel.injectTraceHeaders(executionId, node.name, headers);
-		return headers;
-	};
-
 	return {
-		getTraceHeaders,
+		getTraceHeaders: () => getTraceHeaders(additionalData, node),
 		httpRequest: async (
 			requestOptionsWithTarget: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 		) => {
@@ -92,10 +84,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			const traceHeaders = getTraceHeaders();
-			if (Object.keys(traceHeaders).length) {
-				Object.assign((requestOptions.headers ??= {}), traceHeaders);
-			}
+			addTraceHeaders(requestOptions, additionalData, node);
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
@@ -170,7 +159,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			const traceHeaders = getTraceHeaders();
+			const traceHeaders = getTraceHeaders(additionalData, node);
 			if (Object.keys(traceHeaders).length) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
 				Object.assign((target.headers ??= {}), traceHeaders);

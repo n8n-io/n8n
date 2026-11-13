@@ -36,6 +36,7 @@ import {
 	requestOAuth2,
 } from './oauth';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
+import { addTraceHeaders } from './trace-headers';
 
 /**
  * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
@@ -146,6 +147,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
+		addTraceHeaders(requestOptions, additionalData, node);
 		requestSent = true;
 		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
@@ -196,6 +198,7 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
+				addTraceHeaders(requestOptions, additionalData, node);
 				return await Container.get(OutboundHttp).requests().request(requestOptions);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
@@ -293,6 +296,7 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		);
+		addTraceHeaders(requestOptions, additionalData, node);
 		requestSent = true;
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
@@ -325,6 +329,7 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					);
+					addTraceHeaders(requestOptions, additionalData, node);
 					// oxlint-disable-next-line typescript/no-deprecated
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}

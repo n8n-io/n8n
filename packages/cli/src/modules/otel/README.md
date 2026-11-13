@@ -51,7 +51,9 @@ n8n calls can then continue the trace.
 
 There are two ways to add the headers:
 
-- `httpRequest` and `request` add them for you. A node that uses these helpers needs no code.
+- `httpRequest`, `request` and their credential variants (`httpRequestWithAuthentication`,
+  `requestWithAuthentication` and the paginated helper) add them for you. A node that uses these
+  helpers needs no code.
 - A node with its own HTTP transport calls `helpers.getTraceHeaders()` and adds the result to
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
@@ -278,7 +280,7 @@ graph TD
         PUB(("Pub/Sub
         reload-otel-config"))
         REQ["Request helpers
-        httpRequest, request"]
+        httpRequest, request, *WithAuthentication"]
         MCP["Nodes with their own transport
         MCP client nodes, helpers.getTraceHeaders()"]
         AGT["AgentRunTracingService
