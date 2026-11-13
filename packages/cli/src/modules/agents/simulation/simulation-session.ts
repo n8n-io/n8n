@@ -8,6 +8,7 @@ import {
 	type ToolCallInterceptor,
 } from '@n8n/agents';
 import type { ToolCallReason, ToolCallSimulation, ToolTestKind } from '@n8n/api-types';
+import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } from 'n8n-core';
 import type { IHttpRequestOptions } from 'n8n-workflow';
@@ -170,6 +171,7 @@ export class SimulationSession {
 	instrumentation(): AgentRuntimeInstrumentation {
 		return {
 			toolCallInterceptor: this.interceptor,
+			simulatedRun: true,
 			mcpFetch: this.mcpFetch,
 			configureToolAdditionalData: (additionalData, context) => {
 				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
@@ -257,7 +259,7 @@ export class SimulationSession {
 				body: options.body,
 			});
 			const reply = await this.ask(request, { nodeType: node.type });
-			if (reply.outcome !== 'served') throw new Error(`Unexpected reply for ${toolName}`);
+			if (reply.outcome !== 'served') throw new UnexpectedError(`Unexpected reply for ${toolName}`);
 			return { body: reply.body, headers: reply.headers ?? {}, statusCode: reply.status };
 		};
 	}

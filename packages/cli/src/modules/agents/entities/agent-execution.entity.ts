@@ -151,7 +151,10 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 32, nullable: true })
 	source: string | null;
 
-	/** True when the run was a test run: its tool calls went to a simulation, not to real services. */
+	/**
+	 * True when the run was a test run. Its tool calls were simulated or blocked; tools that only
+	 * touch n8n or the sandbox (plans, files, skills) ran as usual.
+	 */
 	@Column({ type: 'boolean', default: false })
 	simulated: boolean;
 

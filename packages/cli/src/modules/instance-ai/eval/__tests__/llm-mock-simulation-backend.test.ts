@@ -76,6 +76,23 @@ describe('LlmMockSimulationBackend', () => {
 		});
 	});
 
+	it('says unavailable when the mock failed to generate a reply, so the call is blocked', async () => {
+		const { backend, httpMock } = setup();
+		httpMock.mockResolvedValue({
+			statusCode: 200,
+			headers: {},
+			body: { _evalMockError: true, message: 'Mock generation failed: timeout' },
+		});
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		await expect(
+			world.handleRequest(
+				{ protocol: 'http', method: 'GET', url: 'https://slack.com/api/conversations.list' },
+				{ toolName: 'Send_Slack', nodeType: 'n8n-nodes-base.slack' },
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
+	});
+
 	it('says unsupported when the mock has no answer, so the call is blocked', async () => {
 		const { backend, httpMock } = setup();
 		httpMock.mockResolvedValue(undefined);

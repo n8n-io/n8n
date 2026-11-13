@@ -44,9 +44,14 @@ const TEST_RUN_BLOCKED_NODE_TYPES: ReadonlyMap<string, string> = new Map([
  * they use the HTTP helpers the simulator answers. n8n cannot check community nodes.
  */
 export function nodeSimulationGap(
-	nodeType: string,
+	configuredType: string,
 	parameters?: Record<string, unknown>,
 ): string | undefined {
+	// A node tool can be stored as its tool variant (`postgresTool`), which runs the same node.
+	const nodeType =
+		configuredType.startsWith(FIRST_PARTY_NODE_PREFIX) && configuredType.endsWith('Tool')
+			? configuredType.slice(0, -'Tool'.length)
+			: configuredType;
 	if (NON_HTTP_NODE_TYPES.has(nodeType)) return NO_HTTP;
 	const blocked = TEST_RUN_BLOCKED_NODE_TYPES.get(nodeType);
 	if (blocked) return blocked;
@@ -58,5 +63,8 @@ export function nodeSimulationGap(
 		return 'Community nodes cannot run in a test run, because n8n cannot check what they send.';
 	}
 	if (parameters?.operation === 'sendAndWait') return 'Send-and-wait waits for a real person.';
+	if (parameters?.operation === 'dispatchAndWait') {
+		return 'Dispatch-and-wait waits for an outside workflow to call back.';
+	}
 	return undefined;
 }

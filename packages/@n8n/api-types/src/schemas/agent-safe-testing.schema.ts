@@ -32,12 +32,30 @@ export const toolCallReasonSchema = z.enum([
 ]);
 export type ToolCallReason = z.infer<typeof toolCallReasonSchema>;
 
-export const toolCallSimulationSchema = z.object({
-	route: toolCallRouteSchema,
-	reason: toolCallReasonSchema,
-	/** Short detail that is safe to show to the user. */
-	detail: z.string().optional(),
-});
+/** The reasons that fit each route, so a payload cannot claim a blocked call was served. */
+const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
+	real_read: ['real_read_allowed'],
+	simulated: ['served_from_world'],
+	simulated_made_up: ['invented_by_llm'],
+	blocked: [
+		'unsupported_by_simulator',
+		'simulator_unavailable',
+		'not_simulatable',
+		'blocked_by_policy',
+	],
+};
+
+export const toolCallSimulationSchema = z
+	.object({
+		route: toolCallRouteSchema,
+		reason: toolCallReasonSchema,
+		/** Short detail that is safe to show to the user. */
+		detail: z.string().optional(),
+	})
+	.refine(({ route, reason }) => REASONS_BY_ROUTE[route].includes(reason), {
+		message: 'The reason does not fit the route',
+		path: ['reason'],
+	});
 export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
 
 export const toolTestKindSchema = z.enum([
