@@ -99,8 +99,6 @@ import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-c
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
-import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
-import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -199,8 +197,6 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
-		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
-		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly durableJobProvisioner: DurableJobProvisioner,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
@@ -2356,12 +2352,6 @@ export class WorkflowService {
 				WorkflowPublicationReason.Publish,
 				trx,
 			);
-
-			// Durable jobs are DB state, so their removal commits here rather than
-			// waiting on the leader's outbox handler: a lost hand-off would otherwise
-			// leave them firing a workflow already marked inactive.
-			await this.scheduleTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
-			await this.pollTriggerJobRegistrar.removeWorkflowInTransaction(trx, workflowId);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
