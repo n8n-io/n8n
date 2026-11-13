@@ -15,8 +15,14 @@
  *
  * Rows get the system columns `id`, `createdAt` and `updatedAt` on first use.
  * Each call reads and writes the file, so a table outlives one step, as in n8n.
- * The filter conditions follow n8n's data-table service (`eq`, `neq`, `like`,
- * `ilike`, `gt`, `gte`, `lt`, `lte`, `isEmpty`, `isNotEmpty`).
+ *
+ * A filter selects the rows that n8n selects on SQLite (`matchesFilter`), with the
+ * conditions of n8n's data-table service (`eq`, `neq`, `like`, `ilike`, `gt`, `gte`,
+ * `lt`, `lte`, `isEmpty`, `isNotEmpty`) and the true/false tests that the node sends.
+ * n8n converts a value to its column type before the query, and SQLite compares the
+ * value with the type of the column: a text column compares text, a number column a
+ * number, and a date column n8n's date text. Rows come back in n8n's order, `id`
+ * last, and `take: 0` is no limit.
  *
  * PoC limits: no locking across host workers in the file store, and the files
  * are not n8n's tables: the n8n UI does not show them.
@@ -43,6 +49,7 @@ import type {
 	ListDataTableRowsOptions,
 	Workflow,
 } from 'n8n-workflow';
+import { tryToParseBoolean, tryToParseDateTime, tryToParseNumber } from 'n8n-workflow';
 
 import type { JsonObject, JsonValue } from './protocol';
 import { isJsonObject } from './protocol';
@@ -135,62 +142,367 @@ function toReturn(row: StoredRow): DataTableRowReturn {
 	return out;
 }
 
-function likeToRegExp(pattern: string, flags: string): RegExp {
-	const body = pattern
-		.split('')
-		.map((ch) => (ch === '%' ? '.*' : ch === '_' ? '.' : ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
-		.join('');
-	return new RegExp(`^${body}$`, flags);
+/**
+ * A dry-run row as n8n reports it: the row before or after a change, and nulls for a
+ * side that has no row (`toDryRunRows` of `data-table-rows.repository.ts`).
+ */
+function dryRunRow(
+	row: StoredRow | null,
+	state: 'before' | 'after',
+	template: StoredRow,
+): DataTableRowReturnWithState {
+	const out: DataTableRowReturnWithState = {
+		id: null,
+		createdAt: null,
+		updatedAt: null,
+		dryRunState: state,
+	};
+	for (const key of Object.keys(toReturn(template))) out[key] = null;
+	if (row !== null) Object.assign(out, toReturn(row), { dryRunState: state });
+	return out;
 }
 
-function comparable(v: DataTableColumnJsType | undefined): string | number {
-	if (v instanceof Date) return v.getTime();
-	if (typeof v === 'number') return v;
-	if (typeof v === 'boolean') return v ? 1 : 0;
-	if (typeof v === 'string') {
-		const t = Date.parse(v);
-		return /^\d{4}-\d{2}-\d{2}/.test(v) && !Number.isNaN(t) ? t : v;
+/** The column types that n8n gives its system columns (`DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP`). */
+const SYSTEM_COLUMN_TYPES: Record<string, DataTableColumnType> = {
+	id: 'number',
+	createdAt: 'date',
+	updatedAt: 'date',
+};
+
+/** The type of each column of a table, the system columns included. */
+function columnTypesOf(t: StoredTable): Map<string, DataTableColumnType> {
+	const types = new Map<string, DataTableColumnType>(Object.entries(SYSTEM_COLUMN_TYPES));
+	for (const c of t.columns) types.set(c.name, c.type);
+	return types;
+}
+
+/** A value as SQLite compares it: a number, text, or NULL. */
+type SqlValue = number | string | null;
+
+/** One filter condition of the data-table node or service. */
+type FilterEntry = DataTableFilter['filters'][number];
+
+function pad(value: number, width: number): string {
+	return String(value).padStart(width, '0');
+}
+
+/** A date or time without a zone, in the form that n8n stores (`2024-03-01 10:00:00.000`). */
+const ZONELESS_DATE = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?(\.\d{1,6})?$/;
+
+/**
+ * An instant as n8n's database holds it: UTC, a space between date and time, and
+ * milliseconds (`sql-utils.ts`, `formatDateForDatabase`). SQLite keeps that text, so a
+ * date column compares text, not a time.
+ */
+function spaceFormOf(date: Date): string {
+	const day = `${pad(date.getUTCFullYear(), 4)}-${pad(date.getUTCMonth() + 1, 2)}-${pad(date.getUTCDate(), 2)}`;
+	const time = `${pad(date.getUTCHours(), 2)}:${pad(date.getUTCMinutes(), 2)}:${pad(date.getUTCSeconds(), 2)}`;
+	return `${day} ${time}.${pad(date.getUTCMilliseconds(), 3)}`;
+}
+
+/**
+ * A date value as n8n's service turns it into text: UTC ISO text with milliseconds
+ * (`validateAndTransformCell` calls `toUTC().toISO()`). Luxon reads a value without a
+ * zone as the local time, so this is not the same as a stored date.
+ */
+function isoTextOf(value: unknown): string | undefined {
+	return tryToParseDateTime(value).toUTC().toISO() ?? undefined;
+}
+
+/** A cell as UTC ISO text, where a value that is not a date keeps no date text. */
+function cellIsoText(value: DataTableColumnJsType): string | undefined {
+	try {
+		return isoTextOf(value);
+	} catch {
+		return undefined;
 	}
-	return '';
 }
 
-/** True when the row matches the filter, as n8n's data-table service selects. */
-export function matchesFilter(row: StoredRow, filter: DataTableFilter | undefined): boolean {
+/**
+ * A date cell as n8n's table holds it: n8n writes the instant as UTC text without a
+ * zone, so a cell that is zone-less text names UTC, and a cell with a zone names its
+ * own instant. A cell with a date but no time is an input, which n8n reads as local.
+ */
+function storedDateText(cell: DataTableColumnJsType): string | undefined {
+	if (cell instanceof Date) {
+		return Number.isNaN(cell.getTime()) ? undefined : spaceFormOf(cell);
+	}
+	if (typeof cell !== 'string') return undefined;
+	const text = cell.trim();
+	const date = ZONELESS_DATE.test(text) ? new Date(`${text.replace(' ', 'T')}Z`) : new Date(text);
+	return Number.isNaN(date.getTime()) ? undefined : spaceFormOf(date);
+}
+
+/** A number as a TEXT column of SQLite holds it. */
+function textOfNumber(value: number): string {
+	return String(value);
+}
+
+/** A cell as text, which is what `like` and a TEXT column compare. */
+function textOf(cell: DataTableColumnJsType): string {
+	if (typeof cell === 'string') return cell;
+	if (typeof cell === 'number') return textOfNumber(cell);
+	if (typeof cell === 'boolean') return cell ? '1' : '0';
+	return cellIsoText(cell) ?? String(cell);
+}
+
+/** A well-formed number, as SQLite reads text for a column with numeric affinity. */
+const WELL_FORMED_NUMBER = /^\s*[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*$/;
+
+function numberOfText(text: string): number | undefined {
+	return WELL_FORMED_NUMBER.test(text) ? Number(text) : undefined;
+}
+
+/**
+ * A stored cell as SQLite compares it, given the affinity of its column type:
+ * `string` is TEXT, `number` is REAL, and `boolean` and `date` are NUMERIC.
+ * The file can hold a number as text, a boolean as text, or a date in ISO form,
+ * where n8n's own table holds a number, `1`/`0`, or `YYYY-MM-DD HH:MM:SS.mmm`.
+ */
+function storedValue(cell: DataTableColumnJsType | undefined, type: DataTableColumnType): SqlValue {
+	if (cell === null || cell === undefined) return null;
+	switch (type) {
+		case 'number':
+			if (typeof cell === 'number') return cell;
+			if (typeof cell === 'boolean') return cell ? 1 : 0;
+			if (typeof cell === 'string') return numberOfText(cell) ?? cell;
+			return spaceFormOf(cell);
+		case 'boolean':
+			if (typeof cell === 'boolean') return cell ? 1 : 0;
+			if (typeof cell === 'number') return cell;
+			if (typeof cell !== 'string') return spaceFormOf(cell);
+			if (cell.trim().toLowerCase() === 'true') return 1;
+			if (cell.trim().toLowerCase() === 'false') return 0;
+			return numberOfText(cell) ?? cell;
+		case 'date':
+			// n8n holds a date in its own text form, so the file row compares as stored.
+			return storedDateText(cell) ?? textOf(cell);
+		default:
+			return textOf(cell);
+	}
+}
+
+/**
+ * A filter value as n8n's data-table service leaves it before the query, and as
+ * SQLite then compares it: n8n converts the value to the column type
+ * (`validateAndTransformFilters`), a date stays a `Date` that the driver binds as
+ * n8n's date text, and a NUMBER that a TEXT column compares becomes text.
+ */
+function filterValue(value: DataTableColumnJsType, type: DataTableColumnType): SqlValue {
+	if (value === null || value === undefined) return null;
+	const raw = typeof value === 'boolean' ? (value ? 1 : 0) : value;
+	switch (type) {
+		case 'string':
+			return typeof raw === 'number' ? textOfNumber(raw) : textOf(raw);
+		case 'number':
+		case 'boolean':
+			if (typeof raw === 'number') return raw;
+			if (typeof raw === 'string') return numberOfText(raw) ?? raw;
+			return cellIsoText(raw) ?? String(raw);
+		default:
+			// A date value that n8n binds goes as the driver's date text; a text value keeps
+			// the form that n8n's validation gave it.
+			if (typeof raw === 'string') return numberOfText(raw) ?? raw;
+			if (typeof raw === 'number') return raw;
+			return spaceFormOf(raw);
+	}
+}
+
+function messageOf(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * A filter value as n8n's data-table service validates and converts it for the column
+ * type (`validateAndTransformCell`): a number column takes a number or a number as
+ * text, a boolean column a boolean or `'1'`/`'true'`, and on a date column a `Date`
+ * stays as it is while any other date value becomes UTC ISO text.
+ */
+function convertFilterValue(
+	name: string,
+	value: DataTableColumnJsType | undefined,
+	type: DataTableColumnType,
+): DataTableColumnJsType {
+	if (value === null || value === undefined) return null;
+	try {
+		switch (type) {
+			case 'number':
+				return tryToParseNumber(value);
+			case 'boolean':
+				return tryToParseBoolean(value);
+			case 'date':
+				if (value instanceof Date) {
+					if (Number.isNaN(value.getTime())) throw new Error('Value is not a valid date');
+					return value;
+				}
+				return isoTextOf(value) ?? String(value);
+			default:
+				return value;
+		}
+	} catch (error) {
+		throw new DataTableError(
+			`value '${String(value)}' does not match column type '${type}' for column '${name}': ${messageOf(error)}`,
+		);
+	}
+}
+
+function escapeRegExp(ch: string): string {
+	return ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** SQLite folds the ASCII letters only, as `UPPER` does. */
+function asciiUpper(text: string): string {
+	return text.replace(/[a-z]/g, (ch) => ch.toUpperCase());
+}
+
+/**
+ * A LIKE pattern as n8n runs it on SQLite. `like` is a GLOB in which only `%` is a
+ * wildcard: `toSqliteGlobFromPercent` escapes `[`, `]`, `*` and `?`, and `_` stays
+ * literal. `ilike` is `UPPER(col) LIKE UPPER(value) ESCAPE '\'`, where n8n escapes `\`
+ * and `_` first (`escapeLikeSpecials`), so only `%` is a wildcard there too.
+ */
+function likeToRegExp(pattern: string, condition: 'like' | 'ilike'): RegExp {
+	if (condition === 'like') {
+		const glob = [...pattern].map((ch) => (ch === '%' ? '[\\s\\S]*' : escapeRegExp(ch)));
+		return new RegExp(`^${glob.join('')}$`);
+	}
+	// `UPPER(col) LIKE UPPER(pattern) ESCAPE '\'`: a backslash escapes the character after it.
+	const chars = asciiUpper(pattern.replace(/\\/g, '\\\\').replace(/_/g, '\\_'));
+	const body: string[] = [];
+	for (let i = 0; i < chars.length; i++) {
+		const ch = chars[i];
+		if (ch === '\\') {
+			i++;
+			body.push(escapeRegExp(chars[i] ?? ''));
+		} else if (ch === '%') {
+			body.push('[\\s\\S]*');
+		} else if (ch === '_') {
+			body.push('[\\s\\S]');
+		} else {
+			body.push(escapeRegExp(ch));
+		}
+	}
+	return new RegExp(`^${body.join('')}$`);
+}
+
+/** A comparison with SQLite's order: NULL before any value, a number before text, text by its bytes. */
+function compareSql(a: SqlValue, b: SqlValue): number {
+	if (typeof a === 'number' && typeof b === 'number') return a < b ? -1 : a > b ? 1 : 0;
+	if (typeof a === 'string' && typeof b === 'string') return a < b ? -1 : a > b ? 1 : 0;
+	if (a === null || b === null) return 0;
+	// SQLite sorts every number before every text value.
+	return typeof a === 'number' ? -1 : 1;
+}
+
+/** `compareSql` with NULL first, as an ascending `ORDER BY` of SQLite has it. */
+function compareNullable(a: SqlValue, b: SqlValue): number {
+	if (a === null) return b === null ? 0 : -1;
+	if (b === null) return 1;
+	return compareSql(a, b);
+}
+
+/**
+ * The value of a true or a false test of the data-table node, if the entry is one. n8n's
+ * filter type does not name those two conditions.
+ */
+function truthOf(entry: FilterEntry): boolean | undefined {
+	const condition: string = entry.condition;
+	if (condition === 'isTrue') return true;
+	if (condition === 'isFalse') return false;
+	return undefined;
+}
+
+/** One condition as n8n's data-table service runs it on SQLite, as a test of a cell. */
+function conditionTest(entry: FilterEntry, type: DataTableColumnType): (cell: SqlValue) => boolean {
+	const name = entry.columnName;
+	const truth = truthOf(entry);
+
+	// The data-table node sends a true or a false test as `eq true` and `eq false`
+	// (`buildGetManyFilter`), and n8n's API does not accept those two conditions.
+	let condition: FilterEntry['condition'] = truth === undefined ? entry.condition : 'eq';
+	let value: DataTableColumnJsType = truth ?? convertFilterValue(name, entry.value, type);
+
+	// n8n maps empty/not-empty on a column that is not text to a null test, because only
+	// text has an empty value. The data-table node does the same before the call.
+	if (
+		truth === undefined &&
+		type !== 'string' &&
+		(condition === 'isEmpty' || condition === 'isNotEmpty')
+	) {
+		condition = condition === 'isEmpty' ? 'eq' : 'neq';
+		value = null;
+	}
+
+	if (condition === 'like' || condition === 'ilike') {
+		const upper = condition.toUpperCase();
+		if (value === null)
+			throw new DataTableError(`${upper} filter value cannot be null or undefined`);
+		if (typeof value !== 'string')
+			throw new DataTableError(`${upper} filter value must be a string`);
+		// As the service: a value without `%` is a contains search.
+		const pattern = value.includes('%') ? value : `%${value}%`;
+		const regex = likeToRegExp(pattern, condition);
+		return (cell) => {
+			if (typeof cell !== 'string') return false;
+			return regex.test(condition === 'ilike' ? asciiUpper(cell) : cell);
+		};
+	}
+
+	if (condition === 'gt' || condition === 'gte' || condition === 'lt' || condition === 'lte') {
+		if (value === null) {
+			throw new DataTableError(
+				`${condition.toUpperCase()} filter value cannot be null or undefined`,
+			);
+		}
+	}
+
+	const other = filterValue(value, type);
+	switch (condition) {
+		case 'isEmpty':
+			return (cell) => cell === null || cell === '';
+		case 'isNotEmpty':
+			return (cell) => cell !== null && cell !== '';
+		case 'eq':
+			return (cell) =>
+				other === null ? cell === null : cell !== null && compareSql(cell, other) === 0;
+		case 'neq':
+			// n8n includes the NULL rows in `!=`, because SQL compares NULL as unknown.
+			return (cell) =>
+				other === null ? cell !== null : cell === null || compareSql(cell, other) !== 0;
+		case 'gt':
+			return (cell) => cell !== null && other !== null && compareSql(cell, other) > 0;
+		case 'gte':
+			return (cell) => cell !== null && other !== null && compareSql(cell, other) >= 0;
+		case 'lt':
+			return (cell) => cell !== null && other !== null && compareSql(cell, other) < 0;
+		case 'lte':
+			return (cell) => cell !== null && other !== null && compareSql(cell, other) <= 0;
+		default:
+			return () => false;
+	}
+}
+
+/** The cell of a row for a column, the system columns included. */
+function cellOf(row: StoredRow, name: string): DataTableColumnJsType | undefined {
+	return name === 'id' ? row.id : row[name];
+}
+
+/** True when the row matches the filter, as n8n's data-table service selects on SQLite. */
+export function matchesFilter(
+	row: StoredRow,
+	filter: DataTableFilter | undefined,
+	types: Map<string, DataTableColumnType>,
+): boolean {
 	const list = filter?.filters ?? [];
 	if (list.length === 0) return true;
-	const test = (f: DataTableFilter['filters'][number]): boolean => {
-		const cell = f.columnName === 'id' ? row.id : row[f.columnName];
-		const value = f.value instanceof Date ? f.value.toISOString() : f.value;
-		switch (f.condition) {
-			case 'eq':
-				return value === null
-					? cell === null || cell === undefined
-					: String(cell) === String(value);
-			case 'neq':
-				return value === null
-					? cell !== null && cell !== undefined
-					: String(cell) !== String(value);
-			case 'like':
-				return typeof cell === 'string' && likeToRegExp(String(value), '').test(cell);
-			case 'ilike':
-				return typeof cell === 'string' && likeToRegExp(String(value), 'i').test(cell);
-			case 'gt':
-				return cell !== null && comparable(cell) > comparable(value);
-			case 'gte':
-				return cell !== null && comparable(cell) >= comparable(value);
-			case 'lt':
-				return cell !== null && comparable(cell) < comparable(value);
-			case 'lte':
-				return cell !== null && comparable(cell) <= comparable(value);
-			case 'isEmpty':
-				return cell === null || cell === undefined || cell === '';
-			case 'isNotEmpty':
-				return cell !== null && cell !== undefined && cell !== '';
-			default:
-				return false;
-		}
-	};
-	return filter?.type === 'or' ? list.some(test) : list.every(test);
+	const tests = list.map((entry) => {
+		const type = types.get(entry.columnName);
+		if (type === undefined) throw new DataTableError(`unknown column name '${entry.columnName}'`);
+		const test = conditionTest(entry, type);
+		const cell = storedValue(cellOf(row, entry.columnName), type);
+		return () => test(cell);
+	});
+	return filter?.type === 'or' ? tests.some((test) => test()) : tests.every((test) => test());
 }
 
 /** As n8n's data-table service: a filter or sort on a column that the table does not have fails. */
@@ -205,6 +517,14 @@ function checkColumns(t: StoredTable, names: Array<string | undefined>): void {
 
 function tableService(dir: string, id: string): IDataTableProjectService {
 	const load = () => readTable(dir, id);
+	/**
+	 * The rows that a filter selects for update, upsert or delete, in `id` order: n8n's
+	 * queries for those rows have no `ORDER BY`, so SQLite returns them in rowid order.
+	 */
+	const matching = (t: StoredTable, filter: DataTableFilter): StoredRow[] => {
+		const types = columnTypesOf(t);
+		return t.rows.filter((r) => matchesFilter(r, filter, types)).sort((a, b) => a.id - b.id);
+	};
 	const columnsOf = (t: StoredTable): DataTableColumn[] =>
 		t.columns.map((c, index) => ({
 			id: c.name,
@@ -262,18 +582,23 @@ function tableService(dir: string, id: string): IDataTableProjectService {
 		async getManyRowsAndCount(dto: Partial<ListDataTableRowsOptions>) {
 			const t = load();
 			checkColumns(t, [...(dto.filter?.filters ?? []).map((f) => f.columnName), dto.sortBy?.[0]]);
-			let rows = t.rows.filter((r) => matchesFilter(r, dto.filter));
-			if (dto.sortBy) {
-				const [column, direction] = dto.sortBy;
-				const sign = direction === 'DESC' ? -1 : 1;
-				rows = [...rows].sort((a, b) => {
-					const x = comparable(a[column]);
-					const y = comparable(b[column]);
-					return x < y ? -sign : x > y ? sign : 0;
+			const types = columnTypesOf(t);
+			// n8n sorts on `id` last, also when the caller sorts on a column, so ties keep one order.
+			const column = dto.sortBy?.[0] ?? 'id';
+			const sign = dto.sortBy?.[1] === 'DESC' ? -1 : 1;
+			const type = types.get(column) ?? 'string';
+			const rows = t.rows
+				.filter((r) => matchesFilter(r, dto.filter, types))
+				.sort((a, b) => {
+					const byValue = compareNullable(
+						storedValue(cellOf(a, column), type),
+						storedValue(cellOf(b, column), type),
+					);
+					return byValue === 0 ? a.id - b.id : sign * byValue;
 				});
-			}
 			const skip = dto.skip ?? 0;
-			const page = dto.take === undefined ? rows.slice(skip) : rows.slice(skip, skip + dto.take);
+			// n8n takes no limit for `take: 0`: `if (dto.take) query.take(dto.take)`.
+			const page = dto.take ? rows.slice(skip, skip + dto.take) : rows.slice(skip);
 			return { count: rows.length, data: page.map(toReturn) };
 		},
 		async insertRows<T extends DataTableInsertRowsReturnType>(rows: DataTableRow[], returnType: T) {
@@ -290,15 +615,12 @@ function tableService(dir: string, id: string): IDataTableProjectService {
 				t,
 				filter.filters.map((f) => f.columnName),
 			);
-			const hit = t.rows.filter((r) => matchesFilter(r, filter));
+			const hit = matching(t, filter);
 			if (dryRun) {
 				return hit.flatMap((r) => {
-					const after: StoredRow = { ...r };
+					const after: StoredRow = { ...r, updatedAt: new Date().toISOString() };
 					assign(t, after, data);
-					return [
-						{ ...toReturn(r), dryRunState: 'before' as const },
-						{ ...toReturn(after), dryRunState: 'after' as const },
-					];
+					return [dryRunRow(r, 'before', r), dryRunRow(after, 'after', r)];
 				});
 			}
 			const now = new Date().toISOString();
@@ -315,20 +637,26 @@ function tableService(dir: string, id: string): IDataTableProjectService {
 				t,
 				filter.filters.map((f) => f.columnName),
 			);
-			const hit = t.rows.filter((r) => matchesFilter(r, filter));
+			const hit = matching(t, filter);
 			if (hit.length === 0) {
-				const row = insertOne(t, data);
-				if (!dryRun) writeTable(dir, t);
-				return dryRun ? [{ ...toReturn(row), dryRunState: 'after' as const }] : [toReturn(row)];
+				if (!dryRun) {
+					const row = insertOne(t, data);
+					writeTable(dir, t);
+					return [toReturn(row)];
+				}
+				// A dry run inserts nothing, and reports the row that would come with the
+				// placeholder id that n8n gives a row that does not exist yet.
+				const now = new Date().toISOString();
+				const row: StoredRow = { id: 0, createdAt: now, updatedAt: now };
+				for (const c of t.columns) row[c.name] = null;
+				assign(t, row, data);
+				return [dryRunRow(null, 'before', row), dryRunRow(row, 'after', row)];
 			}
 			if (dryRun) {
 				return hit.flatMap((r) => {
-					const after: StoredRow = { ...r };
+					const after: StoredRow = { ...r, updatedAt: new Date().toISOString() };
 					assign(t, after, data);
-					return [
-						{ ...toReturn(r), dryRunState: 'before' as const },
-						{ ...toReturn(after), dryRunState: 'after' as const },
-					];
+					return [dryRunRow(r, 'before', r), dryRunRow(after, 'after', r)];
 				});
 			}
 			const now = new Date().toISOString();
@@ -345,11 +673,15 @@ function tableService(dir: string, id: string): IDataTableProjectService {
 				t,
 				filter.filters.map((f) => f.columnName),
 			);
-			const hit = t.rows.filter((r) => matchesFilter(r, filter));
-			if (!dryRun) {
-				t.rows = t.rows.filter((r) => !hit.includes(r));
-				writeTable(dir, t);
+			const hit = matching(t, filter);
+			if (dryRun) {
+				const rows = hit.flatMap((r) => [dryRunRow(r, 'before', r), dryRunRow(null, 'after', r)]);
+				// The proxy type promises plain rows. n8n's own v1 proxy returns the dry-run rows
+				// of its service under that type (`data-table-proxy.service.ts`), so match it.
+				return rows as DataTableRowReturn[];
 			}
+			t.rows = t.rows.filter((r) => !hit.includes(r));
+			writeTable(dir, t);
 			return hit.map(toReturn);
 		},
 		async clearRows() {
