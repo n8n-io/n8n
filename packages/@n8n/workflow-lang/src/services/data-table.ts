@@ -44,6 +44,65 @@ function json(value: unknown): unknown {
 	return text === undefined ? null : (JSON.parse(text) as unknown);
 }
 
+/**
+ * A date and time in UTC with milliseconds. This is the text that `Date.toJSON`
+ * gives, so it is the JSON form of a Date value (spec 4.5), and the JSON form
+ * of the Date that v1 gives the data-table service.
+ */
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/** The columns of the table behind `proxy` as the service reports them. */
+async function columnsOf(proxy: object): Promise<Array<{ name: string; type: string }>> {
+	const method: unknown = Reflect.get(proxy, 'getColumns');
+	if (typeof method !== 'function') return [];
+	const columns: unknown = await Reflect.apply(method, proxy, []);
+	if (!Array.isArray(columns)) return [];
+	return columns
+		.filter(isRecord)
+		.map((column) => ({ name: String(column.name), type: String(column.type) }));
+}
+
+/**
+ * The arguments of a call, with each filter value that is the JSON form of a
+ * Date given as a Date again, when the filter names a `date` column.
+ *
+ * v1 gives the data-table service Date objects for date columns. n8n writes a
+ * Date in its own text form (UTC, a space between the date and the time), so a
+ * date column compares as a time. The same instant as ISO text does not compare
+ * as a time in a text comparison, which SQLite uses, so the service needs the
+ * Date back. Every other value, and a value on a column of another type, stays
+ * as it is: a string column compares text.
+ *
+ * Only a call that holds such a value reads the columns, so a filter without a
+ * date value costs no extra read.
+ */
+async function withDateFilterValues(
+	proxy: object,
+	args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+	const options = args.options;
+	if (!isRecord(options) || !isRecord(options.filter)) return args;
+	const filters = options.filter.filters;
+	if (!Array.isArray(filters)) return args;
+	const hasDateValue = filters.some(
+		(filter) =>
+			isRecord(filter) && typeof filter.value === 'string' && ISO_DATE_TIME.test(filter.value),
+	);
+	if (!hasDateValue) return args;
+	const dates = new Set(
+		(await columnsOf(proxy))
+			.filter((column) => column.type === 'date')
+			.map((column) => column.name),
+	);
+	if (dates.size === 0) return args;
+	const withValues = filters.map((filter) => {
+		if (!isRecord(filter) || typeof filter.value !== 'string') return filter;
+		if (!ISO_DATE_TIME.test(filter.value) || !dates.has(String(filter.columnName))) return filter;
+		return { ...filter, value: new Date(filter.value) };
+	});
+	return { ...args, options: { ...options, filter: { ...options.filter, filters: withValues } } };
+}
+
 /** Runs one `dataTable` service call and gives its answer. Errors become `ok: false`. */
 export async function runDataTableCall(
 	backend: DataTableBackend,
@@ -61,7 +120,7 @@ export async function runDataTableCall(
 			if (!toArgs) throw new Error(`Unknown data table operation "${call.op}"`);
 			if (typeof args.dataTableId !== 'string') throw new Error('The call has no dataTableId');
 			target = await backend.getDataTableProxy(args.dataTableId);
-			params = toArgs(args);
+			params = toArgs(await withDateFilterValues(target, args));
 		}
 		const method: unknown = Reflect.get(target, call.op);
 		if (typeof method !== 'function') throw new Error(`Unknown data table operation "${call.op}"`);
