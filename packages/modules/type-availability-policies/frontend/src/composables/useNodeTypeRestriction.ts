@@ -153,16 +153,18 @@ export function sharedContactCopy(verdicts: OptionalVerdict[]) {
 
 /**
  * The restricted types among `nodeTypes`, one entry for each type, named as the user sees them.
+ * `nodeType` keeps the input type: for a credential-only node, the verdict's `name` is the
+ * HTTP Request node or the credential type that denied it.
  * `restrictionOf` lets a surface judge a project other than the open one.
  */
 export function collectRestrictedNodeTypes(
 	nodeTypes: Iterable<string>,
 	displayNameOf: (nodeType: string) => string,
 	restrictionOf: (nodeType: string) => TypeRestriction | null = getNodeTypeRestriction,
-): Array<TypeRestriction & { displayName: string }> {
+): Array<TypeRestriction & { nodeType: string; displayName: string }> {
 	return [...new Set(nodeTypes)].flatMap((nodeType) => {
 		const restriction = restrictionOf(nodeType);
-		return restriction ? [{ ...restriction, displayName: displayNameOf(nodeType) }] : [];
+		return restriction ? [{ ...restriction, nodeType, displayName: displayNameOf(nodeType) }] : [];
 	});
 }
 

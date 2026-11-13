@@ -6,14 +6,14 @@ import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTemplateRestrictedNodeTypes } from './useTemplateRestrictedNodeTypes';
 
-const mockNodeTypeRestriction = vi.fn();
+const mockNodeTypeRestriction = vi.hoisted(() => vi.fn());
+const mockUseTypeAvailability = vi.hoisted(() =>
+	vi.fn((_projectId: unknown) => ({ nodeTypeRestriction: mockNodeTypeRestriction })),
+);
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async () => {
 	const actual = await vi.importActual('@n8n/frontend-module-type-availability-policies');
-	return {
-		...actual,
-		useTypeAvailability: () => ({ nodeTypeRestriction: mockNodeTypeRestriction }),
-	};
+	return { ...actual, useTypeAvailability: mockUseTypeAvailability };
 });
 
 const makeTemplate = (
@@ -35,6 +35,31 @@ describe('useTemplateRestrictedNodeTypes', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
 		mockNodeTypeRestriction.mockReset().mockReturnValue(null);
+		mockUseTypeAvailability.mockClear();
+	});
+
+	it('judges the node types for the target project', () => {
+		const projectId = ref('project-1');
+		useTemplateRestrictedNodeTypes(makeTemplate([]), projectId);
+
+		expect(mockUseTypeAvailability).toHaveBeenCalledWith(projectId);
+	});
+
+	it('keeps the template node type when the verdict names another type', () => {
+		mockNodeTypeRestriction.mockImplementation((type: string) =>
+			type === 'n8n-creds-base.bitlyApi'
+				? { name: 'bitlyApi', available: false, scope: 'instance' }
+				: null,
+		);
+
+		const { restrictedNodeTypes } = useTemplateRestrictedNodeTypes(
+			makeTemplate(['n8n-creds-base.bitlyApi']),
+			'project-1',
+		);
+
+		expect(restrictedNodeTypes.value.map(({ nodeType }) => nodeType)).toEqual([
+			'n8n-creds-base.bitlyApi',
+		]);
 	});
 
 	it('lists each restricted node type once, with its verdict', () => {
@@ -61,6 +86,7 @@ describe('useTemplateRestrictedNodeTypes', () => {
 		expect(restrictedNodeTypes.value).toEqual([
 			{
 				name: 'n8n-nodes-base.gmailTrigger',
+				nodeType: 'n8n-nodes-base.gmailTrigger',
 				displayName: 'Gmail Trigger',
 				available: false,
 				scope: 'instance',

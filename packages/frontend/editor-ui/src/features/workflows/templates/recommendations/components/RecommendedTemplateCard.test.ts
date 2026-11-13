@@ -38,7 +38,10 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 const renderComponent = createComponentRenderer(RecommendedTemplateCard, {
 	global: {
 		stubs: {
-			NodeIcon: true,
+			NodeIcon: {
+				props: { nodeType: Object, size: Number, disabled: Boolean },
+				template: '<div class="node-icon-stub" :data-disabled="disabled"></div>',
+			},
 		},
 	},
 });
@@ -64,11 +67,12 @@ const makeTemplateNodeWithCredentials = (
 const makeTemplate = (
 	workflowNodes: IWorkflowTemplateNode[],
 	nodeTypeNames: string[] = [],
+	iconOf: (name: string) => string = (name) => name,
 ): ITemplatesWorkflowFull =>
 	mock<ITemplatesWorkflowFull>({
 		id: 1,
 		name: 'Test template',
-		nodes: nodeTypeNames.map((name) => ({ name, icon: name })),
+		nodes: nodeTypeNames.map((name) => ({ name, icon: iconOf(name) })),
 		workflow: { nodes: workflowNodes },
 		full: true,
 	});
@@ -133,7 +137,28 @@ describe('RecommendedTemplateCard', () => {
 
 			const restricted = screen.getAllByTestId('template-card-restricted-node');
 			expect(restricted).toHaveLength(1);
+			expect(restricted[0]).toHaveAttribute('data-disabled', 'true');
+			const icons = document.querySelectorAll('.node-icon-stub');
+			expect([...icons].map((icon) => icon.getAttribute('data-disabled'))).toEqual([
+				'true',
+				'false',
+			]);
 			expect(mockGetNodeType.mock.calls.map(([name]) => name)).toEqual(['gmailTrigger', 'openAi']);
+		});
+
+		it('keeps the restricted node when an earlier node has the same icon', () => {
+			renderComponent({
+				props: {
+					template: makeTemplate([], ['gmailTrigger', 'gmail'], () => 'file:gmail.svg'),
+					restrictedNodeTypes: ['gmail'],
+				},
+			});
+
+			expect(screen.getByTestId('template-card-restricted-node')).toHaveAttribute(
+				'data-disabled',
+				'true',
+			);
+			expect(mockGetNodeType.mock.calls.map(([name]) => name)).toEqual(['gmail']);
 		});
 
 		it('greys no icon without restricted node types', () => {

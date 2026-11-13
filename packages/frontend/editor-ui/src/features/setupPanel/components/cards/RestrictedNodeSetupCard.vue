@@ -19,6 +19,8 @@ const props = defineProps<{
 	node: INodeUi;
 	restriction: TypeRestriction;
 	isTrigger: boolean;
+	/** A read-only canvas cannot replace nodes, so the card offers only the contact action. */
+	isReadOnly?: boolean;
 }>();
 
 const expanded = defineModel<boolean>('expanded', { default: false });
@@ -85,6 +87,7 @@ function onReplaceNode() {
 					{{ i18n.baseText(contactCopy.action) }}
 				</N8nButton>
 				<N8nButton
+					v-if="!isReadOnly"
 					variant="solid"
 					size="small"
 					data-test-id="setup-card-replace-node"

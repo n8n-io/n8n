@@ -23,12 +23,13 @@ const node = createTestNode({
 	type: 'n8n-nodes-base.gmailTrigger',
 }) as INodeUi;
 
-const render = (expanded = true) =>
+const render = (expanded = true, isReadOnly = false) =>
 	renderComponent({
 		props: {
 			node,
 			restriction: { name: node.type, available: false, scope: 'instance' },
 			isTrigger: true,
+			isReadOnly,
 			expanded,
 		},
 	});
@@ -44,7 +45,7 @@ describe('RestrictedNodeSetupCard', () => {
 	it('shows a greyed icon, the restricted badge, the reason and the two actions', () => {
 		const { getByTestId } = render();
 
-		expect(getByTestId('node-icon')).toHaveAttribute('data-disabled');
+		expect(getByTestId('node-icon')).toHaveAttribute('data-disabled', 'true');
 		expect(getByTestId('setup-card-restricted-badge')).toHaveTextContent('Restricted');
 		expect(getByTestId('setup-card-restricted-description')).toHaveTextContent(
 			'Gmail Trigger is restricted on this instance. Replace it to save the workflow.',
@@ -68,5 +69,12 @@ describe('RestrictedNodeSetupCard', () => {
 
 		expect(onReplaceNode).toHaveBeenCalledWith('gmail-1');
 		nodeViewEventBus.off('replaceNode', onReplaceNode);
+	});
+
+	it('offers only the contact action on a read-only canvas', () => {
+		const { getByTestId, queryByTestId } = render(true, true);
+
+		expect(getByTestId('setup-card-contact-admin')).toBeInTheDocument();
+		expect(queryByTestId('setup-card-replace-node')).not.toBeInTheDocument();
 	});
 });

@@ -73,7 +73,12 @@ describe('TemplatesWorkflowView', () => {
 
 	it('names the restricted nodes above the template and greys them on the card', async () => {
 		mockRestrictedNodeTypes.value = [
-			{ name: 'n8n-nodes-base.gmailTrigger', displayName: 'Gmail Trigger', scope: 'instance' },
+			{
+				name: 'n8n-nodes-base.gmailTrigger',
+				nodeType: 'n8n-nodes-base.gmailTrigger',
+				displayName: 'Gmail Trigger',
+				scope: 'instance',
+			},
 		];
 
 		const { findByTestId } = renderComponent();

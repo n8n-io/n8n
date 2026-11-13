@@ -41,7 +41,7 @@ export interface NodeSetupState {
 	allNodesUsingCredential?: INodeUi[];
 	/** True when the credential was auto-applied (not manually selected by the user) */
 	isAutoApplied?: boolean;
-	/** Set when a policy restricts the node type. The card then only offers a replacement. */
+	/** Set when a policy restricts the node type. The card then offers to contact an admin or to replace the node. */
 	restriction?: TypeRestriction;
 }
 

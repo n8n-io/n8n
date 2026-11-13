@@ -16,9 +16,11 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 const props = withDefaults(
 	defineProps<{
 		showCompleted?: boolean;
+		isReadOnly?: boolean;
 	}>(),
 	{
 		showCompleted: true,
+		isReadOnly: false,
 	},
 );
 
@@ -219,6 +221,7 @@ watch(
 					:node="card.state.node"
 					:restriction="card.state.restriction"
 					:is-trigger="card.state.isTrigger"
+					:is-read-only="isReadOnly"
 					:expanded="isCardExpanded(cardKey(card))"
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				/>

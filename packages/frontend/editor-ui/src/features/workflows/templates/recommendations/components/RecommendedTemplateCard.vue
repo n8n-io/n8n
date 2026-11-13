@@ -38,9 +38,11 @@ const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
 
 	const restricted = new Set(props.restrictedNodeTypes);
-	const nodeTypeNames = uniqBy(props.template.nodes, (node) => node.icon)
+	const nodesRestrictedFirst = [...props.template.nodes].sort(
+		(a, b) => Number(restricted.has(b.name)) - Number(restricted.has(a.name)),
+	);
+	const nodeTypeNames = uniqBy(nodesRestrictedFirst, (node) => node.icon)
 		.map((node) => node.name)
-		.sort((a, b) => Number(restricted.has(b)) - Number(restricted.has(a)))
 		.slice(0, 2);
 
 	return nodeTypeNames.flatMap((name) => {

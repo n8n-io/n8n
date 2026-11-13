@@ -176,7 +176,9 @@ describe('NodeCreator', () => {
 
 		const { getByTestId } = renderComponent({ props: { active: true } });
 
-		expect(getByTestId('node-creator')).toHaveStyle({ right: '420px' });
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe(
+			'420px',
+		);
 	});
 
 	it('keeps the right edge when it adds a node while the focus panel is open', () => {
@@ -185,6 +187,6 @@ describe('NodeCreator', () => {
 
 		const { getByTestId } = renderComponent({ props: { active: true } });
 
-		expect(getByTestId('node-creator')).toHaveStyle({ right: '0px' });
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe('0px');
 	});
 });

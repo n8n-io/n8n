@@ -54,7 +54,9 @@ const targetProjectId = computed(
 	() => projectsStore.currentProject?.id ?? projectsStore.personalProject?.id,
 );
 const { restrictedNodeTypes } = useTemplateRestrictedNodeTypes(template, targetProjectId);
-const restrictedTypeNames = computed(() => restrictedNodeTypes.value.map(({ name }) => name));
+const restrictedTypeNames = computed(() =>
+	restrictedNodeTypes.value.map(({ nodeType }) => nodeType),
+);
 
 const openTemplateSetup = async (id: string, e: PointerEvent) => {
 	await useTemplateWorkflow({

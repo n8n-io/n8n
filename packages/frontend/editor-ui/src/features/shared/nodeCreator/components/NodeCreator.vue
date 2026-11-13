@@ -69,7 +69,7 @@ const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
 		top: `${getTopOffset()}px`,
-		right: `${rightPosition}px`,
+		'--node-creator--right': `${rightPosition}px`,
 	};
 });
 
@@ -245,7 +245,11 @@ onClickOutside(
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
-	right: 0;
+	// Panels on the right push the creator left, but never past the app sidebar.
+	right: min(
+		var(--node-creator--right, 0px),
+		calc(100vw - var(--node-creator--width) - #{$sidebar-width})
+	);
 	z-index: var(--node-creator--z);
 	width: var(--node-creator--width);
 	color: $node-creator-text-color;
