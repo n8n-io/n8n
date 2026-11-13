@@ -38,8 +38,12 @@ describe('source imports', () => {
 		expect(sourceFiles).toContain('index.ts');
 	});
 
-	it.each(sourceFiles)('%s imports only relative paths', (file) => {
-		const specifiers = importSpecifiers(readFileSync(join(srcDir, file), 'utf8'));
-		expect(specifiers.filter((specifier) => !specifier.startsWith('.'))).toEqual([]);
+	it('imports only relative paths', () => {
+		const nonRelative = sourceFiles.flatMap((file) =>
+			importSpecifiers(readFileSync(join(srcDir, file), 'utf8'))
+				.filter((specifier) => !specifier.startsWith('.'))
+				.map((specifier) => `${file}: ${specifier}`),
+		);
+		expect(nonRelative).toEqual([]);
 	});
 });
