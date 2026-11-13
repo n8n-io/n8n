@@ -5,6 +5,8 @@ import type {
 	ListUsersQueryDto,
 } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { GLOBAL_MEMBER_ROLE, Person, ServiceAccount, ServiceAccountDetails } from '@n8n/db';
 import type { OperationContext, User } from '@n8n/db';
 import type { SecurityContext } from '@n8n/permissions';
@@ -232,6 +234,31 @@ describe('UsersPublicController', () => {
 				'project-id',
 				'editor_ui',
 				caller.ctx,
+			);
+		});
+	});
+
+	describe('changeLocale', () => {
+		it('requires the user:changeLocale scope on the API key and the role', () => {
+			const route = Container.get(ControllerRegistryMetadata)
+				.getControllerMetadata(UsersPublicController as never)
+				.routes.get('changeLocale');
+
+			expect(route?.method).toBe('patch');
+			expect(route?.path).toBe('/:userId/locale');
+			expect(route?.apiKeyScope).toBe('user:changeLocale');
+			expect(route?.accessScope).toEqual({ scope: 'user:changeLocale', globalOnly: true });
+			expect(route?.responseDto).toBeUndefined();
+		});
+
+		it.each(['de', null])('passes %s to the service with the caller', async (locale) => {
+			await controller.changeLocale(caller, mock<Response>(), 'user-id', { locale });
+
+			expect(userService.changeLocale).toHaveBeenCalledWith(
+				caller.user,
+				'user-id',
+				locale,
+				'editor_ui',
 			);
 		});
 	});

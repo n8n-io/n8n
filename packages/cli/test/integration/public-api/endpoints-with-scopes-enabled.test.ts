@@ -6,7 +6,7 @@ import {
 	randomName,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, GlobalConfig } from '@n8n/config';
 import type { Person, TagEntity, Variables } from '@n8n/db';
 import {
 	ApiKeyRepository,
@@ -362,6 +362,44 @@ describe('Public API endpoints with API key scopes', () => {
 
 					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
 					expect(formerAdminApiKey).toBeNull();
+				});
+			});
+
+			describe('PATCH /users/:id/locale', () => {
+				const globalConfig = Container.get(GlobalConfig);
+
+				beforeEach(() => {
+					globalConfig.locales.userOverride = true;
+				});
+
+				afterEach(() => {
+					globalConfig.locales.userOverride = false;
+				});
+
+				test('should change locale when API key has "user:changeLocale" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+					const member = await createMember();
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${member.id}/locale`)
+						.send({ locale: 'en' });
+
+					expect(response.status).toBe(204);
+					const storedUser = await getUserById(member.id);
+					expect(storedUser.settings?.locale).toBe('en');
+				});
+
+				test('should fail to change locale when API key doesn\'t have "user:changeLocale" scope', async () => {
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
+					const member = await createMember();
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${member.id}/locale`)
+						.send({ locale: 'en' });
+
+					expect(response.status).toBe(403);
 				});
 			});
 
