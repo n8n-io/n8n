@@ -48,7 +48,8 @@ export class McpClientUsageService {
 			.recordLastUsed(userId, clientId, new Date(now), LAST_USED_AT_THROTTLE_MS)
 			.catch((error: unknown) => {
 				// Allow a retry on the next request instead of waiting for the throttle.
-				if (key !== undefined) this.lastSent.delete(key);
+				// Keep the entry if a later request already replaced it.
+				if (key !== undefined && this.lastSent.get(key) === now) this.lastSent.delete(key);
 				this.logger.warn('Failed to update lastUsedAt on MCP client grant', {
 					userId,
 					clientId,

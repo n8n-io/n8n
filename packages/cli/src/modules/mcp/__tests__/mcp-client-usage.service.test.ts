@@ -88,4 +88,25 @@ describe('McpClientUsageService', () => {
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
+
+	it('keeps the entry of a later write when an older write fails', async () => {
+		let rejectFirst!: (error: Error) => void;
+		userConsentRepository.recordLastUsed.mockReturnValueOnce(
+			new Promise<void>((_, reject) => {
+				rejectFirst = reject;
+			}),
+		);
+
+		service.recordUse('user-1', 'client-1', 'token-1');
+		vi.advanceTimersByTime(60_000);
+		service.recordUse('user-1', 'client-1', 'token-1');
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+
+		rejectFirst(new Error('db down'));
+		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
+
+		service.recordUse('user-1', 'client-1', 'token-1');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
 });
