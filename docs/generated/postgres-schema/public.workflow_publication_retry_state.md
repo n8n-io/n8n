@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| retryDelaySeconds | integer |  | true |  |  | Seconds after updatedAt when reconciliation retries the target; null means never |
 | targetVersionId | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
@@ -35,6 +36,7 @@ erDiagram
 
 "public.workflow_publication_retry_state" {
   timestamp_3__with_time_zone createdAt
+  integer retryDelaySeconds
   varchar_36_ targetVersionId
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK

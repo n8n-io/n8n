@@ -12,6 +12,7 @@ import {
 	WorkflowPublicationReason,
 } from '../entities/workflow-publication-outbox';
 import { WorkflowPublicationRetryState } from '../entities/workflow-publication-retry-state';
+import { databaseNow, retryDueAt } from './workflow-publication-retry-state.repository';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -55,7 +56,8 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * know the enqueue succeeded, so no row is returned.
 	 *
 	 * An explicit user publication also clears retry suppression in the same
-	 * transaction. Automatic reconciliation enqueues leave suppression intact.
+	 * transaction. Automatic reconciliation enqueues keep the retry note, so its
+	 * backoff continues.
 	 *
 	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
 	 * the enqueue atomic with a `workflow_entity` update.
@@ -281,8 +283,8 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * Workflows whose retry state suppresses the active version are excluded for
 	 * the same reason as in {@link findUnreportedPublishedWorkflowIds}: a
 	 * publication that deterministically fails before reporting leaves the rows
-	 * drifted forever, so re-enqueueing would loop every pass. A user republish
-	 * (a fresh pending record) still recovers.
+	 * drifted forever, so re-enqueueing would loop every pass. The retry step
+	 * re-enqueues it when its note is due, and a user republish recovers it at once.
 	 */
 	async findTriggerStatusDriftedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
@@ -323,9 +325,10 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 	 * The failed population is why workflows whose retry state suppresses the
 	 * active version are excluded: re-enqueueing them would fail before
 	 * reporting again, still leave zero rows, and so be re-detected on every
-	 * pass forever, reporting an error each round. Recovery is not lost — a user
-	 * republish enqueues a fresh pending record, which is excluded here as
-	 * in-flight while it processes normally. `partial_success` always writes
+	 * pass forever, reporting an error each round. Recovery is not lost: the
+	 * retry step re-enqueues it when its note is due, and a user republish
+	 * enqueues a fresh pending record, which is excluded here as in-flight while
+	 * it processes normally. `partial_success` always writes
 	 * rows, so it never reaches this bucket.
 	 *
 	 * Same in-flight exclusion, in the same statement, as
@@ -361,6 +364,58 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		);
 
 		return rows.map((row) => row.workflowId);
+	}
+
+	/** Published workflows whose retry note for the active version is scheduled, due or not. */
+	async findRetryScheduledWorkflowIds(): Promise<string[]> {
+		const rows: Array<{ workflowId: string }> = await this.query(
+			`SELECT w."id" AS "workflowId" ${this.scheduledRetrySource()}`,
+		);
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
+	 * Workflows whose scheduled retry is due, oldest due first, limited so that
+	 * the in-flight records of all workflows never exceed `maxInFlight`.
+	 */
+	async findRetryDueWorkflowIds(maxInFlight: number): Promise<string[]> {
+		const { type } = this.globalConfig.database;
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const dueAt = retryDueAt(type, 'retry');
+
+		const rows: Array<{ workflowId: string }> = await this.query(
+			`SELECT due."workflowId" FROM (
+				 SELECT w."id" AS "workflowId", ROW_NUMBER() OVER (ORDER BY ${dueAt}, w."id") AS "dueOrder"
+				 ${this.scheduledRetrySource()}
+				 AND ${dueAt} <= ${databaseNow(type)}
+			 ) due
+			 WHERE due."dueOrder" <= ${type === 'postgresdb' ? '$1' : '?'} - (
+				 SELECT COUNT(*) FROM ${outboxTableName} o
+				 WHERE o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )
+			 ORDER BY due."dueOrder"`,
+			[maxInFlight],
+		);
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/** `FROM ... WHERE` for workflows with a scheduled retry note and no in-flight record. */
+	private scheduledRetrySource(): string {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const retryStateTableName = this.getTableName('workflow_publication_retry_state');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		return `FROM ${workflowTableName} w
+			 INNER JOIN ${retryStateTableName} retry
+				 ON retry."workflowId" = w."id" AND retry."targetVersionId" = w."activeVersionId"
+			 WHERE retry."retryDelaySeconds" IS NOT NULL
+			 AND NOT EXISTS (
+				 SELECT 1 FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 )`;
 	}
 
 	/**
