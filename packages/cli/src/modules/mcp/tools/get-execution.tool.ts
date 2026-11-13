@@ -107,7 +107,7 @@ export const createGetExecutionTool = (
 			// This tool defaults to metadata only, both stores to the opposite.
 			const withData = includeData === true;
 
-			// The id shape decides the store, so an engine 2.0 id resolves too.
+			// The id shape decides the store, so an engine v2 id resolves too.
 			const execution = await executionService.findOneAcrossEngines(executionId, [workflowId], {
 				includeData: withData,
 				includeAnnotation: false,

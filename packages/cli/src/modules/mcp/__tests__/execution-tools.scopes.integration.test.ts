@@ -4,12 +4,12 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { ExecutionRepository } from '@n8n/db';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionService } from '@/executions/execution.service';
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -50,7 +50,7 @@ afterAll(async () => {
 const getExecution = async (user: User, includeData: boolean) =>
 	await createGetExecutionTool(
 		user,
-		Container.get(ExecutionRepository),
+		Container.get(ExecutionService),
 		Container.get(WorkflowFinderService),
 		mock<Telemetry>(),
 		Container.get(ExecutionRedactionServiceProxy),

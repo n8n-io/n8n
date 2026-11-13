@@ -6,7 +6,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { ExecutionRepository, type User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { createEmptyRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
@@ -15,6 +15,7 @@ import { createExecution } from '../shared/db/executions';
 import { createMember, createOwner } from '../shared/db/users';
 
 import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import { ExecutionService } from '@/executions/execution.service';
 import { createGetExecutionTool } from '@/modules/mcp/tools/get-execution.tool';
 import { RedactionModule } from '@/modules/redaction/redaction.module';
 import { Telemetry } from '@/telemetry';
@@ -64,7 +65,7 @@ const runExecutionData = (): IRunExecutionData => ({
 const callTool = async (user: User, workflowId: string, executionId: string) => {
 	const tool = createGetExecutionTool(
 		user,
-		Container.get(ExecutionRepository),
+		Container.get(ExecutionService),
 		Container.get(WorkflowFinderService),
 		telemetry,
 		Container.get(ExecutionRedactionServiceProxy),
