@@ -1734,6 +1734,7 @@ onBeforeUnmount(() => {
 			v-if="
 				displayedMessages.length === 0 &&
 				!isStreaming &&
+				!isLoadingHistory &&
 				!stopNotice &&
 				!preparingSummary &&
 				!summaryMissing &&

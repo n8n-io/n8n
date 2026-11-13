@@ -4629,6 +4629,18 @@ describe('AgentChatPanel', () => {
 			);
 		});
 
+		it('shows the empty state only after the history loads', async () => {
+			isLoadingHistoryMock.value = true;
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+
+			isLoadingHistoryMock.value = false;
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
+		});
+
 		describe('slots', () => {
 			it('replaces the default empty state with the empty-state slot', () => {
 				const wrapper = mountPanel({}, undefined, {
