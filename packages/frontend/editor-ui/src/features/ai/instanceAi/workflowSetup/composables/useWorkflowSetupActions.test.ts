@@ -127,8 +127,9 @@ function setupHarness(opts: { isReady?: boolean } = {}): Harness {
 	};
 }
 
-function getTelemetryCalls(eventName: string) {
-	return telemetryTrack.mock.calls.filter(([event]) => event === eventName);
+// A legacy event is a name. A registered event is its definition object.
+function getTelemetryCalls(event: unknown) {
+	return telemetryTrack.mock.calls.filter(([tracked]) => tracked === event);
 }
 
 describe('useWorkflowSetupActions', () => {
