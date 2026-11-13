@@ -45,6 +45,7 @@ export class ExecutionCrashService {
 			onTransitioned: (batch) => {
 				this.count(batch);
 				this.announce(batch, detector);
+				this.recordEnded(batch);
 			},
 		});
 	}
