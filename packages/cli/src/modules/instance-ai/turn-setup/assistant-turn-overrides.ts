@@ -1,4 +1,3 @@
-import type { InstanceAiBuildMode } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 /**
@@ -14,7 +13,7 @@ export interface AssistantCredentialTestTarget {
 /**
  * Per-thread overrides of Assistant turns. The turn environment factory reads
  * the credential settings for both runtimes. The Assistant agent also reads the
- * build mode and the prompt version. Each method returns "no override" here,
+ * prompt version. Each method returns "no override" here,
  * so normal runtime keeps its default behavior.
  *
  * To supply overrides, extend this class and register the instance with
@@ -41,12 +40,7 @@ export class AssistantTurnOverrides {
 		return undefined;
 	}
 
-	/** The build mode of the thread. `undefined` uses the experiment assignment. */
-	getBuildMode(_threadId: string): InstanceAiBuildMode | undefined {
-		return undefined;
-	}
-
-	/** The prompt profile version of the thread. It takes precedence over the build mode. */
+	/** The prompt profile version of the thread. `undefined` uses the experiment assignment. */
 	getPromptVersion(_threadId: string): string | undefined {
 		return undefined;
 	}

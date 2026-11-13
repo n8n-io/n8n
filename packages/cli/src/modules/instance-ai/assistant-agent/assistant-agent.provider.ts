@@ -323,7 +323,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
 			hostMetadata: this.hostMetadataOf(
 				options,
-				environment.skillScope.profile.mode,
 				this.turnOverrides.getPromptVersion(thread.id),
 				trace,
 			),
@@ -458,12 +457,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		};
 	}
 
-	/** The turn overrides supply the build mode and the prompt version. The client request supplies only the Browser Use report. */
+	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */
 	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
 		const overrides = this.turnOverrides;
 		return {
-			getBuildMode: () => overrides.getBuildMode(threadId),
-			setBuildMode: () => {},
 			getPromptVersion: () => overrides.getPromptVersion(threadId),
 			setPromptConfiguration: () => {},
 			setSetupPanelEnabled: () => {},
@@ -520,13 +517,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	private hostMetadataOf(
 		options: AssistantTurnOptions,
-		buildMode: string | undefined,
 		promptVersion: string | undefined,
 		trace: AssistantTurnTrace | undefined,
 	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
-			buildMode: buildMode ?? null,
 			promptVersion: promptVersion ?? null,
 			...trace?.hostMetadata(),
 		};

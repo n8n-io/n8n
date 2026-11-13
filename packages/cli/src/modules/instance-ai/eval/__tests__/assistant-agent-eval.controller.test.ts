@@ -85,7 +85,7 @@ describe('AssistantAgentEvalController', () => {
 				await controller.createThread(req, res, { threadId: THREAD_ID, projectId: PROJECT_ID }),
 			deleteThread: async () => await controller.deleteThread(req, res, THREAD_ID),
 			setThreadOverrides: async () =>
-				await controller.setThreadOverrides(req, res, THREAD_ID, { mode: 'progressive' }),
+				await controller.setThreadOverrides(req, res, THREAD_ID, { promptVersion: 'v2' }),
 			setThreadCredentialAllowlist: async () =>
 				await controller.setThreadCredentialAllowlist(req, res, {
 					threadId: THREAD_ID,
@@ -172,7 +172,7 @@ describe('AssistantAgentEvalController', () => {
 				ctx.user,
 				THREAD_ID,
 			);
-			expect(ctx.overrides.getBuildMode(THREAD_ID)).toBeUndefined();
+			expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
 			expect(ctx.allowlists.get(THREAD_ID)).toBeUndefined();
 			expect(ctx.allowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
 			expect(ctx.portability.exportExecution).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe('AssistantAgentEvalController', () => {
 		it('keeps the state of a thread that the caller does not own on delete', async () => {
 			const ctx = setup();
 			ctx.allowlists.set(THREAD_ID, ['cred-1']);
-			ctx.overrides.setThreadOverrides(THREAD_ID, { mode: 'progressive' });
+			ctx.overrides.setThreadOverrides(THREAD_ID, { promptVersion: 'v2' });
 			ctx.systemAgents.deleteThread.mockRejectedValue(new NotFoundError('Session not found'));
 
 			await expect(ctx.controller.deleteThread(ctx.req, ctx.res, THREAD_ID)).rejects.toThrow(
@@ -192,7 +192,7 @@ describe('AssistantAgentEvalController', () => {
 			);
 
 			expect(ctx.allowlists.get(THREAD_ID)).toEqual(['cred-1']);
-			expect(ctx.overrides.getBuildMode(THREAD_ID)).toBe('progressive');
+			expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBe('v2');
 		});
 	});
 
@@ -266,7 +266,7 @@ describe('AssistantAgentEvalController', () => {
 			baseUrl: 'http://stand-in',
 			urlField: 'url',
 		});
-		ctx.overrides.setThreadOverrides(THREAD_ID, { mode: 'progressive', promptVersion: 'v2' });
+		ctx.overrides.setThreadOverrides(THREAD_ID, { promptVersion: 'v2' });
 
 		const result = await routes(ctx).deleteThread();
 
@@ -274,24 +274,17 @@ describe('AssistantAgentEvalController', () => {
 		expect(ctx.systemAgents.deleteThread).toHaveBeenCalledWith('assistant', ctx.user, THREAD_ID);
 		expect(ctx.allowlists.get(THREAD_ID)).toBeUndefined();
 		expect(ctx.allowlists.getTestTarget(THREAD_ID, 'slackApi')).toBeUndefined();
-		expect(ctx.overrides.getBuildMode(THREAD_ID)).toBeUndefined();
 		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
 	});
 
 	it('replaces the turn overrides of the thread', async () => {
 		const ctx = setup();
 
-		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
-			mode: 'progressive',
-			promptVersion: 'v2',
-		});
-		const result = await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {
-			promptVersion: 'v3',
-		});
+		await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, { promptVersion: 'v2' });
+		const result = await ctx.controller.setThreadOverrides(ctx.req, ctx.res, THREAD_ID, {});
 
 		expect(result).toEqual({ ok: true });
-		expect(ctx.overrides.getBuildMode(THREAD_ID)).toBeUndefined();
-		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBe('v3');
+		expect(ctx.overrides.getPromptVersion(THREAD_ID)).toBeUndefined();
 	});
 
 	it('pins the credential view of the thread', async () => {
@@ -588,8 +581,7 @@ describe('AssistantAgentEvalController', () => {
 
 		it.each([
 			[{}, true],
-			[{ mode: 'progressive', promptVersion: 'v2' }, true],
-			[{ mode: 'fast' }, false],
+			[{ promptVersion: 'v2' }, true],
 			[{ promptVersion: '   ' }, false],
 			[{ promptVersion: 'x'.repeat(129) }, false],
 		])('validates overrides %j as %s', (body, valid) => {

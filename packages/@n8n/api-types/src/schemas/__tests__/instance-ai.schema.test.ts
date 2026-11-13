@@ -112,9 +112,8 @@ describe('Instance AI prompt version requests', () => {
 		const base = { message: 'Build a workflow', timeZone: 'UTC' };
 		expect(InstanceAiSendMessageRequest.safeParse(base).success).toBe(true);
 		expect(
-			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' progressive@1 ' })
-				.promptVersion,
-		).toBe('progressive@1');
+			InstanceAiSendMessageRequest.parse({ ...base, promptVersion: ' concise@1 ' }).promptVersion,
+		).toBe('concise@1');
 		for (const promptVersion of ['', '   ', 'x'.repeat(129)]) {
 			expect(InstanceAiSendMessageRequest.safeParse({ ...base, promptVersion }).success).toBe(
 				false,

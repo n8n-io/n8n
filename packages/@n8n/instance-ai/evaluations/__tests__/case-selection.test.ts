@@ -28,7 +28,6 @@ function setup(assistantRuntime: CliArgs['assistantRuntime']) {
 
 describe('selectCases on the Assistant agent', () => {
 	beforeEach(() => {
-		vi.stubEnv('N8N_EVAL_BUILD_MODE', undefined);
 		vi.stubEnv('N8N_EVAL_PROMPT_VERSION', undefined);
 	});
 	afterEach(() => vi.unstubAllEnvs());

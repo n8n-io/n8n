@@ -16,7 +16,7 @@ export const ASSISTANT_TURN_METADATA_KEY = 'assistantTurn';
  * Fields of the shared send-message request that the Assistant agent does not
  * read from the client. The turn overrides supply these settings instead.
  */
-const IGNORED_CLIENT_FIELDS = ['mode', 'promptVersion', 'observerThresholdTokens'] as const;
+const IGNORED_CLIENT_FIELDS = ['promptVersion', 'observerThresholdTokens'] as const;
 
 type IgnoredClientField = (typeof IGNORED_CLIENT_FIELDS)[number];
 
@@ -59,7 +59,6 @@ function parseClientRequest(value: unknown, logger?: Logger): AssistantClientReq
 	const {
 		message: _message,
 		attachments,
-		mode: _mode,
 		promptVersion: _promptVersion,
 		observerThresholdTokens: _observerThresholdTokens,
 		...request

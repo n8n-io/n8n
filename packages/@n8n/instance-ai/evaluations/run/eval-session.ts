@@ -158,7 +158,6 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							client: lane.client,
 							conversation: buildArgs.conversation,
 							messageBudget: buildArgs.messageBudget,
-							buildMode: buildArgs.buildMode,
 							promptVersion: buildArgs.promptVersion,
 							requiresMemoryCompaction: buildArgs.requiresMemoryCompaction,
 							allowUserExecution: buildArgs.allowUserExecution,

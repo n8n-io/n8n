@@ -66,7 +66,7 @@ function setup() {
 		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
-		skillScope: { profile: { mode: 'default' } },
+		skillScope: { profile: {} },
 	} as unknown as AssistantTurnEnvironment;
 	const turnEnvironment = mock<AssistantTurnEnvironmentFactory>();
 	turnEnvironment.create.mockResolvedValue(environment);
@@ -194,7 +194,6 @@ describe('AssistantAgentProvider', () => {
 		const options = await provider.chatTurnOptions(user, thread, {
 			timeZone: 'UTC',
 			// The turn overrides supply these settings, so the client cannot set them.
-			mode: 'progressive',
 			promptVersion: 'default@1',
 			observerThresholdTokens: 5_000,
 		});
@@ -294,7 +293,6 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-				buildMode: 'default',
 			});
 		});
 
@@ -315,7 +313,6 @@ describe('AssistantAgentProvider', () => {
 			const handle = await provider.prepareTurn(turn);
 
 			const { turnState } = turnEnvironment.create.mock.calls[0][1];
-			expect(turnState.getBuildMode()).toBeUndefined();
 			expect(turnState.getPromptVersion()).toBeUndefined();
 			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
 			expect(handle.hostMetadata).toMatchObject({ promptVersion: null });
@@ -323,19 +320,16 @@ describe('AssistantAgentProvider', () => {
 
 		it('reads the thread settings of the turn from the turn overrides', async () => {
 			const { provider, turnEnvironment, turnOverrides } = setup();
-			vi.spyOn(turnOverrides, 'getBuildMode').mockReturnValue('progressive');
-			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('progressive@1');
+			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('concise@1');
 
 			const handle = await provider.prepareTurn(startTurn());
 
 			const { turnState } = turnEnvironment.create.mock.calls[0][1];
-			expect(turnState.getBuildMode()).toBe('progressive');
-			expect(turnState.getPromptVersion()).toBe('progressive@1');
+			expect(turnState.getPromptVersion()).toBe('concise@1');
 			// The Assistant agent has no threshold override.
 			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
-			expect(turnOverrides.getBuildMode).toHaveBeenCalledWith('thread-1');
 			expect(turnOverrides.getPromptVersion).toHaveBeenCalledWith('thread-1');
-			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'progressive@1' });
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'concise@1' });
 		});
 
 		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {

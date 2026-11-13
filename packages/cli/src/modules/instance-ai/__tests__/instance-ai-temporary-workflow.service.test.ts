@@ -45,7 +45,6 @@ function createService() {
 		credentialDescriptionsEnabled: false,
 		configEvalsEnabled: false,
 		conversationHistoryEnabled: false,
-		progressiveBuildingEnabled: false,
 		conciseStyleEnabled: false,
 		setupPanelEnabled: false,
 		nodeUsageEnabled: false,

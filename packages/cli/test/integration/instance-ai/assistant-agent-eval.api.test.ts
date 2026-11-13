@@ -74,13 +74,12 @@ describe('Assistant agent eval routes', () => {
 
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ mode: 'progressive', promptVersion: 'v2' })
+			.send({ promptVersion: 'v2' })
 			.expect(200);
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
 			.send({ promptVersion: 'v3' })
 			.expect(200);
-		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBeUndefined();
 		expect(Container.get(AssistantTurnOverrides).getPromptVersion(threadId)).toBe('v3');
 
 		await ownerAgent
@@ -339,7 +338,7 @@ describe('Assistant agent eval routes', () => {
 
 		await otherAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ mode: 'progressive' })
+			.send({ promptVersion: 'v2' })
 			.expect(404);
 		await otherAgent
 			.post('/assistant/eval/thread-credential-allowlist')
@@ -351,7 +350,7 @@ describe('Assistant agent eval routes', () => {
 			.expect(404);
 		await otherAgent.delete(`/assistant/eval/threads/${threadId}`).expect(404);
 
-		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBeUndefined();
+		expect(Container.get(AssistantTurnOverrides).getPromptVersion(threadId)).toBeUndefined();
 		// The thread still exists for its owner.
 		await ownerAgent.put(`/assistant/eval/threads/${threadId}/overrides`).send({}).expect(200);
 	});
@@ -369,9 +368,9 @@ describe('Assistant agent eval routes', () => {
 
 		await ownerAgent
 			.put(`/assistant/eval/threads/${threadId}/overrides`)
-			.send({ mode: 'progressive', observerThresholdTokens: 5_000 })
+			.send({ promptVersion: 'v2', mode: 'progressive', observerThresholdTokens: 5_000 })
 			.expect(200);
 
-		expect(Container.get(AssistantTurnOverrides).getBuildMode(threadId)).toBe('progressive');
+		expect(Container.get(AssistantTurnOverrides).getPromptVersion(threadId)).toBe('v2');
 	});
 });

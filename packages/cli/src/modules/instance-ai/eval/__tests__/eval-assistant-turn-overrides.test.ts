@@ -14,7 +14,6 @@ describe('EvalAssistantTurnOverrides', () => {
 		expect(overrides.getCredentialIdAllowlist('thread-1')).toBeUndefined();
 		expect(overrides.shouldBypassCredentialTest('thread-1', 'cred-1')).toBe(false);
 		expect(overrides.getCredentialTestTarget('thread-1', 'slackApi')).toBeUndefined();
-		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
 		expect(overrides.getPromptVersion('thread-1')).toBeUndefined();
 	});
 
@@ -33,32 +32,30 @@ describe('EvalAssistantTurnOverrides', () => {
 
 	it('keeps the turn overrides for each thread', () => {
 		const { overrides } = setup();
-		overrides.setThreadOverrides('thread-1', { mode: 'progressive', promptVersion: 'v2' });
+		overrides.setThreadOverrides('thread-1', { promptVersion: 'v2' });
 
-		expect(overrides.getBuildMode('thread-1')).toBe('progressive');
 		expect(overrides.getPromptVersion('thread-1')).toBe('v2');
-		expect(overrides.getBuildMode('thread-2')).toBeUndefined();
+		expect(overrides.getPromptVersion('thread-2')).toBeUndefined();
 	});
 
 	it('replaces all turn overrides, so an omitted field has no override', () => {
 		const { overrides } = setup();
-		overrides.setThreadOverrides('thread-1', { mode: 'progressive', promptVersion: 'v2' });
+		overrides.setThreadOverrides('thread-1', { promptVersion: 'v2' });
 
-		overrides.setThreadOverrides('thread-1', { promptVersion: 'v3' });
+		overrides.setThreadOverrides('thread-1', {});
 
-		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
-		expect(overrides.getPromptVersion('thread-1')).toBe('v3');
+		expect(overrides.getPromptVersion('thread-1')).toBeUndefined();
 	});
 
 	it('clears the turn overrides and the credential settings of the thread', () => {
 		const { allowlists, overrides } = setup();
 		allowlists.set('thread-1', ['cred-1'], ['cred-1']);
 		allowlists.set('thread-2', ['cred-9']);
-		overrides.setThreadOverrides('thread-1', { mode: 'progressive' });
+		overrides.setThreadOverrides('thread-1', { promptVersion: 'v2' });
 
 		overrides.clearThread('thread-1');
 
-		expect(overrides.getBuildMode('thread-1')).toBeUndefined();
+		expect(overrides.getPromptVersion('thread-1')).toBeUndefined();
 		expect(overrides.getCredentialIdAllowlist('thread-1')).toBeUndefined();
 		expect(overrides.shouldBypassCredentialTest('thread-1', 'cred-1')).toBe(false);
 		expect(overrides.getCredentialIdAllowlist('thread-2')).toEqual(['cred-9']);
