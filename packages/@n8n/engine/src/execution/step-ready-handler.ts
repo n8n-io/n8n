@@ -163,10 +163,11 @@ export class StepReadyHandler {
 
 		// Recording is a CAS on `running`, so losing it means something else took the
 		// step over while we ran — announce only outcomes we actually wrote, and let
-		// whoever holds it now announce theirs. A wait in an ended execution is not
-		// recorded either: `suspendStep` cancels the step. TODO(CAT-2938):
-		// reconciliation is the only thing that can take a step over, and it doesn't
-		// exist yet.
+		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
+		// only thing that can take a step over, and it doesn't exist yet.
+		//
+		// A wait in an ended execution is not recorded either: `suspendStep` cancels
+		// the step.
 		if (!recorded) return;
 
 		// A wait is no outcome: nothing settled, so no planning follows.

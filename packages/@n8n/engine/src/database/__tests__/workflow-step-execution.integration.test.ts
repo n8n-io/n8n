@@ -474,7 +474,7 @@ describe('workflow_step_execution table (integration)', () => {
 				.getRepository(WorkflowStepExecution)
 				.findOneOrFail({ where: { id } });
 			expect(found.status).toBe(stepStatus);
-			// a cancelled step keeps no wait for a resume or the sweep to act on
+			// the declaration of an unrecorded wait is not written
 			expect(found.waitDeclaration !== null).toBe(recorded);
 			expect(found.waitTill !== null).toBe(recorded);
 		},

@@ -195,9 +195,10 @@ export class TypeOrmStepStore implements StepStore {
 		// declaration it fires.
 		//
 		// The execution-row lock orders the suspension with the write that ends
-		// the execution. A wait that lands first is cancelled by the sweep that
-		// follows the end. A wait that comes after the end cancels the step here,
-		// because nothing resumes a wait in an ended execution.
+		// the execution. A wait that lands first is cancelled by
+		// `cancelPendingSteps`, which runs after the end. A wait that comes after
+		// the end cancels the step here, because nothing resumes a wait in an
+		// ended execution.
 		return await this.repo.manager.transaction(async (manager) => {
 			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
 				`SELECT status FROM workflow_execution
