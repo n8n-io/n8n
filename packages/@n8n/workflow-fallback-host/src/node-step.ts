@@ -51,7 +51,7 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, ICredentialsHelper, NodeConnectionTypes, Workflow } from 'n8n-workflow';
 
-import { fileDataTableProvider } from './data-table';
+import { fileDataTableProvider, ServiceDataTableProvider } from './data-table';
 import { checkBinaryLimit, maxBinaryBytes, toN8nItem, toStepItem } from './binary';
 import { ensureExpressionEngine, recoverExpressionEngine } from './expression-engine';
 import type { ClusterContext, SubNodeArgs, SubNodeRuns } from './cluster-step';
@@ -66,6 +66,7 @@ import { readinessIssues, toNodeParameters } from './check-ready';
 import { hostExtensions } from './extensions';
 import { binaryStore, inlineStoredBinary, registerExecution } from './binary-store';
 import { startDeduplication } from './deduplication';
+import { currentServiceChannel } from './service-calls';
 import type { JsTaskResult } from './task-runner';
 import { runJsTask } from './task-runner';
 import { EVALUATE_TYPE, HostNodeTypes, LANGCHAIN_PREFIX } from './node-types';
@@ -724,9 +725,15 @@ export interface NodeStepRunnerOptions {
 
 export { disposeExpressionEngine } from './expression-engine';
 
-/** `additionalData['data-table']` when WF_FALLBACK_DATA_TABLES_DIR is set. */
+/**
+ * `additionalData['data-table']`: n8n's own data tables through the service
+ * calls of the step when it has a channel (protocol version 2), else the file
+ * store of WF_FALLBACK_DATA_TABLES_DIR, which only the test bed sets.
+ */
 function dataTableData(): { 'data-table'?: { dataTableProxyProvider: DataTableProxyProvider } } {
-	const provider = fileDataTableProvider();
+	const provider = currentServiceChannel()
+		? new ServiceDataTableProvider()
+		: fileDataTableProvider();
 	return provider ? { 'data-table': { dataTableProxyProvider: provider } } : {};
 }
 
@@ -1041,7 +1048,7 @@ export class NodeStepRunner {
 				: this.credentialsHelper,
 			// A proxy without a manager has no secrets.
 			externalSecretsProxy: new ExternalSecretsProxy(),
-			// Data tables from WF_FALLBACK_DATA_TABLES_DIR (data-table.ts), as n8n's data-table module.
+			// Data tables (data-table.ts): n8n's, else the files of the test bed.
 			...dataTableData(),
 			currentNodeExecutionIndex: 0,
 			restApiUrl: `${urls.instanceBaseUrl}/rest`,
