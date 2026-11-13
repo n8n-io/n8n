@@ -568,7 +568,7 @@ export class Telemetry {
 			endpoints: {},
 			endpoints_by_client: { editor_ui: {} },
 			user_agents: {},
-			clients: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;

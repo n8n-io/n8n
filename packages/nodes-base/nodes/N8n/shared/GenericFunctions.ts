@@ -17,6 +17,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from './constants';
+
 /**
  * A custom API request function to be used with the resourceLocator lookup queries.
  */
@@ -45,6 +47,7 @@ export async function apiRequest(
 			qs: query,
 			uri: requestUrl`${normalizedBaseUrl}/${endpoint}`,
 			json: true,
+			headers: { [N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_NODE },
 		};
 
 		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);

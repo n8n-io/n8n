@@ -304,6 +304,28 @@ describe('PublicApiControllerRegistry', () => {
 		});
 	});
 
+	it('reports the n8n node as the client when it sends its client header', async () => {
+		@Service()
+		class WidgetsPublicController {
+			@Get('/:widgetId')
+			@ApiResponse(200)
+			method() {
+				return { ok: true };
+			}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		await request(activate())
+			.get('/api/v1/widgets/w-1')
+			.set({ 'x-n8n-client': 'n8n-node' })
+			.expect(200);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'public-api-invoked',
+			expect.objectContaining({ client: 'n8n_node' }),
+		);
+	});
+
 	describe('success response without a DTO', () => {
 		it('sends an empty body without a content-type when the handler returns nothing', async () => {
 			@Service()

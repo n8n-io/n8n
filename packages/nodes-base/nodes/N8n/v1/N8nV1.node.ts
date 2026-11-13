@@ -11,6 +11,7 @@ import { executionFields, executionOperations } from './ExecutionDescription';
 import { projectFields, projectOperations } from './ProjectDescription';
 import { userFields, userOperations } from './UserDescription';
 import { workflowFields, workflowOperations } from './WorkflowDescription';
+import { N8N_CLIENT_HEADER, N8N_CLIENT_N8N_NODE } from '../shared/constants';
 import { searchWorkflows } from '../shared/WorkflowLocator';
 
 export class N8nV1 implements INodeType {
@@ -38,6 +39,7 @@ export class N8nV1 implements INodeType {
 				headers: {
 					Accept: 'application/json',
 					'Content-Type': 'application/json',
+					[N8N_CLIENT_HEADER]: N8N_CLIENT_N8N_NODE,
 				},
 			},
 			properties: [
