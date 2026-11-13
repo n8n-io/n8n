@@ -17,6 +17,7 @@ import {
 	isRestrictionScope,
 	RESTRICTION_CONTACT_COPY,
 	SCOPE_LABEL_KEY,
+	type RestrictedTypeKind,
 	type RestrictionContact,
 	type RestrictionNextStep,
 } from '../type-availability-policies.constants';
@@ -54,6 +55,16 @@ export function getNodeTypeRestriction(nodeType: string): TypeRestriction | null
 	}
 
 	return nodeRestriction(nodeType);
+}
+
+/** The policy kind behind a node type's verdict, matching the order in `getNodeTypeRestriction`. */
+export function getNodeTypeRestrictionKind(
+	nodeType: string,
+	restriction: TypeRestriction,
+): RestrictedTypeKind {
+	return isCredentialOnlyNodeType(nodeType) && restriction.name !== HTTP_REQUEST_NODE_TYPE
+		? 'credential'
+		: 'node';
 }
 
 export function isNodeTypeRestricted(nodeType: string): boolean {
@@ -168,10 +179,6 @@ export function collectRestrictedNodeTypes(
 	});
 }
 
-/**
- * Why these node types block a publish, with one scope on each line when there are several.
- * A `surface` takes its sentence for one type and its last line for several from `CALLOUT_COPY`.
- */
 export function describeRestrictedNodeTypes(
 	restricted: RestrictedNodeTypeName[],
 	surface?: RestrictedCalloutSurface,

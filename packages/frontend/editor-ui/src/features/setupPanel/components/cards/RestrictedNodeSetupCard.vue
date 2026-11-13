@@ -5,6 +5,7 @@ import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
 import {
 	ContactAdminModal,
 	describeTypeRestriction,
+	getNodeTypeRestrictionKind,
 	useRestrictionContact,
 	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
@@ -13,6 +14,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import type { INodeUi } from '@/Interface';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 
 const props = defineProps<{
@@ -27,6 +29,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
 
 const isContactAdminOpen = ref(false);
@@ -39,6 +42,14 @@ const description = computed(() =>
 	describeTypeRestriction('replaceToSave', nodeTypeName.value, props.restriction),
 );
 const highlightNodeIds = computed(() => [props.node.id]);
+
+const contactKind = computed(() => getNodeTypeRestrictionKind(props.node.type, props.restriction));
+const contactTypeName = computed(() =>
+	contactKind.value === 'credential'
+		? (credentialsStore.getCredentialTypeByName(props.restriction.name)?.displayName ??
+			props.restriction.name)
+		: nodeTypeName.value,
+);
 
 function onReplaceNode() {
 	nodeViewEventBus.emit('replaceNode', props.node.id);
@@ -98,8 +109,8 @@ function onReplaceNode() {
 			</div>
 			<ContactAdminModal
 				v-model:open="isContactAdminOpen"
-				kind="node"
-				:type-name="nodeTypeName"
+				:kind="contactKind"
+				:type-name="contactTypeName"
 				:audience="contactCopy.audience"
 			/>
 		</template>

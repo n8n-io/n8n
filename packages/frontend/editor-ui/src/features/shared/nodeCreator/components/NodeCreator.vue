@@ -65,6 +65,14 @@ const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
 const embeddedCanvas = inject(EmbeddedCanvasElementKey, ref(null));
 const { top: embeddedCanvasTop } = useElementBounding(embeddedCanvas);
 
+// A replacement from the setup panel opens beside the focus panel, so the card stays in view.
+const isBesideFocusPanel = computed(
+	() =>
+		!embeddedCanvas.value &&
+		nodeCreatorStore.isReplacingFromSetupPanel &&
+		focusPanelStore.focusPanelActive,
+);
+
 const nodeCreatorInlineStyle = computed(() => {
 	const rightPosition = getRightOffset();
 	return {
@@ -84,13 +92,7 @@ function getTopOffset() {
 function getRightOffset() {
 	const chatOffset = chatPanelStore.isOpen ? chatPanelStore.width : 0;
 
-	// A replacement opens beside the focus panel, so the setup card that started it stays in view.
-	const isReplacingBesideFocusPanel =
-		!embeddedCanvas.value &&
-		nodeCreatorStore.openingContext === 'replacement' &&
-		focusPanelStore.focusPanelActive;
-
-	return isReplacingBesideFocusPanel ? chatOffset + focusPanelStore.focusPanelWidth : chatOffset;
+	return isBesideFocusPanel.value ? chatOffset + focusPanelStore.focusPanelWidth : chatOffset;
 }
 
 function onMouseUpOutside() {
@@ -216,7 +218,7 @@ onClickOutside(
 			<div
 				v-if="active"
 				ref="nodeCreator"
-				:class="{ [$style.nodeCreator]: true }"
+				:class="{ [$style.nodeCreator]: true, [$style.besideFocusPanel]: isBesideFocusPanel }"
 				:style="nodeCreatorInlineStyle"
 				data-test-id="node-creator"
 				@dragover="onDragOver"
@@ -245,14 +247,18 @@ onClickOutside(
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
-	// Panels on the right push the creator left, but never past the app sidebar.
-	right: min(
-		var(--node-creator--right, 0px),
-		calc(100vw - var(--node-creator--width) - #{$sidebar-width})
-	);
+	right: var(--node-creator--right, 0);
 	z-index: var(--node-creator--z);
 	width: var(--node-creator--width);
 	color: $node-creator-text-color;
+
+	// Never push the creator past the app sidebar on a narrow window.
+	&.besideFocusPanel {
+		right: min(
+			var(--node-creator--right),
+			calc(100vw - var(--node-creator--width) - #{$sidebar-width})
+		);
+	}
 }
 
 .nodeCreatorScrim {

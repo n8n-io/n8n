@@ -5,8 +5,10 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import RestrictedNodeSetupCard from '@/features/setupPanel/components/cards/RestrictedNodeSetupCard.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { INodeUi } from '@/Interface';
+import type { TypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: {
@@ -76,5 +78,58 @@ describe('RestrictedNodeSetupCard', () => {
 
 		expect(getByTestId('setup-card-contact-admin')).toBeInTheDocument();
 		expect(queryByTestId('setup-card-replace-node')).not.toBeInTheDocument();
+	});
+
+	describe('contact admin for a credential-only node', () => {
+		const credentialOnlyNode = createTestNode({
+			id: 'bitly-1',
+			name: 'Shorten link',
+			type: 'n8n-creds-base.bitlyApi',
+		}) as INodeUi;
+
+		const renderWithModal = (restriction: TypeRestriction) =>
+			renderComponent({
+				props: { node: credentialOnlyNode, restriction, isTrigger: false, expanded: true },
+				global: {
+					stubs: {
+						ContactAdminModal: {
+							props: ['open', 'kind', 'typeName', 'audience'],
+							template:
+								'<div data-test-id="contact-admin-modal" :data-kind="kind">{{ typeName }}</div>',
+						},
+					},
+				},
+			});
+
+		beforeEach(() => {
+			mockedStore(useNodeTypesStore).getNodeType = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Bitly' });
+			mockedStore(useCredentialsStore).getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ displayName: 'Bitly API' });
+		});
+
+		it('names the credential type when the credential type is restricted', () => {
+			const { getByTestId } = renderWithModal({
+				name: 'bitlyApi',
+				available: false,
+				scope: 'instance',
+			});
+
+			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'credential');
+			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Bitly API');
+		});
+
+		it('names the node when HTTP Request itself is restricted', () => {
+			const { getByTestId } = renderWithModal({
+				name: 'n8n-nodes-base.httpRequest',
+				available: false,
+				scope: 'instance',
+			});
+
+			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'node');
+			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Bitly');
+		});
 	});
 });

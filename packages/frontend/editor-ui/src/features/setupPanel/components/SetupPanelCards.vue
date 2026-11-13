@@ -29,7 +29,10 @@ const telemetry = useTelemetry();
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState(undefined, { includeRestricted: true });
+	useWorkflowSetupState(undefined, {
+		// Only a workflow made from a template shows restricted nodes in the setup panel.
+		includeRestricted: () => Boolean(workflowDocumentStore?.value?.meta?.templateId),
+	});
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {

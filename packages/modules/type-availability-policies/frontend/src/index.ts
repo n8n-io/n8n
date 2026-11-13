@@ -13,6 +13,7 @@ export {
 	describeRestrictedNodeTypes,
 	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
+	getNodeTypeRestrictionKind,
 	getRestrictionMessage,
 	getViolationVerdict,
 	collectRestrictedNodeTypes,

@@ -11,6 +11,7 @@ import NodeCreator from './NodeCreator.vue';
 const mockFetchConfig = vi.fn();
 const mockNodeCreatorState = vi.hoisted(() => ({
 	openingContext: null as null | 'replacement',
+	isReplacingFromSetupPanel: false,
 }));
 const mockFocusPanel = vi.hoisted(() => ({ focusPanelActive: false, focusPanelWidth: 0 }));
 
@@ -56,6 +57,9 @@ vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 		setMergeNodes: vi.fn(),
 		get openingContext() {
 			return mockNodeCreatorState.openingContext;
+		},
+		get isReplacingFromSetupPanel() {
+			return mockNodeCreatorState.isReplacingFromSetupPanel;
 		},
 	})),
 }));
@@ -103,6 +107,7 @@ describe('NodeCreator', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockNodeCreatorState.openingContext = null;
+		mockNodeCreatorState.isReplacingFromSetupPanel = false;
 		mockFocusPanel.focusPanelActive = false;
 		mockFocusPanel.focusPanelWidth = 0;
 	});
@@ -169,8 +174,9 @@ describe('NodeCreator', () => {
 		await waitFor(() => expect(getByTestId('node-creator')).toHaveStyle({ top: '120px' }));
 	});
 
-	it('opens a replacement beside the open focus panel', () => {
+	it('opens a replacement from the setup panel beside the open focus panel', () => {
 		mockNodeCreatorState.openingContext = 'replacement';
+		mockNodeCreatorState.isReplacingFromSetupPanel = true;
 		mockFocusPanel.focusPanelActive = true;
 		mockFocusPanel.focusPanelWidth = 420;
 
@@ -179,6 +185,16 @@ describe('NodeCreator', () => {
 		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe(
 			'420px',
 		);
+	});
+
+	it('keeps the right edge for a replacement from the canvas', () => {
+		mockNodeCreatorState.openingContext = 'replacement';
+		mockFocusPanel.focusPanelActive = true;
+		mockFocusPanel.focusPanelWidth = 420;
+
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator').style.getPropertyValue('--node-creator--right')).toBe('0px');
 	});
 
 	it('keeps the right edge when it adds a node while the focus panel is open', () => {

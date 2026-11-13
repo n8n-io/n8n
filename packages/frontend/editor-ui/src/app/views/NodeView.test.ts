@@ -984,6 +984,7 @@ describe('NodeView', () => {
 			nodeViewEventBus.emit('replaceNode', trigger.id);
 
 			await waitFor(() => expect(useNodeCreatorStore().openingContext).toBe('replacement'));
+			expect(useNodeCreatorStore().isReplacingFromSetupPanel).toBe(true);
 		});
 
 		it('ignores the request on a read-only canvas', async () => {

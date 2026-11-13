@@ -1,4 +1,4 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
 import { type INode, isResourceLocatorValue } from 'n8n-workflow';
@@ -54,7 +54,8 @@ export const useWorkflowSetupState = (
 		/** Additional parameter names per node that should be shown in setup cards
 		 * (e.g., parameters with placeholder values from the AI builder). */
 		additionalParametersByNode?: Ref<Map<string, string[]>>;
-		includeRestricted?: boolean;
+		/** Give restricted nodes their own card instead of their normal setup. */
+		includeRestricted?: MaybeRefOrGetter<boolean>;
 	},
 ) => {
 	const workflowsStore = useWorkflowsStore();
@@ -297,15 +298,20 @@ export const useWorkflowSetupState = (
 	 * Sorted by execution order (grouped by trigger, DFS through connections).
 	 */
 	const nodesRequiringSetup = computed(() => {
+		const includeRestricted = toValue(options?.includeRestricted);
 		const nodesForSetup = sourceNodes.value
 			.filter((node) => !node.disabled)
-			.map((node) => ({
-				node,
-				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
-				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
-				isTrigger: isTriggerNode(node),
-				restriction: options?.includeRestricted ? getNodeTypeRestriction(node.type) : null,
-			}))
+			.map((node) => {
+				const restriction = includeRestricted ? getNodeTypeRestriction(node.type) : null;
+				// A restricted node only gets a replace card, so it needs no setup checks.
+				return {
+					node,
+					credentialTypes: restriction ? [] : getNodeCredentialTypes(nodeTypesStore, node),
+					parameterIssues: restriction ? {} : getNodeParametersIssues(nodeTypesStore, node),
+					isTrigger: isTriggerNode(node),
+					restriction,
+				};
+			})
 			.filter(
 				({ credentialTypes, isTrigger, parameterIssues, node, restriction }) =>
 					restriction !== null ||

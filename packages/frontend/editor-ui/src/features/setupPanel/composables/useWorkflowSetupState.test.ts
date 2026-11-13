@@ -1938,6 +1938,18 @@ describe('useWorkflowSetupState', () => {
 			expect(setupCards.value[0].state!.restriction).toBeUndefined();
 		});
 
+		it('follows the opt-in when it changes', () => {
+			restrictGmailTrigger();
+			mockWorkflowDocumentStore.allNodes = [createNode({ name: 'New email', type: GMAIL_TRIGGER })];
+			const includeRestricted = ref(false);
+
+			const { setupCards } = useWorkflowSetupState(undefined, { includeRestricted });
+			expect(setupCards.value.some(({ state }) => state?.restriction)).toBe(false);
+
+			includeRestricted.value = true;
+			expect(setupCards.value.some(({ state }) => state?.restriction)).toBe(true);
+		});
+
 		it('gives a restricted node a card even when it needs no setup', () => {
 			restrictGmailTrigger();
 			const node = createNode({ name: 'New email', type: GMAIL_TRIGGER });
