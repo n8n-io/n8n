@@ -243,7 +243,7 @@ const usageRows = computed(() => {
 }
 
 .fixReady {
-	background-color: var(--color--green-500);
+	background-color: var(--color--blue-500);
 }
 
 .needsAttention {
