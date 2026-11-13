@@ -105,12 +105,25 @@ beforeEach(() => {
 const render = () => renderDialog({ props: { source }, pinia });
 
 it('requires acknowledgment of selected warnings and marks their changed lines', async () => {
+	const warningUpdate = update('docx', 'needs_review');
+	warningUpdate.check.findings.push(
+		{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: '' },
+		{ rule: 'file_skipped', severity: 'info', file: 'scripts/run.sh', detail: '' },
+	);
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
-		updates: [update('docx', 'needs_review')],
+		updates: [warningUpdate],
 		commit: null,
 	});
 	const view = render();
 	await view.findByTestId('skill-source-finding-mark');
+	const warnings = view.getByRole('button', { name: '2 warnings' });
+	expect(warnings).toHaveTextContent('2');
+	expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Links to a new domain');
+	await userEvent.hover(warnings);
+	const tooltip = await view.findByTestId('tooltip-content');
+	expect(tooltip).toHaveTextContent('Links to a new domain in SKILL.md');
+	expect(tooltip).toHaveTextContent('Hidden Unicode characters in SKILL.md');
+	expect(tooltip).toHaveTextContent('Links to example.com');
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	await userEvent.click(view.getByTestId('skill-update-reviewed-warnings'));
 	expect(view.getByTestId('skill-updates-accept')).toBeEnabled();

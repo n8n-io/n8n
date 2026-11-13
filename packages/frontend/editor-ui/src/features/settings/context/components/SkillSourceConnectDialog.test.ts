@@ -585,6 +585,13 @@ describe('SkillSourceConnectDialog', () => {
 			expect(tab(view, 'Blocked')).toHaveTextContent('Blocked (3)');
 			expect(rows(view)).toEqual(['skills/hidden']);
 			expect(view.getByTestId('skill-source-summary')).toHaveTextContent('acme/skills · main');
+			const warningIcon = view.getByRole('button', { name: '1 warning' });
+			expect(warningIcon.textContent).toBe('');
+			expect(view.getByTestId('skill-source-skills')).not.toHaveTextContent('Hidden Unicode');
+			warningIcon.focus();
+			expect(await view.findByTestId('tooltip-content')).toHaveTextContent(
+				'Hidden Unicode characters in SKILL.md',
+			);
 		});
 
 		it('does not let the user tick a blocked skill, and says why in translated text', async () => {
@@ -634,9 +641,21 @@ describe('SkillSourceConnectDialog', () => {
 			const view = render();
 			await review(view);
 
-			await userEvent.type(view.getByTestId('skill-source-search'), 'tools');
+			const toggleSearch = view.getByRole('button', { name: 'Search skills' });
+			expect(view.queryByRole('textbox', { name: 'Search skills' })).not.toBeInTheDocument();
+			await userEvent.click(toggleSearch);
+			const search = view.getByRole('textbox', { name: 'Search skills' });
+			expect(search).toHaveFocus();
+			await userEvent.type(search, 'tools');
 
 			expect(rows(view)).toEqual(['tools/lint']);
+			await userEvent.click(view.getByRole('checkbox', { name: 'Select all' }));
+			expect(view.getByRole('checkbox', { name: 'lint' })).not.toBeChecked();
+			await userEvent.click(search);
+			await userEvent.keyboard('{Escape}');
+			expect(toggleSearch).toHaveFocus();
+			expect(rows(view)).toEqual(['tools/lint', 'skills/seo']);
+			expect(view.getByRole('checkbox', { name: 'seo' })).toBeChecked();
 		});
 
 		it('groups the skills by folder, with a checkbox for each group', async () => {

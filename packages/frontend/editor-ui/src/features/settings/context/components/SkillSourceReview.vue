@@ -1,8 +1,18 @@
 <script lang="ts" setup>
-import type { DiscoveredSkill, SkillSourceDiscovery } from '@n8n/api-types';
-import { computed, ref, watch } from 'vue';
+import type { DiscoveredSkill, SkillScanFinding, SkillSourceDiscovery } from '@n8n/api-types';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { useFocus } from '@vueuse/core';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { N8nCheckbox, N8nInput, N8nTabs, N8nText, type TabOptions } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nIcon,
+	N8nInput,
+	N8nTabs,
+	N8nText,
+	N8nTooltip,
+	type TabOptions,
+} from '@n8n/design-system';
 
 import SkillSourceFilesView from './SkillSourceFilesView.vue';
 import { groupByFolder, isSelectableSkill } from '../skillSourceReview.utils';
@@ -54,8 +64,20 @@ const tabOptions = computed<Array<TabOptions<ReviewTab>>>(() =>
 
 const activeTab = ref<ReviewTab>('warning');
 const search = ref('');
+const searchOpen = ref(false);
+const searchInput = useTemplateRef<InstanceType<typeof N8nInput>>('searchInput');
+const searchToggle = useTemplateRef<InstanceType<typeof N8nButton>>('searchToggle');
+const { focused: searchToggleFocused } = useFocus(searchToggle);
 /** The skill that the right pane shows. */
 const previewKey = ref<string | null>(null);
+
+async function toggleSearch() {
+	searchOpen.value = !searchOpen.value;
+	search.value = '';
+	await nextTick();
+	if (searchOpen.value) searchInput.value?.focus();
+	else searchToggleFocused.value = true;
+}
 
 /** A new tab shows its first skill, so the right pane is never empty when a tab has skills. */
 function selectTab(tab: ReviewTab) {
@@ -82,6 +104,7 @@ watch(
 	() => props.discovery,
 	() => {
 		search.value = '';
+		searchOpen.value = false;
 		selectTab(TABS.find((tab) => skillsByTab.value[tab].length > 0) ?? 'warning');
 	},
 	{ immediate: true },
@@ -140,11 +163,21 @@ function blockedReason(skill: DiscoveredSkill): string {
 	return skill.error ? reasonText(skill.error.reason) : '';
 }
 
-/** The warnings of a skill that needs review, and the domains that a skill links to. */
-function noteOf(skill: DiscoveredSkill): string {
-	if (!skill.check) return '';
-	const warnings = skill.check.verdict === 'needs_review' ? findingsText(skill.check.findings) : '';
-	return [warnings, linkedDomainsText(skill.check.findings)].filter(Boolean).join('. ');
+const warningsByKey = computed(() =>
+	Object.fromEntries<SkillScanFinding[]>(
+		props.discovery.skills.map((skill) => [
+			skill.key,
+			skill.check?.findings.filter((finding) => finding.severity === 'needs_review') ?? [],
+		]),
+	),
+);
+
+function warningLabel(key: string): string {
+	const count = warningsByKey.value[key].length;
+	return i18n.baseText('settings.context.skills.connect.review.warnings', {
+		interpolate: { count },
+		adjustToNumber: count,
+	});
 }
 </script>
 
@@ -158,20 +191,54 @@ function noteOf(skill: DiscoveredSkill): string {
 		/>
 		<div :class="$style.panes">
 			<div :class="$style.left">
-				<N8nInput
-					v-model="search"
-					size="small"
-					:placeholder="i18n.baseText('settings.context.skills.connect.review.search')"
-					data-test-id="skill-source-search"
-				/>
-				<N8nCheckbox
-					:model-value="selectAll.checked"
-					:indeterminate="selectAll.indeterminate"
-					:disabled="disabled || selectAll.keys.length === 0"
-					:label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
-					data-test-id="skill-source-select-all"
-					@update:model-value="toggleAll(visibleSkills)"
-				/>
+				<div :class="$style.listHeader">
+					<N8nCheckbox
+						:model-value="selectAll.checked"
+						:indeterminate="selectAll.indeterminate"
+						:disabled="disabled || selectAll.keys.length === 0"
+						:label="searchOpen ? undefined : i18n.baseText('settings.context.skills.columns.skill')"
+						:aria-label="i18n.baseText('settings.context.skills.connect.review.selectAll')"
+						data-test-id="skill-source-select-all"
+						@update:model-value="toggleAll(visibleSkills)"
+					/>
+					<N8nInput
+						v-if="searchOpen"
+						ref="searchInput"
+						v-model="search"
+						size="small"
+						:class="$style.search"
+						:placeholder="i18n.baseText('settings.context.skills.connect.review.search')"
+						:aria-label="i18n.baseText('settings.context.skills.connect.review.search')"
+						data-test-id="skill-source-search"
+						@keydown.esc.stop.prevent="toggleSearch"
+					/>
+					<N8nTooltip
+						as-child
+						placement="bottom"
+						:enterable="false"
+						:content="
+							i18n.baseText(
+								searchOpen ? 'generic.close' : 'settings.context.skills.connect.review.search',
+							)
+						"
+					>
+						<N8nButton
+							ref="searchToggle"
+							variant="ghost"
+							size="small"
+							icon-only
+							:icon="searchOpen ? 'x' : 'search'"
+							:aria-label="
+								i18n.baseText(
+									searchOpen ? 'generic.close' : 'settings.context.skills.connect.review.search',
+								)
+							"
+							:aria-expanded="searchOpen"
+							data-test-id="skill-source-search-toggle"
+							@click="toggleSearch"
+						/>
+					</N8nTooltip>
+				</div>
 				<ul :class="$style.list" data-test-id="skill-source-skills">
 					<li
 						v-for="group in groups"
@@ -217,14 +284,45 @@ function noteOf(skill: DiscoveredSkill): string {
 										{{ blockedReason(item) }}
 									</N8nText>
 									<N8nText
-										v-else-if="noteOf(item)"
+										v-else-if="
+											activeTab === 'passed' && linkedDomainsText(item.check?.findings ?? [])
+										"
 										size="small"
-										:color="item.check?.verdict === 'needs_review' ? 'warning' : 'text-light'"
+										color="text-light"
 										data-test-id="skill-source-skill-findings"
 									>
-										{{ noteOf(item) }}
+										{{ linkedDomainsText(item.check?.findings ?? []) }}
 									</N8nText>
 								</button>
+								<N8nTooltip
+									v-if="activeTab === 'warning' && warningsByKey[item.key].length"
+									as-child
+									placement="right"
+								>
+									<template #content>
+										<div>
+											{{ warningLabel(item.key) }}
+											<ul :class="$style.warningList">
+												<li v-for="(finding, index) in warningsByKey[item.key]" :key="index">
+													{{ findingsText([finding]) }}
+												</li>
+											</ul>
+											{{ linkedDomainsText(item.check?.findings ?? []) }}
+										</div>
+									</template>
+									<N8nButton
+										variant="ghost"
+										size="small"
+										:class="$style.warning"
+										:aria-label="warningLabel(item.key)"
+										data-test-id="skill-source-skill-warnings"
+									>
+										<span v-if="warningsByKey[item.key].length > 1">{{
+											warningsByKey[item.key].length
+										}}</span>
+										<N8nIcon icon="triangle-alert" size="small" />
+									</N8nButton>
+								</N8nTooltip>
 							</li>
 						</ul>
 					</li>
@@ -280,8 +378,23 @@ function noteOf(skill: DiscoveredSkill): string {
 .left {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	min-height: 0;
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.listHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-bottom: var(--border);
+}
+
+.search {
+	flex: 1;
+	min-width: 0;
 }
 
 .right {
@@ -297,8 +410,6 @@ function noteOf(skill: DiscoveredSkill): string {
 	padding: 0;
 	overflow-y: auto;
 	list-style: none;
-	border: var(--border);
-	border-radius: var(--radius);
 }
 
 .groupHeader {
@@ -326,6 +437,16 @@ function noteOf(skill: DiscoveredSkill): string {
 
 .active {
 	background-color: var(--color--background--light-1);
+}
+
+.warning {
+	flex-shrink: 0;
+	--button--color: var(--text-color--warning);
+}
+
+.warningList {
+	margin: var(--spacing--5xs) 0;
+	padding-left: var(--spacing--xs);
 }
 
 .itemText {

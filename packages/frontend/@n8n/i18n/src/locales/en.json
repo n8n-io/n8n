@@ -4087,6 +4087,7 @@
 	"settings.context.skills.connect.tab.blocked": "Blocked ({count})",
 	"settings.context.skills.connect.review.search": "Search skills",
 	"settings.context.skills.connect.review.selectAll": "Select all",
+	"settings.context.skills.connect.review.warnings": "{count} warning | {count} warnings",
 	"settings.context.skills.connect.review.empty": "No skills in this tab.",
 	"settings.context.skills.connect.review.noMatch": "No skill matches the search.",
 	"settings.context.skills.connect.review.files": "Skill files",
