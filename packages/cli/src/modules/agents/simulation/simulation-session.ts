@@ -92,6 +92,8 @@ type ReplySource = 'world_state' | 'made_up';
 interface ActiveToolCall {
 	toolCallId: string;
 	toolName: string;
+	/** The MCP server of the tool, which tells servers on one URL apart. */
+	mcpServerName?: string;
 	sources: ReplySource[];
 	blocked?: ToolCallSimulation;
 }
@@ -215,7 +217,12 @@ export class SimulationSession {
 			throw new SimulationBlockedError(preflight);
 		}
 
-		const active: ActiveToolCall = { toolCallId, toolName: tool.name, sources: [] };
+		const active: ActiveToolCall = {
+			toolCallId,
+			toolName: tool.name,
+			...(classification.kind === 'mcp' ? { mcpServerName: classification.key } : {}),
+			sources: [],
+		};
 		let output: unknown;
 		try {
 			output = await this.activeCalls.run(active, run);
@@ -369,7 +376,7 @@ export class SimulationSession {
 			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
 		// Named from the real URL; the simulator only sees the redacted URL it knows the server by.
-		const server = this.mcpServerForUrl(url);
+		const server = this.mcpServerFor(url);
 		const simulatorUrl =
 			server?.simulatorUrl && redactMcpUrl(url) === redactMcpUrl(server.url)
 				? server.simulatorUrl
@@ -392,8 +399,16 @@ export class SimulationSession {
 		return reply.body;
 	};
 
-	private mcpServerForUrl(url: string): McpServerRef | undefined {
-		return this.mcpServers.find((server) => urlIsUnder(url, server.url));
+	/**
+	 * The server of an MCP request. Several servers can share one URL (with different auth), so
+	 * a tool call names its own server. A request outside a tool call (tool discovery) is
+	 * named only when its URL fits one server; otherwise the simulator gets no name.
+	 */
+	private mcpServerFor(url: string): McpServerRef | undefined {
+		const candidates = this.mcpServers.filter((server) => urlIsUnder(url, server.url));
+		const active = this.activeCalls.getStore()?.mcpServerName;
+		if (active !== undefined) return candidates.find((server) => server.name === active);
+		return candidates.length === 1 ? candidates[0] : undefined;
 	}
 }
 
