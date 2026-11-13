@@ -14,9 +14,20 @@ export async function observeInstanceAiResponseRender(): Promise<{
 	tabVisible: boolean;
 }> {
 	await nextTick();
-	const tabVisible = document.visibilityState === 'visible';
-	if (tabVisible) {
-		await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+	if (document.visibilityState === 'visible') {
+		// The browser holds frames while the tab is hidden, so a tab that goes
+		// hidden before the next frame ends the wait.
+		await new Promise<void>((resolve) => {
+			const done = () => {
+				document.removeEventListener('visibilitychange', done);
+				resolve();
+			};
+			document.addEventListener('visibilitychange', done);
+			requestAnimationFrame(done);
+		});
 	}
-	return { atEpochMs: instanceAiResponseNow(), tabVisible };
+	return {
+		atEpochMs: instanceAiResponseNow(),
+		tabVisible: document.visibilityState === 'visible',
+	};
 }
