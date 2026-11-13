@@ -38,6 +38,17 @@ describe('toV1ErrorDetails', () => {
 		expect(toV1ErrorDetails(error)).not.toHaveProperty('message');
 	});
 
+	it('is the details as JSON storage returns them', () => {
+		const error = new NodeOperationError(node, 'boom', { description: undefined });
+		Object.assign(error, { context: { itemIndex: 2, hint: undefined } });
+
+		const details = toV1ErrorDetails(error);
+
+		expect(details).not.toHaveProperty('description');
+		expect(details).toMatchObject({ context: { itemIndex: 2 } });
+		expect(details).not.toHaveProperty(['context', 'hint']);
+	});
+
 	it('has nothing for an error that is not a v1 execution error', () => {
 		expect(toV1ErrorDetails(new TypeError('plain'))).toBeUndefined();
 		expect(toV1ErrorDetails('not even an error')).toBeUndefined();
