@@ -1,0 +1,19 @@
+scripts/prepare.mjs
+  s_3f90602cbb1671::t_b34c61dd8ab3a3 11-21,23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f736bbfa208b942815245109bf25c9524b3dc4d9",
+  "prompts": {},
+  "sessions": {
+    "s_3f90602cbb1671": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cfd0-acd2-7921-a2e2-a79f65f339f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
