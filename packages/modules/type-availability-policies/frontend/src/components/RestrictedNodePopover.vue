@@ -15,6 +15,8 @@ import { ESCAPE_OWNER_ATTRIBUTE } from '../composables/useCloseOnEscape';
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
+	RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
+	RESTRICTED_NODE_POPOVER_WIDTH,
 	RESTRICTED_TYPE_COPY,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
@@ -48,7 +50,7 @@ const props = withDefaults(
 		active: false,
 		side: 'left',
 		align: 'center',
-		sideOffset: 24,
+		sideOffset: RESTRICTED_NODE_POPOVER_SIDE_OFFSET,
 		markerSize: 'small',
 		scopeLabel: undefined,
 		description: undefined,
@@ -131,6 +133,8 @@ function requestContactAdmin() {
 	else isContactAdminOpen.value = true;
 }
 
+defineExpose({ requestContactAdmin });
+
 function onMarkerKeydown(event: KeyboardEvent) {
 	if (event.key === 'Enter' || event.key === ' ') {
 		event.preventDefault();
@@ -168,7 +172,7 @@ function onContentKeydown(event: KeyboardEvent) {
 			:suppress-auto-focus="true"
 			:hide-when-detached="true"
 			:content-class="$style.card"
-			width="254px"
+			:width="`${RESTRICTED_NODE_POPOVER_WIDTH}px`"
 			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>

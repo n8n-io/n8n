@@ -1,7 +1,8 @@
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
-import { screen, waitFor } from '@testing-library/vue';
+import { render, screen, waitFor } from '@testing-library/vue';
 import userEvent, { PointerEventsCheckLevel, type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 
 import RestrictedNodePopover from './RestrictedNodePopover.vue';
 import { contactAdminModalStub, mockPolicyProject } from '../__tests__/mocks';
@@ -242,6 +243,35 @@ describe('RestrictedNodePopover', () => {
 		await user.click(await screen.findByTestId('node-restricted-contact-admin'));
 
 		expect(screen.getByTestId('contact-admin-modal')).toHaveTextContent('Gmail');
+	});
+
+	it('opens the contact-admin dialog when its host requests it, and closes the card', async () => {
+		const Host = defineComponent({
+			setup() {
+				const popover = ref<{ requestContactAdmin: () => void } | null>(null);
+				return () => [
+					h(RestrictedNodePopover, {
+						ref: popover,
+						nodeTypeName: 'Gmail',
+						restriction: { scope: 'instance' },
+						active: true,
+					}),
+					h('button', {
+						'data-test-id': 'host-activate',
+						onClick: () => popover.value?.requestContactAdmin(),
+					}),
+				];
+			},
+		});
+		render(Host, { global: { stubs: { ContactAdminModal: contactAdminModalStub } } });
+		await screen.findByTestId('node-restricted-popover');
+
+		await user.click(screen.getByTestId('host-activate'));
+
+		expect(screen.getByTestId('contact-admin-modal')).toHaveTextContent('Gmail');
+		await waitFor(() =>
+			expect(screen.queryByTestId('node-restricted-popover')).not.toBeInTheDocument(),
+		);
 	});
 
 	it('keeps the dialog open after the pointer leaves the row and the popover', async () => {
