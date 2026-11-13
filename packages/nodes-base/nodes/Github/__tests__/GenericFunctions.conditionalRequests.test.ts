@@ -48,7 +48,7 @@ describe.each([
 				responseStatuses.push(statusCode);
 				const responseBody = statusCode === 304 ? '' : body;
 				const response = { statusCode, headers: hasEtag ? { etag } : {}, body: responseBody };
-				if (statusCode === 304) {
+				if (statusCode === 304 && !options.acceptedStatusCodes?.includes(statusCode)) {
 					throw Object.assign(new Error('Not Modified'), { statusCode, response });
 				}
 				return options.resolveWithFullResponse ? response : responseBody;

@@ -697,6 +697,8 @@ export interface IRequestOptions {
 	rejectUnauthorized?: boolean;
 	proxy?: string | AxiosProxyConfig;
 	simple?: boolean;
+	/** HTTP status codes to accept in addition to 2xx responses. */
+	acceptedStatusCodes?: number[];
 	gzip?: boolean;
 	resolveWithFullResponse?: boolean;
 

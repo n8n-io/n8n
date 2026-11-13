@@ -50,6 +50,58 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			expect(response).toMatchObject({ body: 'hello', statusCode: 200 });
 		});
 
+		it.each([200, 304])('fires onFetched for HTTP %s with 304 accepted', async (statusCode) => {
+			nock(baseUrl).get('/conditional').reply(statusCode);
+			const onFetched = vi.fn();
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+			const response = await client.requestLegacy(
+				{
+					url: `${baseUrl}/conditional`,
+					acceptedStatusCodes: [304],
+					resolveWithFullResponse: true,
+				},
+				{ onFetched },
+			);
+
+			expect(response).toMatchObject({ statusCode });
+			expect(onFetched).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([401, 403, 404, 500])(
+			'rejects HTTP %s without firing onFetched when only 304 is accepted',
+			async (statusCode) => {
+				nock(baseUrl).get('/conditional').reply(statusCode, 'Request failed');
+				const onFetched = vi.fn();
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy(
+						{ url: `${baseUrl}/conditional`, acceptedStatusCodes: [304] },
+						{ onFetched },
+					),
+				).rejects.toMatchObject({ statusCode });
+				expect(onFetched).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([undefined, []])(
+			'rejects 304 by default (accepted: %j)',
+			async (acceptedStatusCodes) => {
+				nock(baseUrl).get('/conditional').reply(304);
+				const onFetched = vi.fn();
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				await expect(
+					client.requestLegacy(
+						{ url: `${baseUrl}/conditional`, acceptedStatusCodes },
+						{ onFetched },
+					),
+				).rejects.toMatchObject({ statusCode: 304 });
+				expect(onFetched).not.toHaveBeenCalled();
+			},
+		);
+
 		it('rethrows an enriched error carrying the status, without firing onFetched', async () => {
 			nock(baseUrl).get('/bad').reply(403, 'Forbidden', { 'content-type': 'text/plain' });
 			const onFetched = vi.fn();

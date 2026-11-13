@@ -74,31 +74,26 @@ export async function githubApiRequest(
 				options.headers = { ...options.headers, 'If-None-Match': cached.etag };
 			}
 
-			let response: { statusCode: number; headers: IDataObject; body: IDataObject | IDataObject[] };
-			try {
-				// Keep the data-fetched hook, but refresh credentials only after a 401.
-				response = await this.helpers.requestWithAuthentication.call(
-					this,
-					credentialType,
-					{ ...options, resolveWithFullResponse: true },
-					{ preAuthenticationRetryStatusCode: 401 },
-				);
-			} catch (error) {
-				// The request helper can report 304 as a NodeApiError.
-				if (!cached || (error.statusCode !== 304 && error.httpCode !== '304')) {
-					throw error;
-				}
-				return deepCopy(
-					option.resolveWithFullResponse
-						? { statusCode: 200, headers: cached.headers, body: cached.body }
-						: cached.body,
-				);
-			}
+			// Treat cached revalidation as a data fetch. Refresh credentials only after a 401.
+			const response: {
+				statusCode: number;
+				headers: IDataObject;
+				body: IDataObject | IDataObject[];
+			} = await this.helpers.requestWithAuthentication.call(
+				this,
+				credentialType,
+				{
+					...options,
+					resolveWithFullResponse: true,
+					acceptedStatusCodes: cached ? [304] : undefined,
+				},
+				{ preAuthenticationRetryStatusCode: 401 },
+			);
 
 			if (response.statusCode === 304 && cached) {
 				return deepCopy(
 					option.resolveWithFullResponse
-						? { ...response, headers: cached.headers, body: cached.body }
+						? { statusCode: 200, headers: cached.headers, body: cached.body }
 						: cached.body,
 				);
 			}

@@ -99,7 +99,10 @@ describe('GitHub conditional pull request reads', () => {
 		expect(pending).toEqual([]);
 	});
 
-	function useGitHubAppAuthentication(context: ReturnType<typeof createContext>) {
+	function useGitHubAppAuthentication(
+		context: ReturnType<typeof createContext>,
+		workflowId = 'workflow-id',
+	) {
 		const credentials: ICredentialDataDecryptedObject = {
 			server,
 			appId: '123',
@@ -134,7 +137,7 @@ describe('GitHub conditional pull request reads', () => {
 			}),
 		);
 		const helpers = getRequestHelperFunctions(
-			mock<Workflow>({ id: 'workflow-id' }),
+			mock<Workflow>({ id: workflowId }),
 			node,
 			additionalData,
 		);
@@ -186,6 +189,44 @@ describe('GitHub conditional pull request reads', () => {
 				context.getNode(),
 				false,
 			);
+			expect(credentialWrites).not.toHaveBeenCalled();
+			expect(runHook).toHaveBeenCalledTimes(2);
+		},
+	);
+
+	it.each([
+		{ resource: 'pullRequest', operation: 'get', path: `${endpoint}/42`, body: pullRequest },
+		{ resource: 'repository', operation: 'getPullRequests', path: endpoint, body: [pullRequest] },
+	])(
+		'records the first data fetch when another workflow cached $resource:$operation',
+		async ({ resource, operation, path, body }) => {
+			const firstContext = createContext({ resource, operation });
+			const firstAuthentication = useGitHubAppAuthentication(firstContext, 'workflow-a');
+			nock(server).get(path).query(true).reply(200, body, { ETag: etag });
+			const firstOutput = await new Github().execute.call(firstContext);
+			expect(firstAuthentication.runHook).toHaveBeenCalledExactlyOnceWith('nodeFetchedData', [
+				'workflow-a',
+				firstContext.getNode(),
+			]);
+
+			const secondContext = createContext({ resource, operation });
+			const { runHook, credentialWrites, preAuthentication } = useGitHubAppAuthentication(
+				secondContext,
+				'workflow-b',
+			);
+			nock(server)
+				.matchHeader('authorization', 'Bearer stored-token')
+				.matchHeader('if-none-match', etag)
+				.get(path)
+				.query(true)
+				.reply(304);
+
+			expect(await new Github().execute.call(secondContext)).toEqual(firstOutput);
+			expect(runHook).toHaveBeenCalledExactlyOnceWith('nodeFetchedData', [
+				'workflow-b',
+				secondContext.getNode(),
+			]);
+			expect(preAuthentication).toHaveBeenCalledTimes(1);
 			expect(credentialWrites).not.toHaveBeenCalled();
 		},
 	);
