@@ -202,12 +202,14 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	let initDurationMs = 0;
 	let startupVisible = false;
 	let wasmSource: FileSource | undefined;
+	const preloaded = stopPreloadWasmSourceWatch !== undefined;
 
 	const send = (initStatus: 'ready' | 'failed', report: ShadowReport, startupReport = false) => {
 		telemetry.track(TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED, {
 			quickjs_fe_init_status: initStatus,
 			quickjs_fe_startup_report: startupReport,
 			quickjs_fe_init_duration_ms: initDurationMs,
+			quickjs_fe_preloaded: preloaded,
 			quickjs_fe_bundle_import_ms: timings.bundleImportMs,
 			quickjs_fe_wasm_ready_ms: timings.wasmReadyMs,
 			quickjs_fe_bridge_ready_ms: timings.bridgeReadyMs,

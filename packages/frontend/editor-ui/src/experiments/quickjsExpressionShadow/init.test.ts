@@ -418,6 +418,22 @@ describe('initializeQuickJsExpressionShadow', () => {
 		});
 
 		it.each([
+			['a start after a preload', true],
+			['a start without a preload', false],
+		])('reports %s', async (_, preloaded) => {
+			if (preloaded) {
+				preloadQuickJsExpressionShadow(flagOn);
+			}
+
+			await initializeQuickJsExpressionShadow();
+
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
+				expect.objectContaining({ quickjs_fe_preloaded: preloaded }),
+			);
+		});
+
+		it.each([
 			['the instance is not on Cloud', () => (settingsStore.isCloudDeployment = false)],
 			[
 				'QuickJS is the main engine',

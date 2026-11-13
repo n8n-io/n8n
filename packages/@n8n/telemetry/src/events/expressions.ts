@@ -39,6 +39,11 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Historical idle wait duration. New reports omit this property because the shadow engine no longer waits for idle time',
 				),
+			quickjs_fe_preloaded: z
+				.boolean()
+				.describe(
+					'Whether the runtime bundle and the WASM module started to load before this start. When true, the step durations measure only the time that remained',
+				),
 			quickjs_fe_bundle_import_ms: z
 				.number()
 				.optional()
