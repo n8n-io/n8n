@@ -256,6 +256,16 @@ describe('AgentRepository', () => {
 			expect(result).toEqual({ count: 1, data: agents });
 		});
 
+		it('applies the default limit when the caller omits it', async () => {
+			const mockQb = makePaginationQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findByProjectIdsPaginated(['p1'], { offset: 0 });
+
+			expect(mockQb.skip).toHaveBeenCalledWith(0);
+			expect(mockQb.take).toHaveBeenCalledWith(10);
+		});
+
 		it('omits the project filter when project access is global', async () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
@@ -564,6 +574,25 @@ describe('AgentRepository', () => {
 			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.isArchived = :isArchived', {
 				isArchived: false,
 			});
+		});
+
+		it('applies the default limit when the caller omits it', async () => {
+			const mockQb = {
+				leftJoinAndSelect: vi.fn().mockReturnThis(),
+				where: vi.fn().mockReturnThis(),
+				andWhere: vi.fn().mockReturnThis(),
+				addSelect: vi.fn().mockReturnThis(),
+				orderBy: vi.fn().mockReturnThis(),
+				skip: vi.fn().mockReturnThis(),
+				take: vi.fn().mockReturnThis(),
+				getManyAndCount: vi.fn().mockResolvedValue([[], 0]),
+			};
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findN8nChatListPaginated(null, ['p1'], { offset: 5 });
+
+			expect(mockQb.skip).toHaveBeenCalledWith(5);
+			expect(mockQb.take).toHaveBeenCalledWith(10);
 		});
 	});
 

@@ -1,5 +1,9 @@
 import isEqual from 'lodash/isEqual';
-import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
+import {
+	DEFAULT_AGENTS_LIST_LIMIT,
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
+} from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
 	AgentListFilter,
@@ -299,7 +303,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.offset ?? 0).take(options.limit);
+		// `offset`/`limit` are the HTTP-agnostic names; TypeORM's `skip`/`take`
+		// dedupe the joined tag rows. The default limit keeps a programmatic
+		// caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -348,7 +355,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.offset ?? 0).take(options.limit);
+		// The default limit keeps a caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };

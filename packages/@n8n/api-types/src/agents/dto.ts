@@ -56,6 +56,8 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'usage:desc',
 ] as const;
 
+export const DEFAULT_AGENTS_LIST_LIMIT = 10;
+
 export const AGENT_SESSION_STATUSES = [
 	'running',
 	'succeeded',
@@ -128,7 +130,7 @@ const agentListFilterValidator = z
 
 export class ListAgentsQueryDto extends Z.class({
 	offset: offsetValidator,
-	limit: createLimitValidator(MAX_ITEMS_PER_PAGE, 10),
+	limit: createLimitValidator(MAX_ITEMS_PER_PAGE, DEFAULT_AGENTS_LIST_LIMIT),
 	filter: agentListFilterValidator,
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
