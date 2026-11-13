@@ -1757,6 +1757,8 @@ describe('Telemetry', () => {
 				user_id: 'user1',
 				path: '/workflows',
 				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
