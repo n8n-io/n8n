@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -292,19 +293,7 @@ export class Aggregate implements INodeType {
 			const values: { [key: string]: any } = {};
 			const outputFields: string[] = [];
 
-			for (const { fieldToAggregate, outputFieldName, renameField } of fieldsToAggregate) {
-				const field = renameField ? outputFieldName : fieldToAggregate;
-
-				if (outputFields.includes(field)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`The '${field}' output field is used more than once`,
-						{ description: 'Please make sure each output field name is unique' },
-					);
-				} else {
-					outputFields.push(field);
-				}
-
+			for (const { fieldToAggregate, outputFieldName } of fieldsToAggregate) {
 				const getFieldToAggregate = () =>
 					!disableDotNotation && fieldToAggregate.includes('.')
 						? fieldToAggregate.split('.').pop()
@@ -313,6 +302,32 @@ export class Aggregate implements INodeType {
 				const _outputFieldName = outputFieldName
 					? outputFieldName
 					: (getFieldToAggregate() as string);
+
+				if (outputFields.includes(_outputFieldName)) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The '${_outputFieldName}' output field is used more than once`,
+						{ description: 'Please make sure each output field name is unique' },
+					);
+				}
+				if (!disableDotNotation) {
+					const outputPath = toPath(_outputFieldName);
+					const overlappingField = outputFields.find((existingField) => {
+						const existingPath = toPath(existingField);
+						const commonLength = Math.min(outputPath.length, existingPath.length);
+						return outputPath
+							.slice(0, commonLength)
+							.every((part, index) => part === existingPath[index]);
+					});
+					if (overlappingField !== undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The '${_outputFieldName}' and '${overlappingField}' output fields overlap`,
+							{ description: 'Please make sure output field paths do not contain one another' },
+						);
+					}
+				}
+				outputFields.push(_outputFieldName);
 
 				if (fieldToAggregate !== '') {
 					values[_outputFieldName] = [];
