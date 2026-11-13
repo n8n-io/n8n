@@ -158,7 +158,7 @@ describe('static data of compiled workflows', () => {
 		).toEqual({ type: 'staticDataRejected', message: 'raise --max-static-data', at: 6 });
 	});
 
-	it('the dispatcher stores changes, and reads them again after dropped events', () => {
+	it('the dispatcher stores changes, and reads them again after dropped events', async () => {
 		const sync = mock<CompiledEngineSync>();
 		sync.saveStaticData.mockResolvedValue();
 		sync.pullStaticData.mockResolvedValue();
@@ -176,16 +176,16 @@ describe('static data of compiled workflows', () => {
 			mock<BinaryDataService>(),
 			mock<BinaryDataConfig>({ mode: 'default' }),
 		);
-		dispatcher.handleEvent({
+		await dispatcher.handleEvent({
 			type: 'staticData',
 			workflowId: 'wf1',
 			staticData: { global: {} },
 			at: 1,
 		});
 		expect(sync.saveStaticData).toHaveBeenCalledWith('wf1', { global: {} });
-		dispatcher.handleEvent({ type: 'dropped', count: 3, at: 2 });
+		await dispatcher.handleEvent({ type: 'dropped', count: 3, at: 2 });
 		expect(sync.pullStaticData).toHaveBeenCalled();
-		dispatcher.handleEvent({ type: 'staticDataRejected', message: 'full', at: 3 });
+		await dispatcher.handleEvent({ type: 'staticDataRejected', message: 'full', at: 3 });
 		expect(logger.warn).toHaveBeenCalledWith('wfrt did not keep a static data change: full');
 	});
 });

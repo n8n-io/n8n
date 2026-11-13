@@ -23,6 +23,7 @@ import {
 	toResumeValue,
 } from '../compiled-engine.dispatcher';
 import type { CompiledArtifact, WfrtEvent } from '../compiled-engine.types';
+import { isSequencedEvent, parseWfrtEvent } from '../compiled-engine.types';
 import type { CompiledExecutionStore } from '../compiled-execution.store';
 import type { WfrtAdminClient } from '../wfrt-admin.client';
 
@@ -184,7 +185,7 @@ describe('CompiledEngineDispatcher', () => {
 		const executionId = await dispatcher.runManual(data);
 		expect(executionId).toBe('100');
 
-		for (const event of demoEvents(executionId)) dispatcher.handleEvent(event);
+		for (const event of demoEvents(executionId)) void dispatcher.handleEvent(event);
 		await dispatcher.drain();
 
 		expect(client.startExecution).toHaveBeenCalledWith({
@@ -308,9 +309,9 @@ describe('CompiledEngineDispatcher', () => {
 			// A repeated `finished` after a crash of wfrt changes nothing.
 			{ type: 'finished', executionId: 'w-9', status: 'ok', at: 13 },
 		];
-		for (const event of events) dispatcher.handleEvent(event);
+		for (const event of events) void dispatcher.handleEvent(event);
 		await dispatcher.drain();
-		dispatcher.handleEvent(events[0]);
+		void dispatcher.handleEvent(events[0]);
 		await dispatcher.drain();
 
 		expect(activeExecutions.add).toHaveBeenCalledTimes(1);
@@ -321,6 +322,113 @@ describe('CompiledEngineDispatcher', () => {
 		const run = afters[0].args[0] as IRun;
 		expect(run.mode).toBe('webhook');
 		expect(Object.keys(run.data.resultData.runData)).toEqual(['Webhook', 'IF']);
+	});
+
+	it('adopts the row of a repeated started event instead of making a second one', async () => {
+		const { dispatcher, activeExecutions, store } = setup();
+		store.findExecutionId.mockResolvedValue('77');
+		store.findExecution.mockResolvedValue({
+			id: '77',
+			mode: 'webhook',
+			status: 'running',
+			startedAt: new Date(1),
+			workflowData,
+			data: { startData: {}, resultData: { runData: {} }, executionData: null },
+		} as never);
+
+		const events: WfrtEvent[] = [
+			{
+				type: 'started',
+				executionId: 'w-9',
+				workflowId: 'wf1',
+				versionId: 'hash1',
+				mode: 'trigger',
+				trigger: {},
+				shard: 0,
+				seq: 1,
+				at: 10,
+			},
+			{ type: 'finished', executionId: 'w-9', status: 'ok', shard: 0, seq: 2, at: 11 },
+		];
+		for (const event of events) await dispatcher.handleEvent(event);
+		await dispatcher.drain();
+
+		expect(activeExecutions.add).not.toHaveBeenCalled();
+		expect(store.saveMapping).not.toHaveBeenCalled();
+		const afters = dispatcher.calls.filter((c) => c.name === 'workflowExecuteAfter');
+		expect(afters).toHaveLength(1);
+		expect((afters[0].args[0] as IRun).status).toBe('success');
+	});
+
+	it('gives the same result for a finished event that arrives twice', async () => {
+		const { dispatcher, activeExecutions } = setup();
+		await dispatcher.handleEvent({
+			type: 'started',
+			executionId: 'w-9',
+			workflowId: 'wf1',
+			versionId: 'hash1',
+			mode: 'trigger',
+			trigger: {},
+			shard: 0,
+			seq: 1,
+			at: 10,
+		});
+		const finishEvent: WfrtEvent = {
+			type: 'finished',
+			executionId: 'w-9',
+			status: 'ok',
+			shard: 0,
+			seq: 2,
+			at: 11,
+		};
+		await dispatcher.handleEvent(finishEvent);
+		await dispatcher.handleEvent({ ...finishEvent, at: 12 });
+		await dispatcher.drain();
+
+		expect(activeExecutions.add).toHaveBeenCalledTimes(1);
+		expect(dispatcher.calls.filter((c) => c.name === 'workflowExecuteAfter')).toHaveLength(1);
+	});
+
+	it('gives the same result for a waiting event that arrives twice', async () => {
+		const { dispatcher, store } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		const waiting: WfrtEvent = {
+			type: 'waiting',
+			executionId,
+			step: 'Set',
+			resumeUrl: '/resume/100/3?signature=abc',
+			signature: 'abc',
+			shard: 0,
+			seq: 1,
+			at: 5,
+		};
+		await dispatcher.handleEvent(waiting);
+		await dispatcher.handleEvent({ ...waiting, at: 6 });
+		await dispatcher.drain();
+
+		const afters = dispatcher.calls.filter((c) => c.name === 'workflowExecuteAfter');
+		expect(afters).toHaveLength(1);
+		const effectSeqSaves = store.saveMapping.mock.calls.filter(
+			([, values]) => values.compiledEngineEffectSeq === '3',
+		);
+		expect(effectSeqSaves).toHaveLength(1);
+	});
+
+	it('stores the same static data for a repeated staticData event', async () => {
+		const { dispatcher, sync } = setup();
+		const event: WfrtEvent = {
+			type: 'staticData',
+			workflowId: 'wf1',
+			staticData: { global: { n: 1 } },
+			shard: 0,
+			seq: 5,
+			at: 1,
+		};
+		await dispatcher.handleEvent(event);
+		await dispatcher.handleEvent(event);
+
+		expect(sync.saveStaticData).toHaveBeenCalledTimes(2);
+		expect(sync.saveStaticData).toHaveBeenNthCalledWith(2, 'wf1', { global: { n: 1 } });
 	});
 
 	it('moves the binary data of a trigger run to the n8n execution id before the save', async () => {
@@ -348,7 +456,7 @@ describe('CompiledEngineDispatcher', () => {
 			},
 			{ type: 'finished', executionId: 'w-9', status: 'ok', at: 12 },
 		];
-		for (const event of events) dispatcher.handleEvent(event);
+		for (const event of events) void dispatcher.handleEvent(event);
 		await dispatcher.drain();
 
 		expect(binaryDataService.rename).toHaveBeenCalledWith(
@@ -370,14 +478,14 @@ describe('CompiledEngineDispatcher', () => {
 	it('marks a run that fails in wfrt as an error', async () => {
 		const { dispatcher } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'step',
 			executionId,
 			step: 'HTTP Request',
 			status: 'started',
 			at: 1,
 		});
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'step',
 			executionId,
 			step: 'HTTP Request',
@@ -385,7 +493,7 @@ describe('CompiledEngineDispatcher', () => {
 			error: 'The remote answered 500',
 			at: 2,
 		});
-		dispatcher.handleEvent({ type: 'finished', executionId, status: 'error', at: 3 });
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'error', at: 3 });
 		await dispatcher.drain();
 
 		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
@@ -396,7 +504,7 @@ describe('CompiledEngineDispatcher', () => {
 	it('saves a waiting approval and resumes it in wfrt', async () => {
 		const { dispatcher, activeExecutions, client } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'waiting',
 			executionId,
 			step: 'Respond',
@@ -423,14 +531,14 @@ describe('CompiledEngineDispatcher', () => {
 	it('resumes an approval with the output of the waiting node webhook that n8n ran', async () => {
 		const { dispatcher, client } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'step',
 			executionId,
 			step: 'Set',
 			status: 'started',
 			at: 2,
 		});
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'step',
 			executionId,
 			step: 'Set',
@@ -438,7 +546,7 @@ describe('CompiledEngineDispatcher', () => {
 			result: [{ x: 1 }],
 			at: 3,
 		});
-		dispatcher.handleEvent({
+		void dispatcher.handleEvent({
 			type: 'waiting',
 			executionId,
 			step: 'HTTP Request',
@@ -473,7 +581,13 @@ describe('CompiledEngineDispatcher', () => {
 	it('only follows a timed wait that the wait tracker resumes', async () => {
 		const { dispatcher, client } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
-		dispatcher.handleEvent({ type: 'waiting', executionId, step: 'Set', waitTill: 5000, at: 5 });
+		void dispatcher.handleEvent({
+			type: 'waiting',
+			executionId,
+			step: 'Set',
+			waitTill: 5000,
+			at: 5,
+		});
 		await dispatcher.drain();
 		await dispatcher.resumeFromN8n(executionId, { executionMode: 'manual', workflowData });
 		expect(client.resume).not.toHaveBeenCalled();
@@ -482,12 +596,18 @@ describe('CompiledEngineDispatcher', () => {
 	it('maps a timed wait to waitTill and claims the row on the next event', async () => {
 		const { dispatcher, activeExecutions } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
-		dispatcher.handleEvent({ type: 'waiting', executionId, step: 'Set', waitTill: 5000, at: 5 });
+		void dispatcher.handleEvent({
+			type: 'waiting',
+			executionId,
+			step: 'Set',
+			waitTill: 5000,
+			at: 5,
+		});
 		await dispatcher.drain();
 		const waiting = dispatcher.calls.at(-1)?.args[0] as IRun;
 		expect(waiting.waitTill).toEqual(new Date(5000));
 
-		dispatcher.handleEvent({ type: 'finished', executionId, status: 'ok', at: 6 });
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'ok', at: 6 });
 		await dispatcher.drain();
 		expect(activeExecutions.add).toHaveBeenLastCalledWith(expect.anything(), {
 			executionId,
@@ -501,7 +621,7 @@ describe('CompiledEngineDispatcher', () => {
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
 		await dispatcher.drain();
 		client.cancelExecution.mockImplementation(async () => {
-			dispatcher.handleEvent({ type: 'finished', executionId, status: 'cancelled', at: 9 });
+			void dispatcher.handleEvent({ type: 'finished', executionId, status: 'cancelled', at: 9 });
 			return true;
 		});
 		store.findExecution.mockResolvedValue(undefined);
@@ -537,7 +657,7 @@ describe('CompiledEngineDispatcher', () => {
 		await dispatcher.resume('77', { approved: true });
 		expect(client.resume).toHaveBeenCalledWith('wfrt-4', '2', 'stored', { approved: true });
 
-		dispatcher.handleEvent({ type: 'finished', executionId: 'wfrt-4', status: 'ok', at: 3 });
+		void dispatcher.handleEvent({ type: 'finished', executionId: 'wfrt-4', status: 'ok', at: 3 });
 		await dispatcher.drain();
 		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
 		expect(run.status).toBe('success');
@@ -563,9 +683,11 @@ describe('CompiledEngineDispatcher', () => {
 		expect(store.markAsCrashed).toHaveBeenCalledWith(['10']);
 	});
 
-	it('logs dropped events', () => {
+	it('logs dropped events', async () => {
 		const { dispatcher } = setup();
-		expect(() => dispatcher.handleEvent({ type: 'dropped', count: 3, at: 1 })).not.toThrow();
+		await expect(
+			dispatcher.handleEvent({ type: 'dropped', count: 3, at: 1 }),
+		).resolves.toBeUndefined();
 	});
 
 	it('fails the execution when wfrt refuses the start', async () => {
@@ -595,5 +717,26 @@ describe('helpers', () => {
 	it('reads the effect number of a resume URL', () => {
 		expect(effectSeqOf('/resume/12/4')).toBe('4');
 		expect(effectSeqOf('http://127.0.0.1:5690/resume/12/4?x=1')).toBe('4');
+	});
+
+	it('reads the outbox position of a durable event', () => {
+		const line = '{"type":"finished","executionId":"w-1","status":"ok","shard":2,"seq":7,"at":1}';
+		const event = parseWfrtEvent(line);
+		expect(event).toMatchObject({ type: 'finished', shard: 2, seq: 7 });
+		expect(event && isSequencedEvent(event)).toBe(true);
+	});
+
+	it('treats the events of an older wfrt as unsequenced', () => {
+		const line = '{"type":"finished","executionId":"w-1","status":"ok","at":1}';
+		const event = parseWfrtEvent(line);
+		expect(event).not.toHaveProperty('seq');
+		expect(event && isSequencedEvent(event)).toBe(false);
+	});
+
+	it('never acks a best-effort event, even with a seq', () => {
+		const parsed = parseWfrtEvent(
+			'{"type":"step","executionId":"w-1","step":"IF","status":"started","shard":0,"seq":3,"at":1}',
+		);
+		expect(parsed && isSequencedEvent(parsed)).toBe(false);
 	});
 });

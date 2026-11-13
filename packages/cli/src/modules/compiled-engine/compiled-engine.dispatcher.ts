@@ -272,7 +272,13 @@ export class CompiledEngineDispatcher {
 
 	// ----- events -----
 
-	handleEvent(event: WfrtEvent) {
+	/**
+	 * Handles one event of `wfrt`. The promise resolves when the database writes
+	 * of the event are done, so the caller may then advance the outbox cursor.
+	 * Durable events can arrive twice after a restart; each one gives the result
+	 * of its first arrival.
+	 */
+	async handleEvent(event: WfrtEvent): Promise<void> {
 		this.logger.debug(`wfrt event ${event.type}`, {
 			wfrtExecutionId: 'executionId' in event ? event.executionId : undefined,
 			step: 'step' in event ? event.step : undefined,
@@ -283,12 +289,11 @@ export class CompiledEngineDispatcher {
 				`wfrt dropped ${event.count} event(s) while n8n did not read them. Run data of some executions can be missing.`,
 			);
 			// A dropped `staticData` event would leave n8n's copy behind.
-			void this.sync.pullStaticData();
-			return;
+			return await this.sync.pullStaticData();
 		}
 		if (event.type === 'staticData') {
-			void this.sync.saveStaticData(event.workflowId, event.staticData);
-			return;
+			// A repeated event stores the same document, so the result does not change.
+			return await this.sync.saveStaticData(event.workflowId, event.staticData);
 		}
 		if (event.type === 'service') {
 			// The call runs beside the run data of the execution: it has its own answer path.
@@ -303,8 +308,12 @@ export class CompiledEngineDispatcher {
 		if (event.type === 'started') {
 			if (this.entries.has(event.executionId) || this.finished.has(event.executionId)) return;
 			if (event.workflowId.endsWith(MANUAL_WORKFLOW_SUFFIX)) return;
-			this.track(event.executionId, this.startTriggerRun(event), 'create the execution');
-			return;
+			const entry = this.track(
+				event.executionId,
+				this.startTriggerRun(event),
+				'create the execution',
+			);
+			return await entry.queue;
 		}
 
 		let entry = this.entries.get(event.executionId);
@@ -313,7 +322,7 @@ export class CompiledEngineDispatcher {
 			// An execution that n8n lost track of, for example after a restart.
 			entry = this.track(event.executionId, this.adopt(event.executionId), 'adopt the execution');
 		}
-		void this.enqueue(entry, async (state) => await this.apply(state, event), event.type);
+		return await this.enqueue(entry, async (state) => await this.apply(state, event), event.type);
 	}
 
 	/** Registers an entry whose state comes from `init`. */
@@ -394,6 +403,15 @@ export class CompiledEngineDispatcher {
 	}
 
 	private async startTriggerRun(event: WfrtStartedEvent): Promise<ExecutionState | undefined> {
+		const existing = await this.store.findExecutionId(event.executionId);
+		if (existing) {
+			// A repeated `started` after a restart: the row is there already, so
+			// adopt it instead of making a second one.
+			this.logger.debug(
+				`wfrt started execution ${event.executionId} again: n8n keeps execution ${existing}`,
+			);
+			return await this.adopt(event.executionId);
+		}
 		const loaded = this.sync.findLoaded(event.workflowId);
 		if (!loaded) {
 			this.logger.warn(

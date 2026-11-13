@@ -134,6 +134,14 @@ The fallback host gets the n8n URLs in `WF_FALLBACK_INSTANCE_BASE_URL`,
 - Main instance in regular mode only.
 - `finished` with `needs_attention` saves the execution as an error, while
   `wfrt` keeps it parked. Retry is not wired to `wfrt`.
-- Events that `wfrt` drops while n8n does not read them are lost (the log
-  warns); `wfrt` does not send `finished` again from a replay.
+- The durable events (`started`, `waiting`, `finished`, `staticData`) go to
+  the `wfrt` event outbox and survive a slow reader, a `wfrt` restart and an
+  n8n restart. n8n stores the last seq it handled per shard under the
+  `compiledEngine.eventCursor` setting, sends it as `after=` on each connect,
+  and acks it after the dispatcher's database writes (at most every 250 ms or
+  200 events, and on shutdown). A durable event that arrives twice gives the
+  result of its first arrival, so a resume never makes a second execution row.
+  An older `wfrt` sends no `seq`: n8n then works as it did before, without
+  `after=` and without acks. Best-effort events (`step`, `trace`, `dropped`)
+  stay in the ring and can still be lost (the log warns).
 - Partial runs and "execute step" run the whole workflow.

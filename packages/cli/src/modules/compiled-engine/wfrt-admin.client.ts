@@ -4,7 +4,7 @@ import { OperationalError } from '@n8n/errors';
 import type { IDataObject } from 'n8n-workflow';
 
 import { CompiledEngineConfig } from './compiled-engine.config';
-import type { WfrtEvent } from './compiled-engine.types';
+import type { WfrtAck, WfrtEvent, WfrtEventCursor } from './compiled-engine.types';
 import { isDataObject, parseWfrtEvent } from './compiled-engine.types';
 
 export class WfrtRequestError extends OperationalError {
@@ -45,6 +45,18 @@ export interface WfrtWorkflowStatus {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The query that resumes the durable events of the outbox:
+ * `after=<shard>:<seq>,<shard>:<seq>`. A cursor without a seq sends no query.
+ */
+export function afterQuery(cursor: WfrtEventCursor | undefined): string {
+	const parts = Object.entries(cursor ?? {})
+		.filter(([, seq]) => Number.isInteger(seq) && seq > 0)
+		.sort(([a], [b]) => Number(a) - Number(b))
+		.map(([shard, seq]) => `${shard}:${seq}`);
+	return parts.length === 0 ? '' : `?after=${parts.join(',')}`;
 }
 
 /**
@@ -178,16 +190,19 @@ export class WfrtAdminClient {
 	}
 
 	/**
-	 * Reads the event stream until it ends or `signal` aborts. `onOpen` runs
-	 * once the stream is open, so the caller knows that `wfrt` is ready.
+	 * Reads the event stream until it ends or `signal` aborts. `after` resumes
+	 * the durable events of the outbox after the seq that n8n handled; `wfrt`
+	 * then sends the stored events first. `onOpen` runs once the stream is
+	 * open, so the caller knows that `wfrt` is ready.
 	 */
 	async streamEvents(
 		signal: AbortSignal,
 		onOpen: () => Promise<void> | void,
 		onEvent: (event: WfrtEvent) => void,
+		after?: WfrtEventCursor,
 	) {
 		// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- loopback API of the local wfrt process
-		const response = await fetch(`${this.adminUrl}/_admin/events`, {
+		const response = await fetch(`${this.adminUrl}/_admin/events${afterQuery(after)}`, {
 			headers: { authorization: `Bearer ${this.secret}` },
 			signal,
 		});
@@ -215,6 +230,15 @@ export class WfrtAdminClient {
 				newline = buffer.indexOf('\n');
 			}
 		}
+	}
+
+	/**
+	 * Tells `wfrt` which events n8n handled, so it may delete them. Call it only
+	 * after the cursor is stored and the event is fully handled.
+	 */
+	async ackEvents(acks: WfrtAck[]) {
+		if (acks.length === 0) return;
+		await this.request('POST', '/_admin/events/ack', { acks });
 	}
 
 	/**

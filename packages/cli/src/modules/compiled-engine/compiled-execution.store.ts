@@ -1,9 +1,11 @@
 import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionMetadataRepository, ExecutionRepository } from '@n8n/db';
+import { ExecutionMetadataRepository, ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
+
+import type { WfrtEventCursor } from './compiled-engine.types';
 
 /** Execution metadata key of the `wfrt` execution id of a trigger run. */
 export const WFRT_ID_KEY = 'compiledEngineExecutionId';
@@ -13,6 +15,25 @@ export const EFFECT_SEQ_KEY = 'compiledEngineEffectSeq';
 
 /** How many in-progress executions the startup reconcile reads. */
 const RECONCILE_BATCH = 1000;
+
+/** The settings key of the cursor of the `wfrt` event outbox. */
+export const EVENT_CURSOR_KEY = 'compiledEngine.eventCursor';
+
+/** Reads a stored cursor; a value that is not a seq per shard is ignored. */
+function readCursor(value: string): WfrtEventCursor {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(value);
+	} catch {
+		return {};
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+	const cursor: WfrtEventCursor = {};
+	for (const [shard, seq] of Object.entries(parsed)) {
+		if (typeof seq === 'number' && Number.isInteger(seq) && seq > 0) cursor[shard] = seq;
+	}
+	return cursor;
+}
 
 /**
  * The execution rows that the compiled engine reads and writes besides the
@@ -26,7 +47,22 @@ export class CompiledExecutionStore {
 		private readonly executionMetadataRepository: ExecutionMetadataRepository,
 		private readonly executionMetadataService: ExecutionMetadataService,
 		private readonly executionCrashService: ExecutionCrashService,
+		private readonly settingsRepository: SettingsRepository,
 	) {}
+
+	/**
+	 * The last fully handled seq of each shard of the `wfrt` event outbox.
+	 * `wfrt` gets it as `after=` when n8n connects again.
+	 */
+	async readEventCursor(): Promise<WfrtEventCursor> {
+		const row = await this.settingsRepository.findByKey(EVENT_CURSOR_KEY);
+		return row ? readCursor(row.value) : {};
+	}
+
+	/** Stores the cursor of the event outbox; `wfrt` may then delete those events. */
+	async saveEventCursor(cursor: WfrtEventCursor) {
+		await this.settingsRepository.upsertByKey(EVENT_CURSOR_KEY, JSON.stringify(cursor), false, {});
+	}
 
 	async saveMapping(executionId: string, values: Record<string, string>) {
 		await this.executionMetadataService.save(executionId, values);
