@@ -23,5 +23,7 @@ export const userSettingsSchema = z.object({
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	userClaimedAiCredits: z.boolean().optional(),
 	dismissedCallouts: z.record(z.boolean()).optional(),
+	/** Personal UI locale. When unset, the instance default applies. */
+	locale: z.string().optional(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
