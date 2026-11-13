@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9416adef5f807e::t_961cbb346a7eab 2369-2392
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9416adef5f807e::t_222ecc98cb9c50 254,267,1496-1499,1816,1822-1824
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_9416adef5f807e::t_9d978d849bf81d 388-389,391
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_9416adef5f807e::t_cdbe4a230ab37f 56-57,710
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_9416adef5f807e::t_cc474e16f1543e 997,1006,1094
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_9416adef5f807e::t_4dfb3413d9f401 24-25
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_9416adef5f807e::t_c4ae3e24d54be6 97-168
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9416adef5f807e::t_0e5181310981f3 4,44,62,68,88-91,101,216-245,327-351
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9416adef5f807e::t_9ade5d0fdc15ed 12,359-384
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9416adef5f807e::t_796a92db1cb4df 39-40,42-43
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_9416adef5f807e::t_12dd7ad2e6bd42 11-28,32-35,73,83-97,138-154
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_0a93b307e9f2b7 5,10,56,116-120,180-182,201-227
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9416adef5f807e::t_f1e1261bef2ba6 21,109,162-163,165-166,212-215
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9416adef5f807e::t_bbeb9065e584a3 3,32,359-374,382,401-506
+packages/cli/src/modules/agents/tools/instrumented-run-guard.ts
+  s_9416adef5f807e::t_746215f1c3a512 1-49
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9416adef5f807e::t_cef8d3bebda4e7 69-74,333-335,345-350,367-370,372,438-441,456-472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78745d754408ba27f782279dd89e936f1bc61102",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
