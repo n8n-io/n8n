@@ -360,12 +360,16 @@ describe('AssistantAgentEvalController', () => {
 				ctx.user,
 				THREAD_ID,
 			);
-			// The seed keeps its ids, roles and content. `createdAt` becomes a date.
+			// The seed keeps its roles and content under new ids. `createdAt` becomes a date.
 			expect(ctx.systemAgents.saveMessages).toHaveBeenCalledWith(
 				'assistant',
 				ctx.user,
 				THREAD_ID,
-				seedMessages.map((message) => ({ ...message, createdAt: new Date(message.createdAt) })),
+				seedMessages.map((message) => ({
+					...message,
+					id: expect.not.stringMatching(message.id),
+					createdAt: new Date(message.createdAt),
+				})),
 			);
 			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
 			expect(seed.rollback).not.toHaveBeenCalled();
@@ -467,18 +471,16 @@ describe('AssistantAgentEvalController', () => {
 			expect(seed.rollback).toHaveBeenCalledTimes(1);
 		});
 
-		it('rolls back the artifacts when a seed message is not valid', async () => {
+		it('rejects a seed message that is not valid before it creates any artifact', async () => {
 			const ctx = setup();
-			const seed = seedArtifacts();
-			ctx.restore.restoreSeedArtifacts.mockResolvedValue(seed);
 
 			await expect(
 				ctx.controller.restoreThread(ctx.req, ctx.res, payload([{ id: 'msg-1' }])),
 			).rejects.toThrow(BadRequestError);
 
+			expect(ctx.restore.restoreSeedArtifacts).not.toHaveBeenCalled();
+			expect(ctx.systemAgents.ensureMemoryThread).not.toHaveBeenCalled();
 			expect(ctx.systemAgents.saveMessages).not.toHaveBeenCalled();
-			expect(ctx.threadMetadata.patch).not.toHaveBeenCalled();
-			expect(seed.rollback).toHaveBeenCalledTimes(1);
 		});
 
 		it('writes nothing to the thread when the artifact restore fails', async () => {

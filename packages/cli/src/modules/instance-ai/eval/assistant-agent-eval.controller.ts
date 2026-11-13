@@ -180,6 +180,8 @@ export class AssistantAgentEvalController {
 		const { projectId } = await this.getThread(req.user, payload.threadId);
 		// Seed node credentials resolve within the pinned credential view of the thread.
 		const allowedCredentialIds = this.credentialAllowlists.get(payload.threadId);
+		// Check the messages first, so a bad seed creates no artifacts.
+		const messages = toRestorableMessages(payload.messages);
 		// The service rolls back its own partial work. The steps below cannot roll
 		// back the messages, so they come last.
 		const seed = await this.evalThreadRestore.restoreSeedArtifacts(
@@ -193,7 +195,7 @@ export class AssistantAgentEvalController {
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
 		try {
-			if (seed.agentBuilderBinding || payload.messages.length > 0) {
+			if (seed.agentBuilderBinding || messages.length > 0) {
 				// The memory row comes with the first turn. The binding and the messages need it now.
 				await this.systemAgentEval.ensureMemoryThread(
 					ASSISTANT_AGENT_ID,
@@ -216,9 +218,7 @@ export class AssistantAgentEvalController {
 				bindingWritten = true;
 			}
 			// A data-table-only seed sends no messages.
-			if (payload.messages.length > 0) {
-				// Ids, roles, content and `createdAt` stay as in the seed.
-				const messages = toRestorableMessages(payload.messages);
+			if (messages.length > 0) {
 				await this.systemAgentEval.saveMessages(
 					ASSISTANT_AGENT_ID,
 					req.user,
