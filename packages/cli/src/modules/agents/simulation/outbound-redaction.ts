@@ -141,9 +141,10 @@ export class OutboundRedactor {
 	private scrub(text: string): string {
 		let out = text;
 		for (const secret of this.secrets) {
-			// Raw, URL-encoded, and form-encoded (spaces as `+`, as URLSearchParams writes them).
+			// Raw, URL-encoded, form-encoded (spaces as `+`), and JSON-escaped inside a JSON string.
 			const formEncoded = new URLSearchParams({ v: secret }).toString().slice(2);
-			for (const form of new Set([secret, encodeURIComponent(secret), formEncoded])) {
+			const jsonEscaped = JSON.stringify(secret).slice(1, -1);
+			for (const form of new Set([secret, encodeURIComponent(secret), formEncoded, jsonEscaped])) {
 				out = out.split(form).join(PLACEHOLDER);
 			}
 		}
