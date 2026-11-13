@@ -79,6 +79,12 @@ export interface StaleQueuedStep {
 	staleAfter: Date;
 }
 
+/** A step that is still `running` after its `stale_after` time. */
+export interface StaleRunningStep {
+	id: string;
+	staleAfter: Date;
+}
+
 /**
  * Persistence interface for step records.
  *
@@ -197,6 +203,20 @@ export interface StepStore {
 	 * several concurrent callers gets `true`.
 	 */
 	renewQueuedStep(id: string, staleAfter: Date): Promise<boolean>;
+
+	/**
+	 * The steps that are `running` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]>;
+
+	/**
+	 * Fail a step that no worker settled in time. As `failStep`, but the
+	 * compare-and-set also tests the `staleAfter` value that the caller read. A
+	 * step that settled, or that was claimed again, after that read is not
+	 * changed.
+	 */
+	failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean>;
 
 	/** Record a failed run: persist `error` and mark the step failed. As `completeStep`. */
 	failStep(id: string, error: StepError): Promise<boolean>;

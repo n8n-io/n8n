@@ -1392,6 +1392,100 @@ describe('workflow_step_execution table (integration)', () => {
 			expect(await loadStaleAfter(id)).toEqual(renewed);
 		});
 
+		it('findStaleRunningSteps returns the running steps whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowStepExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'running' }, { staleAfter: null });
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const seed = async (nodeId: string, staleAfter: Date | null, claim = true) => {
+				const { id } = await createStep(store, executionId, {
+					nodeId,
+					iteration: 0,
+					status: 'queued',
+				});
+				if (claim) await store.claimStep(id);
+				await repo.update({ id }, { staleAfter });
+				return id;
+			};
+			const newer = await seed('newer', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('older', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `running`, or no time exists
+			await seed('later', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('queued', new Date('2020-01-01T00:01:00.000Z'), false);
+			await seed('no-time', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleRunningSteps(at, 10)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleRunningSteps(at, 1)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		describe('failStaleRunningStep', () => {
+			const error = { name: 'StaleRunningStepError', message: 'still running' };
+
+			async function claimedStep(store: TypeOrmStepStore) {
+				const executionId = await createExecution();
+				const { id } = await createStep(store, executionId, {
+					nodeId: 'a',
+					iteration: 0,
+					status: 'queued',
+				});
+				await store.claimStep(id);
+				const observed = await loadStaleAfter(id);
+				if (!observed) throw new Error('expected a stale_after value');
+				return { id, observed };
+			}
+
+			it('fails the step once for one observed value, and clears the time', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(true);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });
+				expect(await loadStaleAfter(id)).toBeNull();
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
+			});
+
+			it('changes nothing when the step completed after the read', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				await store.completeStep(id, [[]]);
+
+				expect(await store.failStaleRunningStep(id, observed, error)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'completed', error: null });
+			});
+
+			it('changes nothing when the observed time is not the time of the row', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				// The step waited, resumed and was claimed again, so it has a new time.
+				const earlier = new Date(observed.getTime() - 1_000);
+
+				expect(await store.failStaleRunningStep(id, earlier, error)).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'running' });
+				expect(await loadStaleAfter(id)).toEqual(observed);
+			});
+
+			it('makes a late outcome write of the worker change nothing', async () => {
+				const store = stalenessStore();
+				const { id, observed } = await claimedStep(store);
+				await store.failStaleRunningStep(id, observed, error);
+
+				expect(await store.completeStep(id, [[]])).toBe(false);
+				expect(await store.failStep(id, { name: 'Error', message: 'late' })).toBe(false);
+
+				expect(await store.loadStep(id)).toMatchObject({ status: 'failed', error });
+			});
+		});
+
 		it('renewQueuedStep changes nothing once the step left queued', async () => {
 			const executionId = await createExecution();
 			const store = stalenessStore();

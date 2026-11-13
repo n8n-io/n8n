@@ -1,4 +1,4 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, LessThanOrEqual, type Repository } from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
@@ -20,6 +20,7 @@ import {
 	type DueStep,
 	type NewStepRecord,
 	type StaleQueuedStep,
+	type StaleRunningStep,
 	type StepRecord,
 	type StepStore,
 	type StepSummary,
@@ -300,6 +301,21 @@ export class TypeOrmStepStore implements StepStore {
 		return result.affected === 1;
 	}
 
+	async findStaleRunningSteps(at: Date, limit: number): Promise<StaleRunningStep[]> {
+		// Served by the partial index on `status` and `stale_after`.
+		const rows = await this.repo.find({
+			select: { id: true, staleAfter: true },
+			where: { status: 'running', staleAfter: LessThanOrEqual(at) },
+			order: { staleAfter: 'ASC' },
+			take: limit,
+		});
+		return rows.flatMap(({ id, staleAfter }) => (staleAfter ? [{ id, staleAfter }] : []));
+	}
+
+	async failStaleRunningStep(id: string, staleAfter: Date, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error, staleAfter);
+	}
+
 	async cancelPendingSteps(executionId: string): Promise<void> {
 		await this.repo.update(
 			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
@@ -319,7 +335,13 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.failStepFrom('waiting', id, error);
 	}
 
-	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
+	/** `observedStaleAfter` adds a test on the `stale_after` value that the caller read. */
+	private async failStepFrom(
+		from: StepStatus,
+		id: string,
+		error: StepError,
+		observedStaleAfter?: Date,
+	): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -332,7 +354,7 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: from },
+				{ id, status: from, ...(observedStaleAfter ? { staleAfter: observedStaleAfter } : {}) },
 				{ error, status: 'failed', staleAfter: null },
 			);
 			return result.affected === 1;
