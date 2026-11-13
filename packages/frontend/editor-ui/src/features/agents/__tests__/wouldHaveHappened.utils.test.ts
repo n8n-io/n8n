@@ -31,6 +31,8 @@ describe('wouldHaveHappened utils', () => {
 		[false, 'false'],
 		['text', 'text'],
 		[['a', 1, null], '["a",1,null]'],
+		[['Doe, Ana', 'Bob'], '["Doe, Ana","Bob"]'],
+		[['a', 'b'], 'a, b'],
 		[{ a: 1 }, '{\n  "a": 1\n}'],
 		[[{ a: 1 }], '[\n  {\n    "a": 1\n  }\n]'],
 	])('formats %j as %j', (value, expected) => {
@@ -71,6 +73,12 @@ describe('wouldHaveHappened utils', () => {
 		expect(clampText('short', 10, 2)).toEqual({ text: 'short', clamped: false });
 		expect(clampText('a\nb\nc', 100, 2)).toEqual({ text: 'a\nb…', clamped: true });
 		expect(clampText('abcdefghij', 4, 2)).toEqual({ text: 'abcd…', clamped: true });
+	});
+
+	it('clamps Unicode code points without splitting surrogate pairs', () => {
+		expect(clampText('a😀b', 2, 2)).toEqual({ text: 'a😀…', clamped: true });
+		expect(clampText('😀😀', 2, 2)).toEqual({ text: '😀😀', clamped: false });
+		expect(clampText('😀\n😁\nextra', 3, 2)).toEqual({ text: '😀\n😁…', clamped: true });
 	});
 
 	it('keeps a date value and never throws on values JSON cannot hold', () => {

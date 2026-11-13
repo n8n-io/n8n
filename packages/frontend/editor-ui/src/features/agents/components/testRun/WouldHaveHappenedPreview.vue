@@ -9,12 +9,13 @@ import { computed } from 'vue';
 
 import type {
 	WouldHaveHappenedGenericPreview,
-	WouldHaveHappenedPreview,
+	WouldHaveHappenedPreviewInput,
 } from './wouldHaveHappened.types';
+import { isPreviewKind } from './wouldHaveHappened.types';
 
 /** Shows the preview card for the kind of action. */
 const props = defineProps<{
-	preview: WouldHaveHappenedPreview;
+	preview: WouldHaveHappenedPreviewInput;
 }>();
 
 /**
@@ -22,18 +23,24 @@ const props = defineProps<{
  * generic card instead of hiding them.
  */
 const genericPreview = computed((): WouldHaveHappenedGenericPreview => {
-	const preview = props.preview as WouldHaveHappenedPreview & Record<string, unknown>;
-	if (preview.kind === 'generic') return preview;
+	const preview = props.preview;
+	if (isPreviewKind(preview, 'generic')) return preview;
 	const { kind: _kind, toolName, app, ...fields } = preview;
 	return { kind: 'generic', toolName, ...(app ? { app } : {}), input: fields };
 });
 </script>
 
 <template>
-	<WouldHaveHappenedEmail v-if="preview.kind === 'email'" :preview="preview" />
-	<WouldHaveHappenedChatMessage v-else-if="preview.kind === 'chatMessage'" :preview="preview" />
-	<WouldHaveHappenedIssue v-else-if="preview.kind === 'issue'" :preview="preview" />
-	<WouldHaveHappenedTableRow v-else-if="preview.kind === 'tableRow'" :preview="preview" />
-	<WouldHaveHappenedCalendarEvent v-else-if="preview.kind === 'calendarEvent'" :preview="preview" />
+	<WouldHaveHappenedEmail v-if="isPreviewKind(preview, 'email')" :preview="preview" />
+	<WouldHaveHappenedChatMessage
+		v-else-if="isPreviewKind(preview, 'chatMessage')"
+		:preview="preview"
+	/>
+	<WouldHaveHappenedIssue v-else-if="isPreviewKind(preview, 'issue')" :preview="preview" />
+	<WouldHaveHappenedTableRow v-else-if="isPreviewKind(preview, 'tableRow')" :preview="preview" />
+	<WouldHaveHappenedCalendarEvent
+		v-else-if="isPreviewKind(preview, 'calendarEvent')"
+		:preview="preview"
+	/>
 	<WouldHaveHappenedGeneric v-else :preview="genericPreview" />
 </template>

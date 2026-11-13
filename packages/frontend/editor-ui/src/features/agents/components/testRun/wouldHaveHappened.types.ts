@@ -7,7 +7,7 @@
  * read node parameters.
  *
  * Every field except `kind` and `toolName` is optional, and the cards omit
- * missing or blank fields.
+ * missing fields. Issue updates retain explicit empty values.
  */
 
 /** The app that would have received the action, such as Gmail or Slack. */
@@ -26,7 +26,7 @@ interface WouldHaveHappenedPreviewBase {
 
 export interface WouldHaveHappenedEmailPreview extends WouldHaveHappenedPreviewBase {
 	kind: 'email';
-	to: string[];
+	to?: string[];
 	cc?: string[];
 	bcc?: string[];
 	subject?: string;
@@ -47,18 +47,18 @@ export interface WouldHaveHappenedChatMessagePreview extends WouldHaveHappenedPr
 export interface WouldHaveHappenedIssuePreview extends WouldHaveHappenedPreviewBase {
 	kind: 'issue';
 	/** Project, team, board, or repository. */
-	project?: string;
-	title?: string;
-	description?: string;
-	assignee?: string;
-	labels?: string[];
+	project?: string | null;
+	title?: string | null;
+	description?: string | null;
+	assignee?: string | null;
+	labels?: string[] | null;
 }
 
 export interface WouldHaveHappenedTableRowPreview extends WouldHaveHappenedPreviewBase {
 	kind: 'tableRow';
 	/** Table or sheet name. */
 	table?: string;
-	columns: Record<string, unknown>;
+	columns?: Record<string, unknown>;
 }
 
 export interface WouldHaveHappenedCalendarEventPreview extends WouldHaveHappenedPreviewBase {
@@ -75,7 +75,7 @@ export interface WouldHaveHappenedCalendarEventPreview extends WouldHaveHappened
 
 export interface WouldHaveHappenedGenericPreview extends WouldHaveHappenedPreviewBase {
 	kind: 'generic';
-	input: Record<string, unknown>;
+	input?: Record<string, unknown>;
 }
 
 export type WouldHaveHappenedPreview =
@@ -87,3 +87,15 @@ export type WouldHaveHappenedPreview =
 	| WouldHaveHappenedGenericPreview;
 
 export type WouldHaveHappenedPreviewKind = WouldHaveHappenedPreview['kind'];
+
+/** Accepts new action kinds before this client has a dedicated card. */
+export type WouldHaveHappenedPreviewInput =
+	| WouldHaveHappenedPreview
+	| (WouldHaveHappenedPreviewBase & { kind: string; [key: string]: unknown });
+
+export function isPreviewKind<K extends WouldHaveHappenedPreviewKind>(
+	preview: WouldHaveHappenedPreviewInput,
+	kind: K,
+): preview is Extract<WouldHaveHappenedPreview, { kind: K }> {
+	return preview.kind === kind;
+}

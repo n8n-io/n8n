@@ -7,7 +7,7 @@ import WouldHaveHappenedField from './WouldHaveHappenedField.vue';
 import WouldHaveHappenedList from './WouldHaveHappenedList.vue';
 import WouldHaveHappenedText from './WouldHaveHappenedText.vue';
 import type { WouldHaveHappenedIssuePreview } from './wouldHaveHappened.types';
-import { presentList, presentText } from './wouldHaveHappened.utils';
+import { formatExplicitEmpty, presentList, presentText } from './wouldHaveHappened.utils';
 
 const props = defineProps<{
 	preview: WouldHaveHappenedIssuePreview;
@@ -15,13 +15,24 @@ const props = defineProps<{
 
 const i18n = useI18n();
 
-const project = computed(() => presentText(props.preview.project)?.trim());
-const title = computed(() => presentText(props.preview.title));
-const description = computed(() => presentText(props.preview.description));
-const assignee = computed(() => presentText(props.preview.assignee)?.trim());
-const labels = computed(() => presentList(props.preview.labels));
+const project = computed(
+	() => formatExplicitEmpty(props.preview.project) ?? presentText(props.preview.project)?.trim(),
+);
+const title = computed(
+	() => formatExplicitEmpty(props.preview.title) ?? presentText(props.preview.title),
+);
+const description = computed(
+	() => formatExplicitEmpty(props.preview.description) ?? presentText(props.preview.description),
+);
+const assignee = computed(
+	() => formatExplicitEmpty(props.preview.assignee) ?? presentText(props.preview.assignee)?.trim(),
+);
+const labels = computed(() => presentList(props.preview.labels ?? undefined));
+const emptyLabels = computed(() => formatExplicitEmpty(props.preview.labels));
 
-const hasFields = computed(() => Boolean(project.value || assignee.value || labels.value.length));
+const hasFields = computed(() =>
+	Boolean(project.value || assignee.value || labels.value.length || emptyLabels.value),
+);
 const isEmpty = computed(() => !hasFields.value && !title.value && !description.value);
 </script>
 
@@ -47,10 +58,11 @@ const isEmpty = computed(() => !hasFields.value && !title.value && !description.
 				{{ assignee }}
 			</WouldHaveHappenedField>
 			<WouldHaveHappenedField
-				v-if="labels.length > 0"
+				v-if="labels.length > 0 || emptyLabels"
 				:label="i18n.baseText('agents.testRun.preview.field.labels')"
 			>
-				<WouldHaveHappenedList :items="labels" :max-visible="5" />
+				<template v-if="emptyLabels">{{ emptyLabels }}</template>
+				<WouldHaveHappenedList v-else :items="labels" :max-visible="5" />
 			</WouldHaveHappenedField>
 		</dl>
 		<WouldHaveHappenedText v-if="description" :text="description" />

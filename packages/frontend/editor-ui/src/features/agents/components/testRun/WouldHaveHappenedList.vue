@@ -3,6 +3,8 @@ import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, useId } from 'vue';
 
+import { formatPreviewValue } from './wouldHaveHappened.utils';
+
 /** A comma-separated list, such as recipients, that collapses after a few items. */
 const props = withDefaults(
 	defineProps<{
@@ -24,8 +26,8 @@ const visibleItems = computed(() =>
 
 <template>
 	<span :class="$style.list">
-		<span :class="$style.items" :id="contentId" data-test-id="would-have-happened-list">{{
-			visibleItems.join(', ')
+		<span :id="contentId" :class="$style.items" data-test-id="would-have-happened-list">{{
+			formatPreviewValue(visibleItems)
 		}}</span>
 		<N8nButton
 			v-if="hiddenCount > 0"

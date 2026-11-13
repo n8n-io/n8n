@@ -9,7 +9,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import WouldHaveHappenedPreview from '../components/testRun/WouldHaveHappenedPreview.vue';
 import WouldHaveHappenedSummary from '../components/testRun/WouldHaveHappenedSummary.vue';
-import type { WouldHaveHappenedPreview as Preview } from '../components/testRun/wouldHaveHappened.types';
+import type {
+	WouldHaveHappenedPreview as KnownPreview,
+	WouldHaveHappenedPreviewInput as Preview,
+} from '../components/testRun/wouldHaveHappened.types';
 
 const renderPreview = createComponentRenderer(WouldHaveHappenedPreview);
 const renderSummary = createComponentRenderer(WouldHaveHappenedSummary);
@@ -180,7 +183,57 @@ describe('WouldHaveHappenedPreview', () => {
 		});
 	});
 
+	it.each([
+		{ kind: 'email', toolName: 'missing_fields' },
+		{ kind: 'tableRow', toolName: 'missing_fields' },
+		{ kind: 'generic', toolName: 'missing_fields' },
+	] satisfies KnownPreview[])('accepts omitted fields for $kind', (preview) => {
+		const { container } = render(preview);
+		expect(within(card(container)).getByTestId('would-have-happened-empty')).toBeInTheDocument();
+		expectNoMissingValueText(container);
+	});
+
+	it('keeps comma-containing recipients distinct', () => {
+		const { container } = render({
+			kind: 'email',
+			toolName: 'send_email',
+			to: ['Doe, Ana <ana@example.com>', 'b@example.com'],
+		});
+		expect(field(card(container), 'To')).toBe('["Doe, Ana <ana@example.com>","b@example.com"]');
+	});
+
 	describe('issue', () => {
+		it.each([
+			{ project: null, title: '', description: ' ', assignee: null, labels: [] },
+			{ project: '', title: null, description: null, assignee: '', labels: null },
+		])('shows explicit empty updates: %j', (fields) => {
+			const { container } = render({ kind: 'issue', toolName: 'update_issue', ...fields });
+			const root = card(container);
+			expect(field(root, 'Project')).toBe(JSON.stringify(fields.project));
+			expect(field(root, 'Assignee')).toBe(JSON.stringify(fields.assignee));
+			expect(field(root, 'Labels')).toBe(JSON.stringify(fields.labels));
+			expect(root.textContent).toContain(JSON.stringify(fields.title));
+			expect(root.textContent).toContain(JSON.stringify(fields.description));
+			expect(within(root).queryByTestId('would-have-happened-empty')).toBeNull();
+		});
+
+		it('omits issue fields that were not supplied', () => {
+			const { container } = render({ kind: 'issue', toolName: 'update_issue' });
+			expect(container.querySelector('dt')).toBeNull();
+			expect(within(card(container)).getByTestId('would-have-happened-empty')).toBeInTheDocument();
+		});
+
+		it('renders issue update text without HTML elements', () => {
+			const text = '<img src=x onerror=alert(1)><script>alert(1)</script>';
+			const { container } = render({
+				kind: 'issue',
+				toolName: 'update_issue',
+				assignee: text,
+				description: text,
+			});
+			expect(field(card(container), 'Assignee')).toBe(text);
+			expect(container.querySelector('img, script')).toBeNull();
+		});
 		it('shows the title, project, assignee, labels, and description', () => {
 			const { container, getByText } = render({
 				kind: 'issue',
@@ -224,7 +277,6 @@ describe('WouldHaveHappenedPreview', () => {
 				kind: 'issue',
 				toolName: 'create_ticket',
 				title: 'Refund failed',
-				labels: [],
 			});
 			const root = card(container);
 
@@ -350,7 +402,7 @@ describe('WouldHaveHappenedPreview', () => {
 				app: { name: 'Twilio' },
 				to: '+15550100',
 				text: 'Your refund is on its way',
-			} as unknown as Preview);
+			});
 			const root = card(container);
 
 			expect(field(root, 'to')).toBe('+15550100');

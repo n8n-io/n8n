@@ -46,6 +46,7 @@ export function formatPreviewValue(value: unknown): string | undefined {
 		const items = value
 			.map((item) => formatPreviewValue(item))
 			.filter((item): item is string => item !== undefined);
+		if (items.some((item) => item.includes(','))) return safeJson(value);
 		return items.length > 0 ? items.join(', ') : undefined;
 	}
 	if (typeof value === 'object' && Object.keys(value).length === 0) return undefined;
@@ -67,7 +68,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 	return proto === Object.prototype || proto === null;
 }
 
-function formatExplicitEmpty(value: unknown): string | undefined {
+export function formatExplicitEmpty(value: unknown): string | undefined {
 	if (value === null) return 'null';
 	if (typeof value === 'string' && value.trim().length === 0) return JSON.stringify(value);
 	if (Array.isArray(value) && value.length === 0) return '[]';
@@ -130,7 +131,8 @@ export interface ClampedText {
 export function clampText(text: string, maxChars: number, maxLines: number): ClampedText {
 	const lines = text.split('\n');
 	let result = lines.length > maxLines ? lines.slice(0, maxLines).join('\n') : text;
-	if (result.length > maxChars) result = result.slice(0, maxChars);
+	const characters = [...result];
+	if (characters.length > maxChars) result = characters.slice(0, maxChars).join('');
 	if (result.length === text.length) return { text, clamped: false };
 	return { text: `${result.trimEnd()}…`, clamped: true };
 }
