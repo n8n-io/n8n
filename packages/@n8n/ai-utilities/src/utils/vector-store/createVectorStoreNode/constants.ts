@@ -47,4 +47,10 @@ export const OPERATION_MODE_DESCRIPTIONS: INodePropertyOptions[] = [
 		description: 'Update documents in vector store by ID',
 		action: 'Update vector store documents',
 	},
+	{
+		name: 'Delete Documents',
+		value: 'delete',
+		description: 'Delete documents from vector store by ID or filter',
+		action: 'Delete vector store documents',
+	},
 ];

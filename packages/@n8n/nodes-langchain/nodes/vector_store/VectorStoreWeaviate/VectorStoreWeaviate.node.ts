@@ -13,7 +13,7 @@ import { UnexpectedError } from '@n8n/errors';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
 import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { createVectorStoreNode, DEFAULT_OPERATION_MODES } from '@n8n/ai-utilities';
 import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
@@ -55,6 +55,25 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		}
 
 		return base;
+	}
+
+	/** Deletes the whole collection, or only the tenant when the store has one */
+	async deleteCollection(): Promise<IDataObject> {
+		const { client, indexName, tenant } = this.args;
+		if (!indexName) throw new UnexpectedError('The Weaviate store has no collection name');
+		// An earlier item can delete the same collection or tenant, so a missing one is not an error
+		const result = { deleteBy: 'collection', collection: indexName, tenant };
+		if (!(await collectionOrTenantExists(client, indexName, tenant))) {
+			return { deleted: false, ...result };
+		}
+		try {
+			await clearCollection(client, indexName, tenant);
+		} catch (error) {
+			// A concurrent execution can delete it between the check and this call
+			if (await collectionOrTenantExists(client, indexName, tenant)) throw error;
+			return { deleted: false, ...result };
+		}
+		return { deleted: true, ...result };
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
@@ -99,6 +118,16 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
 		);
 	}
+}
+
+async function collectionOrTenantExists(
+	client: WeaviateClient,
+	collectionName: string,
+	tenant?: string,
+): Promise<boolean> {
+	if (!(await client.collections.exists(collectionName))) return false;
+	if (!tenant) return true;
+	return (await client.collections.get(collectionName).tenants.getByName(tenant)) !== null;
 }
 
 /** Deletes the collection, or only the tenant when one is given. */
@@ -193,6 +222,18 @@ const insertFields: INodeProperties[] = [
 	},
 ];
 
+const deleteFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		// The text key is only for documents, which a delete does not read
+		options: shared_options.filter((option) => !('name' in option) || option.name !== 'textKey'),
+	},
+];
+
 const retrieveFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -212,7 +253,7 @@ const retrieveFields: INodeProperties[] = [
 					'{\n  "OR": [\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Elis"\n    },\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Pinnacle"\n    }    \n  ]\n}',
 				validateType: 'object',
 				description:
-					'Filter pageContent or metadata using this <a href="https://weaviate.io/" target="_blank">filtering syntax</a>',
+					'Filter pageContent or metadata using this <a href="https://docs.weaviate.io/weaviate/search/filters" target="_blank">filtering syntax</a>. Combine conditions with "AND", "OR" and "NOT". These groups can contain other groups.',
 			},
 			{
 				displayName: 'Metadata Keys',
@@ -308,12 +349,27 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 				required: true,
 			},
 		],
+		operationModes: [...DEFAULT_OPERATION_MODES, 'delete'],
 	},
 	methods: {
 		listSearch: { weaviateCollectionsSearch },
 	},
 	loadFields: retrieveFields,
 	insertFields,
+	deleteFields,
+	parseDeleteFilter: (filter) => parseCompositeFilter(filter as WeaviateCompositeFilter),
+	deleteByOptions: [
+		{
+			name: 'Entire Collection or Tenant',
+			value: 'collection',
+			description: 'Delete the whole collection, or only the tenant when the Tenant option is set',
+		},
+	],
+	async deleteDocuments(context, vectorStore, itemIndex) {
+		// LangChain can only delete by IDs or by filter, so this choice uses the client
+		if (context.getNodeParameter('deleteBy', itemIndex) !== 'collection') return undefined;
+		return await vectorStore.deleteCollection();
+	},
 	sharedFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {

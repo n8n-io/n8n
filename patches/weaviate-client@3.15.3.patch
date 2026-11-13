@@ -1,8 +1,8 @@
 diff --git a/dist/node/cjs/connection/grpc.js b/dist/node/cjs/connection/grpc.js
-index 62152968ba3489eb9ed7c9d3e1e7075742cfc444..b2ea1b625bee7f0e6d510cff606509abfdc989a0 100644
+index 77184f8fe2bcdbdb66411b672497b296ad969540..72281af79116cde8d80c0a9dea79dd2259dc3912 100644
 --- a/dist/node/cjs/connection/grpc.js
 +++ b/dist/node/cjs/connection/grpc.js
-@@ -102,13 +102,27 @@ const grpcClient = (config) => {
+@@ -112,13 +112,27 @@ const grpcClient = (config) => {
          'grpc.max_send_message_length': config.grpcMaxMessageLength,
          'grpc.max_receive_message_length': config.grpcMaxMessageLength,
      };
@@ -36,10 +36,10 @@ index 62152968ba3489eb9ed7c9d3e1e7075742cfc444..b2ea1b625bee7f0e6d510cff606509ab
      const health = clientFactory.create(health_js_1.HealthDefinition, channel);
      return {
 diff --git a/dist/node/esm/connection/grpc.js b/dist/node/esm/connection/grpc.js
-index bf5a09614ef2fe69e89228afed9911a1038e6989..e9998bf8e5ede1f34abf2936a1f76dcc116092d8 100644
+index 35ddabd5983ebd829316139e7e4f985fc6ec37c2..bf12045b12d7d0e28ff9266776dfca20703b8a5c 100644
 --- a/dist/node/esm/connection/grpc.js
 +++ b/dist/node/esm/connection/grpc.js
-@@ -96,13 +96,27 @@ export const grpcClient = (config) => {
+@@ -105,13 +105,27 @@ export const grpcClient = (config) => {
          'grpc.max_send_message_length': config.grpcMaxMessageLength,
          'grpc.max_receive_message_length': config.grpcMaxMessageLength,
      };

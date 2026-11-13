@@ -34,15 +34,26 @@ vi.mock('@langchain/weaviate', () => {
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
+	DEFAULT_OPERATION_MODES: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	createVectorStoreNode: (config: {
+		meta: unknown;
+		deleteFields: unknown;
 		getVectorStoreClient: (...args: unknown[]) => unknown;
 		populateVectorStore: (...args: unknown[]) => unknown;
 		beforeInsert: (...args: unknown[]) => unknown;
+		parseDeleteFilter: (...args: unknown[]) => unknown;
+		deleteByOptions: unknown;
+		deleteDocuments: (...args: unknown[]) => unknown;
 	}) =>
 		class BaseNode {
+			meta = config.meta;
+			deleteFields = config.deleteFields;
 			getVectorStoreClient = config.getVectorStoreClient;
 			populateVectorStore = config.populateVectorStore;
 			beforeInsert = config.beforeInsert;
+			parseDeleteFilter = config.parseDeleteFilter;
+			deleteByOptions = config.deleteByOptions;
+			deleteDocuments = config.deleteDocuments;
 		},
 }));
 
@@ -53,6 +64,15 @@ import { VectorStoreWeaviate } from './VectorStoreWeaviate.node';
 import { parseCompositeFilter } from './Weaviate.utils';
 
 type TestNode = {
+	meta: { operationModes: string[] };
+	deleteFields: Array<{ name: string; options: Array<{ name: string }> }>;
+	parseDeleteFilter: (filter: Record<string, unknown>) => unknown;
+	deleteByOptions: Array<{ value: string }>;
+	deleteDocuments: (
+		context: ISupplyDataFunctions,
+		vectorStore: unknown,
+		itemIndex: number,
+	) => Promise<IDataObject | undefined>;
 	getVectorStoreClient: (
 		context: ISupplyDataFunctions,
 		filter: IDataObject | undefined,
@@ -511,6 +531,158 @@ describe('VectorStoreWeaviate.node', () => {
 				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
 				expect(closeClient).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('delete mode', () => {
+		it('should turn on the delete mode with the default modes', () => {
+			expect(node.meta.operationModes).toEqual([
+				'load',
+				'insert',
+				'retrieve',
+				'retrieve-as-tool',
+				'delete',
+			]);
+		});
+
+		it('should parse a nested delete filter into a Weaviate filter', () => {
+			const filter = {
+				AND: [
+					{ path: ['year'], operator: 'LessThan', valueNumber: 2000 },
+					{ NOT: { path: ['author'], operator: 'Equal', valueString: 'Elis' } },
+				],
+			};
+
+			expect(node.parseDeleteFilter(filter)).toEqual(parseCompositeFilter(filter));
+		});
+
+		it('should offer the tenant and connection options, but not the text key', () => {
+			const names = node.deleteFields[0].options.map(({ name }) => name);
+
+			expect(names).toContain('tenant');
+			expect(names).toContain('proxy_grpc');
+			expect(names).not.toContain('textKey');
+		});
+
+		it('should give the tenant to the store that LangChain deletes from', async () => {
+			await getClient({ tenant: 'tenantA' });
+
+			expect(store.fromExistingIndex).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ indexName: 'TestCollection', tenant: 'tenantA' }),
+			);
+		});
+
+		describe('entire collection or tenant', () => {
+			const deleteCollection = vi.fn();
+			const removeTenants = vi.fn();
+			const collectionExists = vi.fn();
+			const getTenant = vi.fn();
+			const client = mock<WeaviateClient>({
+				collections: mock<WeaviateClient['collections']>({
+					delete: deleteCollection,
+					exists: collectionExists,
+					get: vi
+						.fn()
+						.mockReturnValue({ tenants: { remove: removeTenants, getByName: getTenant } }),
+				}),
+			});
+
+			const runDelete = async (deleteBy: string, options: Record<string, unknown> = {}) => {
+				const context = createContext(options);
+				context.getNodeParameter.mockImplementation((name: string) => {
+					if (name === 'options') return { skip_init_checks: true, ...options };
+					if (name === 'deleteBy') return deleteBy;
+					return 'TestCollection';
+				});
+				const vectorStore = await node.getVectorStoreClient(
+					context,
+					undefined,
+					mock<Embeddings>(),
+					0,
+				);
+				return await node.deleteDocuments(context, vectorStore, 0);
+			};
+
+			beforeEach(() => {
+				connectSpy.mockResolvedValue(client);
+				deleteCollection.mockReset();
+				removeTenants.mockReset();
+				collectionExists.mockReset().mockResolvedValue(true);
+				getTenant.mockReset().mockResolvedValue({ name: 'tenantA' });
+			});
+
+			it('should offer the choice to delete the entire collection or tenant', () => {
+				expect(node.deleteByOptions.map(({ value }) => value)).toEqual(['collection']);
+			});
+
+			it.each(['ids', 'filter'])('should leave the delete by %s to LangChain', async (deleteBy) => {
+				await expect(runDelete(deleteBy)).resolves.toBeUndefined();
+
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
+			it('should delete the collection when no tenant is set', async () => {
+				const result = await runDelete('collection');
+
+				expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					deleted: true,
+					deleteBy: 'collection',
+					collection: 'TestCollection',
+					tenant: undefined,
+				});
+			});
+
+			it('should remove only the tenant when a tenant is set', async () => {
+				const result = await runDelete('collection', { tenant: 'tenantA' });
+
+				expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+				expect(deleteCollection).not.toHaveBeenCalled();
+				expect(result).toEqual(expect.objectContaining({ tenant: 'tenantA' }));
+			});
+
+			it('should not fail when another execution deletes the collection at the same time', async () => {
+				collectionExists.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+				deleteCollection.mockRejectedValueOnce(new Error('not found'));
+
+				const result = await runDelete('collection');
+
+				expect(result).toEqual(expect.objectContaining({ deleted: false }));
+			});
+
+			it('should throw the delete error when the collection still exists', async () => {
+				deleteCollection.mockRejectedValueOnce(new Error('forbidden'));
+
+				await expect(runDelete('collection')).rejects.toThrow('forbidden');
+			});
+
+			it('should not fail when an earlier item deleted the collection', async () => {
+				collectionExists.mockResolvedValue(false);
+
+				const result = await runDelete('collection');
+
+				expect(deleteCollection).not.toHaveBeenCalled();
+				expect(result).toEqual(expect.objectContaining({ deleted: false }));
+			});
+
+			it.each([
+				['the collection', false, null],
+				['the tenant', true, null],
+			])(
+				'should not remove the tenant when %s does not exist',
+				async (_name, hasCollection, tenant) => {
+					collectionExists.mockResolvedValue(hasCollection);
+					getTenant.mockResolvedValue(tenant);
+
+					const result = await runDelete('collection', { tenant: 'tenantA' });
+
+					expect(removeTenants).not.toHaveBeenCalled();
+					expect(result).toEqual(expect.objectContaining({ deleted: false, tenant: 'tenantA' }));
+				},
+			);
 		});
 	});
 });

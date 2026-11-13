@@ -30,6 +30,13 @@ export function isUpdateSupported<T extends VectorStore>(
 	return args.meta.operationModes?.includes('update') ?? false;
 }
 
+/** A vector store supports deletes if it includes 'delete' in its operationModes */
+export function isDeleteSupported<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): boolean {
+	return args.meta.operationModes?.includes('delete') ?? false;
+}
+
 /**
  * Returns the operation mode options enabled for a specific vector store
  * Filters the full list of operation modes based on what's enabled for this vector store
@@ -61,4 +68,24 @@ export function normalizeVectorStoreError(node: INode, error: unknown, itemIndex
 		// a detected status code replaces the message with generic text; keep the provider's own message visible
 		description: error instanceof Error ? error.message : undefined,
 	});
+}
+
+/** Returns the "Delete By" choices: IDs always, a filter when the store can parse one */
+export function getDeleteByOptions<T extends VectorStore>(
+	args: VectorStoreNodeConstructorArgs<T>,
+): INodePropertyOptions[] {
+	if (!isDeleteSupported(args)) return [];
+	return [
+		{ name: 'IDs', value: 'ids', description: 'Delete the documents with the given IDs' },
+		...(args.parseDeleteFilter
+			? [
+					{
+						name: 'Filter',
+						value: 'filter',
+						description: 'Delete the documents that match a filter',
+					},
+				]
+			: []),
+		...(Array.isArray(args.deleteByOptions) ? args.deleteByOptions : []),
+	];
 }

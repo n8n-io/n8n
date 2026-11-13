@@ -6,7 +6,7 @@
 
 The function provides a standardized way to:
 1. Create vector store nodes with consistent UIs
-2. Handle different operation modes (load, insert, retrieve, update, retrieve-as-tool)
+2. Handle different operation modes (load, insert, retrieve, update, delete, retrieve-as-tool)
 3. Process documents and embeddings
 4. Maintain connection to LLM services
 
@@ -23,6 +23,7 @@ The function provides a standardized way to:
       /loadOperation.ts              # Handles 'load' mode
       /insertOperation.ts            # Handles 'insert' mode
       /updateOperation.ts            # Handles 'update' mode
+      /delete-operation.ts           # Handles 'delete' mode
       /retrieveOperation.ts          # Handles 'retrieve' mode
       /retrieveAsToolOperation.ts    # Handles 'retrieve-as-tool' mode
 ```
@@ -104,6 +105,30 @@ export class MyVectorStoreNode {
 - Processes a single document per item and applies it to the specified ID
 - Validates that only one document is being updated per operation
 
+### 6. `delete` Mode (optional)
+- Deletes documents through the LangChain `VectorStore.delete(params)` method, so it needs no store-specific code
+- Only enabled if included in `operationModes`
+- Has no embeddings input. The store gets an `Embeddings` object that throws if the delete tries to embed text
+- "Delete By" always has **IDs** (`vectorStore.delete({ ids })`)
+- "Delete By" has **Filter** (`vectorStore.delete({ filter })`) only when the node gives `parseDeleteFilter`
+- Gives one output item for each input item
+
+#### Turn on delete for a vector store
+
+1. Add `'delete'` to `operationModes`. This is the flag. Nothing else is necessary for a delete by IDs:
+
+   ```typescript
+   meta: {
+     // ...
+     operationModes: [...DEFAULT_OPERATION_MODES, 'delete'],
+   },
+   ```
+
+2. Make sure that `getVectorStoreClient` does not call the embeddings when it creates the store.
+3. Optional: give `parseDeleteFilter` to delete by filter. It turns the JSON of the "Filter" field into the native filter of the store.
+4. Optional: give `deleteFields` for settings such as a tenant or a namespace that `getVectorStoreClient` reads.
+5. Optional: give `deleteByOptions` and `deleteDocuments` for a delete that `VectorStore.delete` cannot do, for example to delete a whole collection. Return `undefined` from `deleteDocuments` to use the default delete.
+
 ## Key Components
 
 ### 1. NodeConstructorArgs Interface
@@ -121,6 +146,10 @@ interface VectorStoreNodeConstructorArgs<T extends VectorStore> {
   loadFields?: INodeProperties[];    // Fields specific to load mode
   retrieveFields?: INodeProperties[]; // Fields specific to retrieve mode
   updateFields?: INodeProperties[];  // Fields specific to update mode
+  deleteFields?: INodeProperties[];  // Fields specific to delete mode
+  parseDeleteFilter?: Function;      // Filter JSON to native filter, turns on delete by filter
+  deleteByOptions?: INodePropertyOptions[]; // Store-specific "Delete By" choices
+  deleteDocuments?: Function;        // Store-specific delete, or undefined to use the default
   
   // Core implementation functions
   populateVectorStore: Function;     // Store documents in vector store (accepts batches in v1.1+)
@@ -180,6 +209,7 @@ try {
 - As part of the `closeFunction` in `retrieveOperation` to release resources when they're no longer needed
 - After each tool use in `retrieveAsToolOperation`
 - After updating documents in `updateOperation` 
+- After deleting the documents of each item in `delete-operation`
 - After inserting documents in `insertOperation`
 
 This design ensures proper resource management, which is especially important for database-backed vector stores (like PGVector) that need to return connections to a pool. Without proper cleanup, prolonged usage could lead to resource leaks or connection pool exhaustion.
