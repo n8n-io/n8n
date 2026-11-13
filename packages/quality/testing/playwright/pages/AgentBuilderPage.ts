@@ -126,7 +126,10 @@ export class AgentBuilderPage extends BasePage {
 	}
 
 	async removeTestAttachment(): Promise<void> {
-		await this.getPreviewDock().getByTestId('attachment-remove').click();
+		const removeButton = this.getPreviewDock().getByTestId('attachment-remove');
+		/** The toolbar ignores pointer events until the attachment has hover or focus. */
+		await removeButton.focus();
+		await removeButton.click();
 	}
 
 	async isComposerScrollable(mode: 'build' | 'test'): Promise<boolean> {
