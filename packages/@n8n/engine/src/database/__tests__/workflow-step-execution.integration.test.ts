@@ -474,7 +474,8 @@ describe('workflow_step_execution table (integration)', () => {
 				.getRepository(WorkflowStepExecution)
 				.findOneOrFail({ where: { id } });
 			expect(found.status).toBe(stepStatus);
-			// a cancelled step has no deadline for the sweep to fire
+			// a cancelled step keeps no wait for a resume or the sweep to act on
+			expect(found.waitDeclaration !== null).toBe(recorded);
 			expect(found.waitTill !== null).toBe(recorded);
 		},
 	);

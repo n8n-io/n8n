@@ -873,7 +873,7 @@ describe('StepReadyHandler waits', () => {
 		expect(onStepSuspended).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports no suspension when another owner took the step over', async () => {
+	it('reports no suspension when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore();
 		vi.mocked(stepStore.suspendStep).mockResolvedValue(false);
 		const onStepSuspended = vi.fn();
@@ -1174,7 +1174,7 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('starts no sub-execution when another owner took the step over', async () => {
+	it('starts no sub-execution when the step was taken over or its execution ended', async () => {
 		const stepStore = makeStepStore({}, { suspendStep: vi.fn().mockResolvedValue(false) });
 		const subExecutionStarter = makeSubExecutionStarter();
 		const handler = makeHandler(
