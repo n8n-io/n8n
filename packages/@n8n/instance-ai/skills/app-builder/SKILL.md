@@ -63,6 +63,13 @@ Add components under `src/`. Keep files small and focused.
      Create data tables, workflows and agents only after that commit. See
      [Build order for a new app](#build-order-for-a-new-app).
      If the user cancels, do not create, open, or edit app files.
+   - Always include a `plan` in the blueprint. The user sees it as a wireframe
+     next to the chat. See [Plan the app](#plan-the-app).
+   - If `create` returns `revisionRequested`, the user asked for a change to the
+     plan in the chat. `feedback` holds the request and `planIds` the parts they
+     selected. Change only what they asked for and call `create` again with the
+     whole updated blueprint. Do not ask a question first unless the request is
+     unclear.
    - If the conversation lists a pending app, use `create`. n8n reuses the
      pending id after approval.
    - Existing app: use the `appId` from the conversation context. If the
@@ -106,6 +113,59 @@ version. Your folder is kept. Note your changes, call `discard` to load the
 newer draft, and apply your changes again. `discard` keeps `node_modules`. Run
 `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline` only if the
 newer draft changed the package files.
+
+## Plan the app
+
+The `plan` is the wireframe of the app. Keep it short and concrete:
+
+- `layout`: `topbar` or `sidebar`. Add a `nav` component when the app has
+  more than one screen or needs a title bar.
+- `screens`: each with its `components`, in reading order. A component has a
+  short lowercase `id` (for example `drafts-table`), a `kind` (`kpi`, `table`,
+  `list`, `chart`, `detail`, `form`, `filter`, `button`, `text`), a `label`,
+  a `region` (`main` or `aside`) and a `span` of a 12-column grid. Use `items`
+  for table columns, form fields or filter options.
+- `data`: for each component that shows data, the data table or workflow it
+  reads (`new` or `existing`), the `fields`, and an `aggregation` in plain
+  words, for example `count of drafts where status = pending`.
+- `action`: for each button or form that changes something, the workflow or
+  agent it runs and one line on what it `does`.
+- `buildOrder`: the build steps from the outside in. Start with `shell` (the
+  background, theme and page grid), then the nav, then the main component,
+  then smaller components, and actions last.
+
+Use the same resource names in the plan and in `bindings`.
+
+## Build an app from its plan
+
+When the approved blueprint has a `plan`, n8n already saved its wireframe as
+the first version. The user sees it in the preview. Each planned block in
+`src/App.vue` is a `<div class="wf-block" data-plan-id="…" v-pre>` element, and
+the app shell is the `<div class="wf-app" data-plan-id="shell">` element.
+`public/plan.json` holds the plan. The preview shows a progress bar that counts
+the blocks you replaced. This section replaces
+[Build order for a new app](#build-order-for-a-new-app).
+
+Follow `buildOrder`. Do one step per commit, and do not batch steps:
+
+1. **Shell.** Replace the `wf-app` class with your own app classes and
+   styles: background, colors and type of the theme, page grid. Keep
+   `data-plan-id="shell"` on that element. Leave every `wf-block` as it is.
+   The blocks keep their wireframe look until you replace them.
+2. **Each component, in `buildOrder`.** Replace exactly one `wf-block` element
+   with the real component, usually its own file under `src/components/`. Put
+   `data-plan-id="<id>"` on the root element of the real component, and do not
+   give it the `wf-block` class. If the component needs a data table, workflow
+   or agent that does not exist yet, create it now, bind it, and load or save
+   real data through the binding. If an earlier step already created it, reuse
+   it. When you create a resource, set its `resourceId` in `public/plan.json`.
+   Then build and commit, with the component label as the commit label.
+3. When the nav is built, it replaces the wireframe screen switching. Keep the
+   `data-plan-screen` sections or switch to Vue Router.
+
+Do not add sample or mock data. An empty table shows its empty state. Tell the
+user in one short line which part you build next. Keep `src/plan/` and
+`public/plan.json` until every block is built.
 
 ## Build order for a new app
 

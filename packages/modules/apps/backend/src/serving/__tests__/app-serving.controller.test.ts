@@ -167,6 +167,60 @@ describe('AppServingController', () => {
 		expect(res.send).toHaveBeenCalledWith(Buffer.from('js'));
 	});
 
+	describe('plan overlay', () => {
+		function withPlan(bundles: ReturnType<typeof setup>['bundles']) {
+			bundles.get.mockResolvedValue(
+				new Map([
+					['index.html', { body: Buffer.from('app'), contentType: 'text/html', etag: '"html"' }],
+					[
+						'plan.json',
+						{ body: Buffer.from('{}'), contentType: 'application/json', etag: '"plan"' },
+					],
+				]),
+			);
+		}
+
+		it('adds the plan overlay to preview HTML of an app with a plan', async () => {
+			const { controller, req, res, bundles } = setup('/');
+			withPlan(bundles);
+			req.appContext = {
+				app: mock({ projectId: 'project-1' }),
+				versionId: 'draft',
+				preview: true,
+				previewUserId: 'editor-1',
+			};
+
+			await controller.serve(req, res);
+
+			const sent = (res.send.mock.calls[0][0] as Buffer).toString();
+			expect(sent).toContain('"planUrl":"/plan.json"');
+			expect(sent).toContain('"projectId":"project-1"');
+		});
+
+		it('does not add the plan overlay or progress bar to the published app', async () => {
+			const { controller, req, res, bundles } = setup('/');
+			withPlan(bundles);
+
+			await controller.serve(req, res);
+
+			expect(res.send).toHaveBeenCalledWith(Buffer.from('app'));
+		});
+
+		it('does not add the plan overlay to preview HTML of an app without a plan', async () => {
+			const { controller, req, res } = setup('/');
+			req.appContext = {
+				app: mock(),
+				versionId: 'draft',
+				preview: true,
+				previewUserId: 'editor-1',
+			};
+
+			await controller.serve(req, res);
+
+			expect((res.send.mock.calls[0][0] as Buffer).toString()).not.toContain('planUrl');
+		});
+	});
+
 	it('keeps the published CSP without frame-ancestors', async () => {
 		const { controller, req, res } = setup('/assets/main.js', false);
 

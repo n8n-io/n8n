@@ -139,8 +139,21 @@ async function createApp(
 			visibility: blueprint.visibility,
 			id: pendingId,
 		}));
+	// The wireframe of the plan is the first version, so the preview shows it right away.
+	const wireframe =
+		!existing && blueprint.plan ? await apps.commitPlan(app.id, blueprint.plan) : undefined;
 	await reportChangedApp(context, app.id, async () => app);
-	return existing ? { app, alreadyCreated: true } : { app };
+	if (existing) return { app, alreadyCreated: true };
+	return wireframe
+		? {
+				app,
+				wireframe: {
+					versionId: wireframe.versionId,
+					buildStatus: wireframe.status,
+					note: 'The first version is the wireframe of the plan. `open` the app and replace one planned block at a time.',
+				},
+			}
+		: { app };
 }
 
 async function commit(
@@ -260,7 +273,8 @@ export function createAppsTool(context: InstanceAiContext) {
 		.description(
 			'Build n8n Apps: small static Vue apps that n8n builds and hosts. ' +
 				'Load `app-builder` via `load_skill` before calling this tool. ' +
-				'`create` shows an editable blueprint, including its planned bindings, and creates the app only after approval. ' +
+				'`create` shows an editable blueprint, including its planned bindings and a `plan` that the user sees as a wireframe, and creates the app only after approval. ' +
+				'If the result has `revisionRequested`, update the plan from `feedback` and call `create` again. ' +
 				'After an approved `create`, call `open` with the returned `app.id` before editing files. ' +
 				'Use the approved blueprint, including additional instructions, while building. ' +
 				'If the user cancels, do not create the app. ' +
@@ -297,6 +311,17 @@ export function createAppsTool(context: InstanceAiContext) {
 							inputType: 'app-blueprint',
 							appBlueprint: input.blueprint,
 						});
+					}
+					if (!resumeData.approved && resumeData.revise) {
+						return {
+							approved: false,
+							revisionRequested: true,
+							feedback: resumeData.revise.feedback,
+							...(resumeData.revise.planIds?.length ? { planIds: resumeData.revise.planIds } : {}),
+							blueprint: resumeData.blueprint,
+							nextStep:
+								'Change the plan as the user asked, keep everything else, and call `create` again with the updated blueprint. Answer in one short sentence.',
+						};
 					}
 					if (!resumeData.approved) {
 						return {

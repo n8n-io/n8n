@@ -1,3 +1,4 @@
+import { planOverlayScript } from '@n8n/api-types';
 import { classifyRestError, EventService, serializePublicApiError } from '@n8n/backend-services';
 import { createIpRateLimit, Get, Middleware, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -28,6 +29,20 @@ export class AppServingController {
 		private readonly preview: AppPreviewService,
 		private readonly events: EventService,
 	) {}
+
+	/** Preview only: hover info and build progress for an app built from a plan. */
+	private injectPlanOverlay(html: string, projectId: string | undefined): string {
+		if (!projectId) return html;
+		const config = {
+			planUrl: '/plan.json',
+			editorUrl: this.preview.editorOrigin,
+			projectId,
+			progress: true,
+		};
+		const tag = `<script>${planOverlayScript(config)}</script>`;
+		const bodyClose = html.lastIndexOf('</body>');
+		return bodyClose === -1 ? html + tag : html.slice(0, bodyClose) + tag + html.slice(bodyClose);
+	}
 
 	@Middleware()
 	async parseCookies(req: AppRequest, res: Response, next: NextFunction) {
@@ -76,7 +91,12 @@ export class AppServingController {
 			}
 			const inspected = context.preview && file.contentType.startsWith('text/html');
 			const body = inspected
-				? Buffer.from(injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin))
+				? Buffer.from(
+						this.injectPlanOverlay(
+							injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin),
+							bundle.has('plan.json') ? context.app.projectId : undefined,
+						),
+					)
 				: file.body;
 			res.set({
 				'Cache-Control': 'private, no-cache',

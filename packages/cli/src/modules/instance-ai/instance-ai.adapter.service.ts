@@ -3661,6 +3661,10 @@ export class InstanceAiAdapterService {
 				const { sources } = await services('app:read');
 				return await sources.exportDraft(projectId, appId);
 			},
+			commitPlan: async (appId, plan) => {
+				const { sources } = await services('app:update');
+				return await sources.commitPlan(projectId, appId, plan, actor);
+			},
 			commit: async (appId, baseVersionId, archive, label) => {
 				const { sources } = await services('app:update');
 				return await sources.commit(projectId, appId, baseVersionId, archive, label, actor);

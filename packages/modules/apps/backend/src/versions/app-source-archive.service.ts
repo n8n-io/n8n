@@ -1,4 +1,4 @@
-import type { AppBuildResponse } from '@n8n/api-types';
+import type { AppBuildResponse, AppPlan } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { AppArchive } from '../app-archive';
@@ -6,6 +6,7 @@ import type { AppActor } from '../app-events';
 import { AppsService } from '../apps.service';
 import { loadAppSdkFiles } from '../build/app-sdk-files';
 import { createAppScaffold } from '../scaffold/app-scaffold';
+import { createPlanScaffold } from '../scaffold/plan-scaffold';
 import { AppChangeService } from './app-change.service';
 import { AppVersionService } from './app-version.service';
 
@@ -34,6 +35,24 @@ export class AppSourceArchiveService {
 	/** The `@n8n/app-sdk` package that app builds install, as one archive. */
 	async exportSdk(): Promise<Buffer> {
 		return await this.archives.pack(await loadAppSdkFiles());
+	}
+
+	/** Saves the wireframe of `plan` as the first version of a new app and builds it. */
+	async commitPlan(
+		projectId: string,
+		appId: string,
+		plan: AppPlan,
+		actor?: AppActor,
+	): Promise<AppBuildResponse> {
+		return await this.changes.commit(
+			projectId,
+			appId,
+			null,
+			createPlanScaffold(plan),
+			'Wireframe',
+			undefined,
+			actor,
+		);
 	}
 
 	/** Saves the archive as a new version on top of `baseVersionId` and builds it. */
