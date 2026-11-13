@@ -1,0 +1,58 @@
+packages/cli/src/modules/agents/repositories/human-interaction-request.repository.ts
+  s_dfe3f914c8bb46::t_ead76011346b01 11-12,16-28,50
+  s_dfe3f914c8bb46::t_9f86ca023af96a 4-6,51-55,57-59,74-78,81-82
+packages/cli/src/modules/agents/human-interactions/__tests__/human-interaction.service.test.ts
+  s_dfe3f914c8bb46::t_bab48115eba5a9 1-67
+  s_dfe3f914c8bb46::t_2fef02ae57b7c1 68-187
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHumanInteractionPreview.test.ts
+  s_dfe3f914c8bb46::t_ce184da2a90f05 1-123
+  s_dfe3f914c8bb46::t_602fbdc7b121b4 124-172
+packages/cli/src/modules/agents/human-interactions/human-interaction.service.ts
+  s_dfe3f914c8bb46::t_ead76011346b01 211-214,299-300,399
+  s_dfe3f914c8bb46::t_c944e1ae1f9942 44,121-124,188,230,298,301-305,310,315,396-398,400-404
+packages/cli/test/integration/executions/human-interaction-request.repository.test.ts
+  s_dfe3f914c8bb46::t_db083e754fb012 1-71
+  s_dfe3f914c8bb46::t_4e07c150ce5feb 72-148
+packages/frontend/editor-ui/src/features/agents/utils/humanInteractionEditing.ts
+  s_dfe3f914c8bb46::t_8739c28457b119 1-38
+  s_dfe3f914c8bb46::t_34e7a47da5ce2e 39-53
+packages/frontend/editor-ui/src/features/agents/components/AgentHumanInteractionPreview.vue
+  s_dfe3f914c8bb46::t_9e2c86ec506c4e 1-143
+  s_dfe3f914c8bb46::t_2d7f4c3b5a328c 144-418
+packages/frontend/editor-ui/src/features/agents/components/AgentHumanInteractionText.vue
+  s_dfe3f914c8bb46::t_d32bef551d989a 3-11,14-17,19,25,50-51,53-60,72-75,85-88,103-112,114-130,135-142,144-155,160-196,198-215,220-229,231-249,255-317
+  s_dfe3f914c8bb46::t_8739c28457b119 1-2,12-13,18,20-24,26-49,52,61-71,76-84,89-102,113,131-134,143,156-159,197,216-219,230,250-254,318
+  s_dfe3f914c8bb46::t_cc99f67aaffe89 319-321
+HUMAN_INTERACTION_TOOLS_SPIKE.md
+  s_dfe3f914c8bb46::t_6b2051006a75e4 1-309
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_222381eabb2f42 1103-1113
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_b442ed8ff75748 989,1000,1006
+packages/cli/src/modules/agents/human-interactions/interaction-request.ts
+  s_dfe3f914c8bb46::t_59eb64e2d29ca5 5
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_f465a988d61522 2-26,42
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHumanInteractionToolModal.test.ts
+  s_dfe3f914c8bb46::t_688487390a8be1 11,196-200,202,209
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_23aa78601c3ca3 531-539
+packages/frontend/editor-ui/src/features/agents/components/AgentHumanInteractionToolEditor.vue
+  s_dfe3f914c8bb46::t_0df87f189d474c 20-24,43-44,46-49,96-106,155,157-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6447c906a29a856613497f4c749ee1b98c65e21",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

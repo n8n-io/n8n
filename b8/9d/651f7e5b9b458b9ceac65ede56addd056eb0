@@ -1,0 +1,57 @@
+packages/modules/apps/backend/src/auth/__tests__/app-protected-resource.test.ts
+  s_fab189ddb4bafa::t_e9bf903c07a46d 143-152
+packages/modules/apps/backend/src/auth/__tests__/app-auth.service.test.ts
+  s_fab189ddb4bafa::t_4089a4f641a704 68,71
+  s_fab189ddb4bafa::t_35d61f46d3f7b9 186
+  s_fab189ddb4bafa::t_d9041363563218 47-48,56
+  s_fab189ddb4bafa::t_c74dd358827b17 139,150,157,161-163,165-185,187-202,204-212,214-216,218-252
+  s_fab189ddb4bafa::t_1a0479abd54141 1
+  s_fab189ddb4bafa::t_931a3bf5e622a8 159
+  s_fab189ddb4bafa::t_27e1c2e495818e 158
+  s_fab189ddb4bafa::t_ce2c881fe3184a 203
+  s_fab189ddb4bafa::t_f864eb956ce88e 213,217
+  s_fab189ddb4bafa::t_d494f215fef038 151-156,160,164
+  s_fab189ddb4bafa::t_2153fd0b8c96ac 72
+  s_fab189ddb4bafa::t_7d47a2ed7354f4 253-254
+packages/modules/apps/backend/src/auth/app-protected-resource.ts
+  s_fab189ddb4bafa::t_c5a2ab00ff401f 26,29
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_fab189ddb4bafa::t_f257f05214cf9e 84,87-89
+  s_fab189ddb4bafa::t_86a2a6d859a83f 101
+packages/cli/src/modules/inbound-auth-core/authentication-pipeline.ts
+  s_fab189ddb4bafa::t_965da52f1f42f6 44
+packages/modules/apps/backend/src/auth/app-auth.service.ts
+  s_fab189ddb4bafa::t_1b2f818dcf39f2 210,212-214
+  s_fab189ddb4bafa::t_179d2429a4a99f 1
+  s_fab189ddb4bafa::t_38e72f28837225 38
+  s_fab189ddb4bafa::t_20875b1d1ac6a2 79-81
+  s_fab189ddb4bafa::t_727c32be59c594 67
+  s_fab189ddb4bafa::t_aa29e2875c44ea 32
+  s_fab189ddb4bafa::t_4a73dcfc45fe92 8
+  s_fab189ddb4bafa::t_945cd13ca13e2b 31
+  s_fab189ddb4bafa::t_ac34c1db668747 33-35,39,41-42,50
+  s_fab189ddb4bafa::t_6a3712aa4d0de3 40
+  s_fab189ddb4bafa::t_b58ef272da69ce 64-66,68,70-71,74,76,78,82
+  s_fab189ddb4bafa::t_ad2c29acdbe254 209,211,215-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b89d651f7e5b9b458b9ceac65ede56addd056eb0",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fab189ddb4bafa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce61cfcd-c88f-4ca6-b3a8-73891fad8b37",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_e6bc03f3b6a348::t_6a1963d87b128c 741-763
+  s_e6bc03f3b6a348::t_ac51054084ceb0 15,703
+  s_e6bc03f3b6a348::t_ed5f182bc2b75d 77-78
+  s_e6bc03f3b6a348::t_d01810f8104e6a 676-702,704-713
+  s_e6bc03f3b6a348::t_bdaec4461c1807 26-30
+  s_e6bc03f3b6a348::t_9c0b9704e4eba8 2-3
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_e6bc03f3b6a348::t_71c67de7d8d3cf 152-162
+  s_e6bc03f3b6a348::t_5dd480c8700796 27-28
+  s_e6bc03f3b6a348::t_427e2681e43342 18
+packages/@n8n/agents/src/index.ts
+  s_e6bc03f3b6a348::t_00f093da8c27f7 324
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_e6bc03f3b6a348::t_605f5926375e95 1103-1105
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-workflow-setup-route.ts
+  s_e6bc03f3b6a348::t_0db994d775c860 5-8
+  s_e6bc03f3b6a348::t_605f5926375e95 164-165
+  s_e6bc03f3b6a348::t_22e61859af007c 101-110
+  s_e6bc03f3b6a348::t_2c58aec362d8a7 1-4,9-100,111-163,166-185
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_e6bc03f3b6a348::t_12c60527b70f3e 280-291
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_e6bc03f3b6a348::t_f28f66c0d05607 1017-1049
+packages/cli/src/modules/agents/types/agent-host-instruction.ts
+  s_e6bc03f3b6a348::t_35901e33d362f0 1-16,19-36
+  s_e6bc03f3b6a348::t_b6ad211e9f1bcf 17-18
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-workflow-setup-route.test.ts
+  s_e6bc03f3b6a348::t_308064939e207f 63-67,74
+  s_e6bc03f3b6a348::t_5b933735d2a20d 1-33,35-62,68-73,75-171
+  s_e6bc03f3b6a348::t_80713a6493d596 34
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_e6bc03f3b6a348::t_3879a37cb88b2f 75
+  s_e6bc03f3b6a348::t_6671e8b5413c61 365-366
+  s_e6bc03f3b6a348::t_a3109d3e719d62 297
+  s_e6bc03f3b6a348::t_bfd3b54eb6c901 330-335,339-341
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_e6bc03f3b6a348::t_7e755b419a4f65 32
+  s_e6bc03f3b6a348::t_71530b12728e91 192-193
+  s_e6bc03f3b6a348::t_82ff15e8b6d6c5 359-386
+  s_e6bc03f3b6a348::t_b712795075c892 453-455
+packages/@n8n/agents/src/sdk/message.ts
+  s_e6bc03f3b6a348::t_0cca92e9171425 119-128
+  s_e6bc03f3b6a348::t_5d363d70131be9 67-76
+  s_e6bc03f3b6a348::t_abfacfdbe8b2ec 36-38
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_e6bc03f3b6a348::t_9790765538c318 2,4,590-742
+packages/@n8n/agents/src/sdk/__tests__/message.test.ts
+  s_e6bc03f3b6a348::t_58d346ef0f2106 2
+  s_e6bc03f3b6a348::t_d58d7c5b854c26 52-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9d39c843a9242f9a86017627788c08bb648f9cb",
+  "prompts": {},
+  "sessions": {
+    "s_e6bc03f3b6a348": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d68426f4-86c4-43b0-9258-139f622d1b32",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
