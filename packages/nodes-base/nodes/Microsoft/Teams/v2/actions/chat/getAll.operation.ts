@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -45,7 +46,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		this,
 		'value',
 		'GET',
-		'/v1.0/chats',
+		requestPath`/v1.0/chats`,
 		{},
 		{ $top },
 		limit,

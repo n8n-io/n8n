@@ -11,14 +11,14 @@ describe('Test MicrosoftOneDrive, Service Principal file:move', () => {
 		// 1) resolution GET returns the default (scope) drive id
 		nock('https://graph.microsoft.com/v1.0')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/users/jane%40contoso.com/drive')
+			.get('/users/jane@contoso.com/drive')
 			.query({ $select: 'id' })
 			.reply(200, { id: 'b!resolveddrive' });
 
 		// 2) the PATCH must carry the resolved driveId injected into parentReference
 		nock('https://graph.microsoft.com/v1.0')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.patch('/users/jane%40contoso.com/drive/items/FILE123', {
+			.patch('/users/jane@contoso.com/drive/items/FILE123', {
 				parentReference: { id: 'DESTFOLDER', driveId: 'b!resolveddrive' },
 			})
 			.reply(200, {

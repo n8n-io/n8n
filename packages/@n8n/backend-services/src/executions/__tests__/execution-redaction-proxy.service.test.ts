@@ -36,6 +36,19 @@ describe('ExecutionRedactionServiceProxy', () => {
 			expect(result).toBe(execution);
 		});
 
+		it('accepts an execution that has no run data yet', async () => {
+			const execution = {
+				mode: 'manual',
+				workflowId: 'workflow-1',
+				data: undefined,
+				workflowData: { nodes: [] },
+			} as unknown as RedactableExecution;
+
+			const result = await proxy.processExecution(execution, createOptions());
+
+			expect(result).toBe(execution);
+		});
+
 		it('should delegate to real service when set via setExecutionRedaction', async () => {
 			const execution = createMockExecution();
 			const processedExecution = createMockExecution();
@@ -64,6 +77,51 @@ describe('ExecutionRedactionServiceProxy', () => {
 			await proxy.processExecution(execution, options);
 
 			expect(realService.processExecution).toHaveBeenCalledWith(execution, options);
+		});
+	});
+
+	describe.each([
+		{ setup: 'without a redaction service', install: () => {} },
+		{
+			setup: 'with a redaction service',
+			install: (target: ExecutionRedactionServiceProxy) => {
+				const realService = mock<ExecutionRedaction>();
+				realService.processExecution.mockImplementation(async (execution) => execution);
+				target.setExecutionRedaction(realService);
+			},
+		},
+	])('$setup', ({ install }) => {
+		const RUN_DATA_WITHOUT_PUSH_SESSION = { resultData: { runData: {} } };
+
+		const createExecutionWithPushSession = (): RedactableExecution => ({
+			mode: 'manual',
+			workflowId: 'workflow-1',
+			data: {
+				pushRef: 'push-ref-a',
+				pushRefUserId: 'user-a',
+				resultData: { runData: {} },
+			},
+			workflowData: { nodes: [] },
+		});
+
+		beforeEach(() => install(proxy));
+
+		it('processExecution hides the push session fields', async () => {
+			const execution = createExecutionWithPushSession();
+
+			await proxy.processExecution(execution, createOptions());
+
+			expect(execution.data).toStrictEqual(RUN_DATA_WITHOUT_PUSH_SESSION);
+		});
+
+		it('processExecutions hides the push session fields on every execution', async () => {
+			const executions = [createExecutionWithPushSession(), createExecutionWithPushSession()];
+
+			await proxy.processExecutions(executions, createOptions());
+
+			for (const execution of executions) {
+				expect(execution.data).toStrictEqual(RUN_DATA_WITHOUT_PUSH_SESSION);
+			}
 		});
 	});
 });

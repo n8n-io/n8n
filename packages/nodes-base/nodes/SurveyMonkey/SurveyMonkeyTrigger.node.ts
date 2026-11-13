@@ -9,8 +9,15 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	RequestPath,
 } from 'n8n-workflow';
-import { deepCopy, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	deepCopy,
+	jsonParse,
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
 import type { IAnswer, IChoice, IOther, IQuestion, IRow } from './Interfaces';
@@ -322,7 +329,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					this,
 					'data',
 					'GET',
-					`/surveys/${surveyId}/collectors`,
+					requestPath`/surveys/${surveyId}/collectors`,
 				);
 				for (const collector of collectors) {
 					const collectorName = collector.name;
@@ -339,7 +346,12 @@ export class SurveyMonkeyTrigger implements INodeType {
 			// select them easily
 			async getSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const surveys = await surveyMonkeyRequestAllItems.call(this, 'data', 'GET', '/surveys');
+				const surveys = await surveyMonkeyRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					requestPath`/surveys`,
+				);
 				for (const survey of surveys) {
 					const surveyName = survey.title;
 					const surveyId = survey.id;
@@ -360,7 +372,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const responseData = await surveyMonkeyRequestAllItems.call(
 					this,
@@ -386,7 +398,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					const webhookDetails = await surveyMonkeyApiRequest.call(
 						this,
 						'GET',
-						`/webhooks/${webhook.id}`,
+						requestPath`/webhooks/${webhook.id}`,
 					);
 					if (
 						webhookDetails.subscription_url === webhookUrl &&
@@ -407,7 +419,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
 				const objectType = this.getNodeParameter('objectType') as string;
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				const ids: string[] = [];
 
 				if (objectType === 'survey' && event !== 'survey_created') {
@@ -448,7 +460,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 
 					try {
 						await surveyMonkeyApiRequest.call(this, 'DELETE', endpoint);
@@ -510,7 +522,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				}
 
 				let responseData = jsonParse<any>(data.join(''));
-				let endpoint = '';
+				let endpoint: RequestPath;
 
 				let returnItem: INodeExecutionData[] = [
 					{
@@ -522,9 +534,9 @@ export class SurveyMonkeyTrigger implements INodeType {
 					const resolveData = this.getNodeParameter('resolveData') as boolean;
 					if (resolveData) {
 						if (objectType === 'survey') {
-							endpoint = `/surveys/${responseData.resources.survey_id}/responses/${responseData.object_id}/details`;
+							endpoint = requestPath`/surveys/${responseData.resources.survey_id}/responses/${responseData.object_id}/details`;
 						} else {
-							endpoint = `/collectors/${responseData.resources.collector_id}/responses/${responseData.object_id}/details`;
+							endpoint = requestPath`/collectors/${responseData.resources.collector_id}/responses/${responseData.object_id}/details`;
 						}
 						responseData = await surveyMonkeyApiRequest.call(this, 'GET', endpoint);
 						const surveyId = responseData.survey_id;
@@ -535,7 +547,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						const { pages } = await surveyMonkeyApiRequest.call(
 							this,
 							'GET',
-							`/surveys/${surveyId}/details`,
+							requestPath`/surveys/${surveyId}/details`,
 						);
 
 						for (const page of pages) {

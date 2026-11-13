@@ -1,6 +1,11 @@
 import { Container } from '@n8n/di';
 import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
-import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	type INode,
+	requestPath,
+	SEND_AND_WAIT_OPERATION,
+	type IExecuteFunctions,
+} from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -76,7 +81,7 @@ describe('Test SlackV2, message => sendAndWait', () => {
 		expect(slackApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(slackApiRequestSpy).toHaveBeenCalledWith('POST', '/chat.postMessage', {
+		expect(slackApiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/chat.postMessage`, {
 			channel: 'C123456789',
 			blocks: [
 				{ type: 'divider' },

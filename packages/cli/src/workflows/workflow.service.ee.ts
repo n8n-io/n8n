@@ -51,8 +51,9 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { NodeTypes } from '@/node-types';
@@ -911,7 +912,9 @@ export class EnterpriseWorkflowService {
 			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
 		);
 
-		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: false,
+		});
 		assertNoneOwnedBy([workflow], destinationProject);
 
 		const { transfer, publish } = await this.evaluateTransferInto(workflow, destinationProject.id);
@@ -939,7 +942,9 @@ export class EnterpriseWorkflowService {
 			throw new FolderNotFoundError(sourceFolderId);
 		}
 
-		const destinationProject = await this.getTransferDestination(user, destinationProjectId);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: true,
+		});
 
 		const preview: FolderTransferPreview = {
 			restricted: [],
@@ -960,6 +965,7 @@ export class EnterpriseWorkflowService {
 			{ withNodes: checksAnything },
 		);
 
+		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);
 		if (!checksAnything) return preview;
 
@@ -1009,15 +1015,35 @@ export class EnterpriseWorkflowService {
 		return { transfer, publish };
 	}
 
-	private async getTransferDestination(user: User, destinationProjectId: string) {
+	/** Moving a folder moves its workflows, so the user needs `workflow:move` on each of them. */
+	private async assertCanMoveAll(user: User, workflows: WorkflowEntity[]) {
+		const movableWorkflowIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			workflows.map((workflow) => workflow.id),
+			user,
+			['workflow:move'],
+		);
+
+		if (workflows.some((workflow) => !movableWorkflowIds.has(workflow.id))) {
+			throw new ForbiddenError('You do not have permission to move every workflow in this folder.');
+		}
+	}
+
+	/** A folder move also creates folders in the destination, so it needs `folder:create` there too. */
+	private async getTransferDestination(
+		user: User,
+		destinationProjectId: string,
+		{ withFolders }: { withFolders: boolean },
+	) {
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
 			destinationProjectId,
-			['workflow:create'],
+			withFolders ? ['workflow:create', 'folder:create'] : ['workflow:create'],
 		);
 		NotFoundError.isDefinedAndNotNull(
 			destinationProject,
-			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+			withFolders
+				? `Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows and folders in it.`
+				: `Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
 		);
 
 		return destinationProject;
@@ -1074,15 +1100,9 @@ export class EnterpriseWorkflowService {
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
-		const destinationProject = await this.projectService.getProjectWithScope(
-			user,
-			destinationProjectId,
-			['workflow:create'],
-		);
-		NotFoundError.isDefinedAndNotNull(
-			destinationProject,
-			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
-		);
+		const destinationProject = await this.getTransferDestination(user, destinationProjectId, {
+			withFolders: true,
+		});
 
 		// 4. checks
 
@@ -1095,6 +1115,7 @@ export class EnterpriseWorkflowService {
 
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
 
+		await this.assertCanMoveAll(user, workflows);
 		assertNoneOwnedBy(workflows, destinationProject);
 
 		// 5. deactivate all workflows if necessary
@@ -1149,14 +1170,20 @@ export class EnterpriseWorkflowService {
 			// Reactivation may have failed partway with triggers already registered,
 			// in memory and as durable schedule jobs. Tear them down before the
 			// rollback below so the active version is still resolvable, or they
-			// keep firing a workflow marked inactive.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+			// keep firing a workflow marked inactive. A credential refusal registers
+			// nothing, and the teardown would call the trigger nodes with the refused credentials.
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
+				} catch (cleanupError) {
+					this.logger.error(
+						`Failed to roll back partial reactivation of workflow "${workflowId}"`,
+						{
+							workflowId,
+							error: cleanupError,
+						},
+					);
+				}
 			}
 
 			try {

@@ -6,8 +6,14 @@ import { VectorStore } from '@langchain/core/vectorstores';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { isRecord } from '@n8n/utils/is-record';
-import type { IExecuteFunctions, IHttpRequestOptions, ISupplyDataFunctions } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHttpRequestOptions,
+	ISupplyDataFunctions,
+	RequestUrl,
+	WithRequestTarget,
+} from 'n8n-workflow';
+import { OperationalError, UserError, requestUrl } from 'n8n-workflow';
 
 // @langchain/pinecone needs SDK 5 (API 2025-01), and the first SDK with the documents API (v9)
 // can't be installed next to it (pnpm deploy rejects two versions of one peer). So the
@@ -28,7 +34,7 @@ export interface PineconeIndexModel {
 }
 
 /** Sends a request with the credential's Api-Key header and the n8n egress rules */
-type PineconeRequest = (options: IHttpRequestOptions) => Promise<unknown>;
+type PineconeRequest = (options: WithRequestTarget<IHttpRequestOptions>) => Promise<unknown>;
 
 export interface PineconeConnection {
 	context: IExecuteFunctions | ISupplyDataFunctions;
@@ -49,12 +55,17 @@ export interface PineconeVectorStoreArgs {
 
 const toRequest =
 	({ context, credentialType }: PineconeConnection): PineconeRequest =>
-	async (options) =>
-		await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
-			...options,
+	async (options: WithRequestTarget<IHttpRequestOptions>) => {
+		const requestOptions: WithRequestTarget<IHttpRequestOptions> = Object.assign({}, options, {
 			headers: { ...options.headers, 'X-Pinecone-API-Version': API_VERSION },
 			json: true,
 		});
+		return await context.helpers.httpRequestWithAuthentication.call(
+			context,
+			credentialType,
+			requestOptions,
+		);
+	};
 
 // The data plane request carries the API key, so only HTTPS hosts of Pinecone get it
 function parseDataPlaneHost(host: string): string | undefined {
@@ -101,7 +112,7 @@ async function describeIndex(connection: PineconeConnection, indexName: string) 
 	for (const [k, entry] of describeCache) if (entry.expires <= now) describeCache.delete(k);
 	const model = toRequest(connection)({
 		method: 'GET',
-		url: `${CONTROL_PLANE}/indexes/${encodeURIComponent(indexName)}`,
+		url: requestUrl`${CONTROL_PLANE}/indexes/${indexName}`,
 	}).then(parseIndexModel);
 	describeCache.set(key, { expires: now + DESCRIBE_TTL_MS, model });
 	try {
@@ -192,7 +203,7 @@ export class PineconeDocumentStore extends VectorStore {
 
 	private readonly vectorFields: Set<string>;
 
-	private readonly searchUrl: string;
+	private readonly searchUrl: RequestUrl;
 
 	constructor(
 		embeddings: EmbeddingsInterface,
@@ -210,8 +221,7 @@ export class PineconeDocumentStore extends VectorStore {
 				.map(([name]) => name),
 		);
 		// The 2026-07 API names the default namespace `__default__`, as SDK 9 does
-		const ns = encodeURIComponent(namespace || '__default__');
-		this.searchUrl = `${model.host}/namespaces/${ns}/documents/search`;
+		this.searchUrl = requestUrl`${model.host}/namespaces/${namespace || '__default__'}/documents/search`;
 	}
 
 	_vectorstoreType(): string {

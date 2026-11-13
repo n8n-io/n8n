@@ -1,0 +1,44 @@
+{
+	"name": "OpenThesaurus requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b6f2c1e-3d4a-4b5c-8d9e-1f2a3b4c5d01",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "getSynonyms",
+				"text": "Haus",
+				"options": {}
+			},
+			"id": "0b6f2c1e-3d4a-4b5c-8d9e-1f2a3b4c5d02",
+			"name": "Get Synonyms",
+			"type": "n8n-nodes-base.openThesaurus",
+			"typeVersion": 1,
+			"position": [220, 0]
+		}
+	],
+	"pinData": {
+		"Get Synonyms": [
+			{
+				"json": {
+					"id": 2433,
+					"terms": [{ "term": "Haus" }, { "term": "Gebäude" }]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Get Synonyms", "type": "main", "index": 0 }]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

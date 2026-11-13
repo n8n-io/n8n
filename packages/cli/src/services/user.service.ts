@@ -15,7 +15,6 @@ import {
 	SharedWorkflowRepository,
 	Not,
 	In,
-	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
@@ -732,18 +731,12 @@ export class UserService {
 			throw new NotFoundError(CHANGE_ROLE_ERROR_MESSAGES.NO_USER);
 		}
 
-		if (
-			actor.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER);
-		}
-
-		if (
-			actor.role.slug === GLOBAL_OWNER_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_OWNER_ON_OWNER);
+		if (targetUser.role.slug === GLOBAL_OWNER_ROLE.slug) {
+			throw new ForbiddenError(
+				actor.role.slug === GLOBAL_OWNER_ROLE.slug
+					? CHANGE_ROLE_ERROR_MESSAGES.NO_OWNER_ON_OWNER
+					: CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER,
+			);
 		}
 
 		await this.changeUserRole(targetUser, payload);

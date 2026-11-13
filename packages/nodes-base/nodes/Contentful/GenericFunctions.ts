@@ -5,28 +5,28 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function contentfulApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	_option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('contentfulApi');
 	const source = this.getNodeParameter('source', 0) as string;
 	const isPreview = source === 'previewApi';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
 		body,
-		uri: uri || `https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
+		uri: requestUrl`https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
 		json: true,
 	};
 
@@ -47,7 +47,7 @@ export async function contentfulApiRequestAllItems(
 	this: ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

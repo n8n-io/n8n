@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { InvoiceNinja } from '../InvoiceNinja.node';
@@ -25,7 +26,10 @@ describe('InvoiceNinja Node', () => {
 		]);
 		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'invoiceNinjaApi',
-			expect.objectContaining({ method: 'GET', uri: 'https://invoicing.co/api/v1/statics' }),
+			expect.objectContaining({
+				method: 'GET',
+				uri: requestUrl`https://invoicing.co/api/v1/statics`,
+			}),
 		);
 	});
 

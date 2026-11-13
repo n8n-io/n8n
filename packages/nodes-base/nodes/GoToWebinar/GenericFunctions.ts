@@ -9,8 +9,10 @@ import type {
 	INodePropertyOptions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 function convertLosslessNumber(_: any, value: any) {
 	if (value?.isLosslessNumber) {
@@ -26,21 +28,20 @@ function convertLosslessNumber(_: any, value: any) {
 export async function goToWebinarApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject | IDataObject[],
-	option: IDataObject = {},
 ) {
 	const operation = this.getNodeParameter('operation', 0);
 	const resource = this.getNodeParameter('resource', 0);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
-		uri: `https://api.getgo.com/G2W/rest/v2/${endpoint}`,
+		uri: requestUrl`https://api.getgo.com/G2W/rest/v2/${endpoint}`,
 		qs,
 		body: JSON.stringify(body),
 		json: false,
@@ -56,10 +57,6 @@ export async function goToWebinarApiRequest(
 
 	if (!Object.keys(qs).length) {
 		delete options.qs;
-	}
-
-	if (Object.keys(option)) {
-		Object.assign(options, option);
 	}
 
 	try {
@@ -84,7 +81,7 @@ export async function goToWebinarApiRequest(
 export async function goToWebinarApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	query: IDataObject,
 	body: IDataObject,
 	resource: string,
@@ -125,7 +122,7 @@ export async function goToWebinarApiRequestAllItems(
 
 export async function handleGetAll(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
@@ -144,7 +141,7 @@ export async function loadWebinars(this: ILoadOptionsFunctions) {
 		oauthTokenData: { account_key: string };
 	}>('goToWebinarOAuth2Api');
 
-	const endpoint = `accounts/${oauthTokenData.account_key}/webinars`;
+	const endpoint = requestPath`accounts/${oauthTokenData.account_key}/webinars`;
 
 	const qs = {
 		fromTime: moment().subtract(1, 'years').format(),
@@ -179,7 +176,7 @@ export async function loadWebinarSessions(this: ILoadOptionsFunctions) {
 
 	const webinarKey = this.getCurrentNodeParameter('webinarKey') as string;
 
-	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/sessions`;
+	const endpoint = requestPath`organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/sessions`;
 
 	const resourceItems = await goToWebinarApiRequestAllItems.call(
 		this,
@@ -211,7 +208,7 @@ export async function loadRegistranSimpleQuestions(this: ILoadOptionsFunctions) 
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 
-	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
+	const endpoint = requestPath`organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
 
 	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 
@@ -238,7 +235,7 @@ export async function loadAnswers(this: ILoadOptionsFunctions) {
 
 	const questionKey = this.getCurrentNodeParameter('questionKey') as string;
 
-	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/registrants/fields`;
+	const endpoint = requestPath`organizers/${oauthTokenData.organizer_key}/webinars/${webinarKey}/registrants/fields`;
 
 	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 
@@ -265,7 +262,7 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 
 	const webinarkey = this.getNodeParameter('webinarKey') as string;
 
-	const endpoint = `organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
+	const endpoint = requestPath`organizers/${oauthTokenData.organizer_key}/webinars/${webinarkey}/registrants/fields`;
 
 	const { questions } = await goToWebinarApiRequest.call(this, 'GET', endpoint, {}, {});
 

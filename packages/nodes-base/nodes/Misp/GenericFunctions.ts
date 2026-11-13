@@ -5,8 +5,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, jsonParse, requestPath, requestUrl } from 'n8n-workflow';
 import { URL } from 'url';
 
 import type { MispCredentials } from './types';
@@ -14,17 +16,17 @@ import type { MispCredentials } from './types';
 export async function mispApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
 	const { baseUrl, allowUnauthorizedCerts } = await this.getCredentials<MispCredentials>('mispApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
 	};
@@ -65,7 +67,7 @@ export async function mispApiRequest(
 	}
 }
 
-export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: string) {
+export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: RequestPath) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -108,7 +110,7 @@ export async function mispApiRestSearch(
 		}
 	}
 
-	const endpoint = `/${resource}/restSearch`;
+	const endpoint = requestPath`/${resource}/restSearch`;
 	const { response } = await mispApiRequest.call(this, 'POST', endpoint, body);
 
 	if (response) {

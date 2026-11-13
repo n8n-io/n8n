@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 import type {
@@ -257,7 +257,7 @@ export class GooglePerspective implements INodeType {
 					responseData = await googleApiRequest.call(
 						this,
 						'POST',
-						'/v1alpha1/comments:analyze',
+						requestPath`/v1alpha1/comments:analyze`,
 						body,
 					);
 				}

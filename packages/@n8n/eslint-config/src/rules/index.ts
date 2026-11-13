@@ -27,6 +27,9 @@ import { NoRepositoryInPublicApiHandlerRule } from './no-repository-in-public-ap
 import { NoUnsealedWorkflowEntityWriteRule } from './no-unsealed-workflow-entity-write.js';
 import { NoUnsealedCredentialsEntityWriteRule } from './no-unsealed-credentials-entity-write.js';
 import { RequireEscapedQueryValuesRule } from './require-escaped-query-values.js';
+import { RequireEncodedPathSegmentsRule } from './require-encoded-path-segments.js';
+import { RequireDisableReasonRule } from './require-disable-reason.js';
+import { RequireRequestTargetRule } from './require-request-target.js';
 import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoRawEnumRule } from './no-raw-enum.js';
@@ -61,6 +64,9 @@ export const rules = {
 	'no-unsealed-workflow-entity-write': NoUnsealedWorkflowEntityWriteRule,
 	'no-unsealed-credentials-entity-write': NoUnsealedCredentialsEntityWriteRule,
 	'require-escaped-query-values': RequireEscapedQueryValuesRule,
+	'require-encoded-path-segments': RequireEncodedPathSegmentsRule,
+	'require-disable-reason': RequireDisableReasonRule,
+	'require-request-target': RequireRequestTargetRule,
 	'no-on-leader-takeover': NoOnLeaderTakeoverRule,
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 	'no-raw-enum': NoRawEnumRule,

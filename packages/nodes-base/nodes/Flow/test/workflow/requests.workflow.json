@@ -1,0 +1,204 @@
+{
+	"name": "Flow Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"workspaceId": "42",
+				"name": "Write report",
+				"additionalFields": {}
+			},
+			"id": "flow-0",
+			"name": "Task Create",
+			"type": "n8n-nodes-base.flow",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"flowApi": {
+					"id": "1",
+					"name": "Flow account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"workspaceId": "42",
+				"taskId": "123",
+				"updateFields": {}
+			},
+			"id": "flow-1",
+			"name": "Task Update",
+			"type": "n8n-nodes-base.flow",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"flowApi": {
+					"id": "1",
+					"name": "Flow account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"taskId": "123",
+				"filters": {}
+			},
+			"id": "flow-2",
+			"name": "Task Get",
+			"type": "n8n-nodes-base.flow",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"flowApi": {
+					"id": "1",
+					"name": "Flow account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "flow-3",
+			"name": "Task Get Many",
+			"type": "n8n-nodes-base.flow",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"flowApi": {
+					"id": "1",
+					"name": "Flow account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "flow-4",
+			"name": "Task Get All",
+			"type": "n8n-nodes-base.flow",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"flowApi": {
+					"id": "1",
+					"name": "Flow account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Task Create": [
+			{
+				"json": {
+					"id": 123,
+					"name": "Write report",
+					"workspace_id": 42
+				}
+			}
+		],
+		"Task Update": [
+			{
+				"json": {
+					"id": 123,
+					"name": "Write report",
+					"workspace_id": 42
+				}
+			}
+		],
+		"Task Get": [
+			{
+				"json": {
+					"task": {
+						"id": 123,
+						"name": "Write report",
+						"workspace_id": 42
+					}
+				}
+			}
+		],
+		"Task Get Many": [
+			{
+				"json": {
+					"id": 123,
+					"name": "Write report",
+					"workspace_id": 42
+				}
+			}
+		],
+		"Task Get All": [
+			{
+				"json": {
+					"id": 123,
+					"name": "Write report",
+					"workspace_id": 42
+				}
+			},
+			{
+				"json": {
+					"id": 124,
+					"name": "Review report",
+					"workspace_id": 42
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Task Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -29,6 +29,10 @@ describe('GoogleGemini Node', () => {
 		uploadFileMock = vi.spyOn(utils, 'uploadFile');
 		transferFileMock = vi.spyOn(utils, 'transferFile');
 		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			apiKey: 'test-api-key',
+			host: 'https://generativelanguage.googleapis.com',
+		});
 	});
 
 	describe('Text -> Message', () => {
@@ -87,7 +91,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				expect.objectContaining({
 					body: {
 						contents: [
@@ -118,7 +122,6 @@ describe('GoogleGemini Node', () => {
 				}),
 			);
 		});
-
 		it('should include thinking options when the thinking budget is specified', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
 				switch (parameter) {
@@ -167,7 +170,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -227,7 +230,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -283,7 +286,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -333,7 +336,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -386,7 +389,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -444,7 +447,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -496,7 +499,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -551,7 +554,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -604,7 +607,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -656,7 +659,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -715,7 +718,7 @@ describe('GoogleGemini Node', () => {
 
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.not.objectContaining({
 							toolConfig: expect.anything(),
@@ -724,7 +727,7 @@ describe('GoogleGemini Node', () => {
 				);
 				expect(apiRequestMock).toHaveBeenCalledWith(
 					'POST',
-					'/v1beta/models/gemini-2.5-flash:generateContent',
+					requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 					expect.objectContaining({
 						body: expect.objectContaining({
 							tools: expect.arrayContaining([
@@ -1220,7 +1223,7 @@ describe('GoogleGemini Node', () => {
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1308,7 +1311,7 @@ describe('GoogleGemini Node', () => {
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1389,12 +1392,14 @@ describe('GoogleGemini Node', () => {
 
 			expect(downloadFileMock).not.toHaveBeenCalled();
 			expect(uploadFileMock).not.toHaveBeenCalled();
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '', {
-				option: { url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
-			});
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'GET',
+				{ url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
+				{ allowedDomains: 'generativelanguage.googleapis.com' },
+			);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1479,7 +1484,7 @@ describe('GoogleGemini Node', () => {
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1559,7 +1564,7 @@ describe('GoogleGemini Node', () => {
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'audio/mpeg');
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1638,12 +1643,14 @@ describe('GoogleGemini Node', () => {
 
 			expect(downloadFileMock).not.toHaveBeenCalled();
 			expect(uploadFileMock).not.toHaveBeenCalled();
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '', {
-				option: { url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
-			});
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'GET',
+				{ url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
+				{ allowedDomains: 'generativelanguage.googleapis.com' },
+			);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
+				requestPath`/v1beta/models/gemini-2.5-flash:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1792,7 +1799,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent',
+				requestPath`/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent`,
 				{
 					body: {
 						contents: [
@@ -1926,7 +1933,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/imagen-3.0-generate-002:predict',
+				requestPath`/v1beta/models/imagen-3.0-generate-002:predict`,
 				{
 					body: {
 						instances: [
@@ -2003,8 +2010,8 @@ describe('GoogleGemini Node', () => {
 				host: 'https://generativelanguage.googleapis.com',
 			});
 			let pollCount = 0;
-			apiRequestMock.mockImplementation(async (_method: string, path: string) => {
-				if (path.includes(':predictLongRunning')) {
+			apiRequestMock.mockImplementation(async (_method: string, path: unknown) => {
+				if (String(path).includes(':predictLongRunning')) {
 					return {
 						name: 'operations/123',
 						done: false,
@@ -2066,7 +2073,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/veo-3.0-generate-002:predictLongRunning',
+				requestPath`/v1beta/models/veo-3.0-generate-002:predictLongRunning`,
 				{
 					body: {
 						instances: [
@@ -2083,7 +2090,7 @@ describe('GoogleGemini Node', () => {
 					},
 				},
 			);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/operations/123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/operations/123`);
 			expect(pollCount).toBe(2);
 			expect(downloadFileMock).toHaveBeenCalledWith(
 				'https://generativelanguage.googleapis.com/v1beta/files/video:download',
@@ -2209,7 +2216,7 @@ describe('GoogleGemini Node', () => {
 			]);
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
-				'/v1beta/models/veo-3.0-generate-002:predictLongRunning',
+				requestPath`/v1beta/models/veo-3.0-generate-002:predictLongRunning`,
 				{
 					body: {
 						instances: [
@@ -2369,6 +2376,89 @@ describe('GoogleGemini Node', () => {
 				'generativelanguage.googleapis.com',
 			);
 			expect(executeFunctionsMock.helpers.prepareBinaryData).not.toHaveBeenCalled();
+		});
+	});
+
+	describe.each([
+		['Audio -> Analyze', async () => await audio.analyze.execute.call(executeFunctionsMock, 0)],
+		[
+			'Audio -> Transcribe',
+			async () => await audio.transcribe.execute.call(executeFunctionsMock, 0),
+		],
+	])('%s file URL host check', (_, execute) => {
+		const mockParameters = (audioUrls: string) => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'inputType':
+						return 'url';
+					case 'audioUrls':
+						return audioUrls;
+					case 'text':
+						return 'Describe this audio';
+					case 'simplify':
+						return true;
+					case 'options':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+		};
+
+		beforeEach(() => {
+			downloadFileMock.mockResolvedValue({ fileContent: Buffer.from('a'), mimeType: 'audio/mpeg' });
+			uploadFileMock.mockResolvedValue({ fileUri: 'uploaded', mimeType: 'audio/mpeg' });
+			apiRequestMock.mockResolvedValue({ candidates: [] });
+		});
+
+		it.each([
+			'https://generativelanguage.googleapis.com@example.com/audio.mp3',
+			'https://generativelanguage.googleapis.com.example.com/audio.mp3',
+			'http://generativelanguage.googleapis.com/v1/files/abc123',
+		])('should download %s as an external file', async (url) => {
+			mockParameters(url);
+
+			await execute();
+
+			expect(apiRequestMock).not.toHaveBeenCalledWith('GET', expect.anything(), expect.anything());
+			expect(downloadFileMock).toHaveBeenCalledWith(url, 'audio/mpeg');
+		});
+
+		it('should restrict the file metadata request to the credential host', async () => {
+			mockParameters('https://generativelanguage.googleapis.com/v1/files/abc123');
+
+			await execute();
+
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'GET',
+				{ url: 'https://generativelanguage.googleapis.com/v1/files/abc123' },
+				{ allowedDomains: 'generativelanguage.googleapis.com' },
+			);
+			expect(downloadFileMock).not.toHaveBeenCalled();
+		});
+
+		it('should use the custom credential host for file metadata requests', async () => {
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				host: 'https://gemini-proxy.example.com',
+			});
+			mockParameters(
+				'https://gemini-proxy.example.com/v1beta/files/abc123, https://generativelanguage.googleapis.com/v1/files/abc123',
+			);
+
+			await execute();
+
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'GET',
+				{ url: 'https://gemini-proxy.example.com/v1beta/files/abc123' },
+				{ allowedDomains: 'gemini-proxy.example.com' },
+			);
+			expect(downloadFileMock).toHaveBeenCalledWith(
+				'https://generativelanguage.googleapis.com/v1/files/abc123',
+				'audio/mpeg',
+			);
 		});
 	});
 });

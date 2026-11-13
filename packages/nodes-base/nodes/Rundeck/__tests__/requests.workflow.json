@@ -1,0 +1,95 @@
+{
+	"name": "Rundeck request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"jobid": "3f0e0c6a-4f6e-4c5e-9a3b-2b1c0d9e8f7a",
+				"arguments": {
+					"arguments": [
+						{
+							"name": "env",
+							"value": "prod"
+						}
+					]
+				},
+				"filter": "name: web"
+			},
+			"type": "n8n-nodes-base.rundeck",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Execute Job",
+			"credentials": {
+				"rundeckApi": {
+					"id": "cred1",
+					"name": "Rundeck account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getMetadata",
+				"jobid": "3f0e0c6a-4f6e-4c5e-9a3b-2b1c0d9e8f7a"
+			},
+			"type": "n8n-nodes-base.rundeck",
+			"typeVersion": 1.1,
+			"position": [220, 160],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Job Metadata",
+			"credentials": {
+				"rundeckApi": {
+					"id": "cred1",
+					"name": "Rundeck account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Execute Job": [
+			{
+				"json": {
+					"id": 42,
+					"status": "running"
+				}
+			}
+		],
+		"Get Job Metadata": [
+			{
+				"json": {
+					"id": "3f0e0c6a-4f6e-4c5e-9a3b-2b1c0d9e8f7a",
+					"name": "Deploy"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Execute Job",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Job Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

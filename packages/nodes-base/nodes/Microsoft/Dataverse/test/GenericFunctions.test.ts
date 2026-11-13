@@ -1,6 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import {
@@ -45,7 +45,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -56,7 +56,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(request).toHaveBeenCalledTimes(1);
 			const [credType, options] = request.mock.calls[0];
 			expect(credType).toBe(CREDENTIAL_TYPE);
-			expect(options.url).toBe(`${BASE_URL}${API_PATH}/accounts`);
+			expect(String(options.url)).toBe(`${BASE_URL}${API_PATH}/accounts`);
 			expect(options.json).toBe(true);
 			expect(options.headers).toMatchObject({
 				Accept: 'application/json',
@@ -67,10 +67,28 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			});
 		});
 
+		it('encodes a path value with "/" as one segment', async () => {
+			request.mockResolvedValue({});
+			const key = "name='a/b'";
+
+			await dataverseApiRequest(
+				ctx,
+				'GET',
+				requestPath`/accounts(${key})`,
+				{},
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			const [, options] = request.mock.calls[0];
+			expect(String(options.url)).toBe(`${BASE_URL}${API_PATH}/accounts(name='a%2Fb')`);
+		});
+
 		it('omits the body when it is empty', async () => {
 			request.mockResolvedValue({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
 			expect(options).not.toHaveProperty('body');
@@ -82,7 +100,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			await dataverseApiRequest(
 				ctx,
 				'POST',
-				'/accounts',
+				requestPath`/accounts`,
 				{ name: 'Acme' },
 				{},
 				{},
@@ -97,27 +115,27 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			ctx.getCredentials.mockResolvedValue({ environmentUrl: `${BASE_URL}/` });
 			request.mockResolvedValue({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
-			expect(options.url).toBe(`${BASE_URL}${API_PATH}/accounts`);
+			expect(String(options.url)).toBe(`${BASE_URL}${API_PATH}/accounts`);
 		});
 
 		it('strips multiple trailing slashes from the environment URL', async () => {
 			ctx.getCredentials.mockResolvedValue({ environmentUrl: `${BASE_URL}//` });
 			request.mockResolvedValue({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
-			expect(options.url).toBe(`${BASE_URL}${API_PATH}/accounts`);
+			expect(String(options.url)).toBe(`${BASE_URL}${API_PATH}/accounts`);
 		});
 
 		it('wraps a failure in NodeApiError', async () => {
 			request.mockRejectedValue({ statusCode: 400, message: 'Bad Request' });
 
 			await expect(
-				dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -125,7 +143,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ statusCode: 400 });
 
 			await expect(
-				dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE),
 			).rejects.toThrow(NodeApiError);
 			expect(request).toHaveBeenCalledTimes(1);
 			expect(sleep).not.toHaveBeenCalled();
@@ -139,7 +157,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -159,7 +177,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 				})
 				.mockResolvedValueOnce({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			expect(sleep).toHaveBeenCalledWith(2000);
 		});
@@ -172,7 +190,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 				})
 				.mockResolvedValueOnce({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			expect(sleep).toHaveBeenCalledWith(3000);
 		});
@@ -186,7 +204,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 				})
 				.mockResolvedValueOnce({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			expect(sleep).toHaveBeenCalledTimes(1);
 			const [delay] = (sleep as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -203,7 +221,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 				})
 				.mockResolvedValueOnce({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			expect(sleep).toHaveBeenCalledWith(120_000);
 		});
@@ -214,7 +232,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -233,7 +251,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -252,7 +270,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -269,7 +287,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -286,7 +304,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				{},
 				{},
@@ -301,7 +319,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ statusCode: 503 });
 
 			await expect(
-				dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE),
 			).rejects.toThrow(NodeApiError);
 
 			// 1 initial + 3 retries = 4 dispatches, 3 back-off sleeps.
@@ -313,7 +331,15 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ statusCode: 504 });
 
 			await expect(
-				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(
+					ctx,
+					'POST',
+					requestPath`/accounts`,
+					{ name: 'Acme' },
+					{},
+					{},
+					CREDENTIAL_TYPE,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(request).toHaveBeenCalledTimes(1);
@@ -324,7 +350,15 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ statusCode: 503 });
 
 			await expect(
-				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(
+					ctx,
+					'POST',
+					requestPath`/accounts`,
+					{ name: 'Acme' },
+					{},
+					{},
+					CREDENTIAL_TYPE,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(request).toHaveBeenCalledTimes(1);
@@ -335,7 +369,15 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ code: 'ECONNRESET' });
 
 			await expect(
-				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(
+					ctx,
+					'POST',
+					requestPath`/accounts`,
+					{ name: 'Acme' },
+					{},
+					{},
+					CREDENTIAL_TYPE,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(request).toHaveBeenCalledTimes(1);
@@ -346,7 +388,15 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ code: 'ECONNABORTED' });
 
 			await expect(
-				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+				dataverseApiRequest(
+					ctx,
+					'POST',
+					requestPath`/accounts`,
+					{ name: 'Acme' },
+					{},
+					{},
+					CREDENTIAL_TYPE,
+				),
 			).rejects.toThrow(NodeApiError);
 
 			expect(request).toHaveBeenCalledTimes(1);
@@ -361,7 +411,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'POST',
-				'/accounts',
+				requestPath`/accounts`,
 				{ name: 'Acme' },
 				{},
 				{},
@@ -381,7 +431,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'POST',
-				'/accounts',
+				requestPath`/accounts`,
 				{ name: 'Acme' },
 				{},
 				{},
@@ -400,7 +450,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 				dataverseApiRequest(
 					ctx,
 					'PATCH',
-					'/accounts(1)',
+					requestPath`/accounts(1)`,
 					{ name: 'Acme' },
 					{},
 					{},
@@ -418,7 +468,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequest(
 				ctx,
 				'PATCH',
-				'/accounts(1)',
+				requestPath`/accounts(1)`,
 				{ name: 'Acme' },
 				{},
 				{},
@@ -433,7 +483,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			ctx.getNode.mockReturnValue({ ...node, typeVersion: 2 });
 			request.mockResolvedValue({});
 
-			await dataverseApiRequest(ctx, 'GET', '/accounts', {}, {}, {}, CREDENTIAL_TYPE);
+			await dataverseApiRequest(ctx, 'GET', requestPath`/accounts`, {}, {}, {}, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
 			expect(options.timeout).toBe(60_000);
@@ -453,7 +503,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequestWithResponse(
 				ctx,
 				'PATCH',
-				'/accounts(account-id)',
+				requestPath`/accounts(account-id)`,
 				{ name: 'Acme' },
 				{},
 				{},
@@ -477,7 +527,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequestAllItems(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				0,
 				CREDENTIAL_TYPE,
@@ -486,9 +536,21 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(result).toEqual([{ id: 1 }, { id: 2 }]);
 			expect(request).toHaveBeenCalledTimes(2);
 			const [, secondOptions] = request.mock.calls[1];
-			expect(secondOptions.url).toBe('https://org.crm.dynamics.com/next');
+			expect(String(secondOptions.url)).toBe('https://org.crm.dynamics.com/next');
 			// nextLink already encodes the query string, so qs must not be resent.
 			expect(secondOptions.qs).toBeUndefined();
+		});
+
+		it('refuses a @odata.nextLink on another origin', async () => {
+			request.mockResolvedValueOnce({
+				value: [{ id: 1 }],
+				'@odata.nextLink': 'https://other.example.com/api/data/v9.2/accounts?$skiptoken=x',
+			});
+
+			await expect(
+				dataverseApiRequestAllItems(ctx, 'GET', requestPath`/accounts`, {}, 0, CREDENTIAL_TYPE),
+			).rejects.toThrow('Refusing to follow a Dataverse pagination link');
+			expect(request).toHaveBeenCalledTimes(1);
 		});
 
 		it('stops once the requested limit is reached', async () => {
@@ -500,7 +562,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequestAllItems(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				1,
 				CREDENTIAL_TYPE,
@@ -513,9 +575,17 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		it('preserves a caller Prefer header', async () => {
 			request.mockResolvedValueOnce({ value: [] });
 
-			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', {}, 0, CREDENTIAL_TYPE, {
-				Prefer: 'return=representation',
-			});
+			await dataverseApiRequestAllItems(
+				ctx,
+				'GET',
+				requestPath`/accounts`,
+				{},
+				0,
+				CREDENTIAL_TYPE,
+				{
+					Prefer: 'return=representation',
+				},
+			);
 
 			const [, options] = request.mock.calls[0];
 			expect(options.headers.Prefer).toBe('return=representation');
@@ -524,7 +594,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		it('does not set Prefer when the caller does not provide one', async () => {
 			request.mockResolvedValueOnce({ value: [] });
 
-			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', {}, 0, CREDENTIAL_TYPE);
+			await dataverseApiRequestAllItems(ctx, 'GET', requestPath`/accounts`, {}, 0, CREDENTIAL_TYPE);
 
 			const [, options] = request.mock.calls[0];
 			expect(options.headers.Prefer).toBeUndefined();
@@ -533,7 +603,14 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		it('forwards $top without a conflicting page-size preference', async () => {
 			request.mockResolvedValueOnce({ value: [] });
 
-			await dataverseApiRequestAllItems(ctx, 'GET', '/accounts', { $top: 250 }, 0, CREDENTIAL_TYPE);
+			await dataverseApiRequestAllItems(
+				ctx,
+				'GET',
+				requestPath`/accounts`,
+				{ $top: 250 },
+				0,
+				CREDENTIAL_TYPE,
+			);
 
 			const [, options] = request.mock.calls[0];
 			expect(options.qs).toEqual({ $top: 250 });
@@ -546,7 +623,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			const result = await dataverseApiRequestAllItems(
 				ctx,
 				'GET',
-				'/accounts',
+				requestPath`/accounts`,
 				{},
 				0,
 				CREDENTIAL_TYPE,
@@ -560,7 +637,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			request.mockRejectedValue({ statusCode: 400, message: 'Bad Request' });
 
 			await expect(
-				dataverseApiRequestAllItems(ctx, 'GET', '/accounts', {}, 0, CREDENTIAL_TYPE),
+				dataverseApiRequestAllItems(ctx, 'GET', requestPath`/accounts`, {}, 0, CREDENTIAL_TYPE),
 			).rejects.toThrow(NodeApiError);
 		});
 	});

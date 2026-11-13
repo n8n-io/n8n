@@ -7,8 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { togglApiRequest } from './GenericFunctions';
 
@@ -53,10 +54,10 @@ export class TogglTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
 		const event = this.getNodeParameter('event') as string;
-		let endpoint: string;
+		let endpoint: RequestPath;
 
 		if (event === 'newTimeEntry') {
-			endpoint = '/time_entries';
+			endpoint = requestPath`/time_entries`;
 		} else {
 			throw new NodeOperationError(this.getNode(), `The defined event "${event}" is not supported`);
 		}

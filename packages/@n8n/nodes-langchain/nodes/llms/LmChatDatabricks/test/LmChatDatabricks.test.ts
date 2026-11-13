@@ -430,9 +430,11 @@ describe('LmChatDatabricks', () => {
 				'databricksOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 					qs: expect.objectContaining({ view: 'FULL' }),
 				}),
+			);
+			expect(String(httpRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+				'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 			);
 			expect(result.results).toStrictEqual([
 				{
@@ -557,7 +559,7 @@ describe('LmChatDatabricks', () => {
 			await node.methods.listSearch.searchModels.call(mockContext);
 
 			const [, requestOptions] = httpRequestWithAuthentication.mock.calls[0];
-			expect(requestOptions.url).toBe(
+			expect(String(requestOptions.url)).toBe(
 				'https://my.databricks.com/api/2.1/unity-catalog/model-services',
 			);
 		});

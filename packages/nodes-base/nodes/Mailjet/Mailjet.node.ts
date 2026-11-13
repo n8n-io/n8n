@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { emailFields, emailOperations } from './EmailDescription';
 import type { IMessage } from './GenericFunctions';
@@ -79,7 +79,11 @@ export class Mailjet implements INodeType {
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { Data: templates } = await mailjetApiRequest.call(this, 'GET', '/v3/REST/template');
+				const { Data: templates } = await mailjetApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v3/REST/template`,
+				);
 				for (const template of templates) {
 					returnData.push({
 						name: template.Name,
@@ -198,7 +202,7 @@ export class Mailjet implements INodeType {
 						if (additionalFields.deduplicateCampaign) {
 							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
 						}
-						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
+						responseData = await mailjetApiRequest.call(this, 'POST', requestPath`/v3.1/send`, {
 							Messages: [body],
 						});
 						responseData = responseData.Messages;
@@ -293,7 +297,7 @@ export class Mailjet implements INodeType {
 						if (additionalFields.deduplicateCampaign) {
 							body.DeduplicateCampaign = additionalFields.deduplicateCampaign as boolean;
 						}
-						responseData = await mailjetApiRequest.call(this, 'POST', '/v3.1/send', {
+						responseData = await mailjetApiRequest.call(this, 'POST', requestPath`/v3.1/send`, {
 							Messages: [body],
 						});
 						responseData = responseData.Messages;
@@ -310,7 +314,12 @@ export class Mailjet implements INodeType {
 							To: to,
 							Text: text,
 						};
-						responseData = await mailjetApiRequest.call(this, 'POST', '/v4/sms-send', body);
+						responseData = await mailjetApiRequest.call(
+							this,
+							'POST',
+							requestPath`/v4/sms-send`,
+							body,
+						);
 					}
 				}
 
