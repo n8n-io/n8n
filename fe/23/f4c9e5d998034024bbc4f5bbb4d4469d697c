@@ -1,0 +1,60 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_043f5ea13b0ca2::t_1154a856e2a955 813
+  s_043f5ea13b0ca2::t_4a7482d900571c 906-910
+  s_043f5ea13b0ca2::t_d8df45b8a4b83b 1123-1124,1126-1127,1129-1136,1139,1141-1143,1145,1147-1158,1160-1169
+  s_043f5ea13b0ca2::t_ec89ed08f4ee54 876-877,879-880,882-884,886-887,889,891-893,895-900,904-905,913
+  s_043f5ea13b0ca2::t_1162f022afc8a4 71
+  s_043f5ea13b0ca2::t_0d1548710a9df8 890,1140
+  s_043f5ea13b0ca2::t_a2b7b221e00303 10
+  s_043f5ea13b0ca2::t_b5daf191170db6 875,888,894,902,1122,1144,1159
+  s_043f5ea13b0ca2::t_589afdb1f982cf 155-156
+packages/cli/test/integration/workflows/workflows.controller.ee.test.ts
+  s_043f5ea13b0ca2::t_d29ffae44b070d 2911-2913,2915-2917,2919-2921,2923-2927,2929-3020
+  s_043f5ea13b0ca2::t_d648d0b61588cf 33
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_043f5ea13b0ca2::t_241202e0040fa3 695-709
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_043f5ea13b0ca2::t_692aab4af5fd1b 2
+  s_043f5ea13b0ca2::t_6556212370252e 50-51
+packages/cli/src/workflows/workflow.service.ts
+  s_043f5ea13b0ca2::t_c86d8aba1e645f 7,98,121-128,1583-1743
+  s_043f5ea13b0ca2::t_d7c4defe471daa 1744
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_043f5ea13b0ca2::t_cd4933402dc817 14
+  s_043f5ea13b0ca2::t_247f45441626a8 2639-2722
+  s_043f5ea13b0ca2::t_2958ee2df4986e 2723
+packages/cli/test/integration/policy/workflow-transfer-unpublish.policy.test.ts
+  s_043f5ea13b0ca2::t_dee742ff1fd798 17
+  s_043f5ea13b0ca2::t_4a7482d900571c 619-621
+  s_043f5ea13b0ca2::t_93fca173ea3fd0 308
+  s_043f5ea13b0ca2::t_d7cf8bec72ef77 429-442
+  s_043f5ea13b0ca2::t_a6c642a6ba4411 14
+  s_043f5ea13b0ca2::t_5eeacb79ebeb21 10,13,16,18-23,25,32-40,43-44,46-47,49,51,57-59,62-65,75-78,92-146,149,153,171-190,197-208,213-217,220-222,228-229,237,279-307,309-319,321-337,339-352,373-427,443,476-618,622-655
+  s_043f5ea13b0ca2::t_0d1548710a9df8 320,338
+  s_043f5ea13b0ca2::t_4ae49189179ed0 163
+  s_043f5ea13b0ca2::t_f35924be983a4d 353,356,363,368,372
+  s_043f5ea13b0ca2::t_02bcb01617d6f7 357-362,364-367,369-371
+  s_043f5ea13b0ca2::t_f76c200c385df1 354-355
+  s_043f5ea13b0ca2::t_db1effa12ecfbf 164,428
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_043f5ea13b0ca2::t_030edfc435f7e3 556-558
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_043f5ea13b0ca2::t_9859445c92b284 77-78
+  s_043f5ea13b0ca2::t_cb3cf034d4c6b0 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe23f4c9e5d998034024bbc4f5bbb4d4469d697c",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

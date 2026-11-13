@@ -1,0 +1,50 @@
+OWNERS
+  h_8fb27e0cdf6d1e 33
+codecov.yml
+  h_8fb27e0cdf6d1e 82
+packages/@n8n/code-task-protocol/AGENTS.md
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-task-protocol/README.md
+  h_8fb27e0cdf6d1e 1-37
+packages/@n8n/code-task-protocol/oxlint.config.mts
+  h_8fb27e0cdf6d1e 1-28
+packages/@n8n/code-task-protocol/package.json
+  h_8fb27e0cdf6d1e 1-44
+packages/@n8n/code-task-protocol/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 1-278
+packages/@n8n/code-task-protocol/src/constants.ts
+  h_8fb27e0cdf6d1e 1-20
+packages/@n8n/code-task-protocol/src/errors/invalid-code-task-file.error.ts
+  h_8fb27e0cdf6d1e 1-11
+packages/@n8n/code-task-protocol/src/execution-modes.ts
+  h_8fb27e0cdf6d1e 1-33
+packages/@n8n/code-task-protocol/src/index.ts
+  h_8fb27e0cdf6d1e 1-23
+packages/@n8n/code-task-protocol/src/parse.ts
+  h_8fb27e0cdf6d1e 1-51
+packages/@n8n/code-task-protocol/src/task-input.ts
+  h_8fb27e0cdf6d1e 1-101
+packages/@n8n/code-task-protocol/src/task-result.ts
+  h_8fb27e0cdf6d1e 1-49
+packages/@n8n/code-task-protocol/tsconfig.build.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-task-protocol/tsconfig.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-task-protocol/vite.config.ts
+  h_8fb27e0cdf6d1e 1-3
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2352-2394
+scripts/lint-parity/layers.json
+  h_8fb27e0cdf6d1e 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aeb72988ea54d8b005d073ed08ae0b58a1b52309",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

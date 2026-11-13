@@ -1,0 +1,28 @@
+packages/cli/src/events/maps/relay.event-map.ts
+  s_043f5ea13b0ca2::t_35676c772db539 249
+  s_043f5ea13b0ca2::t_0d1548710a9df8 250
+packages/cli/src/workflows/workflow.service.ts
+  s_043f5ea13b0ca2::t_9195c9d0299242 1562-1573,1575-1578,1589-1591,1597-1598,1600-1601,1606
+  s_043f5ea13b0ca2::t_0d1548710a9df8 1561,1574
+  s_043f5ea13b0ca2::t_4a7482d900571c 1592-1596
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_043f5ea13b0ca2::t_0d1548710a9df8 406
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_043f5ea13b0ca2::t_d12e59e179a5a6 2550-2560
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acb9d7f45bdc2f80e42d70c39858fe6139ef807c",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
