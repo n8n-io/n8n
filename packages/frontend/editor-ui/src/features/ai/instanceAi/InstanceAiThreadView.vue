@@ -61,6 +61,14 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import InstanceAiCanvasRunStatus from './components/InstanceAiCanvasRunStatus.vue';
+import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
+import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { useCanvasRunActivity } from './composables/useRunActivity';
+import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -243,6 +251,19 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftWorkflowPreviewEnabled = useDraftWorkflowPreviewEnabled();
+const nodeTypesStore = useNodeTypesStore();
+const describeStagingNodeType = (nodeType: string) =>
+	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
+const workflowStaging = useWorkflowStaging({
+	messages: () => thread.messages,
+	workflowDrafts: () => thread.workflowDrafts,
+	enabled: () => draftWorkflowPreviewEnabled.value,
+	describeType: describeStagingNodeType,
+});
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -265,6 +286,10 @@ const preview = useCanvasPreview({
 			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
 		},
 	},
+	workflowDrafts: () => thread.workflowDrafts,
+	stagingDraft: () => workflowStaging.stagingDraft.value,
+	buildTarget: () => workflowStaging.buildTarget.value,
+	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 watch(
@@ -274,6 +299,39 @@ watch(
 	},
 	{ immediate: true },
 );
+
+/** What the agent does now, on the draft canvas. It changes with the chat status bar. */
+const draftRunActivity = useCanvasRunActivity(() => thread.messages);
+// A build on a saved workflow shows its progress over the saved canvas, until a draft covers it.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentWorking.value &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
+);
+
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
+watch(
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
+	},
+	{ immediate: true },
+);
+// EOF Experiment cleanup
+
+// The saved canvas loaded under its draft, so the draft has nothing left to cover.
+function handleSavedWorkflowLoaded(workflowId: string) {
+	draftPreviewTelemetry.trackCanvasRendered('saved');
+	thread.dismissWorkflowDrafts(workflowId);
+}
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
@@ -1022,6 +1080,21 @@ function handleNewThreadClick() {
 								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
+								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiCanvasRunStatus
+								v-if="isSavedCanvasBuilding"
+								:status-text="draftRunActivity?.text"
+								:waiting="draftRunActivity?.waiting === true"
+							/>
+							<InstanceAiWorkflowDraftPreview
+								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"
+								:key="preview.activeWorkflowDraft.value.filePath"
+								:class="$style.previewSlot"
+								:draft="preview.activeWorkflowDraft.value"
+								:building="isAgentWorking"
+								:status-text="draftRunActivity?.text"
+								:waiting="draftRunActivity?.waiting === true"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

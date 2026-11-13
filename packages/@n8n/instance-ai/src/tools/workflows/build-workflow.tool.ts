@@ -498,6 +498,15 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	} = args;
 
+	// Mark the blocked nodes on the draft the user is watching.
+	context.workflowDraftPublisher?.publishIssues({
+		filePath,
+		issues: blocking.map(({ code, message, nodeName }) => ({
+			code,
+			message,
+			...(nodeName ? { nodeName } : {}),
+		})),
+	});
 	const validationErrors = blocking.map(
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
@@ -1140,6 +1149,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					remediation,
 				};
 			}
+
+			// Show the compiled workflow before validation, which can block the save
+			// for several build attempts.
+			await context.workflowDraftPublisher?.publish({
+				filePath,
+				workflowId: targetWorkflowId,
+				workflow: compiled.workflow,
+			});
 
 			// Snapshot of the previously saved workflow, used to tell nodes this
 			// build actually touched apart from pre-existing ones it round-tripped.

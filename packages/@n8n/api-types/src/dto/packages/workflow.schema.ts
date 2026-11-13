@@ -42,7 +42,7 @@ const connectionLeafSchema = z.object({
 
 const connectionsSchema = z.record(z.record(z.array(z.array(connectionLeafSchema).nullable())));
 
-const nodeGroupSchema = z.object({
+export const nodeGroupSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
 	nodeIds: z.array(z.string().min(1)),

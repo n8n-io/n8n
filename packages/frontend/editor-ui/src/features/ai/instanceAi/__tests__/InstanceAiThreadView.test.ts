@@ -22,7 +22,10 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
@@ -95,6 +98,11 @@ vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
+}));
+
+const trackCanvasRendered = vi.fn();
+vi.mock('@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry', () => ({
+	useDraftWorkflowPreviewTelemetry: () => ({ trackCanvasRendered }),
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -187,6 +195,25 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 let workflowPreviewEmit:
 	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
 	| null = null;
+let workflowLoadedEmit: ((event: 'workflow-loaded', workflowId: string) => void) | null = null;
+
+const InstanceAiWorkflowDraftPreviewStub = defineComponent({
+	name: 'InstanceAiWorkflowDraftPreviewStub',
+	props: {
+		draft: { type: Object, required: true },
+		building: Boolean,
+		statusText: String,
+		waiting: Boolean,
+	},
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
+			'data-file-path': (props.draft as { filePath: string }).filePath,
+			'data-building': String(props.building),
+			'data-status-text': props.statusText ?? '',
+			'data-waiting': String(props.waiting),
+		}),
+});
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
@@ -194,9 +221,10 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 		workflowId: { type: String, required: true },
 		initialNodeId: { type: String, required: false },
 	},
-	emits: ['initial-node-id-consumed', 'workflow-failures'],
+	emits: ['initial-node-id-consumed', 'workflow-failures', 'workflow-loaded'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		workflowLoadedEmit = emit as typeof workflowLoadedEmit;
 		const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 			'openWorkflowPreview',
 			undefined,
@@ -416,6 +444,7 @@ const defaultViewStubs = {
 	InstanceAiSetupPanel: InstanceAiSetupPanelStub,
 	InstanceAiInput: InstanceAiInputStub,
 	InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+	InstanceAiWorkflowDraftPreview: InstanceAiWorkflowDraftPreviewStub,
 	InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 	InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 	AgentSection: AgentSectionStub,
@@ -2611,6 +2640,194 @@ describe('InstanceAiThreadView', () => {
 
 		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
 		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
+	});
+
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draft = (overrides: Record<string, unknown> = {}) => ({
+			filePath,
+			revision: 1,
+			workflow: { name: 'Demo', nodes: [], connections: {} },
+			...overrides,
+		});
+
+		it('shows the draft canvas for a new workflow before it is saved', async () => {
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft() };
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', filePath);
+			expect(queryByTestId('instance-ai-workflow-preview-stub')).toBeNull();
+		});
+
+		it('covers the saved canvas with its draft until the saved workflow loads', async () => {
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.workflowDrafts = {
+				[filePath]: draft({ workflowId: 'wf-1', savedWorkflowId: 'wf-1' }),
+			};
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
+
+			expect(thread.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-1');
+		});
+
+		function stageNewWorkflow() {
+			thread.messages = [
+				{
+					id: 'staging-request',
+					role: 'user',
+					content: 'Build a workflow',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+				{
+					id: 'staging-run',
+					runId: 'run-1',
+					role: 'assistant',
+					content: '',
+					reasoning: '',
+					isStreaming: true,
+					createdAt: '2026-04-01T00:00:01.000Z',
+					agentTree: {
+						runId: 'run-1',
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						children: [],
+						timeline: [],
+						toolCalls: [
+							{
+								toolCallId: 'tc-skill',
+								toolName: 'load_skill',
+								args: { name: 'workflow-builder' },
+								isLoading: false,
+							},
+							{
+								toolCallId: 'tc-search',
+								toolName: 'search_nodes',
+								args: { queries: ['gmail', 'slack'] },
+								isLoading: true,
+							},
+						],
+					},
+				},
+			] as typeof thread.messages;
+		}
+
+		it('shows the staging canvas of a new workflow with the step of the agent', async () => {
+			trackCanvasRendered.mockClear();
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			stageNewWorkflow();
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
+			// The status holds each text for at least 1.5 seconds, so the new step shows after that.
+			await vi.waitFor(
+				() => expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack'),
+				{ timeout: 3000 },
+			);
+			expect(preview).toHaveAttribute('data-waiting', 'false');
+			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
+		});
+
+		it('shows on the staging canvas that the run waits on the user', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls.push({
+				toolCallId: 'tc-ask',
+				toolName: 'ask_user',
+				args: {},
+				isLoading: true,
+				confirmation: {
+					requestId: 'req-1',
+					severity: 'info',
+					message: 'Which sheet?',
+					inputType: 'questions',
+				},
+				confirmationStatus: 'pending',
+			});
+			thread.messages = [...thread.messages];
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await vi.waitFor(() => expect(preview).toHaveAttribute('data-waiting', 'true'));
+			expect(preview).toHaveAttribute('data-status-text', 'Waiting on your answer');
+		});
+
+		it('shows the step of the agent over the saved workflow that the build edits', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls.splice(1, 0, {
+				toolCallId: 'tc-read',
+				toolName: 'get_workflow_as_code',
+				args: { workflowId: 'wf-1' },
+				isLoading: false,
+			});
+			thread.messages = [...thread.messages];
+
+			await findByTestId('instance-ai-workflow-preview-stub');
+			const status = await findByTestId('instance-ai-canvas-run-status');
+			await vi.waitFor(() => expect(status).toHaveTextContent('Searching for gmail, slack'), {
+				timeout: 3000,
+			});
+			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('shows no staging canvas in the control arm', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
+			);
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			stageNewWorkflow();
+			await nextTick();
+
+			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
+		});
+
+		it('reports the first draft and saved canvas renders', async () => {
+			trackCanvasRendered.mockClear();
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
+
+			expect(trackCanvasRendered).toHaveBeenCalledWith('draft');
+			expect(trackCanvasRendered).toHaveBeenCalledWith('saved');
+		});
 	});
 
 	describe('Fix with AI card', () => {

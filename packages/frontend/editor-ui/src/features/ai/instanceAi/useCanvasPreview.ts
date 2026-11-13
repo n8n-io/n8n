@@ -24,6 +24,13 @@ import {
 } from './composables/useOpenArtifactTabs';
 import type { ArtifactThread } from './artifactThread';
 import type { ArtifactTurn } from './artifactTurns';
+import type { BuildTarget } from './composables/useWorkflowStaging';
+import {
+	draftTabId,
+	getDraftWorkflowId,
+	type WorkflowDraft,
+	type WorkflowDraftsByFilePath,
+} from './instanceAi.workflowDrafts';
 
 export interface ArtifactTab {
 	id: string;
@@ -35,6 +42,8 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+	/** An unsaved workflow from the builder's source file. Never stored with the thread's tabs. */
+	draft?: boolean;
 }
 
 interface UseCanvasPreviewOptions {
@@ -44,6 +53,14 @@ interface UseCanvasPreviewOptions {
 	initialAppId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
 	tabsStorage?: ThreadTabsStorage;
+	/** Unsaved workflows the builder wrote, by source file. */
+	workflowDrafts?: () => WorkflowDraftsByFilePath;
+	/** The canvas of a new workflow before its first draft, while the agent researches. */
+	stagingDraft?: () => WorkflowDraft | undefined;
+	/** The saved workflow that a running build works on. */
+	buildTarget?: () => BuildTarget | undefined;
+	/** Drops the drafts that a saved workflow replaced. */
+	dismissWorkflowDrafts?: (workflowId: string) => void;
 }
 
 interface LinkedAgentTarget {
@@ -62,12 +79,44 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 	return undefined;
 }
 
+function fileName(filePath: string): string {
+	return filePath.split('/').pop() ?? filePath;
+}
+
+function toDraftTab(draft: WorkflowDraft): ArtifactTab {
+	return {
+		id: draftTabId(draft.filePath),
+		type: 'workflow',
+		name: draft.workflow.name || fileName(draft.filePath),
+		icon: ARTIFACT_TAB_ICONS.workflow,
+		building: true,
+		draft: true,
+	};
+}
+
 export function useCanvasPreview({
 	thread,
 	initialAgentId,
 	initialAppId,
 	tabsStorage,
+	workflowDrafts = () => ({}),
+	stagingDraft = () => undefined,
+	buildTarget = () => undefined,
+	dismissWorkflowDrafts,
 }: UseCanvasPreviewOptions) {
+	/**
+	 * A staging canvas that ended because the run read a saved workflow. It stays
+	 * on screen until the tab of that workflow arrives with the result of the read.
+	 */
+	const heldStaging = ref<WorkflowDraft>();
+
+	/** The drafts, with the staging canvas as one more draft. */
+	function draftsWithStaging(): WorkflowDraft[] {
+		const staging = stagingDraft() ?? heldStaging.value;
+		const drafts = Object.values(workflowDrafts());
+		return staging ? [...drafts, staging] : drafts;
+	}
+
 	const recentWorkflowsStore = useRecentWorkflowsStore();
 	const skillsStore = useSkillsStore();
 
@@ -125,6 +174,12 @@ export function useCanvasPreview({
 			}
 		}
 
+		// A new workflow shows as a draft tab until its saved workflow joins the registry.
+		for (const draft of draftsWithStaging()) {
+			if (draft.savedWorkflowId || draft.workflowId) continue;
+			result.push(toDraftTab(draft));
+		}
+
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
 			const indexedAgent = [...thread.resourceNameIndex.values()].find(
 				(entry) => entry.type === 'agent' && entry.id === linkedAgent.agentId,
@@ -153,7 +208,24 @@ export function useCanvasPreview({
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
 		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
-		return tab?.type === 'workflow' ? tab.id : null;
+		return tab?.type === 'workflow' && !tab.draft ? tab.id : null;
+	});
+
+	/** The tab id that shows a draft: its own tab, or the tab of its saved workflow. */
+	function draftTargetTabId(draft: WorkflowDraft): string {
+		return getDraftWorkflowId(draft) ?? draftTabId(draft.filePath);
+	}
+
+	/** The newest draft for the tab on screen. It covers the saved canvas until that loads. */
+	const activeWorkflowDraft = computed((): WorkflowDraft | undefined => {
+		const tabId = activeTabId.value;
+		if (tabId === undefined) return undefined;
+		let latest: WorkflowDraft | undefined;
+		for (const draft of draftsWithStaging()) {
+			if (draftTargetTabId(draft) !== tabId) continue;
+			if (!latest || draft.revision > latest.revision) latest = draft;
+		}
+		return latest;
 	});
 
 	const activeDataTableId = computed(() => {
@@ -314,7 +386,8 @@ export function useCanvasPreview({
 	function selectTab(tabId: string) {
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
-		if (openTabs.value.find(({ id }) => id === tabId)?.type === 'workflow') {
+		const tab = openTabs.value.find(({ id }) => id === tabId);
+		if (tab?.type === 'workflow' && !tab.draft) {
 			recordWorkflowOpen(tabId);
 		}
 		activeTabId.value = tabId;
@@ -426,8 +499,12 @@ export function useCanvasPreview({
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
+	/** The staging canvas the staging watcher last saw. It picks the next tab when staging ends. */
+	let lastStaging: WorkflowDraft | undefined;
+
 	watch(openTabs, (currentTabs) => {
 		if (activeTabId.value === undefined || currentTabs.length === 0) return;
+		if (lastStaging && activeTabId.value === draftTabId(lastStaging.filePath)) return;
 		const stillExists = currentTabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
 			activeTabId.value = currentTabs[0].id;
@@ -609,6 +686,121 @@ export function useCanvasPreview({
 		}
 	});
 
+	// --- Drafts: show each new draft, follow it to its saved workflow ---
+
+	// Key on file and revision, so each write shows its workflow, but a save does not.
+	const latestDraftKey = computed(() => {
+		let latest: WorkflowDraft | undefined;
+		for (const draft of Object.values(workflowDrafts())) {
+			if (draft.savedWorkflowId) continue;
+			if (!latest || draft.revision > latest.revision) latest = draft;
+		}
+		return latest ? `${latest.filePath}#${latest.revision}` : undefined;
+	});
+	const draftsByKey = computed(
+		() => new Map(Object.values(workflowDrafts()).map((d) => [`${d.filePath}#${d.revision}`, d])),
+	);
+
+	watch(
+		latestDraftKey,
+		(key) => {
+			const draft = key ? draftsByKey.value.get(key) : undefined;
+			if (draft && !thread.isHydratingThread) showAgentArtifact(draftTargetTabId(draft));
+		},
+		{ flush: 'sync' },
+	);
+
+	watch(
+		() => Object.values(workflowDrafts()).filter((draft) => draft.savedWorkflowId),
+		(saved) => {
+			for (const draft of saved) {
+				const workflowId = draft.savedWorkflowId;
+				if (!workflowId) continue;
+				const tabId = draftTabId(draft.filePath);
+				// The draft tab on screen becomes the saved workflow tab.
+				if (activeTabId.value === tabId) activeTabId.value = workflowId;
+				if (userTabId.value === tabId) userTabId.value = workflowId;
+				// A saved draft off screen has nothing left to cover.
+				if (activeTabId.value !== workflowId) dismissWorkflowDrafts?.(workflowId);
+			}
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Build on a saved workflow: show its tab as soon as the build names it ---
+
+	/** The workflow whose tab the build opens. An earlier turn is only a guess, so it does not count. */
+	const openedTargetId = computed(() => {
+		const target = buildTarget();
+		return target && target.source !== 'thread' ? target.workflowId : undefined;
+	});
+
+	/** Leave the staging tab for the next tab, or close the preview when there is none. */
+	function leaveStagingTab(stagingTabId: string, nextTabId: string | undefined, keepPick: boolean) {
+		if (userTabId.value === stagingTabId) userTabId.value = keepPick ? nextTabId : undefined;
+		if (activeTabId.value !== stagingTabId) return;
+		activeTabId.value = nextTabId;
+		if (nextTabId === undefined) setPreviewOpen(false);
+	}
+
+	function releaseHeldStaging(nextTabId: string | undefined) {
+		const held = heldStaging.value;
+		if (!held) return;
+		heldStaging.value = undefined;
+		leaveStagingTab(draftTabId(held.filePath), nextTabId, nextTabId !== undefined);
+	}
+
+	// Registered before the staging watcher, so that a staging canvas that ends
+	// with the tab of its workflow already there goes straight to that tab.
+	watch(
+		() => {
+			const id = openedTargetId.value;
+			return id && tabs.hasTab(id) ? id : undefined;
+		},
+		(tabId) => {
+			if (!tabId) return;
+			releaseHeldStaging(tabId);
+			if (!thread.isHydratingThread) showAgentArtifact(tabId);
+		},
+	);
+
+	watch(openedTargetId, (id) => {
+		if (!id) releaseHeldStaging(openTabs.value.at(-1)?.id);
+	});
+
+	// --- Staging: show the canvas of a new workflow, hand it to the run's first draft ---
+
+	// Not sync: the staging canvas ends in the same update that adds the run's draft.
+	watch(
+		() => stagingDraft()?.filePath,
+		(filePath) => {
+			const previous = lastStaging;
+			lastStaging = stagingDraft();
+			if (filePath && !previous) {
+				if (!thread.isHydratingThread) showAgentArtifact(draftTabId(filePath));
+				return;
+			}
+			if (!previous || filePath) return;
+
+			const stagingTabId = draftTabId(previous.filePath);
+			const runDraft = Object.values(workflowDrafts()).find(
+				(draft) => draft.runId === previous.runId && !draft.savedWorkflowId && !draft.workflowId,
+			);
+			if (runDraft) {
+				leaveStagingTab(stagingTabId, draftTabId(runDraft.filePath), true);
+				return;
+			}
+			const targetId = openedTargetId.value;
+			if (targetId && activeTabId.value === stagingTabId) {
+				// The run reads a saved workflow. Its tab comes with the result of the read.
+				if (tabs.hasTab(targetId)) leaveStagingTab(stagingTabId, targetId, true);
+				else heldStaging.value = previous;
+				return;
+			}
+			leaveStagingTab(stagingTabId, openTabs.value.at(-1)?.id, false);
+		},
+	);
+
 	// --- Signal persisted builder config mutations onto the agents event bus ---
 	useAgentMutationRefresh(thread);
 
@@ -618,6 +810,7 @@ export function useCanvasPreview({
 		/** False until the stored tabs of the thread load. */
 		tabsLoaded: tabs.isLoaded,
 		activeWorkflowId,
+		activeWorkflowDraft,
 		activeDataTableId,
 		activeDataTableProjectId,
 		activeAgentId,

@@ -54,6 +54,16 @@ const assistantRuntime = z
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
+const draftWorkflowPreviewVariant = z.enum(['control', 'variant']);
+const draftWorkflowPreviewProps = {
+	thread_id: z.string(),
+	run_id: z.string(),
+	variant: draftWorkflowPreviewVariant.describe(
+		'Variant of the 137_instance_ai_draft_workflow_preview feature flag the user saw',
+	),
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
+	'$feature/137_instance_ai_draft_workflow_preview': draftWorkflowPreviewVariant,
+};
 const taxonomyInspirationVariant = z.enum(['control', 'variant', 'variant-bis']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
@@ -326,6 +336,57 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/105_instance_ai_free_nudge': freeNudgeVariant,
 		}),
 	},
+	// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+	DRAFT_WORKFLOW_PREVIEW_EXPOSED: {
+		name: 'AI Assistant draft workflow preview exposed',
+		description:
+			'A user assigned to the draft workflow preview experiment (137), including the control variant, sent a message that made the n8n Assistant start work on a workflow. Fires once per run, when the first workflow builder or the first workflow draft of the run appears. This is the denominator for the canvas render and abandon events.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			is_new_workflow: z
+				.boolean()
+				.describe('True when the run builds a workflow that was not saved before'),
+		}),
+	},
+	WORKFLOW_CANVAS_FIRST_RENDERED: {
+		name: 'AI Assistant workflow canvas first rendered',
+		description:
+			'The n8n Assistant preview first showed a workflow canvas during a run of the draft workflow preview experiment (137). Fires at most once per run for each canvas kind: once for the staging canvas of a new workflow, once for the first unsaved draft, once for the first saved workflow. A staging render before exposure is sent at exposure, with the time of the render.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			canvas_kind: z
+				.enum(['staging', 'draft', 'saved'])
+				.describe(
+					'staging: the canvas of a new workflow with the node types the agent read, before the first compile. draft: the unsaved workflow compiled from the agent source. saved: the workflow after the build saved it',
+				),
+			ms_since_message: z
+				.number()
+				.int()
+				.describe('Milliseconds from the user message that started the run to the render'),
+			is_new_workflow: z.boolean(),
+		}),
+	},
+	RUN_ABANDONED: {
+		name: 'AI Assistant run abandoned',
+		description:
+			'The user stopped or left an n8n Assistant run while the agent was responding, in a run that fired "AI Assistant draft workflow preview exposed". Fires at most once per run. A tab close is sent on page hide and can be lost.',
+		properties: z.object({
+			...draftWorkflowPreviewProps,
+			reason: z
+				.enum(['stopped', 'left'])
+				.describe(
+					'stopped: the user pressed stop. left: the user left the thread or closed the page',
+				),
+			ms_since_message: z
+				.number()
+				.int()
+				.describe('Milliseconds from the user message that started the run to the abandon'),
+			canvas_state: z
+				.enum(['none', 'staging', 'draft', 'saved'])
+				.describe('The most complete canvas the user saw in this run before abandoning it'),
+		}),
+	},
+	// EOF Experiment cleanup
 	// Experiment cleanup (124_workflow_previews_above_assistant)
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPOSED: {
 		name: 'AI Assistant workflow previews above assistant exposed',

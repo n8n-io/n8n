@@ -14,6 +14,8 @@ import {
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import type { ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
+import type { WorkflowDraft, WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
+import type { BuildTarget } from '../composables/useWorkflowStaging';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -162,6 +164,10 @@ function setup(options?: {
 	tabsStorage?: ThreadTabsStorage;
 }) {
 	const thread = createMockThread();
+	const drafts = ref<WorkflowDraftsByFilePath>({});
+	const staging = ref<WorkflowDraft>();
+	const buildTarget = ref<BuildTarget>();
+	const dismissWorkflowDrafts = vi.fn();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
 	const route = createMockRoute();
 
@@ -172,19 +178,319 @@ function setup(options?: {
 		initialAgentId: options?.initialAgentId,
 		initialAppId: options?.initialAppId,
 		tabsStorage: options?.tabsStorage,
+		workflowDrafts: () => drafts.value,
+		stagingDraft: () => staging.value,
+		buildTarget: () => buildTarget.value,
+		dismissWorkflowDrafts,
 	});
 
-	return { ...result, thread, route };
+	return { ...result, thread, route, drafts, staging, buildTarget, dismissWorkflowDrafts };
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
+function makeDraft(filePath: string, overrides: Partial<WorkflowDraft> = {}): WorkflowDraft {
+	return {
+		filePath,
+		revision: 1,
+		workflow: { name: `Draft ${filePath}`, nodes: [], connections: {} },
+		...overrides,
+	};
+}
+
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
 		createTestingPinia();
+	});
+
+	describe('staging a new workflow', () => {
+		const fileA = 'src/workflows/a.workflow.ts';
+		const stagingDraft = (revision = 0) =>
+			makeDraft('staging:run-1', {
+				revision,
+				runId: 'run-1',
+				workflow: { name: 'New workflow', nodes: [], connections: {} },
+			});
+
+		test('opens a building tab for the staging canvas and shows it', async () => {
+			const ctx = setup();
+
+			ctx.staging.value = stagingDraft();
+			await nextTick();
+
+			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			expect(tab).toMatchObject({ name: 'New workflow', building: true, draft: true });
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe('staging:run-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('keeps the tab the user picked during the run', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.selectTab('wf-1');
+
+			ctx.staging.value = stagingDraft();
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('moves to the draft tab of the run when its first draft arrives', async () => {
+			const ctx = setup();
+			ctx.staging.value = stagingDraft(2);
+			await nextTick();
+
+			ctx.staging.value = undefined;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { runId: 'run-1' }) };
+			await nextTick();
+
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+			expect(ctx.openTabs.value.filter((t) => t.draft)).toHaveLength(1);
+		});
+
+		test('moves the user pick of the staging tab to the draft tab', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.staging.value = stagingDraft();
+			await nextTick();
+			ctx.selectTab('draft:staging:run-1');
+			const otherDraft = 'src/workflows/other.workflow.ts';
+
+			ctx.staging.value = undefined;
+			ctx.drafts.value = {
+				[otherDraft]: makeDraft(otherDraft, { revision: 5 }),
+				[fileA]: makeDraft(fileA, { runId: 'run-1' }),
+			};
+			await nextTick();
+
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('closes the staging tab and the preview when staging ends with no draft', async () => {
+			const ctx = setup();
+			ctx.staging.value = stagingDraft();
+			await nextTick();
+
+			ctx.staging.value = undefined;
+			await nextTick();
+
+			expect(ctx.openTabs.value).toEqual([]);
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('goes back to another open tab when staging ends with no draft', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.staging.value = stagingDraft();
+			await nextTick();
+
+			ctx.staging.value = undefined;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+	});
+
+	describe('building on a saved workflow', () => {
+		test.each<BuildTarget['source']>(['run', 'request'])(
+			'opens the tab of the workflow that the build works on (%s)',
+			async (source) => {
+				const ctx = setup();
+				registerWorkflow(ctx.thread, 'wf-1');
+
+				ctx.buildTarget.value = { workflowId: 'wf-1', source };
+				await nextTick();
+
+				expect(ctx.activeTabId.value).toBe('wf-1');
+				expect(ctx.isPreviewVisible.value).toBe(true);
+			},
+		);
+
+		test('opens the tab once it arrives', async () => {
+			const ctx = setup();
+			ctx.buildTarget.value = { workflowId: 'wf-1', source: 'run' };
+			await nextTick();
+
+			registerWorkflow(ctx.thread, 'wf-1');
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not open the workflow of an earlier turn', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.buildTarget.value = { workflowId: 'wf-1', source: 'thread' };
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('moves from the staging tab to the workflow that the run reads', async () => {
+			const ctx = setup();
+			ctx.staging.value = makeDraft('staging:run-1', { revision: 0, runId: 'run-1' });
+			await nextTick();
+
+			ctx.staging.value = undefined;
+			ctx.buildTarget.value = { workflowId: 'wf-1', source: 'run' };
+			await nextTick();
+			expect(ctx.isPreviewVisible.value).toBe(true);
+
+			registerWorkflow(ctx.thread, 'wf-1');
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.openTabs.value.some((tab) => tab.draft)).toBe(false);
+		});
+		test('closes the staging tab when the run ends before the tab of its workflow arrives', async () => {
+			const ctx = setup();
+			ctx.staging.value = makeDraft('staging:run-1', { revision: 0, runId: 'run-1' });
+			await nextTick();
+			ctx.staging.value = undefined;
+			ctx.buildTarget.value = { workflowId: 'wf-1', source: 'run' };
+			await nextTick();
+
+			ctx.buildTarget.value = undefined;
+			await nextTick();
+
+			expect(ctx.openTabs.value).toEqual([]);
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
+	describe('workflow drafts', () => {
+		const fileA = 'src/workflows/a.workflow.ts';
+		const fileB = 'src/workflows/b.workflow.ts';
+
+		test('opens a building tab for the draft of a new workflow and shows it', async () => {
+			const ctx = setup();
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			expect(tab).toMatchObject({ type: 'workflow', name: `Draft ${fileA}`, building: true });
+			expect(tab?.draft).toBe(true);
+			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('shows the draft of a saved workflow on that workflow tab', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { workflowId: 'wf-1' }) };
+			await nextTick();
+
+			expect(ctx.openTabs.value.map((t) => t.id)).toEqual(['wf-1']);
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('gives each new workflow its own draft tab', async () => {
+			const ctx = setup();
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+
+			expect(ctx.openTabs.value.filter((t) => t.draft)).toHaveLength(2);
+		});
+
+		test('keeps the tab the user picked while drafts of another workflow arrive', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+			const tabA = ctx.openTabs.value.find((t) => t.name === `Draft ${fileA}`);
+			ctx.selectTab(tabA!.id);
+
+			ctx.drafts.value = { ...ctx.drafts.value, [fileB]: makeDraft(fileB, { revision: 2 }) };
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe(tabA!.id);
+		});
+
+		test('moves an active draft tab to the saved workflow when the build saves it', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { savedWorkflowId: 'wf-1' }) };
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.openTabs.value.some((t) => t.draft)).toBe(false);
+			// The draft stays on screen until the saved canvas loads.
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('dismisses a saved draft that is not on screen', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA), [fileB]: makeDraft(fileB) };
+			await nextTick();
+			const tabB = ctx.openTabs.value.find((t) => t.name === `Draft ${fileB}`);
+			ctx.selectTab(tabB!.id);
+
+			registerWorkflow(ctx.thread, 'wf-a');
+			ctx.drafts.value = {
+				...ctx.drafts.value,
+				[fileA]: makeDraft(fileA, { savedWorkflowId: 'wf-a' }),
+			};
+			await nextTick();
+
+			expect(ctx.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-a');
+		});
+
+		test('never stores a draft tab as the active tab', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+				await nextTick();
+
+				ctx.selectTab(ctx.activeTabId.value!);
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledWith(expect.objectContaining({ tabs: [], activeTab: null }));
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		test('never stores draft tabs', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({ tabsStorage: { load: vi.fn().mockResolvedValue(null), save } });
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+				await nextTick();
+
+				ctx.selectTab('wf-1');
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledWith(
+					expect.objectContaining({
+						tabs: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe('openTabs', () => {

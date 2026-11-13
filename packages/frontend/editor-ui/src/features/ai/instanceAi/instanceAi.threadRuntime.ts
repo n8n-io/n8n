@@ -1,5 +1,12 @@
 import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
+import {
+	applyWorkflowDraft,
+	applyWorkflowDraftIssues,
+	dismissWorkflowDrafts,
+	settleWorkflowDraft,
+	type WorkflowDraftsByFilePath,
+} from './instanceAi.workflowDrafts';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
@@ -552,6 +559,8 @@ export function createThreadRuntime(
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
+	/** Unsaved workflows the builder wrote in this session. Live only: drafts are never replayed. */
+	const workflowDrafts = ref<WorkflowDraftsByFilePath>({});
 	/**
 	 * What the latest turn reported as applied, from the durable fact on restore and from
 	 * the live event after that. `null` means no turn has reported yet, which differs from
@@ -1121,6 +1130,22 @@ export function createThreadRuntime(
 					[parsed.data.payload.workflowId]: parsed.data.payload.items,
 				};
 			}
+			if (parsed.data.type === 'workflow-draft') {
+				workflowDrafts.value = applyWorkflowDraft(
+					workflowDrafts.value,
+					parsed.data.payload,
+					parsed.data.runId,
+				);
+			}
+			if (parsed.data.type === 'workflow-draft-issues') {
+				workflowDrafts.value = applyWorkflowDraftIssues(workflowDrafts.value, parsed.data.payload);
+			}
+			if (parsed.data.type === 'tool-result') {
+				workflowDrafts.value = settleWorkflowDraft(
+					workflowDrafts.value,
+					parsed.data.payload.result,
+				);
+			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
@@ -1342,6 +1367,7 @@ export function createThreadRuntime(
 		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		latestSetupItems.value = null;
+		workflowDrafts.value = {};
 		appliedPreferences.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
@@ -1874,11 +1900,15 @@ export function createThreadRuntime(
 		currentTasks,
 		setupItemsByWorkflowId,
 		latestSetupWorkflowId,
+		workflowDrafts,
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
 
 		// actions
+		dismissWorkflowDrafts: (workflowId: string) => {
+			workflowDrafts.value = dismissWorkflowDrafts(workflowDrafts.value, workflowId);
+		},
 		setPendingHandoff,
 		consumePendingHandoff,
 		pendingWorkflowAttachment,
