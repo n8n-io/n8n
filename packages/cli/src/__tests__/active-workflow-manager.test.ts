@@ -79,7 +79,7 @@ describe('ActiveWorkflowManager', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock<Project>({ id: 'project-1' }));
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
-		credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+		credentialsPermissionChecker.check.mockResolvedValue();
 		activeWorkflowManager = new ActiveWorkflowManager(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			mock(),
@@ -392,7 +392,7 @@ describe('ActiveWorkflowManager', () => {
 					activeVersion: { versionId: 'v1', nodes: activeNodes, connections: {} },
 				} as unknown as WorkflowEntity;
 				workflowRepository.findById.mockResolvedValue(dbWorkflow);
-				credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+				credentialsPermissionChecker.check.mockResolvedValue();
 				workflowPublisherService.findPublisherUserIdForAccessCheck.mockResolvedValue(undefined);
 				defaultNodeType = nodeTypes.getByNameAndVersion.getMockImplementation();
 				nodeTypes.getByNameAndVersion.mockImplementation((type) =>

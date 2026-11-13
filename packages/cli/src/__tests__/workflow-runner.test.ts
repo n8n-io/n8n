@@ -1186,9 +1186,7 @@ describe('run', () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
-				personalCredentialsCount: 0,
-			});
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
 			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
 				new PCancelable(() => mock<IRun>()),
 			);
