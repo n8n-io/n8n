@@ -4093,6 +4093,7 @@
 	"settings.context.skills.connect.review.selectAll": "Select all",
 	"settings.context.skills.connect.review.empty": "No skills in this tab.",
 	"settings.context.skills.connect.review.noMatch": "No skill matches the search.",
+	"settings.context.skills.connect.review.files": "Skill files",
 	"settings.context.skills.connect.review.skippedFiles": "Files that n8n leaves out",
 	"settings.context.skills.connect.review.truncated": "This skill is too large to show in full. Open it in GitHub to read the rest.",
 	"settings.context.skills.connect.success": "Added {count} skill to {scope} from {repo} | Added {count} skills to {scope} from {repo}",
