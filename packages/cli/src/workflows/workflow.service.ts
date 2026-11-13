@@ -13,6 +13,7 @@ import {
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
 	WorkflowPublishGuardProxy,
+	WorkflowVersionedSettingsService,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -49,13 +50,24 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
-import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IWorkflowSettings,
+	JsonValue,
+	IConnections,
+	VersionedWorkflowSettings,
+} from 'n8n-workflow';
 import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	PROJECT_ROOT,
 	Workflow,
+	applyVersionedSettings,
 	assert,
 	calculateWorkflowChecksum,
+	compareWorkflowSettings,
+	pickVersionedSettings,
+	versionedSettingsEqual,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -151,6 +163,8 @@ type WorkflowUpdateOptions = {
 	readOnlyNodeEdits?: 'restore' | 'reject';
 	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
 	unsentNodeFields?: readonly string[];
+	/** The version-scoped settings of a restored version, such as its engine. */
+	restoredVersionSettings?: VersionedWorkflowSettings;
 };
 
 export type PreparedWorkflowUpdate = {
@@ -214,6 +228,7 @@ export class WorkflowService {
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly WorkflowVersionedSettingsService: WorkflowVersionedSettingsService,
 	) {}
 
 	/**
@@ -576,7 +591,6 @@ export class WorkflowService {
 	}
 
 	/** Prepare before opening a transaction. Only save the returned data through savePreparedUpdate. */
-	// eslint-disable-next-line complexity
 	async prepareUpdate(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
@@ -682,7 +696,17 @@ export class WorkflowService {
 			);
 		}
 
-		// Update the workflow's version when changing nodes, connections, or nodeGroups
+		await this.applyRestoredVersionSettings(workflow, workflowUpdateData, options);
+		await this.prepareSettingsUpdate(user, workflow, workflowUpdateData, ownerProject.id);
+
+		// A version-scoped change saves a new version. Only a live change republishes the active version.
+		const settingsChange = compareWorkflowSettings(
+			workflow.settings,
+			workflowUpdateData.settings,
+			this.WorkflowVersionedSettingsService.isEnabled(),
+		);
+
+		// Save a new version when nodes, connections, nodeGroups, or a version-scoped setting change
 		const hasNodesKey = 'nodes' in workflowUpdateData;
 		const hasConnectionsKey = 'connections' in workflowUpdateData;
 		const hasNodeGroupsKey = 'nodeGroups' in workflowUpdateData;
@@ -691,7 +715,8 @@ export class WorkflowService {
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
 		const nodeGroupsChanged =
 			hasNodeGroupsKey && !isEqual(workflowUpdateData.nodeGroups, workflow.nodeGroups);
-		const saveNewVersion = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const structureChanged = nodesChanged || connectionsChanged || nodeGroupsChanged;
+		const saveNewVersion = structureChanged || settingsChange.versioned;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -702,15 +727,17 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
+		} else {
+			// Do not let users change versionId directly
+			workflowUpdateData.versionId = workflow.versionId;
+		}
 
+		if (structureChanged) {
 			// A saved version needs nodes, connections, and node groups; backfill any the update
 			// omitted from the persisted workflow so the history row records the effective state.
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 			workflowUpdateData.nodeGroups = workflowUpdateData.nodeGroups ?? workflow.nodeGroups;
-		} else {
-			// Do not let users change versionId directly
-			workflowUpdateData.versionId = workflow.versionId;
 		}
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
@@ -718,7 +745,7 @@ export class WorkflowService {
 		// Validate structure and node groups only for structural changes; a metadata-only edit
 		// re-persists an already-validated graph, so re-checking is redundant and could block on
 		// legacy data. Both are safe to read off workflowUpdateData: it was backfilled above.
-		if (saveNewVersion) {
+		if (structureChanged) {
 			WorkflowHelpers.validateWorkflowStructure({
 				nodes: workflowUpdateData.nodes,
 				connections: workflowUpdateData.connections,
@@ -746,76 +773,6 @@ export class WorkflowService {
 				workflow.id,
 			);
 		}
-
-		// Strip redactionPolicy if instance lacks data-redaction license
-		if (
-			workflowUpdateData.settings?.redactionPolicy !== undefined &&
-			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
-			!this.licenseState.isDataRedactionLicensed()
-		) {
-			delete workflowUpdateData.settings.redactionPolicy;
-		}
-
-		// Strip redactionPolicy if user lacks the required directional scope
-		if (
-			workflowUpdateData.settings?.redactionPolicy !== undefined &&
-			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
-		) {
-			const requiredScopes = getRequiredRedactionScopes(
-				workflow.settings?.redactionPolicy,
-				workflowUpdateData.settings.redactionPolicy,
-			);
-
-			const canUpdate = await userHasScopes(user, requiredScopes, false, {
-				projectId: ownerProject.id,
-			});
-			if (!canUpdate) {
-				delete workflowUpdateData.settings.redactionPolicy;
-			}
-		}
-
-		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
-		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
-		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
-			// The settings schema does not check this value. Any value other than `false` keeps the
-			// setting on, so store a boolean and select the scope from it.
-			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
-			const turnsOn = value !== false;
-			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
-			const wasOn = workflow.settings?.redactCallerExecutions !== false;
-			const canUpdate =
-				turnsOn === wasOn ||
-				(this.licenseState.isDataRedactionLicensed() &&
-					(await userHasScopes(
-						user,
-						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
-						false,
-						{ projectId: ownerProject.id },
-					)));
-			if (!canUpdate) {
-				delete workflowUpdateData.settings.redactCallerExecutions;
-			}
-		}
-
-		// Merge settings to support partial updates
-		if (workflowUpdateData.settings && workflow.settings) {
-			workflowUpdateData.settings = {
-				...workflow.settings,
-				...workflowUpdateData.settings,
-			};
-		}
-
-		if (workflowUpdateData.settings) {
-			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
-				workflowUpdateData.settings,
-				this.globalConfig.executions.timeout,
-			);
-		}
-
-		// Check if settings actually changed
-		const settingsChanged =
-			workflowUpdateData.settings !== undefined &&
-			!isEqual(workflow.settings, workflowUpdateData.settings);
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -909,7 +866,7 @@ export class WorkflowService {
 			saveNewVersion,
 			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
-			settingsChanged,
+			settingsChanged: settingsChange.live,
 			ctx,
 			options: {
 				tagIds,
@@ -924,13 +881,117 @@ export class WorkflowService {
 		};
 	}
 
+	/**
+	 * Strips the redaction changes that the license or the user's scopes do not allow.
+	 * Then merges the partial settings into the stored settings.
+	 */
+	private async prepareSettingsUpdate(
+		user: User,
+		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
+		projectId: string,
+	) {
+		// Strip redactionPolicy if instance lacks data-redaction license
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy &&
+			!this.licenseState.isDataRedactionLicensed()
+		) {
+			delete workflowUpdateData.settings.redactionPolicy;
+		}
+
+		// Strip redactionPolicy if user lacks the required directional scope
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
+		) {
+			const requiredScopes = getRequiredRedactionScopes(
+				workflow.settings?.redactionPolicy,
+				workflowUpdateData.settings.redactionPolicy,
+			);
+
+			const canUpdate = await userHasScopes(user, requiredScopes, false, {
+				projectId,
+			});
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
+		// redactCallerExecutions is on when it is not set. Turning it off lowers redaction and
+		// turning it on raises it, so strip a change the license or the user's scopes do not allow.
+		if (workflowUpdateData.settings?.redactCallerExecutions !== undefined) {
+			// The settings schema does not check this value. Any value other than `false` keeps the
+			// setting on, so store a boolean and select the scope from it.
+			const value: unknown = workflowUpdateData.settings.redactCallerExecutions;
+			const turnsOn = value !== false;
+			workflowUpdateData.settings.redactCallerExecutions = turnsOn;
+			const wasOn = workflow.settings?.redactCallerExecutions !== false;
+			const canUpdate =
+				turnsOn === wasOn ||
+				(this.licenseState.isDataRedactionLicensed() &&
+					(await userHasScopes(
+						user,
+						[turnsOn ? 'workflow:enableRedaction' : 'workflow:disableRedaction'],
+						false,
+						{ projectId },
+					)));
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactCallerExecutions;
+			}
+		}
+
+		// Merge settings to support partial updates
+		if (workflowUpdateData.settings && workflow.settings) {
+			workflowUpdateData.settings = {
+				...workflow.settings,
+				...workflowUpdateData.settings,
+			};
+		}
+
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
+	}
+
+	/** A restore also brings back the version-scoped settings of the version, such as its engine. */
+	private async applyRestoredVersionSettings(
+		workflow: WorkflowEntity,
+		workflowUpdateData: WorkflowEntity,
+		{ restoredFromVersionId, restoredVersionSettings }: WorkflowUpdateOptions,
+	) {
+		if (!this.WorkflowVersionedSettingsService.isEnabled()) return;
+
+		const storedSettings =
+			restoredVersionSettings ??
+			(restoredFromVersionId
+				? await this.workflowHistoryService.findVersionSettings(workflow.id, restoredFromVersionId)
+				: undefined);
+		if (!storedSettings) return;
+
+		// A version saved before history stored settings has no engine, so it restores v1.
+		const versionSettings = pickVersionedSettings(storedSettings);
+
+		// Leave the settings unset when the restore keeps the current values.
+		const restored = applyVersionedSettings(workflow.settings, versionSettings);
+		if (versionedSettingsEqual(workflow.settings, restored)) return;
+
+		workflowUpdateData.settings = applyVersionedSettings(
+			workflowUpdateData.settings,
+			versionSettings,
+		);
+	}
+
 	/** Pass the caller's context to include the workflow and history in its transaction. */
 	async savePreparedUpdate(
 		prepared: PreparedWorkflowUpdate,
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const { user, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {
@@ -938,9 +999,10 @@ export class WorkflowService {
 				versionName || versionDescription
 					? { name: versionName, description: versionDescription }
 					: undefined;
+			// The saved workflow, so a version-scoped settings change also stores the unchanged nodes.
 			await this.workflowHistoryService.saveVersion(
 				user,
-				{ ...changes, settings: prepared.workflow.settings },
+				prepared.workflow,
 				workflowId,
 				autosaved,
 				source,

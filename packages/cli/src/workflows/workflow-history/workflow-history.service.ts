@@ -147,6 +147,15 @@ export class WorkflowHistoryService {
 		});
 	}
 
+	/** Reads only the version-scoped settings of a version, not its nodes. */
+	async findVersionSettings(workflowId: string, versionId: string) {
+		const version = await this.workflowHistoryRepository.findOne({
+			where: { workflowId, versionId },
+			select: ['settings'],
+		});
+		return version?.settings;
+	}
+
 	/**
 	 * Ensure a {@link WorkflowHistory} row exists for the workflow's *current*
 	 * draft state and return its `versionId`. Used by the eval-collections

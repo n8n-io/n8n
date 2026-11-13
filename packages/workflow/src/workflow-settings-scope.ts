@@ -43,6 +43,16 @@ export type VersionedWorkflowSettingKey = {
 
 export type VersionedWorkflowSettings = Pick<IWorkflowSettings, VersionedWorkflowSettingKey>;
 
+const isVersionedEntry = (
+	entry: [string, WorkflowSettingScope],
+): entry is [VersionedWorkflowSettingKey, 'version'] => entry[1] === 'version';
+
+const VERSIONED_WORKFLOW_SETTING_KEYS: readonly VersionedWorkflowSettingKey[] = Object.entries(
+	WORKFLOW_SETTINGS_SCOPE,
+)
+	.filter(isVersionedEntry)
+	.map(([key]) => key);
+
 const VERSIONED_SETTING_DEFAULTS: Readonly<Required<VersionedWorkflowSettings>> = Object.freeze({
 	engineType: 'v1',
 });
@@ -62,8 +72,49 @@ export function pickVersionedSettings(settings: unknown): Required<VersionedWork
 }
 
 export function versionedSettingsEqual(
-	settingsA?: IWorkflowSettings,
-	settingsB?: IWorkflowSettings,
+	settingsA?: IWorkflowSettings | null,
+	settingsB?: IWorkflowSettings | null,
 ): boolean {
 	return isEqual(pickVersionedSettings(settingsA), pickVersionedSettings(settingsB));
+}
+
+/** Returns the settings without the version-scoped keys. */
+export function omitVersionedSettings(settings?: IWorkflowSettings | null): IWorkflowSettings {
+	const result = { ...settings };
+	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) delete result[key];
+	return result;
+}
+
+/**
+ * Splits a settings update into a version-scoped change, which saves a new version,
+ * and a live change, which applies at once. Without version scope, every change is live.
+ */
+export function compareWorkflowSettings(
+	previous: IWorkflowSettings | null | undefined,
+	next: IWorkflowSettings | undefined,
+	versionScoped: boolean,
+): { versioned: boolean; live: boolean } {
+	if (next === undefined) return { versioned: false, live: false };
+	if (!versionScoped) return { versioned: false, live: !isEqual(previous, next) };
+	return {
+		versioned: !versionedSettingsEqual(previous, next),
+		live: !isEqual(omitVersionedSettings(previous), omitVersionedSettings(next)),
+	};
+}
+
+/**
+ * Sets the given version-scoped settings on the workflow settings, and keeps a setting
+ * that `versionSettings` does not set. To apply a stored version, pass the result of
+ * `pickVersionedSettings`, so that a missing value is already the default.
+ */
+export function applyVersionedSettings(
+	settings: IWorkflowSettings | null | undefined,
+	versionSettings: VersionedWorkflowSettings,
+): IWorkflowSettings {
+	const result: IWorkflowSettings = { ...settings };
+	for (const key of VERSIONED_WORKFLOW_SETTING_KEYS) {
+		const value = versionSettings[key];
+		if (value !== undefined) result[key] = value;
+	}
+	return result;
 }
