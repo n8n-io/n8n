@@ -109,6 +109,8 @@ export class WfrtClient {
 		}
 		if (!isRecord(parsed) || typeof parsed.type !== 'string') return;
 		const event: WfrtEvent = { ...parsed, type: parsed.type };
+		if (typeof event.shard === 'number' && typeof event.seq === 'number')
+			this.noteDurable(event.shard, event.seq);
 		if (event.type === 'dropped') this.dropped += typeof event.count === 'number' ? event.count : 1;
 		if (event.type === 'service') void this.answerService(event);
 		const id = typeof event.executionId === 'string' ? event.executionId : undefined;
@@ -135,6 +137,19 @@ export class WfrtClient {
 			this.waiters.delete(id);
 			w.done({ events: w.events, end: event });
 		}, WAIT_GRACE_MS).unref();
+	}
+
+	/** The last seq seen per shard, acked in batches: the test bed keeps no history, so the outbox stays small. */
+	private readonly seen = new Map<number, number>();
+	private ackTimer: NodeJS.Timeout | undefined;
+
+	private noteDurable(shard: number, seq: number) {
+		if (seq > (this.seen.get(shard) ?? 0)) this.seen.set(shard, seq);
+		this.ackTimer ??= setTimeout(() => {
+			this.ackTimer = undefined;
+			const acks = [...this.seen].map(([s, q]) => ({ shard: s, seq: q }));
+			void this.request('POST', '/_admin/events/ack', { acks }).catch(() => {});
+		}, 250).unref();
 	}
 
 	private async answerService(event: WfrtEvent): Promise<void> {
