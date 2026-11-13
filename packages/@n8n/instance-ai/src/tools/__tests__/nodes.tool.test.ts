@@ -464,6 +464,29 @@ describe('nodes tools', () => {
 			}
 		});
 
+		it('accepts and resolves more than ten node types in one call', async () => {
+			const context = createMockContext();
+			context.nodeService.getNodeTypeDefinition = vi
+				.fn()
+				.mockResolvedValue({ content: 'export type Params = { fileId: string };' });
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			const tool = createGetNodeTypesTool(context);
+			const nodeTypes = Array.from({ length: 25 }, (_, index) => ({
+				nodeType: `n8n-nodes-base.node${index}`,
+			}));
+
+			expect(parseToolInput(tool, { nodeTypes }).success).toBe(true);
+
+			const result = await executeTool(tool, { nodeTypes });
+			expect(result.definitions).toHaveLength(25);
+		});
+
+		it('still rejects an empty node type list', () => {
+			const tool = createGetNodeTypesTool(createMockContext());
+
+			expect(parseToolInput(tool, { nodeTypes: [] }).success).toBe(false);
+		});
+
 		it('keeps model selection inactive for unrelated operations and failed definitions', async () => {
 			const context = createMockContext();
 			context.nodeService.getNodeTypeDefinition = vi
