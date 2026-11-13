@@ -52,6 +52,9 @@ export type PublicFrontendSettings = {
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
 
+	/** Lets the editor load its expression engine before the user signs in */
+	expressionEngine: FrontendSettings['expressionEngine'];
+
 	authCookie: {
 		/** Blocks insecure access incompatible with the authentication cookie. */
 		secure: FrontendSettings['authCookie']['secure'];
@@ -735,6 +738,7 @@ export class FrontendService {
 			mfa,
 			communityNodesEnabled,
 			activeModules,
+			expressionEngine,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -760,6 +764,7 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
 			activeModules,
+			expressionEngine,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;
