@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
