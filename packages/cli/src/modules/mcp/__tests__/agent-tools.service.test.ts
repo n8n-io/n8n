@@ -1915,7 +1915,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
-			const longOutput = 'o'.repeat(80_000);
+			const longOutput = 'o'.repeat(60_000);
 			const longTurn = turn('execution-1');
 			longTurn.timeline = [
 				{
@@ -1943,6 +1943,7 @@ describe('McpAgentToolsService', () => {
 			});
 
 			expect(first.structuredContent).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+			expect(first.structuredContent.transcript).toHaveLength(40_000);
 			expect(second.structuredContent).toMatchObject({ ok: true, nextCursor: null });
 			const transcript = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
 			expect(transcript).toContain(`  Output: "${longOutput}"`);
