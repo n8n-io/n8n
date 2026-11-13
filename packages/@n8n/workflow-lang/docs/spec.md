@@ -1132,6 +1132,14 @@ little-endian length, then JSON. `wfrt` starts each connection with
     step again, alone on an idle connection, from a copy that it keeps. A
     step that then stops its worker again is the cause. So a host step can
     run twice; host steps run at least once.
+* A step waits when no connection is usable: the host restarts, recycles
+  its workers, or the last connection sent `goaway`. `wfrt` keeps the
+  frame of the step, and sends it first when a connection is usable again,
+  in arrival order. A step waits at most `--fallback-wait-ms` (default
+  30000 ms; 0 fails the step at once). After that limit the step fails as
+  retryable, so the retry setting of the workflow applies. At most 1024
+  steps wait at one time on a shard; a step beyond that limit fails as a
+  limit. The step and effect timeouts still apply to a step that waits.
 * Supervision stays in the host's server process: pings, the heap and
   resident memory limits, and new workers. The worker enforces the time
   limit of each step.
