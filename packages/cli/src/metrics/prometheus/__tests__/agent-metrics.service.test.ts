@@ -49,7 +49,10 @@ function toolCall(
 }
 
 describe('PrometheusAgentMetricsService', () => {
-	const config = mockInstance(PrometheusMetricsConfig, { prefix: 'n8n_' });
+	const config = mockInstance(PrometheusMetricsConfig, {
+		prefix: 'n8n_',
+		includeAgentMetrics: true,
+	});
 
 	let eventService: EventService;
 	let executionMetrics: AgentExecutionMetrics;
@@ -69,6 +72,19 @@ describe('PrometheusAgentMetricsService', () => {
 		const probe = new AgentExecutionProbe();
 		executionMetrics = new AgentExecutionMetrics(eventService, registry, probe);
 		new PrometheusAgentMetricsService(config, eventService, probe).init();
+	});
+
+	it('is enabled only when agent metrics are included', () => {
+		const service = new PrometheusAgentMetricsService(
+			config,
+			eventService,
+			new AgentExecutionProbe(),
+		);
+		expect(service.enabled).toBe(true);
+
+		config.includeAgentMetrics = false;
+		expect(service.enabled).toBe(false);
+		config.includeAgentMetrics = true;
 	});
 
 	it('counts a finished turn of a system agent with its duration, tokens and cost', async () => {

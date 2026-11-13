@@ -25,8 +25,7 @@ export class PrometheusAgentMetricsService implements PrometheusMetricsCollector
 	) {}
 
 	get enabled(): boolean {
-		// On whenever Prometheus metrics are on (N8N_METRICS). The labels have a fixed bound.
-		return true;
+		return this.config.includeAgentMetrics;
 	}
 
 	init() {
