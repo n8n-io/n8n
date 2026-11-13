@@ -1,9 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 import type { TransactionRunner } from '../../services/transaction';
-import { In } from '@n8n/typeorm';
+import { In, type EntityManager } from '@n8n/typeorm';
 
 import { Folder } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
+import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { FolderRepository } from '../folder.repository';
 
 describe('FolderRepository', () => {
@@ -12,6 +13,45 @@ describe('FolderRepository', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	it('keeps transaction primitives out of the repository contract', () => {
+		expect(repository).not.toHaveProperty('managerFor');
+		expect(repository).not.toHaveProperty('runInTransaction');
+	});
+
+	it('relocates children and removes the folder through the active transaction', async () => {
+		const manager = mock<EntityManager>();
+		const ctx = { trx: new TypeOrmTransaction(manager) };
+
+		await repository.relocateChildrenAndDelete('source', 'project', 'agent', 'target', ctx);
+
+		expect(manager.update).toHaveBeenCalledWith(
+			Folder,
+			{ parentFolderId: 'source', homeProject: { id: 'project' }, resourceType: 'agent' },
+			{ parentFolderId: 'target' },
+		);
+		expect(manager.delete).toHaveBeenCalledWith(Folder, {
+			id: 'source',
+			homeProject: { id: 'project' },
+			resourceType: 'agent',
+		});
+		expect(entityManager.update).not.toHaveBeenCalled();
+		expect(entityManager.delete).not.toHaveBeenCalled();
+	});
+
+	it('removes a folder subtree through the active transaction', async () => {
+		const manager = mock<EntityManager>();
+		const ctx = { trx: new TypeOrmTransaction(manager) };
+
+		await repository.deleteFolderSubtree('source', 'project', 'agent', ctx);
+
+		expect(manager.delete).toHaveBeenCalledWith(Folder, {
+			id: 'source',
+			homeProject: { id: 'project' },
+			resourceType: 'agent',
+		});
+		expect(entityManager.delete).not.toHaveBeenCalled();
 	});
 
 	it('merges folders returned from different chunks', async () => {

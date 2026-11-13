@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { FolderResourceType } from '@n8n/api-types';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, In } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
@@ -22,10 +22,20 @@ type FolderListQueryOptions = ListQuery.Options;
 export const FOLDER_TREE_JOIN =
 	'child.parentFolderId = parent.id AND child.projectId = parent.project_id AND child.resourceType = parent.resource_type';
 
-@Service()
-export class FolderRepository extends BaseRepository<Folder> {
+class FolderTable extends BaseRepository<Folder> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(Folder, dataSource.manager, transactionRunner);
+	}
+}
+
+@Service()
+export class FolderRepository extends Repository<Folder> {
+	private readonly table: FolderTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Folder, dataSource.manager);
+
+		this.table = new FolderTable(dataSource, transactionRunner);
 	}
 
 	async relocateChildrenAndDelete(
@@ -35,7 +45,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 		targetId: string | null,
 		ctx: OperationContext,
 	): Promise<void> {
-		const manager = this.managerFor(ctx);
+		const manager = this.table.managerFor(ctx);
 
 		await manager.update(
 			Folder,
@@ -51,7 +61,7 @@ export class FolderRepository extends BaseRepository<Folder> {
 		resourceType: FolderResourceType,
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.managerFor(ctx).delete(Folder, {
+		await this.table.managerFor(ctx).delete(Folder, {
 			id: folderId,
 			homeProject: { id: projectId },
 			resourceType,
