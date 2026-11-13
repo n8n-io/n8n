@@ -23,7 +23,7 @@ export type ModelOptions = {
 	responseFormat?: 'text' | 'json_object';
 	presencePenalty?: number;
 	temperature?: number;
-	reasoningEffort?: 'low' | 'medium' | 'high';
+	reasoningEffort?: 'none' | 'low' | 'medium' | 'high';
 	timeout?: number;
 	maxRetries?: number;
 	topP?: number;

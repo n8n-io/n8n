@@ -3,6 +3,7 @@ import { isOpenAiCustomEndpoint } from '@n8n/ai-utilities/model-discovery';
 import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type DisplayCondition,
 	type INodeProperties,
 	type IDataObject,
@@ -27,7 +28,12 @@ import {
 	aiClientFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
+import {
+	formatBuiltInTools,
+	isNoneReasoningSupported,
+	NONE_REASONING_CONDITION,
+	prepareAdditionalResponsesParams,
+} from './common';
 import { registerCustomEndpointChatModel } from './custom-endpoint-chat-openai';
 import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
@@ -42,7 +48,9 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	default: '',
 };
 
-// The official API accepts reasoning_effort only on o1 (and its dated versions), o3-mini and later, and gpt-5 models.
+// Recognized reasoning models. This name heuristic decides where low, medium, and
+// high effort are offered. Model IDs that also accept `none` are matched by
+// NONE_REASONING_CONDITION in common.ts.
 const OPENAI_REASONING_MODEL: DisplayCondition = {
 	_cnd: { regex: '(^o1([-\\d]+)?$)|(^o[3-9].*)|(^gpt-5.*)' },
 };
@@ -71,6 +79,21 @@ const reasoningEffort: INodeProperties = {
 			description:
 				'Favors more complete reasoning at the cost of more tokens generated and slower responses',
 		},
+	],
+};
+
+// Augmented variant for models that also accept reasoning_effort: 'none'.
+// 'none' disables reasoning entirely; on some newer models it is the only value
+// accepted when function tools are attached to the request.
+const reasoningEffortWithNone: INodeProperties = {
+	...reasoningEffort,
+	options: [
+		{
+			name: 'None',
+			value: 'none',
+			description: 'Disables reasoning entirely; required for tool use on select models',
+		},
+		...(reasoningEffort.options ?? []),
 	],
 };
 
@@ -584,8 +607,17 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						// Instance 1: none-capable models — includes none, low, medium, high.
+						...reasoningEffortWithNone,
+						displayOptions: { show: { '/model': [NONE_REASONING_CONDITION] } },
+					},
+					{
+						// Instance 2: other recognized reasoning models — low, medium, high only.
 						...reasoningEffort,
-						displayOptions: { show: { '/model': [OPENAI_REASONING_MODEL] } },
+						displayOptions: {
+							show: { '/model': [OPENAI_REASONING_MODEL] },
+							hide: { '/model': [NONE_REASONING_CONDITION] },
+						},
 					},
 					{
 						displayName: 'Model Supports Reasoning',
@@ -594,13 +626,17 @@ export class LmChatOpenAi implements INodeType {
 						default: false,
 						description:
 							'Whether the model accepts a reasoning effort. Turn on for a reasoning model on an OpenAI-compatible endpoint that n8n does not recognize by name.',
-						displayOptions: { hide: { '/model': [OPENAI_REASONING_MODEL] } },
+						displayOptions: {
+							hide: { '/model': [OPENAI_REASONING_MODEL, NONE_REASONING_CONDITION] },
+						},
 					},
 					{
+						// Instance 3: unrecognized models on custom OpenAI-compatible endpoints — low,
+						// medium, high only. Model IDs n8n cannot verify never receive `none`.
 						...reasoningEffort,
 						displayOptions: {
 							show: { modelSupportsReasoning: [true] },
-							hide: { '/model': [OPENAI_REASONING_MODEL] },
+							hide: { '/model': [OPENAI_REASONING_MODEL, NONE_REASONING_CONDITION] },
 						},
 					},
 					{
@@ -821,12 +857,37 @@ export class LmChatOpenAi implements INodeType {
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
 		const modelKwargs: Record<string, unknown> = {};
+
+		// `none` is verified only for a fixed set of OpenAI model IDs. Skip the check for a
+		// custom base URL: n8n cannot verify capability there, and the endpoint reports its
+		// own error for a value it rejects.
+		const usesCustomBaseUrl = isOpenAiCustomEndpoint(configuration.baseURL ?? undefined);
+
+		if (
+			options.reasoningEffort === 'none' &&
+			!usesCustomBaseUrl &&
+			!isNoneReasoningSupported(modelName)
+		) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Reasoning effort 'none' is not supported by model "${modelName}"`,
+				{
+					itemIndex,
+					description:
+						'Only the OpenAI model IDs that accept this value can use it. The current list is in the OpenAI model documentation at https://developers.openai.com/api/docs/models.',
+				},
+			);
+		}
+
 		if (responsesApiEnabled) {
 			const kwargs = prepareAdditionalResponsesParams(options);
 			Object.assign(modelKwargs, kwargs);
 		} else {
 			if (options.responseFormat) modelKwargs.response_format = { type: options.responseFormat };
-			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
+			if (
+				options.reasoningEffort &&
+				['none', 'low', 'medium', 'high'].includes(options.reasoningEffort)
+			) {
 				modelKwargs.reasoning_effort = options.reasoningEffort;
 			}
 		}
