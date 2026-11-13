@@ -98,12 +98,25 @@ export class PublicApiRateLimitSettingsService {
 		this.loaded = settings;
 		this.notifyOtherMains();
 
+		const { id, email, firstName, lastName, role } = actor;
+		const user = { id, email, firstName, lastName, role };
+
 		if (settings.enabled !== previous.enabled) {
-			const { id, email, firstName, lastName, role } = actor;
 			this.eventService.emit('instance-policies-updated', {
-				user: { id, email, firstName, lastName, role },
+				user,
 				settingName: 'public_api_rate_limit',
 				value: settings.enabled,
+			});
+		}
+
+		const changed = FIELDS.filter(
+			(field) => field !== 'enabled' && settings[field] !== previous[field],
+		);
+		if (changed.length > 0) {
+			this.eventService.emit('public-api-rate-limit-updated', {
+				user,
+				before: Object.fromEntries(changed.map((field) => [field, previous[field]])),
+				after: Object.fromEntries(changed.map((field) => [field, settings[field]])),
 			});
 		}
 
