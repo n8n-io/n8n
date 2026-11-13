@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_9d7cb9a95d5464::t_df5bf7540e029e 181
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_9d7cb9a95d5464::t_831e5f3f78fbcf 212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a76176b30b1c336c6ec4de31b821759ecb87b6d9",
+  "prompts": {},
+  "sessions": {
+    "s_9d7cb9a95d5464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1df1b4b6-0864-4701-a00f-34072efb8759",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

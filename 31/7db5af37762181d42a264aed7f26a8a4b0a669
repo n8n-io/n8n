@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "317db5af37762181d42a264aed7f26a8a4b0a669",
+  "prompts": {},
+  "sessions": {
+    "s_bfb3680951bbc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b9e7e40-a75c-4a5a-a07a-3f53514351f8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
