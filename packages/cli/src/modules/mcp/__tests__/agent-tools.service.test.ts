@@ -1894,6 +1894,26 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
 		});
 
+		it('keeps long values truncated without pages by default', async () => {
+			const longReply = 'x'.repeat(10_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [{ type: 'text', content: longReply, timestamp: 1 }];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn],
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true });
+			expect(result.structuredContent).not.toHaveProperty('nextCursor');
+			expect(result.structuredContent.transcript).toContain('… [truncated]');
+			expect(result.structuredContent.transcript).not.toContain(longReply);
+		});
+
 		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
 			const longOutput = 'o'.repeat(80_000);
 			const longTurn = turn('execution-1');

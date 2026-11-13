@@ -341,7 +341,7 @@ describe('formatPreviewSessionContextPage', () => {
 					userMessage: 'u'.repeat(10_000),
 					timeline: [
 						{ type: 'reasoning', content: 'r'.repeat(10_000), timestamp: 0, endTime: 1 },
-						toolCallEvent({ output: 'o'.repeat(500) }),
+						toolCallEvent({ input: { query: 'i'.repeat(500) }, output: 'o'.repeat(500) }),
 						{ type: 'text', content: assistantText, timestamp: 1, endTime: 2 },
 					],
 				}),
@@ -354,6 +354,7 @@ describe('formatPreviewSessionContextPage', () => {
 		expect(transcript).toContain(`User: ${'u'.repeat(10_000)}\n`);
 		expect(transcript).toContain(`Reasoning: ${'r'.repeat(10_000)}\n`);
 		expect(transcript).toContain(`Assistant: ${assistantText}\n`);
+		expect(transcript).toContain(`  Input: {"query":"${'i'.repeat(90)}… [truncated]\n`);
 		expect(transcript).toContain(`  Output: "${'o'.repeat(99)}… [truncated]\n`);
 	});
 
