@@ -122,9 +122,11 @@ export class TestRunnerService {
 		const isConfigured =
 			source === 'dataTable'
 				? checkNodeParameterNotEmpty(parameters?.dataTableId)
-				: !!credentials &&
-					checkNodeParameterNotEmpty(parameters?.documentId) &&
-					checkNodeParameterNotEmpty(parameters?.sheetName);
+				: source === 'langfuse'
+					? !!credentials?.langfuseApi && checkNodeParameterNotEmpty(parameters?.langfuseDataset)
+					: !!credentials &&
+						checkNodeParameterNotEmpty(parameters?.documentId) &&
+						checkNodeParameterNotEmpty(parameters?.sheetName);
 
 		if (!isConfigured) {
 			throw new TestRunError(TestRunErrorCode.EVALUATION_TRIGGER_NOT_CONFIGURED, {

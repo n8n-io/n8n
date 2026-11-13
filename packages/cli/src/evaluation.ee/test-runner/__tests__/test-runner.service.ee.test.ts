@@ -1022,6 +1022,126 @@ describe('TestRunnerService', () => {
 		});
 	});
 
+	describe('validateEvaluationTriggerNode', () => {
+		const triggerWorkflow = (
+			parameters: Record<string, unknown>,
+			extra: { credentials?: Record<string, unknown> } = {},
+		) =>
+			({
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'Dataset Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0],
+						parameters,
+						credentials: extra.credentials,
+					},
+				],
+				connections: {},
+			}) as unknown as IWorkflowBase;
+
+		const expectNotConfigured = (workflow: IWorkflowBase) => {
+			try {
+				(testRunnerService as any).validateEvaluationTriggerNode(workflow);
+				expect.unreachable('should have thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('EVALUATION_TRIGGER_NOT_CONFIGURED');
+			}
+		};
+
+		const rlc = (value: string) => ({ __rl: true, mode: 'list', value });
+
+		describe('dataTable', () => {
+			it('passes when a data table is selected', () => {
+				const workflow = triggerWorkflow({ source: 'dataTable', dataTableId: rlc('dt-1') });
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws when no data table is selected', () => {
+				expectNotConfigured(triggerWorkflow({ source: 'dataTable', dataTableId: rlc('') }));
+			});
+		});
+
+		describe('googleSheets', () => {
+			const sheetsParameters = {
+				source: 'googleSheets',
+				documentId: rlc('doc-1'),
+				sheetName: rlc('sheet-1'),
+			};
+
+			it('passes with credentials, document and sheet', () => {
+				const workflow = triggerWorkflow(sheetsParameters, {
+					credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } },
+				});
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws without credentials', () => {
+				expectNotConfigured(triggerWorkflow(sheetsParameters));
+			});
+
+			it('throws without a sheet', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ ...sheetsParameters, sheetName: rlc('') },
+						{ credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } } },
+					),
+				);
+			});
+		});
+
+		describe('langfuse', () => {
+			const langfuseCredentials = { langfuseApi: { id: '1', name: 'Langfuse' } };
+
+			it('passes with the langfuseApi credential and a dataset', () => {
+				const workflow = triggerWorkflow(
+					{ source: 'langfuse', langfuseDataset: rlc('my-dataset') },
+					{ credentials: langfuseCredentials },
+				);
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws without credentials', () => {
+				expectNotConfigured(
+					triggerWorkflow({ source: 'langfuse', langfuseDataset: rlc('my-dataset') }),
+				);
+			});
+
+			it('throws when only another credential is set', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ source: 'langfuse', langfuseDataset: rlc('my-dataset') },
+						{ credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } } },
+					),
+				);
+			});
+
+			it('throws when the dataset is empty', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ source: 'langfuse', langfuseDataset: rlc('') },
+						{ credentials: langfuseCredentials },
+					),
+				);
+			});
+
+			it('throws when the dataset is missing', () => {
+				expectNotConfigured(
+					triggerWorkflow({ source: 'langfuse' }, { credentials: langfuseCredentials }),
+				);
+			});
+		});
+	});
+
 	describe('validateSetMetricsNodes', () => {
 		it('should pass when metrics nodes are properly configured', () => {
 			const workflow = mock<IWorkflowBase>({

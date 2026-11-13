@@ -231,6 +231,7 @@
       "dist/credentials/KeapOAuth2Api.credentials.js",
       "dist/credentials/KibanaApi.credentials.js",
       "dist/credentials/KoBoToolboxApi.credentials.js",
+      "dist/credentials/LangfuseApi.credentials.js",
       "dist/credentials/Ldap.credentials.js",
       "dist/credentials/LemlistApi.credentials.js",
       "dist/credentials/LinearApi.credentials.js",
