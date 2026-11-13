@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_0b95d3793cd3cd::t_bd981ef7e72447 6050
+  s_0b95d3793cd3cd::t_e74dd18b746b83 6014-6015,6017-6019,6021-6045,6047-6049,6051-6067
+  s_0b95d3793cd3cd::t_d0971024becea9 6046,6085-6088
+  s_0b95d3793cd3cd::t_8fb99d29f77c2c 6016,6068-6084,6089-6099
+  s_0b95d3793cd3cd::t_8b05710fdd2ef0 6020
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_0b95d3793cd3cd::t_bf7d4c43079b90 1
+  s_0b95d3793cd3cd::t_f0066e4dddb187 162-164,305,308,1103,1938
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f37eab11bec71ac2c449988412d31d1ba71e2fc3",
+  "prompts": {},
+  "sessions": {
+    "s_0b95d3793cd3cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52f7a218-5c4b-40be-92f9-37b25cfe044f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
