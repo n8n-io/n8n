@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const packageRoot = resolve(__dirname, '../..');
 const srcDir = resolve(__dirname, '..');
@@ -38,12 +38,16 @@ describe('source imports', () => {
 		expect(sourceFiles).toContain('index.ts');
 	});
 
-	it('imports only relative paths', () => {
-		const nonRelative = sourceFiles.flatMap((file) =>
+	it('imports only files inside src', () => {
+		const outside = sourceFiles.flatMap((file) =>
 			importSpecifiers(readFileSync(join(srcDir, file), 'utf8'))
-				.filter((specifier) => !specifier.startsWith('.'))
+				.filter(
+					(specifier) =>
+						!specifier.startsWith('.') ||
+						relative(srcDir, resolve(srcDir, dirname(file), specifier)).startsWith('..'),
+				)
 				.map((specifier) => `${file}: ${specifier}`),
 		);
-		expect(nonRelative).toEqual([]);
+		expect(outside).toEqual([]);
 	});
 });
