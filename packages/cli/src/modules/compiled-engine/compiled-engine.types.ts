@@ -33,7 +33,27 @@ export interface CompiledArtifact {
 
 // Events of `GET /_admin/events` (spec section 9.2).
 
-export interface WfrtStartedEvent {
+/**
+ * The outbox position of a durable event. An older `wfrt` sends none; n8n then
+ * works as it did before, without `after=` and without acks.
+ */
+export interface WfrtOutboxPosition {
+	/** The shard that wrote the event. */
+	shard?: number;
+	/** The number of the event in its shard: 1 and growing, also across restarts. */
+	seq?: number;
+}
+
+/** The last fully handled seq of each shard. The keys are the shard numbers. */
+export type WfrtEventCursor = Record<string, number>;
+
+/** One ack of `POST /_admin/events/ack`. */
+export interface WfrtAck {
+	shard: number;
+	seq: number;
+}
+
+export interface WfrtStartedEvent extends WfrtOutboxPosition {
 	type: 'started';
 	executionId: string;
 	workflowId: string;
@@ -62,7 +82,7 @@ export interface WfrtTraceEvent {
 	at: number;
 }
 
-export interface WfrtWaitingEvent {
+export interface WfrtWaitingEvent extends WfrtOutboxPosition {
 	type: 'waiting';
 	executionId: string;
 	step: string;
@@ -75,7 +95,7 @@ export interface WfrtWaitingEvent {
 	at: number;
 }
 
-export interface WfrtFinishedEvent {
+export interface WfrtFinishedEvent extends WfrtOutboxPosition {
 	type: 'finished';
 	executionId: string;
 	status: 'ok' | 'error' | 'needs_attention' | 'limit' | 'cancelled';
@@ -94,7 +114,7 @@ export interface WfrtDroppedEvent {
 }
 
 /** The static data of a workflow changed (spec section 9.7). */
-export interface WfrtStaticDataEvent {
+export interface WfrtStaticDataEvent extends WfrtOutboxPosition {
 	type: 'staticData';
 	workflowId: string;
 	staticData: IDataObject;
@@ -137,8 +157,48 @@ export type WfrtEvent =
 	| WfrtStaticDataEvent
 	| WfrtStaticDataRejectedEvent;
 
+/** The event kinds that `wfrt` keeps in its outbox, so n8n can resume them. */
+export type WfrtDurableEvent =
+	| WfrtStartedEvent
+	| WfrtWaitingEvent
+	| WfrtFinishedEvent
+	| WfrtStaticDataEvent;
+
+/** A durable event that carries its outbox position. */
+export type WfrtSequencedEvent = WfrtDurableEvent & { shard: number; seq: number };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Whether the event goes to the outbox, so n8n resumes and acks it. */
+export function isDurableEvent(event: WfrtEvent): event is WfrtDurableEvent {
+	return (
+		event.type === 'started' ||
+		event.type === 'waiting' ||
+		event.type === 'finished' ||
+		event.type === 'staticData'
+	);
+}
+
+/** Whether the event carries its outbox position. Never true for an older `wfrt`. */
+export function isSequencedEvent(event: WfrtEvent): event is WfrtSequencedEvent {
+	return (
+		isDurableEvent(event) &&
+		typeof event.shard === 'number' &&
+		typeof event.seq === 'number' &&
+		Number.isInteger(event.seq)
+	);
+}
+
+/** Reads the outbox position of an event line; `{}` when the line has none. */
+function readPosition(value: Record<string, unknown>): WfrtOutboxPosition {
+	const position: WfrtOutboxPosition = {};
+	if (typeof value.shard === 'number' && Number.isInteger(value.shard)) {
+		position.shard = value.shard;
+	}
+	if (typeof value.seq === 'number' && Number.isInteger(value.seq)) position.seq = value.seq;
+	return position;
 }
 
 /** A JSON object, as n8n stores workflow static data. */
@@ -179,6 +239,7 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
 	if (value.type === 'staticData') {
 		if (typeof value.workflowId !== 'string' || !isDataObject(value.staticData)) return undefined;
 		return {
+			...readPosition(value),
 			type: 'staticData',
 			workflowId: value.workflowId,
 			staticData: value.staticData,
@@ -215,6 +276,7 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
 			};
 		case 'started':
 			return {
+				...readPosition(value),
 				type: 'started',
 				executionId,
 				workflowId: String(value.workflowId ?? ''),
@@ -241,6 +303,7 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
 		case 'waiting':
 			if (step === undefined) return undefined;
 			return {
+				...readPosition(value),
 				type: 'waiting',
 				executionId,
 				step,
@@ -252,6 +315,7 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
 		case 'finished':
 			if (!isFinishedStatus(value.status)) return undefined;
 			return {
+				...readPosition(value),
 				type: 'finished',
 				executionId,
 				status: value.status,

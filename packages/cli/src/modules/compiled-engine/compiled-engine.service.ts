@@ -16,11 +16,22 @@ import { CompiledEngineProcesses } from './compiled-engine-processes';
 import { CompiledEngineSync } from './compiled-engine-sync.service';
 import { CompiledEngineConfig } from './compiled-engine.config';
 import { CompiledEngineDispatcher } from './compiled-engine.dispatcher';
+import type { WfrtAck, WfrtEvent, WfrtEventCursor } from './compiled-engine.types';
+import { isSequencedEvent } from './compiled-engine.types';
 import { CompiledExecutionStore } from './compiled-execution.store';
 import { CompiledWebhookForwarder } from './compiled-webhook.forwarder';
-import { WfrtAdminClient } from './wfrt-admin.client';
+import { WfrtAdminClient, WfrtRequestError } from './wfrt-admin.client';
 
 const RECONNECT_DELAY_MS = 1000;
+
+/** How often n8n stores and acks the handled events of the outbox. */
+const ACK_INTERVAL_MS = 250;
+
+/** How many handled events force a store and an ack before the interval ends. */
+const ACK_BATCH_EVENTS = 200;
+
+/** Queue key of the events that carry no outbox position (an older `wfrt`). */
+const UNSEQUENCED = 'unsequenced';
 
 /**
  * Runs the compiled engine: starts the processes, follows the event stream
@@ -33,6 +44,24 @@ export class CompiledEngineService implements CompiledEngineProvider {
 	private abort?: AbortController;
 
 	private loop?: Promise<void>;
+
+	/** The last fully handled seq of each shard of the `wfrt` event outbox. */
+	private cursor: WfrtEventCursor = {};
+
+	/** The seq per shard that n8n has acked to `wfrt`. */
+	private readonly acked = new Map<number, number>();
+
+	/** Shards whose cursor stopped at an event that n8n did not handle. */
+	private readonly blocked = new Set<number>();
+
+	/** The events of one shard are handled in seq order, one at a time. */
+	private readonly eventChains = new Map<string, Promise<void>>();
+
+	private handledSinceAck = 0;
+
+	private ackTimer?: NodeJS.Timeout;
+
+	private ackChain: Promise<void> = Promise.resolve();
 
 	constructor(
 		private readonly config: CompiledEngineConfig,
@@ -71,7 +100,14 @@ export class CompiledEngineService implements CompiledEngineProvider {
 		this.stopped = true;
 		this.abort?.abort();
 		await this.loop?.catch(() => {});
+		await this.settleEvents();
 		await this.dispatcher.drain();
+		// The last cursor and acks, so a restart resumes where n8n stopped.
+		await this.flushEvents().catch((error) => {
+			this.logger.warn('Could not store the cursor of the wfrt event outbox', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 		await this.processes.stop();
 	}
 
@@ -107,6 +143,7 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	/** Follows the event stream of `wfrt` and connects again when it ends. */
 	private async followEvents() {
+		await this.loadCursor();
 		while (!this.stopped) {
 			this.abort = new AbortController();
 			try {
@@ -119,8 +156,11 @@ export class CompiledEngineService implements CompiledEngineProvider {
 								error: error instanceof Error ? error.message : String(error),
 							});
 						});
+						// A crash can leave events stored that n8n handled but did not ack.
+						void this.flushEvents().catch(() => {});
 					},
-					(event) => this.dispatcher.handleEvent(event),
+					(event) => this.acceptEvent(event),
+					this.cursor,
 				);
 			} catch (error) {
 				if (this.stopped) break;
@@ -130,8 +170,140 @@ export class CompiledEngineService implements CompiledEngineProvider {
 			}
 			if (this.sync.isConnected) this.logger.warn('The wfrt event stream closed');
 			this.sync.onDisconnected();
+			// The next connect resumes from the cursor, so the events of a shard
+			// that stopped at a failed event arrive again.
+			this.blocked.clear();
 			if (!this.stopped) await new Promise((r) => setTimeout(r, RECONNECT_DELAY_MS));
 		}
+	}
+
+	// ----- durable events of the wfrt outbox -----
+
+	private async loadCursor() {
+		try {
+			this.cursor = await this.store.readEventCursor();
+		} catch (error) {
+			this.cursor = {};
+			this.logger.warn('Could not read the cursor of the wfrt event outbox', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Queues one event behind the earlier events of its shard. */
+	private acceptEvent(event: WfrtEvent) {
+		const key = isSequencedEvent(event) ? String(event.shard) : UNSEQUENCED;
+		const previous = this.eventChains.get(key) ?? Promise.resolve();
+		const next = previous.then(async () => await this.handleEvent(event));
+		this.eventChains.set(key, next);
+		void next
+			.catch(() => {})
+			.then(() => {
+				if (this.eventChains.get(key) === next) this.eventChains.delete(key);
+			});
+	}
+
+	/** Waits for the events of the stream that n8n queued. */
+	private async settleEvents() {
+		for (let round = 0; round < 10 && this.eventChains.size > 0; round++) {
+			await Promise.all([...this.eventChains.values()].map(async (chain) => await chain));
+		}
+	}
+
+	/**
+	 * Handles one event and then advances the cursor of its shard. An event that
+	 * n8n could not handle stops the cursor of its shard, so `wfrt` sends it again.
+	 */
+	private async handleEvent(event: WfrtEvent) {
+		try {
+			await this.dispatcher.handleEvent(event);
+		} catch (error) {
+			if (isSequencedEvent(event)) this.blocked.add(event.shard);
+			this.logger.error('Could not handle an event of the wfrt event outbox', {
+				error: error instanceof Error ? error.message : String(error),
+				type: event.type,
+			});
+			return;
+		}
+		if (!isSequencedEvent(event) || this.blocked.has(event.shard)) return;
+		const shard = String(event.shard);
+		if (event.seq <= (this.cursor[shard] ?? 0)) return;
+		this.cursor[shard] = event.seq;
+		this.handledSinceAck++;
+		this.scheduleAck();
+	}
+
+	/** Stores and acks a burst of handled events, at most every 250 ms or 200 events. */
+	private scheduleAck() {
+		if (this.handledSinceAck >= ACK_BATCH_EVENTS) {
+			this.flushInBackground();
+			return;
+		}
+		if (this.ackTimer) return;
+		this.ackTimer = setTimeout(() => {
+			this.ackTimer = undefined;
+			this.flushInBackground();
+		}, ACK_INTERVAL_MS);
+		this.ackTimer.unref?.();
+	}
+
+	private flushInBackground() {
+		void this.flushEvents().catch((error) => {
+			this.logger.debug('Could not store the cursor of the wfrt event outbox', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+	}
+
+	/**
+	 * Stores the handled cursor and then acks it. One flush runs at a time, so
+	 * the stored cursor never goes back and an ack never goes out before it.
+	 */
+	async flushEvents(): Promise<void> {
+		if (this.ackTimer) {
+			clearTimeout(this.ackTimer);
+			this.ackTimer = undefined;
+		}
+		const run = this.ackChain.then(async () => await this.storeCursor());
+		this.ackChain = run.catch(() => {});
+		return await run;
+	}
+
+	private async storeCursor() {
+		const acks = this.pendingAcks();
+		if (this.handledSinceAck === 0 && acks.length === 0) return;
+		const cursor = { ...this.cursor };
+		await this.store.saveEventCursor(cursor);
+		this.handledSinceAck = 0;
+		await this.sendAcks(acks);
+	}
+
+	/** The acks of the shards whose handled seq is ahead of their acked seq. */
+	private pendingAcks(): WfrtAck[] {
+		const acks: WfrtAck[] = [];
+		for (const [shard, seq] of Object.entries(this.cursor)) {
+			if (!Number.isInteger(seq)) continue;
+			if (seq <= (this.acked.get(Number(shard)) ?? 0)) continue;
+			acks.push({ shard: Number(shard), seq });
+		}
+		return acks;
+	}
+
+	private async sendAcks(acks: WfrtAck[]) {
+		try {
+			await this.client.ackEvents(acks);
+		} catch (error) {
+			if (error instanceof WfrtRequestError && error.status === 400) {
+				// wfrt does not know these events: its outbox started again.
+				this.logger.warn('wfrt refused the ack of the event outbox cursor', {
+					error: error.message,
+				});
+				for (const ack of acks) this.acked.set(ack.shard, ack.seq);
+				return;
+			}
+			throw error;
+		}
+		for (const ack of acks) this.acked.set(ack.shard, ack.seq);
 	}
 
 	// ----- CompiledEngineProvider -----
