@@ -18,6 +18,8 @@ export interface EventPayloadMcp extends AbstractEventPayload {
 	_firstName?: string;
 	_lastName?: string;
 	globalRole?: string;
+	/** Login of the service account that acted. Absent for people. */
+	loginId?: string;
 	toolName?: string;
 	workflowId?: string;
 	status?: 'success' | 'error';
