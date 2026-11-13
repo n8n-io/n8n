@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
@@ -232,12 +233,10 @@ export function getStartAfter(
 	itemIndex: number,
 	nodeVersion?: number,
 ): StartAfter | undefined {
-	const startAfter = ctx.getNodeParameter('startAfter.values', itemIndex, null);
-	if (typeof startAfter !== 'object' || startAfter === null || Array.isArray(startAfter)) {
-		return undefined;
-	}
+	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
+	if (!isRecord(startAfter)) return undefined;
 
-	// The editor shows Start After from this version, but an imported workflow can still have it
+	// n8n removes Start After from older versions before a run, except when Return All is an expression
 	if (nodeVersion !== undefined && nodeVersion < START_AFTER_MIN_VERSION) {
 		throw new NodeOperationError(
 			ctx.getNode(),
@@ -249,7 +248,7 @@ export function getStartAfter(
 		);
 	}
 
-	const column = 'column' in startAfter ? startAfter.column : undefined;
+	const { column, value } = startAfter;
 	if (typeof column !== 'string' || column === '') {
 		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
 			itemIndex,
@@ -257,7 +256,6 @@ export function getStartAfter(
 		});
 	}
 
-	const value = 'value' in startAfter ? startAfter.value : undefined;
 	if (value === undefined || value === null || value === '') return { column };
 	if (typeof value === 'object') {
 		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
@@ -770,8 +768,8 @@ async function getStartAfterColumnProblem(
 
 	if (!columnInfo) {
 		return {
-			message: `Column "${column}" does not exist in "${schema}.${table}"`,
-			description: 'Choose a column of the table in Start After.',
+			message: `Cannot find column "${column}" in "${schema}.${table}"`,
+			description: 'Check that the table exists and has this column.',
 		};
 	}
 	if (TIMESTAMP_TYPES.includes(columnInfo.data_type)) {
@@ -797,7 +795,7 @@ async function getStartAfterColumnProblem(
 		return {
 			message: `Column "${column}" has no unique index that Start After can use`,
 			description:
-				'Start After needs a primary key or a unique index on this column alone. A unique index on more than one column, with a WHERE condition or on an expression does not count, and a view has no indexes. If values repeat, a page skips the rows that share the last value.',
+				'Start After needs a primary key or a unique index on this column alone. These do not count: a unique index on more than one column, with INCLUDE columns, with a WHERE condition or on an expression. A view has no indexes. If values repeat, a page skips the rows that share the last value.',
 		};
 	}
 	if (columnInfo.is_nullable === 'YES') {

@@ -1642,7 +1642,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			true,
 			'Start After does not support the column "raw" of type bytea',
 		],
-		['missing', 'nope', true, 'Column "nope" does not exist in "public.orders"'],
+		['missing', 'nope', true, 'Cannot find column "nope" in "public.orders"'],
 	])('should throw when the column is %s', async (_, column, isUnique, message) => {
 		const { db } = createColumnInfoDb(isUnique);
 
