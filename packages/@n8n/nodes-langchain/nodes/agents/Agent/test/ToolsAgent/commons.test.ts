@@ -1211,6 +1211,25 @@ describe('getAgentStepsParser', () => {
 });
 
 describe('handleAgentFinishOutput', () => {
+	// Mistral streams one text block per delta (no `index`), so blocks are fragments
+	it('should concatenate streamed text fragments without adding newlines', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ type: 'text', text: 'Here' },
+					{ type: 'text', text: '’s what' },
+					{ type: 'text', text: '’s in your dataset' },
+					{ type: 'text', text: ':\n\n## Overview' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('Here’s what’s in your dataset:\n\n## Overview');
+	});
+
 	it('should merge multi-output text arrays into a single string', () => {
 		const steps: AgentFinish = {
 			returnValues: {
@@ -1227,7 +1246,7 @@ describe('handleAgentFinishOutput', () => {
 		expect(result).toEqual({
 			log: '',
 			returnValues: {
-				output: 'First part\nSecond part',
+				output: 'First partSecond part',
 			},
 		});
 	});
@@ -1309,7 +1328,7 @@ describe('handleAgentFinishOutput', () => {
 
 		const result = handleAgentFinishOutput(steps) as AgentFinish;
 
-		expect(result.returnValues.output).toBe('Only thinking content\nMore thinking');
+		expect(result.returnValues.output).toBe('Only thinking contentMore thinking');
 	});
 
 	it('should return empty string when no text or thinking blocks exist', () => {
