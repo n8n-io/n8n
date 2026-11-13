@@ -8,7 +8,7 @@ import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.se
 const ROLLUP_INTERVAL_SECONDS = 5;
 
 /**
- * Folds the pending workflow statistics increments into the counters, and
+ * Folds pending workflow and agent statistics increments into their counters, and
  * fires the first-occurrence milestone events.
  */
 @SystemTask()

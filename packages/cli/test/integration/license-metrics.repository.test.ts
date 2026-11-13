@@ -2,7 +2,9 @@ import { createManyActiveWorkflows, createManyWorkflows, testDb } from '@n8n/bac
 import {
 	GLOBAL_MEMBER_ROLE,
 	StatisticsNames,
+	TransactionRunner,
 	LicenseMetricsRepository,
+	AgentExecutionStatisticsRepository,
 	ServiceAccountRepository,
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
@@ -11,14 +13,18 @@ import { Container } from '@n8n/di';
 import { createManyCredentials } from './shared/db/credentials';
 import { createAdmin, createMember, createOwner, createUser } from './shared/db/users';
 
+const isPostgres = process.env.DB_TYPE === 'postgresdb';
+
 describe('LicenseMetricsRepository', () => {
 	let licenseMetricsRepository: LicenseMetricsRepository;
+	let agentExecutionStatisticsRepository: AgentExecutionStatisticsRepository;
 	let workflowStatisticsRepository: WorkflowStatisticsRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		licenseMetricsRepository = Container.get(LicenseMetricsRepository);
+		agentExecutionStatisticsRepository = Container.get(AgentExecutionStatisticsRepository);
 
 		workflowStatisticsRepository = Container.get(WorkflowStatisticsRepository);
 	});
@@ -30,11 +36,103 @@ describe('LicenseMetricsRepository', () => {
 			'WorkflowEntity',
 			'ExecutionEntity',
 			'WorkflowStatistics',
+			'AgentExecutionStatistics',
+			'AgentExecutionStatisticsDelta',
 		]);
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
+	});
+
+	async function foldAgentIncrements(batchSize = 5000) {
+		if (!isPostgres) return 0;
+		return await agentExecutionStatisticsRepository.rollupAgentIncrements({}, batchSize);
+	}
+
+	describe('agent executions', () => {
+		test('returns no agent history before the first turn', async () => {
+			expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toBeNull();
+			expect(
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
+					startDate: new Date('2026-11-01T00:00:00.000Z'),
+					endDate: new Date('2026-11-10T00:00:00.000Z'),
+				}),
+			).toEqual(new Map());
+		});
+
+		test.skipIf(!isPostgres)(
+			'keeps pending increments after a failed fold and respects the batch limit',
+			async () => {
+				const startDate = new Date('2026-11-09T00:00:00.000Z');
+				const endDate = new Date('2026-11-10T00:00:00.000Z');
+				await Promise.all(
+					Array.from(
+						{ length: 5 },
+						async () => await agentExecutionStatisticsRepository.recordAgentExecution(startDate),
+					),
+				);
+				expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toBeNull();
+
+				await expect(
+					Container.get(TransactionRunner).run({}, async (ctx) => {
+						expect(await agentExecutionStatisticsRepository.rollupAgentIncrements(ctx, 2)).toBe(2);
+						throw new Error('Roll back the fold');
+					}),
+				).rejects.toThrow('Roll back the fold');
+				expect(
+					await agentExecutionStatisticsRepository.getDailyAgentExecutions({ startDate, endDate }),
+				).toEqual(new Map());
+
+				const batchSizes: number[] = [];
+				for (let batch = 0; batch < 4; batch++) batchSizes.push(await foldAgentIncrements(2));
+				expect(batchSizes).toEqual([2, 2, 1, 0]);
+				expect(
+					await agentExecutionStatisticsRepository.getDailyAgentExecutions({ startDate, endDate }),
+				).toEqual(new Map([['2026-11-09', 5]]));
+			},
+		);
+
+		test('keeps concurrent turns in their UTC days without a license', async () => {
+			await Promise.all(
+				Array.from(
+					{ length: 10 },
+					async () =>
+						await agentExecutionStatisticsRepository.recordAgentExecution(
+							new Date('2026-11-09T23:59:59.999Z'),
+						),
+				),
+			);
+			await agentExecutionStatisticsRepository.recordAgentExecution(
+				new Date('2026-11-10T00:00:00.000Z'),
+			);
+			await foldAgentIncrements();
+			expect(
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
+					startDate: new Date('2026-11-09T00:00:00.000Z'),
+					endDate: new Date('2026-11-10T00:00:00.000Z'),
+				}),
+			).toEqual(
+				new Map([
+					['2026-11-09', 10],
+					['2026-11-10', 1],
+				]),
+			);
+			expect(
+				await agentExecutionStatisticsRepository.getDailyAgentExecutions({
+					startDate: new Date('2026-11-10T00:00:00.000Z'),
+					endDate: new Date('2026-11-10T00:00:00.000Z'),
+				}),
+			).toEqual(new Map([['2026-11-10', 1]]));
+			expect(await agentExecutionStatisticsRepository.getFirstAgentExecutionDate()).toEqual(
+				new Date('2026-11-09T00:00:00.000Z'),
+			);
+			expect(await licenseMetricsRepository.getLicenseRenewalMetrics()).toMatchObject({
+				productionExecutions: 11,
+				productionRootExecutions: 11,
+				manualExecutions: 0,
+			});
+		});
 	});
 
 	describe('getLicenseRenewalMetrics', () => {
@@ -74,6 +172,9 @@ describe('LicenseMetricsRepository', () => {
 				),
 			]);
 
+			await agentExecutionStatisticsRepository.recordAgentExecution();
+			await foldAgentIncrements();
+
 			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
 
 			expect(metrics).toStrictEqual({
@@ -82,8 +183,8 @@ describe('LicenseMetricsRepository', () => {
 				totalCredentials: 2,
 				totalWorkflows: 5,
 				activeWorkflows: 3,
-				productionExecutions: 3,
-				productionRootExecutions: 3,
+				productionExecutions: 4,
+				productionRootExecutions: 4,
 				manualExecutions: 2,
 				evaluations: 0,
 			});

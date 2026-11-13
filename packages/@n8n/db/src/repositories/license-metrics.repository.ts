@@ -40,6 +40,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 		const workflowTable = this.toTableName('workflow_entity');
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
+		const agentStatsTable = this.toTableName('agent_execution_statistics');
+		const agentExecutions = `(SELECT COALESCE(SUM(count), 0) FROM ${agentStatsTable})`;
 		const testRunTable = this.toTableName('test_run');
 		// Service accounts share the user table but do not take a seat.
 		const isPerson = `${this.toColumnName('kind')} = 'person'`;
@@ -63,8 +65,8 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
-				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
-				(SELECT SUM(${this.toColumnName('rootCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_root_executions_count,
+				(SELECT COALESCE(SUM(count), 0) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) + ${agentExecutions} AS production_executions_count,
+				(SELECT COALESCE(SUM(${this.toColumnName('rootCount')}), 0) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) + ${agentExecutions} AS production_root_executions_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count,
 				(SELECT COUNT(distinct ${this.toColumnName('workflowId')}) FROM ${testRunTable}) AS evaluations_count;
 		`)) as Row[];
