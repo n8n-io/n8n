@@ -1,33 +1,28 @@
-import type { BadgeVariant, IconName } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import type { ToolCallReason, ToolCallRoute } from '../toolCallSimulation.types';
 
 export interface ToolCallRouteDisplay {
 	labelKey: BaseTextKey;
-	variant: BadgeVariant;
 	icon: IconName;
 }
 
 export const TOOL_CALL_ROUTE_DISPLAY: Record<ToolCallRoute, ToolCallRouteDisplay> = {
 	real_read: {
 		labelKey: 'agents.testRun.toolCall.route.realRead',
-		variant: 'info',
 		icon: 'globe',
 	},
 	simulated: {
 		labelKey: 'agents.testRun.toolCall.route.simulated',
-		variant: 'subtle',
 		icon: 'flask-conical',
 	},
 	simulated_made_up: {
 		labelKey: 'agents.testRun.toolCall.route.simulatedMadeUp',
-		variant: 'warning',
 		icon: 'sparkles',
 	},
 	blocked: {
 		labelKey: 'agents.testRun.toolCall.route.blocked',
-		variant: 'danger',
 		icon: 'ban',
 	},
 };
@@ -53,17 +48,7 @@ export const TOOL_CALL_BLOCKED_NEXT_STEP_KEYS: Partial<Record<ToolCallReason, Ba
 const TOOL_CALL_BLOCKED_NEXT_STEP_FALLBACK_KEY: BaseTextKey =
 	'agents.testRun.toolCall.blocked.next.fallback';
 
-/** Reasons where the simulator, not the agent, is the cause. */
-const SIMULATOR_SIDE_REASONS = new Set<ToolCallReason>([
-	'unsupported_by_simulator',
-	'simulator_unavailable',
-]);
-
-export function isSimulatorSideReason(reason: ToolCallReason): boolean {
-	return SIMULATOR_SIDE_REASONS.has(reason);
-}
-
-/** The wire value may be newer than this client. Unknown routes render no label. */
+/** The wire value may be newer than this client. Unknown routes render no icon. */
 export function getToolCallRouteDisplay(route: string): ToolCallRouteDisplay | undefined {
 	return Object.hasOwn(TOOL_CALL_ROUTE_DISPLAY, route)
 		? TOOL_CALL_ROUTE_DISPLAY[route as ToolCallRoute]
