@@ -89,6 +89,19 @@ describe('workflow_step_execution table (integration)', () => {
 		return { id: row.id };
 	}
 
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
+	}
+
 	it('persists and retrieves a step row', async () => {
 		const executionId = await createExecution();
 		const repo = dataSource.getRepository(WorkflowStepExecution);
@@ -481,7 +494,7 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 
 		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
-		await new Promise((resolve) => setTimeout(resolve, 150));
+		await waitUntilQueryBlocksOnLock('FOR SHARE');
 		await cancellation.commitTransaction();
 		await cancellation.release();
 
