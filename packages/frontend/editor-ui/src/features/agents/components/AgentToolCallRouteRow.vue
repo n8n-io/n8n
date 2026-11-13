@@ -3,10 +3,11 @@ import {
 	N8nAiActivityStepButton,
 	N8nAiActivityStepChevron,
 	N8nAnimatedCollapsibleContent,
+	N8nCollapsibleRoot,
+	N8nCollapsibleTrigger,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, ref, useId } from 'vue';
 
 import type { AgentToolCallRouteItem } from '../toolCallSimulation.types';
@@ -62,8 +63,12 @@ const nextStep = computed(() =>
 		data-test-id="agent-tool-call-route-row"
 	>
 		<!-- Keep the closed details in the DOM, hidden, so aria-controls always resolves. -->
-		<CollapsibleRoot v-if="canExpand && simulation" v-model:open="isOpen" :unmount-on-hide="false">
-			<CollapsibleTrigger as-child>
+		<N8nCollapsibleRoot
+			v-if="canExpand && simulation"
+			v-model:open="isOpen"
+			:unmount-on-hide="false"
+		>
+			<N8nCollapsibleTrigger as-child>
 				<N8nAiActivityStepButton
 					:class="$style.header"
 					size="small"
@@ -85,7 +90,7 @@ const nextStep = computed(() =>
 						<AgentToolCallRouteIcon :route="simulation.route" />
 					</template>
 				</N8nAiActivityStepButton>
-			</CollapsibleTrigger>
+			</N8nCollapsibleTrigger>
 			<N8nAnimatedCollapsibleContent>
 				<div
 					:id="detailsId"
@@ -124,7 +129,7 @@ const nextStep = computed(() =>
 					</N8nText>
 				</div>
 			</N8nAnimatedCollapsibleContent>
-		</CollapsibleRoot>
+		</N8nCollapsibleRoot>
 		<div v-else :class="[$style.header, $style.static]">
 			<span
 				:class="$style.name"

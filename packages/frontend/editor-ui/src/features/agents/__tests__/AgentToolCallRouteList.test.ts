@@ -252,6 +252,14 @@ describe('AgentToolCallRouteRow', () => {
 		expect(toggle).toHaveAttribute('aria-controls', details.id);
 	});
 
+	it('keeps the toggle as a non-submit button', () => {
+		const { getByTestId } = renderRow({
+			props: callWith({ route: 'simulated', reason: 'served_from_world' }),
+		});
+
+		expect(getByTestId('agent-tool-call-route-toggle')).toHaveAttribute('type', 'button');
+	});
+
 	it('collapses again on a second click', async () => {
 		const user = userEvent.setup();
 		const { container, getByTestId } = renderRow({
