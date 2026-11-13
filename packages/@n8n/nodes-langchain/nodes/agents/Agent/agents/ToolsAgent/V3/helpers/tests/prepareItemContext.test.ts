@@ -40,7 +40,7 @@ describe('processItem', () => {
 		);
 	});
 
-	it('should process item and return context', async () => {
+	it.each([0, 1])('should process item %i and return context', async (itemIndex) => {
 		const mockTool = mock<Tool>();
 		const mockPrompt = mock<ChatPromptTemplate>();
 
@@ -62,10 +62,11 @@ describe('processItem', () => {
 			return undefined;
 		});
 
-		const result = await prepareItemContext(mockContext, 0);
+		const result = await prepareItemContext(mockContext, itemIndex);
 
 		expect(result).not.toBeNull();
-		expect(result?.itemIndex).toBe(0);
+		expect(result?.itemIndex).toBe(itemIndex);
+		expect(commonHelpers.getTools).toHaveBeenCalledWith(mockContext, undefined, itemIndex);
 		expect(result?.input).toBe('test input');
 		expect(result?.tools).toEqual([mockTool]);
 		expect(result?.prompt).toBe(mockPrompt);
