@@ -100,13 +100,17 @@ describe('SourceControlService', () => {
 		});
 
 		it('does not store the preference when the checkout fails', async () => {
-			gitService.setBranch.mockRejectedValue(new Error('branch not found'));
+			vi.spyOn(preferencesService, 'getPreferences').mockReturnValue({
+				branchName: 'main',
+			} as never);
+			gitService.setBranch.mockRejectedValueOnce(new Error('branch not found'));
 			const setPreferences = vi.fn().mockResolvedValue(undefined);
 			preferencesService.setPreferences = setPreferences;
 
 			await expect(sourceControlService.setBranch('missing')).rejects.toThrow('branch not found');
 
 			expect(setPreferences).not.toHaveBeenCalled();
+			expect(gitService.setBranch).toHaveBeenNthCalledWith(2, 'main');
 		});
 
 		it('rolls back the checkout when storing the preference fails', async () => {
