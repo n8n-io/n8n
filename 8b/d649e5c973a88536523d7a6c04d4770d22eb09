@@ -1,0 +1,54 @@
+packages/cli/src/metrics/prometheus/__tests__/agent-metrics.service.test.ts
+  s_664c3e6ae8c7b1::t_edd0e8c4fa5b63 88-91,93
+  s_664c3e6ae8c7b1::t_bfefa263c2d0ea 1-7,9-68,72-87,94-126,142-218
+  s_664c3e6ae8c7b1::t_22b34532a98c8a 92,127-141
+  s_664c3e6ae8c7b1::t_b218cfad9593d6 8,69-71
+packages/cli/src/metrics/prometheus/__tests__/db-pool-metrics-exposition.test.ts
+  s_664c3e6ae8c7b1::t_3eb7f61e748991 24,73,146
+packages/cli/src/metrics/prometheus/agent-metrics.service.ts
+  s_664c3e6ae8c7b1::t_22b34532a98c8a 43-44,83-85
+  s_664c3e6ae8c7b1::t_b218cfad9593d6 7,24,66,74
+  s_664c3e6ae8c7b1::t_c76ec063244b86 1-6,8-23,25-42,45-65,67-73,75-82,86-111
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_664c3e6ae8c7b1::t_12cd2f311949e5 12,100,166,983,1091,1852
+  s_664c3e6ae8c7b1::t_20050a40953e17 1572-1631
+packages/cli/src/metrics/prometheus/prometheus.service.ts
+  s_664c3e6ae8c7b1::t_6441ae0edbcf3c 9,64,95
+packages/cli/src/modules/agents/agent-execution-probe.ts
+  s_664c3e6ae8c7b1::t_2f60003cdbe479 1-36
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_664c3e6ae8c7b1::t_12cd2f311949e5 37,236
+packages/cli/src/events/event-map.ts
+  s_664c3e6ae8c7b1::t_c02420031d14ae 3
+  s_664c3e6ae8c7b1::t_4ef48e023c67f1 22
+packages/cli/eslint.config.mjs
+  s_664c3e6ae8c7b1::t_b218cfad9593d6 487-488
+packages/cli/src/events/maps/agent-metrics.event-map.ts
+  s_664c3e6ae8c7b1::t_57ec77c849eb4a 1-46
+packages/cli/src/events/__tests__/event-map.test.ts
+  s_664c3e6ae8c7b1::t_edd0e8c4fa5b63 7,27
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_664c3e6ae8c7b1::t_71d6c39e69c01a 27,211,400,484-491,570,616,1468-1471
+packages/cli/src/modules/agents/agent-execution-metrics.ts
+  s_664c3e6ae8c7b1::t_b218cfad9593d6 9,25,35,51,56
+  s_664c3e6ae8c7b1::t_9584c687193aa3 90-91,94-96,100
+  s_664c3e6ae8c7b1::t_76e00934f6f426 1-8,10-24,26-34,36-50,52-55,57-89,92-93,97-99,101-106
+packages/cli/src/metrics/__tests__/prometheus-metrics.service.test.ts
+  s_664c3e6ae8c7b1::t_3eb7f61e748991 18,64,97,138,177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bd649e5c973a88536523d7a6c04d4770d22eb09",
+  "prompts": {},
+  "sessions": {
+    "s_664c3e6ae8c7b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02bd6ac4-ec37-4eaf-b213-588960a3d03f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
