@@ -3,9 +3,11 @@ import {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import z from 'zod';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -197,13 +199,18 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId: undefined,
-					name: undefined,
-					description: undefined,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId: undefined,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});
@@ -240,13 +247,18 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: versionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId,
-					name: 'Add Slack notification',
-					description: 'Sends a Slack message when the order fails.',
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: 'Add Slack notification',
+						description: 'Sends a Slack message when the order fails.',
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
 			});
 
 			test('publishes specific version when versionId provided', async () => {
@@ -276,13 +288,42 @@ describe('publish-workflow MCP tool', () => {
 					activeVersionId: versionId,
 				});
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId,
-					name: undefined,
-					description: undefined,
-					source: 'n8n-mcp',
-					publishHistory: 'none',
-				});
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{
+						versionId,
+						name: undefined,
+						description: undefined,
+						source: 'n8n-mcp',
+						publishHistory: 'none',
+					},
+					{},
+				);
+			});
+
+			test('passes the operation context to the workflow service', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(workflow);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					ctx,
+				);
+				await tool.handler(
+					{ workflowId: 'wf-1', versionId: undefined },
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect((workflowService.activateWorkflow as Mock).mock.calls[0][3]).toBe(ctx);
 			});
 		});
 
