@@ -96,7 +96,11 @@ export class SimulationSessionService {
 			try {
 				world = await backend.openWorld({
 					testChatId: input.testChatId,
-					agent,
+					// Tools n8n blocks (SSE MCP servers, custom code) stay out of the world too.
+					agent: {
+						...agent,
+						tools: agent.tools.filter((tool) => !described.hostGaps.has(tool.toolName)),
+					},
 					firstMessage: input.message,
 					...(savedWorld?.backend === backend.id ? { saved: savedWorld.state } : {}),
 				});

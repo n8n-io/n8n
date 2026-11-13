@@ -199,7 +199,14 @@ describe('redactMcpUrl', () => {
 		expect(redactMcpUrl('https://mcp.linear.app/mcp')).toBe('https://mcp.linear.app/mcp');
 	});
 
-	it('drops the query of a URL it cannot parse', () => {
-		expect(redactMcpUrl('not a url?token=abc')).toBe('not a url');
+	it.each(['user:pw@mcp.example.com/mcp?token=abc', 'mcp.example.com/mcp?token=abc'])(
+		'keeps nothing of a URL that is not a parsed HTTP URL: %s',
+		(url) => {
+			expect(redactMcpUrl(url)).toBe('[REDACTED MCP URL]');
+		},
+	);
+
+	it('keeps nothing of a URL it cannot parse', () => {
+		expect(redactMcpUrl('http://[bad')).toBe('[REDACTED MCP URL]');
 	});
 });

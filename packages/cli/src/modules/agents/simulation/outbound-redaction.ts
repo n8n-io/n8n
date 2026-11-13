@@ -161,6 +161,8 @@ function parseJsonObject(text: string): unknown {
 	}
 }
 
+const REDACTED_MCP_URL = '[REDACTED MCP URL]';
+
 /**
  * An MCP server URL with its user info and every query value removed. MCP servers that take
  * a key in the URL use any parameter name (`?key=`, `?apiKey=`), and their credential is never
@@ -171,8 +173,11 @@ export function redactMcpUrl(url: string): string {
 	try {
 		parsed = new URL(url);
 	} catch {
-		return url.split('?')[0];
+		// Without a parsed URL its user info cannot be told apart, so nothing of it is kept.
+		return REDACTED_MCP_URL;
 	}
+	// Other schemes (`user:pw@host`) parse as opaque URLs that keep their user info.
+	if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return REDACTED_MCP_URL;
 	parsed.username = '';
 	parsed.password = '';
 	for (const name of new Set(parsed.searchParams.keys()))

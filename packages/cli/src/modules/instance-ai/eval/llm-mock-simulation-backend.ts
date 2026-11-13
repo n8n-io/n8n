@@ -21,7 +21,7 @@ import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-sc
 import { createMcpMockFetch } from './mcp-mock-fetch';
 import { createLlmMockHandler, type WriteLedgerEntry } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
-import { createWebSearchMock } from './web-search-mock';
+import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from './web-search-mock';
 
 const MAX_SCENARIO_HINT_CHARS = 2_000;
 
@@ -139,6 +139,9 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
 				if (request.protocol === 'web_search') {
 					const body = await webSearch(request.body as Parameters<typeof webSearch>[0]);
+					if (body.note === WEB_SEARCH_MOCK_FAILURE_NOTE) {
+						return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this search.' };
+					}
 					return { outcome: 'served', source: 'made_up', status: 200, body };
 				}
 				if (request.protocol === 'mcp') {
@@ -152,12 +155,20 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 										typeof request.body === 'string' ? request.body : JSON.stringify(request.body),
 								}),
 					});
+					const text = await response.text();
+					// The MCP mock reports a failed generation as a JSON-RPC internal error.
+					if (isMcpInternalError(text)) {
+						return {
+							outcome: 'unavailable',
+							detail: 'The LLM mock failed to answer this MCP call.',
+						};
+					}
 					return {
 						outcome: 'served',
 						source: 'made_up',
 						status: response.status,
 						headers: Object.fromEntries(response.headers.entries()),
-						body: await response.text(),
+						body: text,
 					};
 				}
 				const node: INode = {
@@ -248,4 +259,23 @@ function parseWriteLedger(value: unknown): WriteLedgerEntry[] {
 
 function isMockGenerationError(body: unknown): boolean {
 	return typeof body === 'object' && body !== null && '_evalMockError' in body;
+}
+
+const JSON_RPC_INTERNAL_ERROR = -32603;
+
+function isMcpInternalError(text: string): boolean {
+	try {
+		const parsed: unknown = JSON.parse(text);
+		return (
+			typeof parsed === 'object' &&
+			parsed !== null &&
+			'error' in parsed &&
+			typeof parsed.error === 'object' &&
+			parsed.error !== null &&
+			'code' in parsed.error &&
+			parsed.error.code === JSON_RPC_INTERNAL_ERROR
+		);
+	} catch {
+		return false;
+	}
 }

@@ -7,12 +7,15 @@ import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { LlmMockSimulationBackend } from '../llm-mock-simulation-backend';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
-import { createWebSearchMock } from '../web-search-mock';
+import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from '../web-search-mock';
 
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
-vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
+vi.mock('../web-search-mock', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../web-search-mock')>()),
+	createWebSearchMock: vi.fn(),
+}));
 
 const seed = {
 	openingMessage: 'Post the release note',
@@ -161,6 +164,29 @@ describe('LlmMockSimulationBackend', () => {
 		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
 			expect.objectContaining({ scenarioHints: 'hi', globalContext: seed.globalContext }),
 		);
+	});
+
+	it('says unavailable when the MCP or web search mock failed to generate a reply', async () => {
+		const { backend, mcpFetch, webSearch } = setup();
+		mcpFetch.mockResolvedValue(
+			new Response('{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"timeout"}}', {
+				status: 200,
+			}),
+		);
+		webSearch.mockResolvedValue({ query: 'n8n', results: [], note: WEB_SEARCH_MOCK_FAILURE_NOTE });
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		const mcpReply = await world.handleRequest(
+			{ protocol: 'mcp', method: 'POST', url: 'https://mcp.linear.app/mcp', body: {} },
+			{ toolName: 'linear_create_issue', mcpServerName: 'linear' },
+		);
+		const searchReply = await world.handleRequest(
+			{ protocol: 'web_search', method: 'POST', url: 'simulation://web-search', body: {} },
+			{ toolName: 'web_search' },
+		);
+
+		expect(mcpReply).toMatchObject({ outcome: 'unavailable' });
+		expect(searchReply).toMatchObject({ outcome: 'unavailable' });
 	});
 
 	it('answers MCP and web search through their mocks', async () => {
