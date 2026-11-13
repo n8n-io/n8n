@@ -31,6 +31,7 @@ import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
+import { ReconciliationSweeper } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
 
@@ -150,6 +151,8 @@ export function createEngineRuntime({
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
+	// No detector yet, so the sweeper sets no timer.
+	const reconciliationSweeper = new ReconciliationSweeper([], {}, logger);
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -198,6 +201,7 @@ export function createEngineRuntime({
 			orchestrationWorker.start();
 			stepWorker.start();
 			waitSweeper.start();
+			reconciliationSweeper.start();
 		},
 
 		stop: async () => {
@@ -205,9 +209,9 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 
-			// The sweeper stops first: it feeds the step queue, so nothing lands
+			// The sweepers stop first: they feed the queues, so nothing lands
 			// there after the workers have drained.
-			await waitSweeper.stop();
+			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
