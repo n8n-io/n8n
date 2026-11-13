@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
-import { ref, type Component } from 'vue';
+import { nextTick, ref, type Component } from 'vue';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { AgentMemorySourceFacetGroupDto } from '@n8n/api-types';
 
@@ -29,9 +29,24 @@ const groups: AgentMemorySourceFacetGroupDto[] = [
 	{ kind: 'users', users: [{ id: 'viewer-1', name: 'Robin', isViewer: true }] },
 ];
 
-function mountFilter(modelValue = {}) {
+/** Enough Slack sources for a searchable sub-menu. */
+const manyGroups: AgentMemorySourceFacetGroupDto[] = [
+	{
+		kind: 'slack',
+		channels: ['finance-ops', 'general', 'random', 'design', 'eng', 'sales', 'support', 'ops'].map(
+			(name, index) => ({ id: `C${index}`, name }),
+		),
+		users: [
+			{ id: 'U1', name: 'Sin' },
+			{ id: 'U2', name: 'Finley' },
+		],
+	},
+	{ kind: 'users', users: [{ id: 'viewer-1', name: 'Robin', isViewer: true }] },
+];
+
+function mountFilter(modelValue = {}, filterGroups = groups) {
 	return mount(AgentMemorySourceFilter, {
-		props: { groups, modelValue, 'onUpdate:modelValue': vi.fn() },
+		props: { groups: filterGroups, modelValue, 'onUpdate:modelValue': vi.fn() },
 	});
 }
 
@@ -42,6 +57,7 @@ function findMenu(wrapper: ReturnType<typeof mountFilter>) {
 	return {
 		items,
 		select: (id: string | undefined) => menu.vm.$emit('select', id),
+		search: (term: string, itemId: string) => menu.vm.$emit('search', term, itemId),
 	};
 }
 
@@ -90,5 +106,46 @@ describe('AgentMemorySourceFilter', () => {
 		expect(wrapper.find('[data-testid="agent-memory-source-filter"]').text()).toContain(
 			'agents.builder.memory.entries.filter.trigger Sin',
 		);
+	});
+
+	it('filters a searchable sub-menu by the search term', async () => {
+		const wrapper = mountFilter({}, manyGroups);
+		findMenu(wrapper).search('fin', 'slack-group');
+		await nextTick();
+
+		const [, slack, users] = findMenu(wrapper).items;
+		expect(slack.searchable).toBe(true);
+		expect(slack.children?.map(({ label }) => label)).toEqual([
+			'agents.builder.memory.entries.filter.channels',
+			'#finance-ops',
+			'agents.builder.memory.entries.filter.users',
+			'Finley',
+		]);
+		// The search of one sub-menu does not filter the others.
+		expect(users.children).toHaveLength(2);
+	});
+
+	it('drops the header of a section with no match', async () => {
+		const wrapper = mountFilter({}, manyGroups);
+		findMenu(wrapper).search('SALES', 'slack-group');
+		await nextTick();
+
+		const [, slack] = findMenu(wrapper).items;
+		expect(slack.children?.map(({ label }) => label)).toEqual([
+			'agents.builder.memory.entries.filter.channels',
+			'#sales',
+		]);
+	});
+
+	it('shows all the sources again when the search is cleared', async () => {
+		const wrapper = mountFilter({}, manyGroups);
+		findMenu(wrapper).search('fin', 'slack-group');
+		await nextTick();
+		findMenu(wrapper).search('', 'slack-group');
+		await nextTick();
+
+		const [, slack] = findMenu(wrapper).items;
+		// All Slack, two headers, eight channels and two users.
+		expect(slack.children).toHaveLength(13);
 	});
 });

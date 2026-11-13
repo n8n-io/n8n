@@ -11,11 +11,10 @@ import type {
 	AgentContextResult,
 	AgentSessionDetail,
 } from './agent-context.contracts';
-import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import {
 	AgentExecutionService,
@@ -210,12 +209,14 @@ export class AgentContextService {
 		if (input.type === 'agents') {
 			const agents = await this.agentsService.findByProjectId(projectId);
 			return {
-				agents: agents.map((agent) => ({
-					agentId: agent.id,
-					name: agent.name,
-					published: agent.activeVersionId !== null,
-					updatedAt: agent.updatedAt.toISOString(),
-				})),
+				agents: agents
+					.filter((agent) => !agent.isArchived)
+					.map((agent) => ({
+						agentId: agent.id,
+						name: agent.name,
+						published: agent.activeVersionId !== null,
+						updatedAt: agent.updatedAt.toISOString(),
+					})),
 			};
 		}
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nMarkdown } from '@n8n/design-system';
+import ChatMarkdown from '@/features/ai/shared/components/ChatMarkdown/ChatMarkdown.vue';
 import { AGENT_PREVIEW_BUILD_HREF, AGENT_PREVIEW_EDIT_HREF } from '@n8n/api-types';
 import type { PluginSimple } from 'markdown-it';
 import { inject } from 'vue';
@@ -73,7 +73,7 @@ function handleLinkClick(event: MouseEvent) {
 </script>
 
 <template>
-	<N8nMarkdown
+	<ChatMarkdown
 		:content="source"
 		:plugins="standaloneBuilder ? [buildLinks] : []"
 		@click="handleLinkClick"

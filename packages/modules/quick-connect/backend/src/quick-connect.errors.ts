@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * Error thrown when quick connect fails to fetch credentials from a third-party service.

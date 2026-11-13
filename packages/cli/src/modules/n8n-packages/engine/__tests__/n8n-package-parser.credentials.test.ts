@@ -1,12 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import type { ICredentialType } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import type { WorkflowSerializer } from '../../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../../io/package-reader';
 import { FORMAT_VERSION } from '../../spec/constants';
+import { postgresLikeCredentialType } from '../../entities/credential/__tests__/postgres-like-credential-type';
 import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import { N8nPackageParser } from '../n8n-package-parser';
 
@@ -41,11 +44,25 @@ const topLevelEntry: ManifestEntry = {
 };
 
 describe('N8nPackageParser.getCredentials', () => {
+	const logger = mock<Logger>();
+	const credentialTypes = mock<CredentialTypes>();
 	const parser = new N8nPackageParser(
-		mock<Logger>(),
+		logger,
 		mock<NodeTypes>(),
 		mock<WorkflowSerializer>(),
+		credentialTypes,
 	);
+
+	beforeEach(() => {
+		logger.warn.mockClear();
+		credentialTypes.recognizes.mockReset().mockReturnValue(false);
+		credentialTypes.getByName.mockReset();
+	});
+
+	function knowType(type: ICredentialType) {
+		credentialTypes.recognizes.mockImplementation((name) => name === type.name);
+		credentialTypes.getByName.mockReturnValue(type);
+	}
 
 	it('reads a credential file from the top-level credentials folder, keyed by id', async () => {
 		const credential = {
@@ -164,23 +181,68 @@ describe('N8nPackageParser.getCredentials', () => {
 		);
 	});
 
-	it('throws a UserError when a data value is not an expression', async () => {
-		const reader = makeReader(manifestWith({ credentials: [topLevelEntry] }), {
-			'credentials/github-cred-1/credential.json': {
-				id: 'cred-1',
-				name: 'GitHub',
-				type: 'githubApi',
-				data: { accessToken: 'plain-secret' },
-			},
+	describe('plain values in credential data', () => {
+		async function readPostgresLike(data: Record<string, unknown>) {
+			const reader = makeReader(manifestWith({ credentials: [topLevelEntry] }), {
+				'credentials/github-cred-1/credential.json': {
+					id: 'cred-1',
+					name: 'GitHub',
+					type: 'postgres',
+					data,
+				},
+			});
+			return (await parser.getCredentials(reader)).get('cred-1');
+		}
+
+		it('keeps a plain controller of a field that carries an expression', async () => {
+			knowType(postgresLikeCredentialType);
+
+			const credential = await readPostgresLike({
+				caCertificate: EXPRESSION,
+				ssl: 'require',
+				allowUnauthorizedCerts: false,
+			});
+
+			expect(credential?.data).toEqual({
+				caCertificate: EXPRESSION,
+				ssl: 'require',
+				allowUnauthorizedCerts: false,
+			});
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		const error = await parser.getCredentials(reader).catch((e: unknown) => e);
+		it('drops a plain value of a secret field and warns without logging the value', async () => {
+			knowType(postgresLikeCredentialType);
 
-		expect(error).toBeInstanceOf(UserError);
-		expect(error).toHaveProperty(
-			'message',
-			'Package credential file at credentials/github-cred-1/credential.json failed schema validation.',
-		);
+			const credential = await readPostgresLike({
+				caCertificate: EXPRESSION,
+				password: 'plain-secret',
+			});
+
+			expect(credential?.data).toEqual({ caCertificate: EXPRESSION });
+			expect(credential?.dataIsComplete).toBe(false);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(JSON.stringify(logger.warn.mock.calls)).toContain('password');
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('plain-secret');
+		});
+
+		it('drops every plain value when the credential type is not known', async () => {
+			const credential = await readPostgresLike({
+				caCertificate: EXPRESSION,
+				ssl: 'require',
+				allowUnauthorizedCerts: false,
+			});
+
+			expect(credential?.data).toEqual({ caCertificate: EXPRESSION });
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+		});
+
+		it('omits data when every value was dropped', async () => {
+			const credential = await readPostgresLike({ password: 'plain-secret' });
+
+			expect(credential).not.toHaveProperty('data');
+			expect(credential?.dataIsComplete).toBe(false);
+		});
 	});
 
 	it('throws a UserError when the file id does not match the manifest id', async () => {

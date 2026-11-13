@@ -5,7 +5,7 @@ import {
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project, User } from '@n8n/db';
 import { UserRepository, WorkflowReviewRequestRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -223,13 +223,14 @@ describe('GET /workflow-review-requests', () => {
 			200,
 		);
 
+		const decidedBy = member as Person;
 		expect(response.body.data.data[0]).toMatchObject({
 			decision: 'changes_requested',
 			decisionBy: {
-				id: member.id,
-				email: member.email,
-				firstName: member.firstName,
-				lastName: member.lastName,
+				id: decidedBy.id,
+				email: decidedBy.email,
+				firstName: decidedBy.firstName,
+				lastName: decidedBy.lastName,
 			},
 		});
 	});

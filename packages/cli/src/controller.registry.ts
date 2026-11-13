@@ -12,11 +12,10 @@ import type {
 	KeyedRateLimiterConfig,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { NotFoundError, UnauthenticatedError } from '@n8n/errors';
+import { NotFoundError, UnauthenticatedError, UnexpectedError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Router } from 'express';
 import type { Request, Response, RequestHandler } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { AuthService } from '@/auth/auth.service';

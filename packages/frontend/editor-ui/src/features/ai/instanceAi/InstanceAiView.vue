@@ -12,6 +12,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
+import { useAssistantCreditsStore } from './assistantCredits.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { INSTANCE_AI_VIEW, isInstanceAiChatRoute } from './constants';
 import InstanceAiOnboardingView from './onboarding/InstanceAiOnboardingView.vue';
@@ -107,7 +108,7 @@ onMounted(() => {
 	});
 
 	void store.loadThreads();
-	void store.fetchCredits();
+	void useAssistantCreditsStore().fetchCredits();
 	void nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 	// Subscribe to push + fetch backend Browser Use state.

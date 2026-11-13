@@ -15,7 +15,8 @@ import {
 	userIdParamSchema,
 } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest, Project, ProjectRelation } from '@n8n/db';
+import type { AuthenticatedRequest, Project, ProjectRelation, User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -43,6 +44,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
 
 const tags = ['Projects'];
@@ -59,11 +61,14 @@ const toProjectPublicDto = (project: Project): ProjectPublicDto => ({
 	updatedAt: project.updatedAt.toISOString(),
 });
 
+function memberFields(user: User) {
+	// The public schema needs a string email.
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, email: email ?? '', firstName, lastName };
+}
+
 const toProjectMemberPublicDto = (relation: ProjectRelation): ProjectMemberPublicDto => ({
-	id: relation.user.id,
-	email: relation.user.email,
-	firstName: relation.user.firstName,
-	lastName: relation.user.lastName,
+	...memberFields(relation.user),
 	createdAt: relation.user.createdAt.toISOString(),
 	updatedAt: relation.user.updatedAt.toISOString(),
 	role: relation.role?.slug ?? null,
@@ -155,21 +160,24 @@ export class ProjectsPublicController {
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteProject(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Query _query: DeleteProjectQueryPublicDto,
 	): Promise<void> {
-		await this.projectService.deleteProject(req.user, projectId);
+		await this.projectService.deleteProject(
+			req.user,
+			projectId,
+			{ publicApi: req.publicApiClient },
+			req.ctx,
+		);
 	}
 
 	@Get('/:projectId/users')
 	@Licensed(LICENSE_FEATURES.PROJECT_ROLE_ADMIN)
 	@ApiKeyScope('user:list')
 	@ApiSummary('List project members')
-	@ApiDescription(
-		'Returns a list of all members of a project including their role. Requires user:list scope.',
-	)
+	@ApiDescription('Returns a list of all members of a project including their role.')
 	@ApiTags(tags)
 	@ApiResponse(200, ProjectMemberListPublicDto)
 	@ApiErrorResponse(404)
@@ -209,14 +217,22 @@ export class ProjectsPublicController {
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async addUsersToProject(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body body: AddProjectMembersPublicDto,
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 
-		await this.projectService.addUsersToProject(req.user, projectId, body.relations);
+		await this.projectService.addUsersToProject(
+			{
+				user: req.user,
+				projectId,
+				relations: body.relations,
+				publicApi: req.publicApiClient,
+			},
+			req.ctx,
+		);
 	}
 
 	@Patch('/:projectId/users/:userId')

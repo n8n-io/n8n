@@ -40,6 +40,18 @@ describe('EngineV2PushRegistry', () => {
 		});
 	});
 
+	it('tells its listeners once when a session is released', () => {
+		const listener = vi.fn();
+		registry.onSessionEnd(listener);
+		registry.register('exec-1', { pushRef: 'push-1', workflowId: 'wf-1' });
+
+		registry.release('exec-1');
+		registry.release('exec-1');
+		registry.release('unknown');
+
+		expect(listener).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
 	it('releases a session, and releasing twice is a no-op', () => {
 		registry.register('exec-1', { pushRef: 'push-1', workflowId: 'wf-1' });
 
@@ -77,6 +89,18 @@ describe('EngineV2PushRegistry', () => {
 
 			expect(registry.get('stale')).toBeUndefined();
 			expect(registry.get('fresh')).toBeDefined();
+		});
+
+		it('tells its listeners when a session expires', () => {
+			const listener = vi.fn();
+			registry.onSessionEnd(listener);
+			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
+			registry.register('stale', { pushRef: 'push-1', workflowId: 'wf-1' });
+
+			vi.advanceTimersByTime(TTL_MS + 1000);
+			registry.register('fresh', { pushRef: 'push-2', workflowId: 'wf-2' });
+
+			expect(listener).toHaveBeenCalledExactlyOnceWith('stale');
 		});
 
 		it('keeps a session that is still inside the retention window', () => {
@@ -120,6 +144,17 @@ describe('EngineV2PushRegistry', () => {
 			expect(registry.get('exec-1')).toBeUndefined();
 			expect(registry.get('exec-0')).toBeDefined();
 			expect(registry.get('exec-1000')).toBeDefined();
+		});
+
+		it('tells its listeners when the cap drops a session', () => {
+			const listener = vi.fn();
+			registry.onSessionEnd(listener);
+			for (let i = 0; i <= 1000; i++) {
+				registry.register(`exec-${i}`, { pushRef: `push-${i}`, workflowId: 'wf-1' });
+				vi.advanceTimersByTime(1);
+			}
+
+			expect(listener).toHaveBeenCalledExactlyOnceWith('exec-0');
 		});
 	});
 });

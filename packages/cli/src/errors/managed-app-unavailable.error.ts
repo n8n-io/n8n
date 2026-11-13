@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * A credential is bound to a managed OAuth app that the overwrites do not hold, or its stored

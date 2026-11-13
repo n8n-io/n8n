@@ -1,3 +1,5 @@
+import { hasOwn } from './intrinsics';
+
 /**
  * Type guard: narrows `key` to `keyof T` when it is a real own (non-inherited)
  * string key of `object`. Used in `Proxy` `get`/`has` traps to route on a
@@ -13,5 +15,12 @@
  * convention from the standard library.
  */
 export function isKeyOf<T extends object>(object: T, key: PropertyKey): key is keyof T {
-	return typeof key !== 'symbol' && Object.hasOwn(object, key);
+	return typeof key !== 'symbol' && hasOwn(object, key);
+}
+
+const MAX_ARRAY_INDEX = 2 ** 32 - 2;
+
+/** True when `key` is a canonical array index: digits without a leading zero, at most 2^32 - 2. */
+export function isArrayIndexKey(key: string): boolean {
+	return /^(?:0|[1-9]\d*)$/.test(key) && Number(key) <= MAX_ARRAY_INDEX;
 }

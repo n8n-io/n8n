@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
+import N8nIcon from '../N8nIcon';
 
 withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 	size: 'small',
@@ -8,7 +8,7 @@ withDefaults(defineProps<{ size?: 'small' | 'mini' }>(), {
 
 <template>
 	<div :class="[$style.container, $style[size]]">
-		<AssistantIcon :size="size" theme="blank" />
+		<N8nIcon icon="n8n-assistant" :size="size === 'mini' ? 8 : 10" color="--color--neutral-white" />
 	</div>
 </template>
 

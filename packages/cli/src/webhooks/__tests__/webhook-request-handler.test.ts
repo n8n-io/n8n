@@ -6,12 +6,12 @@ import {
 	isWebhookHtmlSandboxingDisabled,
 	getHtmlSandboxCSP,
 } from 'n8n-core';
-import { OperationalError, randomString } from 'n8n-workflow';
+import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { ResponseError } from '@n8n/errors';
+import { ResponseError, OperationalError } from '@n8n/errors';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 import { createStreamResponse } from '@/webhooks/webhook-response';
 import type {

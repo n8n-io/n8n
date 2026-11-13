@@ -1,3 +1,7 @@
+/**
+ * TODO(DS-721): Migrate SessionDetailPanel to N8nMarkdown, then remove this mixin and its export.
+ * https://linear.app/n8n/issue/DS-721
+ */
 @mixin markdown-content {
 	--markdown--spacing: var(--spacing--2xs);
 

@@ -18,9 +18,11 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { OperationContext, Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { pickVariableForProject } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -261,7 +263,7 @@ describe('project shell import', () => {
 		});
 
 		it('leaves the existing project details untouched under merge, still importing its contents', async () => {
-			const result = await importProjects(owner, await reimportPackage(), undefined, {
+			const result = await importProjects(owner, await reimportPackage(), ['workflow:import'], {
 				projectConflictPolicy: 'merge',
 			});
 
@@ -272,6 +274,37 @@ describe('project shell import', () => {
 			expect(project?.name).toBe('brie');
 			expect(project?.description).toBeNull();
 			expect(result.workflows[0]).toMatchObject({ projectId: 'P1', status: 'created' });
+		});
+
+		it('requires project:update under overwrite only when the package changes the project details', async () => {
+			const overwrite = {
+				projectConflictPolicy: 'overwrite',
+				folderConflictPolicy: 'merge',
+			} as const;
+
+			await expect(
+				importProjects(owner, await reimportPackage(), ['workflow:import'], overwrite),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			expect((await findProject('P1'))?.name).toBe('brie');
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+			await importProjects(
+				owner,
+				await reimportPackage(),
+				['workflow:import', 'project:update'],
+				overwrite,
+			);
+			expect((await findProject('P1'))?.name).toBe('brie renamed');
+
+			const unchanged = await importProjects(
+				owner,
+				await reimportPackage(),
+				['workflow:import'],
+				overwrite,
+			);
+			expect(unchanged.projects).toEqual([
+				expect.objectContaining({ sourceProjectId: 'P1', status: 'skipped' }),
+			]);
 		});
 
 		it('refuses the whole package under fail, writing nothing for any project', async () => {
@@ -459,6 +492,14 @@ describe('project shell import', () => {
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
 		});
 
+		it('needs the folders license to remove an empty folder', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+			licenseMocker.disable('feat:folders');
+
+			await expect(reconcile('overwrite')).rejects.toBeInstanceOf(ForbiddenError);
+			expect(await findFolder(empty.id)).not.toBeNull();
+		});
+
 		it('shelters a target-only folder holding only an archived workflow', async () => {
 			const shelved = await createFolder(project, { name: 'shelved' });
 			const archived = await createWorkflow(
@@ -511,15 +552,27 @@ describe('project shell import', () => {
 			expect((await reconcile('overwrite')).removedWorkflows).toEqual([]);
 		});
 
-		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
-			await expect(
-				importProjects(
-					owner,
-					await projectPackage(),
-					['project:create', 'project:update', 'folder:create', 'folder:update', 'workflow:import'],
-					{ projectConflictPolicy: 'overwrite' },
-				),
-			).rejects.toBeInstanceOf(ForbiddenError);
+		it('requires workflow:delete and folder:delete only when the import removes one', async () => {
+			const overwrite = async (apiKeyScopes: string[]) =>
+				await importProjects(owner, await projectPackage(), apiKeyScopes, {
+					projectConflictPolicy: 'overwrite',
+				});
+
+			await overwrite(['workflow:import']);
+
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+			await expect(overwrite(['workflow:import'])).rejects.toBeInstanceOf(ForbiddenError);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+			await overwrite(['workflow:import', 'workflow:delete']);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(true);
+
+			const empty = await createFolder(project, { name: 'empty' });
+			await expect(overwrite(['workflow:import', 'workflow:delete'])).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(await findFolder(empty.id)).not.toBeNull();
+			await overwrite(['workflow:import', 'folder:delete']);
+			expect(await findFolder(empty.id)).toBeNull();
 		});
 
 		it.each(['merge', 'fail'] as const)(
@@ -566,7 +619,7 @@ describe('project shell import', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
 	});
 
-	it('rejects a project package when the API key lacks the project:create scope', async () => {
+	it('requires only project:create for a package that creates projects', async () => {
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [
 				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
@@ -576,6 +629,10 @@ describe('project shell import', () => {
 		await expect(importProjects(owner, packageBuffer, ['workflow:import'])).rejects.toBeInstanceOf(
 			ForbiddenError,
 		);
+		expect(await findProject('P1')).toBeNull();
+
+		await importProjects(owner, packageBuffer, ['project:create']);
+		expect(await findProject('P1')).not.toBeNull();
 	});
 
 	it('refuses to import over an existing personal project id', async () => {
@@ -1361,9 +1418,13 @@ describe('project shell import', () => {
 				const packageBuffer = await apiUrlPackage();
 
 				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
 
 				const result = await importProjects(owner, packageBuffer, undefined, {
 					variableMissingMode: 'create-stub',
+					ctx,
 				});
 
 				// A name-only requirement (no bundled entry) falls back to each consuming project.
@@ -1394,6 +1455,12 @@ describe('project shell import', () => {
 				expect(importedEvents).toHaveLength(1);
 				const payload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 				expect(payload.counts.variables).toMatchObject({ created: 0, stubbed: 2 });
+				expect(payload.loginId).toBe('login-1');
+				const variableEvents = emitSpy.mock.calls.filter(([name]) => name === 'variable-created');
+				expect(variableEvents.map(([, event]) => (event as { loginId?: string }).loginId)).toEqual([
+					'login-1',
+					'login-1',
+				]);
 			});
 
 			it('creates one row per project when both bundle the same name', async () => {
@@ -2231,9 +2298,9 @@ describe('project custom span attributes (LIGO-862)', () => {
 		});
 
 		expect(result.projects).toEqual([
-			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'updated' },
+			{ sourceProjectId: project.id, localId: project.id, name: project.name, status: 'skipped' },
 		]);
-		// The update path leaves the column untouched when the incoming value is undefined.
+		// A missing field keeps its value, so nothing changes and the project is not updated.
 		expect((await findProject(project.id))?.customTelemetryTags).toEqual(tags);
 	});
 });

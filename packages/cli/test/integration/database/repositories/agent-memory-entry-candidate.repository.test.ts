@@ -154,10 +154,21 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 
 		await Container.get(TransactionRunner).run({}, async (ctx) => {
 			// Model a lookup that ran before another transaction committed the same tool call.
-			const lookup = vi.spyOn(EntityManager.prototype, 'findOneBy').mockResolvedValueOnce(null);
+			const findOneBy = EntityManager.prototype.findOneBy;
+			let candidateLookups = 0;
+			const lookup = vi
+				.spyOn(EntityManager.prototype, 'findOneBy')
+				.mockImplementation(async function (this: EntityManager, entityClass, where) {
+					if (entityClass === AgentMemoryEntryCandidateEntity) {
+						candidateLookups++;
+						if (candidateLookups === 1) return null;
+					}
+					return await findOneBy.call(this, entityClass, where);
+				});
 			try {
 				const replay = await enqueue('call-1', { sourceMessageId: uuid() }, ctx);
 				expect(replay).toEqual(stored);
+				expect(candidateLookups).toBe(2);
 			} finally {
 				lookup.mockRestore();
 			}

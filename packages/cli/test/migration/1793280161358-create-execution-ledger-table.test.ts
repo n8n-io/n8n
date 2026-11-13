@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import {
 	createTestMigrationContext,
 	initDbUpToMigration,
@@ -209,6 +210,44 @@ describe('CreateExecutionLedgerTable Migration', () => {
 	});
 
 	// Runs last: it reverts the migration.
+	it('down warns with the number of rows that it drops', async () => {
+		await insertRow(startedRow());
+		await insertRow(endedRow());
+		await context.queryRunner.release();
+		const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+		await undoLastSingleMigration();
+
+		expect(warn).toHaveBeenCalledWith(
+			`[${MIGRATION_NAME}] Dropping 2 ledger rows that no fold step has read`,
+		);
+		warn.mockRestore();
+		await runSingleMigration(MIGRATION_NAME);
+		context = createTestMigrationContext(dataSource);
+	});
+
+	it('down does not warn when the ledger is empty', async () => {
+		await context.queryRunner.release();
+		const warn = vi.spyOn(Container.get(Logger), 'warn');
+
+		await undoLastSingleMigration();
+
+		expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('ledger rows'));
+		warn.mockRestore();
+		await runSingleMigration(MIGRATION_NAME);
+		context = createTestMigrationContext(dataSource);
+	});
+
+	it('down succeeds when the table is already gone', async () => {
+		await context.runQuery(`DROP TABLE ${ledger()}`);
+		await context.queryRunner.release();
+
+		await expect(undoLastSingleMigration()).resolves.not.toThrow();
+
+		await runSingleMigration(MIGRATION_NAME);
+		context = createTestMigrationContext(dataSource);
+	});
+
 	it('down drops the table, and up runs again after it', async () => {
 		await context.queryRunner.release();
 

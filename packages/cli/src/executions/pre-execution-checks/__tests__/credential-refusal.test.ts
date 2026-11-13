@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { INode } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { findCredentialRefusal } from '../credential-refusal';
 import { CredentialsPermissionChecker } from '../credentials-permission-checker';
@@ -14,7 +14,7 @@ describe('findCredentialRefusal', () => {
 	});
 
 	it('returns nothing when the check passes', async () => {
-		checker.check.mockResolvedValue(undefined);
+		checker.check.mockResolvedValue({ personalCredentialsCount: 0 });
 
 		await expect(findCredentialRefusal('wf-1', [node], 'user-1')).resolves.toBeUndefined();
 		expect(checker.check).toHaveBeenCalledWith('wf-1', [node], 'user-1');

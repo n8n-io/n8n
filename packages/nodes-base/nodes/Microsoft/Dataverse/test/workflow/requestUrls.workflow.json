@@ -1,0 +1,170 @@
+{
+	"name": "Dataverse request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b6f1a2c-3d4e-4f50-8a61-7b8c9d0e1f20",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "getAll",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"returnAll": true,
+				"getAllOptions": {}
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000000",
+			"name": "Get Many",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "get",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"recordId": {
+					"__rl": true,
+					"value": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11",
+					"mode": "id"
+				},
+				"getOptions": {}
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000001",
+			"name": "Get",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "create",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"inputMode": "json",
+				"fieldsJson": "{\"name\": \"Acme Corp\"}",
+				"createOptions": {}
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000002",
+			"name": "Create",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "update",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"recordId": {
+					"__rl": true,
+					"value": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11",
+					"mode": "id"
+				},
+				"inputMode": "json",
+				"fieldsJson": "{\"revenue\": 1000}",
+				"updateOptions": {}
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000003",
+			"name": "Update",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "upsert",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"identifierType": "alternateKey",
+				"alternateKey": "accountnumber='ACC-001'",
+				"inputMode": "json",
+				"fieldsJson": "{\"revenue\": 5}",
+				"upsertOptions": { "behavior": "updateOnly" }
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000004",
+			"name": "Upsert",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "row",
+				"operation": "delete",
+				"entitySet": { "__rl": true, "value": "accounts", "mode": "id" },
+				"recordId": {
+					"__rl": true,
+					"value": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11",
+					"mode": "id"
+				},
+				"deleteOptions": {}
+			},
+			"id": "1c7e2b3d-4e5f-4a61-9b72-000000000005",
+			"name": "Delete",
+			"type": "n8n-nodes-base.microsoftDataverse",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"credentials": {
+				"microsoftDataverseOAuth2Api": { "id": "1", "name": "Dataverse account" }
+			}
+		}
+	],
+	"pinData": {
+		"Get Many": [
+			{ "json": { "accountid": "a1", "name": "First" } },
+			{ "json": { "accountid": "a2", "name": "Second" } }
+		],
+		"Get": [
+			{ "json": { "accountid": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11", "name": "Acme Corp" } }
+		],
+		"Create": [
+			{ "json": { "accountid": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11", "name": "Acme Corp" } }
+		],
+		"Update": [
+			{ "json": { "accountid": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11", "revenue": 1000 } }
+		],
+		"Upsert": [{ "json": { "accountid": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11", "revenue": 5 } }],
+		"Delete": [{ "json": { "success": true, "id": "5f2a6c1e-8b3d-4e7a-9c10-2d4b6f8a0c11" } }]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "Get Many", "type": "main", "index": 0 },
+					{ "node": "Get", "type": "main", "index": 0 },
+					{ "node": "Create", "type": "main", "index": 0 },
+					{ "node": "Update", "type": "main", "index": 0 },
+					{ "node": "Upsert", "type": "main", "index": 0 },
+					{ "node": "Delete", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

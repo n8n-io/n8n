@@ -18,7 +18,7 @@ import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { AGENT_BUILDER_VIEW, AGENT_SESSIONS_LIST_VIEW } from '@/features/agents/constants';
 import { listAgentsPageGlobal } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentListItem } from '@/features/agents/agent.types';
 import { useRecentResources } from './useRecentResources';
 
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -422,8 +422,20 @@ describe('useRecentResources', () => {
 				query: {},
 			}) as unknown as RouteLocationNormalized;
 
-		const createAgent = (id: string, name = `Agent ${id}`) =>
-			({ id, name, projectId: 'project-1' }) as AgentResource;
+		const createAgent = (id: string, name = `Agent ${id}`): AgentListItem => ({
+			id,
+			name,
+			projectId: 'project-1',
+			project: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: null,
+			activeVersionId: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-02T00:00:00.000Z',
+			personalisation: null,
+			hasConfig: false,
+		});
 
 		beforeEach(() => {
 			mockCurrentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
@@ -438,8 +450,8 @@ describe('useRecentResources', () => {
 
 			expect(listAgentsPageGlobal).toHaveBeenCalledTimes(1);
 			expect(listAgentsPageGlobal).toHaveBeenCalledWith(expect.anything(), {
-				skip: 0,
-				take: 2,
+				offset: 0,
+				limit: 2,
 				filter: { ids: ['agent-2', 'agent-1'] },
 			});
 		});

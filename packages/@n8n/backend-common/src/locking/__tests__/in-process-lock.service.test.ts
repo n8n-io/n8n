@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { InProcessLockService } from '../in-process-lock.service';
 import { LockNamespace } from '../lock-service.interface';
@@ -117,6 +117,8 @@ describe('InProcessLockService', () => {
 
 		await expect(p2).rejects.toThrow(OperationalError);
 		await expect(p2).rejects.toThrow(/Timed out waiting for lock '.*' after 100ms/);
+		// In-process, a timeout always means another holder: there is no lock backend that can fail.
+		await expect(p2).rejects.toMatchObject({ sawContention: true });
 		expect(fn2).not.toHaveBeenCalled();
 
 		resolveFirst();

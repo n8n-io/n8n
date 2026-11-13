@@ -1,7 +1,7 @@
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Lock, QueueEntry, StateAdapter } from 'chat';
 
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import type { PubSubCommandMap } from '@n8n/decorators';
 
 import type { AgentChatSubscriptionRepository } from '../repositories/agent-chat-subscription.repository';
 import { agentChannelKey, type AgentChannelRef } from '../utils/agent-channel';

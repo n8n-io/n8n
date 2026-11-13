@@ -20,7 +20,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { ChatStreamStateService } from './chat-stream-state.service';
 

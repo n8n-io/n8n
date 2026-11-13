@@ -16,7 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -78,6 +78,13 @@ function reopen() {
 	submitted.value = false;
 	attempt.value += 1;
 }
+
+// A tool can suspend again on the same call, for example when n8n rejects the
+// answer. The new request is a new question, so the card opens again.
+watch(
+	() => props.input.requestId,
+	() => reopen(),
+);
 
 // A payload without a project uses the project of the thread.
 const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
@@ -339,6 +346,7 @@ function onApprovalSelect(key: string) {
 		<AppBlueprintCard
 			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
 			:blueprint="input.appBlueprint"
+			:errors="input.appBlueprintErrors"
 			:read-only="isInactive"
 			data-test-id="assistant-agent-app-blueprint"
 			@submit="

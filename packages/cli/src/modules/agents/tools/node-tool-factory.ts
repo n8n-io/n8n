@@ -14,7 +14,7 @@ import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
@@ -105,11 +105,12 @@ async function resolveInputSchema(
 		toolSchema.node.nodeTypeVersion,
 	);
 	try {
-		nodeType = Container.get(NodeTypes).getByNameAndVersion(
+		nodeType = Container.get(NodeTypesProxy).getByNameAndVersion(
 			nodeTypeName,
 			toolSchema.node.nodeTypeVersion,
 		);
-	} catch {
+	} catch (error) {
+		if (error instanceof NodeTypesProviderMissingError) throw error;
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
 		return { schema: { type: 'object', properties: {} }, acceptsFiles: false };
@@ -209,11 +210,17 @@ export async function resolveNodeTool(
 			}
 			if (!result.data.some((item) => item.binary)) return result;
 			// Without a thread there is no scope for the files, so the binary is dropped.
-			const threadId = toolCtx.persistence?.threadId;
-			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
+			const persistence = toolCtx.persistence;
+			if (!persistence?.threadId || !persistence.resourceId)
+				return { ...result, data: result.data.map(({ json }) => ({ json })) };
 			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
 				result.data,
-				{ agentId: ctx.agentId ?? null, projectId: ctx.projectId, threadId },
+				{
+					agentId: ctx.agentId ?? null,
+					projectId: ctx.projectId,
+					threadId: persistence.threadId,
+					resourceId: persistence.resourceId,
+				},
 				inputFiles?.stored,
 			);
 			return {

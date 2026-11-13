@@ -49,6 +49,8 @@ export const serializedAgentSchema = z
 		name: z.string().min(1).max(128),
 		config: AgentJsonConfigSchema.nullable(),
 		availableInMCP: z.boolean(),
+		// Written only for an archived agent, so older n8n versions can import the other packages.
+		isArchived: z.boolean().optional(),
 		tools: z.record(customToolIdSchema, serializedAgentToolSchema),
 		tasks: z.record(taskIdSchema, serializedAgentTaskSchema),
 	})

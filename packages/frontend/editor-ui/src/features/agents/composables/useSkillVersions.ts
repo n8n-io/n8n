@@ -121,13 +121,6 @@ export function useSkillVersions(
 		comparison.value = { from, to, fromSkill: fromDetail.skill, toSkill: toDetail.skill };
 	}
 
-	/** Compares the latest version with the one before it, when there are two. */
-	async function compareLatestTwo() {
-		await loadVersions();
-		const [latest, previous] = versions.value ?? [];
-		if (latest && previous) await compareVersions(previous.version, latest.version);
-	}
-
 	return {
 		versions,
 		viewedVersion,
@@ -140,6 +133,5 @@ export function useSkillVersions(
 		diffCounts,
 		comparedSkill,
 		compareVersions,
-		compareLatestTwo,
 	};
 }

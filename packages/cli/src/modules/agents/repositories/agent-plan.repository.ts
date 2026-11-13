@@ -8,7 +8,8 @@ import {
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, MoreThan, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError, type JsonObject } from 'n8n-workflow';
+import type { JsonObject } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { validate as isUuid } from 'uuid';
 
 import { AgentBackgroundJob } from '../entities/agent-background-job.entity';

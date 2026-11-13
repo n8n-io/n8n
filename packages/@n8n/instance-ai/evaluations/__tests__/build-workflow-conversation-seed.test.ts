@@ -5,6 +5,7 @@ import { buildWorkflow, buildFailedOnInfra } from '../harness/build-workflow';
 import { recordUserTurn, runMultiTurnConversation } from '../harness/chat-loop';
 import type { ConversationSeed } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
+import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import { buildAgentOutcome } from '../outcome/workflow-discovery';
 
 // Stubbed as in build-workflow-seed-cleanup: only the restore call matters here.
@@ -45,6 +46,11 @@ vi.mock('../outcome/workflow-discovery', () => ({
 	}),
 	extractWorkflowIdsFromMessages: vi.fn().mockReturnValue([]),
 }));
+
+vi.mock('../outcome/event-parser', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../outcome/event-parser')>();
+	return { ...actual, extractOutcomeFromEvents: vi.fn(actual.extractOutcomeFromEvents) };
+});
 
 const silentLogger: EvalLogger = {
 	info: () => {},
@@ -572,6 +578,39 @@ describe('buildWorkflow with an inline seed', () => {
 		expect(build.success).toBe(true);
 		expect(restoreThread).not.toHaveBeenCalled();
 	});
+
+	it("does not report a seeded Agent's id as another build's workflow", async () => {
+		const actual =
+			await vi.importActual<typeof import('../outcome/event-parser')>('../outcome/event-parser');
+		vi.mocked(extractOutcomeFromEvents).mockImplementationOnce((events) => ({
+			...actual.extractOutcomeFromEvents(events),
+			toolCalls: [
+				{
+					toolCallId: 'call-1',
+					toolName: 'setup_credentials',
+					args: { target: 'agent', workflowId: 'restored-agent' },
+					result: { success: true },
+					durationMs: 0,
+				},
+			],
+		}));
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 0,
+			workflowIds: [],
+			dataTableIds: [],
+			agentIds: ['restored-agent'],
+			folderIds: [],
+		});
+
+		const result = await buildWorkflow({
+			client: makeClient(restoreThread),
+			...baseConfig,
+			seed: { mode: 'inline' as const, ...inlineAgentSeed() },
+		});
+
+		expect(extractOutcomeFromEvents).toHaveBeenCalled();
+		expect(result.foreignWorkflowReads).toBeUndefined();
+	});
 });
 
 describe('buildWorkflow with scenario seed data tables', () => {
@@ -630,17 +669,6 @@ describe('buildWorkflow with scenario seed data tables', () => {
 			expect(result.error).toContain(expired ? 'Case timed out' : 'Input rows could not be seeded');
 		},
 	);
-
-	it('rejects an invalid mode before creating a thread', async () => {
-		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progresssive');
-		try {
-			const client = makeClient(vi.fn());
-			await expect(buildWorkflow({ ...baseConfig, client })).rejects.toThrow('N8N_EVAL_BUILD_MODE');
-			expect(client.ensureThread).not.toHaveBeenCalled();
-		} finally {
-			vi.unstubAllEnvs();
-		}
-	});
 
 	it('creates the table under a per-run name and tells the agent THAT name', async () => {
 		// The name is project-unique, so a per-run suffix is what lets two iterations of

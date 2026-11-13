@@ -52,7 +52,7 @@ describe('useAgentResourcesLocator', () => {
 		expect(listAgentsPage).toHaveBeenCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, take: 40, sortBy: 'updatedAt:desc' }),
+			expect.objectContaining({ offset: 0, limit: 40, sortBy: 'updatedAt:desc' }),
 		);
 		expect(agentsResources.value).toEqual([
 			{ name: 'Agent 1', value: 'a1', personalisation: null },
@@ -60,7 +60,7 @@ describe('useAgentResourcesLocator', () => {
 		expect(hasMoreAgentsToLoad.value).toBe(true);
 	});
 
-	it('appends the next page on loadMore with an advancing skip', async () => {
+	it('appends the next page on loadMore with an advancing offset', async () => {
 		listAgentsPage
 			.mockResolvedValueOnce({
 				count: 100,
@@ -83,12 +83,12 @@ describe('useAgentResourcesLocator', () => {
 			2,
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 40 }),
+			expect.objectContaining({ offset: 40 }),
 		);
 		expect(agentsResources.value.map((a) => a.value)).toEqual(['a1', 'a2']);
 	});
 
-	it('resets the list and skip when searching', async () => {
+	it('resets the list and offset when searching', async () => {
 		const { setAgentsResources, onSearchFilter, agentsResources } = useAgentResourcesLocator(
 			ref('proj-1'),
 			noProjectName,
@@ -109,7 +109,7 @@ describe('useAgentResourcesLocator', () => {
 		expect(listAgentsPage).toHaveBeenLastCalledWith(
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 0, filter: { query: 'support' } }),
+			expect.objectContaining({ offset: 0, filter: { query: 'support' } }),
 		);
 		expect(agentsResources.value).toEqual([
 			{ name: 'Support', value: 'a2', personalisation: null },
@@ -234,18 +234,18 @@ describe('useAgentResourcesLocator', () => {
 		});
 		await loadMore();
 
-		// The failed page (skip=40) is re-requested, not skipped past to skip=80.
+		// The failed page (offset=40) is re-requested, not skipped past to offset=80.
 		expect(listAgentsPage).toHaveBeenNthCalledWith(
 			2,
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 40 }),
+			expect.objectContaining({ offset: 40 }),
 		);
 		expect(listAgentsPage).toHaveBeenNthCalledWith(
 			3,
 			expect.anything(),
 			'proj-1',
-			expect.objectContaining({ skip: 40 }),
+			expect.objectContaining({ offset: 40 }),
 		);
 	});
 
@@ -290,7 +290,7 @@ describe('useAgentResourcesLocator', () => {
 		};
 		listAgentsPage.mockResolvedValue({
 			count: 1,
-			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1', schema: { personalisation } }],
+			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1', personalisation }],
 		});
 
 		const { setAgentsResources, agentsResources } = useAgentResourcesLocator(
@@ -338,6 +338,31 @@ describe('useAgentResourcesLocator', () => {
 			const { refreshAgentName } = useAgentResourcesLocator(ref('proj-1'), noProjectName);
 
 			await expect(refreshAgentName('a1')).resolves.toBeNull();
+		});
+
+		it('keeps the archived selection of the latest refresh when an older response resolves last', async () => {
+			let resolveFirst: (value: unknown) => void = () => {};
+			const firstResponse = new Promise((resolve) => (resolveFirst = resolve));
+			getAgent.mockReturnValueOnce(firstResponse).mockResolvedValueOnce({
+				id: 'a2',
+				name: 'Archived Agent',
+				projectId: 'proj-1',
+				isArchived: true,
+			});
+
+			const { refreshAgentName, archivedSelection } = useAgentResourcesLocator(
+				ref('proj-1'),
+				noProjectName,
+			);
+
+			const stale = refreshAgentName('a1');
+			await refreshAgentName('a2');
+			resolveFirst({ id: 'a1', name: 'Active Agent', projectId: 'proj-1' });
+			await stale;
+
+			expect(archivedSelection.value).toEqual(
+				expect.objectContaining({ value: 'a2', isArchived: true }),
+			);
 		});
 	});
 });

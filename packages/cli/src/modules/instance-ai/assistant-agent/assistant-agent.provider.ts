@@ -4,7 +4,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
 	type InstanceAiAttachment,
-	type InstanceAiFileAttachment,
+	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -16,6 +16,7 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	orchestratorAgentId,
 	patchThread,
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
@@ -38,6 +39,7 @@ import type {
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
+import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import {
@@ -56,7 +58,11 @@ import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
-import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
+import { AssistantTurnOverrides } from '../turn-setup/assistant-turn-overrides';
+import type {
+	AssistantTurnRuntime,
+	AssistantTurnState,
+} from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
@@ -70,10 +76,15 @@ import {
 	serializeAssistantTurnOptions,
 	type AssistantTurnOptions,
 } from './assistant-turn-options';
+import { AssistantWorkflowSetupRoute } from './assistant-workflow-setup-route';
 import {
 	AssistantSandboxWorkspaceSource,
 	type AssistantSandboxLease,
 } from './assistant-workspace-source';
+
+/** The model input of a message that has files but no text. */
+export const FILES_ONLY_MESSAGE =
+	'The user attached file(s) without a message. Inspect the first file and give a short summary. Use parse-file for a file that you cannot read directly.';
 
 type FormattedTurnError = NonNullable<
 	Awaited<ReturnType<NonNullable<SystemAgentTurnHandle['formatError']>>>
@@ -90,9 +101,11 @@ function contextAttachmentsOf(
 		): attachment is
 			| InstanceAiWorkflowAttachment
 			| InstanceAiAgentAttachment
-			| InstanceAiNodesAttachment =>
+			| InstanceAiNodesAttachment
+			| InstanceAiElementAttachment =>
 			attachment.type === 'workflow' ||
 			attachment.type === 'agent' ||
+			attachment.type === 'element' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
 }
@@ -124,6 +137,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly agentFactory: AssistantAgentFactory,
 		private readonly tracer: AssistantTurnTracer,
 		private readonly threadTabs: AssistantThreadTabsService,
+		private readonly errorReporter: InstanceAiErrorReporterService,
+		private readonly turnOverrides: AssistantTurnOverrides,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -154,7 +169,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
 	async formatSetupError(user: User, error: unknown): Promise<FormattedTurnError> {
-		return await this.formatTurnError(user, error);
+		return toFormattedTurnError(await this.resolveShownError(user, error));
 	}
 
 	async prepareTurn(turn: SystemAgentTurn<AssistantSandboxLease>): Promise<SystemAgentTurnHandle> {
@@ -166,37 +181,42 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		);
 		const { user } = turn;
 		const { request } = options;
-		const experimentGates = await this.adapterService.resolveExperimentGates(user);
-		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
-		const contextAttachments = contextAttachmentsOf(
-			request.attachments,
-			experimentGates.nodeContextEnabled,
-		);
-		// One token manager backs the run and its trace.
-		const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
-		const trace = await this.tracer.startForTurn(turn, {
-			runId: options.runId,
-			messageGroupId: options.messageGroupId,
-			...(proxyRunConfig.tracingProxyConfig
-				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
-				: {}),
-			fileAttachments,
-			contextAttachments,
-			threadArtifacts: request.threadArtifacts,
-		});
+		// Reports one Sentry event for each error of the turn. `onSettled` ends it.
+		const errorReporting = this.errorReporter.beginRun(options.runId);
+		let trace: AssistantTurnTrace | undefined;
 		try {
+			const experimentGates = await this.adapterService.resolveExperimentGates(user);
+			const turnFiles = turn.type === 'start' ? turn.attachments : [];
+			const contextAttachments = contextAttachmentsOf(
+				request.attachments,
+				experimentGates.nodeContextEnabled,
+			);
+			// One token manager backs the run and its trace.
+			const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
+			trace = await this.tracer.startForTurn(turn, {
+				runId: options.runId,
+				messageGroupId: options.messageGroupId,
+				...(proxyRunConfig.tracingProxyConfig
+					? { proxyConfig: proxyRunConfig.tracingProxyConfig }
+					: {}),
+				fileAttachments: turnFiles,
+				contextAttachments,
+				threadArtifacts: request.threadArtifacts,
+			});
 			return await this.prepareTracedTurn(turn, options, {
 				trace,
+				errorReporting,
 				experimentGates,
-				fileAttachments,
 				contextAttachments,
 				proxyRunConfig,
 			});
 		} catch (error) {
-			await trace?.finish({
-				status: turn.abortSignal.aborted ? 'cancelled' : 'errored',
-				error,
-			});
+			const aborted = turn.abortSignal.aborted;
+			if (!aborted) {
+				this.reportTurnError(error, 'instance-ai-run', turn, options, trace);
+			}
+			this.errorReporter.endRun(options.runId, errorReporting);
+			await trace?.finish({ status: aborted ? 'cancelled' : 'errored', error });
 			throw error;
 		}
 	}
@@ -206,16 +226,19 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		options: AssistantTurnOptions,
 		setup: {
 			trace: AssistantTurnTrace | undefined;
+			errorReporting: symbol;
 			experimentGates: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>;
-			fileAttachments: InstanceAiFileAttachment[];
 			contextAttachments: InstanceAiResourceAttachment[];
 			proxyRunConfig: AssistantProxyRunConfig;
 		},
 	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
-		const { trace, experimentGates, fileAttachments, contextAttachments, proxyRunConfig } = setup;
-		const runtime = this.createTurnRuntime(turn, options, trace);
+		const { trace, errorReporting, experimentGates, contextAttachments, proxyRunConfig } = setup;
+		const setupRoute = new AssistantWorkflowSetupRoute(turn.memory, thread.id, this.logger, {
+			setupPanelEnabled: experimentGates.setupPanelEnabled,
+		});
+		const runtime = this.createTurnRuntime(turn, options, trace, setupRoute);
 		const environment = await this.turnEnvironment.create(
 			{
 				user,
@@ -226,6 +249,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				pushRef: request.pushRef,
 				proxyRunConfig,
 				experimentGates,
+				...(trace ? { tracing: trace.context } : {}),
 			},
 			runtime,
 		);
@@ -234,8 +258,13 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			runId,
 			message: turn.type === 'start' ? turn.message : '',
 			timeZone: request.timeZone,
-			fileAttachments,
+			// The runtime adds the files to the model input as stored references,
+			// and parse-file reads them by id through `storedFiles`.
+			fileAttachments: [],
 		});
+		environment.context.storedFiles = {
+			read: async (fileId) => await turn.readFile(fileId),
+		};
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
@@ -245,8 +274,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					user,
 					threadId: thread.id,
 					runId,
-					message: turn.message,
-					fileAttachments,
+					message:
+						!turn.message.trim() && turn.attachments.length > 0 ? FILES_ONLY_MESSAGE : turn.message,
+					fileAttachments: [],
 					contextAttachments,
 					handoffContext: request.context,
 					timeZone: request.timeZone,
@@ -255,7 +285,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				});
 			turnInput = trace
 				? await trace.tracePromptBuild(
-						{ message: turn.message, attachmentCount: fileAttachments.length },
+						{ message: turn.message, attachmentCount: turn.attachments.length },
 						buildInput,
 						(built) => ({ fullMessage: built.fullMessage }),
 					)
@@ -274,12 +304,28 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
+		// The model stream reports these errors. Other errors of the turn were thrown.
+		const streamErrors = new Set<unknown>();
+		// `formatError` and the turn report share the credit check of one error.
+		const shownErrors = new Map<unknown, Promise<unknown>>();
+		const shownErrorOf = async (error: unknown) => {
+			let shown = shownErrors.get(error);
+			if (!shown) {
+				shown = this.resolveShownError(user, error);
+				shownErrors.set(error, shown);
+			}
+			return await shown;
+		};
 		return {
 			agent,
 			// The runtime adds the files to the model input as stored references, so the
-			// input keeps only the text. The file content is for the file tools.
+			// input keeps only the text. parse-file reads the files by id when it needs them.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
-			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
+			hostMetadata: this.hostMetadataOf(
+				options,
+				this.turnOverrides.getPromptVersion(thread.id),
+				trace,
+			),
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
 				// Recover token usage from raw provider events, so a stopped run is still billed.
@@ -292,8 +338,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			...(trace
 				? { withTurnContext: async <T>(run: () => Promise<T>) => await trace.withContext(run) }
 				: {}),
+			// Routes a build to setup when the agent ends the turn without it.
+			onCompletingBoundary: async () => {
+				const instruction = await setupRoute.nextInstruction();
+				if (instruction) trace?.recordHostInstruction(instruction);
+				return instruction;
+			},
 			onChunk: (chunk) => {
 				trace?.observeChunk(chunk);
+				if (chunk.type === 'error') streamErrors.add(chunk.error);
+				if (chunk.type === 'tool-call-suspended') {
+					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
+				}
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
 					inputAccepted = this.turnInput
@@ -317,18 +373,33 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					// Finish before the host events close and the next queued turn reads the cursor.
 					await inputAccepted;
 					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					// Before the card resumes, so that the resumed turn does not route setup again.
+					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
 					if (outcome.status !== 'suspended') {
 						const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
 						this.emitArchivedWorkflows(turn, thread.id, archived);
 					}
 				} finally {
+					if (outcome.status === 'errored') {
+						const component = streamErrors.has(outcome.error)
+							? 'instance-ai-stream'
+							: 'instance-ai-run';
+						this.reportTurnError(
+							await shownErrorOf(outcome.error),
+							component,
+							turn,
+							options,
+							trace,
+						);
+					}
 					await trace?.finish(outcome, environment.modelId);
+					this.errorReporter.endRun(runId, errorReporting);
 				}
 			},
 			onSideCallUsage: async (report) =>
 				await this.claimSideCallUsage(user, thread.id, runId, report),
-			formatError: async (error) => await this.formatTurnError(user, error),
+			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
 	}
 
@@ -337,8 +408,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		turn: SystemAgentTurn<AssistantSandboxLease>,
 		options: AssistantTurnOptions,
 		trace: AssistantTurnTrace | undefined,
+		setupRoute: AssistantWorkflowSetupRoute,
 	): AssistantTurnRuntime {
-		const { request } = options;
 		const lease = turn.workspace;
 		return {
 			memory: turn.memory,
@@ -355,15 +426,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				? { onMemoryTaskEvent: trace.context.onMemoryTaskEvent }
 				: {}),
 			checkpointStore: turn.checkpointStore,
-			turnState: {
-				getBuildMode: () => request.mode,
-				setBuildMode: () => {},
-				getPromptVersion: () => request.promptVersion,
-				setPromptConfiguration: () => {},
-				setSetupPanelEnabled: () => {},
-				getBrowserUseAvailable: () => request.browserUseAvailable,
-				getObserverThresholdTokens: () => request.observerThresholdTokens,
-			},
+			turnState: this.createTurnState(turn.thread.id, options),
 			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
 			// The chat shows the tab of a changed artifact only while a browser shows the
@@ -379,6 +442,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				}
 			},
 			readSetupItemsSnapshots: async () => [],
+			// The setup panel announces the checklist without suspending the turn.
+			markWorkflowSetupHandled: async (workflowId) =>
+				await setupRoute.markWorkflowSetupHandled(workflowId),
 			sandbox: {
 				resolveConfig: async () =>
 					lease?.config ?? {
@@ -388,6 +454,19 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				getOrCreateWorkspace: async (context) =>
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
+		};
+	}
+
+	/** The turn overrides supply the prompt version. The client request supplies only the Browser Use report. */
+	private createTurnState(threadId: string, options: AssistantTurnOptions): AssistantTurnState {
+		const overrides = this.turnOverrides;
+		return {
+			getPromptVersion: () => overrides.getPromptVersion(threadId),
+			setPromptConfiguration: () => {},
+			setSetupPanelEnabled: () => {},
+			getBrowserUseAvailable: () => options.request.browserUseAvailable,
+			// The Assistant agent has no threshold override. Memory uses the configured policy.
+			getObserverThresholdTokens: () => undefined,
 		};
 	}
 
@@ -403,7 +482,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const attached = attachments?.find(
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
-		if (!attached || attached.projectId !== turn.thread.projectId) return;
+		if (attached?.projectId !== turn.thread.projectId) return;
 		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
 		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
 		const patched = await patchThread(turn.memory, {
@@ -436,59 +515,65 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		}
 	}
 
-	/** The content of the turn's files, for the file tools of the turn. */
-	private async readFileAttachments(
-		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-	): Promise<InstanceAiFileAttachment[]> {
-		const files: InstanceAiFileAttachment[] = [];
-		for (const ref of turn.attachments) {
-			const content = await turn.readAttachment(ref);
-			if (!content) continue;
-			files.push({
-				type: 'file',
-				data: content.toString('base64'),
-				mimeType: ref.mimeType,
-				fileName: ref.fileName,
-			});
-		}
-		return files;
-	}
-
 	private hostMetadataOf(
 		options: AssistantTurnOptions,
-		buildMode: string | undefined,
+		promptVersion: string | undefined,
 		trace: AssistantTurnTrace | undefined,
 	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
-			buildMode: buildMode ?? null,
-			promptVersion: options.request.promptVersion ?? null,
+			promptVersion: promptVersion ?? null,
 			...trace?.hostMetadata(),
 		};
 	}
 
 	/**
-	 * The text and code that the chat shows for a turn error. A masked stream
-	 * failure is shown as a credit error when the balance is used up, because a
-	 * credit stop at the model call can arrive in that form. A refused file stays
-	 * in the thread history, because the runtime saves the turn input first.
+	 * The error that the turn shows and reports. A masked stream failure becomes
+	 * the credit error when the balance is used up, because a credit stop at the
+	 * model call can arrive in that form. The reporter then keeps it out of Sentry.
 	 */
-	private async formatTurnError(user: User, error: unknown): Promise<FormattedTurnError> {
-		let shown = error;
-		if (isMaskedStreamFailure(error)) {
-			try {
-				await this.turnEnvironment.assertAssistantCreditsAvailable(user);
-			} catch (creditsError) {
-				shown = creditsError;
-			}
+	private async resolveShownError(user: User, error: unknown): Promise<unknown> {
+		if (!isMaskedStreamFailure(error)) return error;
+		try {
+			await this.turnEnvironment.assertAssistantCreditsAvailable(user);
+			return error;
+		} catch (creditsError) {
+			return creditsError;
 		}
-		const code = getUserFacingErrorCode(shown);
-		const message = getUserFacingErrorMessage(
-			shown,
-			undefined,
-			isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
-		);
-		return { message, ...(code ? { code } : {}) };
+	}
+
+	/**
+	 * Reports a failed turn like the current runtime. The reporter keeps credit
+	 * and stream transport errors out of Sentry.
+	 */
+	private reportTurnError(
+		error: unknown,
+		component: 'instance-ai-stream' | 'instance-ai-run',
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		options: AssistantTurnOptions,
+		trace: AssistantTurnTrace | undefined,
+	): void {
+		const { runId, messageGroupId } = options;
+		// A failed report must not replace the turn error or skip the cleanup of the turn.
+		try {
+			this.errorReporter.report(error ?? new Error('Assistant turn errored'), {
+				component,
+				...(component === 'instance-ai-stream' ? { providerStream: true } : {}),
+				threadId: turn.thread.id,
+				runId,
+				projectId: turn.thread.projectId,
+				userId: turn.user.id,
+				agentId: orchestratorAgentId(runId),
+				messageGroupId,
+				...(trace ? { tracing: trace.context } : {}),
+			});
+		} catch (reportError) {
+			this.logger.warn('Failed to report the Assistant turn error', {
+				threadId: turn.thread.id,
+				runId,
+				error: reportError,
+			});
+		}
 	}
 
 	/**
@@ -613,6 +698,20 @@ const MEMORY_OPTION_CLAIMED_TASKS: ReadonlySet<SideCallUsageReport['task']> = ne
 	'observer',
 	'reflector',
 ]);
+
+/**
+ * The text and code that the chat shows for a turn error. A refused file stays
+ * in the thread history, because the runtime saves the turn input first.
+ */
+function toFormattedTurnError(shown: unknown): FormattedTurnError {
+	const code = getUserFacingErrorCode(shown);
+	const message = getUserFacingErrorMessage(
+		shown,
+		undefined,
+		isAttachmentRejectedByProviderError(shown) ? { attachmentRemoved: false } : {},
+	);
+	return { message, ...(code ? { code } : {}) };
+}
 
 function modelLabel(modelId: ModelConfig): string {
 	return modelConfigId(modelId) ?? 'unknown';

@@ -108,14 +108,8 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
-const {
-	canReveal,
-	isDynamicCredentials,
-	isSubWorkflowRedaction,
-	revealData,
-	credentialToShare,
-	openCredentialSharing,
-} = useExecutionRedaction();
+const { canReveal, reason, revealData, credentialToShare, openCredentialSharing } =
+	useExecutionRedaction();
 const uiStore = useUIStore();
 
 const workflowObject = computed(() =>
@@ -615,8 +609,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #data-redacted>
 			<RedactedDataState
 				:title="i18n.baseText('ndv.input.redacted.title')"
-				:is-dynamic-credentials="isDynamicCredentials"
-				:is-sub-workflow-redaction="isSubWorkflowRedaction"
+				:reason="reason"
 				:can-reveal="canReveal"
 				:credential-to-share="credentialToShare"
 				@share-credential="openCredentialSharing"
@@ -628,8 +621,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #redacted-error>
 			<RedactedDataState
 				:title="i18n.baseText('ndv.input.redacted.title')"
-				:is-dynamic-credentials="isDynamicCredentials"
-				:is-sub-workflow-redaction="isSubWorkflowRedaction"
+				:reason="reason"
 				:can-reveal="canReveal"
 				:credential-to-share="credentialToShare"
 				@share-credential="openCredentialSharing"

@@ -1,6 +1,6 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { buildVectorStore, buildVectorStoreBackend } from '../factory';

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getWorkspaces, getBases, getRelatedTableFields } from '../../../v2/methods/listSearch';
@@ -43,7 +44,12 @@ describe('NocoDB List Search Methods', () => {
 
 			const result = await getWorkspaces.call(mockThis);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/api/v2/meta/workspaces', {}, {});
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/api/v2/meta/workspaces`,
+				{},
+				{},
+			);
 			expect(result).toEqual({
 				results: [
 					{ name: 'Workspace 1', value: 'ws1', url: 'http://localhost:8080/#/ws1' },
@@ -64,7 +70,12 @@ describe('NocoDB List Search Methods', () => {
 
 			const result = await getWorkspaces.call(mockThis, 'Alpha');
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/api/v2/meta/workspaces', {}, {});
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/api/v2/meta/workspaces`,
+				{},
+				{},
+			);
 			expect(result).toEqual({
 				results: [{ name: 'Workspace Alpha', value: 'ws1', url: 'http://localhost:8080/#/ws1' }],
 			});
@@ -101,7 +112,7 @@ describe('NocoDB List Search Methods', () => {
 			});
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/api/v3/meta/workspaces/ws1/bases',
+				requestPath`/api/v3/meta/workspaces/ws1/bases`,
 				{},
 				{},
 			);
@@ -131,7 +142,7 @@ describe('NocoDB List Search Methods', () => {
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/api/v3/meta/workspaces/ws1/bases',
+				requestPath`/api/v3/meta/workspaces/ws1/bases`,
 				{},
 				{},
 			);
@@ -187,13 +198,13 @@ describe('NocoDB List Search Methods', () => {
 			expect(apiRequestSpy).toHaveBeenCalledTimes(2);
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/api/v3/meta/bases/base1/tables/table1/fields/linkField1',
+				requestPath`/api/v3/meta/bases/base1/tables/table1/fields/linkField1`,
 				{},
 				{},
 			);
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/api/v3/meta/bases/base1/tables/relatedTable1',
+				requestPath`/api/v3/meta/bases/base1/tables/relatedTable1`,
 				{},
 				{},
 			);
@@ -221,7 +232,7 @@ describe('NocoDB List Search Methods', () => {
 			expect(apiRequestSpy).toHaveBeenCalledTimes(1);
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/api/v3/meta/bases/base1/tables/table1/fields/linkField1',
+				requestPath`/api/v3/meta/bases/base1/tables/table1/fields/linkField1`,
 				{},
 				{},
 			);

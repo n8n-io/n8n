@@ -118,7 +118,7 @@ function executeWorkflow(workflowId: string): ExecutionResult {
 test.describe(
 	'Workflow Tests',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		const workflows = loadWorkflows();

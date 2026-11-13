@@ -2,7 +2,9 @@ import type { AppBuildResponse } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { AppArchive } from '../app-archive';
+import type { AppActor } from '../app-events';
 import { AppsService } from '../apps.service';
+import { loadAppSdkFiles } from '../build/app-sdk-files';
 import { createAppScaffold } from '../scaffold/app-scaffold';
 import { AppChangeService } from './app-change.service';
 import { AppVersionService } from './app-version.service';
@@ -29,6 +31,11 @@ export class AppSourceArchiveService {
 		return { baseVersionId: draftVersionId, archive: await this.archives.pack(files) };
 	}
 
+	/** The `@n8n/app-sdk` package that app builds install, as one archive. */
+	async exportSdk(): Promise<Buffer> {
+		return await this.archives.pack(await loadAppSdkFiles());
+	}
+
 	/** Saves the archive as a new version on top of `baseVersionId` and builds it. */
 	async commit(
 		projectId: string,
@@ -36,8 +43,17 @@ export class AppSourceArchiveService {
 		baseVersionId: string | null,
 		archive: Buffer,
 		label: string | null,
+		actor?: AppActor,
 	): Promise<AppBuildResponse> {
 		const files = await this.archives.unpack(archive);
-		return await this.changes.commit(projectId, appId, baseVersionId, files, label);
+		return await this.changes.commit(
+			projectId,
+			appId,
+			baseVersionId,
+			files,
+			label,
+			undefined,
+			actor,
+		);
 	}
 }

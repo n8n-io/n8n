@@ -1,9 +1,8 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';

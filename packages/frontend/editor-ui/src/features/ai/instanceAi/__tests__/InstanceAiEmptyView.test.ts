@@ -12,16 +12,18 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import {
+	ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
 	consumePendingAssistantAgentMessage,
 	knownAssistantThreadRuntime,
 } from '../assistantAgent/assistantAgentThreads';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 import { consumePendingN8nChatMessage } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
@@ -54,7 +56,6 @@ const {
 		workflowPreviewsAboveAssistantEnabled: { value: false },
 		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
 		// EOF Experiment cleanup
-		splitBelowInputVariant: { value: false },
 		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
@@ -171,64 +172,6 @@ vi.mock('@/experiments/workflowPreviewsAboveAssistant', async () => {
 });
 // EOF Experiment cleanup
 
-vi.mock('@/experiments/instanceAiSplitEmptyState', async () => {
-	const { computed, h } = await import('vue');
-	type VueSetupContext = {
-		emit: (event: string, ...args: unknown[]) => void;
-		slots: Record<string, (() => import('vue').VNode[]) | undefined>;
-	};
-	return {
-		useInstanceAiSplitEmptyStateExperiment: () => ({
-			isVariantEnabled: computed(() => experimentMocks.splitBelowInputVariant.value),
-		}),
-		INSTANCE_AI_SPLIT_EMPTY_STATE_SUGGESTIONS_VERSION: 'v2-cycling-preview',
-		InstanceAiSplitEmptyState: {
-			name: 'InstanceAiSplitEmptyStateStub',
-			props: {
-				projectId: { type: String, required: false },
-				disabled: { type: Boolean, required: false },
-				writing: { type: Boolean, required: false },
-			},
-			emits: ['submit-suggestion', 'insert-suggestion', 'example-change'],
-			setup(_props: Record<string, unknown>, { emit, slots }: VueSetupContext) {
-				return () =>
-					h('div', { 'data-test-id': 'instance-ai-split-empty-state' }, [
-						...(slots.header?.() ?? []),
-						...(slots.input?.() ?? []),
-						h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-split-stub-submit',
-								onClick: () =>
-									emit('submit-suggestion', {
-										promptKey:
-											'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
-										suggestionId: 'score-my-leads',
-										suggestionKind: 'quick_example',
-										position: 1,
-										prefillType: 'suggestion_catalog',
-									}),
-							},
-							'submit',
-						),
-						h(
-							'button',
-							{
-								'data-test-id': 'instance-ai-split-stub-example-change',
-								onClick: () =>
-									emit(
-										'example-change',
-										0,
-										'experiments.instanceAiWorkflowPreviewSuggestions.suggestions.scoreMyLeads.prompt',
-									),
-							},
-							'example-change',
-						),
-					]);
-			},
-		},
-	};
-});
 vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	useInstanceAiPersonalizedPromptSuggestionsExperiment: () => ({
 		currentVariant: experimentMocks.personalizedPromptVariant,
@@ -389,11 +332,6 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
-// Shared across all stub submits (not just the agent hand-off tests below) so
-// the n8n Chat variant B test can assert it without widening the stub's emit
-// contract for every other caller.
-const acceptDraftMock = vi.fn();
-
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
 	props: {
@@ -407,12 +345,12 @@ const InstanceAiInputStub = defineComponent({
 		isStreaming: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
-		fixedRows: { type: Number, required: false },
 		contextualSuggestion: { type: String, required: false, default: null },
 		placeholder: { type: String, required: false },
 		mentionsEnabled: { type: Boolean, required: false },
 		isOutOfCredits: { type: Boolean, required: false },
 		attachOnlyMimeTypes: { type: String, required: false },
+		acceptedMimeTypes: { type: String, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -453,8 +391,6 @@ const InstanceAiInputStub = defineComponent({
 							promptModified: message !== prefill.text.trim(),
 						}
 					: USER_TYPED_MESSAGE,
-				undefined,
-				acceptDraftMock,
 			);
 			currentText.value = '';
 			activePrefill.value = null;
@@ -473,21 +409,6 @@ const InstanceAiInputStub = defineComponent({
 				activePrefill.value = { ...prefill };
 			},
 			isPreparingSubmission,
-			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
-			submitSuggestion: (payload: {
-				promptKey: BaseTextKey;
-				suggestionId: string;
-				prefillType: InstanceAiPrefillType;
-			}) => {
-				const prompt = i18n.baseText(payload.promptKey);
-				// Mirrors the real submitSuggestion, which reports the entry id.
-				activePrefill.value = {
-					text: prompt,
-					prefillType: payload.prefillType,
-					prefillId: payload.suggestionId,
-				};
-				submit(prompt);
-			},
 			insertSuggestion: async (payload: {
 				promptKey: BaseTextKey;
 				suggestionId: string;
@@ -560,11 +481,6 @@ const InstanceAiInputStub = defineComponent({
 				// EOF Experiment cleanup
 				h(
 					'span',
-					{ 'data-test-id': 'instance-ai-input-fixed-rows' },
-					props.fixedRows == null ? 'unset' : String(props.fixedRows),
-				),
-				h(
-					'span',
 					{ 'data-test-id': 'instance-ai-input-availability' },
 					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
@@ -587,6 +503,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attach-only' },
 					props.attachOnlyMimeTypes ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-accepted-mime-types' },
+					props.acceptedMimeTypes ?? 'unset',
 				),
 				h(
 					'button',
@@ -617,6 +538,20 @@ const InstanceAiInputStub = defineComponent({
 							}),
 					},
 					'attach',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-unsupported-file',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('zip content'),
+								mimeType: 'application/zip',
+								fileName: 'archive.zip',
+							}),
+					},
+					'attach unsupported',
 				),
 				h(
 					'button',
@@ -685,6 +620,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 
 describe('InstanceAiEmptyView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let creditsStore: ReturnType<typeof mockedStore<typeof useAssistantCreditsStore>>;
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
@@ -704,6 +640,7 @@ describe('InstanceAiEmptyView', () => {
 			'instance-ai': { ...defaultModuleSettings },
 		};
 		store = mockedStore(useInstanceAiStore);
+		creditsStore = mockedStore(useAssistantCreditsStore);
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.personalProject = { id: PERSONAL_PROJECT_ID } as Project;
 		projectsStore.isTeamProjectFeatureEnabled = true;
@@ -718,15 +655,14 @@ describe('InstanceAiEmptyView', () => {
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.deleteThread.mockResolvedValue(true);
-		store.creditsQuota = 100;
-		store.isLowCredits = false;
+		creditsStore.creditsQuota = 100;
+		creditsStore.isLowCredits = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		// Experiment cleanup (124_workflow_previews_above_assistant)
 		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = false;
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
 		// EOF Experiment cleanup
-		experimentMocks.splitBelowInputVariant.value = false;
 		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
@@ -768,6 +704,43 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
 			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
 		);
+	});
+
+	it('uses the App empty state and creates a pending App thread on submit', async () => {
+		const appId = '019a4012-272c-7313-91af-5c94a3d819a9';
+		routeQuery.pendingAppId = appId;
+		routeQuery.projectId = 'project-1';
+		routeQuery.source = 'app_builder_page';
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
+		};
+		store.syncThread.mockResolvedValue(undefined);
+		store.updateThreadMetadata.mockResolvedValue(undefined);
+
+		const { getByTestId, getByText, queryByTestId } = renderView();
+
+		expect(getByText('Build an app with workflows, data tables and agents')).toBeVisible();
+		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('5');
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'apps.assistant.empty.placeholder',
+		);
+		expect(queryByTestId('instance-ai-project-select')).not.toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', 'project-1', {
+			source: 'app_builder_page',
+			origin: 'internal',
+		});
+		expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-placeholder', {
+			instanceAiPendingAppTarget: { appId, projectId: 'project-1' },
+		});
+		expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -827,7 +800,6 @@ describe('InstanceAiEmptyView', () => {
 
 	it.each([
 		['proactive starter', () => (experimentMocks.proactiveAgentEnabled.value = true)],
-		['split layout', () => (experimentMocks.splitBelowInputVariant.value = true)],
 		['n8n Chat variant A', () => (agentsN8nChatVariant.value = 'variant-a')],
 		['n8n Chat variant B', () => (agentsN8nChatVariant.value = 'variant-b')],
 	])('does not report the empty state view when the %s replaces the layout', (_, arrange) => {
@@ -1233,149 +1205,44 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
 	});
 
-	it('renders the split layout and hides the default empty state for the examples-below-input variant', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-split-empty-state')).toBeInTheDocument();
-		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
-	});
-
-	// The split layout's input is detached and fully rounded, so a banner styled to
-	// fuse onto a sidebar input reads as a stray inset box floating above it.
-	it('renders the credit banner as a self-contained card in the split layout', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		store.isLowCredits = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('credit-warning-banner')).toHaveClass('standalone');
-	});
-
-	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiSplitEmptyState.input.placeholder',
-		);
-		expect(getByTestId('instance-ai-input-fixed-rows')).toHaveTextContent('5');
-	});
-
-	it('shows the project selector in the split layout when the user has more than the personal project', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.myProjects = [
-			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
-			{ id: 'team-project', type: 'team', name: 'Team project' },
-		] as ProjectListItem[];
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-split-project-select')).toBeInTheDocument();
-	});
-
-	it('hides the project selector in the split layout when team projects are not licensed', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.isTeamProjectFeatureEnabled = false;
-		projectsStore.myProjects = [
-			{ id: PERSONAL_PROJECT_ID, type: 'personal' },
-			{ id: 'team-project', type: 'team', name: 'Team project' },
-		] as ProjectListItem[];
-
-		const { queryByTestId } = renderView();
-
-		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
-	});
-
-	it('hides the project selector in the split layout when only the personal project exists', () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		const projectsStore = mockedStore(useProjectsStore);
-		projectsStore.myProjects = [{ id: PERSONAL_PROJECT_ID, type: 'personal' }] as ProjectListItem[];
-
-		const { queryByTestId } = renderView();
-
-		expect(queryByTestId('instance-ai-split-project-select')).not.toBeInTheDocument();
-	});
-
-	it('resolves the promptKey and creates a thread when the shelf emits submit-suggestion (split enabled)', async () => {
-		experimentMocks.splitBelowInputVariant.value = true;
-		store.syncThread.mockResolvedValue(undefined);
-
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('instance-ai-split-stub-submit'));
-		await flushPromises();
-
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
-			source: 'assistant_page',
-			origin: 'internal',
-		});
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
-			'thread-placeholder',
-			PERSONAL_PROJECT_ID,
-		);
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
-			{
-				authorship: {
-					kind: 'prefill',
-					prefillType: 'suggestion_catalog',
-					prefillId: 'score-my-leads',
-					promptModified: false,
-				},
-				attachments: undefined,
-				pushRef: 'test-push-ref',
-			},
-		);
-		expect(replaceMock).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: 'thread-placeholder' },
-		});
-		expect(showErrorMock).not.toHaveBeenCalled();
-	});
-
 	it('renders the default empty state for the control variant', () => {
-		const { getByTestId, queryByTestId } = renderView();
+		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 		expect(getByTestId('instance-ai-free-nudge-stub').parentElement).toContainElement(
 			getByTestId('instance-ai-input-stub'),
 		);
-		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 	});
 
 	it('keeps the free nudge ineligible until credits are loaded', async () => {
-		store.creditsQuota = undefined;
+		creditsStore.creditsQuota = undefined;
 
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
 
-		store.creditsQuota = 100;
+		creditsStore.creditsQuota = 100;
 		await flushPromises();
 
 		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 	});
 
 	it('blocks the composer when credits are gone and does not let the banner be dismissed', () => {
-		store.isOutOfCredits = true;
-		store.isLowCredits = true;
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-out-of-credits')).toHaveTextContent('true');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
 	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
-		store.isLowCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1389,7 +1256,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	it('keeps the free nudge ineligible when credits run out after the warning was dismissed', async () => {
-		store.isLowCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const { getByTestId, queryByTestId } = renderView();
 		const nudge = getByTestId('instance-ai-free-nudge-stub');
@@ -1399,11 +1266,13 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(nudge).toHaveAttribute('data-eligible', 'true');
 
-		store.isOutOfCredits = true;
+		creditsStore.isOutOfCredits = true;
 		await flushPromises();
 
 		expect(nudge).toHaveAttribute('data-eligible', 'false');
-		expect(getByTestId('credit-warning-banner')).toHaveTextContent("You've run out of AI credits");
+		expect(getByTestId('credit-warning-banner')).toHaveTextContent(
+			"You've run out of Assistant credits",
+		);
 		expect(queryByTestId('credit-banner-dismiss')).not.toBeInTheDocument();
 	});
 
@@ -1439,18 +1308,6 @@ describe('InstanceAiEmptyView', () => {
 				variant: 'variant-cards',
 				'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			},
-		);
-	});
-
-	it('does not track personalized prompt suggestions exposure when split empty state is active', () => {
-		experimentMocks.personalizedPromptVariant.value = 'control';
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		renderView();
-
-		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI personalized prompt suggestions exposed',
-			expect.anything(),
 		);
 	});
 
@@ -1523,12 +1380,6 @@ describe('InstanceAiEmptyView', () => {
 
 	it.each([
 		{
-			name: 'split empty state',
-			setup: () => {
-				experimentMocks.splitBelowInputVariant.value = true;
-			},
-		},
-		{
 			name: 'the proactive starter',
 			setup: () => {
 				experimentMocks.proactiveAgentEnabled.value = true;
@@ -1590,22 +1441,19 @@ describe('InstanceAiEmptyView', () => {
 		);
 	});
 
-	it('renders the proactive starter and hides the split layout when both 082 and 089 are enabled', () => {
-		experimentMocks.proactiveAgentEnabled.value = true;
-		experimentMocks.splitBelowInputVariant.value = true;
-
-		const { getByTestId, queryByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
-		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
-	});
-
 	describe('Assistant agent threads', () => {
 		beforeEach(() => {
 			useSettingsStore().moduleSettings = {
 				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
 			};
+		});
+
+		it('restricts the composer to the file types of the Assistant agent', () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent(
+				ASSISTANT_AGENT_ACCEPTED_MIME_TYPES,
+			);
 		});
 
 		it('opens a new Assistant agent thread with its first message, without a current Assistant thread', async () => {
@@ -1622,7 +1470,6 @@ describe('InstanceAiEmptyView', () => {
 			});
 			expect(store.syncThread).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
-			expect(acceptDraftMock).toHaveBeenCalledOnce();
 			expect(
 				knownAssistantThreadRuntime('thread-placeholder', {
 					assistantAgentEnabled: true,
@@ -1647,6 +1494,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['screenshot.png']);
 			expect(pendingMessage?.references).toEqual([]);
+			expect(pendingMessage?.authorship).toEqual(USER_TYPED_MESSAGE);
 		});
 
 		it('drops the first message and restores the draft when the navigation fails', async () => {
@@ -1671,22 +1519,20 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(pushMock).not.toHaveBeenCalled();
-			expect(acceptDraftMock).not.toHaveBeenCalled();
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 		});
 
 		it('keeps the draft and reports the file when the message has only an unsupported file', async () => {
 			const { getByTestId } = renderView();
 
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-unsupported-file'));
 			await fireEvent.click(getByTestId('instance-ai-input-stub-submit-empty'));
 			await flushPromises();
 
 			expect(pushMock).not.toHaveBeenCalled();
-			expect(acceptDraftMock).not.toHaveBeenCalled();
 			expect(consumePendingAssistantAgentMessage('thread-placeholder')).toBeUndefined();
 			expect(showMessageMock).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('archive.zip') }),
 			);
 		});
 
@@ -1694,7 +1540,7 @@ describe('InstanceAiEmptyView', () => {
 			pushMock.mockResolvedValue(undefined);
 			const { getByTestId } = renderView();
 
-			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-unsupported-file'));
 			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 			await flushPromises();
 
@@ -1703,8 +1549,21 @@ describe('InstanceAiEmptyView', () => {
 			expect(pendingMessage?.text).toBe('hello');
 			expect(pendingMessage?.files).toEqual([]);
 			expect(showMessageMock).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'error', title: expect.stringContaining('context.txt') }),
+				expect.objectContaining({ type: 'error', title: expect.stringContaining('archive.zip') }),
 			);
+		});
+
+		it('hands off a text file that parse-file reads', async () => {
+			pushMock.mockResolvedValue(undefined);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			const pendingMessage = consumePendingAssistantAgentMessage('thread-placeholder');
+			expect(pendingMessage?.files.map((file) => file.name)).toEqual(['context.txt']);
+			expect(showMessageMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2000,15 +1859,13 @@ describe('InstanceAiEmptyView', () => {
 			);
 		});
 
-		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+		it('forces the default layout, even with the proactive starter experiment on', () => {
 			agentsN8nChatVariant.value = 'variant-a';
 			experimentMocks.proactiveAgentEnabled.value = true;
-			experimentMocks.splitBelowInputVariant.value = true;
 
 			const { getByTestId, queryByTestId } = renderView();
 
 			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
-			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 			expect(getByTestId('n8n-chat-agent-section-stub')).toBeInTheDocument();
 			expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
 		});
@@ -2068,14 +1925,12 @@ describe('InstanceAiEmptyView', () => {
 			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
 		});
 
-		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+		it('forces the default layout, even with the proactive starter experiment on', () => {
 			experimentMocks.proactiveAgentEnabled.value = true;
-			experimentMocks.splitBelowInputVariant.value = true;
 
 			const { getByTestId, queryByTestId } = renderView();
 
 			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
-			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
 			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
 		});
 
@@ -2137,6 +1992,8 @@ describe('InstanceAiEmptyView', () => {
 			const { getByTestId } = renderView();
 
 			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('unset');
+			// The current Assistant runtime accepts every file type.
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
 			await nextTick();
@@ -2163,7 +2020,7 @@ describe('InstanceAiEmptyView', () => {
 			expect(thread.sendMessage).not.toHaveBeenCalled();
 		});
 
-		it('stores the hand-off with the typed text and converted file attachments, calls acceptDraft, and does not start an Assistant thread', async () => {
+		it('stores the hand-off with the typed text and converted file attachments, and does not start an Assistant thread', async () => {
 			const { getByTestId } = renderView();
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
@@ -2178,7 +2035,6 @@ describe('InstanceAiEmptyView', () => {
 			});
 			expect(store.syncThread).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
-			expect(acceptDraftMock).toHaveBeenCalledOnce();
 
 			const pendingMessage = consumePendingN8nChatMessage('agent-1');
 			expect(pendingMessage?.text).toBe('hello');

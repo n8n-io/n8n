@@ -67,6 +67,24 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['FocusScope'],
+		allowedFolders: ['components/FocusScope'],
+		replacement: 'FocusScope',
+	},
+	{
+		library: 'reka-ui',
+		prefixes: ['HoverCard'],
+		allowedFolders: ['components/N8nHoverCard'],
+		replacement: 'N8nHoverCard',
+	},
+	{
+		library: 'reka-ui',
+		prefixes: ['Listbox'],
+		allowedFolders: ['components/N8nListbox'],
+		replacement: ['N8nListbox', 'N8nListboxItem'],
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['NumberField'],
 		allowedFolders: ['components/N8nInputNumber'],
 		replacement: 'N8nInputNumber',
@@ -110,6 +128,12 @@ export const wrappedComponentBans = [
 	},
 	{
 		library: 'reka-ui',
+		prefixes: ['Tabs'],
+		allowedFolders: ['components/N8nTabs'],
+		replacement: ['N8nTabsRoot', 'N8nTabsList', 'N8nTabsTrigger', 'N8nTabsContent'],
+	},
+	{
+		library: 'reka-ui',
 		prefixes: ['TagsInput'],
 		allowedFolders: ['v2/components/TagsInput'],
 		replacement: 'N8nTagsInput2',
@@ -134,12 +158,26 @@ export const wrappedComponentBans = [
 		replacement: 'N8nTree2',
 	},
 	{
+		library: 'reka-ui',
+		prefixes: ['VisuallyHidden'],
+		allowedFolders: ['components/N8nVisuallyHidden'],
+		replacement: 'N8nVisuallyHidden',
+	},
+	{
 		library: 'element-plus',
 		names: ['ElMenu', 'ElSubMenu', 'ElMenuItem'],
 		componentPaths: ['menu', 'menu-item', 'sub-menu'],
 		templateNames: ['el-menu', 'ElMenu', 'el-sub-menu', 'ElSubMenu', 'el-menu-item', 'ElMenuItem'],
 		allowedFolders: ['components/N8nNavigationDropdown'],
 		replacement: 'N8nNavigationDropdown',
+	},
+	{
+		library: 'element-plus',
+		names: ['ElSwitch'],
+		componentPaths: ['switch'],
+		templateNames: ['el-switch', 'ElSwitch'],
+		allowedFolders: ['components/N8nSwitch'],
+		replacement: 'N8nSwitch',
 	},
 ] as const satisfies readonly WrappedComponentBan[];
 

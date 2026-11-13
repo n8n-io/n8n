@@ -15,7 +15,6 @@ function plan(...ids: string[]): SkillImportPlan {
 	return {
 		shared: ids.map((id) => ({ skill: instanceSkill(id), target, usedBy: [`agent_${id}`] })),
 		sharedUsers: new Set(),
-		raisedRevisions: new Map(),
 	};
 }
 

@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
-import type { WorkflowEntity } from '@n8n/db';
+import type { OperationContext, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -70,6 +71,7 @@ const scope = (input: {
 		user: mock(),
 		projectId: input.projectId,
 		folderId: input.folderId ?? null,
+		publicApi: false,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
 	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
@@ -488,6 +490,21 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.counts.folders).toEqual({ removed: 1 });
 		// The settled policy is reported as-is; the dispatcher resolved it before any importer ran.
 		expect(payload.options.folderConflictPolicy).toBe('overwrite');
+	});
+
+	it('adds the login of the operation context of the request', () => {
+		const eventService = mock<EventService>();
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		emitPackageImportedEvent(eventService, {
+			request: Object.assign(mock<ResolvedImportPackageRequest>(), { ...request, ctx }),
+			manifest,
+			scopes: [],
+		});
+
+		expect(lastImportedPayload(eventService).loginId).toBe('login-1');
 	});
 
 	it('preserves the folder id for a single-scope import', () => {

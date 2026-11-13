@@ -8,11 +8,10 @@ import type { TestRun, User } from '@n8n/db';
 import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import { type Scope } from '@n8n/permissions';
 import express from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';

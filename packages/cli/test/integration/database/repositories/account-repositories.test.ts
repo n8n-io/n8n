@@ -4,6 +4,7 @@ import {
 	AiPreferenceRepository,
 	User,
 	UserRepository,
+	GLOBAL_AGENT_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	isServiceAccount,
 	isPerson,
@@ -304,6 +305,28 @@ describe('UserRepository (both kinds)', () => {
 			expect(loaded).toBeInstanceOf(ServiceAccount);
 			expect(loaded?.details).toBeInstanceOf(ServiceAccountDetails);
 			expect(loaded?.details.name).toBe('Deploy bot');
+		});
+
+		it('creates an agent service account with the agent role, no scopes and no project memberships', async () => {
+			const serviceAccountRepository = Container.get(ServiceAccountRepository);
+
+			const created = await serviceAccountRepository.create({
+				name: 'Support agent',
+				role: GLOBAL_AGENT_ROLE,
+			});
+
+			const loaded = await userRepository.findOneOrFail({
+				where: { id: created.id },
+				relations: { role: { scopes: true } },
+			});
+			expect(loaded.role.slug).toBe('global:agent');
+			expect(loaded.role.systemRole).toBe(true);
+			expect(loaded.role.scopes).toEqual([]);
+
+			const memberships = await Container.get(ProjectRelationRepository).find({
+				where: { userId: created.id, project: { type: 'team' } },
+			});
+			expect(memberships).toEqual([]);
 		});
 
 		it.each([

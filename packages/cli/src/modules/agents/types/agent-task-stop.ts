@@ -1,5 +1,10 @@
 import type { AgentTaskStopFailure } from '@n8n/api-types';
 
+import type { AgentChatSurface } from '../utils/agent-thread-access';
+
+/** The chats that offer Stop all tasks. */
+export type AgentTaskStopSurface = Extract<AgentChatSurface, 'preview' | 'n8n-chat'>;
+
 /** The latest Stop on a thread and its captured work. */
 export interface AgentTaskStop {
 	planId: string | null;

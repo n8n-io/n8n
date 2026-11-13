@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 

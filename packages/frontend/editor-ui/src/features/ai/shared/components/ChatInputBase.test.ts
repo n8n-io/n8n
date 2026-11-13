@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { defineComponent, nextTick, ref } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -74,6 +74,37 @@ describe('ChatInputBase', () => {
 		mockShowError.mockClear();
 		mockIsFinal.value = false;
 		vi.clearAllMocks();
+	});
+
+	it('renders preview frames in the input without updating its host or draft', async () => {
+		const placeholderPreview = ref<string | undefined>('Build');
+		const renderHost = vi.fn();
+		const Host = defineComponent({
+			setup() {
+				return () => {
+					renderHost();
+					return h(
+						ChatInputBase,
+						makeProps({
+							placeholder: 'Ask anything',
+							placeholderPreview,
+						}),
+					);
+				};
+			},
+		});
+		const { getByRole } = createComponentRenderer(Host)();
+		const input = getByRole('textbox');
+		expect(input).toHaveAttribute('placeholder', 'Build');
+		const initialRenders = renderHost.mock.calls.length;
+		placeholderPreview.value = 'Build me an agent';
+		await nextTick();
+		expect(input).toHaveAttribute('placeholder', 'Build me an agent');
+		expect(input).toHaveValue('');
+		expect(renderHost).toHaveBeenCalledTimes(initialRenders);
+		placeholderPreview.value = undefined;
+		await nextTick();
+		expect(input).toHaveAttribute('placeholder', 'Ask anything');
 	});
 
 	it('should show send button when not streaming', () => {
@@ -362,6 +393,23 @@ describe('ChatInputBase', () => {
 		expect(emittedValues.length).toBeGreaterThan(0);
 		const lastValue = emittedValues[emittedValues.length - 1];
 		expect(lastValue).not.toMatch(/^\s/);
+	});
+
+	it('stops voice input and ignores late results when the composer becomes disabled', async () => {
+		mockIsListening.value = true;
+		const { rerender, emitted } = renderComponent({
+			props: makeProps({ showVoice: true, modelValue: 'draft' }),
+		});
+
+		await rerender(makeProps({ showVoice: true, modelValue: 'draft', disabled: true }));
+
+		expect(mockStop).toHaveBeenCalledOnce();
+
+		mockIsFinal.value = true;
+		mockResult.value = 'late speech result';
+		await nextTick();
+
+		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
 	describe('oversized attachments', () => {

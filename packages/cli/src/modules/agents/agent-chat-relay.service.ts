@@ -9,11 +9,12 @@ import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
+import { posix } from 'node:path';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
 
 import { sendStreamToResponse } from '@/response-helper';
 
-import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
@@ -89,16 +90,20 @@ export class AgentChatRelayService {
 				}
 
 				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
-				const row = await this.agentChatAttachmentService.storeInbound({
-					agentId,
-					projectId,
-					threadId,
-					resourceId,
-					source,
-					fileName: attachment.fileName,
-					mimeType,
-					data,
-				});
+				const row = await this.agentChatAttachmentService
+					.storeInbound({
+						agentId,
+						projectId,
+						threadId,
+						resourceId,
+						source,
+						fileName: attachment.fileName,
+						mimeType,
+						data,
+					})
+					.catch((error: unknown) => {
+						throw error instanceof AgentFileLimitError ? new BadRequestError(error.message) : error;
+					});
 				stored.push({
 					id: row.id,
 					fileName: row.fileName,
@@ -216,7 +221,7 @@ export class AgentChatRelayService {
 			if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
 				res.setHeader(
 					'Content-Disposition',
-					`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+					`attachment; filename="${sanitizeFilename(posix.basename(attachment.fileName))}"`,
 				);
 			}
 		});

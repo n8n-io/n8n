@@ -9,6 +9,7 @@ import type {
 	IExecutionBase,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import {
@@ -33,20 +34,28 @@ import type {
 } from 'n8n-workflow';
 import {
 	ManualExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -64,6 +73,7 @@ import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 
 import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
+import { toUserLike } from '@/utils/to-user-like';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -250,17 +260,20 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	async retry({
-		executionId,
-		options = {},
-		sharedWorkflowIds,
-		user,
-	}: {
-		executionId: string;
-		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
-		sharedWorkflowIds: string[];
-		user: User;
-	}): Promise<RetriedExecution> {
+	async retry(
+		{
+			executionId,
+			options = {},
+			sharedWorkflowIds,
+			user,
+		}: {
+			executionId: string;
+			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+			sharedWorkflowIds: string[];
+			user: User;
+		},
+		ctx: OperationContext = {},
+	): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -284,6 +297,30 @@ export class ExecutionService {
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
+		}
+
+		// A retry reuses the original run's identity, so its private credentials
+		// resolve as the user who started it. Only that user may retry it.
+		const runtimeData = execution.data.executionData.runtimeData;
+		const usesDynamicCredentials =
+			runtimeData?.usesDynamicCredentials === true ||
+			runDataUsedDynamicCredentials(execution.data.resultData?.runData);
+		if (usesDynamicCredentials && runtimeData?.executedByUserId !== user.id) {
+			this.logger.info('Attempt to retry an execution was blocked because it ran as another user', {
+				userId: user.id,
+				executionId,
+			});
+			throw new ForbiddenError(
+				"This execution ran with another user's credentials. Run the workflow yourself instead.",
+			);
+		}
+
+		// The saved workflow can reference private credentials that the original
+		// run did not. Keep the original identity and trigger secrets only for the
+		// user the run belongs to. Sub-workflows inherit this context, so this also covers them.
+		if (runtimeData && runtimeData.executedByUserId !== user.id) {
+			delete runtimeData.credentials;
+			delete runtimeData.secureArtifacts;
 		}
 
 		const executionMode = 'retry';
@@ -383,19 +420,14 @@ export class ExecutionService {
 		);
 
 		this.eventService.emit('workflow-executed', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
 			projectId,
 			projectName,
 			source: 'user-retry',
+			loginId: loginIdOf(ctx),
 		});
 
 		const summary: RetriedExecution = {
@@ -429,6 +461,7 @@ export class ExecutionService {
 		await this.executionRedactionServiceProxy.processExecution(response, {
 			user,
 			redactExecutionData: options.redactExecutionData,
+			ctx,
 		});
 
 		return response;
@@ -463,13 +496,7 @@ export class ExecutionService {
 		});
 
 		this.eventService.emit('execution-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			executionIds: ids ?? [],
 			deleteBefore,
 		});

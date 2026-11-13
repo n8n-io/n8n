@@ -1,10 +1,138 @@
 import { render, fireEvent } from '@testing-library/vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 
 import N8nMarkdown from './Markdown.vue';
 import { n8nHtml } from '../../directives';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
+		it('passes sanitized links and plain labels to the link slot', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '[**Workflow**](/workflow/1 "Details")' },
+				slots: {
+					link: (link: {
+						href: string;
+						label: string;
+						title?: string;
+						target?: string;
+						rel?: string;
+					}) =>
+						h(
+							'a',
+							{ href: link.href, title: link.title, target: link.target, rel: link.rel },
+							link.label,
+						),
+				},
+			});
+			await nextTick();
+			expect(wrapper.getByRole('link')).toHaveTextContent('Workflow');
+			expect(wrapper.getByRole('link')).toHaveAttribute('href', '/workflow/1');
+			expect(wrapper.getByRole('link')).toHaveAttribute('title', 'Details');
+			expect(wrapper.getByRole('link')).toHaveAttribute('rel', 'noopener');
+			await wrapper.rerender({ content: '[Unsafe](javascript:alert%281%29)' });
+			await nextTick();
+			expect(wrapper.queryByRole('link')).toBeNull();
+		});
+		it('keeps slot targets across streamed HTML and preserves raw nested fences', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '> ```js\n>   first\n> ```' },
+				slots: {
+					'code-block': ({ code, language }: { code: string; language: string }) =>
+						h('pre', { 'data-language': language }, code),
+				},
+			});
+			await nextTick();
+			const target = wrapper.container.querySelector('blockquote pre')?.parentElement;
+			expect(target).toHaveClass('not-prose');
+			expect(target?.textContent).toBe('  first\n');
+			await wrapper.rerender({ content: 'New paragraph\n\n> ```js\n>   second\n> ```' });
+			await nextTick();
+			expect(wrapper.container.querySelector('blockquote pre')?.parentElement).toBe(target);
+			expect(target?.textContent).toBe('  second\n');
+			await wrapper.rerender({ content: 'New paragraph\n\n> ```js\n>   third\n> ```' });
+			await nextTick();
+			expect(target?.textContent).toBe('  third\n');
+		});
+		it('passes formatted and image labels to the slot as sanitized HTML', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '[**Bold**](/bold) [![Preview](https://example.com/image.png)](/image)' },
+				slots: {
+					link: ({ href, labelHtml }: { href: string; labelHtml: string }) =>
+						h('a', { href, innerHTML: labelHtml }),
+				},
+			});
+			await nextTick();
+			expect(wrapper.container.querySelector('a[href="/bold"] strong')).toHaveTextContent('Bold');
+			expect(wrapper.container.querySelector('a[href="/image"] img')).toHaveAttribute(
+				'src',
+				'https://example.com/image.png',
+			);
+		});
+
+		it('updates rendering when slots are added and removed', async () => {
+			const enabled = ref(false);
+			const wrapper = render(
+				defineComponent({
+					setup() {
+						return () =>
+							h(
+								N8nMarkdown,
+								{ content: '[Link](/link)\n\n```js\ncode\n```' },
+								enabled.value
+									? {
+											link: ({ label }: { label: string }) => h('button', label),
+											'code-block': ({ code }: { code: string }) => h('textarea', code),
+										}
+									: {},
+							);
+					},
+				}),
+			);
+			enabled.value = true;
+			await nextTick();
+			await nextTick();
+			expect(wrapper.getByRole('button')).toHaveTextContent('Link');
+			expect(wrapper.getByRole('textbox')).toHaveTextContent('code');
+			enabled.value = false;
+			await nextTick();
+			await nextTick();
+			expect(wrapper.getByRole('link')).toHaveTextContent('Link');
+			expect(wrapper.container.querySelector('pre code')).toHaveTextContent('code');
+		});
+
+		it('keeps fence slot instances when preceding Markdown tokens change', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '```js\nfirst\n```\n\n```js\nsecond\n```' },
+				slots: { 'code-block': () => h('input') },
+			});
+			await nextTick();
+			const inputs = wrapper.getAllByRole('textbox');
+			await fireEvent.update(inputs[0], 'local state');
+			await wrapper.rerender({
+				content: '# Heading\n\nParagraph\n\n```js\nfirst updated\n```\n\n```js\nsecond\n```',
+			});
+			await nextTick();
+			expect(wrapper.getAllByRole('textbox')[0]).toBe(inputs[0]);
+			expect(wrapper.getAllByRole('textbox')[1]).toBe(inputs[1]);
+			expect(inputs[0]).toHaveValue('local state');
+		});
+
+		it('preserves the second fence state when the first fence is removed', async () => {
+			const wrapper = render(N8nMarkdown, {
+				props: { content: '```js\nfirst\n```\n\n```js\nsecond\n```' },
+				slots: { 'code-block': () => h('input') },
+			});
+			await nextTick();
+			const inputs = wrapper.getAllByRole('textbox');
+			await fireEvent.update(inputs[0], 'first state');
+			await fireEvent.update(inputs[1], 'second state');
+			await wrapper.rerender({ content: '```js\nsecond\n```' });
+			await nextTick();
+			expect(wrapper.getAllByRole('textbox')).toHaveLength(1);
+			expect(wrapper.getByRole('textbox')).toBe(inputs[1]);
+			expect(wrapper.getByRole('textbox')).toHaveValue('second state');
+		});
+
 		it('supports flat parser options and preserves defaults', () => {
 			const wrapper = render(N8nMarkdown, {
 				props: {
@@ -340,7 +468,9 @@ describe('components', () => {
 				},
 			});
 
-			expect(wrapper.html()).toContain('<p>@<a href="" target="_blank">youtube</a></p>');
+			expect(wrapper.html()).toContain(
+				'<p>@<a href="" target="_blank" rel="noopener">youtube</a></p>',
+			);
 		});
 	});
 });

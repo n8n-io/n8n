@@ -3,8 +3,9 @@ import { Time } from '@n8n/constants';
 import { clusterTarget, intervalFromSeconds, SystemTask, timeoutAfterLimit } from '@n8n/decorators';
 import type { SystemTaskSchedule } from '@n8n/decorators';
 
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 
 /**
  * Expires agent checkpoints past their TTL, so a stale suspended run can no
@@ -37,10 +38,12 @@ export class AgentCheckpointPruningTask implements SystemTask {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly backgroundJobs: AgentBackgroundJobService,
+		private readonly agentExecutionRepository: AgentExecutionRepository,
 	) {}
 
 	async run(signal: AbortSignal): Promise<void> {
-		await this.checkpointStorage.pruneStaleSuspensions();
+		const threadIds = await this.checkpointStorage.pruneStaleSuspensions();
+		await this.agentExecutionRepository.failExpiredWaitingApprovals(threadIds);
 		await this.backgroundJobs.pruneExpiredPausedJobs(undefined, signal);
 	}
 }

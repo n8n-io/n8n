@@ -34,6 +34,7 @@ import { parseOwnersFile, resolveRequiredTeams, teamHandleToSlug } from './owner
 export const STATUS_CONTEXT = 'Required Reviews';
 export const LARGE_SCALE_CHANGE_LABEL = 'large-scale-change';
 export const LARGE_SCALE_CHANGES_TEAM = 'large-scale-changes';
+export const RELEASE_HELPER_LOGIN = 'n8n-release-helper[bot]';
 
 /**
  * PR routes that skip the evaluation. Each entry is `<head> -> <base>` or
@@ -236,6 +237,12 @@ async function evaluateRequiredReviews(pullRequestNumber) {
 	if (requiredTeams.size > 0) {
 		const approvers = collectApprovers(await getPrReviews(pullRequestNumber));
 		console.log(`Current approvals: ${[...approvers].join(', ') || '(none)'}`);
+		if (approvers.has(RELEASE_HELPER_LOGIN)) {
+			console.log(
+				`PR #${pullRequestNumber} was approved by n8n Release Helper; skipping the evaluation.`,
+			);
+			return { state: 'success', description: 'Owners check skipped by n8n Release Helper' };
+		}
 
 		for (const [team, files] of requiredTeams) {
 			const slug = teamHandleToSlug(team);

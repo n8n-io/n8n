@@ -98,8 +98,8 @@ const runStepAction = z.object({
 				"This is a REAL run with the user's real credentials against their real " +
 				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
 				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
-				'performs the effect again. Read the failed execution with debug_execution ' +
-				'and get_resolved_node_parameters instead. When unsure, treat the ' +
+				'performs the effect again. Read the failed execution by running debug_execution and ' +
+				'get_resolved_node_parameters through call_tool instead. When unsure, treat the ' +
 				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
 				"mockInput and reuseExecutionId feed that node and the tool's own " +
 				'arguments come from toolArguments. No other sub-node kind can run.',
@@ -511,10 +511,10 @@ const UNSAVED_EXECUTION_GUIDANCE =
 
 const EXTRA_DESCRIPTIONS: Partial<Record<ExecutionToolAction, string>> = {
 	run:
-		' This is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-		"list_workflows, then run it here with the user's values as inputData. " +
+		' This is how you satisfy "trigger/run my <workflow>": find the workflow by running ' +
+		"list_workflows through call_tool, then run it here with the user's values as inputData. " +
 		'Do not treat such a request as a request to build something. ' +
-		'To verify a workflow you built, use workflow_builder_verify_built_workflow, not this tool. ' +
+		'To verify a workflow you built, run workflow_builder_verify_built_workflow through call_tool, not this tool. ' +
 		'Reserve this tool for runs the user explicitly asked for: it runs the workflow live ' +
 		'with no pin data and prompts the user for approval.',
 	'run-step':

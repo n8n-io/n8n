@@ -30,9 +30,9 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 	const toast = useToast();
 	let disposed = false;
 
-	const planStopActive = computed(
-		() => options.channel() === 'chat' && options.backgroundJobsActive(),
-	);
+	// Preview and n8n Chat share Stop all tasks. The system chat has no plan.
+	const supportsPlanStop = computed(() => options.channel() !== 'system');
+	const planStopActive = computed(() => supportsPlanStop.value && options.backgroundJobsActive());
 
 	const completedPlanCalls = computed(() =>
 		options
@@ -63,6 +63,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		projectId: options.projectId,
 		agentId: options.agentId,
 		threadId: options.threadId,
+		channel: options.channel,
 		active: () => planStopActive.value,
 		planId: () => currentPlan.value?.planId ?? null,
 		requestStop: options.requestStop,
@@ -141,13 +142,13 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 	);
 
 	const stopDisabled = computed(() =>
-		options.channel() === 'n8n-chat'
-			? isStopping.value
-			: isStopping.value || stoppingPlan.value || (tasksStopping.value && !canRetryStop.value),
+		supportsPlanStop.value
+			? isStopping.value || stoppingPlan.value || (tasksStopping.value && !canRetryStop.value)
+			: isStopping.value,
 	);
 
 	const backgroundStopLabel = computed(() => {
-		if (options.channel() === 'n8n-chat') {
+		if (!supportsPlanStop.value) {
 			return locale.baseText('agents.chat.backgroundTasks.stopAll');
 		}
 
@@ -398,7 +399,7 @@ export function useAgentChatTaskControls(options: AgentChatTaskControlsOptions) 
 		() =>
 			options.backgroundJobsActive() &&
 			!hideStoppedStack.value &&
-			(options.channel() !== 'chat' || !currentPlan.value) &&
+			(!supportsPlanStop.value || !currentPlan.value) &&
 			backgroundJobs.value.some((job) => ['running', 'suspended'].includes(job.status)),
 	);
 

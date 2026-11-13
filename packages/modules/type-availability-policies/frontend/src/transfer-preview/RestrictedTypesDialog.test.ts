@@ -39,9 +39,9 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 });
 
 const contactAdminModalStub = {
-	props: ['open', 'nodeTypeName', 'kind', 'audience', 'project'],
+	props: ['open', 'typeName', 'kind', 'audience', 'project'],
 	template:
-		'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind" :data-audience="audience" :data-project="project?.id" :data-names="[].concat(nodeTypeName).join(\'|\')" />',
+		'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind" :data-audience="audience" :data-project="project?.id" :data-names="[].concat(typeName).join(\'|\')" />',
 };
 
 const restrictedNodePopoverStub = {

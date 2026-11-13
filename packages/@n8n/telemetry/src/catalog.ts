@@ -8,6 +8,7 @@ export type TelemetryCatalogProperty = {
 	type: string;
 	optional: boolean;
 	description?: string;
+	deprecated?: boolean;
 };
 
 export type TelemetryCatalogEntry = {
@@ -63,6 +64,10 @@ export function buildCatalog(registry: TelemetryEventRegistry): TelemetryCatalog
 						type: [...new Set(propertyVariants.map(typeSummary))].join(' | '),
 						optional: variants.some((variant) => !variant.required.has(propertyName)),
 						...(typeof description === 'string' ? { description } : {}),
+						...(propertyVariants.length > 0 &&
+						propertyVariants.every((property) => property.deprecated === true)
+							? { deprecated: true }
+							: {}),
 					};
 				}),
 			});
@@ -84,7 +89,7 @@ export function formatCatalog(catalog: TelemetryCatalogEntry[]): string {
 		for (const property of entry.properties) {
 			const propertyDescription = property.description ? ` — ${property.description}` : '';
 			lines.push(
-				`    ${property.name}${property.optional ? '?' : ''}: ${property.type}${propertyDescription}`,
+				`    ${property.name}${property.optional ? '?' : ''}: ${property.type}${property.deprecated ? ' (deprecated)' : ''}${propertyDescription}`,
 			);
 		}
 	}

@@ -2,7 +2,7 @@ import { EventService } from '@n8n/backend-services';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { OperationContext, Transaction, WorkflowHistory } from '@n8n/db';
 import {
-	User,
+	Person,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
@@ -31,7 +31,7 @@ const workflowHistoryService = new WorkflowHistoryService(
 	workflowFinderService,
 	eventService,
 );
-const testUser = Object.assign(new User(), {
+const testPerson = Object.assign(new Person(), {
 	id: '1234',
 	password: 'passwordHash',
 	mfaEnabled: false,
@@ -66,7 +66,7 @@ describe('WorkflowHistoryService', () => {
 				workflow.connections = {};
 				const ctx: OperationContext = { trx: mock<Transaction>() };
 				await workflowHistoryService.saveVersion(
-					testUser,
+					testPerson,
 					workflow,
 					'workflow-1',
 					false,
@@ -98,7 +98,7 @@ describe('WorkflowHistoryService', () => {
 				insert.mockRejectedValueOnce(error);
 				await expect(
 					workflowHistoryService.saveVersion(
-						testUser,
+						testPerson,
 						workflow,
 						'workflow-1',
 						false,
@@ -121,7 +121,7 @@ describe('WorkflowHistoryService', () => {
 
 			await expect(
 				workflowHistoryService.saveVersion(
-					testUser,
+					testPerson,
 					workflow,
 					'workflow-1',
 					false,
@@ -147,7 +147,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
@@ -171,7 +171,7 @@ describe('WorkflowHistoryService', () => {
 			const nodeGroups = [{ id: 'group1', name: 'Data Fetching', nodeIds: ['node1', 'node2'] }];
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, { ...workflow, nodeGroups }, workflowId);
+			await workflowHistoryService.saveVersion(testPerson, { ...workflow, nodeGroups }, workflowId);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
@@ -194,7 +194,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, true);
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId, true);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
@@ -217,7 +217,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false);
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId, false);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith({
@@ -240,7 +240,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'n8n-mcp');
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId, false, 'n8n-mcp');
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
@@ -281,7 +281,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId, false, 'ui');
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId, false, 'ui');
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
@@ -299,7 +299,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			await workflowHistoryService.saveVersion(
-				testUser,
+				testPerson,
 				workflow,
 				workflowId,
 				false,
@@ -327,7 +327,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			await workflowHistoryService.saveVersion(
-				testUser,
+				testPerson,
 				workflow,
 				workflowId,
 				false,
@@ -352,7 +352,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act & Assert
 			await expect(
-				workflowHistoryService.saveVersion(testUser, workflow, workflowId),
+				workflowHistoryService.saveVersion(testPerson, workflow, workflowId),
 			).rejects.toThrow(
 				'Cannot save workflow history: nodes and connections are required for workflow 123',
 			);
@@ -369,7 +369,7 @@ describe('WorkflowHistoryService', () => {
 			workflowHistoryRepository.insert.mockRejectedValueOnce(new Error('Test error'));
 
 			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
+			await workflowHistoryService.saveVersion(testPerson, workflow, workflowId);
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
@@ -386,7 +386,7 @@ describe('WorkflowHistoryService', () => {
 			workflowHistoryRepository.findOne.mockResolvedValueOnce(version);
 
 			// Act
-			const result = await workflowHistoryService.getVersion(testUser, workflow.id, 'version1', {
+			const result = await workflowHistoryService.getVersion(testPerson, workflow.id, 'version1', {
 				publishHistory: 'none',
 			});
 
@@ -404,7 +404,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
-				testUser,
+				testPerson,
 				workflowId,
 				versionIds,
 			);
@@ -423,11 +423,13 @@ describe('WorkflowHistoryService', () => {
 
 			// Act & Assert
 			await expect(
-				workflowHistoryService.getVersionsByIds(testUser, workflowId, versionIds),
+				workflowHistoryService.getVersionsByIds(testPerson, workflowId, versionIds),
 			).rejects.toThrow(SharedWorkflowNotFoundError);
-			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
-				'workflow:read',
-			]);
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				workflowId,
+				testPerson,
+				['workflow:read'],
+			);
 		});
 
 		it('should return only existing versions from the provided list', async () => {
@@ -446,7 +448,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
-				testUser,
+				testPerson,
 				workflowId,
 				versionIds,
 			);
@@ -472,7 +474,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			const result = await workflowHistoryService.getVersionsByIds(
-				testUser,
+				testPerson,
 				workflowId,
 				versionIds,
 			);
@@ -494,12 +496,14 @@ describe('WorkflowHistoryService', () => {
 			workflowHistoryRepository.find.mockResolvedValueOnce([]);
 
 			// Act
-			await workflowHistoryService.getVersionsByIds(testUser, workflowId, versionIds);
+			await workflowHistoryService.getVersionsByIds(testPerson, workflowId, versionIds);
 
 			// Assert
-			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
-				'workflow:read',
-			]);
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				workflowId,
+				testPerson,
+				['workflow:read'],
+			);
 		});
 	});
 
@@ -526,16 +530,18 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			await workflowHistoryService.updateVersionForUser(
-				testUser,
+				testPerson,
 				workflowId,
 				versionId,
 				updateData,
 			);
 
 			// Assert
-			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
-				'workflow:update',
-			]);
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
+				workflowId,
+				testPerson,
+				['workflow:update'],
+			);
 			expect(workflowHistoryRepository.findOne).toHaveBeenCalledWith({
 				where: { workflowId, versionId },
 			});
@@ -554,7 +560,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act & Assert
 			await expect(
-				workflowHistoryService.updateVersionForUser(testUser, workflowId, versionId, updateData),
+				workflowHistoryService.updateVersionForUser(testPerson, workflowId, versionId, updateData),
 			).rejects.toThrow(SharedWorkflowNotFoundError);
 			expect(workflowHistoryRepository.update).not.toHaveBeenCalled();
 		});
@@ -572,7 +578,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act & Assert
 			await expect(
-				workflowHistoryService.updateVersionForUser(testUser, workflowId, versionId, updateData),
+				workflowHistoryService.updateVersionForUser(testPerson, workflowId, versionId, updateData),
 			).rejects.toThrow(WorkflowHistoryVersionNotFoundError);
 			expect(workflowHistoryRepository.update).not.toHaveBeenCalled();
 		});
@@ -584,7 +590,7 @@ describe('WorkflowHistoryService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
 
 			await expect(
-				workflowHistoryService.getPublishTimeline(testUser, workflowId, { offset: 0, limit: 10 }),
+				workflowHistoryService.getPublishTimeline(testPerson, workflowId, { offset: 0, limit: 10 }),
 			).rejects.toThrow(SharedWorkflowNotFoundError);
 		});
 
@@ -620,7 +626,7 @@ describe('WorkflowHistoryService', () => {
 
 			workflowPublishHistoryRepository.findTimelinePage.mockResolvedValueOnce(mockEvents as never);
 
-			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId, {
+			const result = await workflowHistoryService.getPublishTimeline(testPerson, workflowId, {
 				offset: 20,
 				limit: 10,
 			});

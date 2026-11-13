@@ -6,7 +6,8 @@ import fs from 'fs';
 import { diff } from 'json-diff';
 import pick from 'lodash/pick';
 import type { IRun, ITaskData, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import os from 'os';
 import { sep } from 'path';
 import { z } from 'zod';
@@ -192,6 +193,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await super.init();
 		await this.initLicense();
 		await this.initPolicyEnforcement();
+		await this.initExecutionLedger();
 		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();

@@ -21,12 +21,14 @@ import { PromotionProviderRepository } from '@/modules/promotions.ee/database/re
 import { GitHostClients } from '@/modules/promotions.ee/git-hosts/git-host-clients';
 import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
+import { PromotionEnvironmentLockService } from '@/modules/promotions.ee/promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
 import {
 	createAdminWithApiKey,
+	createMember,
 	createMemberWithApiKey,
 	createOwnerWithApiKey,
 } from '@test-integration/db/users';
@@ -1677,16 +1679,29 @@ describe('Promotions in Public API', () => {
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
 				// Pause before the write transaction opens. SQLite runs one write transaction at a
-				// time, so a pause inside it would also hold back the winning update.
-				const transactions = Container.get(TransactionRunner);
-				const run = transactions.run.bind(transactions);
+				// time, so a pause inside it would also hold back the winning update. A new remote
+				// changes the checkout, so that write runs inside the environment lock: pause it
+				// before it takes the lock, so the winning update can take it.
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+				const pause = async () => {
 					paused.resolve();
 					await resume.promise;
-					return await run(...args);
-				});
+				};
+				const transactions = Container.get(TransactionRunner);
+				const environmentLock = Container.get(PromotionEnvironmentLockService);
+				const run = transactions.run.bind(transactions);
+				const lock = environmentLock.run.bind(environmentLock);
+				const write =
+					field === 'remote'
+						? vi.spyOn(environmentLock, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await lock(...args);
+							})
+						: vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await run(...args);
+							});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'
@@ -2296,11 +2311,16 @@ describe('Promotions in Public API', () => {
 	});
 
 	describe('change preview', () => {
-		it('checks the scope of the requested direction and forwards the query', async () => {
-			const source = { environmentId: 'env1', branchName: 'main' };
-			const getChanges = vi
-				.spyOn(Container.get(PromotionChangeService), 'getChanges')
-				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
+		it('checks the scope of the requested direction, for the preview and its details', async () => {
+			const preview = {
+				commitSha: 'a'.repeat(40),
+				source: { environmentId: 'env1', branchName: 'main' },
+				resources: [],
+				dependencies: [],
+			};
+			const getPreview = vi
+				.spyOn(Container.get(PromotionChangeService), 'getPreview')
+				.mockResolvedValue(preview);
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
@@ -2311,32 +2331,34 @@ describe('Promotions in Public API', () => {
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
 				expect(promote.status, JSON.stringify(promote.body)).toBe(200);
-				expect(promote.body).toEqual({ commitSha: 'a'.repeat(40), source, changes: [] });
-				expect(getChanges).toHaveBeenLastCalledWith(
+				expect(promote.body).toEqual(preview);
+				expect(getPreview).toHaveBeenLastCalledWith(
 					expect.objectContaining({ id: expect.any(String) }),
 					'proj1',
 					'promote',
-					expect.anything(),
 				);
 
 				expect((await pushOnly.get('/promotions/projects/proj1/changes/apply')).status).toBe(403);
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
+				// A key for one direction cannot read the content of the other direction either.
+				const details = await pushOnly
+					.post('/promotions/projects/proj1/changes/apply/details')
+					.send({ commitSha: null, keys: ['workflow:wf1'] });
+				expect(details.status).toBe(403);
+				// The UI session of a member has no promotion scope, so it sees no preview.
+				const member = testServer.publicApiAgentWithCookie(await createMember());
+				expect((await member.get('/promotions/projects/proj1/changes/promote')).status).toBe(403);
 
-				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply?search=order');
+				const apply = await pullOnly.get('/promotions/projects/proj1/changes/apply');
 				expect(apply.status, JSON.stringify(apply.body)).toBe(200);
-				expect(getChanges).toHaveBeenLastCalledWith(
-					expect.anything(),
-					'proj1',
-					'apply',
-					expect.objectContaining({ search: 'order' }),
-				);
+				expect(getPreview).toHaveBeenLastCalledWith(expect.anything(), 'proj1', 'apply');
 
 				expect((await pullOnly.get('/promotions/projects/proj1/changes/sideways')).status).toBe(
 					404,
 				);
-				expect(getChanges).toHaveBeenCalledTimes(2);
+				expect(getPreview).toHaveBeenCalledTimes(2);
 			} finally {
-				getChanges.mockRestore();
+				getPreview.mockRestore();
 			}
 		});
 
@@ -2401,12 +2423,12 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('rejects an empty selection with 400', async () => {
+		it('rejects a selection with a duplicate workflow id with 400', async () => {
 			const project = await createTeamProject('Team project', owner);
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.post(`/promotions/projects/${project.id}/promote`)
-				.send({ workflowIds: [] });
+				.send({ workflowIds: ['w1', 'w1'] });
 			expect(response.status).toBe(400);
 		});
 
@@ -2423,9 +2445,11 @@ describe('Promotions in Public API', () => {
 					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
-				const first = await withVars
-					.post(`/promotions/projects/${project.id}/promote`)
-					.send({ workflowIds: ['w1', 'w2'], commitMessage: 'Promote checkout flow' });
+				const first = await withVars.post(`/promotions/projects/${project.id}/promote`).send({
+					workflowIds: ['w1', 'w2'],
+					folderIds: ['f1'],
+					commitMessage: 'Promote checkout flow',
+				});
 				expect(first.status, JSON.stringify(first.body)).toBe(200);
 				expect(first.body).toEqual(promoteResult);
 				expect(promote).toHaveBeenLastCalledWith(
@@ -2433,6 +2457,7 @@ describe('Promotions in Public API', () => {
 					expect.objectContaining({ id: expect.any(String) }),
 					expect.objectContaining({
 						workflowIds: ['w1', 'w2'],
+						folderIds: ['f1'],
 						commitMessage: 'Promote checkout flow',
 						canExportVariableValues: true,
 					}),
@@ -2466,6 +2491,7 @@ describe('Promotions in Public API', () => {
 	describe('selective apply', () => {
 		const selectionBody = {
 			workflowIds: ['w1', 'w2'],
+			folderIds: ['f1'],
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
@@ -2511,10 +2537,7 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it.each([
-			{ selection: 'an empty', workflowIds: [] },
-			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
-		])(
+		it.each([{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] }])(
 			'rejects $selection selection before calling either Apply service',
 			async ({ workflowIds }) => {
 				const service = Container.get(PromotionsService);
@@ -2533,10 +2556,9 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('requires workflowIds and a supported source on Continue', async () => {
+		it('requires a supported source and no unknown fields on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			for (const body of [
-				{ expectedSource: selectionBody.expectedSource }, // no workflowIds
 				{ workflowIds: ['w1'] }, // no expectedSource
 				{ ...selectionBody, force: true }, // unexpected field
 				{
@@ -2625,11 +2647,15 @@ describe('Promotions in Public API', () => {
 						'proj1',
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
+						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						'proj1',
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
+						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();
@@ -2727,6 +2753,8 @@ describe('Promotions in Public API', () => {
 					id,
 					expect.objectContaining({ id: owner.id }),
 					undefined,
+					'other',
+					undefined,
 				);
 			} finally {
 				initial.mockRestore();
@@ -2808,11 +2836,15 @@ describe('Promotions in Public API', () => {
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
 						continueBody.expectedSource,
+						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
 						continueBody,
+						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();
@@ -2844,6 +2876,68 @@ describe('Promotions in Public API', () => {
 			expect(continued.body.message).toContain('not connected');
 			expect(response.status).toBe(400);
 			expect(response.body.message).toContain('not connected');
+		});
+
+		it('returns 423 and keeps the environment while another operation holds its lock', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createEnvironment(agent, promoteEnvironment);
+			const held = createDeferredPromise();
+			const release = createDeferredPromise();
+			const holder = Container.get(PromotionEnvironmentLockService).run(id, async () => {
+				held.resolve();
+				await release.promise;
+			});
+			await held.promise;
+
+			try {
+				const responses = [
+					await agent.post(`/promotions/environments/${id}/connect`),
+					await agent
+						.post(`/promotions/environments/${id}/promote`)
+						.send({ commitMessage: 'sync projects' }),
+					await agent.post(`/promotions/environments/${id}/disconnect`),
+					await agent.delete(`/promotions/environments/${id}`),
+				];
+				for (const response of responses) {
+					expect(response.status, JSON.stringify(response.body)).toBe(423);
+					expect(response.body.message).toBe(
+						'Another promotion operation is running for this environment. Try again when it finishes.',
+					);
+				}
+			} finally {
+				release.resolve();
+				await holder;
+			}
+
+			expect((await agent.get(`/promotions/environments/${id}`)).status).toBe(200);
+		});
+
+		it('returns 423 on Apply and Continue while another operation holds the lock', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const id = await createEnvironment(agent);
+			const held = createDeferredPromise();
+			const release = createDeferredPromise();
+			const holder = Container.get(PromotionEnvironmentLockService).run(id, async () => {
+				held.resolve();
+				await release.promise;
+			});
+			await held.promise;
+
+			try {
+				const responses = [
+					await agent.post(`/promotions/environments/${id}/apply`),
+					await agent.post(`/promotions/environments/${id}/apply/continue`).send(continueBody),
+				];
+				for (const response of responses) {
+					expect(response.status, JSON.stringify(response.body)).toBe(423);
+					expect(response.body.message).toBe(
+						'Another promotion operation is running for this environment. Try again when it finishes.',
+					);
+				}
+			} finally {
+				release.resolve();
+				await holder;
+			}
 		});
 
 		it('rejects Promote on an apply environment and Apply on a promote environment', async () => {

@@ -45,7 +45,7 @@ const makeN8nTriggerWorkflow = (events: TriggerEventType[]) => {
 test.describe(
 	'n8n Trigger node',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should fire "activate" event when workflow is published', async ({ api }) => {

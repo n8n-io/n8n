@@ -11,7 +11,7 @@ import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
-import { EXPIRED_OFFLOADED_TOOL_RESULT } from '../tools/tool-result-guard';
+import { RUN_SCOPED_OFFLOADED_TOOL_RESULT } from '../tools/tool-result-guard';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -302,7 +302,7 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 					estimatedTokenCount: 60_000,
 					requiredAction: {
 						toolName: 'workspace_read_tool_result' as const,
-						input: { path, view: 'describe' as const },
+						input: { path, view: 'json' as const, pointer: '' as const },
 					},
 					message: 'Stored in workspace',
 				};
@@ -353,13 +353,18 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 
 			const orchestrator = buildOrchestrator(store);
 			await orchestrator[method](list, PERSIST);
+			const marker = {
+				...RUN_SCOPED_OFFLOADED_TOOL_RESULT,
+				originalCharCount: 100_000,
+				estimatedTokenCount: 60_000,
+			};
 
 			const [persisted] = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
 			if (!persisted || !('content' in persisted)) throw new Error('Expected persisted message');
 			expect(persisted.content).toEqual([
 				expect.objectContaining({
 					state: 'resolved',
-					output: EXPIRED_OFFLOADED_TOOL_RESULT,
+					output: marker,
 				}),
 				expect.objectContaining({
 					state: 'resolved',
@@ -368,7 +373,7 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 						value: [
 							{
 								type: 'text',
-								text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
+								text: JSON.stringify(marker),
 							},
 							{
 								type: 'file-data',
@@ -380,9 +385,9 @@ describe('MemoryOrchestrator.persistTurnDelta', () => {
 				}),
 				expect.objectContaining({
 					state: 'rejected',
-					error: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT),
+					error: JSON.stringify(marker),
 				}),
-				{ type: 'text', text: JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT) },
+				{ type: 'text', text: JSON.stringify(marker) },
 			]);
 		},
 	);

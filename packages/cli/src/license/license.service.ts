@@ -2,7 +2,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient, isHttpRequestError } from '@n8n/backend-network';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import type { Person, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -67,15 +67,15 @@ export class LicenseService {
 		};
 	}
 
-	async requestEnterpriseTrial(user: User) {
+	async requestEnterpriseTrial(person: Person) {
 		await this.http.request({
 			url: 'https://enterprise.n8n.io/enterprise-trial',
 			method: 'POST',
 			body: {
 				licenseType: 'enterprise',
-				firstName: user.firstName,
-				lastName: user.lastName,
-				email: user.email,
+				firstName: person.firstName,
+				lastName: person.lastName,
+				email: person.email,
 				instanceUrl: this.urlService.getWebhookBaseUrl(),
 			},
 			json: true,

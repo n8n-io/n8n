@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiMcpConnectServer, McpRegistryServerResponse } from '@n8n/api-types';
 import { computed, provide, ref, watch } from 'vue';
@@ -183,7 +183,7 @@ function openSettings(row: CardRow) {
 </script>
 
 <template>
-	<div
+	<N8nCard
 		:class="[$style.card, isActionable && $style.awaitingInput]"
 		data-test-id="instance-ai-mcp-connect-card"
 	>
@@ -257,13 +257,13 @@ function openSettings(row: CardRow) {
 				}}
 			</N8nButton>
 		</ConfirmationFooter>
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	flex-direction: column;
+	padding: 0;
+	box-shadow: none;
 	max-width: 90%;
 	border: var(--border);
 	border-radius: var(--radius--lg);

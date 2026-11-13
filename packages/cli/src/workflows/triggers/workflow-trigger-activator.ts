@@ -23,10 +23,10 @@ import {
 	ERROR_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
-	UserError,
 	Workflow,
 	WorkflowActivationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import {

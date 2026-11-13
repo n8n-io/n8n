@@ -7,7 +7,7 @@ import type { McpRegistryConnection } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { McpRegistryServerRepository } from './mcp-registry-server.repository';

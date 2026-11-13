@@ -1,5 +1,4 @@
 import { copyFile } from 'fs/promises';
-import type { ReplaceInFileConfig } from 'replace-in-file';
 import { replaceInFile } from 'replace-in-file';
 
 /**
@@ -12,21 +11,16 @@ import { replaceInFile } from 'replace-in-file';
 export async function createTemplate(
 	sourceFilePath: string,
 	destinationFilePath: string,
-	replaceValues: object,
+	replaceValues: Record<string, string>,
 ): Promise<void> {
 	// Copy the file to then replace the values in it
 
 	await copyFile(sourceFilePath, destinationFilePath);
 
 	// Replace the variables in the template file
-	const options: ReplaceInFileConfig = {
+	await replaceInFile({
 		files: [destinationFilePath],
-		from: [],
-		to: [],
-	};
-	options.from = Object.keys(replaceValues).map((key) => {
-		return new RegExp(key, 'g');
+		from: Object.keys(replaceValues).map((key) => new RegExp(key, 'g')),
+		to: Object.values(replaceValues),
 	});
-	options.to = Object.values(replaceValues);
-	await replaceInFile(options);
 }

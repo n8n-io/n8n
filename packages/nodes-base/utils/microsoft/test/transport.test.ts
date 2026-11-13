@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IHookFunctions, INode, JsonObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -115,13 +115,13 @@ describe('Microsoft Graph transport kernel', () => {
 					...baseUrlCredential,
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftTeamsOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: expectedUri,
+						uri: expect.objectContaining({ value: expectedUri }),
 						json: true,
 					}),
 				);
@@ -133,7 +133,7 @@ describe('Microsoft Graph transport kernel', () => {
 				mockRequestOAuth2.mockResolvedValue({ data: 'test' });
 				mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledTimes(1);
 			});
@@ -147,7 +147,7 @@ describe('Microsoft Graph transport kernel', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/teams',
+					requestPath`/teams`,
 					{ displayName: 'x' },
 					{},
 					undefined,
@@ -174,7 +174,7 @@ describe('Microsoft Graph transport kernel', () => {
 			it('should use microsoftTeamsOAuth2Api when authentication is not set (backward compatibility)', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -188,7 +188,7 @@ describe('Microsoft Graph transport kernel', () => {
 			it('should use microsoftTeamsOAuth2Api when explicitly selected', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftTeamsOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
@@ -201,7 +201,7 @@ describe('Microsoft Graph transport kernel', () => {
 			it('should use microsoftOAuth2Api when the generic credential is selected', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -211,7 +211,7 @@ describe('Microsoft Graph transport kernel', () => {
 			it('should resolve the credential name from the authentication parameter at index 0', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
 			});
@@ -219,13 +219,13 @@ describe('Microsoft Graph transport kernel', () => {
 			it('should honor graphApiBaseUrl from the generic credential (sovereign cloud)', async () => {
 				mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/teams',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.us/teams' }),
 					}),
 				);
 			});
@@ -248,14 +248,14 @@ describe('Microsoft Graph transport kernel', () => {
 			});
 
 			it('routes the request through requestWithAuthentication (NOT requestOAuth2)', async () => {
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`);
 
 				expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					SERVICE_PRINCIPAL_AUTH,
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/teams',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/teams' }),
 					}),
 				);
 				// dual-branch lock: the SP path must never reach requestOAuth2
@@ -263,9 +263,9 @@ describe('Microsoft Graph transport kernel', () => {
 			});
 
 			it('never composes a /me path under the Service Principal credential', async () => {
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`);
 
-				const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
+				const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri.value as string;
 				expect(calledUri).not.toContain('/me');
 			});
 
@@ -275,12 +275,12 @@ describe('Microsoft Graph transport kernel', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/teams');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`);
 
 				expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 					SERVICE_PRINCIPAL_AUTH,
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/v1.0/teams',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.us/v1.0/teams' }),
 					}),
 				);
 			});
@@ -323,7 +323,7 @@ describe('Microsoft Graph transport kernel', () => {
 						mockRequestWithAuthentication.mockRejectedValue(wrappedGraphError(statusCode, code));
 
 						const error = (await microsoftApiRequest
-							.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+							.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
 							.catch((e: Error) => e)) as Error & { messages?: string[] };
 
 						expect(error.constructor.name).toBe('NodeApiError');
@@ -359,7 +359,7 @@ describe('Microsoft Graph transport kernel', () => {
 					mockRequestWithAuthentication.mockRejectedValue(wrappedGraphError(404, 'NotFound'));
 
 					const error = await microsoftApiRequest
-						.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
+						.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams/x/channels/y`)
 						.catch((e: Error) => e);
 
 					expect(error.message).toBe('Channel not found');
@@ -371,7 +371,7 @@ describe('Microsoft Graph transport kernel', () => {
 					);
 
 					const error = (await microsoftApiRequest
-						.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+						.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
 						.catch((e: Error) => e)) as Error;
 
 					expect(error.constructor.name).toBe('NodeApiError');
@@ -396,7 +396,7 @@ describe('Microsoft Graph transport kernel', () => {
 				mockRequestOAuth2.mockRejectedValue(delegatedError(404, 'NotFound', 'Resource not found'));
 
 				const error = await microsoftApiRequest
-					.call(mockExecuteFunctions, 'GET', '/v1.0/teams/x/channels/y')
+					.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams/x/channels/y`)
 					.catch((e: Error) => e);
 
 				expect(error.constructor.name).toBe('NodeApiError');
@@ -409,7 +409,7 @@ describe('Microsoft Graph transport kernel', () => {
 				);
 
 				const error = await microsoftApiRequest
-					.call(mockExecuteFunctions, 'GET', '/v1.0/teams')
+					.call(mockExecuteFunctions, 'GET', requestPath`/v1.0/teams`)
 					.catch((e: Error) => e);
 
 				expect(error.constructor.name).toBe('NodeApiError');
@@ -429,7 +429,7 @@ describe('Microsoft Graph transport kernel', () => {
 				mockHookFunctions.getNodeParameter.mockReturnValue(0);
 
 				const error = await microsoftApiRequest
-					.call(mockHookFunctions, 'GET', '/v1.0/subscriptions')
+					.call(mockHookFunctions, 'GET', requestPath`/v1.0/subscriptions`)
 					.catch((e: Error) => e);
 
 				// never "0 not found": without a usable resource name the Graph message stands
@@ -587,7 +587,7 @@ describe('Microsoft Graph transport kernel', () => {
 				'/channels',
 			]);
 
-			expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
+			expect(path.value).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
 		});
 
 		it('validates and interpolates each id RAW under the Service Principal credential', () => {
@@ -599,7 +599,7 @@ describe('Microsoft Graph transport kernel', () => {
 				'/tasks',
 			]);
 
-			expect(path).toBe('/v1.0/planner/plans/plan_id-123/tasks');
+			expect(path.value).toBe('/v1.0/planner/plans/plan_id-123/tasks');
 		});
 
 		it('passes a colon/at-bearing id RAW under SP (same shape as OAuth2, not encoded)', () => {
@@ -612,10 +612,10 @@ describe('Microsoft Graph transport kernel', () => {
 				{ id: '19:abc@thread.tacv2' },
 			]);
 
-			expect(path).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
+			expect(path.value).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
 			// proven raw Graph shape — never percent-encoded
-			expect(path).not.toContain('%3A');
-			expect(path).not.toContain('%40');
+			expect(path.value).not.toContain('%3A');
+			expect(path.value).not.toContain('%40');
 		});
 
 		it('interpolates a URL-copied percent-encoded id in its decoded form', () => {
@@ -628,7 +628,7 @@ describe('Microsoft Graph transport kernel', () => {
 				{ id: '19%3Aabc%40thread.tacv2' },
 			]);
 
-			expect(path).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
+			expect(path.value).toBe('/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2');
 		});
 
 		// A node expression like `={{ 123 }}` resolves to a non-string at runtime; the
@@ -644,7 +644,7 @@ describe('Microsoft Graph transport kernel', () => {
 					{ id: 123 as unknown as string },
 				]);
 
-				expect(path).toBe('/v1.0/planner/tasks/123');
+				expect(path.value).toBe('/v1.0/planner/tasks/123');
 			},
 		);
 
@@ -659,7 +659,7 @@ describe('Microsoft Graph transport kernel', () => {
 					'/channels',
 				]);
 
-				expect(path).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
+				expect(path.value).toBe('/v1.0/teams/19:abc@thread.tacv2/channels');
 			},
 		);
 
@@ -699,7 +699,7 @@ describe('Microsoft Graph transport kernel', () => {
 	describe('OAuth2 back-compat lock (valid ids byte-for-byte unchanged)', () => {
 		it('composes the legacy raw uri for a colon-bearing channelId', async () => {
 			// Default OAuth2 selected. A realistic colon-bearing channel id flows through
-			// buildMicrosoftGraphPath unmodified — validated but never encoded — proving OAuth2
+			// buildMicrosoftGraphPath unmodified — `:` and `@` stay unencoded — proving OAuth2
 			// URL shapes for valid ids are unchanged. SP composes the SAME raw shape for
 			// this valid id (see the buildMicrosoftGraphPath SP test).
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
@@ -717,10 +717,33 @@ describe('Microsoft Graph transport kernel', () => {
 			expect(mockRequestOAuth2).toHaveBeenCalledWith(
 				'microsoftTeamsOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/teams/1111-2222/channels/19:abc@thread.tacv2',
+					}),
 				}),
 			);
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('encodes a path value with a slash as one segment', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
+			mockRequestOAuth2.mockResolvedValue({ data: 'test' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'DELETE',
+				requestPath`/v1.0/subscriptions/${'a/b?c'}`,
+			);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftTeamsOAuth2Api',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/subscriptions/a%2Fb%3Fc',
+					}),
+				}),
+			);
 		});
 	});
 
@@ -747,7 +770,7 @@ describe('Microsoft Graph transport kernel', () => {
 				ctx,
 				'value',
 				'GET',
-				'/beta/teams/1/channels/2/messages',
+				requestPath`/beta/teams/1/channels/2/messages`,
 				{},
 				{ $top: 2 },
 				2,
@@ -773,7 +796,7 @@ describe('Microsoft Graph transport kernel', () => {
 				ctx,
 				'value',
 				'GET',
-				'/beta/teams/1/channels/2/messages',
+				requestPath`/beta/teams/1/channels/2/messages`,
 				{},
 				{ $top: 100 },
 				100,
@@ -800,7 +823,7 @@ describe('Microsoft Graph transport kernel', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/teams/1/channels',
+				requestPath`/v1.0/teams/1/channels`,
 			);
 
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
@@ -821,7 +844,7 @@ describe('Microsoft Graph transport kernel', () => {
 				ctx,
 				'value',
 				'GET',
-				'/v1.0/teams/1/channels',
+				requestPath`/v1.0/teams/1/channels`,
 			);
 
 			expect(result).toEqual([{ id: '1' }]);
@@ -836,7 +859,7 @@ describe('Microsoft Graph transport kernel', () => {
 			const ctx = makeContext(requestOAuth2);
 
 			await expect(
-				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
+				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', requestPath`/v1.0/teams/1/channels`),
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
 			// the off-host link is never requested
 			expect(requestOAuth2).toHaveBeenCalledTimes(1);
@@ -851,7 +874,7 @@ describe('Microsoft Graph transport kernel', () => {
 
 			// A node error, not the bare TypeError `new URL` would throw.
 			await expect(
-				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', '/v1.0/teams/1/channels'),
+				microsoftApiRequestAllItems.call(ctx, 'value', 'GET', requestPath`/v1.0/teams/1/channels`),
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
 			expect(requestOAuth2).toHaveBeenCalledTimes(1);
 		});
@@ -875,7 +898,7 @@ describe('Microsoft Graph transport kernel', () => {
 		it('should resolve the generic credential when selected', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
+			await microsoftApiRequest.call(mockHookFunctions, 'GET', requestPath`/v1.0/subscriptions`);
 
 			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -885,7 +908,7 @@ describe('Microsoft Graph transport kernel', () => {
 		it('should default to the Teams credential', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			await microsoftApiRequest.call(mockHookFunctions, 'GET', '/v1.0/subscriptions');
+			await microsoftApiRequest.call(mockHookFunctions, 'GET', requestPath`/v1.0/subscriptions`);
 
 			expect(mockHookFunctions.getCredentials).toHaveBeenCalledWith('microsoftTeamsOAuth2Api');
 			expect(hookRequestOAuth2).toHaveBeenCalledWith('microsoftTeamsOAuth2Api', expect.anything());
@@ -905,7 +928,11 @@ describe('Microsoft Graph transport kernel', () => {
 
 			expect(sharePoint.getCredentialType.call(mockExecuteFunctions)).toBe('microsoftOAuth2Api');
 
-			await sharePoint.microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/v1.0/sites');
+			await sharePoint.microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/v1.0/sites`,
+			);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -926,8 +953,8 @@ describe('Microsoft Graph transport kernel', () => {
 
 	describe('forbiddenHints (endpoint-scoped 403 copy)', () => {
 		const ENDPOINT = '/teamwork/sendActivityNotification';
-		const HINTED_PATH = '/v1.0/users/x/teamwork/sendActivityNotification';
-		const OTHER_PATH = '/v1.0/teams/x/channels';
+		const HINTED_PATH = requestPath`/v1.0/users/x/teamwork/sendActivityNotification`;
+		const OTHER_PATH = requestPath`/v1.0/teams/x/channels`;
 		const GENERIC_APP_ONLY_403 =
 			'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
 		const hinted = createMicrosoftGraphTransport({

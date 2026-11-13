@@ -4,7 +4,7 @@ import type { ExecutionResponse } from '@n8n/engine';
 import {
 	deserializeExecutionResponse,
 	serializeExecutionResponse,
-} from '../response-channel/execution-response-frame';
+} from '../execution-channel/execution-response-frame';
 
 const endedResponse = (): ExecutionResponse => ({
 	type: 'ended',

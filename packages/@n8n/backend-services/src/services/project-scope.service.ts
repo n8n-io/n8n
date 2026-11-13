@@ -1,12 +1,13 @@
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
 
 import { RoleService } from './role.service';
 
 /**
- * Resolves the project roles, or the project IDs, that restrict a scope-aware query.
- * `null` means the user's global role grants access to every project.
+ * Checks project-level access, and resolves the project roles or the project IDs that
+ * restrict a scope-aware query. `null` means the user's global role grants access to
+ * every project.
  */
 @Service()
 export class ProjectScopeService {
@@ -14,6 +15,18 @@ export class ProjectScopeService {
 		private readonly roleService: RoleService,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
+
+	/** Whether the user's global role, or their role in the project, grants all `scopes`. */
+	async hasScopes(
+		user: AuthPrincipal & { id: string },
+		projectId: string,
+		scopes: Scope[],
+	): Promise<boolean> {
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
+
+		const roles = await this.roleService.rolesWithScope('project', scopes);
+		return await this.projectRelationRepository.hasAnyRoleInProject(user.id, projectId, roles);
+	}
 
 	async getProjectRoleSlugs(user: User, scopes: Scope[]): Promise<string[] | null> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return null;

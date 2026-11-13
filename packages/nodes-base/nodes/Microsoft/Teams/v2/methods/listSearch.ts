@@ -1,5 +1,6 @@
 import {
 	NodeOperationError,
+	requestPath,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
@@ -64,8 +65,15 @@ export async function getChats(
 
 	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		try {
-			value = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs)) as IDataObject)
-				.value as IDataObject[];
+			value = (
+				(await microsoftApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1.0/chats`,
+					{},
+					qs,
+				)) as IDataObject
+			).value as IDataObject[];
 			lastError = undefined;
 			break;
 		} catch (error) {
@@ -181,7 +189,7 @@ export async function getUsers(
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			paginationToken ? '' : '/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			qs,
 			paginationToken,

@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { lingvaNexApiRequest } from './GenericFunctions';
 
@@ -133,7 +133,7 @@ export class LingvaNex implements INodeType {
 				const data = await lingvaNexApiRequest.call(
 					this,
 					'GET',
-					'/getLanguages',
+					requestPath`/getLanguages`,
 					{},
 					{ platform: 'api' },
 				);
@@ -168,7 +168,12 @@ export class LingvaNex implements INodeType {
 
 				Object.assign(body, options);
 
-				const response = await lingvaNexApiRequest.call(this, 'POST', '/translate', body);
+				const response = await lingvaNexApiRequest.call(
+					this,
+					'POST',
+					requestPath`/translate`,
+					body,
+				);
 				responseData.push(response);
 			}
 		}

@@ -58,8 +58,8 @@ describe('mcp.store', () => {
 			expect(fetchSpy).toHaveBeenCalledWith(
 				{},
 				{
-					skip: 25,
-					take: 25,
+					offset: 25,
+					limit: 25,
 					availableInMCP: true,
 				},
 			);
@@ -71,9 +71,9 @@ describe('mcp.store', () => {
 				count: 0,
 			});
 
-			await store.getMcpEligibleAgents({ take: 10, query: 'sales' });
+			await store.getMcpEligibleAgents({ limit: 10, query: 'sales' });
 
-			expect(fetchSpy).toHaveBeenCalledWith({}, { take: 10, query: 'sales' });
+			expect(fetchSpy).toHaveBeenCalledWith({}, { limit: 10, query: 'sales' });
 		});
 	});
 

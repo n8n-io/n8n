@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest, downloadRecordAttachments } from '../../transport';
 
@@ -58,7 +59,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
-	let endPoint = '';
+	let endPoint: RequestPath;
 	const qs: IDataObject = {};
 
 	const baseId = this.getNodeParameter('projectId', 0, undefined, {
@@ -72,7 +73,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		try {
 			requestMethod = 'GET';
 			const id = this.getNodeParameter('id', i) as string;
-			endPoint = `/api/v3/data/${baseId}/${table}/records/${id}`;
+			endPoint = requestPath`/api/v3/data/${baseId}/${table}/records/${id}`;
 
 			responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 

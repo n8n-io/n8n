@@ -1,0 +1,93 @@
+.mention-story-menu.mention-story-menu {
+	width: var(--n8n--dropdown-menu-width);
+	min-width: var(--n8n--dropdown-menu-width);
+	max-width: var(--n8n--dropdown-menu-width);
+}
+
+.mention-story-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	max-width: 100%;
+}
+
+.mention-story-chip {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border-width, 1px) solid var(--tag--border-color);
+	border-radius: var(--radius);
+	background: var(--tag--color--background);
+	font-size: var(--font-size--2xs);
+	color: var(--tag--color--text);
+}
+
+.mention-story-chip-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: var(--spacing--xs);
+	height: var(--spacing--xs);
+}
+
+.mention-story-chip-label {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: var(--line-height--sm);
+}
+
+.mention-story-chip-remove {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	padding: 0;
+}
+
+@media (hover: hover) {
+	.mention-story-chip-remove {
+		position: absolute;
+		top: 50%;
+		left: calc(var(--spacing--2xs) + var(--spacing--xs) / 2);
+		transform: translate(-50%, -50%);
+		opacity: 0;
+	}
+
+	.mention-story-chip:hover .mention-story-chip-remove,
+	.mention-story-chip:focus-within .mention-story-chip-remove {
+		opacity: 1;
+	}
+
+	.mention-story-chip:hover .mention-story-chip-icon,
+	.mention-story-chip:focus-within .mention-story-chip-icon {
+		opacity: 0;
+	}
+}
+
+.mention-story-path {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	color: var(--text-color);
+}
+
+.mention-story-ancestor {
+	color: var(--text-color--subtle);
+}
+
+.mention-story-separator {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	margin: 0 var(--spacing--4xs);
+	color: var(--text-color--subtler);
+}

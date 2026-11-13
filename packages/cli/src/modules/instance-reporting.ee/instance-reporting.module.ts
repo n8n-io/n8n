@@ -2,7 +2,7 @@ import { Logger, ModulesConfig } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Reports this instance's billable execution numbers to a central monitoring

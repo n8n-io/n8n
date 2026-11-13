@@ -5,7 +5,8 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UnexpectedError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { CacheService } from '@n8n/backend-services';
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/engine",
-  "version": "0.26.0",
+  "version": "0.28.0",
   "description": "n8n workflow execution engine (v2)",
   "scripts": {
     "clean": "rimraf dist .turbo compiled",
@@ -14,6 +14,7 @@
     "lint": "oxlint --quiet",
     "lint:fix": "oxlint --fix",
     "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
     "test:dev": "vitest --watch",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "watch": "tsc -p tsconfig.build.json --watch"

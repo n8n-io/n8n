@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { eventFields, eventOperations } from './EventDescription';
 import { demioApiRequest } from './GenericFunctions';
@@ -67,7 +67,13 @@ export class Demio implements INodeType {
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await demioApiRequest.call(this, 'GET', '/events', {}, { type: 'upcoming' });
+				const events = await demioApiRequest.call(
+					this,
+					'GET',
+					requestPath`/events`,
+					{},
+					{ type: 'upcoming' },
+				);
 				for (const event of events) {
 					returnData.push({
 						name: event.name,
@@ -90,7 +96,12 @@ export class Demio implements INodeType {
 				}
 
 				const returnData: INodePropertyOptions[] = [];
-				const { dates } = await demioApiRequest.call(this, 'GET', `/event/${eventId}`, {});
+				const { dates } = await demioApiRequest.call(
+					this,
+					'GET',
+					requestPath`/event/${eventId}`,
+					{},
+				);
 				for (const date of dates) {
 					returnData.push({
 						name: date.datetime,
@@ -122,11 +133,17 @@ export class Demio implements INodeType {
 							responseData = await demioApiRequest.call(
 								this,
 								'GET',
-								`/event/${id}/date/${additionalFields.date_id}`,
+								requestPath`/event/${id}/date/${additionalFields.date_id}`,
 							);
 						} else {
 							Object.assign(qs, additionalFields);
-							responseData = await demioApiRequest.call(this, 'GET', `/event/${id}`, {}, qs);
+							responseData = await demioApiRequest.call(
+								this,
+								'GET',
+								requestPath`/event/${id}`,
+								{},
+								qs,
+							);
 						}
 					}
 					if (operation === 'getAll') {
@@ -135,7 +152,7 @@ export class Demio implements INodeType {
 
 						Object.assign(qs, filters);
 
-						responseData = await demioApiRequest.call(this, 'GET', '/events', {}, qs);
+						responseData = await demioApiRequest.call(this, 'GET', requestPath`/events`, {}, qs);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -168,7 +185,12 @@ export class Demio implements INodeType {
 							delete additionalFields.customFields;
 						}
 
-						responseData = await demioApiRequest.call(this, 'PUT', '/event/register', body);
+						responseData = await demioApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/event/register`,
+							body,
+						);
 					}
 				}
 				if (resource === 'report') {
@@ -181,7 +203,7 @@ export class Demio implements INodeType {
 						responseData = await demioApiRequest.call(
 							this,
 							'GET',
-							`/report/${sessionId}/participants`,
+							requestPath`/report/${sessionId}/participants`,
 							{},
 							qs,
 						);

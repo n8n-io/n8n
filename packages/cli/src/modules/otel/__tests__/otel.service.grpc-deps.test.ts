@@ -11,7 +11,7 @@ import { OtelService } from '../otel.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 // Only the gRPC exporter is mocked, so grpc-js and the OTLP/HTTP exporter stay real:
 // their option and metadata rules are stricter than any stand-in, and warn-and-skip

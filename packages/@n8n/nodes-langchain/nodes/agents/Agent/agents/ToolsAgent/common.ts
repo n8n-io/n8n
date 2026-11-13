@@ -124,6 +124,19 @@ function resolveBinaryContentFormat(model?: BaseChatModel): BinaryContentFormat 
 }
 
 /**
+ * Bedrock document names allow only alphanumerics, single whitespace, hyphens,
+ * parentheses and square brackets, so we drop the extension and replace other characters.
+ */
+export function toDocumentName(fileName?: string): string {
+	const name = (fileName ?? '')
+		.replace(/\.[^.]*$/, '')
+		.replace(/[^A-Za-z0-9\-()[\]]+/g, ' ')
+		.slice(0, 200) // Bedrock limit
+		.trim();
+	return name || 'attachment';
+}
+
+/**
  * Processes a binary data to be used in agent passthrough.
  * @param ctx - The execution context
  * @param data - The binary data
@@ -188,8 +201,12 @@ async function processBinaryForAgentPassthrough(
 			mime_type: data.mimeType,
 			data: base64Data,
 			// OpenAI's Completions API requires a filename for file blocks (it warns and
-			// uses a placeholder otherwise); other providers ignore this metadata.
-			metadata: { filename: data.fileName ?? 'attachment.pdf' },
+			// uses a placeholder otherwise). Bedrock reads `name` first and rejects names
+			// with characters such as '.', so we also set a Bedrock-safe name.
+			metadata: {
+				filename: data.fileName ?? 'attachment.pdf',
+				name: toDocumentName(data.fileName),
+			},
 		};
 	}
 
@@ -231,7 +248,14 @@ export async function extractBinaryMessages(
 				if (isImageFile(data.mimeType)) {
 					return await processBinaryForAgentPassthrough(ctx, data, 'image_url', contentFormat);
 				} else if (isPdfFile(data.mimeType)) {
-					return await processBinaryForAgentPassthrough(ctx, data, 'file', contentFormat);
+					// Bedrock rejects a message with a document but no text block, so we label each file.
+					return [
+						{
+							type: 'text',
+							text: `Attached file: ${(data.fileName ?? 'attachment.pdf').replace(/\p{Cc}+/gu, ' ').slice(0, 200)}`,
+						},
+						await processBinaryForAgentPassthrough(ctx, data, 'file', contentFormat),
+					];
 				} else {
 					// Handle text files
 					let textContent: string;
@@ -259,7 +283,7 @@ export async function extractBinaryMessages(
 			}),
 	);
 	return new HumanMessage({
-		content: [...binaryMessages],
+		content: binaryMessages.flat(),
 	});
 }
 
@@ -352,11 +376,12 @@ export function handleAgentFinishOutput(
 				thinking?: string;
 			}>;
 
-			// Filter out thinking blocks and join text blocks
+			// Filter out thinking blocks and concatenate text blocks. Some providers (e.g. Mistral)
+			// stream one block per delta, so blocks are fragments and must not get a separator.
 			const textOutputs = multiOutputSteps
 				.filter((output) => output.type === 'text' && output.text)
 				.map((output) => output.text)
-				.join('\n')
+				.join('')
 				.trim();
 
 			if (textOutputs) {
@@ -367,7 +392,7 @@ export function handleAgentFinishOutput(
 				const thinkingOutputs = multiOutputSteps
 					.filter((output) => output.type === 'thinking' && output.thinking)
 					.map((output) => output.thinking)
-					.join('\n')
+					.join('')
 					.trim();
 
 				if (thinkingOutputs) {

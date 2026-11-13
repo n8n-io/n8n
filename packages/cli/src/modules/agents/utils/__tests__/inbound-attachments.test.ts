@@ -1,6 +1,6 @@
 import type { AgentMessage, Message } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	buildInboundUserMessage,

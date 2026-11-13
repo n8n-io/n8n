@@ -9,12 +9,16 @@ import { getAppBuild, listAppVersions } from '../apps.api';
 
 const POLL_INTERVAL_MS = 3000;
 
-function isBuilding(status: AppBuildStatus | undefined) {
+export function isBuilding(status: AppBuildStatus | undefined) {
 	return status === 'queued' || status === 'running';
 }
 
-function isBuilt(version: AppVersionResponse) {
+export function isBuilt(version: AppVersionResponse) {
 	return version.buildStatus === 'succeeded' && version.bundleArtifactId !== null;
+}
+
+export function getAppVersionLabel(version: AppVersionResponse) {
+	return version.label ?? version.id.slice(-8);
 }
 
 export function useAppVersions(
@@ -77,7 +81,8 @@ export function useAppVersions(
 			const result = await listAppVersions(rootStore.restApiContext, toValue(projectId), id);
 			if (!isLatest()) return;
 			versions.value = result;
-			if (head.value && building.value) poll(id, head.value.id);
+			const pending = result.find((version) => isBuilding(version.buildStatus));
+			if (pending) poll(id, pending.id);
 		} catch (error) {
 			if (!isLatest()) return;
 			failed.value = true;

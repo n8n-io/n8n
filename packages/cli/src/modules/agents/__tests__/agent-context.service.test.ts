@@ -2,11 +2,10 @@ import type { User } from '@n8n/db';
 import type { AgentTaskDto } from '@n8n/api-types';
 import { beforeEach, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { UserError } from 'n8n-workflow';
 
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type {
@@ -133,6 +132,7 @@ describe('AgentContextService', () => {
 		agentsService.findByProjectId.mockResolvedValue([
 			agent,
 			{ ...agent, id: 'agent-2', name: 'Research Agent', activeVersionId: null },
+			{ ...agent, id: 'agent-3', name: 'Archived Agent', isArchived: true },
 		]);
 
 		const result = await service.createReader(user, 'project-1').lookup({ type: 'agents' });

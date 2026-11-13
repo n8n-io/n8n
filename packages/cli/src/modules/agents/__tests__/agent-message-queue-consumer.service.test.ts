@@ -380,6 +380,28 @@ describe('AgentMessageQueueConsumer', () => {
 		expect(queue.recordFailure).not.toHaveBeenCalled();
 	});
 
+	it('runs a hidden n8n Chat stop report as a pause report', async () => {
+		const item = claim('session');
+		item.payload = {
+			kind: 'n8n_chat',
+			message: 'stop',
+			resourceId: 'n8n-chat:user',
+			hidden: true,
+			stopReportId: 'stop-1',
+		};
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(orchestrator.executeForN8nChatPublished).toHaveBeenCalledWith(
+			expect.objectContaining({ pauseReport: true, hideUserMessageFromTranscript: true }),
+		);
+	});
+
 	it('does not finish an n8n Chat turn that suspended for HITL', async () => {
 		const item = claim('session');
 		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };

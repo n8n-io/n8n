@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { useToast } from '@n8n/composables/useToast';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import { getApp } from '../apps.api';
 import { PROJECT_APPS } from '../apps.constants';
 import AppView from '../components/AppView.vue';
 
 const route = useRoute();
 const router = useRouter();
-
+const rootStore = useRootStore();
+const toast = useToast();
+const i18n = useI18n();
+const assistant = capabilityRegistry.use(capabilities.createAppAssistantHandoff)();
 const projectId = computed(() => String(route.params.projectId));
 const appId = computed(() => String(route.params.appId));
+const showEditor = ref(!assistant.available.value);
 const section = computed({
 	get: () => (typeof route.query.section === 'string' ? route.query.section : 'preview'),
 	set: (value: string) => {
@@ -19,13 +30,49 @@ const section = computed({
 	},
 });
 
+onMounted(async () => {
+	if (showEditor.value) return;
+	const originRoute = router.currentRoute.value;
+	let app;
+	try {
+		app = await getApp(rootStore.restApiContext, projectId.value, appId.value);
+	} catch (error) {
+		if (router.currentRoute.value !== originRoute) return;
+		if (error instanceof ResponseError) {
+			if (error.httpStatusCode === 404) {
+				await router.replace({ name: PROJECT_APPS, params: { projectId: projectId.value } });
+				return;
+			}
+			if (error.httpStatusCode === 403) {
+				await router.replace({
+					name: VIEWS.PROJECTS_WORKFLOWS,
+					params: { projectId: projectId.value },
+				});
+				return;
+			}
+		}
+		toast.showError(error, i18n.baseText('apps.detail.loadError'));
+		await router.replace({ name: PROJECT_APPS, params: { projectId: projectId.value } });
+		return;
+	}
+	if (router.currentRoute.value !== originRoute) return;
+	const opened = await assistant.openApp({
+		projectId: projectId.value,
+		appId: appId.value,
+		appName: app.name,
+	});
+	if (!opened && router.currentRoute.value === originRoute) {
+		showEditor.value = true;
+	}
+});
+
 function onDeleted() {
 	void router.push({ name: PROJECT_APPS, params: { projectId: projectId.value } });
 }
 </script>
 
 <template>
-	<div :class="$style.page">
+	<div v-if="showEditor" :class="$style.page">
 		<AppView
 			v-model:section="section"
 			:project-id="projectId"
@@ -33,6 +80,7 @@ function onDeleted() {
 			@deleted="onDeleted"
 		/>
 	</div>
+	<div v-else data-test-id="app-assistant-handoff" />
 </template>
 
 <style lang="scss" module>

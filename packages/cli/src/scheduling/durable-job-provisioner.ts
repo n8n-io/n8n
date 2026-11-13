@@ -28,7 +28,7 @@ import type {
 	RunInProvisionTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';
@@ -231,18 +231,6 @@ export class DurableJobProvisioner {
 		owner: ScheduledJobOwnerRef,
 	): Promise<void> {
 		await this.jobs.deleteByOwnerRef(manager, owner);
-	}
-
-	/**
-	 * {@link deprovisionOwnerInTransaction} narrowed to one task type, for a
-	 * caller that owns only part of an owner's jobs.
-	 */
-	async deprovisionOwnerTaskTypeInTransaction(
-		manager: EntityManager,
-		owner: ScheduledJobOwnerRef,
-		taskType: string,
-	): Promise<void> {
-		await this.jobs.deleteByOwnerTaskType(manager, owner, taskType);
 	}
 
 	private provisionTransaction({

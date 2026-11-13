@@ -18,12 +18,12 @@ import type {
 import {
 	Workflow,
 	Node,
-	UserError,
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';

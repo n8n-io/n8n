@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 /**
@@ -22,6 +23,13 @@ export interface ProjectOwnershipTransferHandler<TTransaction> {
 	 * belong to a project, not to a user.
 	 */
 	deleteAllForUser?(userId: string): Promise<void>;
+
+	/** Apply module changes in the transaction that deletes the account and personal project. */
+	finalizeUserDeletion?(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void>;
 }
 
 @Service()

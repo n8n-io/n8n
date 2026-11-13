@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** Requested SCIM resource does not exist. Maps to HTTP 404. */
 export class ScimResourceNotFoundError extends UserError {

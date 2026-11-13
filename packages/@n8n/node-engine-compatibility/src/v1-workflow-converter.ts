@@ -76,7 +76,11 @@ export class V1WorkflowConverter {
 		// Rooted first: a disabled node must not cut the reachable set short.
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
-		const liveNodes = rooted.nodes.filter((node) => node.disabled !== true);
+		// In canvas order, top to bottom and then left to right, as v1 orders the
+		// branches it runs. Anything that reads the graph in node order sees the same order.
+		const liveNodes = rooted.nodes
+			.filter((node) => node.disabled !== true)
+			.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
 		const disabledNodeIds = rooted.nodes
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);

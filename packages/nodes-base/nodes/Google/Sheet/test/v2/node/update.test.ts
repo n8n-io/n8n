@@ -269,6 +269,68 @@ describe('Google Sheet - Update 4.6', () => {
 		);
 	});
 
+	// NODE-5737: An empty non-match column must not produce a missing-match warning.
+	it.each([
+		{ text: 'updated', expectedText: 'updated' },
+		{ text: undefined, expectedText: '' },
+	])(
+		'should not warn when all match values are defined and a non-match value is $text',
+		async ({ text, expectedText }) => {
+			const items = [{ json: { id: '1', text } }, { json: { id: '2', text } }];
+			mockExecuteFunctions.getInputData.mockReturnValueOnce(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName, itemIndex) => {
+				const params: Record<string, string | object> = {
+					options: {},
+					'options.cellFormat': 'USER_ENTERED',
+					'columns.matchingColumns': ['id'],
+					'columns.mappingMode': 'defineBelow',
+					'columns.value["id"]': items[itemIndex].json.id,
+					'columns.value': { ...items[itemIndex].json },
+				};
+				return params[parameterName];
+			});
+			mockGoogleSheet.getData.mockResolvedValueOnce([
+				['id', 'text'],
+				['1', 'old text'],
+				['2', 'old text'],
+			]);
+			mockGoogleSheet.getColumnValues.mockResolvedValueOnce(['1', '2']);
+			mockGoogleSheet.prepareDataForUpdateOrUpsert
+				.mockResolvedValueOnce({
+					updateData: [{ range: 'Sheet1!B2', values: [[expectedText]] }],
+					appendData: [],
+				})
+				.mockResolvedValueOnce({
+					updateData: [{ range: 'Sheet1!B3', values: [[expectedText]] }],
+					appendData: [],
+				});
+
+			const result = await execute.call(mockExecuteFunctions, mockGoogleSheet, 'Sheet1');
+
+			for (const [index, item] of items.entries()) {
+				expect(mockGoogleSheet.prepareDataForUpdateOrUpsert).toHaveBeenNthCalledWith(
+					index + 1,
+					expect.objectContaining({
+						indexKey: 'id',
+						inputData: [{ id: item.json.id, text: expectedText }],
+					}),
+				);
+			}
+			expect(mockGoogleSheet.batchUpdate).toHaveBeenCalledWith(
+				[
+					{ range: 'Sheet1!B2', values: [[expectedText]] },
+					{ range: 'Sheet1!B3', values: [[expectedText]] },
+				],
+				'USER_ENTERED',
+			);
+			expect(result).toEqual([
+				{ json: { id: '1', text: expectedText }, pairedItem: { item: 0 } },
+				{ json: { id: '2', text: expectedText }, pairedItem: { item: 1 } },
+			]);
+			expect(mockExecuteFunctions.addExecutionHints).not.toHaveBeenCalled();
+		},
+	);
+
 	describe('non-row_number undefined', () => {
 		it.each([{ nonRowNumber: undefined }])(
 			'displays a helpful error message when row_number is $rowNumber',

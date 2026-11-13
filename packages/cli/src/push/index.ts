@@ -14,8 +14,7 @@ import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError, InternalServerError } from '@n8n/errors';
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { MAX_PUBSUB_PAYLOAD_BYTES, Publisher } from '@n8n/backend-services';
 
 import { validateSseOrigin, validateWebSocketOrigin } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
@@ -173,17 +172,25 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/**
-	 * Send a push message to a specific push ref.
+	 * Send a push message to a specific push ref, if it belongs to the given user.
 	 *
 	 * @param asBinary - Whether to send the message as a binary frames or text frames
 	 */
-	send(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
-		if (this.shouldRelayViaPubSub(pushRef)) {
-			this.relayViaPubSub(pushMsg, pushRef, asBinary);
-			return;
+	send(
+		pushMsg: PushMessage,
+		pushRef: string,
+		userId: User['id'] | undefined,
+		asBinary: boolean = false,
+	): void {
+		if (userId === undefined) {
+			this.logger.debug(`Skipped "${pushMsg.type}" for session "${pushRef}" without a user.`, {
+				pushRef,
+			});
+		} else if (this.shouldRelayViaPubSub(pushRef, userId)) {
+			this.relayViaPubSub(pushMsg, pushRef, userId, asBinary);
+		} else {
+			this.backend.sendToOne(pushMsg, pushRef, userId, asBinary);
 		}
-
-		this.backend.sendToOne(pushMsg, pushRef, asBinary);
 	}
 
 	sendToUsers(
@@ -216,20 +223,22 @@ export class Push extends TypedEmitter<PushEvents> {
 	 * the main who holds the session for the execution will push events to
 	 * the frontend who commissioned the execution.
 	 */
-	private shouldRelayViaPubSub(pushRef: string) {
+	private shouldRelayViaPubSub(pushRef: string, userId: User['id']): boolean {
 		const { isWorker, isMultiMain } = this.instanceSettings;
 
-		return isWorker || (isMultiMain && !this.hasPushRef(pushRef));
+		return isWorker || (isMultiMain && !this.backend.hasPushRefOfUser(pushRef, userId));
 	}
 
 	@OnPubSubEvent('relay-execution-lifecycle-event', { instanceType: 'main' })
 	handleRelayExecutionLifecycleEvent({
 		pushRef,
+		userId,
 		asBinary,
 		...pushMsg
-	}: PushMessage & { asBinary: boolean; pushRef: string }) {
-		if (!this.hasPushRef(pushRef)) return;
-		this.send(pushMsg, pushRef, asBinary);
+	}: PushMessage & { asBinary: boolean; pushRef: string; userId?: User['id'] }): void {
+		if (this.backend.hasPushRefOfUser(pushRef, userId)) {
+			this.send(pushMsg, pushRef, userId, asBinary);
+		}
 	}
 
 	/**
@@ -238,7 +247,12 @@ export class Push extends TypedEmitter<PushEvents> {
 	 *
 	 * See {@link shouldRelayViaPubSub} for more details.
 	 */
-	private relayViaPubSub(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
+	private relayViaPubSub(
+		pushMsg: PushMessage,
+		pushRef: string,
+		userId: User['id'],
+		asBinary: boolean = false,
+	): void {
 		const { type } = pushMsg;
 
 		if (type === 'nodeExecuteAfterData') {
@@ -261,7 +275,7 @@ export class Push extends TypedEmitter<PushEvents> {
 
 		void this.publisher.publishCommand({
 			command: 'relay-execution-lifecycle-event',
-			payload: { ...pushMsg, pushRef, asBinary },
+			payload: { ...pushMsg, pushRef, userId, asBinary },
 		});
 	}
 }

@@ -53,6 +53,19 @@ describe('useAgentToolTelemetry', () => {
 		});
 	});
 
+	it('omits workflow names from edited tool events', () => {
+		useAgentToolTelemetry('agent-42').trackEdited({
+			type: 'workflow',
+			name: 'Private tool name',
+			workflow: 'Private workflow name',
+		});
+
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_EDITED_AGENT_TOOL, {
+			tool_type: 'workflow',
+			agent_id: 'agent-42',
+		});
+	});
+
 	it('omits agent_id when not provided', () => {
 		const t = useAgentToolTelemetry();
 		t.trackAddStarted('node');

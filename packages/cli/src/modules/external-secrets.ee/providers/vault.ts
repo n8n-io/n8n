@@ -7,14 +7,14 @@ import {
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
-import {
-	type IDataObject,
-	type IHttpRequestMethods,
-	type IHttpRequestOptions,
-	type IN8nHttpFullResponse,
-	type INodeProperties,
-	OperationalError,
+import type {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeProperties,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import pLimit from 'p-limit';
 
 import { DOCS_HELP_NOTICE } from '../constants';

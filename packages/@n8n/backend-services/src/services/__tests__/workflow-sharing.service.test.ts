@@ -154,6 +154,30 @@ describe('WorkflowSharingService', () => {
 			});
 			expect(result).toEqual(['owner-1']);
 		});
+
+		it('resolves and uses the roles for the given scope', async () => {
+			roleService.rolesWithScope.mockImplementation(async (namespace) => {
+				if (namespace === 'workflow') return ['workflow:update-role'];
+				if (namespace === 'global') return ['global:update-role'];
+				return ['project:update-role'];
+			});
+			sharedWorkflowRepository.findProjectIdsByRole.mockResolvedValue([]);
+			userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue([]);
+
+			await service.getUserIdsWithAccessToWorkflow('workflow-1', 'workflow:update');
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('global', ['workflow:update']);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:update']);
+			expect(sharedWorkflowRepository.findProjectIdsByRole).toHaveBeenCalledWith('workflow-1', [
+				'workflow:update-role',
+			]);
+			expect(userRepository.findIdsWithGlobalOrProjectRoles).toHaveBeenCalledWith({
+				projectIds: [],
+				projectRoleSlugs: ['project:update-role'],
+				globalRoleSlugs: ['global:update-role'],
+			});
+		});
 	});
 
 	describe('getUserIdsWithAccessToWorkflowSafe', () => {

@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import type { AppBuildAttempt } from '../build/app-build.types';
 
@@ -8,11 +9,18 @@ export type NewSourceVersion = {
 	appId: string;
 	expectedDraftVersionId: string | null;
 	label: string | null;
+	bindings: AppBinding[];
 };
 
 export abstract class AppSourceVersionStore {
 	/** Creates a source-backed version with a queued build and advances the draft atomically. */
 	abstract createVersion(version: NewSourceVersion, files: AppFiles): Promise<void>;
+
+	/**
+	 * Creates a version that shares the source and the build of the expected draft,
+	 * with other bindings, and advances the draft atomically.
+	 */
+	abstract copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void>;
 
 	abstract readSource(versionId: string): Promise<AppFiles>;
 

@@ -1,5 +1,5 @@
 import { isSlackInteractionRequest, parseHitlCallbackReference } from 'n8n-core';
-import { jsonParse, type IDataObject, type IWebhookFunctions } from 'n8n-workflow';
+import { jsonParse, requestPath, type IDataObject, type IWebhookFunctions } from 'n8n-workflow';
 
 import { slackApiRequest } from './GenericFunctions';
 import { HITL_APPROVE_ACTION_ID, type SectionBlock } from './MessageInterface';
@@ -37,7 +37,7 @@ async function extractSlackResponder(
 			const info = (await slackApiRequest.call(
 				context,
 				'GET',
-				'/users.info',
+				requestPath`/users.info`,
 				{},
 				{ user: user.id },
 			)) as {
@@ -66,7 +66,7 @@ async function notifyNotAuthorized(
 	const user = payload.user?.id;
 	if (!channel || !user) return;
 	try {
-		await slackApiRequest.call(context, 'POST', '/chat.postEphemeral', {
+		await slackApiRequest.call(context, 'POST', requestPath`/chat.postEphemeral`, {
 			channel,
 			user,
 			text,
@@ -116,7 +116,7 @@ async function lockSlackMessage(
 	const ts = payload.message?.ts ?? payload.container?.message_ts;
 	if (channel && ts) {
 		try {
-			await slackApiRequest.call(context, 'POST', '/chat.update', {
+			await slackApiRequest.call(context, 'POST', requestPath`/chat.update`, {
 				channel,
 				ts,
 				text,
@@ -169,7 +169,7 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 			: (body as SlackInteractionPayload);
 
 	// Fail closed: approve only when both signals agree — the HMAC-minted callback reference
-	// (verified at the CLI layer) and Slack's native action_id. Anything else counts as declined.
+	// (verified before node code runs) and Slack's native action_id. Anything else counts as declined.
 	const action = payload.actions?.[0];
 	const parsed = parseHitlCallbackReference(action?.value ?? '');
 	const approved = parsed?.decision === 'a' && action?.action_id === HITL_APPROVE_ACTION_ID;

@@ -1,3 +1,4 @@
+import type { WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { IWorkflowDb, IWorkflowsMap, WorkflowListResource } from '@/Interface';
@@ -18,6 +19,7 @@ export type WorkflowListFilters = {
 	parentFolderId?: string;
 	availableInMCP?: boolean;
 	triggerNodeTypes?: string[];
+	executionBlockedBy?: WorkflowExecutionBlockCause[];
 };
 
 const ALL_PROJECTS_KEY = '__all_projects__';

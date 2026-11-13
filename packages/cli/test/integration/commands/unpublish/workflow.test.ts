@@ -16,7 +16,8 @@ import {
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { type INodeType, UserError } from 'n8n-workflow';
+import type { INodeType } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { UnpublishWorkflowCommand } from '@/commands/unpublish/workflow';
 import { ExternalHooks } from '@/external-hooks';

@@ -10,14 +10,13 @@ import type {
 import {
 	Workflow,
 	BINARY_ENCODING,
-	UnexpectedError,
 	CHAT_NODE_TYPE,
 	CHAT_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	isHitlToolType,
 } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError } from '@n8n/errors';
 import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';

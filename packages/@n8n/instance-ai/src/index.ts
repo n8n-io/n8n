@@ -271,6 +271,7 @@ export { modelConfigId } from './utils/model-config-id';
 export { isEndpointModelConfig } from './utils/modal-session';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export {
+	AppNamespaceTakenError,
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
@@ -279,19 +280,28 @@ export {
 	formatRedactedError,
 } from './errors';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	createSampleFile,
+	resolveSampleFileMarkers,
+	SAMPLE_FILE_MIME_TYPES,
+} from './tools/workflows/sample-files';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
+	readAgentTargetsMetadata,
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
 	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
-export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	AgentBuilderTarget,
+	AgentTargetsMetadata,
+} from './tools/orchestration/agent-target-binding';
 export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
@@ -302,6 +312,7 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);
 export type { DomainAccessTracker } from './domain-access';
@@ -334,6 +345,9 @@ export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
+
+export const isLangSmithTracingEnabled: typeof LangsmithTracingMod.isLangSmithTracingEnabled =
+	lazyFunction(() => loadLangsmithTracing().isLangSmithTracingEnabled);
 
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
@@ -812,6 +826,8 @@ export type {
 	AgentSessionSummary,
 	AgentContextLookup,
 	InstanceAiAgentContextReader,
+	InstanceAiStoredFile,
+	InstanceAiStoredFileReader,
 	InstanceAiSkillService,
 	BrowserUseState,
 } from './types';

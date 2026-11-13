@@ -414,7 +414,11 @@ describe('promotion-environment promote-selection command', () => {
 		await command.run();
 
 		// `-w` values travel as the `workflowIds` array, with no message flag set.
-		expect(promoteProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'] },
+			undefined,
+		);
 		// A selection can be deletions only, so the summary names the branch and
 		// commit instead of a workflow count that would read "0" for that case.
 		expect(succeed).toHaveBeenCalledWith(
@@ -444,7 +448,7 @@ describe('promotion-environment promote-selection command', () => {
 
 		expect(promoteProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			'Promote checkout flow',
 		);
 	});
@@ -487,19 +491,31 @@ describe('promotion-environment apply-selection command', () => {
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'] },
+			undefined,
+			undefined,
+		);
 	});
 
-	it('sends the reviewed source built from the three expected flags', async () => {
+	it('sends the reviewed source and the reviewed preview revision', async () => {
+		const revision = 'b'.repeat(64);
 		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
 			format: 'table',
 			workflow: ['wf-1'],
 			...PINNED_FLAGS,
+			expectedPreviewRevision: revision,
 		});
 
 		await run();
 
-		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'] },
+			EXPECTED_SOURCE,
+			revision,
+		);
 	});
 
 	it('names the branch and commit it applied, and exits through succeed', async () => {
@@ -524,13 +540,23 @@ describe('promotion-environment apply-selection command', () => {
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('exits 4 with a Continue command that resends the same workflow ids', async () => {
-		const { run, logToStderr, exit } = runApplySelection(BLOCKED_RESULT);
+	it('exits 4 with a Continue command that resends the same workflow and folder ids', async () => {
+		const { run, applyProjectSelection, logToStderr, exit } = runApplySelection(BLOCKED_RESULT, {
+			format: 'table',
+			workflow: ['wf-1', 'wf-2'],
+			folder: ['f-1'],
+		});
 
 		await run();
 
+		expect(applyProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1', 'wf-2'], folderIds: ['f-1'] },
+			undefined,
+			undefined,
+		);
 		expect(logToStderr.mock.calls[0][0]).toContain(
-			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
+			`n8n-cli promotion-environment apply-selection-continue proj-1 -w wf-1 -w wf-2 --folder f-1 --expected-environment-id=env-1 --expected-branch=release --expected-commit-sha=${SHA}`,
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -563,8 +589,9 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
+			undefined,
 			undefined,
 		);
 		expect(exit).toHaveBeenCalledWith(3);
@@ -595,9 +622,10 @@ describe('promotion-environment apply-selection-continue command', () => {
 
 		expect(continueApplyProjectSelection).toHaveBeenCalledWith(
 			'proj-1',
-			['wf-1'],
+			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
 			true,
+			undefined,
 		);
 	});
 });

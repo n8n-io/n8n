@@ -102,7 +102,7 @@ vi.mock('@n8n/di', () => ({
 import { Tool } from '@n8n/agents/tool';
 import { Container } from '@n8n/di';
 import { createEvalAgent } from '@n8n/instance-ai';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 

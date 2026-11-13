@@ -7,6 +7,7 @@ import { createDataSource } from './database';
 import { createConsoleLogger } from './logging';
 import { noopExecutionResponseSender } from './response-channel';
 import { createEngineRuntime } from './runtime';
+import { assertSecureTransport, createEngineHttpServer, openEngineTls } from './tls';
 
 const logger = createConsoleLogger();
 
@@ -23,6 +24,10 @@ async function main(): Promise<void> {
 		throw new Error('engine: N8N_ENGINE_AUTH_SECRET is not set');
 	}
 
+	// Before the database, so a bad certificate fails the boot in a second.
+	const tls = openEngineTls(config, logger);
+	assertSecureTransport(config, tls !== undefined, {}, logger);
+
 	const dataSource = createDataSource(config.databaseUrl);
 	await dataSource.initialize();
 	await dataSource.runMigrations();
@@ -38,8 +43,8 @@ async function main(): Promise<void> {
 	});
 	runtime.start();
 
-	const server = runtime.app.listen(config.port, config.host, () => {
-		logger.info(`listening on http://${config.host}:${config.port}`);
+	const server = createEngineHttpServer(runtime.app, tls).listen(config.port, config.host, () => {
+		logger.info(`listening on ${tls ? 'https' : 'http'}://${config.host}:${config.port}`);
 	});
 
 	let shuttingDown = false;
@@ -47,6 +52,7 @@ async function main(): Promise<void> {
 		if (shuttingDown) return;
 		shuttingDown = true;
 		logger.info(`received ${signal}, shutting down`);
+		tls?.close();
 		await new Promise<void>((resolve, reject) => {
 			server.close((error) => (error ? reject(error) : resolve()));
 		});

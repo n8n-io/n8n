@@ -563,7 +563,7 @@ export class MemoryGuardService {
 
 			// Lazy import, as in crash recovery, because the workflow service has many dependencies.
 			const { WorkflowService } = await import('@/workflows/workflow.service.js');
-			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+			await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId, 'memory-guard');
 			this.stopsByWorkflow.delete(workflowId);
 			this.logger.warn(
 				`Deactivated workflow ${workflowId}, because n8n stopped ${this.config.stopsToUnpublish} of its executions to keep the instance from running out of memory`,

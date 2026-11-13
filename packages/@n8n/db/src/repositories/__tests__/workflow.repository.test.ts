@@ -698,6 +698,24 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('countUnarchived', () => {
+		it('should count only the workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(3);
+
+			expect(await workflowRepository.countUnarchived()).toBe(3);
+			expect(countSpy).toHaveBeenCalledWith({ where: { isArchived: false } });
+		});
+
+		it('should count only the given workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(1);
+
+			expect(await workflowRepository.countUnarchived(['a', 'b'])).toBe(1);
+			expect(countSpy).toHaveBeenCalledWith({
+				where: { id: In(['a', 'b']), isArchived: false },
+			});
+		});
+	});
+
 	describe('findExistingIds', () => {
 		it('returns only the ids that still exist', async () => {
 			entityManager.find.mockResolvedValue([

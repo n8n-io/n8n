@@ -12,10 +12,14 @@ import {
 	serializedWorkflowSchema,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { z } from 'zod';
 import { ZodError } from 'zod';
 
+import { CredentialTypes } from '@/credential-types';
+
+import { dropUnconfirmedCredentialData } from '../../entities/credential/credential-display-controllers';
 import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
@@ -110,7 +114,10 @@ interface EntityFile {
  */
 @Service()
 export class PackageDirectoryInventoryReader {
-	constructor(private readonly workflowSerializer: WorkflowSerializer) {}
+	constructor(
+		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialTypes: CredentialTypes,
+	) {}
 
 	async read(source: PackageFileSource): Promise<PackageDirectoryInventory> {
 		const files = (await source.listEntries()).sort().flatMap((path) => classify(path) ?? []);
@@ -219,7 +226,11 @@ export class PackageDirectoryInventoryReader {
 
 		for (const file of files.filter((f) => f.kind === 'credentials')) {
 			if (!isCollectionLocation(file.segments, 'credentials')) throw unsupportedLocation(file);
-			const credential = await this.readEntity(source, file, serializedCredentialSchema);
+			// The Apply preview shows this data in the editor, so it follows the same rule as the import.
+			const { credential } = dropUnconfirmedCredentialData(
+				await this.readEntity(source, file, serializedCredentialSchema),
+				this.credentialTypes,
+			);
 			assertUnseen(seenIds, credential.id, 'credential id');
 			credentials.push({ path: file.path, projectId: projectIdOf(file), credential });
 		}

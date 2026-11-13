@@ -19,6 +19,7 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { COMPATIBLE_MODE_SUFFIX } from './alibaba-cloud-base-url';
@@ -135,7 +136,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		icon: 'file:alibaba.svg',
 		group: ['transform'],
 		version: [1, 1.1],
-		description: 'For advanced usage with an AI chain',
+		description: 'Run Qwen models, with optional response-format settings',
 		defaults: {
 			name: 'Qwen Cloud Chat Model',
 		},
@@ -335,7 +336,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			timeout,

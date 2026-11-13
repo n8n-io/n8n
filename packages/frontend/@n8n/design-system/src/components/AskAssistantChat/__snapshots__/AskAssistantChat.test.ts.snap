@@ -17,9 +17,10 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -124,9 +125,10 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -374,9 +376,10 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -481,9 +484,10 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -640,9 +644,10 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -780,9 +785,10 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"
@@ -920,9 +926,10 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
           <div
             class="assistantTitle"
           >
-            <assistant-icon-stub
-              size="large"
-              theme="default"
+            <n8n-icon-stub
+              icon="n8n-assistant"
+              size="18"
+              spin="false"
             />
             <assistant-text-stub
               size="large"

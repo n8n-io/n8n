@@ -2,7 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 import { useEnvironmentsVersionSwitch } from './useEnvironmentsVersionSwitch';

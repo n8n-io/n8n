@@ -64,6 +64,8 @@ export const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
+export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
+export const MESSAGE_AN_AGENT_TOOL_NODE_TYPE = 'n8n-nodes-base.messageAnAgentTool';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
@@ -134,6 +136,7 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chainSummarization';
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
+export const CODE_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';

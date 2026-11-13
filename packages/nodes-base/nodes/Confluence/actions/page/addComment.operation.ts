@@ -4,7 +4,7 @@ import type {
 	IExecuteFunctions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { bodyProperties, envelopeHasContent, readBodyEnvelope } from './bodyEnvelope';
 import { confluenceApiRequest } from '../../transport';
@@ -64,7 +64,12 @@ export const execute: ConfluenceOperation = async function (
 	}
 
 	try {
-		return await confluenceApiRequest.call(this, 'POST', '/wiki/api/v2/footer-comments', payload);
+		return await confluenceApiRequest.call(
+			this,
+			'POST',
+			requestPath`/wiki/api/v2/footer-comments`,
+			payload,
+		);
 	} catch (error) {
 		// Atlassian masks permission failures on this endpoint as 404
 		if (error instanceof NodeApiError && error.httpCode === '404') {

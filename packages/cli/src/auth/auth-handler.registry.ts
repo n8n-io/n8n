@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { User } from '@n8n/db';
+import { Person } from '@n8n/db';
 import type { AuthType, IAuthHandler, IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandlerEntryMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 
-function isUserHandler(handler: IAuthHandler): handler is IAuthHandler<User> {
-	return handler.userClass === User;
+function isUserHandler(handler: IAuthHandler): handler is IAuthHandler<Person> {
+	return handler.userClass === Person;
 }
 
 /**
@@ -15,7 +15,7 @@ function isUserHandler(handler: IAuthHandler): handler is IAuthHandler<User> {
 @Service()
 export class AuthHandlerRegistry {
 	/** Map of handler names to handler instances */
-	private handlerMap: Map<string, IAuthHandler<User>> = new Map();
+	private handlerMap: Map<string, IAuthHandler<Person>> = new Map();
 
 	constructor(
 		private readonly authHandlerEntryMetadata: AuthHandlerEntryMetadata,
@@ -34,16 +34,16 @@ export class AuthHandlerRegistry {
 		this.logger.debug(`Registering ${handlerClasses.length} auth handlers.`);
 
 		for (const HandlerClass of handlerClasses) {
-			let handler: IAuthHandler<User>;
+			let handler: IAuthHandler<Person>;
 			try {
 				// We're casting here as we know all classes returned
-				// by getClasses() implement IAuthHandler<User>
+				// by getClasses() implement IAuthHandler<Person>
 				const unknownHandler = Container.get(HandlerClass);
 				if (isUserHandler(unknownHandler)) {
 					handler = unknownHandler;
 				} else {
 					throw new Error(
-						`Handler user class mismatch. Expected User but got ${unknownHandler.userClass.name}`,
+						`Handler user class mismatch. Expected Person but got ${unknownHandler.userClass.name}`,
 					);
 				}
 			} catch (error) {
@@ -80,8 +80,8 @@ export class AuthHandlerRegistry {
 	 * Type guard to check if a handler is a password auth handler
 	 */
 	private isPasswordAuthHandler(
-		handler: IAuthHandler<User>,
-	): handler is IPasswordAuthHandler<User> {
+		handler: IAuthHandler<Person>,
+	): handler is IPasswordAuthHandler<Person> {
 		return handler.metadata.type === 'password';
 	}
 
@@ -89,9 +89,9 @@ export class AuthHandlerRegistry {
 	 * Retrieves a registered handler by its metadata name.
 	 * @returns The handler instance, or undefined if not found
 	 */
-	get(authMethod: string, type: 'password'): IPasswordAuthHandler<User> | undefined;
-	get(authMethod: string, type: AuthType): IAuthHandler<User> | undefined;
-	get(authMethod: string, type: AuthType): IAuthHandler<User> | undefined {
+	get(authMethod: string, type: 'password'): IPasswordAuthHandler<Person> | undefined;
+	get(authMethod: string, type: AuthType): IAuthHandler<Person> | undefined;
+	get(authMethod: string, type: AuthType): IAuthHandler<Person> | undefined {
 		const handler = this.handlerMap.get(authMethod);
 		if (!handler) {
 			return undefined;

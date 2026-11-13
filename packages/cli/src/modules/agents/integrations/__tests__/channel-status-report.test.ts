@@ -53,6 +53,24 @@ function erroredRow(
 }
 
 describe('buildChannelStatusReport', () => {
+	describe('webhook channel', () => {
+		const webhook = {
+			type: 'webhook',
+			credentialId: '',
+			settings: { authentication: 'none' },
+		} satisfies AgentIntegrationConfig;
+
+		it('is connected while the agent is published, with its settings and no status rows', () => {
+			expect(buildChannelStatusReport([webhook], PUBLISHED, [], isLive)).toEqual({
+				status: 'connected',
+				integrations: [
+					{ type: 'webhook', credentialId: '', settings: webhook.settings, status: 'connected' },
+				],
+				drafts: [],
+			});
+		});
+	});
+
 	it('uses the published n8n Chat entry while the draft changes', () => {
 		expect(buildChannelStatusReport([], PUBLISHED, [], isLive, [n8nChat])).toEqual({
 			status: 'connected',

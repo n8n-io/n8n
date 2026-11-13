@@ -1,7 +1,7 @@
 import {
 	type AgentBackgroundJobsResponse,
 	AgentChatCancelDto,
-	AgentChatMessageDto,
+	SystemAgentChatMessageDto,
 	type AgentChatMessagesResponse,
 	AgentChatQueueReorderDto,
 	type AgentChatQueueResponse,
@@ -70,7 +70,7 @@ export class SystemAgentChatController {
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
 		@Param('agentId') agentId: string,
-		@Body payload: AgentChatMessageDto,
+		@Body payload: SystemAgentChatMessageDto,
 		@Query { projectId }: SystemAgentChatQueryDto,
 	) {
 		const { message, sessionId, messageId, attachments, clientContext } = payload;

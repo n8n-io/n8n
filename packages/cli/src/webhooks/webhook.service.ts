@@ -8,9 +8,9 @@ import {
 	isNodeClassInstance,
 	NodeHelpers,
 	resolveWebhookDescriptionField,
-	UnexpectedError,
 	WebhookPathTakenError,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	IHttpRequestMethods,
 	INode,

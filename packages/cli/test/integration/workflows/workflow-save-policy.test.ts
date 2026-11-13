@@ -1,5 +1,5 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { SharedWorkflowRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import type { PolicyCheckResult, PolicyViolation, RegisteredPolicyCheck } from '@n8n/decorators';
 import { PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
@@ -66,7 +66,7 @@ const triggerNode = {
 const editorPayload = { name: 'Policed workflow', nodes: [triggerNode], connections: {} };
 const publicApiPayload = { ...editorPayload, settings: { executionOrder: 'v1' } };
 
-let owner: User;
+let owner: Person;
 let editorAgent: SuperAgentTest;
 let publicApiAgent: SuperAgentTest;
 let workflowRepository: WorkflowRepository;

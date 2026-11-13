@@ -344,7 +344,30 @@ describe('createWorkspaceTools', () => {
 				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
 				content: '{}',
 				pointer: '/missing',
-				error: 'JSON Pointer does not reference a stored value',
+				error:
+					'JSON Pointer does not reference a stored value: The root value has no key "missing".',
+			},
+			{
+				name: 'a slash used as the root pointer',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: '{"data":[]}',
+				pointer: '/',
+				error:
+					'JSON Pointer "/" does not select the root value. To read the root value, omit the pointer or set it to an empty string.',
+			},
+			{
+				name: 'an array index past the end',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: '{"data":[{"json":{}}]}',
+				pointer: '/data/1/json',
+				error: 'The value at "/data" has no index "1".',
+			},
+			{
+				name: 'a pointer below a scalar value',
+				path: `tool-results/runs/${'a'.repeat(43)}/${'b'.repeat(43)}.result.json`,
+				content: '{"status":"success"}',
+				pointer: '/status/code',
+				error: 'The value at "/status" is a string without children.',
 			},
 		])('read_tool_result rejects $name', async ({ path, content, pointer, error }) => {
 			const fs = makeFakeFilesystem({ readFile: vi.fn().mockResolvedValue(content) });

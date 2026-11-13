@@ -6,7 +6,8 @@ import {
 	type StorageConfig,
 	WorkflowExecute,
 } from 'n8n-core';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,

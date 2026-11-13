@@ -71,6 +71,10 @@ const config: KnipConfig = {
 				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
 				'@napi-rs/canvas',
 				'@napi-rs/image',
+				'get-system-fonts',
+				// docker/native-addons-smoke-check.mjs requires these from the n8n install under test.
+				'isolated-vm',
+				'sqlite3',
 				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
 				'@confluentinc/kafka-javascript',
 				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
@@ -99,6 +103,10 @@ const config: KnipConfig = {
 		'packages/@n8n/backend-services': pkg({
 			// ioredis-mock is loaded with vi.importActual, which knip does not link.
 			ignoreDependencies: ['ioredis-mock'],
+		}),
+		'packages/@n8n/backend-docs-site': pkg({
+			// The Astro prerender step resolves cookie at runtime. See the package README.
+			ignoreDependencies: ['cookie'],
 		}),
 		'packages/@n8n/instance-ai': pkg({
 			// psl is loaded with a dynamic import, which knip does not link to @types.
@@ -134,11 +142,6 @@ const config: KnipConfig = {
 		}),
 		'packages/nodes-base': pkg({
 			ignoreDependencies: [
-				// napi-rs wrappers load these platform bindings dynamically at runtime.
-				'@napi-rs/canvas-linux-arm64-musl',
-				'@napi-rs/canvas-linux-x64-musl',
-				'@napi-rs/image-linux-arm64-musl',
-				'@napi-rs/image-linux-x64-musl',
 				// Pins the pg version that pg-promise resolves for npm installs of the published package.
 				'pg',
 			],
@@ -187,10 +190,6 @@ const config: KnipConfig = {
 				'web-tree-sitter',
 				// Target of the `stream` alias that @n8n/frontend-vite-config declares.
 				'stream-browserify',
-				// .oxlintrc.json names these plugins; @n8n/oxlint-config provides them.
-				'@stylistic/eslint-plugin',
-				'eslint-plugin-lodash',
-				'eslint-plugin-unused-imports',
 			],
 		}),
 		'packages/frontend/@n8n/storybook': pkg({

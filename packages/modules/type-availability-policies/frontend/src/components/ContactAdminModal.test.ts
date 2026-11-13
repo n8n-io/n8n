@@ -62,7 +62,7 @@ function mockCustomProjectRole(slug: string) {
 }
 
 const renderComponent = createComponentRenderer(ContactAdminModal, {
-	props: { open: true, nodeTypeName: 'Slack', audience: 'instance' },
+	props: { open: true, typeName: 'Slack', audience: 'instance' },
 });
 
 function setup(policyManagers: IUser[], fetchUsers = vi.fn().mockResolvedValue(policyManagers)) {
@@ -96,7 +96,7 @@ describe('ContactAdminModal', () => {
 		const { findByTestId, getByText } = renderComponent({
 			props: {
 				open: true,
-				nodeTypeName: 'Anthropic credentials',
+				typeName: 'Anthropic credentials',
 				kind: 'credential',
 				audience: 'instance',
 			},
@@ -120,7 +120,7 @@ describe('ContactAdminModal', () => {
 			const { findByTestId, getByText } = renderComponent({
 				props: {
 					open: true,
-					nodeTypeName: ['Slack', 'GitHub API'],
+					typeName: ['Slack', 'GitHub API'],
 					kind: 'credential',
 					audience: 'instance',
 				},
@@ -157,7 +157,7 @@ describe('ContactAdminModal', () => {
 				],
 			});
 			const { findByTestId, getByText } = renderComponent({
-				props: { open: true, nodeTypeName: ['Slack', 'GitHub API'], audience: 'project' },
+				props: { open: true, typeName: ['Slack', 'GitHub API'], audience: 'project' },
 			});
 
 			await findByTestId('contact-admin-list');
@@ -168,7 +168,7 @@ describe('ContactAdminModal', () => {
 		it('keeps the single copy for an array of one name', async () => {
 			setup([owner]);
 			const { findByTestId, getByText } = renderComponent({
-				props: { open: true, nodeTypeName: ['Slack'], audience: 'instance' },
+				props: { open: true, typeName: ['Slack'], audience: 'instance' },
 			});
 
 			await findByTestId('contact-admin-list');
@@ -255,7 +255,7 @@ describe('ContactAdminModal', () => {
 			setup([owner]);
 			listenAsHost();
 			const { emitted } = renderComponent({
-				props: { open: false, nodeTypeName: 'Slack', audience: 'instance' },
+				props: { open: false, typeName: 'Slack', audience: 'instance' },
 			});
 
 			await fireEvent.keyDown(document.body, { key: 'Escape' });
@@ -311,7 +311,7 @@ describe('ContactAdminModal', () => {
 				relations: [projectAdmin, projectEditor, policyManager],
 			});
 			const { findByTestId, getByText } = renderComponent({
-				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+				props: { open: true, typeName: 'Slack', audience: 'project' },
 			});
 
 			const list = await findByTestId('contact-admin-list');
@@ -351,7 +351,7 @@ describe('ContactAdminModal', () => {
 				],
 			});
 			const { findByTestId, getByText } = renderComponent({
-				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+				props: { open: true, typeName: 'Slack', audience: 'project' },
 			});
 
 			const list = await findByTestId('contact-admin-list');
@@ -366,7 +366,7 @@ describe('ContactAdminModal', () => {
 			setup([owner]);
 			mockPolicyProject({ type: 'team', relations: [projectEditor] });
 			const { findByTestId } = renderComponent({
-				props: { open: true, nodeTypeName: 'Slack', audience: 'project' },
+				props: { open: true, typeName: 'Slack', audience: 'project' },
 			});
 
 			expect(await findByTestId('contact-admin-empty')).toHaveTextContent(
@@ -398,7 +398,7 @@ describe('ContactAdminModal', () => {
 				setup([owner]);
 				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
 				const { findByTestId } = renderComponent({
-					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: destination },
+					props: { open: true, typeName: 'Slack', audience: 'project', project: destination },
 				});
 
 				const list = await findByTestId('contact-admin-list');
@@ -411,7 +411,7 @@ describe('ContactAdminModal', () => {
 				setup([owner]);
 				mockPolicyProject({ type: 'team', relations: [projectAdmin] });
 				const { findByTestId, queryByText } = renderComponent({
-					props: { open: true, nodeTypeName: 'Slack', audience: 'project', project: null },
+					props: { open: true, typeName: 'Slack', audience: 'project', project: null },
 				});
 
 				expect(await findByTestId('contact-admin-empty')).toHaveTextContent(

@@ -1,13 +1,11 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { InstanceSettings } from 'n8n-core';
 
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { Publisher, Subscriber } from '@n8n/backend-services';
 
 import type { initSseStream } from './agent-sse-stream';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';

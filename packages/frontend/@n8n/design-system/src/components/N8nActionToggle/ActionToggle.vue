@@ -110,6 +110,7 @@ defineExpose({
 						:disabled="disabled"
 						role="button"
 						:aria-controls="dropdownId"
+						:aria-label="ariaLabel"
 					/>
 				</slot>
 			</template>

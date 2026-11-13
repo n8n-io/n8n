@@ -140,6 +140,7 @@ export class CredentialTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -204,6 +205,7 @@ export class CredentialTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -265,6 +267,7 @@ export class CredentialTypePoliciesPublicController {
 			CREDENTIAL_TYPES_KIND,
 			dto.rules,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -318,6 +321,7 @@ export class CredentialTypePoliciesPublicController {
 			dto.rules,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -341,7 +345,12 @@ export class CredentialTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', credentialTypePolicyIdParamSchema) policyId: string,
 	): Promise<void> {
-		await (await this.service()).deletePolicyDocument(CREDENTIAL_TYPES_KIND, policyId, req.user.id);
+		await (await this.service()).deletePolicyDocument(
+			CREDENTIAL_TYPES_KIND,
+			policyId,
+			req.user.id,
+			req.ctx,
+		);
 	}
 
 	@Get('/scopes/:scopeId/attachments')
@@ -391,6 +400,7 @@ export class CredentialTypePoliciesPublicController {
 			dto.attachments,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return toPublicAttachments(result);

@@ -17,6 +17,20 @@ function hasWarningFailure(cause: Error | undefined): boolean {
 	);
 }
 
+/** Connection error codes that make an activation error a warning. */
+const WARNING_ERROR_CODES: readonly string[] = [
+	'CONNECT_TIMEOUT', // imapflow
+	'ENOTFOUND',
+	'ECONNRESET',
+	'EAI_AGAIN',
+];
+
+function hasWarningErrorCode(cause: Error | undefined): boolean {
+	return errorChain(cause).some(
+		({ code }) => typeof code === 'string' && WARNING_ERROR_CODES.includes(code),
+	);
+}
+
 interface WorkflowActivationErrorOptions {
 	cause?: Error;
 	node?: INode;
@@ -71,7 +85,7 @@ export class WorkflowActivationError extends ExecutionBaseError {
 			return;
 		}
 
-		if (hasWarningFailure(cause)) {
+		if (hasWarningFailure(cause) || hasWarningErrorCode(cause)) {
 			this.level = 'warning';
 			return;
 		}

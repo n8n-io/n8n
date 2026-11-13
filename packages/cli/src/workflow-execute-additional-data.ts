@@ -4,10 +4,12 @@ import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import {
+	CodeExecutionBackend,
 	EventService,
 	UrlService,
 	RuntimeCredentialProxyService,
 	WorkflowPublishedDataService,
+	toCodeTaskRequest,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -22,7 +24,6 @@ import {
 } from 'n8n-core';
 import type {
 	AiEvent,
-	EnvProviderState,
 	ExecuteAgentData,
 	ExecuteAgentInvocationContext,
 	ExecuteAgentSource,
@@ -33,14 +34,13 @@ import type {
 	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
-	IExecuteFunctions,
+	IWorkflowExecutionTelemetryMetadata,
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
 	IRunExecutionData,
-	ITaskDataConnections,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionDataProcess,
@@ -49,9 +49,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	OperationalError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -62,6 +59,7 @@ import {
 	attachSubWorkflowRedaction,
 	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import type { PrepareWorkflowAgentForEval } from './modules/agents/evaluation/agent-evaluation.contracts';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';
@@ -83,9 +81,8 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
-import { objectToError } from '@/utils/object-to-error';
+import { buildSubWorkflowError } from '@/utils/sub-workflow-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
@@ -631,6 +628,24 @@ async function startExecution(
 		CredentialsPermissionChecker,
 	).getCredentialIdsForNodes(workflowData.nodes);
 
+	// A failed sub-workflow returns an error, not a result. Attach to the error the private
+	// credentials that the sub-workflow used and the channels that it redacts. The parent reads
+	// them in `BaseExecuteContext.executeWorkflow`, also when its node continues on fail.
+	const buildErrorForParent = (
+		error: unknown,
+		executionData: IRunExecutionData | undefined,
+	): Error =>
+		attachSubWorkflowRedaction(
+			attachDynamicCredentialsUsage(
+				buildSubWorkflowError(error, workflow, {
+					executionId,
+					workflowId: workflowData.id,
+				}),
+				summarizeDynamicCredentialsUsage(executionData, workflowCredentialIds),
+			),
+			summarizeSubWorkflowRedaction(executionData, { includeOwn }),
+		);
+
 	let hooks: ExecutionLifecycleHooks | undefined;
 	let callerAllowed = false;
 	let credentialChecksPassed = false;
@@ -644,12 +659,18 @@ async function startExecution(
 		 */
 		await executionRepository.setRunning(executionId);
 
+		// The hooks read this object when the run ends, so the credential check
+		// below can still fill it in.
+		const telemetryMetadata: IWorkflowExecutionTelemetryMetadata = {};
 		hooks = getLifecycleHooksForSubExecutions(
 			runData.executionMode,
 			executionId,
 			workflowData,
 			additionalData.userId,
 			options.parentExecution,
+			undefined,
+			undefined,
+			telemetryMetadata,
 		);
 
 		// The original mode of the whole run tree: a sub-workflow's own
@@ -685,11 +706,12 @@ async function startExecution(
 			// acting user rides along only for what that project does not carry: a
 			// credential reachable personally has to stay runnable by the person it
 			// belongs to, one level down as much as at the top.
-			await Container.get(CredentialsPermissionChecker).check(
+			const { personalCredentialsCount } = await Container.get(CredentialsPermissionChecker).check(
 				workflowData.id,
 				workflowData.nodes,
 				additionalData.userId,
 			);
+			telemetryMetadata.personalCredentialsCount = personalCredentialsCount;
 		}
 		credentialChecksPassed = true;
 
@@ -825,34 +847,17 @@ async function startExecution(
 		} catch (recordError) {
 			logUnrecordedFailure(recordError);
 		}
+
 		// The engine mutates `runData.executionData` in place, so a mid-run crash may leave
-		// credential flags on already-executed tasks — ride them on the error like the
-		// regular failure path below.
-		throw attachSubWorkflowRedaction(
-			attachDynamicCredentialsUsage(
-				objectToError(
-					{
-						...executionError,
-						executionId,
-						workflowId: workflowData.id,
-						stack: executionError?.stack,
-						message: executionError?.message,
-					},
-					workflow,
-				),
-				summarizeDynamicCredentialsUsage(runData.executionData, workflowCredentialIds),
-			),
-			summarizeSubWorkflowRedaction(runData.executionData, { includeOwn }),
-		);
+		// credential flags on already-executed tasks.
+		throw buildErrorForParent(executionError, runData.executionData);
 	}
+
+	activeExecutions.finalizeExecution(executionId, data);
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
 	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
-		// Workflow did finish successfully
-
-		activeExecutions.finalizeExecution(executionId, data);
-
 		return {
 			executionId,
 			data: data.data.subWorkflowOutput
@@ -864,30 +869,9 @@ async function startExecution(
 			// The caller keeps a copy of the output above, so it must redact what this run redacts.
 			subWorkflowRedaction: summarizeSubWorkflowRedaction(data.data, { includeOwn }),
 		};
+	} else {
+		throw buildErrorForParent(data.data.resultData.error, data.data);
 	}
-	activeExecutions.finalizeExecution(executionId, data);
-
-	// Workflow did fail
-	const { error } = data.data.resultData;
-
-	// A failed child may still have attempted or resolved private credentials before failing;
-	// ride the usage on the error so a continue-on-fail caller still flags its task
-	// (see `BaseExecuteContext.executeWorkflow`). The redaction channels ride along the same way.
-	throw attachSubWorkflowRedaction(
-		attachDynamicCredentialsUsage(
-			objectToError(
-				{
-					...error,
-					executionId,
-					workflowId: workflowData.id,
-					stack: error?.stack,
-				},
-				workflow,
-			),
-			summarizeDynamicCredentialsUsage(data.data, workflowCredentialIds),
-		),
-		summarizeSubWorkflowRedaction(data.data, { includeOwn }),
-	);
 }
 
 export function setExecutionStatus(this: { executionId?: string }, status: ExecutionStatus) {
@@ -901,11 +885,11 @@ export function setExecutionStatus(this: { executionId?: string }, status: Execu
 }
 
 export function sendDataToUI(
-	this: { pushRef?: string },
+	this: { pushRef?: string; userId?: string },
 	type: PushType,
 	data: IDataObject | IDataObject[],
 ) {
-	const { pushRef } = this;
+	const { pushRef, userId } = this;
 	if (pushRef === undefined) {
 		return;
 	}
@@ -913,7 +897,7 @@ export function sendDataToUI(
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send({ type, data } as PushMessage, pushRef);
+		pushInstance.send({ type, data } as PushMessage, pushRef, userId);
 	} catch (error) {
 		const logger = Container.get(Logger);
 		logger.warn(`There was a problem sending message to UI: ${error.message}`);
@@ -1024,50 +1008,15 @@ export async function getBase({
 			return executionData?.data;
 		},
 		externalSecretsProxy: Container.get(ExternalSecretsProxy),
-		async startRunnerTask(
-			additionalData: IWorkflowExecuteAdditionalData,
-			jobType: string,
-			settings: unknown,
-			executeFunctions: IExecuteFunctions,
-			inputData: ITaskDataConnections,
-			node: INode,
-			workflow: Workflow,
-			runExecutionData: IRunExecutionData,
-			runIndex: number,
-			itemIndex: number,
-			activeNodeName: string,
-			connectionInputData: INodeExecutionData[],
-			siblingParameters: INodeParameters,
-			mode: WorkflowExecuteMode,
-			envProviderState: EnvProviderState,
-			executeData?: IExecuteData,
-		) {
-			return await Container.get(TaskRequester).startTask(
-				additionalData,
-				jobType,
-				settings,
-				executeFunctions,
-				inputData,
-				node,
-				workflow,
-				runExecutionData,
-				runIndex,
-				itemIndex,
-				activeNodeName,
-				connectionInputData,
-				siblingParameters,
-				mode,
-				envProviderState,
-				executeData,
-			);
-		},
+		startRunnerTask: async (...args) =>
+			await Container.get(CodeExecutionBackend).runTask(toCodeTaskRequest(...args)),
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
 		},
 		logHitlResponse: (payload) => {
 			eventService.emit('hitl-response-actioned', payload);
 		},
-		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		getRunnerStatus: (taskType: string) => Container.get(CodeExecutionBackend).getStatus(taskType),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);

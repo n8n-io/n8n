@@ -8,7 +8,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowPublishHistoryRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { type INodeType, UserError } from 'n8n-workflow';
+import type { INodeType } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { UpdateWorkflowCommand } from '@/commands/update/workflow';
 import { ExternalHooks } from '@/external-hooks';

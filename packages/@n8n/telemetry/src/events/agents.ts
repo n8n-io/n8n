@@ -84,13 +84,13 @@ const agentConfigFingerprint = z.object({
 		.optional()
 		.meta({ deprecated: true })
 		.describe('Deprecated: carried the raw agent instructions. No longer emitted.'),
-	tools: z.array(z.string()),
+	tools: z.array(z.string()).optional().meta({ deprecated: true }),
 	skills: z.array(z.string()),
 	tasks: z.array(z.string()),
 	triggers: z.array(z.string()),
-	vector_stores: z.array(z.string()),
+	vector_stores: z.array(z.string()).optional().meta({ deprecated: true }),
 	memory: z.object({ enabled: z.boolean(), storage: z.literal('n8n') }).nullable(),
-	model: z.string().nullable(),
+	model: z.string().nullable().optional().meta({ deprecated: true }),
 	config_version: z.string(),
 });
 
@@ -98,7 +98,7 @@ const agentConfigFingerprint = z.object({
 // workflow, custom tools carry custom_id, MCP servers carry server_name.
 const toolIdentity = {
 	node_type: z.string().optional(),
-	workflow: z.string().optional(),
+	workflow: z.string().optional().meta({ deprecated: true }),
 	custom_id: z.string().optional(),
 	server_name: z.string().optional(),
 };
@@ -672,6 +672,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 		name: 'MCP unpublished agent',
 		description:
 			'An MCP client unpublished an agent through the `unpublish_agent` tool. One of three same-shaped unpublish events ("User unpublished agent", "Builder unpublished agent") — union them for total agent unpublishing, or read one for that surface alone. Emitted from `AgentPublishService.unpublishAgent`. Before this event existed these unpublishes were reported as "Agent unpublished" with source "builder", so they were indistinguishable from Instance AI builder unpublishes.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_ARCHIVED_AGENT: {
+		name: 'User archived agent',
+		description:
+			'A user archived an agent. The archive first unpublishes a published agent, which also emits "User unpublished agent". Emitted from `AgentPublishService.archiveAgent`.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_UNARCHIVED_AGENT: {
+		name: 'User unarchived agent',
+		description:
+			'A user restored an archived agent. The agent stays unpublished. Emitted from `AgentPublishService.unarchiveAgent`.',
 		properties: z.object({
 			...agentActorIdentity,
 			event_version: z.literal('1'),

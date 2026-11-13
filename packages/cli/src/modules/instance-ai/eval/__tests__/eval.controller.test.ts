@@ -10,18 +10,17 @@ import type {
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { meterEvalUsage, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import type { Scope } from '@n8n/permissions';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { EvalAgentExecutionService } from '../agent-execution.service';
 import type { EvalExecutionService } from '../execution.service';
 import type { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
-import type { EvalThreadRestoreService } from '../thread-restore.service';
+import { EvalThreadRestoreService } from '../thread-restore.service';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { InstanceAiEvalController } from '../eval.controller';
@@ -288,6 +287,11 @@ describe('InstanceAiEvalController', () => {
 		} as InstanceAiEvalRestoreThreadRequest;
 
 		beforeEach(() => {
+			// The orchestration lives in the service; run it for real over the mocked
+			// per-step methods, so these tests keep covering the full restore.
+			evalThreadRestore.restoreSeedArtifacts.mockImplementation(
+				EvalThreadRestoreService.prototype.restoreSeedArtifacts.bind(evalThreadRestore),
+			);
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
 			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
 			evalThreadRestore.restoreFolders.mockResolvedValue(new Map());

@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 

@@ -1,0 +1,89 @@
+operationId: getPromotionChangeDetails
+tags:
+  - Promotions
+summary: 'Beta: Read the content of changed resources'
+description: |-
+  **Beta** — breaking changes may still occur without major version bump.
+
+  Returns the content before and after the change for up to 50 resources of a change preview. Send the `commitSha` and the resource `key` values from the preview. The branch side is read at that commit. The instance side is read now, so a `revision` that differs from the preview means the resource changed after the preview. `missingKeys` lists requested resources that neither side holds anymore. Credential content holds expressions only. Variable values are left out, and `valueHidden` is true, unless the API key and the user have the variable:list scope. The key needs the same scope as the preview for that direction.
+
+  Requires one of these API key scopes: `promotions:promote`, `promotions:apply`.
+x-required-scope: promotions:promote,promotions:apply
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - apply
+        - promote
+    required: true
+    description: 'The direction of the promotion: apply or promote.'
+    name: direction
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          commitSha:
+            type: string
+            nullable: true
+            pattern: ^[0-9a-f]{40}([0-9a-f]{24})?$
+            description: The `commitSha` of the preview. `null` when the preview had none.
+          keys:
+            type: array
+            items:
+              type: string
+              minLength: 1
+            minItems: 1
+            maxItems: 50
+            description: The `key` of each resource to read, from the preview.
+        required:
+          - commitSha
+          - keys
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            details:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/promotionResourceDetail.generated.yml
+            missingKeys:
+              type: array
+              items:
+                type: string
+          required:
+            - details
+            - missingKeys
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

@@ -1,0 +1,88 @@
+{
+	"name": "Customer.io Requests (EU)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "get",
+				"campaignId": 15
+			},
+			"id": "node-0",
+			"name": "Campaign Get",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"id": "cus_8812"
+			},
+			"id": "node-1",
+			"name": "Customer Delete",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Campaign Get": [
+			{
+				"json": {
+					"id": 15,
+					"name": "Welcome"
+				}
+			}
+		],
+		"Customer Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Campaign Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

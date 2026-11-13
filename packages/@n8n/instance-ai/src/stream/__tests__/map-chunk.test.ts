@@ -86,6 +86,34 @@ describe('mapAgentChunkToEvent', () => {
 		expect(map({ type: 'tool-call-delta', argumentsDelta: '{"x"' })).toBeNull();
 	});
 
+	it('reports the tool that a tool catalog call_tool call runs', () => {
+		expect(
+			map({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				toolName: 'call_tool',
+				input: { tool: 'data_tables', arguments: { action: 'list' } },
+			}),
+		).toEqual({
+			type: 'tool-call',
+			runId,
+			agentId,
+			payload: { toolCallId: 'tc-1', toolName: 'data_tables', args: { action: 'list' } },
+		});
+
+		const confirmation = map({
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-2',
+			toolName: 'call_tool',
+			input: { tool: 'workflows', arguments: { action: 'delete' } },
+			suspendPayload: { message: 'Delete it?' },
+		});
+		expect(confirmation).toMatchObject({
+			type: 'confirmation-request',
+			payload: { toolName: 'workflows', args: { action: 'delete' } },
+		});
+	});
+
 	it('maps native text deltas', () => {
 		expect(map({ type: 'text-delta', delta: 'hello' })).toEqual({
 			type: 'text-delta',
@@ -644,6 +672,36 @@ describe('mapAgentChunkToEvent', () => {
 				inputType: 'app-blueprint',
 				appBlueprint,
 			},
+		});
+	});
+
+	it('maps the field errors of a reopened app blueprint', () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project',
+			description: 'Plan weekly tasks.',
+			theme: 'both',
+		};
+
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'apps',
+				input: { action: 'create', blueprint: appBlueprint },
+				suspendPayload: {
+					requestId: 'request-2',
+					severity: 'info',
+					message: 'Review the app blueprint',
+					inputType: 'app-blueprint',
+					appBlueprint,
+					appBlueprintErrors: { namespace: 'taken' },
+				},
+			}),
+		).toMatchObject({
+			type: 'confirmation-request',
+			payload: { appBlueprint, appBlueprintErrors: { namespace: 'taken' } },
 		});
 	});
 

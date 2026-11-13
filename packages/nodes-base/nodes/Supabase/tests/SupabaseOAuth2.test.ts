@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { getApiDefinition, supabaseApiRequest } from '../GenericFunctions';
 import { Supabase } from '../Supabase.node';
@@ -77,13 +78,13 @@ describe('Supabase OAuth2', () => {
 		]);
 		dataRequest.mockResolvedValue([{ id: 1 }]);
 
-		const result = await supabaseApiRequest.call(context, 'GET', '/users');
+		const result = await supabaseApiRequest.call(context, 'GET', requestPath`/users`);
 
 		expect(result).toEqual([{ id: 1 }]);
 		expect(managementRequest).toHaveBeenCalledTimes(1);
 		expect(dataRequest).toHaveBeenCalledWith(
 			expect.objectContaining({
-				url: 'https://projectone.supabase.co/rest/v1/users',
+				url: requestUrl`https://projectone.supabase.co/rest/v1/users`,
 				headers: expect.objectContaining({
 					apikey: 'managed-key',
 					Authorization: 'Bearer managed-key',
@@ -101,7 +102,7 @@ describe('Supabase OAuth2', () => {
 			.mockResolvedValueOnce({ api_key: 'created-key' });
 		dataRequest.mockResolvedValue([]);
 
-		await supabaseApiRequest.call(context, 'GET', '/users');
+		await supabaseApiRequest.call(context, 'GET', requestPath`/users`);
 
 		expect(managementRequest).toHaveBeenNthCalledWith(2, 'supabaseOAuth2Api', {
 			method: 'POST',
@@ -128,8 +129,8 @@ describe('Supabase OAuth2', () => {
 		dataRequest.mockResolvedValue([]);
 
 		await Promise.all([
-			supabaseApiRequest.call(context, 'GET', '/users'),
-			supabaseApiRequest.call(context, 'GET', '/teams'),
+			supabaseApiRequest.call(context, 'GET', requestPath`/users`),
+			supabaseApiRequest.call(context, 'GET', requestPath`/teams`),
 		]);
 
 		expect(managementRequest).toHaveBeenCalledTimes(1);
@@ -153,9 +154,9 @@ describe('Supabase OAuth2', () => {
 		otherProject.dataRequest.mockResolvedValue([]);
 		otherCredential.dataRequest.mockResolvedValue([]);
 
-		await supabaseApiRequest.call(first.context, 'GET', '/users');
-		await supabaseApiRequest.call(otherProject.context, 'GET', '/users');
-		await supabaseApiRequest.call(otherCredential.context, 'GET', '/users');
+		await supabaseApiRequest.call(first.context, 'GET', requestPath`/users`);
+		await supabaseApiRequest.call(otherProject.context, 'GET', requestPath`/users`);
+		await supabaseApiRequest.call(otherCredential.context, 'GET', requestPath`/users`);
 
 		expect(first.managementRequest).toHaveBeenCalledTimes(1);
 		expect(otherProject.managementRequest).toHaveBeenCalledTimes(1);
@@ -175,7 +176,7 @@ describe('Supabase OAuth2', () => {
 		managementRequest.mockResolvedValue([managedKey('managed-key')]);
 		dataRequest.mockResolvedValue([]);
 
-		await supabaseApiRequest.call(context, 'GET', '/users', {}, {}, undefined, {}, 1);
+		await supabaseApiRequest.call(context, 'GET', requestPath`/users`, {}, {}, undefined, {}, 1);
 
 		expect(managementRequest).toHaveBeenCalledWith(
 			'supabaseOAuth2Api',
@@ -184,7 +185,7 @@ describe('Supabase OAuth2', () => {
 			}),
 		);
 		expect(dataRequest).toHaveBeenCalledWith(
-			expect.objectContaining({ url: 'https://secondproject.supabase.co/rest/v1/users' }),
+			expect.objectContaining({ url: requestUrl`https://secondproject.supabase.co/rest/v1/users` }),
 		);
 	});
 
@@ -229,7 +230,7 @@ describe('Supabase OAuth2', () => {
 				return [{ id: 1 }];
 			});
 
-		const result = await supabaseApiRequest.call(context, 'GET', '/users');
+		const result = await supabaseApiRequest.call(context, 'GET', requestPath`/users`);
 
 		expect(result).toEqual([{ id: 1 }]);
 		expect(managementRequest).toHaveBeenCalledTimes(2);
@@ -242,7 +243,7 @@ describe('Supabase OAuth2', () => {
 		managementRequest.mockResolvedValue([managedKey('managed-key')]);
 		dataRequest.mockRejectedValue({ message: 'Forbidden', response: { status: 403 } });
 
-		await expect(supabaseApiRequest.call(context, 'GET', '/users')).rejects.toThrow();
+		await expect(supabaseApiRequest.call(context, 'GET', requestPath`/users`)).rejects.toThrow();
 
 		expect(managementRequest).toHaveBeenCalledTimes(1);
 		expect(dataRequest).toHaveBeenCalledTimes(1);
@@ -255,8 +256,8 @@ describe('Supabase OAuth2', () => {
 			.mockResolvedValueOnce([managedKey('recovered-key')]);
 		dataRequest.mockResolvedValue([]);
 
-		await expect(supabaseApiRequest.call(context, 'GET', '/users')).rejects.toThrow();
-		await supabaseApiRequest.call(context, 'GET', '/users');
+		await expect(supabaseApiRequest.call(context, 'GET', requestPath`/users`)).rejects.toThrow();
+		await supabaseApiRequest.call(context, 'GET', requestPath`/users`);
 
 		expect(managementRequest).toHaveBeenCalledTimes(2);
 		expect(dataRequest).toHaveBeenCalledTimes(1);
@@ -269,7 +270,7 @@ describe('Supabase OAuth2', () => {
 	])('should reject project reference %j before making requests', async (projectRef, message) => {
 		const { context, managementRequest, dataRequest } = createOAuthContext({ projectRef });
 
-		await expect(supabaseApiRequest.call(context, 'GET', '/users')).rejects.toEqual(
+		await expect(supabaseApiRequest.call(context, 'GET', requestPath`/users`)).rejects.toEqual(
 			expect.objectContaining({ message }),
 		);
 		expect(managementRequest).not.toHaveBeenCalled();

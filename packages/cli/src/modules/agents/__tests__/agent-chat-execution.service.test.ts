@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';

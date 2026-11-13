@@ -11,7 +11,7 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import type { OAuthResourceGrant } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { authorizeAgainstGrant } from '@/modules/inbound-auth-core/grant-authorization';

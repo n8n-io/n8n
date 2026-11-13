@@ -6,7 +6,7 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -71,7 +71,7 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 		}) as string,
 	);
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${base}/tables`);
+	const response = await apiRequest.call(this, 'GET', requestPath`meta/bases/${base}/tables`);
 
 	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
 		return table.id === tableId;

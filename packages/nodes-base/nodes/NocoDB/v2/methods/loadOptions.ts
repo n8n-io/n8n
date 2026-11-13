@@ -1,5 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { parseToApiNodeOperationError } from '../helpers';
 import { ColumnsFetcher } from '../helpers/columns-fetcher';
@@ -38,7 +38,7 @@ export async function getFields(this: ILoadOptionsFunctions) {
 	if (tableId) {
 		try {
 			const requestMethod = 'GET';
-			const endpoint = `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
+			const endpoint = requestPath`/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 			const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 
 			return responseData.fields.map((i: IDataObject) => {

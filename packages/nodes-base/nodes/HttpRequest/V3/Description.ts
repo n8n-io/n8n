@@ -1,34 +1,45 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import {
+	READ_ONLY_ANNOTATIONS,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type NodeOperationAnnotations,
+} from 'n8n-workflow';
 
 import { optimizeResponseProperties } from '../shared/optimizeResponse';
 
-const webdavMethodOptions: INodePropertyOptions[] = [
-	'COPY',
-	'MKCOL',
-	'MOVE',
-	'PROPFIND',
-	'REPORT',
-].flatMap((method) => [
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			show: {
-				'options.webdavMethods': [true],
+const webdavMethodAnnotations: Record<string, NodeOperationAnnotations> = {
+	COPY: { effect: 'write', destructive: true, idempotent: false },
+	MKCOL: { effect: 'write', destructive: false, idempotent: false },
+	MOVE: { effect: 'write', destructive: true, idempotent: false },
+	PROPFIND: READ_ONLY_ANNOTATIONS,
+	REPORT: READ_ONLY_ANNOTATIONS,
+};
+
+const webdavMethodOptions: INodePropertyOptions[] = Object.entries(webdavMethodAnnotations).flatMap(
+	([method, annotations]) => [
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				show: {
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-	{
-		name: method,
-		value: method,
-		displayOptions: {
-			hide: {
-				method: [{ _cnd: { not: method } }],
-				'options.webdavMethods': [true],
+		{
+			name: method,
+			value: method,
+			annotations,
+			displayOptions: {
+				hide: {
+					method: [{ _cnd: { not: method } }],
+					'options.webdavMethods': [true],
+				},
 			},
 		},
-	},
-]);
+	],
+);
 
 export const mainProperties: INodeProperties[] = [
 	{
@@ -45,22 +56,27 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'DELETE',
 				value: 'DELETE',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'GET',
 				value: 'GET',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'HEAD',
 				value: 'HEAD',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'OPTIONS',
 				value: 'OPTIONS',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'PATCH',
 				value: 'PATCH',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'POST',
@@ -69,6 +85,7 @@ export const mainProperties: INodeProperties[] = [
 			{
 				name: 'PUT',
 				value: 'PUT',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			...webdavMethodOptions,
 		],
@@ -83,6 +100,10 @@ export const mainProperties: INodeProperties[] = [
 		placeholder: 'http://example.com/index.html',
 		description: 'The URL to make the request to',
 		required: true,
+		builderHint: {
+			propertyHint:
+				'The node outputs one item for each response, or one item for each page when it paginates. It splits the body into one item for each element only when the body is a top-level JSON array. Most APIs wrap their list in an object (e.g. `{ "records": [...] }`, `{ "data": [...], "has_more": true }`), so each item is a whole response or page, not a record. An empty page is usually an empty wrapped list (e.g. `{ "records": [] }`), not `[]`. Before a step that works on records (a filter, a per-record request, a write, or an Aggregate of records), add a Split Out node on the list field. When you do not know the response shape, do not assume a bare array: assume a wrapped list, use the resource name as the field (e.g. `records` for `/records`), and tell the user this assumption.',
+		},
 	},
 	{
 		displayName: 'Authentication',

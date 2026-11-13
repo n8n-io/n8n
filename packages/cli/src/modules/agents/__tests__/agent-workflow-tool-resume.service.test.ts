@@ -9,7 +9,7 @@ import { createRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';

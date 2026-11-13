@@ -1,6 +1,6 @@
 import type { BreakingChangeWorkflowOwner, MigrationOwnerCandidate } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
-import { UserRepository, WorkflowRepository, type User } from '@n8n/db';
+import { accountSummary, UserRepository, WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -31,28 +31,31 @@ export class MigrationOwnerAssignmentService {
 			throw new BadRequestError('The user cannot sign in, so they cannot own the workflow');
 		}
 
-		// An owner has to be able to open the workflow to fix it.
-		const allowedUserIds =
-			await this.workflowSharingService.getUserIdsWithAccessToWorkflow(workflowId);
+		// An owner has to be able to open and edit the workflow to fix it.
+		const allowedUserIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(
+			workflowId,
+			'workflow:update',
+		);
 		if (!allowedUserIds.includes(userId)) {
-			throw new BadRequestError('The user has no access to the workflow');
+			throw new BadRequestError('The user cannot edit the workflow');
 		}
 
 		await this.ownerRepository.assign(workflowId, userId, assignedBy.id, {});
 		return toWorkflowOwner(user, 'assigned');
 	}
 
-	/** The users who can be the owner: those who can open the workflow, as `assign` checks. */
+	/** The users who can be the owner: those who can edit the workflow, as `assign` checks. */
 	async candidates(workflowId: string): Promise<MigrationOwnerCandidate[]> {
 		await this.ensureWorkflowExists(workflowId);
-		const userIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(workflowId);
+		const userIds = await this.workflowSharingService.getUserIdsWithAccessToWorkflow(
+			workflowId,
+			'workflow:update',
+		);
 		const users = await this.userRepository.findManyByIds(userIds, {
 			includeRole: true,
 			includeAuthIdentities: true,
 		});
-		return users
-			.filter(canOwnFindings)
-			.map(({ id, firstName, lastName, email }) => ({ id, firstName, lastName, email }));
+		return users.filter(canOwnFindings).map(accountSummary);
 	}
 
 	/**

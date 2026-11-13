@@ -89,6 +89,7 @@ const selection = (overrides: Partial<SelectivePushOptions> = {}): SelectivePush
 	projectId: 'p1',
 	workflowIds: [],
 	deletedWorkflowIds: [],
+	folderIds: [],
 	...overrides,
 });
 
@@ -154,10 +155,8 @@ describe('WorkingCopyUpdater', () => {
 	});
 
 	describe('validateSelection', () => {
-		it('rejects an empty selection', () => {
-			expect(() => updater.validateSelection(selection())).toThrow(
-				'At least one workflow must be selected or deleted',
-			);
+		it('accepts an empty selection, which promotes only the project', () => {
+			expect(() => updater.validateSelection(selection())).not.toThrow();
 		});
 
 		it('rejects duplicate workflowIds', () => {

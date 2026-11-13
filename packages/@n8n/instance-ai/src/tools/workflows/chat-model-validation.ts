@@ -92,11 +92,11 @@ export function suggestReplacementModels(
 
 function formatReplacementGuidance(suggestions: string[]): string {
 	if (suggestions.length === 0) {
-		return 'Use get_node_parameter_options on the chat-model node with its connected credential to list allowed models.';
+		return 'Run get_node_parameter_options through call_tool on the chat-model node with its connected credential to list allowed models.';
 	}
 	return (
 		`Prefer one of: ${suggestions.map((id) => `"${id}"`).join(', ')}. ` +
-		'Confirm with get_node_parameter_options against the connected credential before repairing.'
+		'Confirm by running get_node_parameter_options through call_tool against the connected credential before repairing.'
 	);
 }
 
@@ -275,7 +275,7 @@ export async function computeUnavailableLocatorIssues(
 		const resourceType = isModel ? 'allowed models' : 'allowed options';
 		issues[entry.name] = [
 			`"${sanitizeForGuidance(entry.currentValue)}" isn't available with the connected credential "${sanitizeForGuidance(credential.name)}". ` +
-				`Pick a value the credential offers instead — use get_node_parameter_options to list ${resourceType}.`,
+				`Pick a value the credential offers instead — run get_node_parameter_options through call_tool to list ${resourceType}.`,
 		];
 	}
 	return issues;

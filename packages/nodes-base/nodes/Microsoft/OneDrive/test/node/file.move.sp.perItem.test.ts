@@ -14,20 +14,20 @@ describe('Test MicrosoftOneDrive, Service Principal file:move per-item target', 
 	// 1) one drive resolution per DISTINCT user, replying distinct drive ids
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/alice%40contoso.com/drive')
+		.get('/users/alice@contoso.com/drive')
 		.query({ $select: 'id' })
 		.reply(200, { id: 'b!driveA' });
 
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/bob%40contoso.com/drive')
+		.get('/users/bob@contoso.com/drive')
 		.query({ $select: 'id' })
 		.reply(200, { id: 'b!driveB' });
 
 	// 2) each PATCH pins the per-user driveId injected into parentReference
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.patch('/users/alice%40contoso.com/drive/items/FILEA1', {
+		.patch('/users/alice@contoso.com/drive/items/FILEA1', {
 			parentReference: { id: 'DESTFOLDER', driveId: 'b!driveA' },
 		})
 		.reply(200, {
@@ -38,7 +38,7 @@ describe('Test MicrosoftOneDrive, Service Principal file:move per-item target', 
 
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.patch('/users/bob%40contoso.com/drive/items/FILEB', {
+		.patch('/users/bob@contoso.com/drive/items/FILEB', {
 			parentReference: { id: 'DESTFOLDER', driveId: 'b!driveB' },
 		})
 		.reply(200, {
@@ -49,7 +49,7 @@ describe('Test MicrosoftOneDrive, Service Principal file:move per-item target', 
 
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.patch('/users/alice%40contoso.com/drive/items/FILEA2', {
+		.patch('/users/alice@contoso.com/drive/items/FILEA2', {
 			parentReference: { id: 'DESTFOLDER', driveId: 'b!driveA' },
 		})
 		.reply(200, {

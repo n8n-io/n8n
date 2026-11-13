@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { n8nIdSchema } from '../../schemas/id.schema';
+
 /** Prefix for timestamped branches created when createBranchOnPromotion is enabled. */
 export const PROMOTION_BRANCH_PREFIX = 'n8n-promotion/';
 
@@ -22,3 +24,10 @@ export const promotionCommitMessageSchema = z
 		'Message for the promotion commit. If you omit it, the commit uses a generated message.',
 	)
 	.optional();
+
+/** A selection is a set, so a repeated id is a malformed request. Omitted means none. */
+export const promotionSelectedIdsSchema = (field: string) =>
+	z
+		.array(n8nIdSchema)
+		.refine((ids) => new Set(ids).size === ids.length, { message: `${field} contains duplicates` })
+		.optional();

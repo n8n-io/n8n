@@ -5,6 +5,7 @@ import { DataSource, In } from '@n8n/typeorm';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentMemoryScopeRepository } from './agent-memory-scope.repository';
 
 class AgentMemoryEntryCandidateTable extends BaseRepository<AgentMemoryEntryCandidateEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -30,7 +31,11 @@ export type CandidateSourceMessage = Pick<AgentMessageEntity, 'author' | 'origin
 export class AgentMemoryEntryCandidateRepository {
 	private readonly table: AgentMemoryEntryCandidateTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
+	) {
 		this.table = new AgentMemoryEntryCandidateTable(dataSource, transactionRunner);
 	}
 
@@ -38,31 +43,37 @@ export class AgentMemoryEntryCandidateRepository {
 		input: EnqueueCandidateInput,
 		ctx: OperationContext,
 	): Promise<AgentMemoryEntryCandidateEntity> {
-		const manager = this.table.managerFor(ctx);
-		const existing = await manager.findOneBy(AgentMemoryEntryCandidateEntity, {
-			agentId: input.agentId,
-			runId: input.runId,
-			toolCallId: input.toolCallId,
-		});
-		if (existing) return existing;
+		return await this.table.runInTransaction(ctx, async (_manager, transactionCtx) => {
+			const manager = this.table.managerFor(transactionCtx);
+			const active = await this.memoryScopeRepository.lockActiveScope(
+				input.resourceId,
+				transactionCtx,
+			);
+			const existing = await manager.findOneBy(AgentMemoryEntryCandidateEntity, {
+				agentId: input.agentId,
+				runId: input.runId,
+				toolCallId: input.toolCallId,
+			});
+			if (existing) return existing;
 
-		const candidate = manager.create(AgentMemoryEntryCandidateEntity, {
-			...input,
-			status: 'pending',
-			attemptCount: 0,
-		});
-		await manager
-			.createQueryBuilder()
-			.insert()
-			.into(AgentMemoryEntryCandidateEntity)
-			.values(candidate)
-			.orIgnore()
-			.execute();
+			const candidate = manager.create(AgentMemoryEntryCandidateEntity, {
+				...input,
+				status: active ? 'pending' : 'deleted',
+				attemptCount: 0,
+			});
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(AgentMemoryEntryCandidateEntity)
+				.values(candidate)
+				.orIgnore()
+				.execute();
 
-		return await manager.findOneByOrFail(AgentMemoryEntryCandidateEntity, {
-			agentId: input.agentId,
-			runId: input.runId,
-			toolCallId: input.toolCallId,
+			return await manager.findOneByOrFail(AgentMemoryEntryCandidateEntity, {
+				agentId: input.agentId,
+				runId: input.runId,
+				toolCallId: input.toolCallId,
+			});
 		});
 	}
 

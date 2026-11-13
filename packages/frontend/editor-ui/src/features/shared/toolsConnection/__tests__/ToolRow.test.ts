@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { defineComponent } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -162,6 +162,49 @@ describe('ToolRow', () => {
 			await rerender({ item: { ...skill, attached: true } });
 
 			expect(getByTestId('tools-connection-row-main')).not.toHaveFocus();
+		});
+
+		describe('long descriptions', () => {
+			const description = 'Write every answer in a calm tone. '.repeat(20).trim();
+			const tooltipStub = {
+				props: ['content', 'disabled'],
+				template:
+					'<span><slot /><span v-if="!disabled" data-test-id="stub-tooltip-content"><slot name="content" /></span></span>',
+			};
+
+			function renderLong(heights: { scrollHeight: number; clientHeight: number }) {
+				vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(
+					heights.scrollHeight,
+				);
+				vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(
+					heights.clientHeight,
+				);
+				return renderRow({
+					props: { item: { ...skill, description } },
+					pinia: createTestingPinia(),
+					global: { stubs: { N8nTooltip: tooltipStub } },
+				});
+			}
+
+			afterEach(() => vi.restoreAllMocks());
+
+			it('cuts the description and shows the full text on hover', async () => {
+				const { getByTestId, findByTestId } = renderLong({ scrollHeight: 80, clientHeight: 32 });
+
+				const text = getByTestId('tools-connection-row-description');
+				await waitFor(() => expect(text).toHaveAttribute('data-cut', 'true'));
+				await userEvent.hover(text);
+
+				expect(await findByTestId('stub-tooltip-content')).toHaveTextContent(description);
+			});
+
+			it('shows no tooltip for a description that fits', async () => {
+				const { getByTestId, queryByTestId } = renderLong({ scrollHeight: 32, clientHeight: 32 });
+
+				await userEvent.hover(getByTestId('tools-connection-row-description'));
+
+				expect(queryByTestId('stub-tooltip-content')).toBeNull();
+			});
 		});
 
 		it('falls back to the shared labels', () => {

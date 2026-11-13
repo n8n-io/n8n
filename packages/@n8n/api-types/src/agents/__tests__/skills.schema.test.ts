@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
 	CreateSkillDto,
 	ListSkillsQueryDto,
@@ -9,6 +10,17 @@ import {
 } from '../skills.schema';
 
 describe('ListSkillsQueryDto', () => {
+	it('accepts more collapsed sources than the maximum page size', () => {
+		const ids = Array.from({ length: 101 }, () => randomUUID());
+		expect(
+			ListSkillsQueryDto.parse({ collapsedSourceIds: ids.join(',') }).collapsedSourceIds,
+		).toEqual(ids);
+	});
+
+	it.each(['-1', '1.5', 'abc'])('rejects invalid source page %s', (page) => {
+		expect(ListSkillsQueryDto.safeParse({ page }).success).toBe(false);
+	});
+
 	it('leaves take unset when the client sends none, so the whole list comes back', () => {
 		expect(ListSkillsQueryDto.parse({})).toEqual({ skip: 0, take: undefined });
 	});

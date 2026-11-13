@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { stravaApiRequest } from './GenericFunctions';
 
@@ -125,7 +125,7 @@ export class StravaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/push_subscriptions';
+				const endpoint = requestPath`/push_subscriptions`;
 
 				const webhooks = await stravaApiRequest.call(this, 'GET', endpoint, {});
 
@@ -142,7 +142,7 @@ export class StravaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const endpoint = '/push_subscriptions';
+				const endpoint = requestPath`/push_subscriptions`;
 
 				const body = {
 					callback_url: webhookUrl,
@@ -164,7 +164,7 @@ export class StravaTrigger implements INodeType {
 								const webhooks = await stravaApiRequest.call(
 									this,
 									'GET',
-									'/push_subscriptions',
+									requestPath`/push_subscriptions`,
 									{},
 								);
 
@@ -173,7 +173,7 @@ export class StravaTrigger implements INodeType {
 									await stravaApiRequest.call(
 										this,
 										'DELETE',
-										`/push_subscriptions/${webhooks[0].id}`,
+										requestPath`/push_subscriptions/${webhooks[0].id}`,
 									);
 
 									// now there is room create a subscription with the n8n data
@@ -202,7 +202,7 @@ export class StravaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/push_subscriptions/${webhookData.webhookId}`;
+					const endpoint = requestPath`/push_subscriptions/${webhookData.webhookId}`;
 
 					try {
 						await stravaApiRequest.call(this, 'DELETE', endpoint);
@@ -272,9 +272,9 @@ export class StravaTrigger implements INodeType {
 		}
 
 		if (resolveData && body.aspect_type !== 'delete') {
-			let endpoint = `/athletes/${body.object_id}/stats`;
+			let endpoint = requestPath`/athletes/${body.object_id}/stats`;
 			if (body.object_type === 'activity') {
-				endpoint = `/activities/${body.object_id}`;
+				endpoint = requestPath`/activities/${body.object_id}`;
 			}
 			body.object_data = await stravaApiRequest.call(this, 'GET', endpoint);
 		}

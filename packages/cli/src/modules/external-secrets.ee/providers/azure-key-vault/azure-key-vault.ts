@@ -3,7 +3,8 @@ import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { AzureKeyVaultContext, AzureKeyVaultEnvironment } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';

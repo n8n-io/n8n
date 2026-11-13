@@ -6,7 +6,13 @@ import { z } from 'zod';
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
 import { aiPreferenceScopeSchema } from './ai-preference.schema';
 import { assistantArtifactTypeSchema } from './assistant-thread-tabs.schema';
-import { appNameSchema, appNamespaceSchema, appVisibilitySchema } from './app.schema';
+import {
+	appNameSchema,
+	appNamespaceSchema,
+	appPreviewElementSchema,
+	appVisibilitySchema,
+} from './app.schema';
+import { MAX_APP_BINDINGS } from './app-binding.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -843,12 +849,29 @@ export const confirmationInputTypeSchema = z.enum([
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
+const appBlueprintBindingBaseSchema = z.object({
+	kind: z.enum(['workflow', 'dataTable', 'agent']),
+	name: z.string().trim().min(1).max(128),
+	description: z.string().trim().min(1).max(500),
+});
+
+const appBlueprintBindingSchema = z.discriminatedUnion('status', [
+	appBlueprintBindingBaseSchema
+		.extend({
+			status: z.literal('existing'),
+			resourceId: z.string().min(1).max(36),
+		})
+		.strict(),
+	appBlueprintBindingBaseSchema.extend({ status: z.literal('new') }).strict(),
+]);
+
 export const appBlueprintSchema = z.object({
 	name: appNameSchema,
 	namespace: appNamespaceSchema,
 	visibility: appVisibilitySchema,
 	description: z.string().trim().min(1).max(500),
 	theme: z.enum(['light', 'dark', 'both']),
+	bindings: z.array(appBlueprintBindingSchema).max(MAX_APP_BINDINGS).optional(),
 	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
 });
 export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
@@ -858,6 +881,12 @@ export const appBlueprintResumeSchema = z.object({
 	blueprint: appBlueprintSchema,
 });
 export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
+
+/** Field problems that reopen the blueprint card instead of creating the app. */
+export const appBlueprintErrorsSchema = z.object({
+	namespace: z.enum(['taken']).optional(),
+});
+export type AppBlueprintErrors = z.infer<typeof appBlueprintErrorsSchema>;
 
 export const instanceAiTargetApprovalSchema = z.object({
 	toolName: z.string(),
@@ -995,6 +1024,9 @@ export const confirmationRequestPayloadSchema = z.object({
 	appBlueprint: appBlueprintSchema
 		.optional()
 		.describe('Proposed app for the editable blueprint card (inputType=app-blueprint)'),
+	appBlueprintErrors: appBlueprintErrorsSchema
+		.optional()
+		.describe('Field errors from a rejected blueprint, shown on the reopened card'),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -1550,6 +1582,7 @@ export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingApp
 export const instanceAiAppTargetSchema = z.object({
 	appId: z.string().uuid(),
 	projectId: z.string().min(1),
+	name: z.string().max(255).optional(),
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
@@ -1591,11 +1624,18 @@ export const instanceAiNodesAttachmentSchema = z.object({
 });
 export type InstanceAiNodesAttachment = z.infer<typeof instanceAiNodesAttachmentSchema>;
 
+export const instanceAiElementAttachmentSchema = appPreviewElementSchema.extend({
+	type: z.literal('element'),
+	appId: z.string().min(1).max(64),
+});
+export type InstanceAiElementAttachment = z.infer<typeof instanceAiElementAttachmentSchema>;
+
 /** A resource reference attachable to a message (as opposed to a binary file). */
 export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiWorkflowAttachmentSchema,
 	instanceAiAgentAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 ]);
 export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
 
@@ -1659,10 +1699,39 @@ export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
 	typeof instanceAiSetupPanelExecuteHandoffContextSchema
 >;
 
+/** What an automated migration left for the Assistant. Display text, so every field is length-capped. */
+export const instanceAiAutomatedMigrationOutcomeSchema = z.discriminatedUnion('outcome', [
+	z.object({
+		outcome: z.literal('refused'),
+		message: z.string().min(1).max(1000),
+		nodeName: z.string().min(1).max(255).optional(),
+	}),
+	z.object({
+		outcome: z.literal('partial'),
+		unmapped: z.array(z.string().min(1).max(500)).max(50),
+		notes: z.array(z.string().min(1).max(1000)).max(50),
+	}),
+]);
+export type InstanceAiAutomatedMigrationOutcome = z.infer<
+	typeof instanceAiAutomatedMigrationOutcomeSchema
+>;
+
+/** Opens the Assistant on one migration report finding. The client sends ids only; the server reads the finding. */
+export const instanceAiMigrationReportHandoffContextSchema = z.object({
+	source: z.literal('migration-report'),
+	ruleId: z.string().min(1).max(128),
+	workflowId: z.string().min(1).max(64),
+	automatedMigration: instanceAiAutomatedMigrationOutcomeSchema.optional(),
+});
+export type InstanceAiMigrationReportHandoffContext = z.infer<
+	typeof instanceAiMigrationReportHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiSetupPanelExecuteHandoffContextSchema,
+	instanceAiMigrationReportHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1692,14 +1761,6 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
-/**
- * Build style for a run. `progressive` makes the agent build a minimal working
- * slice first, gate increments on real executions, and extend on actual
- * execution data. `default` uses the standard building policy.
- */
-export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
-export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
-
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1710,6 +1771,9 @@ export const instanceAiPromptConfigurationSchema = z.object({
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
+
+// Shared by the send-message request and the eval overrides of an Assistant agent thread.
+const instanceAiPromptVersionSchema = z.string().trim().min(1).max(128);
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
@@ -1726,10 +1790,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
-	/** Explicit override for evals. Omit to use the backend experiment assignment. */
-	mode: instanceAiBuildModeSchema.optional(),
-	/** Pin a published prompt profile. Takes precedence over mode. */
-	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
@@ -1753,8 +1815,10 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `credential_edit` — credential setup help from the credential edit modal
  * - `credentials_list` — credential setup help from the credentials list
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
+ * - `app_builder_page` — Instance AI hand-off from the app builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
+ * - `migration_report`: fix one finding of the major-version migration report
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1770,12 +1834,14 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
-	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	'workflow_error_nudge',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
+	'app_builder_page',
 	'agent_preview',
 	'self_healing_result',
+	'migration_report',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1814,6 +1880,8 @@ export type InstanceAiThreadSourcePersisted =
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
  *   change request, dropped into the composer
+ * - `handoff_migration_report`: fix one migration report finding, from the
+ *   finding row or after an automated migration left work behind
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1836,6 +1904,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_fix_with_ai',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
+	'handoff_migration_report',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',
@@ -1905,8 +1974,8 @@ export class InstanceAiEventsQuery extends Z.class({
 /** Ceilings for a single thread-history read: `limit` bounds the rows (and the
  *  tree hydration hanging off them) one request can pull, `page` bounds the
  *  offset scan behind it. Both sit above any real client — the UI's largest page
- *  is 100 messages and it never pages past the first — so they only ever bite a
- *  hand-crafted request. */
+ *  is 100 messages, and it loads older pages with `cursor`, not `page` — so they
+ *  only ever bite a hand-crafted request. */
 export const INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT = 50;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT = 200;
 export const INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE = 1000;
@@ -1918,7 +1987,10 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 		.min(1)
 		.max(INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT)
 		.default(INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT),
+	/** Offset paging for `raw` reads. Rich reads page with `cursor`. */
 	page: z.coerce.number().int().nonnegative().max(INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE).default(0),
+	/** `nextCursor` of the previous rich read: returns the messages before it. */
+	cursor: z.string().min(1).max(512).optional(),
 	raw: z.enum(['true', 'false']).optional(),
 }) {}
 
@@ -2215,6 +2287,8 @@ export interface InstanceAiRichMessagesResponse {
 	threadId: string;
 	projectId?: string;
 	messages: InstanceAiMessage[];
+	/** Pass as `cursor` to load the older messages. Absent when the page reaches the start of the thread. */
+	nextCursor?: string;
 	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
 	nextEventId: number;
 	/**
@@ -2629,17 +2703,6 @@ export type InstanceAiVerificationResponse =
 			error?: string;
 	  };
 
-// ---------------------------------------------------------------------------
-// User preferences — per-user, self-service
-// ---------------------------------------------------------------------------
-
-export interface InstanceAiUserPreferencesResponse {
-	credentialId: string | null;
-	credentialType: string | null;
-	credentialName: string | null;
-	modelName: string;
-}
-
 export interface InstanceAiProviderConnection {
 	id: string;
 	name: string;
@@ -2802,9 +2865,6 @@ export const AI_ASSISTANT_AT_MENTIONS_FLAG = '116_at_mentions_enabled';
 export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversation_history';
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
-
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
 
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
@@ -3029,6 +3089,26 @@ export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
 	baseUrl: z.string().url(),
 	/** Credential field the stand-in URL is written into. */
 	urlField: z.string().min(1),
+}) {}
+
+/**
+ * Creates an Assistant agent thread before its first message, so the eval
+ * harness can set up the thread before the first turn.
+ */
+export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	projectId: z.string().min(1),
+	/** Where the thread comes from. The route stores it in the thread metadata for the trace. */
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
+}) {}
+
+/**
+ * The turn overrides of an Assistant agent thread. The request replaces all
+ * overrides of the thread, so an omitted field clears its override.
+ */
+export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

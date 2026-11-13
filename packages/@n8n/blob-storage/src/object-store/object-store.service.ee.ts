@@ -19,7 +19,7 @@ import { streamToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 import { PassThrough, Readable, pipeline } from 'node:stream';
 

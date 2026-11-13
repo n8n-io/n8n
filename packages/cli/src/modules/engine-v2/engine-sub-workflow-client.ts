@@ -1,7 +1,7 @@
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { EngineControlPlaneTransport } from './engine-control-plane-transport';
 import { isResolveSubWorkflowResponse } from './engine-sub-workflow.contract';

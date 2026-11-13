@@ -2,9 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, type User, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ResponseError } from '@n8n/errors';
+import { ResponseError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError } from 'n8n-workflow';
 
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowService } from '@/workflows/workflow.service';

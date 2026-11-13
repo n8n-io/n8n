@@ -1,6 +1,7 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
+import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { execFile } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';

@@ -4,11 +4,18 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, User, withTransaction } from '@n8n/db';
+import {
+	accountFirstName,
+	BaseRepository,
+	TransactionRunner,
+	User,
+	withTransaction,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { UnexpectedError, type IBinaryData } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { EditMessagePayload, HumanMessagePayload } from './chat-hub.types';
@@ -65,7 +72,7 @@ export class ChatHubMessageRepository extends BaseRepository<ChatHubMessage> {
 				content: payload.message,
 				previousMessageId,
 				revisionOfMessageId,
-				name: user.firstName || 'User',
+				name: accountFirstName(user) || 'User',
 				attachments,
 				...model,
 			},

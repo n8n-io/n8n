@@ -14,8 +14,6 @@ export interface PreparedFolder {
 export interface FolderImportContext extends ImportContext {
 	folderConflictPolicy: FolderConflictPolicy;
 	layoutConflictPolicy?: LayoutConflictPolicy;
-	/** The folders a `follow-package` move may touch. Omitted means all. */
-	movableFolderIds?: ReadonlySet<string>;
 }
 
 export type FolderPlannedAction = 'create' | 'skip' | 'update';

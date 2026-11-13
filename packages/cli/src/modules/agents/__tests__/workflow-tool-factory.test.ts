@@ -8,17 +8,16 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import type { WorkflowRunner } from '@/workflow-runner';
-
 import {
-	buildUnavailableWorkflowTool,
 	detectTriggerNode,
-	resolveWorkflowTool,
 	validateCompatibility,
-} from '../tools/workflow-tool-factory';
+} from '@/workflows/callable/callable-workflow-input';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
+
+import { buildUnavailableWorkflowTool, resolveWorkflowTool } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
-import type { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,7 +79,7 @@ function makeWorkflow(
 function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext {
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+	const workflowLoader = mock<CallableWorkflowLoader>();
 
 	workflowLoader.loadWorkflow.mockResolvedValue(foundWorkflow);
 
@@ -192,7 +191,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Missing Workflow' }, context),
 		).rejects.toMatchObject({
-			constructor: WorkflowToolUnavailableError,
+			constructor: CallableWorkflowUnavailableError,
 			reason: 'not_found',
 			message: 'Workflow "Missing Workflow" not found',
 		});
@@ -204,7 +203,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await expect(
 			resolveWorkflowTool({ type: 'workflow', workflow: 'Manual Only' }, context),
 		).rejects.toMatchObject({
-			constructor: WorkflowToolUnavailableError,
+			constructor: CallableWorkflowUnavailableError,
 			reason: 'incompatible',
 		});
 	});

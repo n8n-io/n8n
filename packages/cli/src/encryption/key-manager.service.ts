@@ -49,7 +49,10 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 */
 	private cachedInstanceKeyInfo?: KeyInfo;
 
-	/** Memoized stored legacy CBC row — immutable once seeded, never deleted. */
+	/**
+	 * Memoized legacy read descriptor: the stored CBC row, or the instance key when
+	 * the row does not match it. The row is immutable once seeded, never deleted.
+	 */
 	private cachedStoredLegacyKey?: KeyInfo;
 
 	/** In-process LRU for by-id lookups. See {@link KEY_BY_ID_CACHE_CAPACITY}. */
@@ -208,6 +211,8 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 	 * back to the instance key directly. Old data is plain CBC under the instance
 	 * key, and the seeded legacy key IS the instance key, so both paths yield the
 	 * same result. This keeps reads of old data working while the store is degraded.
+	 * A row seeded under a different instance key is also skipped: writes always
+	 * use the current instance key, so reads must use it too.
 	 */
 	async getLegacyKey(): Promise<KeyInfo> {
 		if (this.cachedStoredLegacyKey) return this.cachedStoredLegacyKey;
@@ -216,12 +221,22 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			const key =
 				await this.deploymentKeyRepository.findDataEncryptionKeyByAlgorithm('aes-256-cbc');
 			if (key) {
-				this.cachedStoredLegacyKey = {
-					id: key.id,
-					value: key.value,
-					algorithm: key.algorithm!,
-					format: 'no-prefix',
-				};
+				if (this.unwrapsToInstanceKey(key.value)) {
+					this.cachedStoredLegacyKey = {
+						id: key.id,
+						value: key.value,
+						algorithm: key.algorithm!,
+						format: 'no-prefix',
+					};
+					return this.cachedStoredLegacyKey;
+				}
+				// The row was seeded under another instance key. Writes use the current
+				// instance key, so reads must use it too. The row is immutable, so remember
+				// the decision and warn once.
+				this.logger.warn(
+					`The encryption key differs from the key this database was set up with (deployment key ${key.id}). Using N8N_ENCRYPTION_KEY to read data. Data encrypted with the previous key stays unreadable.`,
+				);
+				this.cachedStoredLegacyKey = this.instanceKeyLegacyInfo();
 				return this.cachedStoredLegacyKey;
 			}
 			if (!this.cachedInstanceKeyInfo) {
@@ -236,6 +251,14 @@ export class KeyManagerService implements IEncryptionKeyProvider {
 			);
 		}
 		return this.instanceKeyLegacyInfo();
+	}
+
+	private unwrapsToInstanceKey(wrapped: string): boolean {
+		try {
+			return this.cipher.decryptDEKWithInstanceKey(wrapped) === this.instanceSettings.encryptionKey;
+		} catch {
+			return false;
+		}
 	}
 
 	/**

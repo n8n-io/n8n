@@ -4,12 +4,13 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { getAgentTaskCancellation } from './useAgentApi';
+import { type AgentChatChannel, getAgentTaskCancellation } from './useAgentApi';
 
 export function useAgentTaskCancellation(target: {
 	projectId: () => string;
 	agentId: () => string;
 	threadId: () => string | undefined;
+	channel: () => AgentChatChannel;
 	active: () => boolean;
 	planId: () => string | null;
 	requestStop: (planId: string | null) => Promise<void>;
@@ -60,6 +61,7 @@ export function useAgentTaskCancellation(target: {
 				target.projectId(),
 				target.agentId(),
 				threadId,
+				target.channel(),
 			);
 
 			if (!disposed && current === revision && read === readRevision && result !== undefined)
@@ -101,7 +103,7 @@ export function useAgentTaskCancellation(target: {
 	});
 
 	watch(
-		[target.projectId, target.agentId, target.threadId],
+		[target.projectId, target.agentId, target.threadId, target.channel],
 		() => {
 			revision++;
 			state.value = null;

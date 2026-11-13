@@ -81,4 +81,50 @@ describe('tool calls under a former tool name', () => {
 		expect(toolResults.some((chunk) => chunk.isError === true)).toBe(false);
 		expect(chunksOfType(chunks, 'finish').at(-1)?.finishReason).toBe('stop');
 	});
+
+	it('runs a tool from the tool catalog when the model calls it by a former name', async () => {
+		const turns = [
+			makeToolCallTurn('tc-1', 'workflows', { action: 'list', query: 'Target' }),
+			makeTextTurn('Listed the workflows.'),
+		];
+		const prompts: string[] = [];
+		let nextTurn = 0;
+		const model = new MockLanguageModelV3({
+			provider: 'mock',
+			modelId: 'scripted',
+			doStream: async (options) => {
+				prompts.push(JSON.stringify(options.prompt));
+				return turns[nextTurn++];
+			},
+		});
+
+		const inputs: unknown[] = [];
+		const agent = new Agent('legacy-catalog-tool-agent')
+			.model(model)
+			.instructions('Use the tools.')
+			.toolDeferral({ mode: 'tool-catalog' })
+			.deferredTool(
+				new Tool('list_workflows')
+					.description('List workflows')
+					.input(z.object({ query: z.string().optional() }).strict())
+					.legacyActions('workflows', 'list')
+					.handler(async (input) => {
+						inputs.push(input);
+						return { workflows: [{ name: 'Target workflow' }] };
+					}),
+				{ group: 'workflows' },
+			);
+
+		const result = await agent.stream('List my workflows');
+		const chunks = await collectStreamChunks(result.stream);
+
+		expect(inputs).toEqual([{ query: 'Target' }]);
+		const toolResults = chunksOfType(chunks, 'tool-result');
+		// The repaired call runs through the dispatcher. Hosts unwrap it to the real tool name.
+		expect(toolResults.map((chunk) => chunk.toolName)).toEqual(['call_tool']);
+		expect(toolResults.some((chunk) => chunk.isError === true)).toBe(false);
+		// The next model call gets the tool's real result, not an unknown-tool error.
+		expect(prompts[1]).toContain('Target workflow');
+		expect(chunksOfType(chunks, 'finish').at(-1)?.finishReason).toBe('stop');
+	});
 });

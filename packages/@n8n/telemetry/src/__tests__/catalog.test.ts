@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { buildCatalog, formatCatalog } from '../catalog';
 import { defineTelemetryEvents } from '../define';
 import { INSTANCE_AI_TELEMETRY } from '../events/instance-ai';
+import { AGENTS_TELEMETRY } from '../events/agents';
 
 const WORKFLOWS_FIXTURE = defineTelemetryEvents({
 	USER_CLICKED_EXECUTE_WORKFLOW: {
@@ -81,6 +82,21 @@ describe('buildCatalog', () => {
 });
 
 describe('buildCatalog deprecation flag', () => {
+	it('keeps property deprecation in the structured and formatted catalog', () => {
+		const catalog = buildCatalog({
+			AGENTS: {
+				USER_EDITED_AGENT_TOOL: AGENTS_TELEMETRY.USER_EDITED_AGENT_TOOL,
+			},
+		});
+		expect(catalog[0].properties).toContainEqual({
+			name: 'workflow',
+			type: 'string',
+			optional: true,
+			deprecated: true,
+		});
+		expect(formatCatalog(catalog)).toContain('workflow?: string (deprecated)');
+	});
+
 	it('marks entries whose schema carries deprecated metadata', () => {
 		const DEPRECATED_FIXTURE = defineTelemetryEvents({
 			USER_USED_LEGACY_FEATURE: {

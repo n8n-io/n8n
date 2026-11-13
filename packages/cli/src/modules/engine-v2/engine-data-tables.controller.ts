@@ -5,6 +5,7 @@ import { BadRequestError } from '@n8n/errors';
 
 import { dataTableCallRequestSchema } from './engine-data-tables.contract';
 import { EngineDataTablesService } from './engine-data-tables.service';
+import { DATA_TABLES_CALL_REFUSED_STATUS } from './engine-v2.constants';
 
 /**
  * Serves `POST /internal/data-tables/call` for the engine v2 data plane.
@@ -23,8 +24,7 @@ export class EngineDataTablesController {
 		const outcome = await this.dataTablesService.call(parsed.data);
 
 		// A refusal is a complete answer, not a transport failure: the body says
-		// which v1 error the data plane raises. 422 keeps it apart from the 400
-		// of a malformed request, which carries no such body.
-		res.status('error' in outcome ? 422 : 200).json(outcome);
+		// which v1 error the data plane raises.
+		res.status('error' in outcome ? DATA_TABLES_CALL_REFUSED_STATUS : 200).json(outcome);
 	}
 }

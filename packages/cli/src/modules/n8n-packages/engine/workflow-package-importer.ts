@@ -2,9 +2,8 @@ import { LicenseState } from '@n8n/backend-common';
 import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -66,13 +65,18 @@ export class WorkflowPackageImporter {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['folder:create', 'folder:update']);
 		}
 
-		const context = await this.findImportLocation(
+		const importLocation = await this.findImportLocation(
 			request.user,
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
 			packageImportScopes(manifest),
 		);
+		const context: ImportContext = {
+			...importLocation,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
+		};
 
 		const workflows = await this.packageParser.getWorkflows(reader);
 		const agents = manifest.agents?.length ? await this.packageParser.getAgents(reader) : [];
@@ -171,6 +175,8 @@ export class WorkflowPackageImporter {
 
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
+			publicApi: request.publicApi,
+			ctx: request.ctx,
 			content: [content],
 			policy: request.publishingPolicy,
 			subWorkflowRequirements: plan.input.subWorkflowRequirements,
@@ -228,7 +234,7 @@ export class WorkflowPackageImporter {
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
 		importScopes: Scope[],
-	): Promise<ImportContext> {
+	): Promise<Omit<ImportContext, 'publicApi'>> {
 		const scopes: Scope[] = needsFolderCreate
 			? [...importScopes, 'folder:create', 'folder:update']
 			: importScopes;

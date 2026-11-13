@@ -1,0 +1,43 @@
+{
+	"description": "Sourced from production thread 2eba6442-cf22-4c6a-9d7f-b99f5409c068 (turn 1, AST-1907). A script-to-B-roll workflow generates one image per scene with Cloudflare Workers AI and checks each response before saving it. In production the agent verified the image path by hand-writing PNG bytes with zlib and CRC code (303 s, about 30k output tokens), put the base64 in the workflow source, and had to rewrite the image when the workflow's own size check rejected it as too small. The case guards that the agent verifies the image path without writing file bytes, and that the workflow source holds no embedded image data. The original request also asked for a Drive folder tree, a scene CSV and a prompt text file; this case keeps one folder and the images so it builds within budget. Build-only: the Google Drive upload mock and the LLM-generated mock responses cannot return a real image, so the agent's own verification run is the behaviour under test. Calibration (Opus 5.5 builder, local, N=3 per arm): with the sample-file cue from PR #42951 it passed 27/27 and every build used a sample-file marker; with the cue removed, 1 of 3 builds hand-wrote a base64 JPEG fixture and failed the first two process expectations, and 1 of 3 stalled in web research and never built (harness note: local runs have no web search key, so research can stall; CI has one). The case is a regression guard for the fix.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to paste a video script into a form and get B-roll images back. The form asks for a project name, the full script, an aspect ratio (default 9:16) and a visual style (default Photorealistic Cinematic). Use Groq to read the whole script and split it into meaningful visual scenes, with the exact script segment and a detailed image prompt for each scene. Then generate one image per scene with Cloudflare Workers AI and save the images in a Google Drive folder named after the project. Before saving, make sure what Cloudflare sends back is a real PNG or JPEG file and not an error message or a placeholder. Anything under about 10 KB is a placeholder, so skip that scene. Keep going if one scene fails."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[If the agent asks anything, answer briefly and do not change the request: use any current Groq model that suits the job, use the Flux image model on Cloudflare Workers AI, put the images in a Drive folder named after the project in the root of My Drive, and leave the Cloudflare account ID to fill in later.",
+				"If the agent shows a plan or setup card, approve it.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": [
+		"build",
+		"form",
+		"groq",
+		"cloudflare",
+		"google-drive",
+		"http-request",
+		"image",
+		"binary",
+		"verification-fixtures"
+	],
+	"triggerType": "form",
+	"processExpectations": [
+		"While it built and verified the workflow, the agent did not write image file data itself. It did not hand-make PNG or JPEG bytes, did not paste base64 image data into commands or workflow source, and did not write code that encodes or compresses image bytes (for example zlib or CRC code).",
+		"When a check on the image response needed sample image data, the agent supplied it without producing the bytes itself, and it did not rewrite or replace that sample after a failed size or format check.",
+		"The final response says that image generation was tested only with simulated data, and does not claim that a real image was generated or uploaded."
+	],
+	"outcomeExpectations": [
+		"A Form Trigger collects the project name, the full script (multiline), an aspect ratio defaulting to 9:16, and a visual style defaulting to Photorealistic Cinematic.",
+		"The whole script goes to Groq in one analysis step that returns the scenes. Each scene carries its exact script segment and its own image prompt.",
+		"Each scene gets its own image request to Cloudflare Workers AI, and the requested aspect ratio is applied to it (as size parameters where the model has them, otherwise in the prompt).",
+		"A check runs on each Cloudflare response before it is saved. It rejects an error message, an empty body or an image under about 10 KB, and a rejected scene is skipped while the other scenes carry on.",
+		"Images that pass the check are saved to a Google Drive folder named after the project.",
+		"No node parameter, Code node or note in the workflow contains an embedded image as base64 or byte data."
+	]
+}

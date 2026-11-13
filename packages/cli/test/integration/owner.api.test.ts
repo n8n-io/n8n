@@ -6,7 +6,7 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, PersonRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import validator from 'validator';
 
@@ -64,7 +64,7 @@ describe('POST /owner/setup', () => {
 		expect(apiKey).toBeUndefined();
 		expect(globalScopes).not.toHaveLength(0);
 
-		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
+		const storedOwner = (await Container.get(PersonRepository).findById(id))!;
 		expect(storedOwner.password).not.toBe(newOwnerData.password);
 		expect(storedOwner.email).toBe(newOwnerData.email);
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -91,7 +91,7 @@ describe('POST /owner/setup', () => {
 		expect(id).toBe(ownerShell.id);
 		expect(email).toBe(newOwnerData.email.toLowerCase());
 
-		const storedOwner = await Container.get(UserRepository).findOneByOrFail({ id });
+		const storedOwner = (await Container.get(PersonRepository).findById(id))!;
 		expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 	});
 

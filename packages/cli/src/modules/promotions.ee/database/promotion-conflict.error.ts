@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * A write lost to a database constraint. Repositories raise it so services can

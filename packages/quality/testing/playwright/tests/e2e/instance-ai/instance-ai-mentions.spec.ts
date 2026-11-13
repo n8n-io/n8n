@@ -81,7 +81,7 @@ test.describe(
 				expect(violations).toEqual([]);
 
 				await n8n.instanceAi.selectMentionWithKeyboard(workflow.name);
-				await expect(input).toHaveValue(`"${workflow.name}"`);
+				await expect(input).toHaveValue('');
 				await expect(n8n.instanceAi.getComposerWorkflowChip(workflow.name)).toBeVisible();
 				expect(n8n.instanceAi.getCurrentPath()).toBe('/assistant');
 				await expect(n8n.instanceAi.getPreviewTabByName(workflow.name)).toBeHidden();
@@ -112,7 +112,7 @@ test.describe(
 		);
 
 		test(
-			'keeps keyboard-selected child context after parent removal and reload',
+			'opens the mentioned workflow tab with the sent message and keeps child context after parent removal and reload',
 			{
 				annotation: [
 					{
@@ -133,11 +133,22 @@ test.describe(
 
 				await n8n.start.fromInstanceAiThread(thread.id);
 				const input = n8n.instanceAi.getChatInput();
+
+				// A pick only stages the workflow as a draft. Its tab opens with the message that sends it.
 				await input.fill('@');
 				await input.pressSequentially(workflowName);
 				await n8n.instanceAi.selectMentionWithKeyboard(workflowName);
+				await expect(n8n.instanceAi.getComposerWorkflowChip(workflowName)).toBeVisible();
+				await expect(n8n.instanceAi.getPreviewTabByName(workflowName)).toBeHidden();
+
+				await input.fill('Say hello back to me');
+				await input.press('Enter');
+				await n8n.instanceAi.waitForResponseComplete(120_000);
 				await expect(n8n.instanceAi.getPreviewTabByName(workflowName)).toBeVisible();
 
+				// The workflow is a tab of the thread now, so its groups and nodes are mentionable.
+				await input.fill('@');
+				await n8n.instanceAi.selectMentionWithKeyboard(workflowName);
 				await input.fill('@');
 				await n8n.instanceAi.highlightMentionWithKeyboard(workflowName);
 				await n8n.instanceAi.openHighlightedMentionSubmenu();
@@ -153,6 +164,7 @@ test.describe(
 				await expect(n8n.instanceAi.getComposerGroupChip('Persisted group')).toBeVisible();
 				await expect(n8n.instanceAi.getComposerNodeChip('Set A')).toBeVisible();
 
+				// Removing a mention changes the draft only: the child context and the tab stay.
 				const removeWorkflow = n8n.instanceAi.getComposerWorkflowRemoveButton(workflowName);
 				await removeWorkflow.focus();
 				await removeWorkflow.press('Space');
@@ -161,12 +173,13 @@ test.describe(
 				await expect(n8n.instanceAi.getComposerNodeChip('Set A')).toBeVisible();
 				await expect(n8n.instanceAi.getPreviewTabByName(workflowName)).toBeVisible();
 
+				// The same text keeps the replayed LLM recording valid for this second turn.
 				await input.fill('Say hello back to me');
 				await input.press('Enter');
 				await n8n.instanceAi.waitForResponseComplete(120_000);
 				await n8n.instanceAi.reloadThread();
 
-				const userMessage = n8n.instanceAi.getUserMessageByText('Say hello back to me');
+				const userMessage = n8n.instanceAi.getUserMessageByText('Say hello back to me').last();
 				await expect(
 					n8n.instanceAi.getNodeChipInMessage(userMessage, 'Persisted group'),
 				).toBeVisible();

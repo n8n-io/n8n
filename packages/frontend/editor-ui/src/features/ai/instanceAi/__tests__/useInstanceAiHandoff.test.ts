@@ -632,6 +632,33 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	it('mints a thread bound to an existing app', async () => {
+		const threadId = await provisionSubjectThread(
+			{ type: 'app', id: 'app-1', projectId: 'project-1' },
+			{ source: 'app_builder_page', origin: 'internal' },
+		);
+
+		expect(threadId).toBe('thread-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'app_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAppTargets: [{ appId: 'app-1', projectId: 'project-1' }],
+		});
+	});
+
+	it('mints a thread with a pending target for a new app', async () => {
+		await provisionSubjectThread(
+			{ type: 'app', id: 'app-1', projectId: 'project-1', pending: true },
+			{ source: 'app_builder_page', origin: 'internal' },
+		);
+
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiPendingAppTarget: { appId: 'app-1', projectId: 'project-1' },
+		});
+	});
+
 	it('deletes the thread and rethrows when the target metadata write fails, without a second toast', async () => {
 		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
 
@@ -643,6 +670,27 @@ describe('useInstanceAiHandoff', () => {
 		).rejects.toThrow('Save failed');
 		expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
 		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
+	it('preserves a mounted draft runtime when its target metadata write fails', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+				undefined,
+				'draft-thread',
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.syncThread).toHaveBeenCalledWith('draft-thread', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.deleteThread).toHaveBeenCalledWith('draft-thread', {
+			silent: true,
+			preserveRuntime: true,
+		});
 	});
 
 	it('opens a thread with a composer draft without sending it', async () => {
@@ -786,6 +834,31 @@ describe('useInstanceAiHandoff', () => {
 				runtime: 'agents',
 			});
 			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
+		});
+
+		it('links a thread from a self-healing result to that result in the launch event', async () => {
+			await provisionLaunchedThread(
+				'project-1',
+				{
+					message: 'Continue this repair',
+					authorship: { kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+				},
+				{
+					source: 'self_healing_result',
+					origin: 'internal',
+					sourceContext: { resultId: 'result-1', outcome: 'needs_you' },
+				},
+			);
+
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
+				thread_id: 'thread-1',
+				instance_id: 'instance-1',
+				source: 'self_healing_result',
+				origin: 'internal',
+				result_id: 'result-1',
+				result_kind: 'needs_you',
+				runtime: 'agents',
+			});
 		});
 
 		it('opens a thread that a new tab finds on the Assistant agent', async () => {

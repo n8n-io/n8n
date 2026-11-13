@@ -26,6 +26,7 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import { SYSTEM_CHAT_SOURCE } from '../utils/agent-thread-access';
+import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
 
 function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecutionThread {
 	return mock<AgentExecutionThread>({
@@ -137,6 +138,31 @@ describe('AgentMessageQueueService', () => {
 			expect(updates.notifyQueueUpdated).toHaveBeenCalledExactlyOnceWith('thread-1');
 			expect(messages.clearPendingInput.mock.invocationCallOrder[1]).toBeLessThan(
 				updates.notifyQueueUpdated.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('discards pending work without clearing input when audit history must remain', async () => {
+			threadRepository.lockById.mockResolvedValue(makeThread());
+			executionRepository.findRunningByThread.mockResolvedValue([]);
+			repository.listPending.mockResolvedValue([
+				mock<AgentMessageQueue>({
+					id: 'queue-1',
+					messageId: 'message-1',
+					message: mock<AgentMessageEntity>({
+						content: { role: 'user', content: [{ type: 'text', text: 'Keep this request.' }] },
+					}),
+				}),
+			]);
+
+			await service.prepareSessionStop('thread-1', { preserveInput: true });
+
+			expect(repository.discardPendingForSession).toHaveBeenCalledWith(
+				'thread-1',
+				expect.anything(),
+			);
+			expect(messages.clearPendingInput).not.toHaveBeenCalled();
+			expect(threadRepository.lockById.mock.invocationCallOrder[0]).toBeLessThan(
+				repository.discardPendingForSession.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -320,6 +346,26 @@ describe('AgentMessageQueueService', () => {
 				'thread-1',
 				'message-1',
 				{ kind: 'preview', stopReportId: 'stop-1' },
+				expect.anything(),
+			);
+		});
+
+		it('stores an n8n Chat report with the n8n Chat source, kind and memory', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+
+			await service.enqueueStopReport(makeThread(), 'stop-1', 'Summarize the stop', {}, 'n8n-chat');
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({
+					resourceId: productionChatMemoryResourceId('user-1'),
+					origin: { source: N8N_CHAT_PRODUCTION_SOURCE, hidden: true, stopReport: true },
+				}),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'n8n_chat', stopReportId: 'stop-1' },
 				expect.anything(),
 			);
 		});

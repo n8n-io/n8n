@@ -126,7 +126,6 @@ export type BuildArgs = Pick<
 	WorkflowTestCase,
 	| 'conversation'
 	| 'messageBudget'
-	| 'buildMode'
 	| 'promptVersion'
 	| 'allowUserExecution'
 	| 'credentials'
@@ -887,7 +886,6 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await lane.tracedBuild({
 						conversation: entry.conversation,
 						messageBudget: entry.messageBudget,
-						buildMode: entry.buildMode,
 						promptVersion: entry.promptVersion,
 						requiresMemoryCompaction: entry.requiresMemoryCompaction,
 						allowUserExecution: entry.allowUserExecution,

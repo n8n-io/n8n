@@ -493,7 +493,23 @@ describe('CredentialsFinderService', () => {
 				['credential-1'],
 				expect.objectContaining({ userId: owner.id }),
 			);
-			expect(accessRepository.findGlobalProjectCredentialIds).not.toHaveBeenCalled();
+		});
+
+		it('keeps global credentials when the global override is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findCredentialIdsWithScopeForUser(
+					['credential-1', 'global-credential'],
+					owner,
+					['credential:read'],
+					{ ignoreGlobalOverride: true },
+				),
+			).resolves.toEqual(new Set(['global-credential']));
+			expect(accessRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith(
+				['credential-1', 'global-credential'],
+				false,
+			);
 		});
 
 		it('does not load global ids for write scopes', async () => {
@@ -542,6 +558,16 @@ describe('CredentialsFinderService', () => {
 
 			expect(accessRepository.findExistingCredentialIds).not.toHaveBeenCalled();
 			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalled();
+		});
+
+		it('counts a global credential as usable when instance-wide access is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findUnusableCredentialsForUser(member, ['global-credential'], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([]);
 		});
 
 		it('returns no unusable credentials when personal access remains', async () => {

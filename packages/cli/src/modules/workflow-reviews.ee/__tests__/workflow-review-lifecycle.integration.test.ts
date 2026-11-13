@@ -644,6 +644,7 @@ describe('auto-close on source-control pull', () => {
 			Container.get(WorkflowMutationHooksProxy),
 			Container.get(WorkflowFinderService),
 			mock(),
+			mock(),
 		);
 	});
 
@@ -678,7 +679,7 @@ describe('auto-close on source-control pull', () => {
 		parentFolderId: null,
 		active: false,
 		isArchived: false,
-		owner: { type: 'personal', personalEmail: owner.email },
+		owner: { type: 'personal', personalEmail: owner.toIUser().email },
 		...overrides,
 	});
 

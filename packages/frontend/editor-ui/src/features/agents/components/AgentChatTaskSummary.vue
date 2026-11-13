@@ -62,7 +62,7 @@ const i18n = useI18n();
 }
 
 .text {
-	--n8n-markdown--base-font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--font-size--sm);
 
 	> *:first-child > *:first-child {
 		margin-top: 0;

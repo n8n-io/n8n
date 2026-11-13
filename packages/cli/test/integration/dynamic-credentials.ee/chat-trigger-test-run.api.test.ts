@@ -64,6 +64,7 @@ const CREDENTIAL_TYPE = 'googleSheetsOAuth2Api';
 const VENDOR_HOST = 'https://api.example.test';
 const VENDOR_PATH = '/ping';
 const PER_USER_ACCESS_TOKEN = 'builders-own-access-token';
+const CHAT_TRIGGER_NAME = 'When chat message received';
 
 /** Resolves the requested credential types (and everything they extend) out of `nodes-base/dist`. */
 function registerCredentialTypesFromDist(credentialTypeNames: string[]) {
@@ -130,7 +131,7 @@ let webhookTestEndpoint: string;
 
 const chatTriggerNode = (parameters: Record<string, unknown>): INode => ({
 	id: randomUUID(),
-	name: 'When chat message received',
+	name: CHAT_TRIGGER_NAME,
 	type: CHAT_TRIGGER_NODE_TYPE,
 	typeVersion: 1.3,
 	position: [0, 0],
@@ -226,7 +227,7 @@ const startListening = async (workflow: WorkflowEntity, chatSessionId: string) =
 	await testServer
 		.authAgentFor(builder)
 		.post(`/workflows/${workflow.id}/run`)
-		.send({ triggerToStartFrom: { name: 'When chat message received' }, chatSessionId });
+		.send({ triggerToStartFrom: { name: CHAT_TRIGGER_NAME }, chatSessionId });
 
 /** The chat panel sending a message to the test webhook it just registered. */
 const sendChatMessage = async (workflow: WorkflowEntity, chatSessionId: string) =>
@@ -297,7 +298,10 @@ describe('chat trigger test run with end-user credentials', () => {
 		const vendorScope = mockVendorCall();
 
 		const listening = await startListening(workflow, chatSessionId);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const response = await sendChatMessage(workflow, chatSessionId);
 

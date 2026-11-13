@@ -7,7 +7,7 @@ import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import type {
 	PublicationOutcomeReason,

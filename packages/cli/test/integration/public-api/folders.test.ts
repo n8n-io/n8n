@@ -1,5 +1,5 @@
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
@@ -14,8 +14,8 @@ import { createOwnerWithApiKey, createMemberWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
@@ -39,7 +39,7 @@ beforeEach(async () => {
 	const projectRepository = Container.get(ProjectRepository);
 	const projectRelationRepository = Container.get(ProjectRelationRepository);
 
-	const createPersonalProject = async (user: User) => {
+	const createPersonalProject = async (user: Person) => {
 		const project = await projectRepository.save(
 			projectRepository.create({
 				type: 'personal',
@@ -253,6 +253,26 @@ describe('POST /projects/:projectId/folders', () => {
 });
 
 describe('GET /projects/:projectId/folders', () => {
+	test('should list folders in the calling users personal project when projectId is "personal"', async () => {
+		testServer.license.enable('feat:folders');
+		const folder = await createFolder(ownerPersonalProject, { name: 'Personal Folder' });
+
+		const response = await authOwnerAgent.get('/projects/personal/folders');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.count).toBe(1);
+		expect(response.body.data[0].id).toBe(folder.id);
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent.get('/projects/personal/folders');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
+	});
 	test('should fail due to missing API Key', async () => {
 		const response = await testServer
 			.publicApiAgentWithoutApiKey()
@@ -508,6 +528,27 @@ describe('GET /projects/:projectId/folders', () => {
 });
 
 describe('DELETE /projects/:projectId/folders/:folderId', () => {
+	test('should delete a folder in the calling users personal project when projectId is "personal"', async () => {
+		testServer.license.enable('feat:folders');
+		const folder = await createFolder(ownerPersonalProject, { name: 'Delete Me' });
+
+		const response = await authOwnerAgent.delete(`/projects/personal/folders/${folder.id}`);
+
+		expect(response.statusCode).toBe(204);
+		await expect(
+			Container.get(FolderService).findFolderInProjectOrFail(folder.id, ownerPersonalProject.id),
+		).rejects.toThrow();
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent.delete('/projects/personal/folders/some-folder-id');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
+	});
 	const createDeleteScopedAgent = async (scopes: ApiKeyScope[] = ['folder:delete']) => {
 		const ownerWithDeleteScope = await createOwnerWithApiKey({ scopes });
 		const projectRepository = Container.get(ProjectRepository);
@@ -754,6 +795,25 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 });
 
 describe('GET /projects/:projectId/folders/:folderId', () => {
+	test('should get a folder in the calling users personal project when projectId is "personal"', async () => {
+		testServer.license.enable('feat:folders');
+		const folder = await createFolder(ownerPersonalProject, { name: 'Personal Folder' });
+
+		const response = await authOwnerAgent.get(`/projects/personal/folders/${folder.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.id).toBe(folder.id);
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent.get('/projects/personal/folders/some-folder-id');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
+	});
 	test('should fail due to missing API Key', async () => {
 		const response = await testServer
 			.publicApiAgentWithoutApiKey()
@@ -912,6 +972,29 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 });
 
 describe('PATCH /projects/:projectId/folders/:folderId', () => {
+	test('should update a folder in the calling users personal project when projectId is "personal"', async () => {
+		testServer.license.enable('feat:folders');
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/personal/folders/${folder.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('name', 'Renamed');
+	});
+
+	test('should return 404 when the calling user has no personal project', async () => {
+		testServer.license.enable('feat:folders');
+		vi.spyOn(Container.get(ProjectService), 'getPersonalProject').mockResolvedValueOnce(null);
+
+		const response = await authOwnerAgent
+			.patch('/projects/personal/folders/some-folder-id')
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Could not find a personal project for this user');
+	});
 	test('should fail due to missing API Key', async () => {
 		const response = await testServer
 			.publicApiAgentWithoutApiKey()

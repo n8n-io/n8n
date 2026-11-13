@@ -1,4 +1,4 @@
-import type { Project, User } from '@n8n/db';
+import { isPerson, type Project, type User } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
 
 import type { RemoteResourceOwner } from './resource-owner';
@@ -24,9 +24,11 @@ export class SourceControlContext {
 				this.authorizedProjectsByTeamId.set(project.id, project);
 			}
 			if (project.type === 'personal') {
-				const ownerEmail = project.projectRelations?.find(
+				const owner = project.projectRelations?.find(
 					(relation) => relation.role.slug === PROJECT_OWNER_ROLE_SLUG,
-				)?.user?.email;
+				)?.user;
+				// Only a person has an email.
+				const ownerEmail = owner && isPerson(owner) ? owner.email : undefined;
 				if (ownerEmail) {
 					this.authorizedProjectsByOwnerEmail.set(ownerEmail, project);
 				}

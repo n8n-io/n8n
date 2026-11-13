@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "visibility" varchar(16) NOT NULL DEFAULT ('project'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_visibility" CHECK (("visibility" IN ('public', 'project', 'instance'))), CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL, CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL)
+CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "namespace" varchar(128) NOT NULL, "visibility" varchar(16) NOT NULL DEFAULT ('project'), "projectId" varchar(36) NOT NULL, "draftVersionId" varchar, "publishedVersionId" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_visibility" CHECK ("visibility" IN ('project', 'instance')), CONSTRAINT "app_publishedVersionId_foreign" FOREIGN KEY ("publishedVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "app_draftVersionId_foreign" FOREIGN KEY ("draftVersionId") REFERENCES "app_version" ("id") ON DELETE SET NULL ON UPDATE NO ACTION, CONSTRAINT "FK_f84dd7eb539e46e0c233fa09b20" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -29,10 +29,10 @@ CREATE TABLE "app" ("id" varchar PRIMARY KEY NOT NULL, "name" varchar(128) NOT N
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK (("visibility" IN ('public', 'project', 'instance'))) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
+| - | CHECK | CHECK ("visibility" IN ('project', 'instance')) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (draftVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (publishedVersionId) REFERENCES app_version (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_app_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -69,11 +69,13 @@ erDiagram
 }
 "app_version" {
   varchar appId FK
+  TEXT bindings
   INTEGER buildAttempts
   varchar_16_ buildStatus
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK

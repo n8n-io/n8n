@@ -1,0 +1,71 @@
+{
+	"name": "Send and Wait Telegram Chat Approval",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual",
+			"name": "Manual",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "sendAndWait",
+				"chatId": "123",
+				"message": "Please approve this test request",
+				"chatApproval": true,
+				"approvalOptions": {
+					"values": {
+						"approvalType": "double"
+					}
+				},
+				"options": {}
+			},
+			"id": "telegram",
+			"name": "Telegram",
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [200, 0],
+			"webhookId": "send-and-wait-telegram-chat-approval",
+			"credentials": {
+				"telegramApi": {
+					"id": "PLACEHOLDER_CREDENTIAL_ID",
+					"name": "Telegram Test Credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "approved",
+							"name": "approved",
+							"value": "={{ $json.data.approved }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "after",
+			"name": "After",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0]
+		}
+	],
+	"connections": {
+		"Manual": {
+			"main": [[{ "node": "Telegram", "type": "main", "index": 0 }]]
+		},
+		"Telegram": {
+			"main": [[{ "node": "After", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {}
+}

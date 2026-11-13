@@ -31,7 +31,7 @@ vi.mock('openid-client', async (importOriginal) => {
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import type { JwtService, UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
@@ -1056,6 +1056,95 @@ describe('OidcService', () => {
 			const result = await createConfiguration();
 
 			expect(result[client.customFetch]).toBe(customFetch);
+		});
+	});
+
+	describe('getOidcConfiguration', () => {
+		const getConfiguration = async () =>
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+			(await (oidcService as any).getOidcConfiguration()) as client.Configuration;
+
+		it('caches configuration across multiple calls on successful discovery', async () => {
+			const mockConfig = {} as client.Configuration;
+			vi.mocked(client.discovery).mockResolvedValue(mockConfig);
+
+			const first = await getConfiguration();
+			const second = await getConfiguration();
+
+			expect(first).toBe(mockConfig);
+			expect(second).toBe(mockConfig);
+			expect(client.discovery).toHaveBeenCalledTimes(1);
+		});
+
+		it('clears cached configuration when discovery fails so subsequent calls retry', async () => {
+			const discoveryError = new Error('fetch failed');
+			const mockConfig = {} as client.Configuration;
+
+			vi.mocked(client.discovery)
+				.mockRejectedValueOnce(discoveryError)
+				.mockResolvedValueOnce(mockConfig);
+
+			// First attempt fails
+			await expect(getConfiguration()).rejects.toThrow('fetch failed');
+
+			// Second attempt retries discovery and succeeds
+			const result = await getConfiguration();
+			expect(result).toBe(mockConfig);
+			expect(client.discovery).toHaveBeenCalledTimes(2);
+		});
+
+		it('shares the in-flight discovery promise between concurrent callers', async () => {
+			let resolveDiscovery: (value: client.Configuration) => void = () => {};
+			const discoveryPromise = new Promise<client.Configuration>((resolve) => {
+				resolveDiscovery = resolve;
+			});
+			vi.mocked(client.discovery).mockReturnValue(discoveryPromise);
+
+			const firstCall = getConfiguration();
+			const secondCall = getConfiguration();
+
+			// Yield the microtask queue so loadOpenIdClient completes and discovery is invoked
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(client.discovery).toHaveBeenCalledTimes(1);
+
+			const mockConfig = {} as client.Configuration;
+			resolveDiscovery(mockConfig);
+
+			const [firstResult, secondResult] = await Promise.all([firstCall, secondCall]);
+			expect(firstResult).toBe(mockConfig);
+			expect(secondResult).toBe(mockConfig);
+			expect(client.discovery).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not overwrite newer configuration if an earlier failed discovery settles later', async () => {
+			let rejectFirstDiscovery: (err: Error) => void = () => {};
+			const firstDiscoveryPromise = new Promise<client.Configuration>((_, reject) => {
+				rejectFirstDiscovery = reject;
+			});
+
+			vi.mocked(client.discovery).mockReturnValueOnce(firstDiscoveryPromise);
+
+			// Start first discovery
+			const firstCall = getConfiguration();
+
+			// Simulate config update or reset before first discovery settles
+			const newerMockConfig = {} as client.Configuration;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const serviceAny = oidcService as any;
+			const newerCacheEntry = {
+				...serviceAny.oidcConfig,
+				configuration: Promise.resolve(newerMockConfig),
+				validTill: new Date(Date.now() + 60 * 60 * 1000),
+			};
+			serviceAny.cachedOidcConfiguration = newerCacheEntry;
+
+			// Now reject first discovery
+			rejectFirstDiscovery(new Error('late failure'));
+			await expect(firstCall).rejects.toThrow('late failure');
+
+			// Verify the newer cache entry was preserved and not cleared to undefined
+			expect(serviceAny.cachedOidcConfiguration).toBe(newerCacheEntry);
 		});
 	});
 

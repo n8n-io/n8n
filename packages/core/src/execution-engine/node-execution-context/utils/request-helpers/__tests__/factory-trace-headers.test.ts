@@ -26,7 +26,9 @@ describe('request helpers trace context', () => {
 			mockDeep<IWorkflowExecuteAdditionalData>() as IWorkflowExecuteAdditionalData;
 		additionalData.evalLlmMockHandler = undefined;
 		additionalData.executionId = options.executionId;
-		additionalData.otel = options.inject ? { injectTraceHeaders: options.inject } : undefined;
+		additionalData.otel = options.inject
+			? { injectTraceHeaders: options.inject, extractInboundBaggage: vi.fn() }
+			: undefined;
 		return { helpers: getRequestHelperFunctions(workflow, node, additionalData), additionalData };
 	}
 

@@ -4,7 +4,7 @@ import {
 	type AuthorizationServerMetadata,
 	type Jwk,
 } from '@n8n/inbound-auth';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 type Listener = () => Promise<void>;
 

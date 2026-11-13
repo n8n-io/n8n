@@ -20,7 +20,7 @@ import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { License } from '@/license';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
 import type { LicenseMetricsService } from '@/metrics/license-metrics.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { SystemTaskHandler } from '@/scheduling/system-tasks/system-task-handler';

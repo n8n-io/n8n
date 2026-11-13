@@ -40,10 +40,11 @@ export class NotionApi implements ICredentialType {
 			Authorization: `Bearer ${credentials.apiKey} `,
 		};
 
-		// if version it's not set, set it to last one
-		// version is only set when the request is made from
-		// the notion node, or was set explicitly in the http node
-		if (!requestOptions.headers['Notion-Version']) {
+		// HTTP header names are case-insensitive. Keep the version supplied by the caller.
+		const hasVersion = Object.keys(requestOptions.headers).some(
+			(name) => name.toLowerCase() === 'notion-version',
+		);
+		if (!hasVersion) {
 			requestOptions.headers = {
 				...requestOptions.headers,
 				'Notion-Version': '2022-02-22',

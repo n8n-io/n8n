@@ -1,7 +1,7 @@
 import { formatAttachmentSizeLimit } from '@n8n/api-types';
 import { isQuotaExhaustedError } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { isStreamTransportError } from './stream-transport-error';
 
@@ -67,7 +67,7 @@ export function isAttachmentRejectedByProviderError(error: unknown): boolean {
  * `quota_exhausted` error state; kept in sync with the FE i18n copy.
  */
 export const QUOTA_EXHAUSTED_USER_MESSAGE =
-	"You've run out of AI credits. Upgrade your plan to continue using the n8n Assistant.";
+	"You've run out of Assistant credits. Upgrade your plan to continue using the n8n Assistant.";
 
 export const OPERATIONAL_ERROR_USER_MESSAGE =
 	'I hit an operational error before I could finish that response. Please try again.';

@@ -7,6 +7,8 @@ export interface NormalizeWorkspaceRelativePathOptions {
 	 * shell output, so rejecting them outright derails otherwise-valid calls.
 	 */
 	workspaceRoot?: string;
+	/** A second accepted root, for sandboxes where `workspaceRoot` does not exist. */
+	fallbackWorkspaceRoot?: string;
 }
 
 function stripWorkspaceRootPrefix(path: string, workspaceRoot: string): string {
@@ -24,8 +26,8 @@ export function normalizeWorkspaceRelativePath(
 ): string {
 	const label = options.resourceLabel ?? 'Workspace';
 	let trimmed = path.trim().replace(/^\.\/+/, '');
-	if (options.workspaceRoot && trimmed.startsWith('/')) {
-		trimmed = stripWorkspaceRootPrefix(trimmed, options.workspaceRoot);
+	for (const root of [options.workspaceRoot, options.fallbackWorkspaceRoot]) {
+		if (root && trimmed.startsWith('/')) trimmed = stripWorkspaceRootPrefix(trimmed, root);
 	}
 	const segments = trimmed.split('/');
 	const normalized = segments.filter((segment) => segment.length > 0 && segment !== '.').join('/');

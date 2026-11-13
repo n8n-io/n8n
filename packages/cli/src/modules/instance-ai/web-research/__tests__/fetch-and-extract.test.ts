@@ -127,6 +127,54 @@ describe('fetchAndExtract', () => {
 		expect(result.truncated).toBe(false);
 	});
 
+	it.each([
+		['application/json', '{"type":"object","properties":{"prompt":{"type":"string"}}}'],
+		['application/json; charset=utf-8', '[{"id":1},{"id":2}]'],
+		['application/schema+json', '{"$schema":"http://json-schema.org/draft-07/schema#"}'],
+		['application/atom+xml', '<feed><entry>One</entry></feed>'],
+		['application/xml', '<?xml version="1.0"?><feed><entry>One</entry></feed>'],
+		['text/xml', '<rss><channel><title>News</title></channel></rss>'],
+		['text/csv', 'name,email\nAda,ada@example.com'],
+		['application/x-yaml', 'openapi: 3.0.0\ninfo:\n  title: API'],
+	])('returns the raw body for %s', async (contentType, body) => {
+		const { transport } = mockTransport(async () => createMockResponse(body, { contentType }));
+
+		const result = await fetchAndExtract('https://example.com/schema', { transport });
+
+		expect(result.content).toBe(body);
+		expect(result.truncated).toBe(false);
+		expect(result.contentLength).toBe(body.length);
+	});
+
+	it('extracts markdown from XHTML', async () => {
+		const xhtml =
+			'<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Doc</title></head><body><article><h1>Guide</h1><p>Read the setup steps before you start the service.</p></article></body></html>';
+		const { transport } = mockTransport(async () =>
+			createMockResponse(xhtml, { contentType: 'application/xhtml+xml' }),
+		);
+
+		const result = await fetchAndExtract('https://example.com/doc.xhtml', { transport });
+
+		expect(result.content).not.toContain('<article>');
+		expect(result.content).toContain('Read the setup steps');
+	});
+
+	it('truncates a JSON body to maxContentLength', async () => {
+		const body = JSON.stringify({ data: 'x'.repeat(200) });
+		const { transport } = mockTransport(async () =>
+			createMockResponse(body, { contentType: 'application/json' }),
+		);
+
+		const result = await fetchAndExtract('https://example.com/data.json', {
+			transport,
+			maxContentLength: 50,
+		});
+
+		expect(result.content).toBe(body.slice(0, 50));
+		expect(result.truncated).toBe(true);
+		expect(result.contentLength).toBe(body.length);
+	});
+
 	it('truncates content exceeding maxContentLength', async () => {
 		const longText = 'a'.repeat(50_000);
 		const { transport } = mockTransport(async () =>

@@ -11,7 +11,7 @@ import { Push } from '@/push';
 import { getMemoryLimit } from '@/utils/container-limits';
 
 import { JobProcessor } from './job-processor';
-import { Publisher } from './pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { resolveQueueName, resolveWorkerPoolName } from './queue-name';
 
 @Service()

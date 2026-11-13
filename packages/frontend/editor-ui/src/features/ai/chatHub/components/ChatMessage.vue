@@ -9,14 +9,7 @@ import type {
 } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useElementSize, useSpeechSynthesis } from '@vueuse/core';
-import {
-	computed,
-	onBeforeMount,
-	ref,
-	useTemplateRef,
-	watch,
-	type ComponentPublicInstance,
-} from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import {
@@ -31,7 +24,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -86,33 +78,6 @@ const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const textareaRef = useTemplateRef<InstanceType<typeof N8nInput>>('textarea');
 const attachmentsRef = useTemplateRef('attachmentsRef');
 const attachmentsElSize = useElementSize(attachmentsRef, undefined, { box: 'border-box' });
-const markdownChunkRefs = useTemplateRef<
-	Array<ComponentPublicInstance<{
-		hoveredCodeBlockActions: HTMLElement | null;
-		getHoveredCodeBlockContent: () => string | undefined;
-	}> | null>
->('markdownChunk');
-
-const activeCodeBlockTeleport = computed<{
-	target: HTMLElement;
-	content: string;
-} | null>(() => {
-	const refs = markdownChunkRefs.value;
-	if (!refs || !Array.isArray(refs)) {
-		return null;
-	}
-
-	for (const chunkRef of refs) {
-		if (chunkRef?.hoveredCodeBlockActions) {
-			const content = chunkRef.getHoveredCodeBlockContent();
-			if (content) {
-				return { target: chunkRef.hoveredCodeBlockActions, content };
-			}
-		}
-	}
-	return null;
-});
-
 const messageChunks = computed(() =>
 	message.content.flatMap<ChatMessageContentChunk>((chunk, index, arr) => {
 		if (chunk.type === 'hidden') {
@@ -420,15 +385,11 @@ onBeforeMount(() => {
 					<div v-else :class="$style.markdownContent">
 						<ChatMarkdownChunk
 							v-for="(chunk, index) in messageChunks"
-							ref="markdownChunk"
 							:key="index"
 							:source="chunk"
 							:is-buttons-disabled="message.status !== 'waiting'"
 							@open-artifact="emit('openArtifact', $event)"
 						/>
-						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">
-							<CopyButton :content="activeCodeBlockTeleport.content" />
-						</Teleport>
 					</div>
 				</div>
 				<ChatTypingIndicator v-if="shouldShowTypingIndicator" :class="$style.typingIndicator" />

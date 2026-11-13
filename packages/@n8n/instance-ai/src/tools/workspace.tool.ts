@@ -4,7 +4,7 @@
  */
 import { Tool } from '@n8n/agents';
 import {
-	WORKSPACE_TOOL_NAME_BY_ACTION,
+	INSTANCE_TOOL_NAME_BY_ACTION,
 	getLegacyBuilderToolActions,
 	folderNameSchema,
 	instanceAiApprovalResumeSchema,
@@ -448,7 +448,7 @@ async function runWorkspaceAction(
 
 /** Builds the tool for one workspace action. */
 export function createWorkspaceActionTool(context: InstanceAiContext, action: WorkspaceToolAction) {
-	const name = WORKSPACE_TOOL_NAME_BY_ACTION[action];
+	const name = INSTANCE_TOOL_NAME_BY_ACTION[action];
 	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
 	const tool = new Tool(name)
 		.description(schema.shape.action.description ?? '')

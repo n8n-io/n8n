@@ -28,6 +28,7 @@ const statuses: Array<{ id: AgentSessionStatus | 'all'; name: string }> = [
 	{ id: 'error', name: i18n.baseText('agentSessions.status.error') },
 	{ id: 'cancelled', name: i18n.baseText('agentSessions.status.cancelled') },
 	{ id: 'interrupted', name: i18n.baseText('agentSessions.status.interrupted') },
+	{ id: 'awaiting', name: i18n.baseText('agentSessions.status.awaiting') },
 ];
 
 const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
@@ -45,6 +46,7 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'discord', name: i18n.baseText('agentSessions.origin.discord') },
 	{ id: 'whatsapp', name: i18n.baseText('agentSessions.origin.whatsapp') },
 	{ id: 'teams', name: i18n.baseText('agentSessions.origin.teams') },
+	{ id: 'webhook', name: i18n.baseText('agentSessions.origin.webhook') },
 ];
 
 const activeFilterCount = computed(

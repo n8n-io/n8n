@@ -10,11 +10,16 @@ import { Container } from '@n8n/di';
 })
 export class PromotionsModule implements ModuleInterface {
 	async init() {
-		await import('./promotion-changes.controller.js');
 		await import('./promotion-reviews.controller.js');
 
 		const { PromotionsService } = await import('./promotions.service.js');
 		Container.get(PromotionsService);
+
+		// Logs its own failures, so startup always continues.
+		const { PromotionCheckoutCleanupService } = await import(
+			'./promotion-checkout-cleanup.service.js'
+		);
+		await Container.get(PromotionCheckoutCleanupService).removeOrphanedCheckouts();
 
 		const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 		const { PromotionReviewInboxService } = await import('./promotion-review-inbox.service.js');

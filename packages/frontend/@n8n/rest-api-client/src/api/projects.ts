@@ -1,7 +1,8 @@
-import type { Scope } from '@n8n/permissions';
+import type { CreatedProjectPublicDto, CreateProjectPublicDto } from '@n8n/api-types';
+import type { AssignableProjectRole, Scope } from '@n8n/permissions';
 
-import type { IRestApiContext } from '../types';
-import { makeRestApiRequest } from '../utils';
+import type { IRestApiContext, PublicApiContext } from '../types';
+import { makePublicApiRequest, makeRestApiRequest } from '../utils';
 import type { IUserResponse } from './users';
 
 export const ProjectTypes = {
@@ -49,3 +50,19 @@ export type Project = ProjectSharingData & {
 export const getProject = async (context: IRestApiContext, id: string): Promise<Project> => {
 	return await makeRestApiRequest(context, 'GET', `/projects/${id}`);
 };
+
+export const addProjectMembers = async (
+	context: IRestApiContext,
+	projectId: string,
+	relations: Array<{ userId: string; role: AssignableProjectRole }>,
+): Promise<void> => {
+	await makeRestApiRequest(context, 'POST', `/projects/${projectId}/users`, { relations });
+};
+
+/** Creates a team project through the public API, which accepts the project id. */
+export async function createPublicProject(
+	context: PublicApiContext,
+	data: CreateProjectPublicDto,
+): Promise<CreatedProjectPublicDto> {
+	return await makePublicApiRequest(context, 'POST', '/projects', data);
+}

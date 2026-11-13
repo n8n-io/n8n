@@ -24,7 +24,9 @@ export class AppsController {
 	@Post('/')
 	@ProjectScope('app:create')
 	async create(req: AppRequest, _res: Response, @Body dto: CreateAppDto) {
-		return await this.appsService.createApp(req.params.projectId, dto);
+		return await this.appsService.createApp(req.params.projectId, dto, {
+			actor: { userId: req.user.id },
+		});
 	}
 
 	@Get('/')
@@ -42,12 +44,16 @@ export class AppsController {
 	@Patch('/:appId')
 	@ProjectScope('app:update')
 	async update(req: AppRequest, _res: Response, @Body dto: UpdateAppDto) {
-		return await this.appsService.updateApp(req.params.projectId, req.params.appId, dto);
+		return await this.appsService.updateApp(req.params.projectId, req.params.appId, dto, {
+			userId: req.user.id,
+		});
 	}
 
 	@Delete('/:appId')
 	@ProjectScope('app:delete')
 	async delete(req: AppRequest) {
-		await this.appsService.deleteApp(req.params.projectId, req.params.appId);
+		await this.appsService.deleteApp(req.params.projectId, req.params.appId, {
+			userId: req.user.id,
+		});
 	}
 }

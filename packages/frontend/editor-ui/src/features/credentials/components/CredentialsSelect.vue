@@ -6,6 +6,8 @@ import ScopesNotice from './ScopesNotice.vue';
 import NodeCredentials from './NodeCredentials.vue';
 import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
 import { useCredentialsStore } from '../credentials.store';
+import { isCredentialTypeSupported } from '../credentials.utils';
+import { useContactAdminDialog } from '../composables/useContactAdminDialog';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -13,7 +15,6 @@ import {
 	getCredentialTypeRestriction,
 	RestrictedNodePopover,
 	SCOPE_LABEL_KEY,
-	type ContactAudience,
 } from '@n8n/frontend-module-type-availability-policies';
 
 import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
@@ -42,12 +43,11 @@ const i18n = useI18n();
 
 const innerSelectRef = ref<InstanceType<typeof N8nSelect>>();
 const fieldMarkerRef = useTemplateRef<HTMLElement>('fieldMarkerRef');
-const isContactAdminOpen = ref(false);
-// The dialog keeps showing this copy while it fades out, so it stays set after the close.
-const contactAdmin = ref<{ subject: string; audience: ContactAudience }>({
-	subject: '',
-	audience: 'instance',
-});
+const {
+	isOpen: isContactAdminOpen,
+	state: contactAdmin,
+	request: requestContactAdmin,
+} = useContactAdminDialog(() => innerSelectRef.value?.blur());
 // The select mounts every option while closed, so the row popovers mount on the first open only.
 // They stay mounted: the select closes on the release in a popover, before its click arrives.
 const hasListOpened = ref(false);
@@ -108,90 +108,21 @@ function onSelect(value: string) {
 	emit('update:modelValue', value);
 }
 
-function requestContactAdmin(subject: string, audience: ContactAudience) {
-	// The dialog opens on top of the page, so the list must not stay open behind it.
-	innerSelectRef.value?.blur();
-	contactAdmin.value = { subject, audience };
-	isContactAdminOpen.value = true;
-}
-
 function focus() {
 	if (innerSelectRef.value) {
 		innerSelectRef.value.focus();
 	}
 }
 
-/**
- * Check if a credential type belongs to one of the supported sets defined
- * in the `credentialTypes` key in a `credentialsSelect` parameter
- */
 function isSupported(name: string): boolean {
-	const supported = getSupportedSets(props.parameter.credentialTypes ?? []);
+	const credentialType = credentialsStore.getCredentialTypeByName(name);
+	if (!credentialType) return false;
 
-	const checkedCredType = credentialsStore.getCredentialTypeByName(name);
-	if (!checkedCredType) return false;
-	if (checkedCredType.hidden) return false;
-
-	// Exclude credentials that opt into node-restriction when the current
-	// node is not in their supportedNodes list. Mirrors the server-side
-	// `isCredentialUsableByNode` policy so the UI does not offer a choice
-	// that the API/runtime would reject.
-	if (
-		checkedCredType.restrictToSupportedNodes &&
-		!checkedCredType.supportedNodes?.includes(props.node?.type ?? '')
-	) {
-		return false;
-	}
-
-	for (const property of supported.has) {
-		if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-			// generic-auth credentials (e.g. httpHeaderAuth) may also define
-			// `authenticate`; they belong in the generic auth dropdown, not the
-			// predefined credential type list
-			if (property === 'authenticate' && checkedCredType.genericAuth === true) continue;
-
-			return true;
-		}
-	}
-
-	if (
-		checkedCredType.extends?.some((parentType: string) => supported.extends.includes(parentType))
-	) {
-		return true;
-	}
-
-	if (checkedCredType.extends && supported.extends.length) {
-		// recurse upward until base credential type
-		// e.g. microsoftDynamicsOAuth2Api -> microsoftOAuth2Api -> oAuth2Api
-		return checkedCredType.extends.reduce(
-			(acc: boolean, parentType: string) => acc || isSupported(parentType),
-			false,
-		);
-	}
-
-	return false;
-}
-
-function getSupportedSets(credentialTypes: string[]) {
-	return credentialTypes.reduce<{ extends: string[]; has: string[] }>(
-		(acc, cur) => {
-			const _extends = cur.split('extends:');
-
-			if (_extends.length === 2) {
-				acc.extends.push(_extends[1]);
-				return acc;
-			}
-
-			const _has = cur.split('has:');
-
-			if (_has.length === 2) {
-				acc.has.push(_has[1]);
-				return acc;
-			}
-
-			return acc;
-		},
-		{ extends: [], has: [] },
+	return isCredentialTypeSupported(
+		credentialType,
+		props.parameter.credentialTypes ?? [],
+		props.node?.type ?? '',
+		(parentName) => credentialsStore.getCredentialTypeByName(parentName) ?? undefined,
 	);
 }
 
@@ -282,7 +213,7 @@ defineExpose({ focus });
 		</div>
 		<ContactAdminModal
 			kind="credential"
-			:node-type-name="contactAdmin.subject"
+			:type-name="contactAdmin.subject"
 			:audience="contactAdmin.audience"
 			v-model:open="isContactAdminOpen"
 		/>

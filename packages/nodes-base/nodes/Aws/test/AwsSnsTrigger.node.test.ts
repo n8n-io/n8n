@@ -1,4 +1,5 @@
 import type { IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { AwsSnsTrigger } from '../AwsSnsTrigger.node';
 import { verifySignature } from '../AwsSnsTriggerHelpers';
@@ -78,7 +79,15 @@ describe('AwsSnsTrigger', () => {
 		expect(awsApiRequestSOAPMock).toHaveBeenCalledWith(
 			'sns',
 			'GET',
-			'/?Action=ConfirmSubscription&TopicArn=arn:aws:sns:us-east-1:123456789012:MyTopic&Token=token&Version=2010-03-31',
+			requestPath`/`,
+			undefined,
+			undefined,
+			{
+				Action: 'ConfirmSubscription',
+				TopicArn: 'arn:aws:sns:us-east-1:123456789012:MyTopic',
+				Token: 'token',
+				Version: '2010-03-31',
+			},
 		);
 		expect(result).toEqual({ noWebhookResponse: true });
 	});

@@ -1,5 +1,5 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import { Person } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -15,7 +15,7 @@ import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from '../onboa
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import type { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
-const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
+const person = Object.assign(new Person(), { id: 'user-1', firstName: 'Ada' });
 const THREAD_ID = 'thread-1';
 const CARD_REQUEST_ID = 'onboarding-card';
 const urlSurvey = { survey: { what_team_are_you_on: 'Marketing' }, surveySource: 'url' };
@@ -28,7 +28,7 @@ function setup(sourceContext?: Record<string, unknown>) {
 	memoryService.ensureThread.mockResolvedValue({
 		thread: {
 			id: THREAD_ID,
-			resourceId: user.id,
+			resourceId: person.id,
 			createdAt: '2026-09-28T00:00:00.000Z',
 			updatedAt: '2026-09-28T00:00:00.000Z',
 		},
@@ -57,7 +57,7 @@ describe('InstanceAiOnboardingService telemetry', () => {
 	it('tracks the start with the team and where the team came from', async () => {
 		const { service, telemetry } = setup();
 
-		await service.ensureThread(user, THREAD_ID, 'project-1', {
+		await service.ensureThread(person, THREAD_ID, 'project-1', {
 			source: 'onboarding',
 			origin: 'external',
 			sourceContext: urlSurvey,
@@ -65,14 +65,14 @@ describe('InstanceAiOnboardingService telemetry', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_AI_ASSISTANT_ONBOARDING,
-			{ user_id: user.id, thread_id: THREAD_ID, team: 'Marketing', team_source: 'url' },
+			{ user_id: person.id, thread_id: THREAD_ID, team: 'Marketing', team_source: 'url' },
 		);
 	});
 
 	it('tracks the card answers with the card as the team source', async () => {
 		const { service, telemetry } = setup();
 
-		await service.answerCard(user.id, CARD_REQUEST_ID, {
+		await service.answerCard(person.id, CARD_REQUEST_ID, {
 			kind: 'questions',
 			answers: [
 				{ questionId: 'team', selectedOptions: ['Sales'] },
@@ -83,7 +83,7 @@ describe('InstanceAiOnboardingService telemetry', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
 			{
-				user_id: user.id,
+				user_id: person.id,
 				thread_id: THREAD_ID,
 				team: 'Sales',
 				team_source: 'card',
@@ -96,7 +96,7 @@ describe('InstanceAiOnboardingService telemetry', () => {
 	it('keeps the survey as the team source when the survey answered the team step', async () => {
 		const { service, telemetry } = setup(urlSurvey);
 
-		await service.answerCard(user.id, CARD_REQUEST_ID, {
+		await service.answerCard(person.id, CARD_REQUEST_ID, {
 			kind: 'questions',
 			answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
 		});
@@ -118,7 +118,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('refuses an answer of another kind before the card is claimed', async () => {
 		const { service, pendingConfirmationRepo, eventBus } = setup();
 
-		await expect(service.answerCard(user.id, CARD_REQUEST_ID, approval)).rejects.toThrow(
+		await expect(service.answerCard(person.id, CARD_REQUEST_ID, approval)).rejects.toThrow(
 			BadRequestError,
 		);
 		expect(pendingConfirmationRepo.claim).not.toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('hands free text back as the first message and posts no follow-up', async () => {
 		const { service, memoryService } = setup();
 
-		const card = await service.answerCard(user.id, CARD_REQUEST_ID, freeTextAnswer);
+		const card = await service.answerCard(person.id, CARD_REQUEST_ID, freeTextAnswer);
 
 		expect(card).toEqual({
 			threadId: THREAD_ID,
@@ -140,7 +140,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('posts the follow-up as a finished run when the card holds no free text', async () => {
 		const { service, memoryService } = setup();
 
-		const card = await service.answerCard(user.id, CARD_REQUEST_ID, {
+		const card = await service.answerCard(person.id, CARD_REQUEST_ID, {
 			kind: 'questions',
 			answers: [{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] }],
 		});
@@ -148,7 +148,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 		expect(card).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
 		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
 			THREAD_ID,
-			user.id,
+			person.id,
 			'Last one: what do you usually do in Gmail and Slack?',
 			expect.stringContaining('<onboarding-answer>'),
 		);

@@ -5,12 +5,11 @@ import { WorkflowRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
@@ -345,6 +344,31 @@ describe('ExecuteNodeService', () => {
 				},
 			});
 			expect(workflowRepository.delete).toHaveBeenCalledWith('temp-wf-1');
+		});
+
+		it('refuses a credential the user can use only through an instance-wide grant, before running', async () => {
+			credentialsPermissionChecker.checkForUser.mockRejectedValueOnce(
+				new UserError('Node "Node" uses the credential "Bot", which you cannot use'),
+			);
+
+			const result = await service.run(user, baseRequest());
+
+			expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledWith(
+				'user-1',
+				[expect.objectContaining({ name: 'Node' })],
+				{ ignoreGlobalUseScope: true },
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ status: 'error', error: { refused: true } });
+		});
+
+		it('does not run when the own-access check fails for another reason', async () => {
+			credentialsPermissionChecker.checkForUser.mockRejectedValueOnce(new Error('connection lost'));
+
+			const result = await service.run(user, baseRequest());
+
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ status: 'error' });
 		});
 
 		it('lets the runner decide when the credential check fails for another reason', async () => {

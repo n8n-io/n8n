@@ -21,7 +21,8 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { computed } from 'vue';
+import { computed, isProxy } from 'vue';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 vi.mock('@n8n/composables/useToast');
 
@@ -69,6 +70,26 @@ describe(useLogsExecutionData, () => {
 
 			await waitAllPromises();
 			expect(entries.value).toHaveLength(1);
+		});
+	});
+
+	describe('execution', () => {
+		it("should hold the store's execution object, not a copy or a proxy", async () => {
+			executionStateStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					id: 'exec-1',
+					data: createRunExecutionData({ resultData: { runData: { n0: [createTestTaskData()] } } }),
+					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
+				}),
+			);
+
+			const { execution } = useLogsExecutionData();
+
+			await waitAllPromises();
+			expect(execution.value).toBe(
+				useExecutionDataStore(createExecutionDataId('exec-1')).execution,
+			);
+			expect(isProxy(execution.value)).toBe(false);
 		});
 	});
 

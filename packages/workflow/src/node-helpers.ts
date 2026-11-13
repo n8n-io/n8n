@@ -298,7 +298,7 @@ export function getNodeFeatures(
 	return features;
 }
 
-const getPropertyValues = (
+export const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
@@ -602,6 +602,27 @@ export function getActiveCredentialTypes(
 		// Malformed display options must not break callers that never evaluated them before
 		return null;
 	}
+}
+
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
+
+export function getRequestedCredentialTypes(
+	node: INode,
+	getNodeTypeDescription: () => INodeTypeDescription | null,
+): string[] {
+	const types = new Set(Object.keys(node.credentials ?? {}));
+
+	const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
+		(value): value is string => typeof value === 'string' && value !== '',
+	);
+	if (named.length > 0) {
+		const active = getActiveCredentialTypes(node, getNodeTypeDescription());
+		for (const type of named) if (active?.has(type)) types.add(type);
+	}
+
+	if (node.extendsCredential) types.add(node.extendsCredential);
+
+	return [...types];
 }
 
 /**

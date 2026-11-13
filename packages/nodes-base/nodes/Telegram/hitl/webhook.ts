@@ -3,7 +3,7 @@ import { isTelegramInteractionRequest, parseHitlCallbackReference } from 'n8n-co
 import type { IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 
 import type { TelegramChatApprovalOptions } from './descriptions';
-import { deriveHitlSecretToken } from './tokens';
+import { deriveHitlSecretToken, deriveLegacyHitlSecretToken } from './tokens';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
 import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 import { apiRequest } from '../GenericFunctions';
@@ -118,7 +118,14 @@ export async function telegramSendAndWaitWebhook(
 	const expectedToken = deriveHitlSecretToken(credentials.accessToken as string);
 	const providedToken = String(this.getHeaderData()['x-telegram-bot-api-secret-token'] ?? '');
 
-	if (!safeTokensMatch(providedToken, expectedToken)) {
+	// Both compares run every time, so an accepted tap has one timing shape.
+	const matchesCurrent = safeTokensMatch(providedToken, expectedToken);
+	const matchesLegacy = safeTokensMatch(
+		providedToken,
+		deriveLegacyHitlSecretToken(credentials.accessToken as string),
+	);
+
+	if (!matchesCurrent && !matchesLegacy) {
 		// Fail closed: the execution stays waiting.
 		res.status(403).send('');
 		return { noWebhookResponse: true };

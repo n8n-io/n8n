@@ -4,7 +4,7 @@ import type { OAuthDiscoveryClient } from '@n8n/backend-services';
 import { CacheService, EventService, UrlService } from '@n8n/backend-services';
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Person } from '@n8n/db';
 import { WebhookRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -23,8 +23,8 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_PATH_SUFFIX,
 	FORM_TRIGGER_NODE_TYPE,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -53,8 +53,8 @@ setupTestServer({
 const IDP_ISSUER = 'https://idp.example';
 const IDP_SUBJECT = 'idp-alice';
 
-let owner: User;
-let member: User;
+let owner: Person;
+let member: Person;
 let formEndpoint: string;
 let webhookEndpoint: string;
 let instanceBaseUrl: string;

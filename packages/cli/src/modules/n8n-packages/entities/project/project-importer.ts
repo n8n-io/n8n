@@ -1,10 +1,10 @@
 import { LicenseState } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
 
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { decideMatchedProject } from './project-conflict-policy';
@@ -60,10 +60,11 @@ export class ProjectImporter {
 					continue;
 				}
 
+				const fields = toFields(project);
 				items.push(
-					decision.action === 'update'
-						? { action: 'update', ...toFields(project) }
-						: { action: 'skip', existingName: existing.name, ...toFields(project) },
+					decision.action === 'update' && changesProject(existing, fields)
+						? { action: 'update', ...fields }
+						: { action: 'skip', existingName: existing.name, ...fields },
 				);
 			} else {
 				const refusal = this.createRefusal(user);
@@ -84,7 +85,8 @@ export class ProjectImporter {
 		for (const item of items) {
 			switch (item.action) {
 				case 'skip':
-					// `merge`: the existing project is left untouched; only its contents come in.
+					// `merge`, or nothing to change: the existing project is left untouched; only its
+					// contents come in.
 					summaries.push({
 						sourceProjectId: item.sourceProjectId,
 						localId: item.sourceProjectId,
@@ -175,6 +177,13 @@ export function projectRefusalError(conflict: ProjectConflict): ForbiddenError |
 		case 'fail-policy':
 			return undefined;
 	}
+}
+
+/** A field that the package leaves out keeps its value, so only the fields it carries count. */
+function changesProject(existing: Project, fields: ProjectPlanFields): boolean {
+	return (['name', 'description', 'icon', 'customTelemetryTags'] as const).some(
+		(key) => fields[key] !== undefined && !isEqual(fields[key], existing[key]),
+	);
 }
 
 function toFields(project: PreparedProject): ProjectPlanFields {

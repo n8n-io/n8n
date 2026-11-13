@@ -8,8 +8,8 @@ import type { Locator, Page } from '@playwright/test';
  *     CodeMirror editor for the `jsCode` parameter
  *   - teleported overlays resolved through the derived `Page`: the CodeMirror
  *     lint tooltip (`.cm-tooltip-lint`)
- *   - teleported fullscreen code editor (`code-editor-fullscreen`). Its hosting
- *     `.el-dialog` shell is owned by `BaseModal` / `dialogLocators`; this
+ *   - teleported fullscreen code editor (`code-editor-fullscreen`). The dialog
+ *     shell is owned by `NodeDetailsViewPage.getCodeEditorDialog`; this
  *     component scopes only to its own teleport root.
  *
  * @example
@@ -47,8 +47,7 @@ export class CodeNodeEditor {
 	}
 
 	/**
-	 * Teleported fullscreen code editor (inside an `.el-dialog`). The dialog
-	 * shell itself is owned by `BaseModal` / `dialogLocators` — see
+	 * Teleported fullscreen code editor. The dialog shell is owned by
 	 * `NodeDetailsViewPage.getCodeEditorDialog`.
 	 */
 	getFullscreenEditor(): Locator {

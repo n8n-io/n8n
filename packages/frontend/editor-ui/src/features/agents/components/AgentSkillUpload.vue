@@ -45,7 +45,7 @@ async function importSkill(loadSkill: () => Promise<AgentSkill>, source: 'skill_
 	} catch (error) {
 		fileError.value =
 			error instanceof AgentSkillImportError
-				? i18n.baseText(error.i18nKey)
+				? i18n.baseText(error.i18nKey, { interpolate: error.interpolate })
 				: i18n.baseText('agents.builder.skills.import.invalidFolder');
 		emit('import:skill', {
 			source,

@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';

@@ -4,9 +4,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createRouter, createWebHistory } from 'vue-router';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 
 import ApiKeyRateLimitsSection from './ApiKeyRateLimitsSection.vue';
 import { RATE_LIMIT_ROW_KEYS } from './rateLimits';
@@ -56,7 +58,15 @@ const pinia = createTestingPinia();
 setActivePinia(pinia);
 const settingsStore = mockedStore(useSettingsStore);
 
-const renderSection = createComponentRenderer(ApiKeyRateLimitsSection, { pinia });
+const router = createRouter({
+	history: createWebHistory(),
+	routes: [{ path: '/settings/api', name: VIEWS.API_SETTINGS, component: { template: '<div />' } }],
+});
+
+const renderSection = createComponentRenderer(ApiKeyRateLimitsSection, {
+	pinia,
+	global: { plugins: [router], stubs: { RouterLink: false } },
+});
 
 async function renderLoaded(overrides: Partial<PublicApiRateLimitSettingsResponse> = {}) {
 	getSettings.mockResolvedValue(response(overrides));
@@ -92,6 +102,20 @@ describe('ApiKeyRateLimitsSection', () => {
 			const { getByRole } = await renderLoaded();
 
 			expect(getByRole('switch', { name: 'Enable API key rate limits' })).toBeInTheDocument();
+		});
+
+		it('links the description to the API keys page and the rate limits docs', async () => {
+			const { getByTestId, getByRole } = await renderLoaded();
+
+			expect(getByTestId('rate-limits-description')).toHaveTextContent(
+				'Cap how many requests your public API keys can make with rate limits',
+			);
+			const apiKeysLink = getByTestId('rate-limits-api-keys-link');
+			expect(apiKeysLink).toHaveTextContent('API keys');
+			expect(apiKeysLink).toHaveAttribute('href', '/settings/api');
+			const docsLink = getByRole('link', { name: 'rate limits' });
+			expect(docsLink).toHaveAttribute('href', 'https://docs.n8n.io/connect/n8n-api/rate-limits');
+			expect(docsLink).toHaveAttribute('target', '_blank');
 		});
 
 		it('does not show the limits while rate limiting is off', async () => {
@@ -148,9 +172,19 @@ describe('ApiKeyRateLimitsSection', () => {
 
 			expect(
 				screen.getByText(
-					'Limits how many Public API requests each API key can make. Requests over the limit get a 429 response until it resets.',
+					'Limits how many requests each API key can make. Requests over the limit get a 429 response until it resets.',
 				),
 			).toBeInTheDocument();
+		});
+
+		it('shows the reset icon on the reset all button', async () => {
+			const { getByTestId } = await renderLoaded({ enabled: true, globalReadLimit: 5 });
+
+			await userEvent.click(getByTestId('rate-limits-edit'));
+
+			expect(
+				screen.getByTestId('rate-limits-reset-all').querySelector('[data-icon="undo-2"]'),
+			).not.toBeNull();
 		});
 
 		it('names each limit and window input after its group and kind', async () => {

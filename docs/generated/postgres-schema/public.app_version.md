@@ -5,11 +5,13 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | appId | uuid |  | false |  | [public.app](public.app.md) |  |
+| bindings | json | '[]'::json | false |  |  | Resources this app version can use: array of { key, kind, resource id, permissions } |
 | buildAttempts | integer | 0 | false |  |  |  |
 | buildStatus | varchar(16) | 'queued'::character varying | false |  |  | Build state: queued, running, succeeded, or failed |
 | buildStatusUpdatedAt | timestamp(3) with time zone |  | true |  |  |  |
 | bundleArtifactId | integer |  | true |  | [public.app_artifact](public.app_artifact.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| description | text |  | true |  |  |  |
 | id | uuid |  | false | [public.app](public.app.md) |  |  |
 | label | varchar(255) |  | true |  |  |  |
 | sourceArtifactId | integer |  | false |  | [public.app_artifact](public.app_artifact.md) |  |
@@ -25,6 +27,7 @@
 | FK_e9aeab5b1db8dc77708231ae44e | FOREIGN KEY | FOREIGN KEY ("appId") REFERENCES app(id) ON DELETE CASCADE |
 | PK_f2573b981a7eac664875e7483ac | PRIMARY KEY | PRIMARY KEY (id) |
 | app_version_appId_not_null | n | NOT NULL "appId" |
+| app_version_bindings_not_null | n | NOT NULL bindings |
 | app_version_buildAttempts_not_null | n | NOT NULL "buildAttempts" |
 | app_version_buildStatus_not_null | n | NOT NULL "buildStatus" |
 | app_version_createdAt_not_null | n | NOT NULL "createdAt" |
@@ -54,11 +57,13 @@ erDiagram
 
 "public.app_version" {
   uuid appId FK
+  json bindings
   integer buildAttempts
   varchar_16_ buildStatus
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK

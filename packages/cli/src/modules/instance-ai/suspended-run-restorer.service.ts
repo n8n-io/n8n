@@ -8,7 +8,7 @@ import {
 	type SuspendedRunState,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';

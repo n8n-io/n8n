@@ -1,7 +1,8 @@
 import { workflowReviewsPolicySchema } from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { WORKFLOW_REVIEW_POLICY_SETTINGS_KEY } from '@/constants/workflow-reviews';
 

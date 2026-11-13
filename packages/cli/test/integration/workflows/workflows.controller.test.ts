@@ -18,6 +18,7 @@ import {
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { EngineConfig, WorkflowsConfig } from '@n8n/config';
 import type {
+	Person,
 	User,
 	ListQueryDb,
 	WorkflowFolderUnionFull,
@@ -74,9 +75,9 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
-let owner: User;
-let member: User;
-let anotherMember: User;
+let owner: Person;
+let member: Person;
+let anotherMember: Person;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -1143,6 +1144,32 @@ describe('default engine', () => {
 });
 
 describe('GET /workflows/:workflowId', () => {
+	describe('home project', () => {
+		afterEach(() => {
+			testServer.license.enable('feat:sharing');
+		});
+
+		test.each([
+			{ sharing: 'enabled', setLicense: () => testServer.license.enable('feat:sharing') },
+			{ sharing: 'disabled', setLicense: () => testServer.license.disable('feat:sharing') },
+		])(
+			'should return homeProject and no shared relation when sharing license is $sharing',
+			async ({ setLicense }) => {
+				setLicense();
+
+				const ownerProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
+				const workflow = await createWorkflow({}, owner);
+
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+				const { data } = response.body as { data: Record<string, unknown> };
+				expect(data.homeProject).toMatchObject({ id: ownerProject.id, type: 'personal' });
+				expect(data.sharedWithProjects).toEqual([]);
+				expect(data).not.toHaveProperty('shared');
+			},
+		);
+	});
+
 	test('should return pin data', async () => {
 		const workflow = makeWorkflow({ withPinData: true });
 		const workflowCreationResponse = await authOwnerAgent.post('/workflows').send(workflow);
@@ -3897,6 +3924,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4412,6 +4440,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4549,6 +4578,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4572,6 +4602,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4598,6 +4629,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4725,6 +4757,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4739,6 +4772,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
@@ -5247,8 +5281,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -5461,8 +5496,9 @@ describe('POST /workflows/:workflowId/run', () => {
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 				findLatestExecution: vi.fn(),
 				cancelExecution: vi.fn(),
-				locateResumeTarget: vi.fn(),
+				locateResume: vi.fn(),
 				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 

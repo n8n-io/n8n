@@ -218,6 +218,34 @@
 			right: var(--spacing--xs);
 		}
 	}
+
+	&.restricted-import-toast {
+		margin-top: var(--toast--top, 0);
+		padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--xs);
+		border: 1px solid var(--color--foreground);
+		border-radius: var(--radius--lg);
+		background: var(--color--background--light-3);
+		box-shadow: var(--shadow--dark);
+
+		.el-notification__group {
+			flex: auto;
+			min-width: 0;
+			margin: 0;
+		}
+
+		.el-notification__content {
+			margin: 0;
+
+			p {
+				line-height: var(--line-height--lg);
+			}
+		}
+
+		.el-notification__closeBtn {
+			top: var(--spacing--2xs);
+			right: var(--spacing--2xs);
+		}
+	}
 }
 
 .el-notification__content {

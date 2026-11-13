@@ -276,13 +276,9 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/api/v1/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets' }),
-		);
 	});
 
-	it('reports the version-less route path for a sub-path route', async () => {
+	it('emits public-api-invoked with the full event body for an authenticated call', async () => {
 		@Service()
 		class WidgetsPublicController {
 			@Get('/:widgetId')
@@ -293,12 +289,19 @@ describe('PublicApiControllerRegistry', () => {
 		}
 		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-		await request(activate()).get('/api/v1/widgets/w-1').expect(200);
+		await request(activate())
+			.get('/api/v1/widgets/w-1')
+			.set({ 'x-n8n-client': 'editor-ui', 'user-agent': 'n8n-cli/1.0' })
+			.expect(200);
 
-		expect(eventService.emit).toHaveBeenCalledWith(
-			'public-api-invoked',
-			expect.objectContaining({ method: 'GET', path: '/widgets/w-1' }),
-		);
+		expect(eventService.emit).toHaveBeenCalledWith('public-api-invoked', {
+			userId: 'user-1',
+			path: '/widgets/w-1',
+			method: 'GET',
+			apiVersion: 'v1',
+			userAgent: 'n8n-cli/1.0',
+			client: 'editor_ui',
+		});
 	});
 
 	describe('success response without a DTO', () => {

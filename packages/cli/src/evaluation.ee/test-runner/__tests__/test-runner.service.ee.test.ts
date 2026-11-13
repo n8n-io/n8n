@@ -30,7 +30,7 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';

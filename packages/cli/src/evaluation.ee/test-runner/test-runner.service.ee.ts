@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
@@ -50,7 +50,6 @@ import {
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
 import { License } from '@/license';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';

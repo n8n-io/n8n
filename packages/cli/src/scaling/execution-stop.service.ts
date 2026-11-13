@@ -7,7 +7,7 @@ import { ManualExecutionCancelledError } from 'n8n-workflow';
 import { ActiveExecutions } from '@/active-executions';
 
 import { JobProcessor } from './job-processor';
-import { Publisher } from './pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 /**
  * Cross-process stop protocol for in-memory executions in queue mode.

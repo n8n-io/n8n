@@ -1,5 +1,5 @@
 import type { CustomFetch } from '@n8n/backend-network';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createAuthFetch } from '@/utils/auth-fetch';
 

@@ -1,11 +1,10 @@
-import { UserError } from 'n8n-workflow';
-
 import {
 	BadRequestError,
 	ConflictError,
 	ForbiddenError,
 	NotFoundError,
 	UnprocessableRequestError,
+	UserError,
 } from '@n8n/errors';
 
 import {

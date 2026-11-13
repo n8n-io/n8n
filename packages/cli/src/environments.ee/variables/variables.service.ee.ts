@@ -5,7 +5,7 @@ import {
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { User, Variables } from '@n8n/db';
+import type { OperationContext, User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
@@ -14,8 +14,10 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
+import { loginIdOf } from '@/events/login-id';
 import { CacheService, EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
+import { toUserLike } from '@/utils/to-user-like';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {
 	'variable:list': 'projectVariable:list',
@@ -142,7 +144,7 @@ export class VariablesService {
 		return variable;
 	}
 
-	async deleteForUser(user: User, id: string): Promise<void> {
+	async deleteForUser(user: User, id: string, ctx: OperationContext = {}): Promise<void> {
 		const existingVariable = await this.getCached(id);
 
 		const userHasRight = await this.isAuthorizedForVariable(
@@ -157,16 +159,11 @@ export class VariablesService {
 		await this.delete(id);
 
 		this.eventService.emit('variable-deleted', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: id,
 			variableKey: existingVariable?.key ?? '',
 			...(existingVariable?.project?.id && { projectId: existingVariable.project.id }),
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -218,7 +215,11 @@ export class VariablesService {
 		}
 	}
 
-	async create(user: User, variable: CreateVariableRequestDto): Promise<Variables> {
+	async create(
+		user: User,
+		variable: CreateVariableRequestDto,
+		ctx: OperationContext = {},
+	): Promise<Variables> {
 		const userHasRight = await this.isAuthorizedForVariable(
 			user,
 			'variable:create',
@@ -245,22 +246,22 @@ export class VariablesService {
 			{ transaction: false },
 		);
 		this.eventService.emit('variable-created', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: saveResult.id,
 			variableKey: saveResult.key,
 			...(variable.projectId && { projectId: variable.projectId }),
+			loginId: loginIdOf(ctx),
 		});
 		await this.updateCache();
 		return saveResult;
 	}
 
-	async update(user: User, id: string, variable: UpdateVariableRequestDto): Promise<Variables> {
+	async update(
+		user: User,
+		id: string,
+		variable: UpdateVariableRequestDto,
+		ctx: OperationContext = {},
+	): Promise<Variables> {
 		const existingVariable = await this.getCached(id);
 		if (!existingVariable) {
 			throw new NotFoundError(`Variable with id ${id} not found`);
@@ -322,16 +323,11 @@ export class VariablesService {
 				: {}),
 		});
 		this.eventService.emit('variable-updated', {
-			user: {
-				id: user.id,
-				email: user.email,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				role: user.role,
-			},
+			user: toUserLike(user),
 			variableId: id,
 			variableKey: variable.key ?? existingVariable.key,
 			...(newProjectId && { projectId: newProjectId }),
+			loginId: loginIdOf(ctx),
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;

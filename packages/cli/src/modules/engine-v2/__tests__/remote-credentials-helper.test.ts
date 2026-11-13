@@ -13,7 +13,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import { UnimplementedError } from '@n8n/engine';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { EngineCredentialsClient } from '../engine-credentials-client';

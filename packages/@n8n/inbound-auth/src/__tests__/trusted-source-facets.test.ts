@@ -7,7 +7,7 @@ import {
 import { toTrustedSourceTelemetryFacets, trustedSourceFacetsOf } from '../trusted-source-facets';
 
 const parse = (input: TrustedSourceConfigInput, managedBy: ManagedBy = 'admin') =>
-	migrateToLatest(trustedSourceConfigSchemaFor(managedBy).parse(input));
+	migrateToLatest(trustedSourceConfigSchemaFor(managedBy).parse(input), { managedBy });
 
 describe('trustedSourceFacetsOf', () => {
 	it('reads the defaults of a minimal admin config', () => {
@@ -23,14 +23,20 @@ describe('trustedSourceFacetsOf', () => {
 			surfaces: ['public-api'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'off',
+			provisionPerson: 'off',
 			roleMappingMode: 'off',
 		});
 	});
 
-	it('reads every explicit choice of an admin config', () => {
+	it.each([1, 2] as const)('reads every explicit choice of an admin config v%s', (version) => {
+		const identity = {
+			linkByEmail: 'any',
+			roleMapping: { mode: 'continuous', fallbackInstanceRole: 'global:member' },
+		} satisfies TrustedSourceConfigInput['identity'];
 		const config = parse({
-			version: 1,
+			...(version === 1
+				? { version, identity: { ...identity, provision: { human: 'jit' } } }
+				: { version, identity: { ...identity, provision: { person: 'jit' } } }),
 			authentication: {
 				type: 'oauth2',
 				discovery: { mode: 'manual', jwksUri: 'https://idp.example.com/jwks' },
@@ -42,11 +48,6 @@ describe('trustedSourceFacetsOf', () => {
 				trigger: { audiences: ['hooks'] },
 				apps: {},
 			},
-			identity: {
-				linkByEmail: 'any',
-				provision: { human: 'jit' },
-				roleMapping: { mode: 'continuous', fallbackInstanceRole: 'global:member' },
-			},
 		});
 
 		expect(trustedSourceFacetsOf(config)).toEqual({
@@ -55,7 +56,7 @@ describe('trustedSourceFacetsOf', () => {
 			surfaces: ['public-api', 'instance-mcp', 'trigger', 'apps'],
 			identitySubject: 'binding',
 			linkByEmail: 'any',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'continuous',
 		});
 	});
@@ -109,7 +110,7 @@ describe('toTrustedSourceTelemetryFacets', () => {
 				surfaces: ['public-api', 'trigger'],
 				identitySubject: 'binding',
 				linkByEmail: 'any',
-				provisionHuman: 'jit',
+				provisionPerson: 'jit',
 				roleMappingMode: 'on-provision',
 			}),
 		).toEqual({
@@ -119,6 +120,7 @@ describe('toTrustedSourceTelemetryFacets', () => {
 			identity_subject: 'binding',
 			link_by_email: 'any',
 			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		});
 	});

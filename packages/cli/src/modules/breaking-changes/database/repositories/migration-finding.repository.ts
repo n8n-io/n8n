@@ -34,7 +34,7 @@ export type TriageableMigrationFinding = Pick<
 	'id' | 'ruleId' | 'workflowId' | 'notifiedAt'
 > & {
 	status: MigrationFindingListedStatus;
-	workflow: Pick<WorkflowEntity, 'id' | 'name' | 'activeVersionId' | 'updatedAt'>;
+	workflow: Pick<WorkflowEntity, 'id' | 'name' | 'activeVersionId' | 'updatedAt' | 'isArchived'>;
 };
 
 const LISTED_STATUSES = migrationFindingListedStatusSchema.options;
@@ -95,6 +95,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	/**
 	 * Number of unresolved findings per rule for the version. Rules without
 	 * them are absent. `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 * Findings of archived workflows are not counted.
 	 */
 	async countUnresolvedByRule(
 		targetVersion: BreakingChangeVersion,
@@ -107,6 +108,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	/**
 	 * Number of won't fix findings per rule for the version. Rules without them
 	 * are absent. `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 * Findings of archived workflows are not counted.
 	 */
 	async countWontFixByRule(
 		targetVersion: BreakingChangeVersion,
@@ -119,6 +121,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	/**
 	 * Number of distinct workflows with at least one unresolved finding for
 	 * the version. `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 * Archived workflows are not counted.
 	 */
 	async countDistinctUnresolvedWorkflows(
 		targetVersion: BreakingChangeVersion,
@@ -130,6 +133,9 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 			const query = this.managerFor(ctx)
 				.createQueryBuilder(MigrationFinding, 'finding')
 				.select('COUNT(DISTINCT finding.workflowId)', 'count')
+				.innerJoin('finding.workflow', 'workflow', 'workflow.isArchived = :isArchived', {
+					isArchived: false,
+				})
 				.where('finding.targetVersion = :targetVersion', { targetVersion })
 				.andWhere('finding.status IN (:...statuses)', { statuses: UNRESOLVED_STATUSES });
 			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
@@ -176,7 +182,13 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 					workflowId: true,
 					status: true,
 					notifiedAt: true,
-					workflow: { id: true, name: true, activeVersionId: true, updatedAt: true },
+					workflow: {
+						id: true,
+						name: true,
+						activeVersionId: true,
+						updatedAt: true,
+						isArchived: true,
+					},
 				},
 				where: {
 					targetVersion,
@@ -300,6 +312,9 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 				.createQueryBuilder(MigrationFinding, 'finding')
 				.select('finding.ruleId', 'ruleId')
 				.addSelect('COUNT(finding.id)', 'count')
+				.innerJoin('finding.workflow', 'workflow', 'workflow.isArchived = :isArchived', {
+					isArchived: false,
+				})
 				.where('finding.targetVersion = :targetVersion', { targetVersion })
 				.andWhere('finding.status IN (:...statuses)', { statuses })
 				.groupBy('finding.ruleId');

@@ -17,7 +17,7 @@ import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 

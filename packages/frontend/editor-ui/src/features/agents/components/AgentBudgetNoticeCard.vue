@@ -3,6 +3,8 @@ import { computed, ref } from 'vue';
 import { N8nButton, N8nCard, N8nInputNumber, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
+
 import {
 	parseBudgetAmount,
 	type BudgetAmountField,
@@ -11,7 +13,7 @@ import {
 
 const COPY: Record<
 	BudgetNoticeCode,
-	{ title: BaseTextKey; message: BaseTextKey; input: BaseTextKey; dismissed: BaseTextKey }
+	{ title: BaseTextKey; message: BaseTextKey; input?: BaseTextKey; dismissed: BaseTextKey }
 > = {
 	'budget.monthly': {
 		title: 'agents.chat.budget.monthly.title',
@@ -31,6 +33,11 @@ const COPY: Record<
 		input: 'agents.chat.budget.alert.input',
 		dismissed: 'agents.chat.budget.alert.dismissed',
 	},
+	'budget.credits': {
+		title: 'agents.chat.budget.credits.title',
+		message: 'agents.chat.budget.credits.message',
+		dismissed: 'agents.chat.budget.credits.dismissed',
+	},
 };
 
 const props = withDefaults(
@@ -49,10 +56,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { openTopUp } = useAiGatewayTopUp();
 const dismissed = ref(false);
 const amount = ref<number | undefined>();
 
 const copy = computed(() => COPY[props.code]);
+const isCredits = computed(() => props.code === 'budget.credits');
 const field = computed<BudgetAmountField>(() =>
 	props.code === 'budget.session' ? 'sessionCostCapUsd' : 'monthlyBudgetUsd',
 );
@@ -65,6 +74,10 @@ function increase() {
 	const value = amount.value;
 	if (value === undefined || props.pending) return;
 	emit('increase', { field: field.value, amount: value });
+}
+
+function topUp() {
+	void openTopUp({ source: 'agent_budget_card' });
 }
 </script>
 
@@ -81,7 +94,7 @@ function increase() {
 				{{ i18n.baseText(copy.dismissed) }}
 			</N8nText>
 			<template v-else>
-				<label v-if="canIncrease" :class="$style.amount">
+				<label v-if="canIncrease && copy.input !== undefined" :class="$style.amount">
 					<N8nText size="small">{{ i18n.baseText(copy.input) }}</N8nText>
 					<N8nInputNumber
 						:model-value="amount"
@@ -105,7 +118,15 @@ function increase() {
 						{{ i18n.baseText('agents.chat.budget.notNow') }}
 					</N8nButton>
 					<N8nButton
-						v-if="canIncrease"
+						v-if="isCredits"
+						size="medium"
+						data-testid="agent-budget-notice-top-up"
+						@click="topUp"
+					>
+						{{ i18n.baseText('agents.chat.budget.credits.topUp') }}
+					</N8nButton>
+					<N8nButton
+						v-else-if="canIncrease"
 						size="medium"
 						:loading="pending"
 						data-testid="agent-budget-notice-increase"

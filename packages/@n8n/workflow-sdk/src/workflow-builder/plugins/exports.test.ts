@@ -6,6 +6,7 @@ import {
 	nodeJson,
 	pluginRegistry,
 	registerDefaultPlugins,
+	reranker,
 	workflow,
 } from '../../index';
 import type {
@@ -23,6 +24,13 @@ describe('Public API exports', () => {
 		it('exports nodeJson function', () => {
 			expect(nodeJson).toBeDefined();
 			expect(typeof nodeJson).toBe('function');
+		});
+	});
+
+	describe('Subnode builder exports', () => {
+		it('exports reranker function', () => {
+			expect(reranker).toBeDefined();
+			expect(typeof reranker).toBe('function');
 		});
 	});
 

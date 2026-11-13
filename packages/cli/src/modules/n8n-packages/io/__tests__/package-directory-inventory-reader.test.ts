@@ -1,3 +1,8 @@
+import { mock } from 'vitest-mock-extended';
+
+import type { CredentialTypes } from '@/credential-types';
+
+import { postgresLikeCredentialType } from '../../entities/credential/__tests__/postgres-like-credential-type';
 import { WorkflowSerializer } from '../../entities/workflow/workflow.serializer';
 import {
 	PackageDirectoryInventoryReader,
@@ -38,7 +43,36 @@ const dataTable = (id: string) => ({
 });
 
 describe('PackageDirectoryInventoryReader', () => {
-	const reader = new PackageDirectoryInventoryReader(new WorkflowSerializer());
+	const credentialTypes = mock<CredentialTypes>();
+	const reader = new PackageDirectoryInventoryReader(new WorkflowSerializer(), credentialTypes);
+
+	beforeEach(() => {
+		credentialTypes.recognizes.mockReset().mockReturnValue(false);
+	});
+
+	it('drops the credential values that may not travel, as the package parser does', async () => {
+		credentialTypes.recognizes.mockReturnValue(true);
+		credentialTypes.getByName.mockReturnValue(postgresLikeCredentialType);
+
+		const inventory = await reader.read(
+			sourceOf({
+				'credentials/pg-c1/credential.json': {
+					id: 'c1',
+					name: 'c1',
+					type: 'postgres',
+					data: { caCertificate: '={{ $secrets.ca }}', ssl: 'require', password: 'plain-secret' },
+				},
+			}),
+		);
+
+		expect(inventory.credentials[0].credential).toEqual({
+			id: 'c1',
+			name: 'c1',
+			type: 'postgres',
+			data: { caCertificate: '={{ $secrets.ca }}', ssl: 'require' },
+			dataIsComplete: false,
+		});
+	});
 
 	it('reads projects, nested workflows, credentials, variables and data tables from their files and ignores other files', async () => {
 		const inventory = await reader.read(

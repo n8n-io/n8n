@@ -1,20 +1,27 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 import {
 	resolvePackage,
+	analyzeLocalPackage,
 	analyzePackageByName,
-	buildReport,
+	isLocalPath,
+	toJsonReport,
 	errorMessage,
 	formatPackageSpec,
 	getExitCode,
 	EXIT_CODES,
-	type ScanReport,
+	ScanInputError,
+	LOCAL_SKIPPED_CHECKS,
+	type PackageScan,
+	type JsonReport,
 } from './scanner.js';
 
-const USAGE = 'Usage: npx @n8n/scan-community-package <package-name>[@version] [--output <file>]';
+const USAGE =
+	'Usage: npx @n8n/scan-community-package <package-name>[@version] | <path> [--output <file>]';
 
 let packageSpec: string | undefined;
 let output: string | undefined;
@@ -34,16 +41,25 @@ if (!packageSpec) {
 	process.exit(EXIT_CODES.INTERNAL_ERROR);
 }
 
-const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number }> => {
+const analyzePackage = async (spec: string): Promise<PackageScan> => {
+	if (isLocalPath(spec)) return await analyzeLocalPackage(path.resolve(spec));
+	const { packageName, version } = resolvePackage(spec);
+	return await analyzePackageByName(packageName, version);
+};
+
+const run = async (spec: string): Promise<{ report: JsonReport; exitCode: number }> => {
 	try {
-		const { packageName, version } = resolvePackage(spec);
-		const result = await analyzePackageByName(packageName, version);
+		const result = await analyzePackage(spec);
+		const { packageName } = result;
 		const label = formatPackageSpec(packageName, result.version);
 		const exitCode = getExitCode(result);
+		const isPartialScan = (result.skippedChecks ?? []).length > 0;
 
 		console.log(
 			{
-				[EXIT_CODES.SCAN_SUCCEEDED]: `✅ Package "${label}" has passed all security checks`,
+				[EXIT_CODES.SCAN_SUCCEEDED]: isPartialScan
+					? `✅ Package "${label}" has passed the security checks that run before publishing`
+					: `✅ Package "${label}" has passed all security checks`,
 				[EXIT_CODES.SCAN_FAILED]: `❌ Package "${label}" has failed security checks`,
 				[EXIT_CODES.INTERNAL_ERROR]: `❌ Could not complete the scan of "${label}"`,
 			}[exitCode],
@@ -58,14 +74,25 @@ const run = async (spec: string): Promise<{ report: ScanReport; exitCode: number
 			}
 		}
 
-		return { report: buildReport(packageName, result), exitCode };
+		if (isPartialScan) {
+			console.log(
+				'\n⚠️ This was a local scan. The npm provenance and attested source checks run after you publish.',
+			);
+		}
+
+		return { report: toJsonReport(result), exitCode };
 	} catch (error: unknown) {
-		console.error('Analysis failed:', error);
-		const report = buildReport(spec, {
+		// An input error is the user's to fix, so a stack trace would only add noise
+		const message =
+			error instanceof ScanInputError ? error.message : `Analysis failed: ${errorMessage(error)}`;
+		console.error(error instanceof ScanInputError ? `❌ ${message}` : error);
+		const report = toJsonReport({
+			packageName: spec,
 			version: null,
 			passed: false,
-			message: `Analysis failed: ${errorMessage(error)}`,
-			error,
+			message,
+			incomplete: true,
+			skippedChecks: isLocalPath(spec) ? LOCAL_SKIPPED_CHECKS : [],
 		});
 		return { report, exitCode: EXIT_CODES.INTERNAL_ERROR };
 	}

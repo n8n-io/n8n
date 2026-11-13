@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { defineComponent, h, inject, type Ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -11,15 +12,28 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
+import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
-vi.mock('@/app/views/NodeView.vue', () => ({
-	default: {
-		name: 'NodeViewStub',
-		template: '<div data-test-id="node-view-stub" />',
+const { injected } = vi.hoisted(() => ({
+	injected: {
+		enabledFeatures: undefined as Ref<EditorEnabledFeatures> | undefined,
 	},
+}));
+
+vi.mock('@/app/views/NodeView.vue', () => ({
+	default: defineComponent({
+		name: 'NodeViewStub',
+		setup() {
+			injected.enabledFeatures = inject(EditorEnabledFeaturesKey);
+			return () => h('div', { 'data-test-id': 'node-view-stub' });
+		},
+	}),
 }));
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
@@ -39,6 +53,7 @@ describe('WorkflowHistoryContent', () => {
 		pinia = createPinia();
 		setActivePinia(pinia);
 		projectsStore = useProjectsStore();
+		injected.enabledFeatures = undefined;
 
 		// Mock currentProjectId for all tests
 		vi.spyOn(projectsStore, 'currentProjectId', 'get').mockReturnValue('test-project-id');
@@ -89,6 +104,56 @@ describe('WorkflowHistoryContent', () => {
 		]);
 	});
 
+	it('keeps the label and chevron mounted while this version is loading', async () => {
+		const workflowVersion = workflowVersionDataFactory();
+		const props = {
+			workflow: null,
+			workflowVersion,
+			actions,
+			pendingVersionId: workflowVersion.versionId,
+		};
+		const { getByTestId, rerender } = renderComponent({
+			pinia,
+			props,
+		});
+
+		const button = getByTestId('action-toggle-button');
+		expect(button).toBeDisabled();
+		expect(button).toHaveAttribute('aria-busy', 'true');
+		expect(button.className).toContain('loading');
+		expect(button).toHaveTextContent('Actions');
+		expect(button.querySelector('[data-icon="chevron-down"]')).toBeInTheDocument();
+		expect(button.querySelector('[data-spinner="grid"]')).toBeInTheDocument();
+
+		await rerender({ ...props, pendingVersionId: null });
+
+		const idleButton = getByTestId('action-toggle-button');
+		expect(idleButton).not.toBeDisabled();
+		expect(idleButton).not.toHaveAttribute('aria-busy', 'true');
+		expect(idleButton.className).not.toContain('loading');
+		expect(idleButton).toHaveTextContent('Actions');
+		expect(idleButton.querySelector('[data-icon="chevron-down"]')).toBeInTheDocument();
+		expect(idleButton.querySelector('[data-spinner="grid"]')).not.toBeInTheDocument();
+	});
+
+	it('keeps the actions button idle when a different version is pending', () => {
+		const workflowVersion = workflowVersionDataFactory();
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				workflow: null,
+				workflowVersion,
+				actions,
+				pendingVersionId: 'another-version',
+			},
+		});
+
+		const button = getByTestId('action-toggle-button');
+		expect(button).toHaveTextContent('Actions');
+		expect(button).not.toBeDisabled();
+		expect(button).not.toHaveAttribute('aria-busy', 'true');
+	});
+
 	it('should hydrate the scoped preview document from the version, without pin data', async () => {
 		const workflowVersion = workflowVersionDataFactory();
 		const workflow = {
@@ -113,5 +178,22 @@ describe('WorkflowHistoryContent', () => {
 		expect(previewDocumentStore.allNodes.map((node) => node.name)).toEqual(
 			workflowVersion.nodes.map((node) => node.name),
 		);
+	});
+
+	it('should keep node issue indicators on the version preview', async () => {
+		const workflowVersion = workflowVersionDataFactory();
+		const workflow = { id: 'history-workflow' } as unknown as IWorkflowDb;
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				workflow,
+				workflowVersion,
+				actions,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('node-view-stub')).toBeInTheDocument());
+
+		expect(injected.enabledFeatures?.value.showNodeIssues).toBe(true);
 	});
 });

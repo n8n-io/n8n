@@ -1,7 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import crypto from 'crypto';
-import { HITL_CALLBACK_PREFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
+import {
+	HITL_CALLBACK_PREFIX,
+	HITL_CALLBACK_PREFIX_V2,
+	TELEGRAM_HITL_WEBHOOK_SUFFIX,
+} from 'n8n-core';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -325,7 +329,12 @@ export class TelegramTrigger implements INodeType {
 
 		// Only versions that verified the secret above may forward, because forwarding
 		// attaches the HITL secret token to the request.
-		if (nodeVersion > 1 && bodyData.callback_query?.data?.startsWith(HITL_CALLBACK_PREFIX)) {
+		const callbackData = bodyData.callback_query?.data;
+		if (
+			nodeVersion > 1 &&
+			(callbackData?.startsWith(HITL_CALLBACK_PREFIX) ||
+				callbackData?.startsWith(HITL_CALLBACK_PREFIX_V2))
+		) {
 			// Forward the raw update to the fixed HITL endpoint instead of starting this
 			// trigger's workflow. This trigger never learns HITL internals; the endpoint
 			// and the Telegram node's own webhook handler do all verification. Best-effort:

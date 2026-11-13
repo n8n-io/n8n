@@ -19,12 +19,12 @@ describe('Microsoft Excel (SharePoint), Service Principal workbook => addWorkshe
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.post(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/createSession',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/createSession',
 			{ persistChanges: true },
 		)
 		.reply(200, { id: 'session-abc' })
 		.post(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/add',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/add',
 			{ name: 'Q4 Report' },
 		)
 		.matchHeader('workbook-session-id', 'session-abc')
@@ -34,7 +34,7 @@ describe('Microsoft Excel (SharePoint), Service Principal workbook => addWorkshe
 			position: 1,
 		})
 		.post(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/closeSession',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/closeSession',
 		)
 		.matchHeader('workbook-session-id', 'session-abc')
 		.reply(200, {});
