@@ -20,7 +20,7 @@ const usage =
     \\  run <module.wfm> <fixture.json>   run one fixture, print the result JSON
     \\  corpus <dir>                      run every corpus/<case> and compare with expected.json
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
-    \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--stats]
+    \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
@@ -249,6 +249,7 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--shards")) opts.shards = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--log-dir")) opts.log_dir = v;
         if (std.mem.eql(u8, k, "--fallback")) opts.fallback = v;
+        if (std.mem.eql(u8, k, "--fallback-wait-ms")) opts.fallback_wait_ms = @max(0, try std.fmt.parseInt(i64, v, 10));
         if (std.mem.eql(u8, k, "--rbuf-kb")) opts.rbuf = 1024 * try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--egress-max-body-mb")) opts.egress_max_body = (try std.fmt.parseInt(u32, v, 10)) << 20;
         if (std.mem.eql(u8, k, "--egress-big-slots")) opts.egress_big_slots = try std.fmt.parseInt(u32, v, 10);
