@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddIdentityIdToAgents1794473268392';
+const MIGRATION_NAME = 'AddIdentityIdToAgents1794559557165';
 
 describe('AddIdentityIdToAgents migration', () => {
 	let dataSource: DataSource;

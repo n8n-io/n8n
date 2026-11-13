@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const fkName = 'FK_agents_identity';
 
-export class AddIdentityIdToAgents1794473268392 implements ReversibleMigration {
+export class AddIdentityIdToAgents1794559557165 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, addForeignKey, createIndex, column },
 		escape,
