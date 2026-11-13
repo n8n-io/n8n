@@ -42,6 +42,8 @@ export default class New extends Command {
 			options: [
 				'declarative/github-issues',
 				'declarative/custom',
+				'declarative/polling-trigger',
+				'declarative/webhook-trigger',
 				'programmatic/example',
 				'programmatic/openai-chat-model',
 				'programmatic/custom-chat-model',

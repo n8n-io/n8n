@@ -66,6 +66,9 @@ information about nodes and credentials in a package:
   }
 }
 ```
+A package with a declarative trigger (`trigger` in a node description) declares
+`"n8nNodesApiVersion": "3.1"`. Do not change it to `1`.
+
 `nodes` and `credentials` keys contain paths to transpiled JS files in a `dist`
 folder for the nodes and credentials respectively. If you add/remove/rename
 nodes and/or credentials, you need to make sure to update `n8n.nodes` and

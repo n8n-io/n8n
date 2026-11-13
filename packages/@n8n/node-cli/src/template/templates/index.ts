@@ -1,5 +1,7 @@
 import { customTemplate } from './declarative/custom/template';
 import { githubIssuesTemplate } from './declarative/github-issues/template';
+import { pollingTriggerTemplate } from './declarative/polling-trigger/template';
+import { webhookTriggerTemplate } from './declarative/webhook-trigger/template';
 import { customMemoryTemplate } from './programmatic/ai/memory-custom/template';
 import { customChatModelTemplate } from './programmatic/ai/model-ai-custom/template';
 import { customChatModelExampleTemplate } from './programmatic/ai/model-ai-custom-example/template';
@@ -10,6 +12,8 @@ export const templates = {
 	declarative: {
 		githubIssues: githubIssuesTemplate,
 		custom: customTemplate,
+		pollingTrigger: pollingTriggerTemplate,
+		webhookTrigger: webhookTriggerTemplate,
 	},
 	programmatic: {
 		example: exampleTemplate,
