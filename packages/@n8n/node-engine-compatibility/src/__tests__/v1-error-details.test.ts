@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { deepCopy, NodeApiError, NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
 import { describe, expect, it } from 'vitest';
 
 import { fromV1ErrorDetails, toV1ErrorDetails } from '../v1-error-details';
@@ -14,26 +14,26 @@ const node: INode = {
 };
 
 describe('toV1ErrorDetails', () => {
-	it('keeps the structured part of a node error', () => {
+	it('is what the error serializes for the editor', () => {
 		const error = new NodeOperationError(node, 'boom', {
 			description: 'Check the credentials',
-			level: 'warning',
 			itemIndex: 2,
 		});
 
+		expect(toV1ErrorDetails(error)).toEqual(deepCopy(error.toJSON?.()));
 		expect(toV1ErrorDetails(error)).toMatchObject({
+			name: 'NodeOperationError',
+			message: 'boom',
 			description: 'Check the credentials',
-			level: 'warning',
-			functionality: 'regular',
 			context: { itemIndex: 2 },
-			node: { id: 'n', name: 'Subject', type: 'test.alwaysFails' },
 		});
 	});
 
-	it('keeps the HTTP code of an API error', () => {
+	it('carries no more than the editor would get after a v1 run', () => {
 		const error = new NodeApiError(node, {}, { httpCode: '429', message: 'Too many' });
 
-		expect(toV1ErrorDetails(error)).toMatchObject({ httpCode: '429' });
+		expect(toV1ErrorDetails(error)).not.toHaveProperty('httpCode');
+		expect(toV1ErrorDetails(error)).not.toHaveProperty('node');
 	});
 
 	it('has nothing for an error that is not a v1 execution error', () => {
