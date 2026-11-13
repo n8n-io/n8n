@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/settings/environments/source-control.spec.ts
+  s_da815555266412::t_cba401a6bd4c4f 59
+  s_da815555266412::t_403ed81ed71dc5 58,60,62
+  s_da815555266412::t_f324c1cb485836 61,63-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e67cddcc97e840b56549f5dde566359f2b671f54",
+  "prompts": {},
+  "sessions": {
+    "s_da815555266412": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c52bc33ffeXKqP67rbOipgzG",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
