@@ -1,0 +1,11 @@
+packages/cli/src/services/folder.service.ts
+  ai_agent 213-217,219-221
+packages/cli/src/services/__tests__/agent-folder-operations.test.ts
+  ai_agent 137-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a418e13b934c0a7de76c53855ed901441d2f3894",
+  "prompts": {}
+}

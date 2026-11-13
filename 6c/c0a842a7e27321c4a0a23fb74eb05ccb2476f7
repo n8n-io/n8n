@@ -1,0 +1,11 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  ai_agent 99-110
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  ai_agent 10,454,462-466,469,471,473-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6cc0a842a7e27321c4a0a23fb74eb05ccb2476f7",
+  "prompts": {}
+}
