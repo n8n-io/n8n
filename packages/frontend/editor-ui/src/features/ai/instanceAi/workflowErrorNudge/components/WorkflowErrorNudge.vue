@@ -1,22 +1,18 @@
-<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
-<!-- Injects the "Fix with n8n Assistant" button inside error toasts on workflow error + defines CTA logic (on click, animations) -->
+<!-- Injects the "Fix with n8n Assistant" button inside a workflow error toast. -->
 <script setup lang="ts">
 import { N8nIcon, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useInstanceAiHandoffCapability } from '@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability';
-import { INSTANCE_AI_SETTINGS_VIEW } from '@/features/ai/instanceAi/constants';
 import {
 	WORKFLOW_ERROR_NUDGE_BORDER_PASS_MS,
 	WORKFLOW_ERROR_NUDGE_TOAST_CLASS,
 	dismissWorkflowErrorNudge,
 	isWorkflowErrorNudgeVisible,
-	workflowErrorNudgeVariant,
 	workflowErrorNudgeWorkflowId,
-} from '../composables/useSurfaceAssistantOnWorkflowError';
+} from '../composables/useWorkflowErrorNudge';
 import { buildNudgeOutline, type NudgeOutline } from '../workflowErrorNudgeOutline';
 import { restackContentToasts } from '../workflowErrorNudgePosition';
 import {
@@ -25,12 +21,12 @@ import {
 } from '../workflowErrorNudge.telemetry';
 
 const i18n = useI18n();
-const router = useRouter();
-const settingsStore = useSettingsStore();
 const { openWorkflow } = useInstanceAiHandoffCapability();
+const instanceAiReady = useInstanceAiReady();
 const currentWorkflowId = useWorkflowId();
 const nudgeActive = computed(
 	() =>
+		instanceAiReady.value &&
 		isWorkflowErrorNudgeVisible.value &&
 		workflowErrorNudgeWorkflowId.value === currentWorkflowId.value,
 );
@@ -146,7 +142,7 @@ function syncEmbedHost() {
 	group.append(host);
 	embedHost.value = host;
 	void nextTick(() => restackContentToasts(contentToasts(root)));
-	trackFixWithAssistantNudgeViewed(workflowErrorNudgeVariant.value);
+	trackFixWithAssistantNudgeViewed();
 }
 
 function startEmbedded() {
@@ -165,25 +161,14 @@ function stopTracking() {
 	removeEmbedHost();
 }
 
-function isAssistantEnabled(): boolean {
-	return settingsStore.moduleSettings['instance-ai']?.enabled !== false;
-}
-
 async function onFixWithAssistant() {
-	if (opening.value) return;
-	const assistantEnabled = isAssistantEnabled();
-	const open = assistantEnabled
-		? openWorkflow
-		: async () => {
-				await router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
-			};
-	if (!open) return;
+	if (opening.value || !openWorkflow) return;
 
-	trackErrorToastFixWithAssistantClick(workflowErrorNudgeVariant.value, assistantEnabled);
+	trackErrorToastFixWithAssistantClick();
 
 	opening.value = true;
 	try {
-		await open('workflow_error_nudge');
+		await openWorkflow('workflow_error_nudge');
 		dismissWorkflowErrorNudge();
 	} finally {
 		opening.value = false;
@@ -241,7 +226,7 @@ onBeforeUnmount(stopTracking);
 					size="small"
 					:class="$style.action"
 					:loading="opening"
-					:label="i18n.baseText('experiments.surfaceAssistantOnWorkflowError.nudge.action')"
+					:label="i18n.baseText('instanceAi.workflowErrorNudge.action')"
 					data-test-id="workflow-error-nudge-action"
 					@click="onFixWithAssistant"
 				>

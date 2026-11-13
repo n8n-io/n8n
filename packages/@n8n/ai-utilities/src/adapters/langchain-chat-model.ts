@@ -7,6 +7,7 @@ import { AIMessage, AIMessageChunk } from '@langchain/core/messages';
 import type { ChatResult, LLMResult } from '@langchain/core/outputs';
 import { ChatGenerationChunk } from '@langchain/core/outputs';
 import type { Runnable } from '@langchain/core/runnables';
+import { UserError } from '@n8n/errors';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import { fromLcMessage, toLcMessage } from '../converters/message';
@@ -130,6 +131,16 @@ export class LangchainChatModelAdapter<
 					text: chunk.delta,
 				});
 			} else if (chunk.type === 'tool-call-delta') {
+				// Packages built with @n8n/ai-node-sdk 0.x can still omit the id.
+				if (!chunk.id) {
+					throw new UserError(
+						`The chat model "${this.chatModel.provider}/${this.chatModel.modelId}" streamed a tool call without an id`,
+						{
+							description:
+								'Since @n8n/ai-node-sdk 1.0, every tool-call-delta chunk must carry the id of its tool call. Update the community node to a version built with @n8n/ai-node-sdk 1.0 or later.',
+						},
+					);
+				}
 				const tool_call_chunks = [
 					{
 						type: 'tool_call_chunk' as const,
