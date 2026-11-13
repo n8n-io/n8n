@@ -126,7 +126,6 @@ describe('queued step with no event (integration)', () => {
 		const { runtime, stores } = createRuntime({ execute });
 		const stepStore = stores.stepStore;
 		if (!stepStore) throw new Error('expected the step store of the runtime');
-		const renewQueuedStep = vi.spyOn(stepStore, 'renewQueuedStep');
 
 		runtime.start();
 		try {
@@ -145,6 +144,11 @@ describe('queued step with no event (integration)', () => {
 				})
 				.expect(201);
 			const { executionId } = response.body as StartExecutionResult;
+
+			// The first step holds the handler from here until `release`. The spy
+			// starts now, so it records only the renewals during that time.
+			await vi.waitFor(() => expect(ran).toHaveLength(1), { timeout: 5_000, interval: 5 });
+			const renewQueuedStep = vi.spyOn(stepStore, 'renewQueuedStep');
 
 			// The repair renewed the step that is still `queued`, so the second event
 			// is on the step queue behind the first one.
