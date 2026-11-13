@@ -10,6 +10,7 @@
     "format:check": "biome ci src assets",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:snapshot-packages": "pnpm turbo run build --filter=@n8n/workflow-sdk... --output-logs=errors-only && tsx scripts/verify-snapshot-packages.ts",
     "test:dev": "vitest --silent=false",
     "lint": "oxlint --quiet",
     "lint:fix": "oxlint --fix",

@@ -7,47 +7,54 @@ import type { Mock } from 'vitest';
 // mock the shared sandbox module. The mock classes live in vi.hoisted
 // so they are shared between the mock factory and the test (`instanceof` checks in
 // source must see the same DaytonaError the test constructs).
-const { DaytonaError, DaytonaNotFoundError, Image } = vi.hoisted(() => {
-	class DaytonaError extends Error {
-		statusCode?: number;
-		constructor(message: string, statusCode?: number) {
-			super(message);
-			this.name = 'DaytonaError';
-			this.statusCode = statusCode;
+const { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages } = vi.hoisted(
+	() => {
+		class DaytonaError extends Error {
+			statusCode?: number;
+			constructor(message: string, statusCode?: number) {
+				super(message);
+				this.name = 'DaytonaError';
+				this.statusCode = statusCode;
+			}
 		}
-	}
-	class DaytonaNotFoundError extends DaytonaError {
-		constructor(message: string, statusCode = 404) {
-			super(message, statusCode);
-			this.name = 'DaytonaNotFoundError';
+		class DaytonaNotFoundError extends DaytonaError {
+			constructor(message: string, statusCode = 404) {
+				super(message, statusCode);
+				this.name = 'DaytonaNotFoundError';
+			}
 		}
-	}
-	class Image {
-		dockerfile: string;
-		contextList: Array<{ sourcePath: string; archivePath: string }>;
-		constructor(base = 'node:20') {
-			this.dockerfile = `FROM ${base}`;
-			this.contextList = [];
+		class Image {
+			dockerfile: string;
+			contextList: Array<{ sourcePath: string; archivePath: string }>;
+			constructor(base = 'node:20') {
+				this.dockerfile = `FROM ${base}`;
+				this.contextList = [];
+			}
+			static base(base: string) {
+				return new Image(base);
+			}
+			addLocalDir(localPath: string, remotePath: string) {
+				this.contextList.push({ sourcePath: localPath, archivePath: localPath });
+				this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
+				return this;
+			}
+			runCommands(...commands: string[]) {
+				this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
+				return this;
+			}
 		}
-		static base(base: string) {
-			return new Image(base);
-		}
-		addLocalDir(localPath: string, remotePath: string) {
-			this.contextList.push({ sourcePath: localPath, archivePath: localPath });
-			this.dockerfile += `\nCOPY ${localPath} ${remotePath}`;
-			return this;
-		}
-		runCommands(...commands: string[]) {
-			this.dockerfile += commands.map((command) => `\nRUN ${command}`).join('');
-			return this;
-		}
-	}
-	return { DaytonaError, DaytonaNotFoundError, Image };
-});
+		return { DaytonaError, DaytonaNotFoundError, Image, packSnapshotWorkspacePackages: vi.fn() };
+	},
+);
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof SharedSandboxMod>()),
 	loadDaytona: () => ({ DaytonaError, DaytonaNotFoundError, Image }),
+}));
+
+vi.mock('../pack-workspace-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../pack-workspace-sdk')>()),
+	packSnapshotWorkspacePackages,
 }));
 
 import { readFile } from 'node:fs/promises';
@@ -137,6 +144,10 @@ function mockGetActiveOnlyFor(daytona: FakeDaytona, name: string): void {
 }
 
 describe('SnapshotManager.ensureImage', () => {
+	afterEach(() => {
+		packSnapshotWorkspacePackages.mockReset();
+	});
+
 	it('stages workspace files and builds a small COPY-based Daytona image descriptor', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', TEMPLATES_SERVICE);
 
@@ -181,6 +192,33 @@ describe('SnapshotManager.ensureImage', () => {
 		expect(stagingDir).toBeDefined();
 		expect(stagingDir).not.toContain('n8n-snapshot-context-temp-');
 		expect(stagingDir).toMatch(/n8n-snapshot-context-[0-9a-f]+$/);
+	});
+
+	it('bakes local workspace package tarballs into release snapshots', async () => {
+		packSnapshotWorkspacePackages.mockResolvedValue([
+			{
+				filename: 'n8n-workflow-sdk-0.41.0.tgz',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/repo/packages/@n8n/workflow-sdk',
+				tarball: Buffer.from([0, 1, 2, 255]),
+				version: '0.41.0',
+			},
+		]);
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.1', TEMPLATES_SERVICE, {
+			packWorkspacePackages: true,
+		});
+
+		const image = await manager.ensureImage();
+		const stagingDir = image.contextList[0]?.sourcePath;
+
+		expect(packSnapshotWorkspacePackages).toHaveBeenCalledWith(NOOP_LOGGER);
+		expect(stagingDir).toBeDefined();
+		await expect(readFile(join(stagingDir, 'package.json'), 'utf8')).resolves.toContain(
+			'file:.n8n-packages/n8n-workflow-sdk-0.41.0.tgz',
+		);
+		await expect(
+			readFile(join(stagingDir, '.n8n-packages/n8n-workflow-sdk-0.41.0.tgz')),
+		).resolves.toEqual(Buffer.from([0, 1, 2, 255]));
 	});
 
 	it('keeps the snapshot name stable when the base image changes', async () => {

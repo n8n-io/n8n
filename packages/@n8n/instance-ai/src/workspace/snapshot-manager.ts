@@ -23,7 +23,14 @@ import {
 } from '../knowledge-base/materialize-knowledge-base';
 import type { Logger } from '../logger';
 import type { BuilderTemplatesService } from './builder-templates-service';
-import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS, NPM_INSTALL_FLAGS } from './sandbox-setup';
+import { packSnapshotWorkspacePackages } from './pack-workspace-sdk';
+import {
+	PACKAGE_JSON,
+	TSCONFIG_JSON,
+	BUILD_MJS,
+	NPM_INSTALL_FLAGS,
+	buildSnapshotPackageJson,
+} from './sandbox-setup';
 import { loadWorkflowDiagnosticsWorker, WORKFLOW_DIAGNOSTICS_FILENAME } from './sandbox-typescript';
 import { stageWorkspaceFilesForImage } from './snapshot-image-context';
 
@@ -43,6 +50,10 @@ export interface CreateSnapshotOptions {
 	 * release cadence. Unset disables age pruning.
 	 */
 	maxAgeDays?: number;
+}
+
+export interface SnapshotManagerOptions {
+	packWorkspacePackages?: boolean;
 }
 
 type DaytonaSnapshot = Awaited<ReturnType<Daytona['snapshot']['get']>>;
@@ -188,6 +199,7 @@ export class SnapshotManager {
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
 		private readonly templatesService: BuilderTemplatesService,
+		private readonly options: SnapshotManagerOptions = {},
 	) {}
 
 	/** Get or prepare the image descriptor. */
@@ -201,8 +213,19 @@ export class SnapshotManager {
 		const knowledgeBaseBundle = await this.knowledgeBaseBundle();
 		const cacheKey = this.n8nVersion ?? knowledgeBaseBundle.contentHash;
 
-		const workspaceFiles = new Map<string, string>(knowledgeBaseBundle.files);
-		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
+		const workspaceFiles = new Map<string, string | Buffer>(knowledgeBaseBundle.files);
+		if (this.options.packWorkspacePackages) {
+			const packedPackages = await packSnapshotWorkspacePackages(this.logger);
+			workspaceFiles.set(
+				`${PORTABLE_WORKSPACE_ROOT}/package.json`,
+				buildSnapshotPackageJson(packedPackages),
+			);
+			for (const { filename, tarball } of packedPackages) {
+				workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/.n8n-packages/${filename}`, tarball);
+			}
+		} else {
+			workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/package.json`, PACKAGE_JSON);
+		}
 		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/tsconfig.json`, TSCONFIG_JSON);
 		workspaceFiles.set(`${PORTABLE_WORKSPACE_ROOT}/build.mjs`, BUILD_MJS);
 		workspaceFiles.set(

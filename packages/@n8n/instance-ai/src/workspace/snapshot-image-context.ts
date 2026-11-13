@@ -29,14 +29,14 @@ function workspaceRelativePath(filePath: string, workspaceRoot: string): string 
 
 async function writeStagedFiles(
 	stagingDir: string,
-	files: Map<string, string>,
+	files: Map<string, string | Buffer>,
 	workspaceRoot: string,
 ): Promise<void> {
 	for (const [filePath, content] of files) {
 		const targetPath = join(stagingDir, workspaceRelativePath(filePath, workspaceRoot));
 
 		await mkdir(dirname(targetPath), { recursive: true });
-		await writeFile(targetPath, content, 'utf-8');
+		await writeFile(targetPath, content, typeof content === 'string' ? 'utf-8' : undefined);
 	}
 }
 
@@ -46,7 +46,7 @@ async function writeStagedFiles(
  * (see `stagingByCacheKey`) so repeated and concurrent builds share one directory.
  */
 export async function stageWorkspaceFilesForImage(
-	files: Map<string, string>,
+	files: Map<string, string | Buffer>,
 	workspaceRoot: string,
 	cacheKey?: string,
 ): Promise<SnapshotImageContext> {

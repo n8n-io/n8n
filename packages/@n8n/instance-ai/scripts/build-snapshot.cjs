@@ -6,8 +6,9 @@
  * `.github/workflows/release-build-daytona-snapshot.yml`). Authenticates
  * with a static Daytona admin API key supplied via env vars and creates
  * the snapshot named `n8n/instance-ai:<version>` from the same image
- * descriptor used by the runtime fallback path. Re-runs against the same
- * version are idempotent — "already exists" is treated as success.
+ * descriptor with the workflow SDK and its runtime workspace dependencies
+ * packed from the release checkout. Re-runs against the same version are
+ * idempotent — "already exists" is treated as success.
  *
  * The runtime never calls `snapshot.create`; CI is the only producer of
  * versioned snapshots.
@@ -19,7 +20,7 @@
  * of the bundler-only `module: src/index.ts` entry.
  *
  * Required env vars:
- *   DAYTONA_API_KEY   admin key with snapshot.create permissions
+ *   DAYTONA_API_KEY   admin key with snapshot create/delete permissions
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
  *   DAYTONA_SNAPSHOT_MAX_AGE_DAYS
  *                     prune versioned snapshots not used within this many days
@@ -33,6 +34,7 @@
  *
  * Usage:
  *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
+ *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0 --verify-image
  */
 
 const { Daytona } = require('@daytona/sdk');
@@ -49,6 +51,10 @@ function parseVersion(argv) {
 		if (arg.startsWith('--version=')) return arg.slice('--version='.length);
 	}
 	return process.env.N8N_VERSION;
+}
+
+function isImageVerification(argv) {
+	return argv.includes('--verify-image');
 }
 
 const DEFAULT_SNAPSHOT_RETENTION = 10;
@@ -76,8 +82,68 @@ const consoleLogger = {
 	debug: () => {},
 };
 
+async function getSnapshotIfExists(daytona, name) {
+	try {
+		return await daytona.snapshot.get(name);
+	} catch (error) {
+		if (error && typeof error === 'object' && error.statusCode === 404) return null;
+		throw error;
+	}
+}
+
+async function deleteVerificationSnapshot(daytona, name) {
+	const snapshot = await getSnapshotIfExists(daytona, name);
+	if (!snapshot) return;
+
+	await daytona.snapshot.delete(snapshot);
+	const deadline = Date.now() + 60_000;
+	while (Date.now() < deadline) {
+		if (!(await getSnapshotIfExists(daytona, name))) return;
+		await new Promise((resolve) => setTimeout(resolve, 2_000));
+	}
+	throw new Error(`Timed out while deleting Daytona verification snapshot "${name}"`);
+}
+
+async function verifyImage(daytona, image) {
+	const runId = process.env.GITHUB_RUN_ID ?? `${process.pid}-${Date.now()}`;
+	const runAttempt = process.env.GITHUB_RUN_ATTEMPT ?? 'local';
+	const name = `n8n/instance-ai-verify:${runId}-${runAttempt}`;
+	let verificationError;
+
+	try {
+		await daytona.snapshot.create(
+			{ name, image },
+			{ timeout: 1_800, onLogs: (chunk) => process.stdout.write(`${chunk}\n`) },
+		);
+		const snapshot = await daytona.snapshot.get(name);
+		if (snapshot.state !== 'active') {
+			throw new Error(`Daytona verification snapshot is ${snapshot.state}, not active`);
+		}
+		consoleLogger.info('Daytona image verified', { name });
+	} catch (error) {
+		verificationError = error;
+	}
+
+	try {
+		await deleteVerificationSnapshot(daytona, name);
+		consoleLogger.info('Daytona verification snapshot deleted', { name });
+	} catch (cleanupError) {
+		if (verificationError) {
+			consoleLogger.warn('Failed to delete Daytona verification snapshot', {
+				name,
+				error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+			});
+		} else {
+			throw cleanupError;
+		}
+	}
+
+	if (verificationError) throw verificationError;
+}
+
 async function main() {
-	const version = parseVersion(process.argv.slice(2));
+	const argv = process.argv.slice(2);
+	const version = parseVersion(argv);
 	if (!version) {
 		console.error('Missing --version (or N8N_VERSION env)');
 		process.exit(1);
@@ -102,7 +168,13 @@ async function main() {
 		...builderTemplatesOptionsFromEnv({ logger: consoleLogger }),
 		fetch,
 	});
-	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService);
+	const manager = new SnapshotManager(baseImage, consoleLogger, version, templatesService, {
+		packWorkspacePackages: true,
+	});
+	if (isImageVerification(argv)) {
+		await verifyImage(daytona, await manager.ensureImage());
+		return;
+	}
 
 	const name = await manager.createSnapshot(daytona, {
 		timeout: 1800,

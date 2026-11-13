@@ -130,6 +130,34 @@ and installed dependencies. The node-type catalog is written after sandbox
 creation because it is instance-specific and too large for the Daytona image
 request.
 
+The release snapshot packs the workflow SDK and its runtime workspace
+dependencies from the release checkout. Its `package.json` installs these local
+tarballs instead of waiting for the same versions to become available from npm.
+Run this focused smoke test without the release pipeline or Daytona credentials:
+
+```sh
+pnpm --filter @n8n/instance-ai test:snapshot-packages
+```
+
+The smoke test builds the SDK dependency graph, packs the same packages as the
+release snapshot, installs them in a temporary workspace, and rejects any n8n
+workspace package that resolves from the npm registry.
+
+To test the complete remote Daytona image build from a branch, dispatch the
+snapshot workflow in verification mode:
+
+```sh
+gh workflow run release-build-daytona-snapshot.yml \
+  --ref <branch> \
+  -f n8n_version=<version> \
+  -f verify_image_only=true
+```
+
+This mode uses the dev Daytona environment. It builds the branch's image as a
+uniquely named, non-versioned verification snapshot. It requires the snapshot
+to become active and then deletes it. It does not publish or retain a release
+snapshot.
+
 The knowledge base has a manifest with a content hash. Setup compares the
 manifest hash with the expected hash. When the hashes do not match, setup
 writes the bundle again and writes the manifest last. A matching manifest is
