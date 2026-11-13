@@ -21,6 +21,8 @@ describe('nodeSimulationGap', () => {
 		'n8n-nodes-base.executeCommand',
 		'n8n-nodes-base.readWriteFile',
 		'n8n-nodes-base.executeWorkflow',
+		'n8n-nodes-base.wait',
+		'n8n-nodes-base.form',
 		'n8n-nodes-base.emailReadImap',
 		'n8n-nodes-base.oracleDatabase',
 		'@n8n/n8n-nodes-langchain.lmChatOpenAi',
