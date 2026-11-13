@@ -314,7 +314,7 @@ export function libraryPollSupports(type: string, parameters: Record<string, unk
  * A credential type that the runtime cannot apply (a request for a token first, a signing
  * function, OAuth1): the node runs in the fallback host, which applies it as v1 does.
  */
-function requireInjectable(c: NodeContext, credentialType: string | undefined): void {
+function requireInjectable(credentialType: string | undefined): void {
 	if (credentialType === undefined || !NOT_INJECTABLE.has(credentialType)) return;
 	throw new NodeFailure(
 		'credential',
@@ -325,7 +325,7 @@ function requireInjectable(c: NodeContext, credentialType: string | undefined): 
 
 export function lowerLibrary(c: NodeContext): void {
 	const type = c.node.type;
-	requireInjectable(c, Object.keys(c.node.credentials ?? {})[0]);
+	requireInjectable(Object.keys(c.node.credentials ?? {})[0]);
 	// A LangChain node with sub-nodes (an OpenAI message with tools) runs as a cluster in the
 	// host, so the host gives the node its sub-nodes and reports their runs.
 	if (type.startsWith(LANGCHAIN_PREFIX) && isClusterRoot(c.workflow, c.node.name)) {
@@ -745,7 +745,7 @@ function lowerHttpLibrary(c: NodeContext): void {
 	) {
 		entries.push(['errorItems', raw('true')]);
 	}
-	requireInjectable(c, credentialType);
+	requireInjectable(credentialType);
 	const parameters: TranslatedValue = { code: { kind: 'object', entries }, usage, failures: [] };
 	const call = nodeCall(
 		c,

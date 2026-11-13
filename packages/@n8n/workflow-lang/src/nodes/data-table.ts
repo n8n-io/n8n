@@ -487,7 +487,10 @@ export default defineNode<DataTableParameters>({
 			// data table service) lets each input item go on unchanged. A bulk insert gives the
 			// n8n items themselves (`{ json, pairedItem }`) as the JSON.
 			const input = items ?? [{}];
-			const message: string = error.message;
+			const message =
+				typeof error === 'object' && error !== null && 'message' in error
+					? String(error.message)
+					: String(error);
 			if (parameters.batch !== undefined) {
 				return input.map((item, i) => ({
 					json: serviceFailed ? item : { error: message },
