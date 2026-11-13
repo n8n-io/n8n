@@ -1,0 +1,9 @@
+{
+	"description": "Merge by position, No Operation, executeOnce, alwaysOutputData",
+	"trigger": {
+		"body": {
+			"names": ["ann", "bob", "cid"],
+			"ages": [30, 40]
+		}
+	}
+}

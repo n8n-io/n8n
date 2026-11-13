@@ -1,0 +1,15 @@
+{
+	"status": "ok",
+	"result": {
+		"asciiCodes": 882249,
+		"mixedCodes": 341215,
+		"asciiChars": ["H", ",", "9", ""],
+		"mixedChars": ["a", "ü", "\ude00", "b", ""],
+		"asciiSlices": ["lo, wo", "6789", "", "ll"],
+		"mixedSlices": ["ü€\ud83d", "\ude00b", "😀c"],
+		"outOfRange": [null, null],
+		"b64": "SGVsbG8sIHdvcmxkISBUaGUgcXVpY2sgYnJvd24g",
+		"b64Length": 18400
+	},
+	"effects": []
+}

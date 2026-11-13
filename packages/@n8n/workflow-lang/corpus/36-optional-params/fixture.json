@@ -1,0 +1,14 @@
+{
+	"trigger": {
+		"body": {
+			"positions": [0, 2, -2, 1.5, -1.5, 100, -100, "3", "x", null, true, false],
+			"texts": ["abcabc", "a😀bc😀", ""],
+			"list": [1, "1", 2, null, 3, 1]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 1700000000000,
+	"seed": 1,
+	"effects": {}
+}

@@ -1,0 +1,23 @@
+{
+	"description": "webhook \u2192 Set \u2192 IF \u2192 HTTP Request \u2192 Respond to Webhook",
+	"trigger": {
+		"body": {
+			"qty": 3,
+			"price": 50,
+			"customer": "ann"
+		}
+	},
+	"http": {
+		"Notify": {
+			"path": "notify",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"sent": true
+					}
+				}
+			]
+		}
+	}
+}

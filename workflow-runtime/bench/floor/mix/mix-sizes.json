@@ -1,0 +1,955 @@
+{
+ "generated": "2026-11-12T15:34:03.541Z",
+ "notes": [
+  "Sizes only; no payload content was stored.",
+  "Part A bundles: 1000-v3 expected.json (reference n8n run in the gym). Pinned nodes count as runs.",
+  "Vendor node = any node type not in the local list of mix-stats.mjs; polling triggers count as vendor; DB nodes apart.",
+  "Census: rows with result ok_*; fallback[] has one entry per host node. Trigger class from prepare/input join (subset); priority webhook > schedule (incl. polling) > app-event > other.",
+  "Part B: replay of every 3rd bundle on wfrt + fallback host through a byte-counting HTTPS proxy in front of the gym. Vendor responses are gym-simulated, not real vendor responses. Postgres/MySQL traffic not counted. OAuth token refreshes by the adapter excluded.",
+  "Node-run item stats cover runs with at least one item (the trace also emits empty traces for steps that did not run); in expected.json about 14% of real node runs give 0 items.",
+  "Bytes: body = HTTP body bytes on the wire (gym does not compress unless content-encoding says so); head = request/status line + headers. Item bytes = UTF-8 length of JSON.stringify(item json), binary apart."
+ ],
+ "A": {
+  "bundles": {
+   "workflows": 1000,
+   "nodeRunsPerWorkflow": {
+    "n": 1000,
+    "mean": 4.52,
+    "p50": 3,
+    "p90": 7,
+    "p99": 26,
+    "max": 83
+   },
+   "itemsPerNodeRunMean": 1.31,
+   "topNodeTypesByRuns": [
+    {
+     "type": "code",
+     "runs": 858,
+     "share": 0.1898
+    },
+    {
+     "type": "scheduleTrigger",
+     "runs": 477,
+     "share": 0.1055
+    },
+    {
+     "type": "googleSheets",
+     "runs": 391,
+     "share": 0.0865
+    },
+    {
+     "type": "if",
+     "runs": 362,
+     "share": 0.0801
+    },
+    {
+     "type": "httpRequest",
+     "runs": 290,
+     "share": 0.0641
+    },
+    {
+     "type": "webhook",
+     "runs": 215,
+     "share": 0.0476
+    },
+    {
+     "type": "gmail",
+     "runs": 170,
+     "share": 0.0376
+    },
+    {
+     "type": "set",
+     "runs": 129,
+     "share": 0.0285
+    },
+    {
+     "type": "splitInBatches",
+     "runs": 103,
+     "share": 0.0228
+    },
+    {
+     "type": "manualTrigger",
+     "runs": 95,
+     "share": 0.021
+    },
+    {
+     "type": "rssFeedRead",
+     "runs": 91,
+     "share": 0.0201
+    },
+    {
+     "type": "googleDrive",
+     "runs": 84,
+     "share": 0.0186
+    },
+    {
+     "type": "slack",
+     "runs": 82,
+     "share": 0.0181
+    },
+    {
+     "type": "executeWorkflowTrigger",
+     "runs": 81,
+     "share": 0.0179
+    },
+    {
+     "type": "respondToWebhook",
+     "runs": 78,
+     "share": 0.0173
+    },
+    {
+     "type": "merge",
+     "runs": 75,
+     "share": 0.0166
+    },
+    {
+     "type": "filter",
+     "runs": 67,
+     "share": 0.0148
+    },
+    {
+     "type": "dataTable",
+     "runs": 56,
+     "share": 0.0124
+    },
+    {
+     "type": "postgres",
+     "runs": 51,
+     "share": 0.0113
+    },
+    {
+     "type": "executeWorkflow",
+     "runs": 50,
+     "share": 0.0111
+    }
+   ],
+   "vendorNodeRunsPerWorkflow": {
+    "n": 1000,
+    "mean": 1.69,
+    "p50": 1,
+    "p90": 3,
+    "p99": 12,
+    "max": 42,
+    "hist": {
+     "0": {
+      "n": 138,
+      "share": 0.138
+     },
+     "1": {
+      "n": 533,
+      "share": 0.533
+     },
+     "2": {
+      "n": 188,
+      "share": 0.188
+     },
+     "3": {
+      "n": 59,
+      "share": 0.059
+     },
+     "4": {
+      "n": 26,
+      "share": 0.026
+     },
+     "5+": {
+      "n": 56,
+      "share": 0.056
+     }
+    }
+   },
+   "httpRequestRunsPerWorkflow": {
+    "n": 1000,
+    "mean": 0.29,
+    "p50": 0,
+    "p90": 1,
+    "p99": 5,
+    "max": 12
+   },
+   "dbNodeRunsPerWorkflow": {
+    "n": 1000,
+    "mean": 0.06,
+    "p50": 0,
+    "p90": 0,
+    "p99": 2,
+    "max": 5
+   },
+   "byTriggerClass": {
+    "webhook": {
+     "workflows": 220,
+     "nodeRuns": {
+      "n": 220,
+      "mean": 3.84,
+      "p50": 3,
+      "p90": 7,
+      "p99": 12,
+      "max": 18
+     },
+     "vendorRuns": {
+      "n": 220,
+      "mean": 1.75,
+      "p50": 1,
+      "p90": 3,
+      "p99": 7,
+      "max": 9
+     }
+    },
+    "schedule": {
+     "workflows": 516,
+     "nodeRuns": {
+      "n": 516,
+      "mean": 4.57,
+      "p50": 3,
+      "p90": 8,
+      "p99": 24,
+      "max": 83
+     },
+     "vendorRuns": {
+      "n": 516,
+      "mean": 1.72,
+      "p50": 1,
+      "p90": 3,
+      "p99": 12,
+      "max": 33
+     }
+    },
+    "app-event": {
+     "workflows": 38,
+     "nodeRuns": {
+      "n": 38,
+      "mean": 2.97,
+      "p50": 2,
+      "p90": 5,
+      "p99": 11,
+      "max": 11
+     },
+     "vendorRuns": {
+      "n": 38,
+      "mean": 0.18,
+      "p50": 0,
+      "p90": 1,
+      "p99": 2,
+      "max": 2
+     }
+    },
+    "other": {
+     "workflows": 226,
+     "nodeRuns": {
+      "n": 226,
+      "mean": 5.35,
+      "p50": 3,
+      "p90": 10,
+      "p99": 36,
+      "max": 69
+     },
+     "vendorRuns": {
+      "n": 226,
+      "mean": 1.79,
+      "p50": 1,
+      "p90": 4,
+      "p99": 15,
+      "max": 42
+     }
+    }
+   }
+  },
+  "census": {
+   "all": {
+    "workflows": 146750,
+    "hostNodesHist": {
+     "0": {
+      "n": 16273,
+      "share": 0.1109
+     },
+     "1": {
+      "n": 27539,
+      "share": 0.1877
+     },
+     "2": {
+      "n": 25345,
+      "share": 0.1727
+     },
+     "3": {
+      "n": 19126,
+      "share": 0.1303
+     },
+     "4": {
+      "n": 13962,
+      "share": 0.0951
+     },
+     "5+": {
+      "n": 44505,
+      "share": 0.3033
+     }
+    },
+    "zeroHostShare": 0.1109,
+    "hostNodes": {
+     "n": 146750,
+     "mean": 4.18,
+     "p50": 3,
+     "p90": 9,
+     "p99": 25,
+     "max": 192
+    },
+    "hostTypes": {
+     "n": 146750,
+     "mean": 2.09,
+     "p50": 2,
+     "p90": 4,
+     "p99": 7,
+     "max": 15
+    },
+    "nodes": {
+     "n": 146750,
+     "mean": 16.13,
+     "p50": 11,
+     "p90": 34,
+     "p99": 83,
+     "max": 590
+    }
+   },
+   "joinedWithTrigger": 73905,
+   "byTriggerClass": {
+    "webhook": {
+     "workflows": 17613,
+     "hostNodesHist": {
+      "0": {
+       "n": 3224,
+       "share": 0.183
+      },
+      "1": {
+       "n": 4874,
+       "share": 0.2767
+      },
+      "2": {
+       "n": 3037,
+       "share": 0.1724
+      },
+      "3": {
+       "n": 1840,
+       "share": 0.1045
+      },
+      "4": {
+       "n": 1271,
+       "share": 0.0722
+      },
+      "5+": {
+       "n": 3367,
+       "share": 0.1912
+      }
+     },
+     "zeroHostShare": 0.183,
+     "hostNodes": {
+      "n": 17613,
+      "mean": 2.98,
+      "p50": 2,
+      "p90": 7,
+      "p99": 21,
+      "max": 68
+     },
+     "hostTypes": {
+      "n": 17613,
+      "mean": 1.53,
+      "p50": 1,
+      "p90": 3,
+      "p99": 5,
+      "max": 10
+     },
+     "nodes": {
+      "n": 17613,
+      "mean": 13.27,
+      "p50": 9,
+      "p90": 28,
+      "p99": 73,
+      "max": 298
+     }
+    },
+    "schedule": {
+     "workflows": 44727,
+     "hostNodesHist": {
+      "0": {
+       "n": 4252,
+       "share": 0.0951
+      },
+      "1": {
+       "n": 8060,
+       "share": 0.1802
+      },
+      "2": {
+       "n": 8763,
+       "share": 0.1959
+      },
+      "3": {
+       "n": 6831,
+       "share": 0.1527
+      },
+      "4": {
+       "n": 4719,
+       "share": 0.1055
+      },
+      "5+": {
+       "n": 12102,
+       "share": 0.2706
+      }
+     },
+     "zeroHostShare": 0.0951,
+     "hostNodes": {
+      "n": 44727,
+      "mean": 3.82,
+      "p50": 3,
+      "p90": 8,
+      "p99": 21,
+      "max": 102
+     },
+     "hostTypes": {
+      "n": 44727,
+      "mean": 2.04,
+      "p50": 2,
+      "p90": 4,
+      "p99": 6,
+      "max": 15
+     },
+     "nodes": {
+      "n": 44727,
+      "mean": 12,
+      "p50": 9,
+      "p90": 23,
+      "p99": 59,
+      "max": 278
+     }
+    },
+    "app-event": {
+     "workflows": 2520,
+     "hostNodesHist": {
+      "0": {
+       "n": 328,
+       "share": 0.1302
+      },
+      "1": {
+       "n": 482,
+       "share": 0.1913
+      },
+      "2": {
+       "n": 400,
+       "share": 0.1587
+      },
+      "3": {
+       "n": 316,
+       "share": 0.1254
+      },
+      "4": {
+       "n": 231,
+       "share": 0.0917
+      },
+      "5+": {
+       "n": 763,
+       "share": 0.3028
+      }
+     },
+     "zeroHostShare": 0.1302,
+     "hostNodes": {
+      "n": 2520,
+      "mean": 4.43,
+      "p50": 3,
+      "p90": 10,
+      "p99": 28,
+      "max": 60
+     },
+     "hostTypes": {
+      "n": 2520,
+      "mean": 1.98,
+      "p50": 2,
+      "p90": 4,
+      "p99": 7,
+      "max": 9
+     },
+     "nodes": {
+      "n": 2520,
+      "mean": 13.42,
+      "p50": 9,
+      "p90": 28,
+      "p99": 72,
+      "max": 159
+     }
+    },
+    "other": {
+     "workflows": 9045,
+     "hostNodesHist": {
+      "0": {
+       "n": 1303,
+       "share": 0.1441
+      },
+      "1": {
+       "n": 2664,
+       "share": 0.2945
+      },
+      "2": {
+       "n": 1554,
+       "share": 0.1718
+      },
+      "3": {
+       "n": 946,
+       "share": 0.1046
+      },
+      "4": {
+       "n": 659,
+       "share": 0.0729
+      },
+      "5+": {
+       "n": 1919,
+       "share": 0.2122
+      }
+     },
+     "zeroHostShare": 0.1441,
+     "hostNodes": {
+      "n": 9045,
+      "mean": 3.24,
+      "p50": 2,
+      "p90": 7,
+      "p99": 21,
+      "max": 180
+     },
+     "hostTypes": {
+      "n": 9045,
+      "mean": 1.65,
+      "p50": 1,
+      "p90": 3,
+      "p99": 6,
+      "max": 10
+     },
+     "nodes": {
+      "n": 9045,
+      "mean": 10.6,
+      "p50": 7,
+      "p90": 23,
+      "p99": 54,
+      "max": 215
+     }
+    }
+   }
+  }
+ },
+ "B": {
+  "sample": {
+   "replayed": 334,
+   "withTrace": 333,
+   "match": {
+    "exact": 283,
+    "structure": 44,
+    "status": 5,
+    "mismatch": 1,
+    "harness_error": 1
+   }
+  },
+  "vendorCalls": {
+   "n": 784,
+   "tokenRefreshCallsExcluded": 299,
+   "responseBodyBytes": {
+    "n": 784,
+    "mean": 762.39,
+    "p50": 359,
+    "p90": 1352,
+    "p99": 4399,
+    "max": 213617
+   },
+   "requestBodyBytes": {
+    "n": 784,
+    "mean": 351.78,
+    "p50": 0,
+    "p90": 416,
+    "p99": 6430,
+    "max": 31131
+   },
+   "requestHeadBytes": {
+    "n": 784,
+    "mean": 473.06,
+    "p50": 441,
+    "p90": 538,
+    "p99": 1485,
+    "max": 1825
+   },
+   "responseHeadBytes": {
+    "n": 784,
+    "mean": 178.58,
+    "p50": 153,
+    "p90": 216,
+    "p99": 801,
+    "max": 858
+   },
+   "compressedResponses": 0,
+   "topHosts": [
+    [
+     "sheets.googleapis.com",
+     444
+    ],
+    [
+     "www.googleapis.com",
+     153
+    ],
+    [
+     "slack.com",
+     25
+    ],
+    [
+     "graph.microsoft.com",
+     19
+    ],
+    [
+     "api.notion.com",
+     18
+    ],
+    [
+     "api.telegram.org",
+     16
+    ],
+    [
+     "api.anthropic.com",
+     15
+    ],
+    [
+     "api.openai.com",
+     12
+    ],
+    [
+     "api.hubapi.com",
+     11
+    ],
+    [
+     "api.airtable.com",
+     10
+    ],
+    [
+     "googleads.googleapis.com",
+     8
+    ],
+    [
+     "api.monday.com",
+     8
+    ],
+    [
+     "wf-202611120954-2731.atlassian.net",
+     6
+    ],
+    [
+     "generativelanguage.googleapis.com",
+     4
+    ],
+    [
+     "www.zohoapis.com",
+     4
+    ]
+   ]
+  },
+  "wfrtHttpSteps": {
+   "n": 571,
+   "responseBodyBytes": {
+    "n": 571,
+    "mean": 851.03,
+    "p50": 376,
+    "p90": 1446,
+    "p99": 4398,
+    "max": 184081
+   },
+   "requestBodyBytes": {
+    "n": 571,
+    "mean": 133.03,
+    "p50": 0,
+    "p90": 301,
+    "p99": 2018,
+    "max": 11794
+   }
+  },
+  "nodeRunItems": {
+   "all": {
+    "bytes": {
+     "n": 1253,
+     "mean": 591.57,
+     "p50": 181,
+     "p90": 1056,
+     "p99": 5139,
+     "max": 184081
+    },
+    "items": {
+     "n": 1253,
+     "mean": 1.4,
+     "p50": 1,
+     "p90": 3,
+     "p99": 9,
+     "max": 21
+    }
+   },
+   "nonTrigger": {
+    "bytes": {
+     "n": 920,
+     "mean": 723.23,
+     "p50": 181,
+     "p90": 1308,
+     "p99": 6114,
+     "max": 184081
+    },
+    "items": {
+     "n": 920,
+     "mean": 1.54,
+     "p50": 1,
+     "p90": 3,
+     "p99": 10,
+     "max": 21
+    }
+   },
+   "bytesPerItem": {
+    "n": 1253,
+    "mean": 458.45,
+    "p50": 181,
+    "p90": 653,
+    "p99": 2098,
+    "max": 184081
+   },
+   "binaryRuns": 6,
+   "binaryBytes": {
+    "n": 6,
+    "mean": 252.33,
+    "p50": 227,
+    "p90": 394,
+    "p99": 394,
+    "max": 394
+   }
+  },
+  "triggerPayloadBytes": {
+   "all": {
+    "n": 333,
+    "mean": 227.81,
+    "p50": 181,
+    "p90": 285,
+    "p99": 1407,
+    "max": 2111
+   },
+   "byTriggerClass": {
+    "webhook": {
+     "n": 86,
+     "mean": 179.81,
+     "p50": 181,
+     "p90": 181,
+     "p99": 181,
+     "max": 181
+    },
+    "schedule": {
+     "n": 164,
+     "mean": 341.06,
+     "p50": 285,
+     "p90": 285,
+     "p99": 1712,
+     "max": 2111
+    },
+    "app-event": {
+     "n": 10,
+     "mean": 113,
+     "p50": 113,
+     "p90": 113,
+     "p99": 113,
+     "max": 113
+    },
+    "other": {
+     "n": 73,
+     "mean": 45.66,
+     "p50": 52,
+     "p90": 113,
+     "p99": 113,
+     "max": 113
+    }
+   }
+  },
+  "perWorkflow": {
+   "vendorCalls": {
+    "n": 333,
+    "mean": 2.35,
+    "p50": 1,
+    "p90": 5,
+    "p99": 13,
+    "max": 110,
+    "hist": {
+     "0": {
+      "n": 91,
+      "share": 0.2733
+     },
+     "1": {
+      "n": 76,
+      "share": 0.2282
+     },
+     "2": {
+      "n": 84,
+      "share": 0.2523
+     },
+     "3": {
+      "n": 24,
+      "share": 0.0721
+     },
+     "4": {
+      "n": 22,
+      "share": 0.0661
+     },
+     "5+": {
+      "n": 36,
+      "share": 0.1081
+     }
+    }
+   },
+   "vendorBodyBytesInPlusOut": {
+    "n": 333,
+    "mean": 2623.16,
+    "p50": 706,
+    "p90": 4563,
+    "p99": 30087,
+    "max": 213617
+   },
+   "vendorBodyBytesIn": {
+    "n": 333,
+    "mean": 1794.94,
+    "p50": 463,
+    "p90": 2784,
+    "p99": 8066,
+    "max": 213617
+   },
+   "vendorBodyBytesOut": {
+    "n": 333,
+    "mean": 828.22,
+    "p50": 0,
+    "p90": 1256,
+    "p99": 14510,
+    "max": 64430
+   },
+   "vendorWireBytesWithHeaders": {
+    "n": 333,
+    "mean": 4157.34,
+    "p50": 1888,
+    "p90": 8163,
+    "p99": 32568,
+    "max": 215576
+   },
+   "itemJsonBytes": {
+    "n": 333,
+    "mean": 2225.93,
+    "p50": 543,
+    "p90": 3897,
+    "p99": 21585,
+    "max": 184262
+   },
+   "nodeRunsWithItems": {
+    "n": 333,
+    "mean": 3.76,
+    "p50": 3,
+    "p90": 8,
+    "p99": 17,
+    "max": 32
+   },
+   "byTriggerClass": {
+    "webhook": {
+     "workflows": 86,
+     "calls": {
+      "n": 86,
+      "mean": 1.26,
+      "p50": 0,
+      "p90": 4,
+      "p99": 12,
+      "max": 12
+     },
+     "vendorBytes": {
+      "n": 86,
+      "mean": 4738.17,
+      "p50": 0,
+      "p90": 3750,
+      "p99": 213617,
+      "max": 213617
+     },
+     "itemBytes": {
+      "n": 86,
+      "mean": 3029.52,
+      "p50": 457,
+      "p90": 2302,
+      "p99": 184262,
+      "max": 184262
+     }
+    },
+    "schedule": {
+     "workflows": 164,
+     "calls": {
+      "n": 164,
+      "mean": 3.2,
+      "p50": 2,
+      "p90": 5,
+      "p99": 19,
+      "max": 110
+     },
+     "vendorBytes": {
+      "n": 164,
+      "mean": 2246.84,
+      "p50": 1117,
+      "p90": 5484,
+      "p99": 13233,
+      "max": 49371
+     },
+     "itemBytes": {
+      "n": 164,
+      "mean": 1964.74,
+      "p50": 809,
+      "p90": 5349,
+      "p99": 16332,
+      "max": 25305
+     }
+    },
+    "app-event": {
+     "workflows": 10,
+     "calls": {
+      "n": 10,
+      "mean": 0.4,
+      "p50": 0,
+      "p90": 4,
+      "p99": 4,
+      "max": 4
+     },
+     "vendorBytes": {
+      "n": 10,
+      "mean": 131.6,
+      "p50": 0,
+      "p90": 1316,
+      "p99": 1316,
+      "max": 1316
+     },
+     "itemBytes": {
+      "n": 10,
+      "mean": 234.8,
+      "p50": 226,
+      "p90": 452,
+      "p99": 452,
+      "max": 452
+     }
+    },
+    "other": {
+     "workflows": 73,
+     "calls": {
+      "n": 73,
+      "mean": 2.01,
+      "p50": 1,
+      "p90": 5,
+      "p99": 16,
+      "max": 16
+     },
+     "vendorBytes": {
+      "n": 73,
+      "mean": 1318.23,
+      "p50": 590,
+      "p90": 3194,
+      "p99": 13271,
+      "max": 13271
+     },
+     "itemBytes": {
+      "n": 73,
+      "mean": 2138.77,
+      "p50": 651,
+      "p90": 2996,
+      "p99": 37650,
+      "max": 37650
+     }
+    }
+   }
+  }
+ }
+}

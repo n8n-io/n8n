@@ -70,6 +70,7 @@ import { NodeTypes } from '@/node-types';
 import type { PoolConfigService } from '@/scaling/pool-config.service.ee';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { StreamingWebhookResponseHeartbeat } from '@/webhooks/streaming-webhook-response-heartbeat';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -473,6 +474,20 @@ export class WorkflowRunner {
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		// The compiled engine (`wfrt`) owns the whole run. Its module makes the
+		// execution row and writes the run data from the runtime events.
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		if (compiledEngine.handles(data.workflowData)) {
+			if (existingExecution === undefined) {
+				return await compiledEngine.get().run(data, responsePromise);
+			}
+			// `wfrt` holds the waiting execution; the module resumes it there.
+			await compiledEngine
+				.get()
+				.resumeFromN8n(existingExecution.executionId, data, responsePromise);
+			return existingExecution.executionId;
+		}
+
 		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {

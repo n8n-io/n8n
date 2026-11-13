@@ -1,0 +1,23 @@
+{
+	"trigger": {
+		"body": {
+			"words": ["Crème brûlée", "Ångström", "ﬁﬂ ①②", "한국어", "Ⅻ ㎒", "ẹ́", "Ǖ"],
+			"json": [
+				"{\"a\":1,}",
+				"{'a': 1}",
+				"",
+				"not json at all, a long text",
+				"[1, 2",
+				"01",
+				"\"😀",
+				"{\"ok\":true}",
+				"undefined"
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 1700000000000,
+	"seed": 1,
+	"effects": {}
+}

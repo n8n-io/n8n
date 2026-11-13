@@ -1,0 +1,9 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"useUnknownInCatchVariables": false,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false
+	},
+	"include": ["./**/*.ts"]
+}

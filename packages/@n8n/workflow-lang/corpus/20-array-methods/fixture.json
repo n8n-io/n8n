@@ -1,0 +1,16 @@
+{
+	"trigger": {
+		"body": {
+			"lines": [
+				{ "sku": "A", "qty": 2, "price": 3.5, "tags": ["x"] },
+				{ "sku": "B", "qty": 1, "price": 10, "tags": ["y", "z"] },
+				{ "sku": "C", "qty": 4, "price": 0.25, "tags": [] }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": { "Report": [{ "status": 200, "headers": {}, "body": {} }] }
+}

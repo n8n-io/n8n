@@ -1,0 +1,207 @@
+{
+	"name": "Codes and dates",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "codes",
+				"responseMode": "onReceived",
+				"options": {}
+			}
+		},
+		{
+			"id": "split",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.rows",
+				"options": {}
+			}
+		},
+		{
+			"id": "code-check",
+			"name": "Code Valid",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [400, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.code }}",
+							"rightValue": "^[A-Z]{2}-\\d{3}$",
+							"operator": {
+								"type": "string",
+								"operation": "regex"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "recent",
+			"name": "Recent",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [600, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.date }}",
+							"rightValue": "2024-01-01T00:00:00.000Z",
+							"operator": {
+								"type": "dateTime",
+								"operation": "after"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"looseTypeValidation": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "bad",
+			"name": "Bad Codes",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [600, 200],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c3",
+										"leftValue": "={{ $json.code }}",
+										"rightValue": "\\d",
+										"operator": {
+											"type": "string",
+											"operation": "notRegex"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			}
+		},
+		{
+			"id": "a",
+			"name": "No Digits",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, 200],
+			"parameters": {}
+		},
+		{
+			"id": "b",
+			"name": "Other",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, 400],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Code Valid",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code Valid": {
+			"main": [
+				[
+					{
+						"node": "Recent",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Bad Codes",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Bad Codes": {
+			"main": [
+				[
+					{
+						"node": "No Digits",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Other",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

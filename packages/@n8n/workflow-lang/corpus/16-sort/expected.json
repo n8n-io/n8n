@@ -1,0 +1,26 @@
+{
+	"status": "ok",
+	"result": {
+		"defaultSorted": [-5, 1, 10, 100, 2, 25, 9],
+		"numeric": [-5, 1, 2, 9, 10, 25, 100],
+		"wordSorted": ["Apple", "Zebra", "apple", "zebra", "éclair", "😀", "ﬀ"],
+		"withUndefined": [1, 2, 3, null, null],
+		"byAge": ["Ana:25", "Cy:25", "Ed:25", "Kai:30", "Bo:30", "Di:40"],
+		"sameRef": true,
+		"byNameDesc": ["Kai", "Ed", "Di", "Cy", "Bo", "Ana"],
+		"mixed": [10, 2, "a", "b", false, null, true],
+		"reversed": [3, 2, 1],
+		"top": [99, 42, 23]
+	},
+	"effects": [
+		{
+			"step": "Scores",
+			"kind": "http",
+			"args": {
+				"name": "Scores",
+				"method": "GET",
+				"url": "https://api.example.com/scores"
+			}
+		}
+	]
+}

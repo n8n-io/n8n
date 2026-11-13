@@ -1,0 +1,18 @@
+{
+	"trigger": { "body": { "pages": 5, "skip": [2] }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Fetch page": [
+			{ "status": 200, "headers": {}, "body": { "ids": ["a", "b"], "last": false } },
+			{ "status": 200, "headers": {}, "body": { "ids": ["c"], "last": false } },
+			{ "status": 200, "headers": {}, "body": { "ids": ["d", "e"], "last": true } }
+		],
+		"Poll job": [
+			{ "status": 200, "headers": {}, "body": { "state": "running" } },
+			{ "status": 200, "headers": {}, "body": { "state": "running" } },
+			{ "status": 200, "headers": {}, "body": { "state": "done" } }
+		],
+		"Back off": [null]
+	}
+}

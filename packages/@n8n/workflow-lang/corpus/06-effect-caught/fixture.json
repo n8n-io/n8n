@@ -1,0 +1,17 @@
+{
+	"trigger": { "body": { "currencies": ["EUR", "GBP", "JPY"] }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Fetch rate": [
+			{ "status": 200, "headers": {}, "body": { "rate": 1.08 } },
+			{ "$error": "rate limited" },
+			{ "status": 200, "headers": {}, "body": { "rate": 0.0067 } }
+		],
+		"Legacy node": [
+			{ "$error": "flaky" },
+			{ "$error": "flaky again" },
+			[{ "value": 1 }, { "value": 2 }]
+		]
+	}
+}

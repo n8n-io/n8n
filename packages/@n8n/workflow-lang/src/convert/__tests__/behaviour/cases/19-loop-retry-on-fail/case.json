@@ -1,0 +1,4 @@
+{
+	"description": "Loop Over Items with retry on fail: v1 runs the node again while its first done item has an error",
+	"trigger": { "body": { "n": 1 } }
+}

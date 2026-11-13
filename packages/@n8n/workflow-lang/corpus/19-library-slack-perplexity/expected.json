@@ -1,0 +1,43 @@
+{
+	"status": "ok",
+	"result": {
+		"searchId": "s-1",
+		"ts": "1700.1",
+		"unsupported": "Slack: channel.create is not in the compiled library"
+	},
+	"effects": [
+		{
+			"step": "Search",
+			"kind": "http",
+			"args": {
+				"method": "POST",
+				"url": "https://api.perplexity.ai/search",
+				"headers": {},
+				"qs": {},
+				"body": {
+					"query": "How do I retry a node?",
+					"max_results": 3,
+					"search_domain_filter": ["n8n.io", "docs.n8n.io"]
+				},
+				"credential": "perplexity"
+			}
+		},
+		{
+			"step": "Post answer",
+			"kind": "http",
+			"args": {
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"headers": {
+					"content-type": "application/json; charset=utf-8"
+				},
+				"qs": {},
+				"body": {
+					"channel": "#help",
+					"text": "*How do I retry a node?*\n• <https://docs.n8n.io/retry|Retry>"
+				},
+				"credential": "slack"
+			}
+		}
+	]
+}

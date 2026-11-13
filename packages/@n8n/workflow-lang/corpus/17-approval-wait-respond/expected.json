@@ -1,0 +1,60 @@
+{
+	"status": "ok",
+	"result": {
+		"ticket": "EXP-974026",
+		"approved": true,
+		"approver": "boss@example.com (ok, once)",
+		"waited": 60000,
+		"end": 3600000,
+		"rolls": [55, 33, 24]
+	},
+	"effects": [
+		{
+			"step": "Ack",
+			"kind": "respond",
+			"args": {
+				"name": "Ack",
+				"status": 202,
+				"body": {
+					"ticket": "EXP-974026"
+				},
+				"headers": {
+					"x-ticket": "EXP-974026"
+				}
+			}
+		},
+		{
+			"step": "Manager approval",
+			"kind": "approval",
+			"args": {
+				"name": "Manager approval",
+				"message": "Mia asks for 250.00 EUR",
+				"timeout": 86400000
+			}
+		},
+		{
+			"step": "Cool down",
+			"kind": "wait",
+			"args": {
+				"name": "Cool down",
+				"duration": 60000
+			}
+		},
+		{
+			"step": "Until payday",
+			"kind": "wait",
+			"args": {
+				"name": "Until payday",
+				"until": 1700003600000
+			}
+		},
+		{
+			"step": "Past date",
+			"kind": "wait",
+			"args": {
+				"name": "Past date",
+				"until": 5
+			}
+		}
+	]
+}

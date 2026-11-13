@@ -1,0 +1,12 @@
+{
+	"description": "Set field names with quoted lodash paths, and loose boolean filter conditions on text values",
+	"trigger": {
+		"body": {
+			"rows": [
+				{ "date [n8n]": 1, "flag": "true\n", "note": "Ava" },
+				{ "date [n8n]": 2, "flag": "no", "note": "" },
+				{ "date [n8n]": 3, "flag": "0", "note": "Liam" }
+			]
+		}
+	}
+}

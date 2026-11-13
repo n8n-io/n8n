@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ExecutionSnapshot, ResumeTargetResponse } from '@n8n/engine';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
@@ -37,6 +37,7 @@ import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.
 import { isExecutionIdV1, isExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
 import type { EngineV2ResumeRequest } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { withExpressionIsolate } from '@/utils';
 import { applyCors } from '@/utils/cors.util';
@@ -353,10 +354,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId } = req.params;
+		let { path: executionId } = req.params;
 		let { suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
+
+		executionId = await this.toN8nExecutionId(executionId);
 
 		if (isExecutionIdV2(executionId)) {
 			return await this.resumeEngineV2Execution(req, res, executionId, suffix);
@@ -371,6 +374,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		// Only validate for executions that have a resumeToken.
 		// Old executions created before token validation are skipped (backwards compat).
+		// A compiled execution keeps the signature of `wfrt` as its resume token, so
+		// the same check applies; `wfrt` checks it again on the resume.
 		if (execution?.data.resumeToken) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
@@ -464,6 +469,18 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * to the data plane. The data plane holds an early request for a short time,
 	 * so this route does not retry.
 	 */
+	/**
+	 * The n8n execution id of a waiting URL. `$execution.resumeUrl` of a compiled
+	 * trigger run ends in the `wfrt` id (`wfrt-<n>`).
+	 */
+	protected async toN8nExecutionId(pathId: string): Promise<string> {
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		if (!compiledEngine.isEnabled || !compiledEngine.isRuntimeExecutionId(pathId)) return pathId;
+		const executionId = await compiledEngine.get().findExecutionId(pathId);
+		if (!executionId) throw new NotFoundError(`The execution "${pathId}" does not exist.`);
+		return executionId;
+	}
+
 	protected async resumeEngineV2Execution(
 		req: WaitingWebhookRequest,
 		res: express.Response,

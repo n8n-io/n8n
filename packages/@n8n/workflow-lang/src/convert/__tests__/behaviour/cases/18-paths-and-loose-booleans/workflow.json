@@ -1,0 +1,150 @@
+{
+	"name": "Paths and loose booleans",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "paths",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split",
+			"name": "Rows",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.rows",
+				"options": {}
+			}
+		},
+		{
+			"id": "set",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a",
+							"name": "['date [n8n]']",
+							"value": "={{ $json['date [n8n]'] * 10 }}",
+							"type": "number"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "filter",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [600, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "1",
+							"leftValue": "={{ $json.flag }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						},
+						{
+							"id": "2",
+							"leftValue": "={{ $json.note }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "or"
+				},
+				"looseTypeValidation": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [800, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Rows",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Rows": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Filter",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {}
+}

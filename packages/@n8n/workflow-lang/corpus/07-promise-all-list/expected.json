@@ -1,0 +1,88 @@
+{
+	"status": "ok",
+	"result": {
+		"name": "Ada",
+		"orders": ["o1", "o2", "o3"],
+		"score": 0.75,
+		"now": 1050,
+		"failed": "no"
+	},
+	"effects": [
+		{
+			"step": "Profile",
+			"kind": "http",
+			"args": {
+				"name": "Profile",
+				"method": "GET",
+				"url": "https://api.example.com/users/u9"
+			}
+		},
+		{
+			"step": "Orders",
+			"kind": "http",
+			"args": {
+				"name": "Orders",
+				"method": "GET",
+				"url": "https://shop.example.com/u9/orders",
+				"qs": {
+					"limit": 2
+				}
+			}
+		},
+		{
+			"step": "Settle",
+			"kind": "wait",
+			"args": {
+				"name": "Settle",
+				"duration": 50
+			}
+		},
+		{
+			"step": "Score",
+			"kind": "code",
+			"args": {
+				"name": "Score",
+				"code": "return [{score: 1}]"
+			}
+		},
+		{
+			"step": "More orders",
+			"kind": "http",
+			"args": {
+				"name": "More orders",
+				"method": "GET",
+				"url": "https://shop.example.com/u9/orders",
+				"qs": {
+					"offset": 2
+				}
+			}
+		},
+		{
+			"step": "Ping A",
+			"kind": "http",
+			"args": {
+				"name": "Ping A",
+				"method": "GET",
+				"url": "https://a.example.com"
+			}
+		},
+		{
+			"step": "Ping B",
+			"kind": "http",
+			"args": {
+				"name": "Ping B",
+				"method": "GET",
+				"url": "https://b.example.com"
+			}
+		},
+		{
+			"step": "Ping C",
+			"kind": "http",
+			"args": {
+				"name": "Ping C",
+				"method": "GET",
+				"url": "https://c.example.com"
+			}
+		}
+	]
+}

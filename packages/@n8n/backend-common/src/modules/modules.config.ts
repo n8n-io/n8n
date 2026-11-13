@@ -41,6 +41,7 @@ export const MODULE_NAMES = [
 	'n8n-packages',
 	'workflow-reviews',
 	'engine-v2',
+	'compiled-engine',
 	'policy-infrastructure',
 	'type-availability-policies',
 	'instance-reporting',

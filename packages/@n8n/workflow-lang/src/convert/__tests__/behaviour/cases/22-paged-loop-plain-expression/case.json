@@ -1,0 +1,40 @@
+{
+	"description": "A paged search in a loop: HTTP Request with the body type \"=json\" (an expression without {{ }}), Code, If back to the request",
+	"trigger": {
+		"body": {
+			"query": "email-test_"
+		}
+	},
+	"http": {
+		"Search": {
+			"path": "search",
+			"responses": [
+				{
+					"status": 200,
+					"body": {
+						"results": [
+							{
+								"id": "1"
+							}
+						],
+						"paging": {
+							"next": {
+								"after": "1"
+							}
+						}
+					}
+				},
+				{
+					"status": 200,
+					"body": {
+						"results": [
+							{
+								"id": "2"
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}

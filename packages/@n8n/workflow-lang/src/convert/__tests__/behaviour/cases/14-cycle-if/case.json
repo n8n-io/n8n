@@ -1,0 +1,6 @@
+{
+	"description": "A loop through IF back to an earlier node",
+	"trigger": {
+		"body": {}
+	}
+}

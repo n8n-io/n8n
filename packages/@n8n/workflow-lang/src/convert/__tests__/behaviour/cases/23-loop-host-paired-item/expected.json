@@ -1,0 +1,96 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Config", "Split", "Loop", "Tag", "Loop", "Tag", "Loop", "Done"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": [
+							{
+								"name": "a"
+							},
+							{
+								"name": "b"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Config": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": [
+							{
+								"name": "a"
+							},
+							{
+								"name": "b"
+							}
+						]
+					},
+					"days": 2
+				}
+			]
+		],
+		"Split": [
+			[
+				{
+					"name": "a"
+				},
+				{
+					"name": "b"
+				}
+			]
+		],
+		"Loop": [
+			[
+				{
+					"tag": "2-a"
+				},
+				{
+					"tag": "2-b"
+				}
+			],
+			[
+				{
+					"name": "a"
+				},
+				{
+					"name": "b"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"tag": "2-a"
+				},
+				{
+					"tag": "2-b"
+				}
+			]
+		],
+		"Done": [
+			[
+				{
+					"tag": "2-a"
+				},
+				{
+					"tag": "2-b"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

@@ -1,0 +1,8 @@
+{
+	"trigger": { "scheduledAt": 1700000100000 },
+	"now": 1700000102500,
+	"seed": 1,
+	"effects": {
+		"Fetch report": [{ "status": 200, "headers": {}, "body": { "count": 42 } }]
+	}
+}

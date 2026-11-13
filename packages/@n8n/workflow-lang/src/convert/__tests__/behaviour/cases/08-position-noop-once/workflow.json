@@ -1,0 +1,215 @@
+{
+	"name": "Pairs",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "pairs",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "names",
+			"name": "Names",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, -100],
+			"parameters": {
+				"fieldToSplitOut": "body.names",
+				"options": {
+					"destinationFieldName": "name"
+				}
+			}
+		},
+		{
+			"id": "ages",
+			"name": "Ages",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 100],
+			"parameters": {
+				"fieldToSplitOut": "body.ages",
+				"options": {
+					"destinationFieldName": "age"
+				}
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [400, 0],
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"options": {}
+			}
+		},
+		{
+			"id": "no-operation",
+			"name": "No Operation",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {}
+		},
+		{
+			"id": "first",
+			"name": "First",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "first",
+							"name": "first",
+							"value": "={{ $json.name }}",
+							"type": "string"
+						},
+						{
+							"id": "total",
+							"name": "total",
+							"value": "={{ $('Merge').all().length }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"executeOnce": true
+		},
+		{
+			"id": "nothing",
+			"name": "Nothing",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [800, 200],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.name }}",
+							"operator": {
+								"type": "string",
+								"operation": "equals"
+							},
+							"rightValue": "zzz"
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"alwaysOutputData": true
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1000, 0],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={{ { first: $json.first, total: $json.total } }}",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Names",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Names": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Ages": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "No Operation",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation": {
+			"main": [
+				[
+					{
+						"node": "First",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"First": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

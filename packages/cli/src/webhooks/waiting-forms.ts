@@ -129,9 +129,11 @@ export class WaitingForms extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix: routeSuffix } = req.params;
+		const { path: pathId, suffix: routeSuffix } = req.params;
 
-		this.logReceivedWebhook(req.method, executionId);
+		this.logReceivedWebhook(req.method, pathId);
+
+		const executionId = await this.toN8nExecutionId(pathId);
 
 		// On a v2 execution, a GET renders the form and resumes nothing. A POST
 		// resumes.

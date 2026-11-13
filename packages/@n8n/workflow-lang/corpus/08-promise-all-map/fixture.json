@@ -1,0 +1,24 @@
+{
+	"trigger": {
+		"body": {
+			"jobs": [
+				{ "id": "j1", "retries": 0 },
+				{ "id": "j2", "retries": 1 },
+				{ "id": "j3", "retries": 0 }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Start": [
+			{ "status": 200, "headers": {}, "body": { "token": "t1" } },
+			{ "status": 200, "headers": {}, "body": { "token": "t2" } },
+			{ "status": 200, "headers": {}, "body": { "token": "t3" } }
+		],
+		"Finish": [{ "status": 200, "headers": {}, "body": { "state": "ok" } }, { "$error": "lost" }],
+		"Check": [{ "status": 200, "headers": {}, "body": {} }]
+	}
+}

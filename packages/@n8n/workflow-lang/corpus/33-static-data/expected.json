@@ -1,0 +1,20 @@
+{
+	"status": "ok",
+	"result": {
+		"fresh": ["c", "d"],
+		"before": 1600000000,
+		"again": true,
+		"badType": "Error: Unknown context type. Only `global` and `node` are supported.",
+		"noNode": "Error: The node name is missing for static data of type \"node\""
+	},
+	"effects": [],
+	"staticData": {
+		"global": {
+			"seen": ["a", "b", "c", "d"],
+			"runs": 5
+		},
+		"node:Gmail Trigger": {
+			"lastTimeChecked": 1700000000
+		}
+	}
+}

@@ -1,0 +1,71 @@
+{
+	"status": "ok",
+	"result": {
+		"status": "failed",
+		"error": "card declined",
+		"step": "Charge"
+	},
+	"effects": [
+		{
+			"step": "Check stock",
+			"kind": "http",
+			"args": {
+				"name": "Check stock",
+				"method": "GET",
+				"url": "https://inventory.example.com/stock/A-1"
+			}
+		},
+		{
+			"step": "Check stock",
+			"kind": "http",
+			"args": {
+				"name": "Check stock",
+				"method": "GET",
+				"url": "https://inventory.example.com/stock/B-2"
+			}
+		},
+		{
+			"step": "Check stock",
+			"kind": "http",
+			"args": {
+				"name": "Check stock",
+				"method": "GET",
+				"url": "https://inventory.example.com/stock/C-3"
+			}
+		},
+		{
+			"step": "Approve short order",
+			"kind": "approval",
+			"args": {
+				"name": "Approve short order",
+				"message": "Order o-1001 is short on B-2",
+				"via": "slack"
+			}
+		},
+		{
+			"step": "Charge",
+			"kind": "http",
+			"args": {
+				"name": "Charge",
+				"method": "POST",
+				"url": "https://payments.example.com/charges",
+				"body": {
+					"customer": "c-7",
+					"amount": 14048
+				},
+				"credential": "payments"
+			}
+		},
+		{
+			"step": "Payment failed",
+			"kind": "respond",
+			"args": {
+				"name": "Payment failed",
+				"status": 402,
+				"body": {
+					"error": "card declined"
+				}
+			}
+		}
+	]
+}

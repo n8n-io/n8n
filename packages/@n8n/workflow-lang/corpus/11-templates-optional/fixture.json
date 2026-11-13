@@ -1,0 +1,22 @@
+{
+	"trigger": {
+		"body": {
+			"contacts": [
+				{
+					"name": "ann",
+					"company": { "name": "Acme", "address": { "city": "Berlin" } },
+					"phones": ["+49 1"]
+				},
+				{ "name": "bob", "company": null },
+				{ "company": { "name": "Initech" }, "phones": [] }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Fetch": [{ "status": 200, "headers": {}, "body": { "data": { "items": ["a", "b"] } } }]
+	}
+}

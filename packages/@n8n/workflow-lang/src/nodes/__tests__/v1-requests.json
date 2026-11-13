@@ -1,0 +1,5715 @@
+{
+	"adalo collection.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.adalo.com/v0/apps/app-1/collections/t%201/42",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-adalo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 42,
+				"name": "Row"
+			}
+		]
+	},
+	"adalo collection.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://api.adalo.com/v0/apps/app-1/collections/t1/7",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-adalo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"adalo collection.getAll limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.adalo.com/v0/apps/app-1/collections/t1",
+				"qs": {
+					"limit": "5"
+				},
+				"headers": {
+					"authorization": "Bearer fake-adalo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1
+			},
+			{
+				"id": 2
+			}
+		]
+	},
+	"currents run.getAll filters": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.currents.dev/v1/projects/proj%2F1/runs",
+				"qs": {
+					"projectId": "proj/1",
+					"limit": "25",
+					"branches": ["main", "dev"],
+					"status": "FAILED",
+					"tags": ["nightly"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"runId": "r1"
+			},
+			{
+				"runId": "r2"
+			}
+		]
+	},
+	"currents run.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.currents.dev/v1/runs/run-9",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"runId": "run-9",
+				"status": "PASSED"
+			}
+		]
+	},
+	"currents action.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.currents.dev/v1/actions",
+				"qs": {
+					"projectId": "p1"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				},
+				"body": {
+					"name": "Skip flaky",
+					"action": [
+						{
+							"op": "skip"
+						}
+					],
+					"matcher": {
+						"op": "AND",
+						"cond": [
+							{
+								"type": "title",
+								"op": "inc",
+								"value": "abc123"
+							}
+						]
+					},
+					"description": "from n8n"
+				}
+			}
+		],
+		"output": [
+			{
+				"status": "OK",
+				"data": {
+					"actionId": "a1"
+				}
+			}
+		]
+	},
+	"currents action.update": {
+		"requests": [
+			{
+				"method": "PUT",
+				"url": "https://api.currents.dev/v1/actions/a1",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				},
+				"body": {
+					"name": "Renamed",
+					"description": "d"
+				}
+			}
+		],
+		"output": [
+			{
+				"status": "OK",
+				"data": {
+					"actionId": "a1"
+				}
+			}
+		]
+	},
+	"currents project.getAll": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.currents.dev/v1/projects",
+				"qs": {
+					"limit": "3"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"projectId": "p1"
+			}
+		]
+	},
+	"currents run.reset": {
+		"requests": [
+			{
+				"method": "PUT",
+				"url": "https://api.currents.dev/v1/runs/r1/reset",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-currents-key"
+				},
+				"body": {
+					"machineId": ["m1", "m2"]
+				}
+			}
+		],
+		"output": [
+			{
+				"status": "OK",
+				"data": {}
+			}
+		]
+	},
+	"googleBusinessProfile post.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://mybusiness.googleapis.com/v4/accounts/1/locations/2/localPosts/3",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-google-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"name": "accounts/1/locations/2/localPosts/3"
+			}
+		]
+	},
+	"googleBusinessProfile review.reply": {
+		"requests": [
+			{
+				"method": "PUT",
+				"url": "https://mybusiness.googleapis.com/v4/accounts/1/locations/2/reviews/r9/reply",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-google-token"
+				},
+				"body": {
+					"comment": "Thanks!"
+				}
+			}
+		],
+		"output": [
+			{
+				"comment": "Thanks!"
+			}
+		]
+	},
+	"googleBusinessProfile post.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://mybusiness.googleapis.com/v4/accounts/1/locations/2/localPosts/5",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-google-token"
+				}
+			}
+		],
+		"output": [{}]
+	},
+	"highLevel contact.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://services.leadconnectorhq.com/contacts/c-1/",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"version": "2021-07-28",
+					"authorization": "Bearer fake-hl-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "c-1"
+			}
+		]
+	},
+	"highLevel opportunity.update": {
+		"requests": [
+			{
+				"method": "PUT",
+				"url": "https://services.leadconnectorhq.com/opportunities/o-1",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"version": "2021-07-28",
+					"authorization": "Bearer fake-hl-token"
+				},
+				"body": {
+					"monetaryValue": 1200,
+					"name": "Big deal",
+					"status": "won"
+				}
+			}
+		],
+		"output": [
+			{
+				"opportunity": {
+					"id": "o-1"
+				}
+			}
+		]
+	},
+	"highLevel task.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://services.leadconnectorhq.com/contacts/c-1/tasks/t-2/",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"version": "2021-07-28",
+					"authorization": "Bearer fake-hl-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"highLevel calendar.getFreeSlots": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://services.leadconnectorhq.com/calendars/cal-1/free-slots",
+				"qs": {
+					"startDate": "2026-11-01T00:00:00",
+					"endDate": "2026-11-08T00:00:00",
+					"timezone": "Europe/Berlin"
+				},
+				"headers": {
+					"accept": "application/json",
+					"version": "2021-07-28",
+					"authorization": "Bearer fake-hl-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"2026-11-02": {
+					"slots": []
+				}
+			}
+		]
+	},
+	"jinaAi reader.read": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://r.jina.ai/https://n8n.io",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-jina-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"title": "n8n",
+				"content": "x"
+			}
+		]
+	},
+	"jinaAi reader.search": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://s.jina.ai/",
+				"qs": {
+					"q": "workflow automation"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-jina-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"code": 200,
+				"data": [
+					{
+						"title": "a"
+					}
+				]
+			}
+		]
+	},
+	"npm package.getMetadata": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://registry.npmjs.org/%40n8n%2Fconfig/latest",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-npm-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"name": "@n8n/config",
+				"version": "1.0.0"
+			}
+		]
+	},
+	"npm distTag.getMany": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://registry.npmjs.org/-/package/n8n/dist-tags",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-npm-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"latest": "1.0.0",
+				"next": "1.1.0"
+			}
+		]
+	},
+	"perplexity search.search": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.perplexity.ai/search",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-pplx-key",
+					"x-source": "n8n"
+				},
+				"body": {
+					"query": "retry a node",
+					"country": "DE",
+					"max_results": 3,
+					"search_domain_filter": ["n8n.io", "docs.n8n.io"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "s-1",
+				"results": [
+					{
+						"title": "Retry"
+					}
+				]
+			}
+		]
+	},
+	"perplexity embedding.createEmbedding": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.perplexity.ai/v1/embeddings",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-pplx-key",
+					"x-source": "n8n"
+				},
+				"body": {
+					"model": "pplx-embed-v1-4b",
+					"input": ["first line", "second line"],
+					"dimensions": 256
+				}
+			}
+		],
+		"output": [
+			{
+				"data": [
+					{
+						"embedding": [0.1]
+					}
+				]
+			}
+		]
+	},
+	"perplexity agent.createResponse": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.perplexity.ai/v1/agent",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-pplx-key",
+					"x-source": "n8n"
+				},
+				"body": {
+					"input": "Summarize n8n",
+					"model": "",
+					"preset": "",
+					"instructions": "Be short",
+					"max_output_tokens": 100
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "resp-1",
+				"model": "sonar",
+				"output": []
+			}
+		]
+	},
+	"sendInBlue contact.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.brevo.com/v3/contacts",
+				"qs": {},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				},
+				"body": {
+					"email": "ada@example.com"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 11
+			}
+		]
+	},
+	"sendInBlue contact.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.brevo.com/v3/contacts/ada%2B1%40example.com",
+				"qs": {},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"email": "ada+1@example.com"
+			}
+		]
+	},
+	"sendInBlue contact.getAll": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.brevo.com/v3/contacts",
+				"qs": {
+					"limit": "20",
+					"sort": "asc"
+				},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1
+			},
+			{
+				"id": 2
+			}
+		]
+	},
+	"sendInBlue contact.update": {
+		"requests": [
+			{
+				"method": "PUT",
+				"url": "https://api.brevo.com/v3/contacts/ada%40example.com",
+				"qs": {},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				},
+				"body": {
+					"attributes": {
+						"FIRSTNAME": "Ada",
+						"LASTNAME": "Lovelace"
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"sendInBlue sender.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.brevo.com/v3/senders",
+				"qs": {},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				},
+				"body": {
+					"name": "Ops",
+					"email": "ops@example.com"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 3
+			}
+		]
+	},
+	"sendInBlue attribute.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://api.brevo.com/v3/contacts/attributes/normal/MY%20ATTR",
+				"qs": {},
+				"headers": {
+					"api-key": "fake-brevo-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"whatsApp media.mediaUrlGet": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://graph.facebook.com/v13.0/m-1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-wa-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"url": "https://example.com/m-1"
+			}
+		]
+	},
+	"whatsApp media.mediaDelete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://graph.facebook.com/v13.0/m-2",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-wa-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"telegram message.sendMessage": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "-100123",
+					"text": "Build *green*\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)",
+					"disable_web_page_preview": true,
+					"parse_mode": "Markdown"
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"result": {
+					"message_id": 7
+				}
+			}
+		]
+	},
+	"telegram message.sendMessage html options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "see https://n8n.io\n\n<em>This message was sent automatically with </em><a href=\"https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram\" target=\"_blank\">n8n</a>",
+					"disable_web_page_preview": true,
+					"disable_notification": true,
+					"parse_mode": "HTML",
+					"reply_to_message_id": 9
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"result": {
+					"message_id": 8
+				}
+			}
+		]
+	},
+	"telegram message.sendMessage no attribution": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.telegram.org/bot123:fake-bot-token/sendMessage",
+				"qs": {},
+				"headers": {},
+				"body": {
+					"chat_id": "42",
+					"text": "plain",
+					"disable_web_page_preview": false,
+					"parse_mode": "Markdown"
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"result": {
+					"message_id": 9
+				}
+			}
+		]
+	},
+	"airtable record.create": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/Tasks%20and%20Notes",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"fields": {
+						"Name": "Write port",
+						"Count": 2
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "rec1",
+				"fields": {
+					"Name": "Write port"
+				}
+			}
+		]
+	},
+	"airtable record.create auto map": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"fields": {
+						"Name": "A"
+					}
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"fields": {
+						"Name": "B"
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "recA"
+			},
+			{
+				"id": "recB"
+			}
+		]
+	},
+	"airtable record.search limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"filterByFormula": "{Status} = 'Open'",
+					"fields": ["Name", "Status"],
+					"sort": [
+						{
+							"field": "Name",
+							"direction": "desc"
+						},
+						{
+							"field": "Created",
+							"direction": "asc"
+						}
+					],
+					"maxRecords": "5"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "rec1",
+				"fields": {
+					"Name": "x"
+				}
+			}
+		]
+	},
+	"airtable record.search all pages": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"pageSize": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"pageSize": "100",
+					"offset": "next-1"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "r1"
+			},
+			{
+				"id": "r2"
+			},
+			{
+				"id": "r3"
+			}
+		]
+	},
+	"airtable record.create schema types": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"fields": {
+						"Name": "Ada",
+						"Count": 5,
+						"Done": true,
+						"Stage": "A",
+						"Extra": null
+					}
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "rec1",
+				"createdTime": "2024-01-01T00:00:00.000Z",
+				"fields": {
+					"Name": "Ada"
+				}
+			}
+		]
+	},
+	"airtable record.update by id typecast": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "rec9",
+							"fields": {
+								"Name": "Ada",
+								"Count": "7",
+								"Tags": ["a", "b"],
+								"Notes": null
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "rec9",
+				"fields": {
+					"Name": "Ada",
+					"Count": 7
+				}
+			}
+		]
+	},
+	"airtable record.update by id auto map": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"records": [
+						{
+							"id": "recA",
+							"fields": {
+								"Name": "A"
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"records": [
+						{
+							"id": "recB",
+							"fields": {
+								"Name": "B"
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "recA",
+				"fields": {
+					"Name": "A"
+				}
+			},
+			{
+				"id": "recB",
+				"fields": {
+					"Name": "B"
+				}
+			}
+		]
+	},
+	"airtable record.upsert by column": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"performUpsert": {
+						"fieldsToMergeOn": ["Name"]
+					},
+					"records": [
+						{
+							"fields": {
+								"Name": "Ada",
+								"Count": 3
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "rec1",
+				"fields": {
+					"Name": "Ada",
+					"Count": 3
+				}
+			}
+		]
+	},
+	"airtable record.upsert by id creates on 422": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"id": "recMissing",
+							"fields": {
+								"Name": "Ada"
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "POST",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": true,
+					"records": [
+						{
+							"fields": {
+								"Name": "Ada"
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "recNew",
+				"fields": {
+					"Name": "Ada"
+				}
+			}
+		]
+	},
+	"airtable record.upsert several matches": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"performUpsert": {
+						"fieldsToMergeOn": ["Name"]
+					},
+					"records": [
+						{
+							"fields": {
+								"Name": "Ada",
+								"Count": 4
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"fields": ["Name"],
+					"filterByFormula": "AND({Name} = 'Ada')",
+					"pageSize": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "PATCH",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"body": {
+					"typecast": false,
+					"performUpsert": {
+						"fieldsToMergeOn": ["Name"]
+					},
+					"records": [
+						{
+							"id": "r1",
+							"fields": {
+								"Name": "Ada",
+								"Count": 4
+							}
+						},
+						{
+							"id": "r2",
+							"fields": {
+								"Name": "Ada",
+								"Count": 4
+							}
+						}
+					]
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": "r1",
+				"fields": {
+					"Count": 4
+				}
+			},
+			{
+				"id": "r2",
+				"fields": {
+					"Count": 4
+				}
+			}
+		]
+	},
+	"airtable record.search v2.1 flat fields": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"filterByFormula": "{Done} = 0",
+					"maxRecords": "3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			},
+			{
+				"method": "GET",
+				"url": "https://api.airtable.com/v0/appBase1/tbl1",
+				"qs": {
+					"filterByFormula": "{Done} = 0",
+					"maxRecords": "3"
+				},
+				"headers": {
+					"authorization": "Bearer fake-airtable-pat"
+				},
+				"qsFormat": "brackets"
+			}
+		],
+		"output": [
+			{
+				"id": 7,
+				"createdTime": "2024-01-01T00:00:00.000Z",
+				"Name": "x"
+			},
+			{
+				"id": "rec2",
+				"createdTime": "2024-01-02T00:00:00.000Z"
+			},
+			{
+				"id": 7,
+				"createdTime": "2024-01-01T00:00:00.000Z",
+				"Name": "x"
+			},
+			{
+				"id": "rec2",
+				"createdTime": "2024-01-02T00:00:00.000Z"
+			}
+		]
+	},
+	"slack message.post v2.3 channel thread options": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"text": "Build *done*",
+					"thread_ts": "1700000000.5",
+					"reply_broadcast": true,
+					"includeLinkToWorkflow": false,
+					"mrkdwn": true,
+					"unfurl_links": false
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "C0123",
+				"message": {
+					"type": "message",
+					"text": "Build *done*",
+					"ts": "1700000001.000100"
+				},
+				"message_timestamp": "1700000001.000100"
+			}
+		]
+	},
+	"slack message.post v2 user by name with bot profile": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "@ada",
+					"text": "Hi",
+					"username": "Robot",
+					"icon_emoji": ":robot_face:",
+					"link_names": true,
+					"sendAsUser": "Robot"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "@ada",
+					"text": "Hi",
+					"username": "Robot",
+					"icon_emoji": ":robot_face:",
+					"link_names": true,
+					"sendAsUser": "Robot"
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "D1",
+				"message": {
+					"text": "Hi"
+				},
+				"message_timestamp": "1.2"
+			},
+			{
+				"ok": true,
+				"channel": "D1",
+				"message": {
+					"text": "Hi"
+				},
+				"message_timestamp": "1.2"
+			}
+		]
+	},
+	"slack message.post v2.4 blocks": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C9",
+					"blocks": [
+						{
+							"type": "section",
+							"text": {
+								"type": "mrkdwn",
+								"text": "*Hi*"
+							}
+						}
+					],
+					"text": "Fallback",
+					"icon_url": "https://x.test/a.png",
+					"includeLinkToWorkflow": false
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "C9",
+				"message_timestamp": "3.4"
+			}
+		]
+	},
+	"microsoftOutlook message.send": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/sendMail",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"message": {
+						"body": {
+							"content": "<b>Done</b>",
+							"contentType": "html"
+						},
+						"ccRecipients": [
+							{
+								"emailAddress": {
+									"address": "cy@example.com"
+								}
+							}
+						],
+						"internetMessageHeaders": [
+							{
+								"name": "X-Ref",
+								"value": "7"
+							}
+						],
+						"from": {
+							"emailAddress": {
+								"address": "ops@example.com"
+							}
+						},
+						"importance": "High",
+						"subject": "Weekly report",
+						"toRecipients": [
+							{
+								"emailAddress": {
+									"address": "ada@example.com"
+								}
+							},
+							{
+								"emailAddress": {
+									"address": "bob@example.com"
+								}
+							}
+						]
+					},
+					"saveToSentItems": false
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.com/v1.0/me/sendMail",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"message": {
+						"body": {
+							"content": "<b>Done</b>",
+							"contentType": "html"
+						},
+						"ccRecipients": [
+							{
+								"emailAddress": {
+									"address": "cy@example.com"
+								}
+							}
+						],
+						"internetMessageHeaders": [
+							{
+								"name": "X-Ref",
+								"value": "7"
+							}
+						],
+						"from": {
+							"emailAddress": {
+								"address": "ops@example.com"
+							}
+						},
+						"importance": "High",
+						"subject": "Weekly report",
+						"toRecipients": [
+							{
+								"emailAddress": {
+									"address": "ada@example.com"
+								}
+							},
+							{
+								"emailAddress": {
+									"address": "bob@example.com"
+								}
+							}
+						]
+					},
+					"saveToSentItems": false
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			},
+			{
+				"success": true
+			}
+		]
+	},
+	"microsoftOutlook message.send shared mailbox": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://graph.microsoft.us/v1.0/users/team@example.com/sendMail",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-outlook-token"
+				},
+				"body": {
+					"message": {
+						"body": {
+							"content": " "
+						},
+						"subject": "Hi",
+						"toRecipients": [
+							{
+								"emailAddress": {
+									"address": "ada@example.com"
+								}
+							}
+						]
+					},
+					"saveToSentItems": true
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"slack message.post v2.3 link to the workflow": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"text": "Deploy done\n_Automated with this <http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n workflow>_"
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "C0123",
+				"message_timestamp": "5.6"
+			}
+		]
+	},
+	"slack message.post v2.4 blocks with the link and OAuth2 user token": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxp-fake-user-token"
+				},
+				"body": {
+					"channel": "C9",
+					"blocks": [
+						{
+							"type": "section",
+							"text": {
+								"type": "mrkdwn",
+								"text": "*Hi*"
+							}
+						},
+						{
+							"type": "section",
+							"text": {
+								"type": "mrkdwn",
+								"text": "_Automated with this <http://localhost:5678workflow/equivalence?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n workflow>_"
+							}
+						}
+					],
+					"includeLinkToWorkflow": true
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "C9",
+				"message_timestamp": "3.4"
+			}
+		]
+	},
+	"slack message.post v2.2 OAuth2 bot token": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/chat.postMessage",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-bot-token"
+				},
+				"body": {
+					"channel": "C9",
+					"text": "hi",
+					"includeLinkToWorkflow": false
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true,
+				"channel": "C9",
+				"message_timestamp": "3.5"
+			}
+		]
+	},
+	"slack reaction.add": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://slack.com/api/reactions.add",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				},
+				"body": {
+					"channel": "C0123",
+					"name": "white_check_mark",
+					"timestamp": "1700000000.0001"
+				}
+			}
+		],
+		"output": [
+			{
+				"ok": true
+			}
+		]
+	},
+	"slack channel.history all pages sorted": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://slack.com/api/conversations.history",
+				"qs": {
+					"channel": "C0123",
+					"inclusive": "true",
+					"oldest": "1709287200",
+					"page": "1",
+					"limit": "100"
+				},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://slack.com/api/conversations.history",
+				"qs": {
+					"channel": "C0123",
+					"inclusive": "true",
+					"oldest": "1709287200",
+					"page": "2",
+					"limit": "100",
+					"cursor": "cur2"
+				},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"ts": "3.0",
+				"text": "c"
+			},
+			{
+				"ts": "2.0",
+				"text": "a"
+			},
+			{
+				"ts": "1.5",
+				"text": "b"
+			}
+		]
+	},
+	"slack channel.history limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://slack.com/api/conversations.history",
+				"qs": {
+					"channel": "C0123",
+					"latest": "1709337600",
+					"limit": "2"
+				},
+				"headers": {
+					"authorization": "Bearer xoxb-fake-slack-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"ts": "1.5"
+			},
+			{
+				"ts": "3.0"
+			}
+		]
+	},
+	"supabase row.getAll any filter with limit": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"or": "(status.eq.new,email.ilike.\"%@acme.test\")",
+					"limit": "5",
+					"order": "created_at.desc"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"status": "new"
+			},
+			{
+				"id": 2,
+				"status": "new"
+			}
+		]
+	},
+	"supabase row.getAll all filters return all": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/big%20table",
+				"qs": {
+					"and": "(score.gte.3,note.wfts.\"a, b\")"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"accept-profile": "crm",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1
+			}
+		]
+	},
+	"supabase row.getAll string filter": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"name": "eq.\"Ada, Lovelace\"",
+					"city": "eq.Zürich",
+					"limit": "50"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"name": "eq.\"Ada, Lovelace\"",
+					"city": "eq.Zürich",
+					"limit": "50"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 3
+			},
+			{
+				"id": 3
+			}
+		]
+	},
+	"supabase row.create define below for all items": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {},
+				"headers": {
+					"prefer": "return=representation",
+					"content-profile": "crm",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": [
+					{
+						"status": "new",
+						"score": 1
+					},
+					{
+						"status": "new",
+						"score": 1
+					}
+				]
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"status": "new",
+				"score": 1
+			},
+			{
+				"id": 2,
+				"status": "new",
+				"score": 1
+			}
+		]
+	},
+	"supabase row.create auto map": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": [
+					{
+						"name": "Ada"
+					},
+					{
+						"name": "Bob",
+						"city": "Oslo"
+					}
+				]
+			}
+		],
+		"output": [
+			{
+				"id": 3,
+				"name": "Ada"
+			},
+			{
+				"id": 4,
+				"name": "Bob",
+				"city": "Oslo"
+			}
+		]
+	},
+	"supabase row.get": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.42"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 42,
+				"name": "Ada"
+			}
+		]
+	},
+	"supabase row.update define below": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"id": "eq.a.b"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": {
+					"status": "contacted",
+					"score": 4
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "a.b",
+				"status": "contacted",
+				"score": 4
+			}
+		]
+	},
+	"supabase row.update auto map": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://proj1.supabase.co/rest/v1/leads",
+				"qs": {
+					"or": "(id.eq.7)"
+				},
+				"headers": {
+					"prefer": "return=representation",
+					"apikey": "fake-supabase-key",
+					"authorization": "Bearer fake-supabase-key"
+				},
+				"body": {
+					"id": 7,
+					"status": "won"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 7,
+				"status": "won"
+			}
+		]
+	},
+	"notion databasePage.getAll v2.2 manual filters": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"or": [
+							{
+								"property": "Notes",
+								"text": {
+									"contains": "urgent"
+								}
+							},
+							{
+								"property": "Status",
+								"select": {
+									"equals": "Open"
+								}
+							},
+							{
+								"property": "Done",
+								"checkbox": {
+									"equals": false
+								}
+							},
+							{
+								"property": "Count",
+								"number": {
+									"greater_than": 2
+								}
+							},
+							{
+								"property": "Tags",
+								"multi_select": {
+									"contains": "a"
+								}
+							},
+							{
+								"property": "Phone",
+								"phone": {
+									"is_empty": true
+								}
+							}
+						]
+					},
+					"sorts": [
+						{
+							"direction": "descending",
+							"property": "Count"
+						}
+					],
+					"page_size": 3
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"or": [
+							{
+								"property": "Notes",
+								"text": {
+									"contains": "urgent"
+								}
+							},
+							{
+								"property": "Status",
+								"select": {
+									"equals": "Open"
+								}
+							},
+							{
+								"property": "Done",
+								"checkbox": {
+									"equals": false
+								}
+							},
+							{
+								"property": "Count",
+								"number": {
+									"greater_than": 2
+								}
+							},
+							{
+								"property": "Tags",
+								"multi_select": {
+									"contains": "a"
+								}
+							},
+							{
+								"property": "Phone",
+								"phone": {
+									"is_empty": true
+								}
+							}
+						]
+					},
+					"sorts": [
+						{
+							"direction": "descending",
+							"property": "Count"
+						}
+					],
+					"page_size": 3,
+					"start_cursor": "cur-1"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null,
+				"property_gr_e": 1
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.getAll v2.2 property name clash": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"sorts": []
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Row",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_property_aliases": "",
+				"property_audience": 2
+			}
+		]
+	},
+	"notion databasePage.getAll v2.2 all filters raw": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"and": [
+							{
+								"property": "Name",
+								"title": {
+									"equals": "Ship it"
+								}
+							}
+						]
+					},
+					"sorts": []
+				}
+			}
+		],
+		"output": [
+			{
+				"object": "page",
+				"id": "page-1",
+				"url": "https://www.notion.so/page-1",
+				"parent": {
+					"type": "data_source_id",
+					"data_source_id": "ds-1"
+				},
+				"properties": {
+					"Name": {
+						"type": "title",
+						"title": [
+							{
+								"plain_text": "Ship "
+							},
+							{
+								"plain_text": "it"
+							}
+						]
+					},
+					"Due Count": {
+						"type": "number",
+						"number": 3
+					},
+					"Tags": {
+						"type": "multi_select",
+						"multi_select": [
+							{
+								"name": "a"
+							},
+							{
+								"name": "b"
+							}
+						]
+					},
+					"Owner": {
+						"type": "people",
+						"people": [
+							{
+								"person": {
+									"email": "ada@example.com"
+								}
+							},
+							{}
+						]
+					},
+					"Status": {
+						"type": "status",
+						"status": {
+							"name": "Done"
+						}
+					},
+					"URLField": {
+						"type": "url",
+						"url": null
+					}
+				}
+			}
+		]
+	},
+	"notion databasePage.getAll v2.2 json filter": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Done",
+						"checkbox": {
+							"equals": true
+						}
+					},
+					"sorts": [],
+					"page_size": 50
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.update v2.2 properties": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://api.notion.com/v1/pages/0b1a2c3d4e5f60718293a4b5c6d7e8f9",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"properties": {
+						"Name": {
+							"title": [
+								{
+									"text": {
+										"content": "Renamed"
+									}
+								}
+							]
+						},
+						"Count": {
+							"type": "number",
+							"number": 4
+						},
+						"Stage": {
+							"type": "select",
+							"select": null
+						},
+						"Tags": {
+							"type": "multi_select",
+							"multi_select": [
+								{
+									"name": "a"
+								},
+								{
+									"name": "b"
+								}
+							]
+						},
+						"Owner": {
+							"type": "people",
+							"people": [
+								{
+									"id": "user-1"
+								}
+							]
+						},
+						"Links": {
+							"type": "relation",
+							"relation": [
+								{
+									"id": "0b1a2c3d4e5f60718293a4b5c6d7e8f9"
+								},
+								{
+									"id": "0b1a2c3d-4e5f-4071-8293-a4b5c6d7e8f9"
+								}
+							]
+						},
+						"Done": {
+							"type": "checkbox",
+							"checkbox": true
+						},
+						"Notes": {
+							"rich_text": [
+								{
+									"text": {
+										"content": "plain"
+									}
+								}
+							]
+						},
+						"Files": {
+							"type": "files",
+							"files": [
+								{
+									"name": "a.pdf",
+									"type": "external",
+									"external": {
+										"url": "https://x.test/a.pdf"
+									}
+								}
+							]
+						},
+						"Mail": {
+							"type": "email",
+							"email": "ada@example.com"
+						},
+						"State": {
+							"type": "status",
+							"status": {
+								"name": "Done"
+							}
+						}
+					},
+					"icon": {
+						"type": "emoji",
+						"emoji": "🚀"
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.create v2.2 for all items": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/databases/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"database_id": "ab1545b247fb49fa92d6f4b49f4d8116"
+					},
+					"properties": {
+						"Title": {
+							"title": [
+								{
+									"text": {
+										"content": "New page"
+									}
+								}
+							]
+						},
+						"Count": {
+							"type": "number",
+							"number": 1
+						}
+					},
+					"children": [],
+					"icon": {
+						"external": {
+							"url": "https://x.test/i.png"
+						}
+					}
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2021-08-16",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"database_id": "ab1545b247fb49fa92d6f4b49f4d8116"
+					},
+					"properties": {
+						"Title": {
+							"title": [
+								{
+									"text": {
+										"content": "New page"
+									}
+								}
+							]
+						},
+						"Count": {
+							"type": "number",
+							"number": 1
+						}
+					},
+					"children": [],
+					"icon": {
+						"external": {
+							"url": "https://x.test/i.png"
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.create": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"type": "data_source_id",
+						"data_source_id": "ab1545b247fb49fa92d6f4b49f4d8116"
+					},
+					"properties": {
+						"Name": {
+							"title": [
+								{
+									"text": {
+										"content": "Ship it"
+									}
+								}
+							]
+						},
+						"Due Count": {
+							"type": "number",
+							"number": 3
+						},
+						"Tags": {
+							"type": "multi_select",
+							"multi_select": [
+								{
+									"name": "a"
+								},
+								{
+									"name": "b"
+								}
+							]
+						},
+						"Status": {
+							"type": "status",
+							"status": {
+								"name": "Done"
+							}
+						},
+						"Notes": {
+							"rich_text": [
+								{
+									"text": {
+										"content": "hello"
+									}
+								}
+							]
+						},
+						"Done": {
+							"type": "checkbox",
+							"checkbox": true
+						}
+					},
+					"children": [],
+					"icon": {
+						"type": "emoji",
+						"emoji": "🚀"
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.create markdown raw": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://api.notion.com/v1/data_sources/1b2c3d4e-0000-4000-8000-00000000abcd",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/pages",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"parent": {
+						"type": "data_source_id",
+						"data_source_id": "1b2c3d4e-0000-4000-8000-00000000abcd"
+					},
+					"properties": {
+						"Title": {
+							"title": [
+								{
+									"text": {
+										"content": "Notes"
+									}
+								}
+							]
+						}
+					},
+					"markdown": "# Hello"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "p2",
+				"object": "page"
+			}
+		]
+	},
+	"notion databasePage.getAll json filter and sort": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Status",
+						"status": {
+							"equals": "Done"
+						}
+					},
+					"sorts": [
+						{
+							"direction": "ascending",
+							"property": "Due Count"
+						}
+					],
+					"page_size": 3
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"filter": {
+						"property": "Status",
+						"status": {
+							"equals": "Done"
+						}
+					},
+					"sorts": [
+						{
+							"direction": "ascending",
+							"property": "Due Count"
+						}
+					],
+					"page_size": 3,
+					"start_cursor": "c1"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			},
+			{
+				"id": "page-1",
+				"name": "Ship ",
+				"url": "https://www.notion.so/page-1",
+				"property_name": "",
+				"property_due_count": 3,
+				"property_tags": ["a", "b"],
+				"property_owner": ["ada@example.com", {}],
+				"property_status": "Done",
+				"property_url_field": null
+			}
+		]
+	},
+	"notion databasePage.getAll all raw": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://api.notion.com/v1/data_sources/ab1545b247fb49fa92d6f4b49f4d8116/query",
+				"qs": {},
+				"headers": {
+					"notion-version": "2026-03-11",
+					"authorization": "Bearer fake-notion-secret "
+				},
+				"body": {
+					"start_cursor": "c1"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "a"
+			},
+			{
+				"id": "b"
+			}
+		]
+	},
+	"gmail message.send text": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "VG86IGFkYUBleGFtcGxlLmNvbSwgQm9iIDxib2JAZXhhbXBsZS5jb20-DQpDYzogY0BleGFtcGxlLmNvbQ0KUmVwbHktVG86IG9wc0BleGFtcGxlLmNvbQ0KU3ViamVjdDogV2Vla2x5IHJlcG9ydA0KTWVzc2FnZS1JRDogPDMyMmY2YjRkLTBiMGQtNzkxMC02ZGRiLThiYzkwNGJmYjg3YkBleGFtcGxlLmNvbT4NCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IDdiaXQNCkRhdGU6IFRodSwgMTIgTm92IDIwMjYgMTM6NTE6MzIgKzAwMDANCk1JTUUtVmVyc2lvbjogMS4wDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9dXRmLTgNCg0KQWxsIGdyZWVuLgoKLS0tClRoaXMgZW1haWwgd2FzIHNlbnQgYXV0b21hdGljYWxseSB3aXRoIG44bgpodHRwczovL244bi5pbw0K"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m1",
+				"threadId": "t1",
+				"labelIds": ["SENT"]
+			}
+		]
+	},
+	"gmail message.send html sender name": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/profile",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/send",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"raw": "RnJvbTogT3BzIEJvdCA8Ym90QGV4YW1wbGUuY29tPg0KVG86IGFkYUBleGFtcGxlLmNvbQ0KQmNjOiBhdWRpdEBleGFtcGxlLmNvbQ0KU3ViamVjdDogPT9VVEYtOD9RP0dyPUMzPUJDPUMzPTlGZV9hdXNfQmVybGluPz0NCk1lc3NhZ2UtSUQ6IDw3MWM3NTYxZi1kMDMzLTE3ZjEtZjBhNS05Yzg5NWJlNGJkMWJAZXhhbXBsZS5jb20-DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQpEYXRlOiBUaHUsIDEyIE5vdiAyMDI2IDEzOjUxOjMyICswMDAwDQpNSU1FLVZlcnNpb246IDEuMA0KQ29udGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9dXRmLTgNCg0KCgkJCTxwPkhhbGxvIDxiPkFkYTwvYj48L3A-CgkJCTxicj4KCQkJPGJyPgoJCQktLS0KCQkJPGJyPgoJCQk8ZW0-VGhpcyBlbWFpbCB3YXMgc2VudCBhdXRvbWF0aWNhbGx5IHdpdGggPGEgaHJlZj0zRCJodHRwczovL244bi5pby8_PQ0KdXRtX3NvdXJjZT0zRG44bi1pbnRlcm5hbCZ1dG1fbWVkaXVtPTNEcG93ZXJlZF9ieSZ1dG1fY2FtcGFpZ249M0RuOG4tbm9kZXMtPQ0KYmFzZS5nbWFpbF9kN2I0MzQ2ZGNjMDQ5YTdiMzA1NWFjYTNiNDAxZDM4MTgwOWFiYjIyMjY5MDVjZjVjYmE0ZTgxN2UwYmVmYTNlPQ0KIiB0YXJnZXQ9M0QiX2JsYW5rIj5uOG48L2E-PC9lbT4KCQk9MDkNCg"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m2",
+				"threadId": "t2"
+			}
+		]
+	},
+	"gmail message.getAll simple limit and filters": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages",
+				"qs": {
+					"includeSpamTrash": "false",
+					"labelIds": ["INBOX"],
+					"q": "subject:invoice is:unread after:1709287200",
+					"maxResults": "2"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m1",
+				"qs": {
+					"includeSpamTrash": "false",
+					"labelIds": ["INBOX"],
+					"q": "subject:invoice is:unread after:1709287200",
+					"maxResults": "2",
+					"format": "metadata",
+					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m2",
+				"qs": {
+					"includeSpamTrash": "false",
+					"labelIds": ["INBOX"],
+					"q": "subject:invoice is:unread after:1709287200",
+					"maxResults": "2",
+					"format": "metadata",
+					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/labels",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m1",
+				"threadId": "t1",
+				"snippet": "Hello 1",
+				"payload": {
+					"partId": "",
+					"mimeType": "text/plain",
+					"filename": "",
+					"body": {
+						"size": 42
+					}
+				},
+				"sizeEstimate": 512,
+				"historyId": "91",
+				"internalDate": "1709287200001",
+				"labels": [
+					{
+						"id": "INBOX",
+						"name": "INBOX"
+					},
+					{
+						"id": "UNREAD",
+						"name": "UNREAD"
+					},
+					{
+						"id": "Label_1",
+						"name": "Finance"
+					}
+				],
+				"From": "Ada <ada@example.com>",
+				"To": "ops@example.com",
+				"Subject": "Invoice 1"
+			},
+			{
+				"id": "m2",
+				"threadId": "t2",
+				"snippet": "Hello 2",
+				"payload": {
+					"partId": "",
+					"mimeType": "text/plain",
+					"filename": "",
+					"body": {
+						"size": 42
+					}
+				},
+				"sizeEstimate": 512,
+				"historyId": "92",
+				"internalDate": "1709287200002",
+				"labels": [
+					{
+						"id": "INBOX",
+						"name": "INBOX"
+					}
+				],
+				"From": "Ada <ada@example.com>",
+				"To": "ops@example.com",
+				"Subject": "Invoice 2"
+			}
+		]
+	},
+	"gmail message.getAll returnAll pages and sender": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages",
+				"qs": {
+					"q": "from:ada@example.com before:1711929600",
+					"maxResults": "100"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages",
+				"qs": {
+					"q": "from:ada@example.com before:1711929600",
+					"maxResults": "100",
+					"pageToken": "p2"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m1",
+				"qs": {
+					"q": "from:ada@example.com before:1711929600",
+					"maxResults": "100",
+					"format": "metadata",
+					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m2",
+				"qs": {
+					"q": "from:ada@example.com before:1711929600",
+					"maxResults": "100",
+					"format": "metadata",
+					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/labels",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m1",
+				"threadId": "t1",
+				"snippet": "Hello 1",
+				"payload": {
+					"partId": "",
+					"mimeType": "text/plain",
+					"filename": "",
+					"body": {
+						"size": 42
+					}
+				},
+				"sizeEstimate": 512,
+				"historyId": "91",
+				"internalDate": "1709287200001",
+				"labels": [
+					{
+						"id": "UNREAD",
+						"name": "UNREAD"
+					}
+				],
+				"From": "Ada <ada@example.com>",
+				"To": "ops@example.com",
+				"Subject": "First"
+			},
+			{
+				"id": "m2",
+				"threadId": "t2",
+				"snippet": "Hello 2",
+				"payload": {
+					"partId": "",
+					"mimeType": "text/plain",
+					"filename": "",
+					"body": {
+						"size": 42
+					}
+				},
+				"sizeEstimate": 512,
+				"historyId": "92",
+				"internalDate": "1709287200002",
+				"labels": [
+					{
+						"id": "INBOX",
+						"name": "INBOX"
+					},
+					{
+						"id": "Label_1",
+						"name": "Finance"
+					}
+				],
+				"From": "Ada <ada@example.com>",
+				"To": "ops@example.com",
+				"Subject": "Second"
+			}
+		]
+	},
+	"gmail message.getAll no messages": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages",
+				"qs": {
+					"maxResults": "50"
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/labels",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			}
+		],
+		"output": []
+	},
+	"gmail message.get simple": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m7",
+				"qs": {
+					"format": "metadata",
+					"metadataHeaders": ["From", "To", "Cc", "Bcc", "Subject"]
+				},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/labels",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m7",
+				"threadId": "t7",
+				"snippet": "Hello 7",
+				"payload": {
+					"partId": "",
+					"mimeType": "text/plain",
+					"filename": "",
+					"body": {
+						"size": 42
+					}
+				},
+				"sizeEstimate": 512,
+				"historyId": "97",
+				"internalDate": "1709287200007",
+				"labels": [
+					{
+						"id": "INBOX",
+						"name": "INBOX"
+					},
+					{
+						"id": "Label_1",
+						"name": "Finance"
+					}
+				],
+				"From": "Ada <ada@example.com>",
+				"To": "ops@example.com",
+				"Subject": "One message"
+			}
+		]
+	},
+	"gmail message.addLabels": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m7/modify",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"addLabelIds": ["Label_1", "STARRED"]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m7/modify",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"addLabelIds": ["Label_1", "STARRED"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m7",
+				"threadId": "t7",
+				"labelIds": ["INBOX", "Label_1", "STARRED"]
+			},
+			{
+				"id": "m7",
+				"threadId": "t7",
+				"labelIds": ["INBOX", "Label_1", "STARRED"]
+			}
+		]
+	},
+	"gmail message.removeLabels": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m8/modify",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"removeLabelIds": ["INBOX"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m8",
+				"threadId": "t8",
+				"labelIds": []
+			}
+		]
+	},
+	"gmail message.markAsRead": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m9/modify",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"removeLabelIds": ["UNREAD"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m9",
+				"threadId": "t9",
+				"labelIds": ["INBOX"]
+			}
+		]
+	},
+	"gmail message.markAsUnread": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m9/modify",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				},
+				"body": {
+					"addLabelIds": ["UNREAD"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "m9",
+				"threadId": "t9",
+				"labelIds": ["INBOX", "UNREAD"]
+			}
+		]
+	},
+	"gmail message.delete": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/gmail/v1/users/me/messages/m10",
+				"qs": {},
+				"headers": {
+					"accept": "application/json",
+					"authorization": "Bearer fake-gmail-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true
+			}
+		]
+	},
+	"googleDrive folder.create in a folder": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Invoices",
+					"mimeType": "application/vnd.google-apps.folder",
+					"parents": ["1FolderX"],
+					"folderColorRgb": "#ff0000"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "f1",
+				"name": "Invoices",
+				"mimeType": "application/vnd.google-apps.folder"
+			}
+		]
+	},
+	"googleDrive folder.create in a shared drive, full output": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "*",
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"name": "Untitled",
+					"mimeType": "application/vnd.google-apps.folder",
+					"parents": ["drive9"]
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "f2",
+				"name": "Untitled"
+			}
+		]
+	},
+	"googleDrive file.copy with the cached name": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile/copy",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"copyRequiresWriterPermission": false,
+					"parents": [],
+					"name": "Copy of Report.pdf"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "c1",
+				"name": "Copy of Report.pdf"
+			}
+		]
+	},
+	"googleDrive file.copy to a folder, name read": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"fields": "name",
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile/copy",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"copyRequiresWriterPermission": true,
+					"parents": ["1FolderX"],
+					"name": "Copy of Plan.docx",
+					"description": "copy"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "c2",
+				"name": "Copy of Plan.docx"
+			}
+		]
+	},
+	"googleDrive file.move": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"fields": "parents"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			},
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"addParents": "1FolderX",
+					"removeParents": "p1,p2"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "1AbCfile",
+				"parents": ["1FolderX"]
+			}
+		]
+	},
+	"googleDrive file.deleteFile to the trash": {
+		"requests": [
+			{
+				"method": "PATCH",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				},
+				"body": {
+					"trashed": true
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "1AbCfile",
+				"success": true
+			}
+		]
+	},
+	"googleDrive file.deleteFile for good": {
+		"requests": [
+			{
+				"method": "DELETE",
+				"url": "https://www.googleapis.com/drive/v3/files/1AbCfile",
+				"qs": {
+					"supportsAllDrives": "true"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "1AbCfile",
+				"success": true
+			}
+		]
+	},
+	"googleDrive fileFolder.search null query in root": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "nextPageToken, files(id, name)",
+					"q": "name contains '' and trashed = false",
+					"includeItemsFromAllDrives": "false",
+					"supportsAllDrives": "false",
+					"spaces": "drive",
+					"corpora": "user",
+					"pageSize": "1"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": []
+	},
+	"googleDrive fileFolder.search name in folder with types": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "nextPageToken, files(id, name, mimeType, webViewLink)",
+					"q": "name contains 'Q3 \\'final\\'' and '1AbC-def_GHI' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false and (mimeType = 'application/pdf' or mimeType = 'application/vnd.google-apps.spreadsheet')",
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "allDrives",
+					"pageSize": "5"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "f1",
+				"name": "Q3 'final' report.pdf",
+				"mimeType": "application/pdf",
+				"webViewLink": "https://x/f1"
+			},
+			{
+				"id": "f2",
+				"name": "Q3 final sheet",
+				"mimeType": "application/vnd.google-apps.spreadsheet"
+			}
+		]
+	},
+	"googleDrive fileFolder.search query returnAll in a shared drive": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "nextPageToken, files(id, name)",
+					"q": "modifiedTime > '2024-01-01T00:00:00' and mimeType = 'application/vnd.google-apps.folder'",
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "drive",
+					"driveId": "drive-42",
+					"maxResults": "100",
+					"pageSize": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "nextPageToken, files(id, name)",
+					"q": "modifiedTime > '2024-01-01T00:00:00' and mimeType = 'application/vnd.google-apps.folder'",
+					"includeItemsFromAllDrives": "true",
+					"supportsAllDrives": "true",
+					"spaces": "appDataFolder, drive",
+					"corpora": "drive",
+					"driveId": "drive-42",
+					"maxResults": "100",
+					"pageSize": "100",
+					"pageToken": "n2"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "d1",
+				"name": "A"
+			},
+			{
+				"id": "d2",
+				"name": "B"
+			}
+		]
+	},
+	"googleDrive fileFolder.search root folder of my drive": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/drive/v3/files",
+				"qs": {
+					"fields": "nextPageToken, files(*)",
+					"q": "name contains 'invoice' and trashed = false",
+					"includeItemsFromAllDrives": "false",
+					"supportsAllDrives": "false",
+					"spaces": "drive",
+					"corpora": "user",
+					"pageSize": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-drive-token"
+				}
+			}
+		],
+		"output": []
+	},
+	"googleCalendar event.getAll empty bounds": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events",
+				"qs": {
+					"singleEvents": "true",
+					"maxResults": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "e1"
+			},
+			{
+				"id": "e2"
+			}
+		]
+	},
+	"googleCalendar event.getAll US dates": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/mia%40acme.test/events",
+				"qs": {
+					"timeMin": "2026-11-13T00:00:00Z",
+					"timeMax": "2026-11-22T00:00:00Z",
+					"singleEvents": "true",
+					"maxResults": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "e1"
+			}
+		]
+	},
+	"googleCalendar event.getAll limit and offsets": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/team%40example.com/events",
+				"qs": {
+					"timeMin": "2024-05-01T00:00:00.000+02:00",
+					"timeMax": "2024-05-08T05:00:00Z",
+					"singleEvents": "true",
+					"orderBy": "startTime",
+					"q": "standup",
+					"showDeleted": "true",
+					"maxResults": "10"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "e1",
+				"summary": "Event 1",
+				"start": {
+					"dateTime": "2024-05-01T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-01T10:00:00+02:00"
+				}
+			},
+			{
+				"id": "e2",
+				"summary": "Event 2",
+				"start": {
+					"dateTime": "2024-05-02T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-02T10:00:00+02:00"
+				}
+			}
+		]
+	},
+	"googleCalendar event.getAll returnAll with time zone": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/Team%20Room%40example.com/events",
+				"qs": {
+					"timeMin": "2024-05-01T08:00:00.000Z",
+					"timeMax": "2024-05-31T08:00:00.000Z",
+					"singleEvents": "true",
+					"timeZone": "Europe/Berlin",
+					"fields": "items(id,summary),nextPageToken",
+					"maxResults": "100"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/Team%20Room%40example.com/events",
+				"qs": {
+					"timeMin": "2024-05-01T08:00:00.000Z",
+					"timeMax": "2024-05-31T08:00:00.000Z",
+					"singleEvents": "true",
+					"timeZone": "Europe/Berlin",
+					"fields": "items(id,summary),nextPageToken",
+					"maxResults": "100",
+					"pageToken": "pg2"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "e1",
+				"summary": "Event 1",
+				"start": {
+					"dateTime": "2024-05-01T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-01T10:00:00+02:00"
+				}
+			},
+			{
+				"id": "e2",
+				"summary": "Event 2",
+				"start": {
+					"dateTime": "2024-05-02T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-02T10:00:00+02:00"
+				}
+			}
+		]
+	},
+	"googleCalendar event.getAll recurring first": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://www.googleapis.com/calendar/v3/calendars/ops%40example.com/events",
+				"qs": {
+					"timeMin": "2024-05-01T00:00:00.000Z",
+					"timeMax": "2024-06-01T00:00:00.000Z",
+					"maxResults": "50"
+				},
+				"headers": {
+					"authorization": "Bearer fake-calendar-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "e2",
+				"summary": "Event 2",
+				"start": {
+					"dateTime": "2024-05-02T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-02T10:00:00+02:00"
+				},
+				"created": "2024-05-02T00:00:00.000Z",
+				"recurrence": ["RRULE:FREQ=DAILY"]
+			},
+			{
+				"id": "e3",
+				"summary": "Event 3",
+				"start": {
+					"dateTime": "2024-05-03T09:00:00+02:00"
+				},
+				"end": {
+					"dateTime": "2024-05-03T10:00:00+02:00"
+				},
+				"created": "2023-01-01T00:00:00.000Z"
+			}
+		]
+	},
+	"rssFeedRead rss 2.0 with custom fields": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://feeds.example.com/feed.xml",
+				"qs": {},
+				"headers": {
+					"user-agent": "rss-parser",
+					"accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				}
+			}
+		],
+		"output": [
+			{
+				"creator": "Ada",
+				"title": "First ’post’",
+				"link": "https://example.com/1",
+				"pubDate": "Mon, 06 May 2024 10:00:00 GMT",
+				"author": "ada@example.com (Ada)",
+				"content:encoded": "<div>Full <i>text</i></div><p>Next</p>",
+				"content:encodedSnippet": "Full text\nNext",
+				"enclosure": {
+					"url": "https://example.com/a.mp3",
+					"length": "10",
+					"type": "audio/mpeg"
+				},
+				"dc:creator": "Ada",
+				"comments": "https://example.com/1#c",
+				"content": "<p>Hello <b>world</b></p><br/>Line two &amp; more &nbsp;",
+				"contentSnippet": "Hello world\nLine two & more",
+				"guid": "id-1",
+				"categories": [
+					"a",
+					{
+						"_": "b",
+						"$": {
+							"domain": "x"
+						}
+					}
+				],
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			},
+			{
+				"title": "Second",
+				"pubDate": "Tue, 07 May 2024 08:30:00 +0200",
+				"content": "Plain  text",
+				"contentSnippet": "Plain  text",
+				"guid": "https://example.com/2",
+				"isoDate": "2024-05-07T06:30:00.000Z"
+			},
+			{
+				"title": "No date",
+				"pubDate": "not a date"
+			}
+		]
+	},
+	"rssFeedRead atom": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://feeds.example.com/feed.xml",
+				"qs": {},
+				"headers": {
+					"user-agent": "rss-parser",
+					"accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				}
+			}
+		],
+		"output": [
+			{
+				"title": "Entry <one>",
+				"link": "https://e.com/1",
+				"pubDate": "2024-05-06T10:00:00.000Z",
+				"author": "Bob",
+				"content": "<p>Hi &amp; bye</p>",
+				"contentSnippet": "Hi & bye",
+				"summary": "Short",
+				"id": "urn:1",
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			},
+			{
+				"title": "Two",
+				"link": "https://e.com/2",
+				"pubDate": "2024-05-07T06:00:00.000Z",
+				"isoDate": "2024-05-07T06:00:00.000Z"
+			}
+		]
+	},
+	"rssFeedRead podcast": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://feeds.example.com/feed.xml",
+				"qs": {},
+				"headers": {
+					"user-agent": "rss-parser",
+					"accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				}
+			}
+		],
+		"output": [
+			{
+				"title": "Ep 1",
+				"enclosure": {
+					"url": "https://e.com/1.mp3",
+					"type": "audio/mpeg",
+					"length": "1"
+				},
+				"itunes": {
+					"summary": "About",
+					"duration": "12:34",
+					"image": "https://e.com/ep1.png",
+					"episode": "1"
+				}
+			}
+		]
+	},
+	"rssFeedRead rss 1.0": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://feeds.example.com/feed.xml",
+				"qs": {},
+				"headers": {
+					"user-agent": "rss-parser",
+					"accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				}
+			}
+		],
+		"output": [
+			{
+				"date": "2024-05-06T10:00:00Z",
+				"title": "A",
+				"link": "https://e.com/a",
+				"dc:date": "2024-05-06T10:00:00Z",
+				"rdf:about": "https://e.com/a",
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			}
+		]
+	},
+	"openAi text.response": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake",
+					"openai-organization": "org-fake"
+				},
+				"body": {
+					"model": "gpt-5-mini",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Say hi"
+								}
+							]
+						},
+						{
+							"role": "assistant",
+							"content": [
+								{
+									"type": "output_text",
+									"text": "Hi!",
+									"annotations": []
+								}
+							]
+						},
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Again"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": false,
+					"instructions": "Be brief",
+					"max_output_tokens": 50,
+					"temperature": 0.2,
+					"background": false
+				}
+			}
+		],
+		"output": [
+			{
+				"output": [
+					{
+						"type": "message",
+						"content": [
+							{
+								"type": "output_text",
+								"text": "Hi again"
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"openAi text.response json schema raw": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://proxy.example.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4.1",
+					"input": [
+						{
+							"role": "user",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "Give a message"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false,
+					"truncation": "auto",
+					"metadata": {
+						"team": "ops"
+					},
+					"reasoning": {
+						"effort": "low",
+						"summary": "auto"
+					},
+					"text": {
+						"verbosity": "medium",
+						"format": {
+							"type": "json_schema",
+							"name": "msg",
+							"schema": {
+								"type": "object",
+								"properties": {
+									"message": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": "resp_2",
+				"output": [
+					{
+						"type": "message",
+						"content": [
+							{
+								"type": "output_text",
+								"text": {
+									"message": "hello"
+								}
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"openAi text.response json object": {
+		"requests": [
+			{
+				"method": "POST",
+				"url": "https://api.openai.com/v1/responses",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer sk-fake"
+				},
+				"body": {
+					"model": "gpt-4o",
+					"input": [
+						{
+							"role": "system",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "You are a helpful assistant designed to output JSON."
+								}
+							]
+						},
+						{
+							"role": "system",
+							"content": [
+								{
+									"type": "input_text",
+									"text": "List colors"
+								}
+							]
+						}
+					],
+					"parallel_tool_calls": true,
+					"store": true,
+					"background": false,
+					"text": {
+						"verbosity": "low",
+						"format": {
+							"type": "json_object"
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"output": [
+					{
+						"type": "message",
+						"content": [
+							{
+								"type": "output_text",
+								"text": "not json"
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"googleSheets sheet.read": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Count": 3,
+				"Note": ""
+			},
+			{
+				"row_number": 4,
+				"Name": "Bob",
+				"Count": 0,
+				"Note": "x"
+			}
+		]
+	},
+	"googleSheets sheet.read filters AND (default)": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			},
+			{
+				"row_number": 4,
+				"Name": "Cy",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			},
+			{
+				"row_number": 6,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": "3",
+				"col_4": ""
+			},
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			},
+			{
+				"row_number": 4,
+				"Name": "Cy",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			},
+			{
+				"row_number": 6,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": "3",
+				"col_4": ""
+			}
+		]
+	},
+	"googleSheets sheet.read filters OR first match": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 3,
+				"Name": "Bob",
+				"Status": "done",
+				"Count": 0,
+				"col_4": "x"
+			}
+		]
+	},
+	"googleSheets sheet.read filters OR first match v4.5": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 3,
+				"Name": "Bob",
+				"Status": "done",
+				"Count": 0,
+				"col_4": "x"
+			},
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			}
+		]
+	},
+	"googleSheets sheet.read filters all matches v4.4": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			},
+			{
+				"row_number": 6,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": "3",
+				"col_4": ""
+			}
+		]
+	},
+	"googleSheets sheet.read filters first match v4.4": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Name": "Ada",
+				"Status": "open",
+				"Count": 3,
+				"col_4": ""
+			}
+		]
+	},
+	"googleSheets sheet.read filters no match": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sheet1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": []
+	},
+	"googleSheets sheet.read range by name": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!A1:C10",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "SERIAL_NUMBER"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 2,
+				"Region": "EU",
+				"Total": "1,200"
+			}
+		]
+	},
+	"googleSheets sheet.append define below": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "123",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!3:3",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!3:3",
+					"values": [["Cy", 7, "[\"a\",\"b\"]", ""]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Cy",
+				"Count": 7,
+				"Tags": ["a", "b"]
+			}
+		]
+	},
+	"googleSheets sheet.append define below with null values": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "123",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!3:3",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!3:3",
+					"values": [["", 7]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Count": 7
+			}
+		]
+	},
+	"googleSheets sheet.append auto map new column": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!1:1",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!1:1",
+					"values": [["Region", "Total", "Owner"]]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "123",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!2:3",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!2:3",
+					"values": [["EU", 5, "ada"], ["US", "", ""]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Region": "EU",
+				"Total": 5,
+				"Owner": "ada"
+			},
+			{
+				"Region": "US",
+				"row_number": 4
+			}
+		]
+	},
+	"googleSheets sheet.append use append": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "UNFORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!4:4:append",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!4:4",
+					"values": [["Di", null]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Di"
+			}
+		]
+	},
+	"googleSheets sheet.update": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"data": [
+						{
+							"range": "Sales Q1!B3",
+							"values": [[9]]
+						},
+						{
+							"range": "Sales Q1!C3",
+							"values": [[""]]
+						},
+						{
+							"range": "Sales Q1!D3",
+							"values": [["{\"a\":1}"]]
+						}
+					],
+					"valueInputOption": "USER_ENTERED"
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Bob",
+				"Count": 9,
+				"Note": "",
+				"Meta": {
+					"a": 1
+				}
+			}
+		]
+	},
+	"googleSheets sheet.update by row_number": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"data": [
+						{
+							"range": "Sales Q1!B3",
+							"values": [[9]]
+						},
+						{
+							"range": "Sales Q1!C3",
+							"values": [[""]]
+						}
+					],
+					"valueInputOption": "USER_ENTERED"
+				}
+			}
+		],
+		"output": [
+			{
+				"row_number": 3,
+				"Count": 9,
+				"Note": ""
+			}
+		]
+	},
+	"dataTable row.get by id": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 50,
+						"filter": {
+							"type": "or",
+							"filters": []
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 3,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get by id, version 1": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 50,
+						"filter": {
+							"type": "or",
+							"filters": []
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 3,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.insert, version 1": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "insertRows",
+				"args": {
+					"dataTableId": "tbl1",
+					"rows": [
+						{
+							"email": "a@x.io"
+						}
+					],
+					"returnType": "all"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get by name, filters, order, all pages": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getManyAndCount",
+				"args": {
+					"options": {
+						"filter": {
+							"name": "leads"
+						},
+						"take": 1
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyAndCount",
+				"args": {
+					"options": {
+						"filter": {
+							"name": "leads"
+						},
+						"take": 1
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "and",
+							"filters": [
+								{
+									"columnName": "score",
+									"condition": "gte",
+									"value": 2
+								},
+								{
+									"columnName": "email",
+									"condition": "isNotEmpty",
+									"value": null
+								},
+								{
+									"columnName": "active",
+									"condition": "eq",
+									"value": true
+								},
+								{
+									"columnName": "seen",
+									"condition": "lt",
+									"value": "2025-02-01T00:00:00.000Z"
+								}
+							]
+						},
+						"sortBy": ["score", "ASC"]
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 2,
+						"take": 1,
+						"filter": {
+							"type": "and",
+							"filters": [
+								{
+									"columnName": "score",
+									"condition": "gte",
+									"value": 2
+								},
+								{
+									"columnName": "email",
+									"condition": "isNotEmpty",
+									"value": null
+								},
+								{
+									"columnName": "active",
+									"condition": "eq",
+									"value": true
+								},
+								{
+									"columnName": "seen",
+									"condition": "lt",
+									"value": "2025-02-01T00:00:00.000Z"
+								}
+							]
+						},
+						"sortBy": ["score", "ASC"]
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 3,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 4,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 5,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get with a limit and an empty number condition": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "score",
+									"condition": "eq",
+									"value": null
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.insert of two items with schema casts": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "insertRows",
+				"args": {
+					"dataTableId": "tbl1",
+					"rows": [
+						{
+							"email": "a@x.io",
+							"score": 7,
+							"active": true
+						},
+						{
+							"email": "a@x.io",
+							"score": 7,
+							"active": true
+						}
+					],
+					"returnType": "all"
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 7,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "a@x.io",
+				"score": 7,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.insert auto-mapped, optimized bulk": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getManyAndCount",
+				"args": {
+					"options": {
+						"filter": {
+							"name": "leads"
+						},
+						"take": 1
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "insertRows",
+				"args": {
+					"dataTableId": "tbl1",
+					"rows": [
+						{
+							"email": "a@x.io",
+							"score": 1
+						},
+						{
+							"email": "b@x.io",
+							"score": null
+						}
+					],
+					"returnType": "count"
+				}
+			}
+		],
+		"output": [
+			{
+				"success": true,
+				"insertedRows": 2
+			}
+		]
+	},
+	"dataTable row.update by email": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "updateRows",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"data": {
+							"score": 10,
+							"active": false
+						},
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "email",
+									"condition": "eq",
+									"value": "a@x.io"
+								}
+							]
+						},
+						"dryRun": false
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 10,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.upsert by id, dry run": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getManyAndCount",
+				"args": {
+					"options": {
+						"filter": {
+							"name": "leads"
+						},
+						"take": 1
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyAndCount",
+				"args": {
+					"options": {
+						"filter": {
+							"name": "leads"
+						},
+						"take": 1
+					}
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "upsertRow",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"data": {
+							"email": "e@x.io",
+							"score": null
+						},
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "id",
+									"condition": "eq",
+									"value": 5
+								}
+							]
+						},
+						"dryRun": true
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": null,
+				"email": "e@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": null,
+				"updatedAt": null,
+				"dryRunState": "after"
+			}
+		]
+	},
+	"dataTable row.deleteRows with like": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "deleteRows",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "email",
+									"condition": "like",
+									"value": "%@x.io"
+								}
+							]
+						},
+						"dryRun": false
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 3,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": null,
+				"active": true,
+				"seen": null,
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.rowExists hit": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "email",
+									"condition": "eq",
+									"value": "a@x.io"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"email": "a@x.io",
+				"keep": true
+			}
+		]
+	},
+	"dataTable row.rowNotExists miss": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "email",
+									"condition": "eq",
+									"value": "z@x.io"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"email": "z@x.io"
+			}
+		]
+	},
+	"googleSheets sheet.appendOrUpdate updates a matching row": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"data": [
+						{
+							"range": "Sales Q1!B3",
+							"values": [[7]]
+						},
+						{
+							"range": "Sales Q1!C3",
+							"values": [[""]]
+						},
+						{
+							"range": "Sales Q1!B3",
+							"values": [[7]]
+						},
+						{
+							"range": "Sales Q1!C3",
+							"values": [[""]]
+						}
+					],
+					"valueInputOption": "USER_ENTERED"
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Bob",
+				"Count": 7,
+				"Note": ""
+			},
+			{
+				"Name": "Bob",
+				"Count": 7,
+				"Note": ""
+			}
+		]
+	},
+	"googleSheets sheet.appendOrUpdate appends a new key": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "123",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!4:4",
+				"qs": {
+					"valueInputOption": "RAW"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!4:4",
+					"values": [["Zed", "3", ""]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Zed",
+				"Count": "3"
+			}
+		]
+	},
+	"googleSheets sheet.appendOrUpdate auto-map with a new column": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!1:1",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!1:1",
+					"values": [["Name", "Count", "Note", "Extra"]]
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"data": [
+						{
+							"range": "Sales Q1!B3",
+							"values": [[5]]
+						},
+						{
+							"range": "Sales Q1!D3",
+							"values": [["x"]]
+						}
+					],
+					"valueInputOption": "USER_ENTERED"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"requests": [
+						{
+							"appendDimension": {
+								"sheetId": "123",
+								"dimension": "ROWS",
+								"length": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"method": "PUT",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/Sales%20Q1!4:4",
+				"qs": {
+					"valueInputOption": "USER_ENTERED"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"range": "Sales Q1!4:4",
+					"values": [["Dan", "", "", "{\"k\":1}"]]
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Bob",
+				"Count": 5,
+				"Extra": "x",
+				"row_number": 3
+			},
+			{
+				"Name": "Dan",
+				"Extra": {
+					"k": 1
+				}
+			}
+		]
+	},
+	"googleSheets sheet.appendOrUpdate with append and a header row": {
+		"requests": [
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789",
+				"qs": {
+					"fields": "sheets.properties"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "GET",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values/'Sales%20Q1'",
+				"qs": {
+					"valueRenderOption": "FORMATTED_VALUE",
+					"dateTimeRenderOption": "FORMATTED_STRING"
+				},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				}
+			},
+			{
+				"method": "POST",
+				"url": "https://sheets.googleapis.com/v4/spreadsheets/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/values:batchUpdate",
+				"qs": {},
+				"headers": {
+					"authorization": "Bearer fake-sheets-token"
+				},
+				"body": {
+					"data": [
+						{
+							"range": "Sales Q1!B2",
+							"values": [[4]]
+						}
+					],
+					"valueInputOption": "USER_ENTERED"
+				}
+			}
+		],
+		"output": [
+			{
+				"Name": "Ada",
+				"Count": 4
+			}
+		]
+	}
+}

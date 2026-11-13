@@ -1,0 +1,154 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Adults", "Sort", "Limit", "Format"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"people": [
+							{
+								"name": "zoe",
+								"age": 31,
+								"tags": ["a"]
+							},
+							{
+								"name": "Bob",
+								"age": 12,
+								"tags": []
+							},
+							{
+								"name": "amy",
+								"age": 18,
+								"tags": ["b", "c"]
+							},
+							{
+								"name": "Carl",
+								"age": 44,
+								"tags": []
+							},
+							{
+								"name": "dan",
+								"age": 17,
+								"tags": []
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"name": "zoe",
+					"age": 31,
+					"tags": ["a"]
+				},
+				{
+					"name": "Bob",
+					"age": 12,
+					"tags": []
+				},
+				{
+					"name": "amy",
+					"age": 18,
+					"tags": ["b", "c"]
+				},
+				{
+					"name": "Carl",
+					"age": 44,
+					"tags": []
+				},
+				{
+					"name": "dan",
+					"age": 17,
+					"tags": []
+				}
+			]
+		],
+		"Adults": [
+			[
+				{
+					"name": "zoe",
+					"age": 31,
+					"tags": ["a"]
+				},
+				{
+					"name": "amy",
+					"age": 18,
+					"tags": ["b", "c"]
+				},
+				{
+					"name": "Carl",
+					"age": 44,
+					"tags": []
+				}
+			],
+			[
+				{
+					"name": "Bob",
+					"age": 12,
+					"tags": []
+				},
+				{
+					"name": "dan",
+					"age": 17,
+					"tags": []
+				}
+			]
+		],
+		"Sort": [
+			[
+				{
+					"name": "amy",
+					"age": 18,
+					"tags": ["b", "c"]
+				},
+				{
+					"name": "Carl",
+					"age": 44,
+					"tags": []
+				},
+				{
+					"name": "zoe",
+					"age": 31,
+					"tags": ["a"]
+				}
+			]
+		],
+		"Limit": [
+			[
+				{
+					"name": "amy",
+					"age": 18,
+					"tags": ["b", "c"]
+				},
+				{
+					"name": "Carl",
+					"age": 44,
+					"tags": []
+				}
+			]
+		],
+		"Format": [
+			[
+				{
+					"label": "amy (18)",
+					"adult": true,
+					"tags": ["b", "c"]
+				},
+				{
+					"label": "Carl (44)",
+					"adult": true,
+					"tags": []
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

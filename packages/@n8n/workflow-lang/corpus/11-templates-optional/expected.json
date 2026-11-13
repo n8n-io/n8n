@@ -1,0 +1,30 @@
+{
+	"status": "ok",
+	"result": {
+		"lines": [
+			"1. ANN @ Acme (Berlin) +49 1 object false",
+			"2. BOB @ undefined (n/a) - object true",
+			"3. ANON @ Initech (n/a) - object false"
+		],
+		"config": {
+			"flag": false,
+			"retries": 3,
+			"mode": "fast"
+		},
+		"nested": "outer inner 2 1,2 null undefined [object Object]",
+		"count": 2,
+		"missing": true,
+		"zeroOr": 2
+	},
+	"effects": [
+		{
+			"step": "Fetch",
+			"kind": "http",
+			"args": {
+				"name": "Fetch",
+				"method": "GET",
+				"url": "https://api.example.com"
+			}
+		}
+	]
+}

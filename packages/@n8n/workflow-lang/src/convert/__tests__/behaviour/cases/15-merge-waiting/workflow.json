@@ -1,0 +1,176 @@
+{
+	"name": "Merge waits",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "merge-wait",
+				"options": {}
+			}
+		},
+		{
+			"id": "flag-set",
+			"name": "Flag set",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [200, -100],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c",
+							"leftValue": "={{ $json.body.flag }}",
+							"rightValue": "",
+							"operator": {
+								"type": "boolean",
+								"operation": "true",
+								"singleValue": true
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"looseTypeValidation": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "from",
+							"name": "from",
+							"value": "a",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "b",
+			"name": "B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "from",
+							"name": "from",
+							"value": "b",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {}
+		},
+		{
+			"id": "after-b",
+			"name": "After B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 200],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "after",
+							"name": "after",
+							"value": "b",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Flag set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "B",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Flag set": {
+			"main": [
+				[
+					{
+						"node": "A",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"A": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"B": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "After B",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

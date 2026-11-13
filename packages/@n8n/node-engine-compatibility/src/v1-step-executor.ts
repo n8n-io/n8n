@@ -118,7 +118,13 @@ export class V1StepExecutor implements IStepExecutor {
 			request.node.id,
 			request.context.iteration,
 		);
-		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
+		const workflow = toV1Workflow(
+			request.context.workflowId,
+			node,
+			execution,
+			this.deps.nodeTypes,
+			stepConfig.workflowSettings,
+		);
 
 		const additionalData = await this.deps.additionalDataFactory(
 			toAdditionalDataContext(request.context),

@@ -1,0 +1,158 @@
+{
+	"name": "People",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "people",
+				"responseMode": "onReceived",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.people",
+				"options": {}
+			}
+		},
+		{
+			"id": "adults",
+			"name": "Adults",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [400, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.age }}",
+							"operator": {
+								"type": "number",
+								"operation": "gte"
+							},
+							"rightValue": 18
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "sort",
+			"name": "Sort",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "name"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "limit",
+			"name": "Limit",
+			"type": "n8n-nodes-base.limit",
+			"typeVersion": 1,
+			"position": [800, 0],
+			"parameters": {
+				"maxItems": 2
+			}
+		},
+		{
+			"id": "format",
+			"name": "Format",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [1000, 0],
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "={ \"label\": \"{{ $json.name }} ({{ $json.age }})\", \"adult\": true, \"tags\": {{ $json.tags }} }",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Adults",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Adults": {
+			"main": [
+				[
+					{
+						"node": "Sort",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sort": {
+			"main": [
+				[
+					{
+						"node": "Limit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Limit": {
+			"main": [
+				[
+					{
+						"node": "Format",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

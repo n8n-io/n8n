@@ -1,0 +1,45 @@
+{
+	"trigger": {
+		"body": {}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {
+		"RSS": [
+			{
+				"status": 200,
+				"headers": {
+					"content-type": "application/rss+xml"
+				},
+				"body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rss version=\"2.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">\n<channel>\n<title>News &amp; Views</title>\n<item>\n<title>First &#8217;post&#8217;</title>\n<link>https://example.com/1</link>\n<description><![CDATA[<p>Hello <b>world</b></p><br/>Line two &amp; more &nbsp;]]></description>\n<content:encoded><![CDATA[<div>Full <i>text</i></div><p>Next</p>]]></content:encoded>\n<dc:creator>Ada</dc:creator>\n<author>ada@example.com (Ada)</author>\n<comments>https://example.com/1#c</comments>\n<category>a</category><category domain=\"x\">b</category>\n<guid isPermaLink=\"false\">id-1</guid>\n<enclosure url=\"https://example.com/a.mp3\" length=\"10\" type=\"audio/mpeg\"/>\n<pubDate>Mon, 06 May 2024 10:00:00 GMT</pubDate>\n</item>\n<item>\n<title>Second</title>\n<description>Plain <span class=\"x\">inline</span> text</description>\n<pubDate>Tue, 07 May 2024 08:30:00 +0200</pubDate>\n<guid>https://example.com/2</guid>\n</item>\n<item><title>No date</title><pubDate>not a date</pubDate></item>\n</channel>\n</rss>"
+			}
+		],
+		"Atom": [
+			{
+				"status": 200,
+				"headers": {
+					"content-type": "application/rss+xml"
+				},
+				"body": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<feed xmlns=\"http://www.w3.org/2005/Atom\">\n<title>Atom feed</title>\n<entry>\n<title type=\"html\">Entry &lt;one&gt;</title>\n<link rel=\"self\" href=\"https://e.com/self\"/><link rel=\"alternate\" href=\"https://e.com/1\"/>\n<id>urn:1</id>\n<published>2024-05-06T10:00:00Z</published>\n<author><name>Bob</name></author>\n<content type=\"html\">&lt;p&gt;Hi &amp;amp; bye&lt;/p&gt;</content>\n<summary>Short</summary>\n</entry>\n<entry><title>Two</title><updated>2024-05-07T08:00:00+02:00</updated><link href=\"https://e.com/2\"/></entry>\n</feed>"
+			}
+		],
+		"Podcast": [
+			{
+				"status": 200,
+				"headers": {
+					"content-type": "application/rss+xml"
+				},
+				"body": "<rss version=\"2.0\" xmlns:itunes=\"http://www.itunes.com/dtds/podcast-1.0.dtd\">\n<channel><title>Pod</title>\n<item><title>Ep 1</title><itunes:duration>12:34</itunes:duration><itunes:episode>1</itunes:episode>\n<itunes:image href=\"https://e.com/ep1.png\"/><itunes:summary>About</itunes:summary>\n<enclosure url=\"https://e.com/1.mp3\" type=\"audio/mpeg\" length=\"1\"/></item>\n</channel></rss>"
+			}
+		],
+		"RDF": [
+			{
+				"status": 200,
+				"headers": {
+					"content-type": "application/rss+xml"
+				},
+				"body": "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" xmlns=\"http://purl.org/rss/1.0/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<channel rdf:about=\"https://e.com/\"><title>RDF</title></channel>\n<item rdf:about=\"https://e.com/a\"><title>A</title><link>https://e.com/a</link><dc:date>2024-05-06T10:00:00Z</dc:date></item>\n</rdf:RDF>"
+			}
+		]
+	}
+}

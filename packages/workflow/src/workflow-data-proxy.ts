@@ -1322,6 +1322,15 @@ export class WorkflowDataProxy {
 			}
 		};
 
+		// `$now` and `$today` each need a time zone offset, which is slow to compute.
+		// Most expressions read neither, so each is made on its first read, from the
+		// time and zone of this proxy. The values are the same as when made at once.
+		const nowMillis = Settings.now();
+		const nowZone = Settings.defaultZone;
+		let nowValue: DateTime | undefined;
+		let todayValue: DateTime | undefined;
+		const now = () => (nowValue ??= DateTime.fromMillis(nowMillis, { zone: nowZone }));
+
 		const base = {
 			$: (nodeName?: string, resolveFullItem?: boolean) => {
 				if (!nodeName) {
@@ -1775,8 +1784,13 @@ export class WorkflowDataProxy {
 			$mode: this.mode,
 			$workflow: this.workflowGetter(),
 			$itemIndex: this.itemIndex,
-			$now: DateTime.now(),
-			$today: DateTime.now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 }),
+			get $now() {
+				return now();
+			},
+			get $today() {
+				todayValue ??= now().set({ hour: 0, minute: 0, second: 0, millisecond: 0 });
+				return todayValue;
+			},
 			$jmesPath: jmespathWrapper,
 
 			DateTime,

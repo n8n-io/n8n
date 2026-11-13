@@ -1,0 +1,109 @@
+{
+	"name": "Continue and legacy names",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "continue", "options": {} }
+		},
+		{
+			"id": "split",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": { "fieldToSplitOut": "body.rows", "options": {} }
+		},
+		{
+			"id": "if-missing",
+			"name": "Legacy Is False",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [400, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.legacy }}",
+							"rightValue": "",
+							"operator": { "type": "boolean", "operation": "false", "singleValue": true }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "filter-none",
+			"name": "Filter None",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [600, 0],
+			"alwaysOutputData": true,
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c2",
+							"leftValue": "={{ $json.url }}",
+							"rightValue": "zzz",
+							"operator": { "type": "string", "operation": "equals" }
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "dedupe",
+			"name": "Dedupe Continue",
+			"type": "n8n-nodes-base.removeDuplicates",
+			"typeVersion": 2,
+			"position": [800, 0],
+			"onError": "continueRegularOutput",
+			"parameters": { "compare": "selectedFields", "fieldsToCompare": "url", "options": {} }
+		},
+		{
+			"id": "code-index",
+			"name": "Code Index",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 200],
+			"parameters": {
+				"jsCode": "return $input.all().map((item) => ({ json: { url: item.json.url, index: $itemIndex } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Split Out", "type": "main", "index": 0 }]] },
+		"Split Out": { "main": [[{ "node": "Legacy Is False", "type": "main", "index": 0 }]] },
+		"Legacy Is False": {
+			"main": [
+				[
+					{ "node": "Filter None", "type": "main", "index": 0 },
+					{ "node": "Code Index", "type": "main", "index": 0 }
+				],
+				[]
+			]
+		},
+		"Filter None": { "main": [[{ "node": "Dedupe Continue", "type": "main", "index": 0 }]] }
+	}
+}

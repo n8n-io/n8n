@@ -1,0 +1,6 @@
+{
+	"trigger": { "body": { "values": [0.1, 0.2, 0.3] }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": { "Report": [{ "status": 200, "headers": {}, "body": {} }] }
+}

@@ -1,0 +1,107 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Names", "Ages", "Merge", "No Operation", "First", "Respond", "Nothing"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"names": ["ann", "bob", "cid"],
+						"ages": [30, 40]
+					}
+				}
+			]
+		],
+		"Names": [
+			[
+				{
+					"name": "ann"
+				},
+				{
+					"name": "bob"
+				},
+				{
+					"name": "cid"
+				}
+			]
+		],
+		"Ages": [
+			[
+				{
+					"age": 30
+				},
+				{
+					"age": 40
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"name": "ann",
+					"age": 30
+				},
+				{
+					"name": "bob",
+					"age": 40
+				}
+			]
+		],
+		"No Operation": [
+			[
+				{
+					"name": "ann",
+					"age": 30
+				},
+				{
+					"name": "bob",
+					"age": 40
+				}
+			]
+		],
+		"First": [
+			[
+				{
+					"first": "ann",
+					"total": 2
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"first": "ann",
+					"total": 2
+				}
+			]
+		],
+		"Nothing": [
+			[{}],
+			[
+				{
+					"name": "ann",
+					"age": 30
+				},
+				{
+					"name": "bob",
+					"age": 40
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": {
+				"first": "ann",
+				"total": 2
+			},
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

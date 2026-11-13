@@ -1,0 +1,164 @@
+{
+	"name": "Legacy Function code",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "legacy",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "src0",
+			"name": "Source0",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "zero"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "src1",
+			"name": "Source1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "one"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "fn",
+			"name": "Function",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {
+				"functionCode": "expected = ['zero', 'one'];\nconst seen = [];\nfor (let i = 0; i < 2; i++) {\n  seen.push($node[`Source${i}`].json['data'] === expected[i]);\n}\nreturn [{ json: { seen } }, { json: { seen: [] } }];"
+			}
+		},
+		{
+			"id": "fi",
+			"name": "Function Item",
+			"type": "n8n-nodes-base.functionItem",
+			"typeVersion": 1,
+			"position": [800, 0],
+			"parameters": {
+				"functionCode": "item.before = getBinaryData() ?? 'NIL';\nsetBinaryData({ file: { data: 'SGVsbG8=', mimeType: 'text/plain', fileName: 'hello.txt' } });\nitem.after = Object.keys(getBinaryData());\nreturn item;"
+			}
+		},
+		{
+			"id": "json",
+			"name": "Only JSON",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [1000, 0],
+			"parameters": {
+				"jsCode": "// The oracle reports no binary data, so the response has only the JSON.\nreturn $input.all().map((i) => ({ json: i.json }));"
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1200, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Source0",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source0": {
+			"main": [
+				[
+					{
+						"node": "Source1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Source1": {
+			"main": [
+				[
+					{
+						"node": "Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Function": {
+			"main": [
+				[
+					{
+						"node": "Function Item",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Function Item": {
+			"main": [
+				[
+					{
+						"node": "Only JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Only JSON": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {}
+}

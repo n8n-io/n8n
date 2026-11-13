@@ -1,0 +1,26 @@
+{
+	"trigger": {
+		"body": {
+			"orderId": "o-1001",
+			"customer": { "id": "c-7", "email": "ann@example.com" },
+			"items": [
+				{ "sku": "A-1", "qty": 2, "price": 9.99 },
+				{ "sku": "B-2", "qty": 5, "price": 0.1 },
+				{ "sku": "C-3", "qty": 1, "price": 120 }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {
+		"Check stock": [
+			{ "status": 200, "headers": {}, "body": { "sku": "A-1", "available": 10 } },
+			{ "status": 200, "headers": {}, "body": { "sku": "B-2", "available": 3 } },
+			{ "status": 200, "headers": {}, "body": { "sku": "C-3", "available": 1 } }
+		],
+		"Approve short order": [{ "approved": true, "by": "lead@example.com" }],
+		"Charge": [{ "$error": "card declined" }]
+	}
+}

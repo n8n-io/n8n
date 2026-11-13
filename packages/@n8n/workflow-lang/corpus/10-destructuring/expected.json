@@ -1,0 +1,41 @@
+{
+	"status": "ok",
+	"result": {
+		"name": "Lin",
+		"city": "Unknown",
+		"zip": "00000",
+		"firstRole": "admin",
+		"otherRoles": ["dev", "ops"],
+		"verbose": false,
+		"limit": 10,
+		"rest": {
+			"extra": {
+				"a": 1,
+				"b": 2,
+				"c": 3
+			}
+		},
+		"a": 1,
+		"others": {
+			"b": 2,
+			"c": 3
+		},
+		"x": 2,
+		"y": 1,
+		"pairs": ["a=1", "b=2", "c=3"],
+		"d1": "7:1:p",
+		"d2": "8:0:none",
+		"firstId": 7
+	},
+	"effects": [
+		{
+			"step": "Load",
+			"kind": "http",
+			"args": {
+				"name": "Load",
+				"method": "GET",
+				"url": "https://api.example.com/00000"
+			}
+		}
+	]
+}

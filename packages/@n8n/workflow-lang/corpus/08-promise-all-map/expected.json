@@ -1,0 +1,100 @@
+{
+	"status": "ok",
+	"result": {
+		"results": ["j1=ok", "j2=failed: lost", "j3=ok"],
+		"firstError": "bad y",
+		"empty": []
+	},
+	"effects": [
+		{
+			"step": "Start",
+			"kind": "http",
+			"args": {
+				"name": "Start",
+				"method": "POST",
+				"url": "https://jobs.example.com",
+				"body": {
+					"id": "j1"
+				}
+			}
+		},
+		{
+			"step": "Start",
+			"kind": "http",
+			"args": {
+				"name": "Start",
+				"method": "POST",
+				"url": "https://jobs.example.com",
+				"body": {
+					"id": "j2"
+				}
+			}
+		},
+		{
+			"step": "Start",
+			"kind": "http",
+			"args": {
+				"name": "Start",
+				"method": "POST",
+				"url": "https://jobs.example.com",
+				"body": {
+					"id": "j3"
+				}
+			}
+		},
+		{
+			"step": "Finish",
+			"kind": "http",
+			"args": {
+				"name": "Finish",
+				"method": "POST",
+				"url": "https://jobs.example.com/t1"
+			}
+		},
+		{
+			"step": "Finish",
+			"kind": "http",
+			"args": {
+				"name": "Finish",
+				"method": "POST",
+				"url": "https://jobs.example.com/t2"
+			}
+		},
+		{
+			"step": "Finish",
+			"kind": "http",
+			"args": {
+				"name": "Finish",
+				"method": "POST",
+				"url": "https://jobs.example.com/t3"
+			}
+		},
+		{
+			"step": "Check",
+			"kind": "http",
+			"args": {
+				"name": "Check",
+				"method": "GET",
+				"url": "https://check.example.com/x"
+			}
+		},
+		{
+			"step": "Check",
+			"kind": "http",
+			"args": {
+				"name": "Check",
+				"method": "GET",
+				"url": "https://check.example.com/y"
+			}
+		},
+		{
+			"step": "Check",
+			"kind": "http",
+			"args": {
+				"name": "Check",
+				"method": "GET",
+				"url": "https://check.example.com/z"
+			}
+		}
+	]
+}

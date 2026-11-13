@@ -20,6 +20,7 @@ import type {
 	ISourceData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -38,6 +39,10 @@ export interface V1NodeStepConfig {
 	continueOnFail: boolean;
 	/** The credential references of the v1 node, kept so a step can resolve them at run time. */
 	credentials?: INodeCredentials;
+	/** The `onError` setting of the v1 node, which some nodes read (`getNode().onError`). */
+	onError?: INode['onError'];
+	/** The settings of the v1 workflow (time zone and the rest), for the step's `Workflow`. */
+	workflowSettings?: IWorkflowSettings;
 }
 
 export interface V1Execution extends Pick<IWorkflowBase, 'nodes' | 'connections'> {

@@ -1,0 +1,151 @@
+{
+	"name": "Loop host pairing",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "loop-pair",
+				"options": {}
+			}
+		},
+		{
+			"id": "config",
+			"name": "Config",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d",
+							"name": "days",
+							"value": 2,
+							"type": "number"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "split",
+			"name": "Split",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			}
+		},
+		{
+			"id": "loop",
+			"name": "Loop",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [600, 0],
+			"parameters": {
+				"options": {}
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "t",
+							"name": "tag",
+							"value": "={{ $jmespath($('Config').item.json, 'days') }}-{{ $json.name }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "done",
+			"name": "Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, -100],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Config",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Config": {
+			"main": [
+				[
+					{
+						"node": "Split",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split": {
+			"main": [
+				[
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop": {
+			"main": [
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

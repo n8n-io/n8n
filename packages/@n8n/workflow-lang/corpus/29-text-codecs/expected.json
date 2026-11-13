@@ -1,0 +1,19 @@
+{
+	"status": "ok",
+	"result": {
+		"encoded": "R3LDvMOfZSwg5LiW55WMIPCfmIA=",
+		"back": "Grüße, 世界 😀",
+		"b64": "Hello",
+		"uri": "Gr%C3%BC%C3%9Fe%2C%20%E4%B8%96%E7%95%8C%20%F0%9F%98%80%20%26%3D%2F%3F%23",
+		"uriBack": "a b/cü",
+		"escaped": "Gr%FC%DFe%2C%20%u4E16%u754C%20%uD83D%uDE00",
+		"unescaped": "üü€",
+		"urlSafe": "c3ViamVjdHM_Xz4=",
+		"errors": [
+			"InvalidCharacterError: Invalid character",
+			"InvalidCharacterError: The string to be decoded is not correctly encoded.",
+			"URIError: URI malformed"
+		]
+	},
+	"effects": []
+}

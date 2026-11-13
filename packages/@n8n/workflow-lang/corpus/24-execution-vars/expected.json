@@ -1,0 +1,46 @@
+{
+	"status": "ok",
+	"result": {
+		"ex": {
+			"id": "1234",
+			"mode": "test",
+			"resumeUrl": "https://n8n.example.com/webhook-waiting/1234",
+			"resumeFormUrl": "https://n8n.example.com/form-waiting/1234"
+		},
+		"region": "eu",
+		"keys": ["apiHost", "region"],
+		"missing": null,
+		"approved": true
+	},
+	"effects": [
+		{
+			"step": "Notify",
+			"kind": "http",
+			"args": {
+				"name": "Notify",
+				"method": "POST",
+				"url": "https://api.example.com/notify",
+				"body": {
+					"id": "1234",
+					"approve": "https://n8n.example.com/webhook-waiting/1234",
+					"form": "https://n8n.example.com/form-waiting/1234"
+				}
+			}
+		},
+		{
+			"step": "Approve",
+			"kind": "approval",
+			"args": {
+				"name": "Approve",
+				"message": "Approve 1234?",
+				"node": {
+					"type": "n8n-nodes-base.slack",
+					"typeVersion": 2,
+					"parameters": {
+						"text": "https://n8n.example.com/webhook-waiting/1234"
+					}
+				}
+			}
+		}
+	]
+}

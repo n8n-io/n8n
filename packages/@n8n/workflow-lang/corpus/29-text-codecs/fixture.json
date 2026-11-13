@@ -1,0 +1,6 @@
+{
+	"trigger": { "body": { "text": "Grüße, 世界 😀", "b64": " SGVs bG8= " } },
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {}
+}

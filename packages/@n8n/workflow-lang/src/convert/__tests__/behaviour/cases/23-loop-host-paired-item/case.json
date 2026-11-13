@@ -1,0 +1,4 @@
+{
+	"description": "Loop Over Items with a node in the loop that runs in the fallback host and reads $('Config').item: the host pairs the loop's items with its first input, not with the node that closes the loop",
+	"trigger": { "body": { "items": [{ "name": "a" }, { "name": "b" }] } }
+}

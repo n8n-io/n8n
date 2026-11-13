@@ -110,6 +110,19 @@ describe('useExecutingNode composable', () => {
 		expect(lastAddedExecutingNode.value).toBe('nodeB');
 	});
 
+	it('shows parallel nodes of a compiled-engine run, and clears each one by its run', () => {
+		const { executingNode, addExecutingNode, removeExecutingNode } = useExecutingNode({
+			engineType: 'compiled',
+		});
+
+		addExecutingNode('nodeA', 0, 0);
+		addExecutingNode('nodeB', 1, 1);
+		expect(executingNode.value).toEqual(['nodeA', 'nodeB']);
+
+		removeExecutingNode('nodeB', 1);
+		expect(executingNode.value).toEqual(['nodeA']);
+	});
+
 	describe('concurrent strategy', () => {
 		const useConcurrentExecutingNode = () => useExecutingNode({ engineType: 'v2' });
 

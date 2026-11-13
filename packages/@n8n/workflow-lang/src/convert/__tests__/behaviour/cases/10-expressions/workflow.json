@@ -1,0 +1,148 @@
+{
+	"name": "Expression forms",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "expr",
+				"responseMode": "onReceived",
+				"options": {}
+			}
+		},
+		{
+			"id": "fields",
+			"name": "Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "upper",
+							"name": "upper",
+							"value": "={{ $json.body.name.toUpperCase() }}",
+							"type": "string"
+						},
+						{
+							"id": "greeting",
+							"name": "greeting",
+							"value": "=Hello {{ $json.body.name }}, you have {{ $json.body.missing }} messages",
+							"type": "string"
+						},
+						{
+							"id": "tags",
+							"name": "tags",
+							"value": "={{ $input.first().json.body.tags.join(\", \") }}",
+							"type": "string"
+						},
+						{
+							"id": "lang",
+							"name": "lang",
+							"value": "={{ $('Webhook').item.json.query.lang }}",
+							"type": "string"
+						},
+						{
+							"id": "count",
+							"name": "count",
+							"value": "={{ $json.body.count }}",
+							"type": "number"
+						},
+						{
+							"id": "flag",
+							"name": "flag",
+							"value": "={{ $json.body.flag }}",
+							"type": "boolean"
+						},
+						{
+							"id": "meta",
+							"name": "meta",
+							"value": "={{ $json.body.metaText }}",
+							"type": "object"
+						},
+						{
+							"id": "address.city",
+							"name": "address.city",
+							"value": "={{ $json.body.city ?? \"unknown\" }}",
+							"type": "string"
+						},
+						{
+							"id": "literalNumber",
+							"name": "literalNumber",
+							"value": "12",
+							"type": "number"
+						},
+						{
+							"id": "first",
+							"name": "first",
+							"value": "={{ $json.body.tags[0] }}",
+							"type": "string"
+						},
+						{
+							"id": "total",
+							"name": "total",
+							"value": "={{ $json.body.items.map(i => i.qty).reduce((a, b) => a + b, 0) }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "keep",
+			"name": "Keep",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"parameters": {
+				"includeOtherFields": true,
+				"include": "except",
+				"excludeFields": "meta, greeting",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ok",
+							"name": "ok",
+							"value": "=true",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fields": {
+			"main": [
+				[
+					{
+						"node": "Keep",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

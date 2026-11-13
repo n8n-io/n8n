@@ -1,0 +1,8 @@
+{
+	"description": "Merge (append) whose first input gets no items: v1 runs it when nothing else is left",
+	"trigger": {
+		"body": {
+			"flag": false
+		}
+	}
+}

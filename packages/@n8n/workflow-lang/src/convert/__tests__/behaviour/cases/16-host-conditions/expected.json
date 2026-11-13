@@ -1,0 +1,140 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Code Valid", "Recent", "Bad Codes", "No Digits", "Other"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"rows": [
+							{
+								"code": "AB-123",
+								"date": "2024-03-01T10:00:00.000Z"
+							},
+							{
+								"code": "CD-456",
+								"date": "2023-12-31T10:00:00.000Z"
+							},
+							{
+								"code": "bad",
+								"date": "2024-05-05T00:00:00.000Z"
+							},
+							{
+								"code": "x-1",
+								"date": "2024-05-05T00:00:00.000Z"
+							},
+							{
+								"code": "XY-789",
+								"date": "2024-07-07T00:00:00.000Z"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"code": "AB-123",
+					"date": "2024-03-01T10:00:00.000Z"
+				},
+				{
+					"code": "CD-456",
+					"date": "2023-12-31T10:00:00.000Z"
+				},
+				{
+					"code": "bad",
+					"date": "2024-05-05T00:00:00.000Z"
+				},
+				{
+					"code": "x-1",
+					"date": "2024-05-05T00:00:00.000Z"
+				},
+				{
+					"code": "XY-789",
+					"date": "2024-07-07T00:00:00.000Z"
+				}
+			]
+		],
+		"Code Valid": [
+			[
+				{
+					"code": "AB-123",
+					"date": "2024-03-01T10:00:00.000Z"
+				},
+				{
+					"code": "CD-456",
+					"date": "2023-12-31T10:00:00.000Z"
+				},
+				{
+					"code": "XY-789",
+					"date": "2024-07-07T00:00:00.000Z"
+				}
+			],
+			[
+				{
+					"code": "bad",
+					"date": "2024-05-05T00:00:00.000Z"
+				},
+				{
+					"code": "x-1",
+					"date": "2024-05-05T00:00:00.000Z"
+				}
+			]
+		],
+		"Recent": [
+			[
+				{
+					"code": "AB-123",
+					"date": "2024-03-01T10:00:00.000Z"
+				},
+				{
+					"code": "XY-789",
+					"date": "2024-07-07T00:00:00.000Z"
+				}
+			],
+			[
+				{
+					"code": "CD-456",
+					"date": "2023-12-31T10:00:00.000Z"
+				}
+			]
+		],
+		"Bad Codes": [
+			[
+				{
+					"code": "bad",
+					"date": "2024-05-05T00:00:00.000Z"
+				}
+			],
+			[
+				{
+					"code": "x-1",
+					"date": "2024-05-05T00:00:00.000Z"
+				}
+			]
+		],
+		"No Digits": [
+			[
+				{
+					"code": "bad",
+					"date": "2024-05-05T00:00:00.000Z"
+				}
+			]
+		],
+		"Other": [
+			[
+				{
+					"code": "x-1",
+					"date": "2024-05-05T00:00:00.000Z"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

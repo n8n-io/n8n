@@ -1,0 +1,54 @@
+{
+	"status": "ok",
+	"result": [
+		{
+			"text": "plain",
+			"ascii": true,
+			"printable": true,
+			"uri": "https://example.com/a%20b/plain?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "tab\there",
+			"ascii": true,
+			"printable": false,
+			"uri": "https://example.com/a%20b/tab%09here?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "Grüße",
+			"ascii": false,
+			"printable": false,
+			"uri": "https://example.com/a%20b/Gr%C3%BC%C3%9Fe?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "line\nbreak",
+			"ascii": true,
+			"printable": false,
+			"uri": "https://example.com/a%20b/line%0Abreak?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "~ok~",
+			"ascii": true,
+			"printable": true,
+			"uri": "https://example.com/a%20b/~ok~?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "",
+			"ascii": true,
+			"printable": true,
+			"uri": "https://example.com/a%20b/?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "DEL",
+			"ascii": true,
+			"printable": false,
+			"uri": "https://example.com/a%20b/DEL%7F?q=1&r=%5Bx%5D#frag"
+		},
+		{
+			"text": "世界 😀",
+			"ascii": false,
+			"printable": false,
+			"uri": "https://example.com/a%20b/%E4%B8%96%E7%95%8C%20%F0%9F%98%80?q=1&r=%5Bx%5D#frag"
+		}
+	],
+	"effects": []
+}

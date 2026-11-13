@@ -1,0 +1,11 @@
+{
+	"trigger": {
+		"body": {
+			"ascii": "Hello, world! The quick brown fox jumps over the lazy dog. 0123456789",
+			"mixed": "aü€😀b😀c"
+		}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {}
+}

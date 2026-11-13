@@ -57,6 +57,19 @@ vi.mock('@/features/resolvers/composables/useNodePrivateCredential', () => ({
 
 import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 
+let isCompiledWorkflow = false;
+vi.mock('@/features/workflows/compiledEngine/composables/useCompiledEngineWorkflow', async () => {
+	const { computed: vueComputed } = await import('vue');
+	return {
+		useCompiledEngineWorkflow: () => ({
+			isCompiledWorkflow: vueComputed(() => isCompiledWorkflow),
+			workflowId: vueComputed(() => 'wf-1'),
+		}),
+	};
+});
+
+import { useCompiledEngineStore } from '@/features/workflows/compiledEngine/compiledEngine.store';
+
 const stubs = {
 	NodeIcon: {
 		template:
@@ -87,6 +100,7 @@ beforeEach(() => {
 	}
 	executionPinDataByNodeId.clear();
 	isExecutionDataDisplayed = false;
+	isCompiledWorkflow = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -99,6 +113,45 @@ beforeEach(() => {
 });
 
 describe('CanvasNodeDefault', () => {
+	describe('compiled engine', () => {
+		const setUpCompiledEngine = (hasError: boolean) => {
+			isCompiledWorkflow = true;
+			const compiledEngineStore = mockedStore(useCompiledEngineStore);
+			compiledEngineStore.hasNodeError.mockReturnValue(hasError);
+			compiledEngineStore.getNodeRunMode.mockReturnValue(hasError ? undefined : 'native');
+			compiledEngineStore.getNodeDiagnostics.mockReturnValue(
+				hasError ? [{ node: 'Test Node', severity: 'error', code: 'E1', message: 'bad' }] : [],
+			);
+		};
+
+		it('shows the run-mode badge for a workflow on the compiled engine', () => {
+			setUpCompiledEngine(false);
+			const { getByTestId, getByText } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+
+			expect(getByTestId('compiled-engine-node-badge')).toHaveAttribute('data-run-mode', 'native');
+			expect(getByText('Test Node').closest('.node')).not.toHaveClass('error');
+		});
+
+		it('marks a node with a compile error', () => {
+			setUpCompiledEngine(true);
+			const { getByText } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+
+			expect(getByText('Test Node').closest('.node')).toHaveClass('error');
+		});
+
+		it('shows no badge for a workflow on another engine', () => {
+			const { queryByTestId } = renderComponent({
+				global: { stubs, provide: { ...createCanvasNodeProvide() } },
+			});
+
+			expect(queryByTestId('compiled-engine-node-badge')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should render node correctly', () => {
 		const { getByTestId } = renderComponent({
 			global: {

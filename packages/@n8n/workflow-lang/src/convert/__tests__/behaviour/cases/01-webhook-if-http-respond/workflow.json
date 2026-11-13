@@ -1,0 +1,169 @@
+{
+	"name": "Order router",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "orders",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "edit-fields",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "a",
+							"name": "total",
+							"value": "={{ $json.body.qty * $json.body.price }}",
+							"type": "number"
+						},
+						{
+							"id": "b",
+							"name": "customer",
+							"value": "={{ $json.body.customer }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "is-big",
+			"name": "Is big",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [400, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.total }}",
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							},
+							"rightValue": 100
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "notify",
+			"name": "Notify",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [600, -100],
+			"parameters": {
+				"method": "POST",
+				"url": "=http://127.0.0.1:47123/notify/{{ $json.customer }}",
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "total",
+							"value": "={{ $json.total }}"
+						},
+						{
+							"name": "orderOf",
+							"value": "={{ $('Webhook').item.json.body.customer }}"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [800, 0],
+			"parameters": {
+				"respondWith": "json",
+				"responseBody": "={ \"ok\": true, \"customer\": \"{{ $('Edit Fields').item.json.customer }}\" }",
+				"options": {
+					"responseCode": 201
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Is big",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is big": {
+			"main": [
+				[
+					{
+						"node": "Notify",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Notify": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

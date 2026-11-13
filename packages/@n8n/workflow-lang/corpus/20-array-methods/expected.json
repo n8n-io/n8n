@@ -1,0 +1,60 @@
+{
+	"status": "ok",
+	"result": {
+		"totals": [7, 10, 1],
+		"sum": 18,
+		"big": ["A", "C"],
+		"anyFree": false,
+		"allTagged": false,
+		"firstCheap": "A",
+		"idx": 2,
+		"tags": ["x", "y", "z"],
+		"nested": [1, 2, 3, 4, [5]],
+		"seen": {
+			"A": 0,
+			"B": 1,
+			"C": 2
+		},
+		"stack": [0, 2, 3, 4],
+		"popped": 5,
+		"shifted": 1,
+		"post": 0,
+		"pre": 2,
+		"counter": 6.25,
+		"misc": {
+			"at": [4, null],
+			"concat": [0, 2, 3, 4, 9, 10],
+			"join": "0-2-3-4",
+			"includes": [true, true, -1],
+			"slice": [2, 3],
+			"typeofs": [
+				"number",
+				"string",
+				"undefined",
+				"object",
+				"object",
+				"object",
+				"number",
+				"function"
+			],
+			"isArray": [true, false],
+			"bool": [false, true, true, "null", "1,2,3"],
+			"cmp": [true, true, true, false, true]
+		}
+	},
+	"effects": [
+		{
+			"step": "Report",
+			"kind": "http",
+			"args": {
+				"name": "Report",
+				"method": "POST",
+				"url": "https://api.example.com",
+				"body": {
+					"sum": 18,
+					"tags": ["x", "y", "z"]
+				}
+			}
+		}
+	]
+}

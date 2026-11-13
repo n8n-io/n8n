@@ -1,0 +1,12 @@
+{
+	"status": "ok",
+	"result": {
+		"length": 1048576,
+		"keptLength": 16016,
+		"forkTail": "ef!",
+		"afterFork": "0123",
+		"sum": 17952,
+		"unicode": 113
+	},
+	"effects": []
+}

@@ -1,0 +1,8 @@
+{
+	"description": "Legacy Function and Function Item code: computed $node names, getBinaryData and setBinaryData",
+	"trigger": {
+		"body": {
+			"names": ["a", "b"]
+		}
+	}
+}

@@ -1,0 +1,24 @@
+{
+	"description": "Expression forms in Edit Fields: methods, templates, $input, $('Node'), type rules, dot notation, include except",
+	"trigger": {
+		"body": {
+			"name": "ann",
+			"tags": ["x", "y"],
+			"count": "42",
+			"flag": "true",
+			"metaText": "{\"a\":1}",
+			"city": "Rome",
+			"items": [
+				{
+					"qty": 2
+				},
+				{
+					"qty": 5
+				}
+			]
+		},
+		"query": {
+			"lang": "it"
+		}
+	}
+}

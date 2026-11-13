@@ -1,0 +1,29 @@
+{
+	"description": "Split Out \u2192 Remove Duplicates \u2192 Aggregate \u2192 Set \u2192 Respond",
+	"trigger": {
+		"body": {
+			"events": [
+				{
+					"userId": "u1",
+					"score": 3
+				},
+				{
+					"userId": "u2",
+					"score": 9
+				},
+				{
+					"userId": "u1",
+					"score": 4
+				},
+				{
+					"userId": "u3",
+					"score": 1
+				},
+				{
+					"userId": "u2",
+					"score": 2
+				}
+			]
+		}
+	}
+}

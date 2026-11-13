@@ -1,0 +1,29 @@
+{
+	"description": "If, Filter and Switch with regex, notRegex and date conditions run whole in the fallback host",
+	"trigger": {
+		"body": {
+			"rows": [
+				{
+					"code": "AB-123",
+					"date": "2024-03-01T10:00:00.000Z"
+				},
+				{
+					"code": "CD-456",
+					"date": "2023-12-31T10:00:00.000Z"
+				},
+				{
+					"code": "bad",
+					"date": "2024-05-05T00:00:00.000Z"
+				},
+				{
+					"code": "x-1",
+					"date": "2024-05-05T00:00:00.000Z"
+				},
+				{
+					"code": "XY-789",
+					"date": "2024-07-07T00:00:00.000Z"
+				}
+			]
+		}
+	}
+}

@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity, type WorkflowHistory } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
 import {
 	Workflow,
@@ -16,6 +16,7 @@ import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8
 import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { NodeTypes } from '@/node-types';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -117,6 +118,18 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
+
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		if (compiledEngine.handles(workflowData)) {
+			// `wfrt` serves the webhooks of a compiled workflow and writes the response.
+			await compiledEngine.get().forwardWebhook({
+				request,
+				response,
+				workflowId: webhook.workflowId,
+				path,
+			});
+			return { noWebhookResponse: true };
+		}
 		const { nodes, connections, versionId } = publishedVersion;
 
 		// Use the published revision for both execution content and metadata.

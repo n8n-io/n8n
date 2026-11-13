@@ -1,0 +1,16 @@
+{
+	"trigger": { "body": {} },
+	"now": 1700000000000,
+	"seed": 3,
+	"execution": {
+		"mode": "test",
+		"id": "1234",
+		"resumeUrlBase": "https://n8n.example.com/webhook-waiting",
+		"resumeFormUrlBase": "https://n8n.example.com/form-waiting"
+	},
+	"vars": { "apiHost": "https://api.example.com", "region": "eu" },
+	"effects": {
+		"Notify": [{ "status": 200, "headers": {}, "body": {} }],
+		"Approve": [{ "approved": true }]
+	}
+}

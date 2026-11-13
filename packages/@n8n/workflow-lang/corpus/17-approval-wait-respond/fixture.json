@@ -1,0 +1,10 @@
+{
+	"trigger": { "body": { "amount": 250, "requester": "Mia" }, "headers": {}, "query": {} },
+	"now": 1700000000000,
+	"seed": "12345678901234567890",
+	"effects": {
+		"Manager approval": [
+			{ "approved": true, "by": "boss@example.com", "data": { "comment": "ok, once" } }
+		]
+	}
+}

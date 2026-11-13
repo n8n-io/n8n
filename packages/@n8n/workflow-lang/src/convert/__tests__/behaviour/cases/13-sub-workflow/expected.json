@@ -1,0 +1,57 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Greet each", "Count all"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"people": [
+							{
+								"name": "ann"
+							},
+							{
+								"name": "bob"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"name": "ann"
+				},
+				{
+					"name": "bob"
+				}
+			]
+		],
+		"Greet each": [
+			[
+				{
+					"name": "ann",
+					"greeting": "hi ann"
+				},
+				{
+					"name": "bob",
+					"greeting": "hi bob"
+				}
+			]
+		],
+		"Count all": [
+			[
+				{
+					"name": ["ann", "bob"]
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

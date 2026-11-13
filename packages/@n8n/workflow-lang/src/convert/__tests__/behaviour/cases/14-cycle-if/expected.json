@@ -1,0 +1,71 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Init",
+		"Increment",
+		"Below 3",
+		"Increment",
+		"Below 3",
+		"Increment",
+		"Below 3",
+		"Done"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {}
+				}
+			]
+		],
+		"Init": [
+			[
+				{
+					"count": 0
+				}
+			]
+		],
+		"Increment": [
+			[
+				{
+					"count": 1
+				},
+				{
+					"count": 2
+				},
+				{
+					"count": 3
+				}
+			]
+		],
+		"Below 3": [
+			[
+				{
+					"count": 1
+				},
+				{
+					"count": 2
+				}
+			],
+			[
+				{
+					"count": 3
+				}
+			]
+		],
+		"Done": [
+			[
+				{
+					"count": 3
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

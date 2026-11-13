@@ -1,0 +1,35 @@
+{
+	"description": "schedule \u2192 HTTP \u2192 Split Out \u2192 IF \u2192 two Sets \u2192 Merge (append) \u2192 Aggregate",
+	"trigger": {
+		"scheduledAt": 1700000000000
+	},
+	"http": {
+		"Get orders": {
+			"path": "orders",
+			"responses": [
+				{
+					"body": {
+						"orders": [
+							{
+								"id": 1,
+								"amount": 5
+							},
+							{
+								"id": 2,
+								"amount": 50
+							},
+							{
+								"id": 3,
+								"amount": 12
+							},
+							{
+								"id": 4,
+								"amount": 1
+							}
+						]
+					}
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,25 @@
+{
+	"description": "Switch version 2, If version 1, Merge choose branch, and a Set node that runs in the fallback host because `.hash()` does not translate",
+	"trigger": {
+		"body": {
+			"items": [
+				{
+					"kind": "a",
+					"n": 7
+				},
+				{
+					"kind": "b1",
+					"n": 1
+				},
+				{
+					"kind": "a",
+					"n": 2
+				},
+				{
+					"kind": "zz",
+					"n": 0
+				}
+			]
+		}
+	}
+}

@@ -1,0 +1,19 @@
+{
+	"trigger": { "body": { "repo": "n8n-io/n8n" }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"List issues": [
+			{
+				"status": 200,
+				"headers": { "content-type": "application/json" },
+				"body": [{ "number": 12, "title": "Bug" }, { "number": 13, "title": "Feature" }]
+			}
+		],
+		"Create comment": [
+			{ "$error": "502 bad gateway" },
+			{ "status": 201, "headers": { "content-type": "application/json" }, "body": { "id": 991 } }
+		],
+		"Ping": [{ "$error": "ECONNREFUSED" }]
+	}
+}

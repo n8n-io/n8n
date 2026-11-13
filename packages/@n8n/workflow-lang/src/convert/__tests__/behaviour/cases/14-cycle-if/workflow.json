@@ -1,0 +1,151 @@
+{
+	"name": "Count up",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "count",
+				"options": {}
+			}
+		},
+		{
+			"id": "init",
+			"name": "Init",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [200, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "count",
+							"name": "count",
+							"value": "0",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "increment",
+			"name": "Increment",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "count",
+							"name": "count",
+							"value": "={{ $json.count + 1 }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "below-3",
+			"name": "Below 3",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [600, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c",
+							"leftValue": "={{ $json.count }}",
+							"rightValue": 3,
+							"operator": {
+								"type": "number",
+								"operation": "lt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "done",
+			"name": "Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, 100],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Init",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Init": {
+			"main": [
+				[
+					{
+						"node": "Increment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Increment": {
+			"main": [
+				[
+					{
+						"node": "Below 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Below 3": {
+			"main": [
+				[
+					{
+						"node": "Increment",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

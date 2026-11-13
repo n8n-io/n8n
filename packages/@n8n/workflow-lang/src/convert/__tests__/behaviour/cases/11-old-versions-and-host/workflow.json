@@ -1,0 +1,193 @@
+{
+	"name": "Old node versions",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "old",
+				"responseMode": "onReceived",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			}
+		},
+		{
+			"id": "route",
+			"name": "Route",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"dataType": "string",
+				"value1": "={{ $json.kind }}",
+				"rules": {
+					"rules": [
+						{
+							"value2": "a"
+						},
+						{
+							"operation": "startsWith",
+							"value2": "b",
+							"output": 1
+						},
+						{
+							"value2": "c",
+							"output": 2
+						}
+					]
+				},
+				"fallbackOutput": -1
+			}
+		},
+		{
+			"id": "old-if",
+			"name": "Old IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [600, -100],
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.n }}",
+							"operation": "larger",
+							"value2": 5
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "hash",
+			"name": "Hash",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "h",
+							"name": "hash",
+							"value": "={{ $json.kind.hash('md5') }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "b-items",
+			"name": "B items",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [800, 100],
+			"parameters": {}
+		},
+		{
+			"id": "choose",
+			"name": "Choose",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [1000, 0],
+			"parameters": {
+				"mode": "chooseBranch",
+				"useDataOfInput": 1
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Route",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route": {
+			"main": [
+				[
+					{
+						"node": "Old IF",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "B items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Old IF": {
+			"main": [
+				[
+					{
+						"node": "Hash",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Hash": {
+			"main": [
+				[
+					{
+						"node": "Choose",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"B items": {
+			"main": [
+				[
+					{
+						"node": "Choose",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

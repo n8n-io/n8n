@@ -1,0 +1,105 @@
+{
+	"name": "Wait then answer",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "wait",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "wait",
+			"name": "Wait",
+			"type": "n8n-nodes-base.wait",
+			"typeVersion": 1.1,
+			"position": [200, 0],
+			"parameters": {
+				"amount": 1,
+				"unit": "seconds"
+			}
+		},
+		{
+			"id": "done",
+			"name": "Done",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "waited",
+							"name": "waited",
+							"value": "=true",
+							"type": "boolean"
+						},
+						{
+							"id": "when",
+							"name": "when",
+							"value": "={{ $('Webhook').item.json.body.id }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "=done {{ $json.when }}",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Wait",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Wait": {
+			"main": [
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Done": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -26,8 +26,11 @@ import type {
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
+	INodeParameters,
 	INodeType,
+	INodeTypeDescription,
 	INodeTypes,
+	IWorkflowSettings,
 	IRunData,
 	ISourceData,
 	ITaskDataConnections,
@@ -35,6 +38,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	createRunExecutionData,
+	NodeHelpers,
 	UnexpectedError,
 	Workflow,
 	WorkflowExecuteModeList,
@@ -176,16 +180,113 @@ export function toV1Workflow(
 	node: INode,
 	execution: V1Execution,
 	nodeTypes: INodeTypes,
+	settings?: IWorkflowSettings,
 ): Workflow {
 	const siblingNodes = execution.nodes.filter((executionNode) => executionNode.id !== node.id);
+	const nodes = [node, ...siblingNodes];
+	const tolerant = tolerantNodeTypes(nodeTypes);
+	// The `Workflow` constructor adds the parameter defaults of each node. Each step
+	// builds its own `Workflow`, so the defaults come from a cache here, and the
+	// constructor gets no node types and skips them.
+	for (const each of nodes) addParameterDefaults(each, tolerant);
 
-	return new Workflow({
+	const workflow = new Workflow({
 		id: workflowId,
-		nodes: [node, ...siblingNodes],
+		nodes,
 		connections: execution.connections,
 		active: false,
-		nodeTypes: tolerantNodeTypes(nodeTypes),
+		nodeTypes: NO_NODE_TYPES,
+		// The time zone of `$now` and the rest, as the v1 workflow has them.
+		...(settings !== undefined ? { settings } : {}),
 	});
+	workflow.nodeTypes = tolerant;
+	return workflow;
+}
+
+/** Node types that know no type: the `Workflow` constructor then keeps the parameters as they are. */
+const NO_NODE_TYPES: INodeTypes = {
+	getByName: () => undefined as unknown as INodeType,
+	getByNameAndVersion: () => undefined as unknown as INodeType,
+	getKnownTypes: () => ({}),
+};
+
+function isPlainObject(value: object): boolean {
+	const proto: unknown = Object.getPrototypeOf(value);
+	return proto === Object.prototype || proto === null;
+}
+
+/** True for JSON-like data: primitives, `undefined`, arrays and plain objects. */
+function isPlain(value: unknown): boolean {
+	if (typeof value === 'function' || typeof value === 'symbol') return false;
+	if (typeof value !== 'object' || value === null) return true;
+	if (Array.isArray(value)) return value.every(isPlain);
+	// A `__proto__` key would set the prototype of the copy, so such data stays out.
+	return (
+		isPlainObject(value) &&
+		!Object.hasOwn(value, '__proto__') &&
+		Object.values(value).every(isPlain)
+	);
+}
+
+/** A deep copy of data that `isPlain` accepted. It is faster than `structuredClone` for small values. */
+function copyPlain<T>(value: T): T {
+	if (typeof value !== 'object' || value === null) return value;
+	if (Array.isArray(value)) {
+		const list: unknown[] = value.map(copyPlain);
+		return list as T;
+	}
+	const out: Record<string, unknown> = {};
+	for (const [key, entry] of Object.entries(value)) out[key] = copyPlain(entry);
+	return out as T;
+}
+
+/** The most parameter sets that the cache keeps for one node type. */
+const DEFAULTS_PER_NODE_TYPE = 256;
+
+/**
+ * Parameters with their defaults, by node type description, then by type
+ * version and the JSON of the parameters. `NodeHelpers.getNodeParameters` is a
+ * pure function of these, and it costs up to some hundred µs for a large node.
+ */
+const parametersWithDefaults = new WeakMap<INodeTypeDescription, Map<string, INodeParameters>>();
+
+/**
+ * Sets the parameters of the node to the value that the `Workflow` constructor
+ * gives them. The node gets its own copy, because node code can change it.
+ */
+function addParameterDefaults(node: INode, nodeTypes: INodeTypes): void {
+	const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+	// As the constructor: a node of an unknown type keeps its parameters.
+	if (nodeType === undefined) return;
+	const { description } = nodeType;
+	let byParameters = parametersWithDefaults.get(description);
+	if (!byParameters) {
+		byParameters = new Map();
+		parametersWithDefaults.set(description, byParameters);
+	}
+	const key = `${node.typeVersion}\u0000${JSON.stringify(node.parameters)}`;
+	const cached = byParameters.get(key);
+	if (cached) {
+		node.parameters = copyPlain(cached);
+		return;
+	}
+	const resolved =
+		NodeHelpers.getNodeParameters(
+			description.properties,
+			node.parameters,
+			true,
+			false,
+			node,
+			description,
+		) ?? {};
+	node.parameters = resolved;
+	if (!isPlain(resolved)) return; // Only plain data goes in the cache.
+	const copy = copyPlain(resolved);
+	if (byParameters.size >= DEFAULTS_PER_NODE_TYPE) {
+		const oldest = byParameters.keys().next();
+		if (!oldest.done) byParameters.delete(oldest.value);
+	}
+	byParameters.set(key, copy);
 }
 
 /** An older graph carries no config, and graphs are immutable, so a stub stands in. */
@@ -256,6 +357,7 @@ export function toV1Node(graphNode: GraphNode, config: V1NodeStepConfig): INode 
 		continueOnFail: config.continueOnFail,
 	};
 	if (config.credentials !== undefined) node.credentials = config.credentials;
+	if (config.onError !== undefined) node.onError = config.onError;
 	return node;
 }
 
@@ -377,8 +479,13 @@ export function toV1ExecuteContext({
 }: CreateExecuteContextParams): DurableWaitExecuteContext {
 	const firstInput = itemsByConnection[0] ?? [];
 	const connectionInputData = firstInput.length > 0 ? firstInput : [{ json: {} }];
+	// A node with several inputs (Merge) reads an input that got no items as empty, as in v1;
+	// the empty item stands in only for a node with one input.
 	const inputData: ITaskDataConnections = {
-		main: [connectionInputData, ...itemsByConnection.slice(1)],
+		main: [
+			itemsByConnection.length > 1 ? firstInput : connectionInputData,
+			...itemsByConnection.slice(1),
+		],
 	};
 
 	const runExecutionData = createRunExecutionData({

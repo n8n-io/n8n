@@ -67,6 +67,12 @@ import { useDynamicCredentials } from '@/features/resolvers/composables/useDynam
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import {
+	COMPILED_ENGINE_MODULE,
+	COMPILED_ENGINE_TYPE,
+	isCompiledEngineType,
+	type EngineType,
+} from '@/features/workflows/compiledEngine/compiledEngine.constants';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
@@ -256,20 +262,40 @@ const isDataRedactionLicensed = computed(
 
 const isRedactionSettingVisible = computed(() => settingsStore.isModuleActive('redaction'));
 
-const isEngineTypeSettingVisible = computed(() => settingsStore.isModuleActive('engine-v2'));
+const isEngineV2ModuleActive = computed(() => settingsStore.isModuleActive('engine-v2') === true);
+const isCompiledEngineModuleActive = computed(
+	() => settingsStore.isModuleActive(COMPILED_ENGINE_MODULE) === true,
+);
+const isEngineTypeSettingVisible = computed(
+	() => isEngineV2ModuleActive.value || isCompiledEngineModuleActive.value,
+);
 
-const engineTypeOptions = computed(() => [
-	{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
-	{ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') },
-]);
+// Each engine shows only when its backend module is active. The stored value always stays
+// selectable, so that the select does not show a raw value.
+const engineTypeOptions = computed(() => {
+	const stored = workflowSettings.value.engineType;
+	const options: Array<{ key: EngineType; value: string }> = [
+		{ key: 'v1', value: i18n.baseText('workflowSettings.engineType.v1') },
+	];
+	if (isEngineV2ModuleActive.value || stored === 'v2') {
+		options.push({ key: 'v2', value: i18n.baseText('workflowSettings.engineType.v2') });
+	}
+	if (isCompiledEngineModuleActive.value || isCompiledEngineType(stored)) {
+		options.push({
+			key: COMPILED_ENGINE_TYPE,
+			value: i18n.baseText('workflowSettings.engineType.compiled'),
+		});
+	}
+	return options;
+});
 
 // The backend runs a workflow without `engineType` on v1. Show that as v1, but write the
 // value only when the user selects an option.
 const engineType = computed({
-	get(): 'v1' | 'v2' {
+	get(): EngineType {
 		return workflowSettings.value.engineType ?? 'v1';
 	},
-	set(value: 'v1' | 'v2') {
+	set(value: EngineType) {
 		workflowSettings.value.engineType = value;
 	},
 });

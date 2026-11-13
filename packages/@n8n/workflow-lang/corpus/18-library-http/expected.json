@@ -1,0 +1,65 @@
+{
+	"status": "ok",
+	"result": {
+		"titles": ["Bug", "Feature"],
+		"commentId": 991,
+		"failure": "NodeError at Ping: ECONNREFUSED"
+	},
+	"effects": [
+		{
+			"step": "List issues",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://api.github.com/repos/n8n-io/n8n/issues",
+				"headers": {},
+				"qs": {
+					"state": "open"
+				},
+				"credential": "github"
+			}
+		},
+		{
+			"step": "Create comment",
+			"kind": "http",
+			"args": {
+				"method": "POST",
+				"url": "https://api.github.com/repos/n8n-io/n8n/issues/12/comments",
+				"headers": {
+					"accept": "application/json"
+				},
+				"qs": {},
+				"body": {
+					"body": "Seen 2 issues"
+				},
+				"credential": "github"
+			}
+		},
+		{
+			"step": "Create comment",
+			"kind": "http",
+			"args": {
+				"method": "POST",
+				"url": "https://api.github.com/repos/n8n-io/n8n/issues/12/comments",
+				"headers": {
+					"accept": "application/json"
+				},
+				"qs": {},
+				"body": {
+					"body": "Seen 2 issues"
+				},
+				"credential": "github"
+			}
+		},
+		{
+			"step": "Ping",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://status.example.com",
+				"headers": {},
+				"qs": {}
+			}
+		}
+	]
+}

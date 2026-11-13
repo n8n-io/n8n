@@ -1,0 +1,10 @@
+{
+	"trigger": {
+		"body": { "text": "From 2024-03 to 2024-11-05, then 2025-01.", "list": ["a", null, "b"] },
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": { "Store": [{ "status": 201, "headers": {}, "body": {} }] }
+}

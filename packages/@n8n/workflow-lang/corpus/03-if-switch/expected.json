@@ -1,0 +1,58 @@
+{
+	"status": "ok",
+	"result": ["1:urgent-billing", "2:normal-untagged", "3:backlog", "4:urgent"],
+	"effects": [
+		{
+			"step": "Page on-call",
+			"kind": "http",
+			"args": {
+				"name": "Page on-call",
+				"method": "POST",
+				"url": "https://pager.example.com",
+				"body": {
+					"id": 1
+				}
+			}
+		},
+		{
+			"step": "Classify",
+			"kind": "code",
+			"args": {
+				"name": "Classify",
+				"code": "return items",
+				"items": [
+					{
+						"id": 3,
+						"tags": ["ui"]
+					}
+				]
+			}
+		},
+		{
+			"step": "Page on-call",
+			"kind": "http",
+			"args": {
+				"name": "Page on-call",
+				"method": "POST",
+				"url": "https://pager.example.com",
+				"body": {
+					"id": 4
+				}
+			}
+		},
+		{
+			"step": "Classify",
+			"kind": "code",
+			"args": {
+				"name": "Classify",
+				"code": "return items",
+				"items": [
+					{
+						"id": 4,
+						"tags": ["api", "auth"]
+					}
+				]
+			}
+		}
+	]
+}

@@ -1,0 +1,123 @@
+{
+	"status": "ok",
+	"result": {
+		"big": 2,
+		"small": 1
+	},
+	"effects": [
+		{
+			"step": "Price",
+			"kind": "http",
+			"args": {
+				"name": "Price",
+				"method": "POST",
+				"url": "https://prices.example.com/quote",
+				"body": {
+					"ids": [1, 3]
+				}
+			}
+		}
+	],
+	"trace": [
+		{
+			"step": "Webhook",
+			"items": [
+				{
+					"json": {
+						"id": 1,
+						"total": 250
+					}
+				},
+				{
+					"json": {
+						"id": 2,
+						"total": 40,
+						"note": "gift"
+					}
+				},
+				{
+					"json": {
+						"id": 3,
+						"total": 100
+					}
+				}
+			]
+		},
+		{
+			"step": "IF",
+			"items": [
+				[
+					{
+						"json": {
+							"id": 1,
+							"total": 250
+						}
+					},
+					{
+						"json": {
+							"id": 3,
+							"total": 100
+						}
+					}
+				],
+				[
+					{
+						"json": {
+							"id": 2,
+							"total": 40,
+							"note": "gift"
+						}
+					}
+				]
+			]
+		},
+		{
+			"step": "Set",
+			"items": [
+				{
+					"json": {
+						"id": 1,
+						"total": 250,
+						"quote": {
+							"currency": "EUR",
+							"rate": 1.08
+						},
+						"n": 0
+					}
+				},
+				{
+					"json": {
+						"id": 3,
+						"total": 100,
+						"quote": {
+							"currency": "EUR",
+							"rate": 1.08
+						},
+						"n": 1
+					}
+				}
+			]
+		},
+		{
+			"step": "Edge",
+			"items": null
+		},
+		{
+			"step": "Edge",
+			"items": [
+				null,
+				null,
+				null,
+				{
+					"b": "ü"
+				}
+			]
+		},
+		{
+			"step": "Loop 2",
+			"items": {
+				"count": 2
+			}
+		}
+	]
+}

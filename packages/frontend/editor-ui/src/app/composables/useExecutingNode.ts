@@ -1,5 +1,4 @@
 import { ref, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
-import type { IWorkflowSettings } from 'n8n-workflow';
 
 interface ExecutingNodeRefs {
 	executingNode: Ref<string[]>;
@@ -92,18 +91,23 @@ function createConcurrentNodeStrategy({
 	};
 }
 
+/** Engines that can run more than one node at a time. */
+const CONCURRENT_ENGINE_TYPES = new Set(['v2', 'compiled']);
+
 /**
  * Tracks the nodes rendered as executing (the per-node loading spinner).
  *
- * A v1 run shows only the latest node. An engine v2 run shows every node that
- * is running. The first node of a run reads `engineType` to select the
+ * A v1 run shows only the latest node. An engine v2 run and a compiled-engine
+ * run show every node that is running, because both engines can run nodes in
+ * parallel. The first node of a run reads `engineType` to select the
  * strategy. The strategy stays fixed until `clearNodeExecutionQueue`.
  *
  * `executingNode` stays an array for its consumers' sake. The push handlers
  * pass each event's `executionIndex`, which pairs a run's start and finish.
  */
 export function useExecutingNode(
-	options: { engineType?: MaybeRefOrGetter<IWorkflowSettings['engineType']> } = {},
+	// A plain string, so that engine types newer than `IWorkflowSettings` also select a strategy.
+	options: { engineType?: MaybeRefOrGetter<string | null | undefined> } = {},
 ) {
 	const executingNode = ref<string[]>([]);
 	/**
@@ -115,10 +119,9 @@ export function useExecutingNode(
 	let strategy: ExecutingNodeStrategy | null = null;
 
 	function addExecutingNode(nodeName: string, sequenceNumber: number, executionIndex?: number) {
-		strategy ??=
-			toValue(options.engineType) === 'v2'
-				? createConcurrentNodeStrategy({ executingNode, lastAddedExecutingNode })
-				: createLatestNodeStrategy({ executingNode, lastAddedExecutingNode });
+		strategy ??= CONCURRENT_ENGINE_TYPES.has(toValue(options.engineType) ?? '')
+			? createConcurrentNodeStrategy({ executingNode, lastAddedExecutingNode })
+			: createLatestNodeStrategy({ executingNode, lastAddedExecutingNode });
 		strategy.add(nodeName, sequenceNumber, executionIndex);
 	}
 

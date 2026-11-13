@@ -4223,7 +4223,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	engineType?: 'v1' | 'v2';
+	engineType?: 'v1' | 'v2' | 'compiled';
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';

@@ -57,6 +57,7 @@ export const LOG_SCOPES = [
 	'enqueued-execution-recovery',
 	'memory-guard',
 	'engine-v2',
+	'compiled-engine',
 	'policy',
 	'activity-log',
 	'instance-reporting',

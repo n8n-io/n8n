@@ -1,0 +1,21 @@
+{
+	"trigger": {
+		"body": {
+			"user": { "name": "Lin", "roles": ["admin", "dev", "ops"] },
+			"extra": { "a": 1, "b": 2, "c": 3 }
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Load": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": { "items": [{ "id": 7, "tags": ["t"] }, { "id": 8 }] }
+			}
+		]
+	}
+}

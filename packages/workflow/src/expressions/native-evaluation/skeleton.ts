@@ -1,4 +1,4 @@
-import type { SimpleNode } from './grammar';
+import type { SimpleNode, TimeArg } from './grammar';
 
 // The expression's shape without its user data, for verify-mode reports.
 // The grammar is closed, so every method, root and operator here comes from
@@ -17,6 +17,10 @@ export function skeletonOf(node: SimpleNode): string {
 		case 'nodeRef':
 			if (node.ref === 'input') return '$input';
 			return node.ref === 'node' ? '$(<str>)' : '$node[<str>]';
+		case 'timeNow':
+			return 'DateTime.now()';
+		case 'timeOp':
+			return `${skeletonOf(node.receiver)}.${node.op}(${node.args.map(timeArgSkeleton).join(', ')})`;
 		case 'undefined':
 			return 'undefined';
 		case 'param':
@@ -43,6 +47,10 @@ export function skeletonOf(node: SimpleNode): string {
 
 const access = (optional: boolean) => (optional ? '?.' : '.');
 
+// Duration keys are Luxon unit names, but the parser takes any safe key, so they are masked too.
+const timeArgSkeleton = (arg: TimeArg): string =>
+	arg.kind === 'duration' ? `{${arg.fields.map(() => '<id>: <num>').join(', ')}}` : skeletonOf(arg);
+
 // n8n's own item keys. `length` tells a string or array read apart.
 const KNOWN_KEYS = new Set(['json', 'binary', 'length']);
 
@@ -50,7 +58,12 @@ const KNOWN_KEYS = new Set(['json', 'binary', 'length']);
 // key is a field name from workflow data.
 function memberKey(node: Extract<SimpleNode, { kind: 'member' }>): string {
 	if (typeof node.key === 'number') return '<num>';
-	if (node.object.kind === 'nodeRef' || node.object.kind === 'timeRoot') return node.key;
+	const fromAllowlist =
+		node.object.kind === 'nodeRef' ||
+		node.object.kind === 'timeRoot' ||
+		node.object.kind === 'timeNow' ||
+		node.object.kind === 'timeOp';
+	if (fromAllowlist) return node.key;
 	return KNOWN_KEYS.has(node.key) ? node.key : '<id>';
 }
 
@@ -60,6 +73,8 @@ function memberKey(node: Extract<SimpleNode, { kind: 'member' }>): string {
 export function readsClockOrParameter(node: SimpleNode): boolean {
 	return (
 		node.kind === 'timeRoot' ||
+		node.kind === 'timeNow' ||
+		node.kind === 'timeOp' ||
 		(node.kind === 'root' && node.name === '$parameter') ||
 		childrenOf(node).some(readsClockOrParameter)
 	);

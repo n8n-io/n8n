@@ -1,0 +1,171 @@
+; hash 9c1d24e5e1da4fbe6ffbaede2a58817572d010e4b3cc69f140749052902838e4
+; native true
+; meta {"compilerVersion":"0.1.0","sourceHash":"ce5d20e22d3395ac73729f7d447a473832720a177de116fbfa5dfec75a915fde","triggers":[{"kind":"webhook","path":"map"}],"credentials":{},"durability":"full","triggerHeaders":false}
+
+steps:
+  0: http "Start" id="Start" type=n8n-nodes-base.httpRequest
+  1: http "Finish" id="Finish" type=n8n-nodes-base.httpRequest
+  2: http "Check" id="Check" type=n8n-nodes-base.httpRequest idempotent
+
+paths:
+  body.jobs.map
+  body.jobs[].id
+
+fn0 run params=1 regs=12 caps=0 async
+  try [19, 40) -> @41 catch r3
+     0  LOADUNDEF r5
+     1  NEWARR r6
+     2  LOADUNDEF r7
+     3  GETPROP r9, r0, "body"
+     4  GETPROP r8, r9, "jobs"
+     5  CLOSURE r9, fn1 <anon@17>, r0
+     6  LOADI r10, 0
+     7  GETPROP r11, r8, "length"
+     8  LT r11, r10, r11
+     9  JF r11, @16
+    10  GETELEM r11, r8, r10
+    11  FORK r11, r9, r11
+    12  PUSH r6, r11
+    13  LOADI r11, 1
+    14  ADD r10, r10, r11
+    15  JMP @7
+    16  JOIN r1, r6
+    17  LOADUNDEF r5
+    18  LOADS r2, ""
+    19  NEWARR r6
+    20  LOADUNDEF r7
+    21  NEWARR r8
+    22  LOADS r9, "x"
+    23  PUSH r8, r9
+    24  LOADS r9, "y"
+    25  PUSH r8, r9
+    26  LOADS r9, "z"
+    27  PUSH r8, r9
+    28  CLOSURE r9, fn2 <anon@41>, r0
+    29  LOADI r10, 0
+    30  GETPROP r11, r8, "length"
+    31  LT r11, r10, r11
+    32  JF r11, @39
+    33  GETELEM r11, r8, r10
+    34  FORK r11, r9, r11
+    35  PUSH r6, r11
+    36  LOADI r11, 1
+    37  ADD r10, r10, r11
+    38  JMP @30
+    39  JOIN r5, r6
+    40  JMP @43
+    41  GETPROP r2, r3, "message"
+    42  JMP @43
+    43  LOADUNDEF r5
+    44  NEWARR r6
+    45  LOADUNDEF r7
+    46  NEWARR r8
+    47  CLOSURE r9, fn3 <anon@50>, r0
+    48  LOADI r10, 0
+    49  GETPROP r11, r8, "length"
+    50  LT r11, r10, r11
+    51  JF r11, @58
+    52  GETELEM r11, r8, r10
+    53  FORK r11, r9, r11
+    54  PUSH r6, r11
+    55  LOADI r11, 1
+    56  ADD r10, r10, r11
+    57  JMP @49
+    58  JOIN r4, r6
+    59  NEWOBJ r5
+    60  SETPROP r5, "results", r1
+    61  SETPROP r5, "firstError", r2
+    62  SETPROP r5, "empty", r4
+    63  RET r5
+    64  LOADUNDEF r5
+    65  RET r5
+
+fn1 anon@17 params=1 regs=13 caps=0 async
+  try [16, 34) -> @35 catch r4
+     0  LOADUNDEF r5
+     1  NEWOBJ r6
+     2  LOADS r7, "Start"
+     3  SETPROP r6, "name", r7
+     4  LOADS r7, "POST"
+     5  SETPROP r6, "method", r7
+     6  LOADS r7, "https://jobs.example.com"
+     7  SETPROP r6, "url", r7
+     8  NEWOBJ r7
+     9  GETPROP r8, r0, "id"
+    10  SETPROP r7, "id", r8
+    11  SETPROP r6, "body", r7
+    12  LOADI r7, 0
+    13  SUSPEND r1, http, step r7, args r6
+        ; resume step=0 live { r0=job: Job }
+    14  LOADUNDEF r5
+    15  LOADS r2, "unknown"
+    16  LOADUNDEF r5
+    17  NEWOBJ r6
+    18  LOADS r7, "Finish"
+    19  SETPROP r6, "name", r7
+    20  LOADS r7, "POST"
+    21  SETPROP r6, "method", r7
+    22  LOADS r9, "https://jobs.example.com/"
+    23  MOV r8, r9
+    24  GETPROP r12, r1, "body"
+    25  GETPROP r11, r12, "token"
+    26  TOSTR r10, r11
+    27  ADD r8, r8, r10
+    28  MOV r7, r8
+    29  SETPROP r6, "url", r7
+    30  LOADI r7, 1
+    31  SUSPEND r3, http, step r7, args r6
+        ; resume step=1 live { r0=job: Job }
+    32  GETPROP r5, r3, "body"
+    33  GETPROP r2, r5, "state"
+    34  JMP @42
+    35  LOADS r6, "failed: "
+    36  MOV r5, r6
+    37  GETPROP r8, r4, "message"
+    38  TOSTR r7, r8
+    39  ADD r5, r5, r7
+    40  MOV r2, r5
+    41  JMP @42
+    42  GETPROP r8, r0, "id"
+    43  TOSTR r7, r8
+    44  MOV r6, r7
+    45  LOADS r9, "="
+    46  ADD r6, r6, r9
+    47  TOSTR r9, r2
+    48  ADD r6, r6, r9
+    49  MOV r5, r6
+    50  RET r5
+    51  LOADUNDEF r5
+    52  RET r5
+
+fn2 anon@41 params=1 regs=7 caps=0 async
+     0  NEWOBJ r2
+     1  LOADS r3, "Check"
+     2  SETPROP r2, "name", r3
+     3  LOADS r3, "GET"
+     4  SETPROP r2, "method", r3
+     5  LOADS r5, "https://check.example.com/"
+     6  MOV r4, r5
+     7  TOSTR r6, r0
+     8  ADD r4, r4, r6
+     9  MOV r3, r4
+    10  SETPROP r2, "url", r3
+    11  LOADI r3, 2
+    12  SUSPEND r1, http, step r3, args r2
+        ; resume step=2 live { r0=k: string }
+    13  LOADS r2, "x"
+    14  SNE r1, r0, r2
+    15  JF r1, @23
+    16  LOADS r4, "bad "
+    17  MOV r3, r4
+    18  TOSTR r5, r0
+    19  ADD r3, r3, r5
+    20  MOV r2, r3
+    21  NEWERR r1, Error, r2
+    22  THROW r1
+    23  RET r0
+    24  LOADUNDEF r1
+    25  RET r1
+
+fn3 anon@50 params=1 regs=1 caps=0 async
+     0  RET r0

@@ -16,6 +16,7 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system';
 import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
+import CompiledEngineStatus from '@/features/workflows/compiledEngine/components/CompiledEngineStatus.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -388,6 +389,7 @@ onBeforeUnmount(() => {
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
+				<CompiledEngineStatus v-if="!isNewWorkflow" />
 			</span>
 		</span>
 

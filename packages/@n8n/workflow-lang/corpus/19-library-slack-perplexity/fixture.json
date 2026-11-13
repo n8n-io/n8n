@@ -1,0 +1,28 @@
+{
+	"trigger": {
+		"body": { "question": "How do I retry a node?", "channel": "#help" },
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Search": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": {
+					"id": "s-1",
+					"results": [{ "title": "Retry", "url": "https://docs.n8n.io/retry", "snippet": "..." }]
+				}
+			}
+		],
+		"Post answer": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": { "ok": true, "channel": "C1", "ts": "1700.1", "message": { "text": "x" } }
+			}
+		]
+	}
+}

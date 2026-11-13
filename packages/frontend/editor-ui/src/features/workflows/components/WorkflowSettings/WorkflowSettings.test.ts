@@ -22,7 +22,7 @@ import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
 import type { Scope } from '@n8n/permissions';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, type IWorkflowSettings } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -694,8 +694,10 @@ describe('WorkflowSettingsVue', () => {
 			).not.toBeNull();
 		});
 
-		it('should not render the engine type row when the engine-v2 module is inactive', async () => {
-			deactivateEngineV2Module();
+		it('should not render the engine type row when no engine module is active', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2' && name !== 'compiled-engine',
+			);
 
 			const { queryByTestId } = createComponent({ pinia });
 			await flushPromises();
@@ -703,7 +705,43 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
 		});
 
-		it('should offer v1 and v2 (Beta) as engine type options', async () => {
+		const activateModules = (...modules: string[]) => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation((name: string) =>
+				modules.includes(name),
+			);
+		};
+
+		it('should offer v1, v2 (Beta) and Compiled as engine type options when both engine modules are active', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(3);
+			expect(dropdownItems[0]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+			expect(dropdownItems[2]).toHaveTextContent('Compiled (Experimental)');
+		});
+
+		it('should not offer Compiled when the compiled-engine module is inactive', async () => {
+			activateModules('engine-v2');
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+		});
+
+		it('should offer v1 and Compiled when only the compiled-engine module is active', async () => {
+			activateModules('compiled-engine');
+
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
 
@@ -713,7 +751,43 @@ describe('WorkflowSettingsVue', () => {
 
 			expect(dropdownItems).toHaveLength(2);
 			expect(dropdownItems[0]).toHaveTextContent('v1');
-			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+			expect(dropdownItems[1]).toHaveTextContent('Compiled (Experimental)');
+		});
+
+		it('should save engineType compiled after the option is selected', async () => {
+			activateModules('compiled-engine');
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+			await userEvent.click(dropdownItems[1]);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ engineType: 'compiled' }),
+				}),
+			);
+		});
+
+		it('should select Compiled for a stored engineType compiled', async () => {
+			activateModules('compiled-engine');
+			workflowDocumentStore.setSettings({ engineType: 'compiled' } as IWorkflowSettings);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+			const selectedItem = Array.from(dropdownItems).find((item) =>
+				item.classList.contains('selected'),
+			);
+			expect(selectedItem).toHaveTextContent('Compiled (Experimental)');
 		});
 
 		it.each([

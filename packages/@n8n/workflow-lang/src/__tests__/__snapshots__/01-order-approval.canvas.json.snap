@@ -1,0 +1,469 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "orders",
+        "method": "POST"
+      },
+      "sourceRange": {
+        "start": 496,
+        "end": 2015
+      },
+      "durable": true,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "transform:29",
+      "name": "Transform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const order = trigger.body;\nconst short: string[] = [];\nlet total = 0;"
+      },
+      "sourceRange": {
+        "start": 648,
+        "end": 722
+      },
+      "durable": false,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "id": "loop:32:3",
+      "name": "Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "parameters": {
+        "loop": "const item of order.items"
+      },
+      "sourceRange": {
+        "start": 725,
+        "end": 1011
+      },
+      "durable": true,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "id": "Check stock",
+      "name": "Check stock",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ `https://inventory.example.com/stock/${item.sku}` }}"
+      },
+      "sourceRange": {
+        "start": 782,
+        "end": 909
+      },
+      "durable": true,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "id": "transform:38",
+      "name": "Transform 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "if (stock.body.available < item.qty) short.push(item.sku);\ntotal += item.qty * item.price;"
+      },
+      "sourceRange": {
+        "start": 914,
+        "end": 1007
+      },
+      "durable": false,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "id": "if:41:3",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "condition": "={{ short.length > 0 }}"
+      },
+      "sourceRange": {
+        "start": 1014,
+        "end": 1394
+      },
+      "durable": true,
+      "position": [
+        660,
+        160
+      ]
+    },
+    {
+      "id": "Approve short order",
+      "name": "Approve short order",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "parameters": {
+        "resume": "approval",
+        "message": "={{ `Order ${order.orderId} is short on ${short.join(', ')}` }}",
+        "via": "slack"
+      },
+      "sourceRange": {
+        "start": 1064,
+        "end": 1206
+      },
+      "durable": true,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "id": "if:47:4",
+      "name": "If 2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "condition": "={{ !decision.approved }}"
+      },
+      "sourceRange": {
+        "start": 1211,
+        "end": 1390
+      },
+      "durable": true,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "id": "Reject",
+      "name": "Reject",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "parameters": {
+        "respondWith": "json",
+        "status": 409,
+        "body": {
+          "orderId": "={{ order.orderId }}",
+          "short": "={{ short }}"
+        }
+      },
+      "sourceRange": {
+        "start": 1247,
+        "end": 1332
+      },
+      "durable": true,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "id": "transform:49",
+      "name": "Transform 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return { status: 'rejected', by: decision.by };"
+      },
+      "sourceRange": {
+        "start": 1338,
+        "end": 1385
+      },
+      "durable": false,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "id": "Charge",
+      "name": "Charge",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "POST",
+        "url": "https://payments.example.com/charges",
+        "body": {
+          "customer": "={{ order.customer.id }}",
+          "amount": "={{ Math.round(total * 100) }}"
+        },
+        "credential": "payments"
+      },
+      "sourceRange": {
+        "start": 1427,
+        "end": 1652
+      },
+      "durable": true,
+      "position": [
+        1320,
+        160
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "Confirm",
+      "name": "Confirm",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "parameters": {
+        "respondWith": "json",
+        "body": {
+          "orderId": "={{ order.orderId }}",
+          "chargeId": "={{ charge.body.id }}"
+        }
+      },
+      "sourceRange": {
+        "start": 1663,
+        "end": 1767
+      },
+      "durable": true,
+      "position": [
+        1540,
+        160
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "transform:64",
+      "name": "Transform 4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return { status: 'charged', total, chargeId: charge.body.id };"
+      },
+      "sourceRange": {
+        "start": 1772,
+        "end": 1834
+      },
+      "durable": false,
+      "position": [
+        1760,
+        0
+      ]
+    },
+    {
+      "id": "Payment failed",
+      "name": "Payment failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "parameters": {
+        "respondWith": "json",
+        "status": 402,
+        "body": {
+          "error": "={{ e.message }}"
+        }
+      },
+      "sourceRange": {
+        "start": 1860,
+        "end": 1940
+      },
+      "durable": true,
+      "position": [
+        1760,
+        160
+      ]
+    },
+    {
+      "id": "transform:67",
+      "name": "Transform 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return { status: 'failed', error: e.message, step: e.step };"
+      },
+      "sourceRange": {
+        "start": 1945,
+        "end": 2005
+      },
+      "durable": false,
+      "position": [
+        1980,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check stock": {
+      "main": [
+        [
+          {
+            "node": "Transform 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform 2": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Approve short order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Charge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve short order": {
+      "main": [
+        [
+          {
+            "node": "If 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If 2": {
+      "main": [
+        [
+          {
+            "node": "Reject",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Charge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject": {
+      "main": [
+        [
+          {
+            "node": "Transform 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Charge": {
+      "main": [
+        [
+          {
+            "node": "Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payment failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm": {
+      "main": [
+        [
+          {
+            "node": "Transform 4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Payment failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment failed": {
+      "main": [
+        [
+          {
+            "node": "Transform 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+	"trigger": {
+		"body": {
+			"texts": ["plain", "tab\there", "Grüße", "line\nbreak", "~ok~", "", "DEL\u007f", "世界 😀"]
+		}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {}
+}

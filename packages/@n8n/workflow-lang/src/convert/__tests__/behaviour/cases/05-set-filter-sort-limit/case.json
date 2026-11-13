@@ -1,0 +1,34 @@
+{
+	"description": "Split Out \u2192 Filter \u2192 Sort \u2192 Limit \u2192 Set (JSON mode)",
+	"trigger": {
+		"body": {
+			"people": [
+				{
+					"name": "zoe",
+					"age": 31,
+					"tags": ["a"]
+				},
+				{
+					"name": "Bob",
+					"age": 12,
+					"tags": []
+				},
+				{
+					"name": "amy",
+					"age": 18,
+					"tags": ["b", "c"]
+				},
+				{
+					"name": "Carl",
+					"age": 44,
+					"tags": []
+				},
+				{
+					"name": "dan",
+					"age": 17,
+					"tags": []
+				}
+			]
+		}
+	}
+}

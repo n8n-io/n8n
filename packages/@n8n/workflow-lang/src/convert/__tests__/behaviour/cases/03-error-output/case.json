@@ -1,0 +1,21 @@
+{
+	"description": "HTTP Request with onError continueErrorOutput; the request fails",
+	"trigger": {
+		"body": {
+			"customer": "bob"
+		}
+	},
+	"http": {
+		"Charge": {
+			"path": "charge",
+			"responses": [
+				{
+					"status": 500,
+					"body": {
+						"message": "card declined"
+					}
+				}
+			]
+		}
+	}
+}

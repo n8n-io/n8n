@@ -1,0 +1,86 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Legacy Is False",
+		"Filter None",
+		"Dedupe Continue",
+		"Code Index"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"rows": [
+							{
+								"url": "a"
+							},
+							{
+								"url": "b"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"url": "a"
+				},
+				{
+					"url": "b"
+				}
+			]
+		],
+		"Legacy Is False": [
+			[
+				{
+					"url": "a"
+				},
+				{
+					"url": "b"
+				}
+			],
+			[]
+		],
+		"Filter None": [
+			[{}],
+			[
+				{
+					"url": "a"
+				},
+				{
+					"url": "b"
+				}
+			]
+		],
+		"Dedupe Continue": [
+			[
+				{
+					"error": "'url' field is missing from some input items"
+				}
+			]
+		],
+		"Code Index": [
+			[
+				{
+					"url": "a",
+					"index": 0
+				},
+				{
+					"url": "b",
+					"index": 0
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

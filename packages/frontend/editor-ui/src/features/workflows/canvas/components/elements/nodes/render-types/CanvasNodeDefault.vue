@@ -19,6 +19,9 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { getNodeIconSize, type NodeIconSource } from '@/app/utils/nodeIcon';
+import CompiledEngineNodeBadge from '@/features/workflows/compiledEngine/components/CompiledEngineNodeBadge.vue';
+import { useCompiledEngineStore } from '@/features/workflows/compiledEngine/compiledEngine.store';
+import { useCompiledEngineWorkflow } from '@/features/workflows/compiledEngine/composables/useCompiledEngineWorkflow';
 
 const $style = useCssModule();
 const i18n = useI18n();
@@ -59,6 +62,14 @@ const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
+const compiledEngineStore = useCompiledEngineStore();
+const { isCompiledWorkflow, workflowId: compiledWorkflowId } = useCompiledEngineWorkflow();
+// A node with a compile error shows the error state, like a node with execution errors.
+const hasCompileError = computed(
+	() =>
+		isCompiledWorkflow.value &&
+		compiledEngineStore.hasNodeError(compiledWorkflowId.value, name.value),
+);
 const hasPinnedData = computed(
 	() =>
 		!renderData.value.isExecutionDataDisplayed &&
@@ -95,7 +106,7 @@ const classes = computed(() => {
 		[$style.success]: Boolean(
 			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
-		[$style.error]: hasExecutionErrors.value,
+		[$style.error]: hasExecutionErrors.value || hasCompileError.value,
 		[$style.running]: running,
 		[$style.waiting]: waiting,
 		[$style.pinned]: hasSubstitutedOutput.value,
@@ -257,6 +268,10 @@ function onActivate(event: MouseEvent) {
 				{{ subtitle }}
 			</div>
 		</div>
+		<CompiledEngineNodeBadge
+			v-if="isCompiledWorkflow && !renderOptions.configuration && !renderOptions.placeholder"
+			:node-name="name"
+		/>
 		<CanvasNodeStatusIcons
 			v-if="!isDisabled || isRestricted || isDeprecated"
 			:class="$style.statusIcons"

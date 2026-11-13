@@ -19,7 +19,7 @@ import {
 	WorkflowHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
@@ -57,6 +57,7 @@ import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -553,6 +554,13 @@ export class ExecutionService {
 		}
 
 		this.assertStoppable(execution);
+
+		// The compiled engine runs the execution in `wfrt`, so the cancel goes there.
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		if (compiledEngine.isEnabled && compiledEngine.handles(execution.workflowData)) {
+			const stopped = await compiledEngine.get().stop(executionId);
+			if (stopped) return stopped;
+		}
 
 		// oxlint-disable-next-line typescript/no-deprecated
 		const { mode, startedAt, stoppedAt, finished, status } =

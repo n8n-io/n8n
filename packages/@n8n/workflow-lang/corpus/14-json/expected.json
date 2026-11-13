@@ -1,0 +1,41 @@
+{
+	"status": "ok",
+	"result": {
+		"compact": "{\"a\":1,\"c\":[1,null,null,null,null,null],\"d\":{\"e\":{\"f\":[{\"g\":\"h\"}]}},\"s\":\"quote \\\" backslash \\\\ newline \\n tab \\t bell \\u0007 unicode é 😀  \",\"neg\":0}",
+		"indented": "{\n  \"x\": [\n    1,\n    {\n      \"y\": 2\n    }\n  ],\n  \"z\": {},\n  \"w\": []\n}",
+		"tabbed": "[\n\t1,\n\t[\n\t\t2\n\t]\n]",
+		"top": [true, "null", "\"s\"", "1e+21"],
+		"parsed": {
+			"1": "one",
+			"2": "two",
+			"k": [1, 2.5, true, null, "é"]
+		},
+		"roundTrip": "{\"a\":1,\"c\":[1,null,null,null,null,null],\"d\":{\"e\":{\"f\":[{\"g\":\"h\"}]}},\"s\":\"quote \\\" backslash \\\\ newline \\n tab \\t bell \\u0007 unicode é 😀  \",\"neg\":0}"
+	},
+	"effects": [
+		{
+			"step": "Send",
+			"kind": "http",
+			"args": {
+				"name": "Send",
+				"method": "POST",
+				"url": "https://api.example.com",
+				"body": {
+					"a": 1,
+					"c": [1, null, null, null, null, null],
+					"d": {
+						"e": {
+							"f": [
+								{
+									"g": "h"
+								}
+							]
+						}
+					},
+					"s": "quote \" backslash \\ newline \n tab \t bell \u0007 unicode é 😀  ",
+					"neg": 0
+				}
+			}
+		}
+	]
+}

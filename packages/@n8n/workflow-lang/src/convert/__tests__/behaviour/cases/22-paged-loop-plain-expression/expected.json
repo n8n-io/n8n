@@ -1,0 +1,104 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Search",
+		"Next Page",
+		"Has Next Page",
+		"Search",
+		"Next Page",
+		"Has Next Page",
+		"Done"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"query": "email-test_"
+					}
+				}
+			]
+		],
+		"Search": [
+			[
+				{
+					"results": [
+						{
+							"id": "1"
+						}
+					],
+					"paging": {
+						"next": {
+							"after": "1"
+						}
+					}
+				},
+				{
+					"results": [
+						{
+							"id": "2"
+						}
+					]
+				}
+			]
+		],
+		"Next Page": [
+			[
+				{
+					"hasNextPage": true,
+					"after": "1"
+				},
+				{
+					"hasNextPage": false,
+					"after": null
+				}
+			]
+		],
+		"Has Next Page": [
+			[
+				{
+					"hasNextPage": true,
+					"after": "1"
+				}
+			],
+			[
+				{
+					"hasNextPage": false,
+					"after": null
+				}
+			]
+		],
+		"Done": [
+			[
+				{
+					"hasNextPage": false,
+					"after": null
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/search",
+			"method": "POST",
+			"body": {
+				"query": "x",
+				"after": ""
+			}
+		},
+		{
+			"path": "/search",
+			"method": "POST",
+			"body": {
+				"query": "x",
+				"after": "1"
+			}
+		}
+	],
+	"responses": []
+}

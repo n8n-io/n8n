@@ -1,0 +1,12 @@
+{
+	"name": "n8n-nodes-acme",
+	"version": "0.1.0",
+	"description": "Test fixture: a community node package with a programmatic node, a declarative node and a credential type.",
+	"private": true,
+	"main": "index.js",
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"nodes": ["lib/Acme.node.js", "lib/AcmeItems.node.js"],
+		"credentials": ["lib/AcmeApi.credentials.js"]
+	}
+}

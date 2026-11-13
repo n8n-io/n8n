@@ -1,0 +1,175 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Split Out",
+		"Loop Over Items",
+		"Tag",
+		"Loop Over Items",
+		"Tag",
+		"Loop Over Items",
+		"Tag",
+		"Loop Over Items",
+		"Total"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": [
+							{
+								"name": "a"
+							},
+							{
+								"name": "b"
+							},
+							{
+								"name": "c"
+							},
+							{
+								"name": "d"
+							},
+							{
+								"name": "e"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"name": "a"
+				},
+				{
+					"name": "b"
+				},
+				{
+					"name": "c"
+				},
+				{
+					"name": "d"
+				},
+				{
+					"name": "e"
+				}
+			]
+		],
+		"Loop Over Items": [
+			[
+				{
+					"name": "a",
+					"batch": 0,
+					"left": false
+				},
+				{
+					"name": "b",
+					"batch": 0,
+					"left": false
+				},
+				{
+					"name": "c",
+					"batch": 1,
+					"left": false
+				},
+				{
+					"name": "d",
+					"batch": 1,
+					"left": false
+				},
+				{
+					"name": "e",
+					"batch": 2,
+					"left": true
+				}
+			],
+			[
+				{
+					"name": "a"
+				},
+				{
+					"name": "b"
+				},
+				{
+					"name": "c"
+				},
+				{
+					"name": "d"
+				},
+				{
+					"name": "e"
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"name": "a",
+					"batch": 0,
+					"left": false
+				},
+				{
+					"name": "b",
+					"batch": 0,
+					"left": false
+				},
+				{
+					"name": "c",
+					"batch": 1,
+					"left": false
+				},
+				{
+					"name": "d",
+					"batch": 1,
+					"left": false
+				},
+				{
+					"name": "e",
+					"batch": 2,
+					"left": true
+				}
+			]
+		],
+		"Total": [
+			[
+				{
+					"data": [
+						{
+							"name": "a",
+							"batch": 0,
+							"left": false
+						},
+						{
+							"name": "b",
+							"batch": 0,
+							"left": false
+						},
+						{
+							"name": "c",
+							"batch": 1,
+							"left": false
+						},
+						{
+							"name": "d",
+							"batch": 1,
+							"left": false
+						},
+						{
+							"name": "e",
+							"batch": 2,
+							"left": true
+						}
+					]
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

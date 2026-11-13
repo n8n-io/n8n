@@ -1,0 +1,6 @@
+{
+	"trigger": { "body": { "chunk": "0123456789abcdef" } },
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {}
+}

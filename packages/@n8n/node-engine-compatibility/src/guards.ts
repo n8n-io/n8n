@@ -23,7 +23,12 @@ export function isV1NodeStepConfig(config: unknown): config is V1NodeStepConfig 
 		typeof config.typeVersion === 'number' &&
 		isRecord(config.parameters) &&
 		typeof config.continueOnFail === 'boolean' &&
-		(config.credentials === undefined || isNodeCredentials(config.credentials))
+		(config.credentials === undefined || isNodeCredentials(config.credentials)) &&
+		(config.onError === undefined ||
+			config.onError === 'continueRegularOutput' ||
+			config.onError === 'continueErrorOutput' ||
+			config.onError === 'stopWorkflow') &&
+		(config.workflowSettings === undefined || isRecord(config.workflowSettings))
 	);
 }
 

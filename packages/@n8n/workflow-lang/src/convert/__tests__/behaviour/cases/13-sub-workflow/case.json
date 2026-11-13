@@ -1,0 +1,15 @@
+{
+	"description": "Execute Workflow with the workflow JSON in the node: mode each and mode once",
+	"trigger": {
+		"body": {
+			"people": [
+				{
+					"name": "ann"
+				},
+				{
+					"name": "bob"
+				}
+			]
+		}
+	}
+}

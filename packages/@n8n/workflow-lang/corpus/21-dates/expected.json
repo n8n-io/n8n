@@ -1,0 +1,575 @@
+{
+	"status": "ok",
+	"result": {
+		"fromTimes": [
+			{
+				"ms": 0,
+				"iso": "1970-01-01T00:00:00.000Z",
+				"time": 0,
+				"value": 0,
+				"json": "1970-01-01T00:00:00.000Z",
+				"string": "Thu Jan 01 1970 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"gmt": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"date": "Thu Jan 01 1970",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/1970, 12:00:00 AM",
+				"localeDate": "1/1/1970",
+				"localeTime": "12:00:00 AM",
+				"local": [1970, 0, 1, 4, 0, 0, 0, 0, 0],
+				"utcParts": [1970, 0, 1, 4, 0, 0, 0, 0]
+			},
+			{
+				"ms": -1,
+				"iso": "1969-12-31T23:59:59.999Z",
+				"time": -1,
+				"value": -1,
+				"json": "1969-12-31T23:59:59.999Z",
+				"string": "Wed Dec 31 1969 23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Wed, 31 Dec 1969 23:59:59 GMT",
+				"gmt": "Wed, 31 Dec 1969 23:59:59 GMT",
+				"date": "Wed Dec 31 1969",
+				"clock": "23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"locale": "12/31/1969, 11:59:59 PM",
+				"localeDate": "12/31/1969",
+				"localeTime": "11:59:59 PM",
+				"local": [1969, 11, 31, 3, 23, 59, 59, 999, 0],
+				"utcParts": [1969, 11, 31, 3, 23, 59, 59, 999]
+			},
+			{
+				"ms": 1,
+				"iso": "1970-01-01T00:00:00.001Z",
+				"time": 1,
+				"value": 1,
+				"json": "1970-01-01T00:00:00.001Z",
+				"string": "Thu Jan 01 1970 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"gmt": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"date": "Thu Jan 01 1970",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/1970, 12:00:00 AM",
+				"localeDate": "1/1/1970",
+				"localeTime": "12:00:00 AM",
+				"local": [1970, 0, 1, 4, 0, 0, 0, 1, 0],
+				"utcParts": [1970, 0, 1, 4, 0, 0, 0, 1]
+			},
+			{
+				"ms": 951782400000,
+				"iso": "2000-02-29T00:00:00.000Z",
+				"time": 951782400000,
+				"value": 951782400000,
+				"json": "2000-02-29T00:00:00.000Z",
+				"string": "Tue Feb 29 2000 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Tue, 29 Feb 2000 00:00:00 GMT",
+				"gmt": "Tue, 29 Feb 2000 00:00:00 GMT",
+				"date": "Tue Feb 29 2000",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "2/29/2000, 12:00:00 AM",
+				"localeDate": "2/29/2000",
+				"localeTime": "12:00:00 AM",
+				"local": [2000, 1, 29, 2, 0, 0, 0, 0, 0],
+				"utcParts": [2000, 1, 29, 2, 0, 0, 0, 0]
+			},
+			{
+				"ms": 1709164800000,
+				"iso": "2024-02-29T00:00:00.000Z",
+				"time": 1709164800000,
+				"value": 1709164800000,
+				"json": "2024-02-29T00:00:00.000Z",
+				"string": "Thu Feb 29 2024 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 29 Feb 2024 00:00:00 GMT",
+				"gmt": "Thu, 29 Feb 2024 00:00:00 GMT",
+				"date": "Thu Feb 29 2024",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "2/29/2024, 12:00:00 AM",
+				"localeDate": "2/29/2024",
+				"localeTime": "12:00:00 AM",
+				"local": [2024, 1, 29, 4, 0, 0, 0, 0, 0],
+				"utcParts": [2024, 1, 29, 4, 0, 0, 0, 0]
+			},
+			{
+				"ms": 1794441600123,
+				"iso": "2026-11-12T00:00:00.123Z",
+				"time": 1794441600123,
+				"value": 1794441600123,
+				"json": "2026-11-12T00:00:00.123Z",
+				"string": "Thu Nov 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 12 Nov 2026 00:00:00 GMT",
+				"gmt": "Thu, 12 Nov 2026 00:00:00 GMT",
+				"date": "Thu Nov 12 2026",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "11/12/2026, 12:00:00 AM",
+				"localeDate": "11/12/2026",
+				"localeTime": "12:00:00 AM",
+				"local": [2026, 10, 12, 4, 0, 0, 0, 123, 0],
+				"utcParts": [2026, 10, 12, 4, 0, 0, 0, 123]
+			},
+			{
+				"ms": -62198755200000,
+				"iso": "-000001-01-01T00:00:00.000Z",
+				"time": -62198755200000,
+				"value": -62198755200000,
+				"json": "-000001-01-01T00:00:00.000Z",
+				"string": "Fri Jan 01 -0001 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Fri, 01 Jan -0001 00:00:00 GMT",
+				"gmt": "Fri, 01 Jan -0001 00:00:00 GMT",
+				"date": "Fri Jan 01 -0001",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/2, 12:00:00 AM",
+				"localeDate": "1/1/2",
+				"localeTime": "12:00:00 AM",
+				"local": [-1, 0, 1, 5, 0, 0, 0, 0, 0],
+				"utcParts": [-1, 0, 1, 5, 0, 0, 0, 0]
+			},
+			{
+				"ms": -62167219200001,
+				"iso": "-000001-12-31T23:59:59.999Z",
+				"time": -62167219200001,
+				"value": -62167219200001,
+				"json": "-000001-12-31T23:59:59.999Z",
+				"string": "Fri Dec 31 -0001 23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Fri, 31 Dec -0001 23:59:59 GMT",
+				"gmt": "Fri, 31 Dec -0001 23:59:59 GMT",
+				"date": "Fri Dec 31 -0001",
+				"clock": "23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"locale": "12/31/2, 11:59:59 PM",
+				"localeDate": "12/31/2",
+				"localeTime": "11:59:59 PM",
+				"local": [-1, 11, 31, 5, 23, 59, 59, 999, 0],
+				"utcParts": [-1, 11, 31, 5, 23, 59, 59, 999]
+			},
+			{
+				"ms": 253402300799999,
+				"iso": "9999-12-31T23:59:59.999Z",
+				"time": 253402300799999,
+				"value": 253402300799999,
+				"json": "9999-12-31T23:59:59.999Z",
+				"string": "Fri Dec 31 9999 23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Fri, 31 Dec 9999 23:59:59 GMT",
+				"gmt": "Fri, 31 Dec 9999 23:59:59 GMT",
+				"date": "Fri Dec 31 9999",
+				"clock": "23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"locale": "12/31/9999, 11:59:59 PM",
+				"localeDate": "12/31/9999",
+				"localeTime": "11:59:59 PM",
+				"local": [9999, 11, 31, 5, 23, 59, 59, 999, 0],
+				"utcParts": [9999, 11, 31, 5, 23, 59, 59, 999]
+			},
+			{
+				"ms": 253402300800000,
+				"iso": "+010000-01-01T00:00:00.000Z",
+				"time": 253402300800000,
+				"value": 253402300800000,
+				"json": "+010000-01-01T00:00:00.000Z",
+				"string": "Sat Jan 01 10000 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Sat, 01 Jan 10000 00:00:00 GMT",
+				"gmt": "Sat, 01 Jan 10000 00:00:00 GMT",
+				"date": "Sat Jan 01 10000",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/10000, 12:00:00 AM",
+				"localeDate": "1/1/10000",
+				"localeTime": "12:00:00 AM",
+				"local": [10000, 0, 1, 6, 0, 0, 0, 0, 0],
+				"utcParts": [10000, 0, 1, 6, 0, 0, 0, 0]
+			},
+			{
+				"ms": 8640000000000000,
+				"iso": "+275760-09-13T00:00:00.000Z",
+				"time": 8640000000000000,
+				"value": 8640000000000000,
+				"json": "+275760-09-13T00:00:00.000Z",
+				"string": "Sat Sep 13 275760 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Sat, 13 Sep 275760 00:00:00 GMT",
+				"gmt": "Sat, 13 Sep 275760 00:00:00 GMT",
+				"date": "Sat Sep 13 275760",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "9/13/275760, 12:00:00 AM",
+				"localeDate": "9/13/275760",
+				"localeTime": "12:00:00 AM",
+				"local": [275760, 8, 13, 6, 0, 0, 0, 0, 0],
+				"utcParts": [275760, 8, 13, 6, 0, 0, 0, 0]
+			},
+			{
+				"ms": -8640000000000000,
+				"iso": "-271821-04-20T00:00:00.000Z",
+				"time": -8640000000000000,
+				"value": -8640000000000000,
+				"json": "-271821-04-20T00:00:00.000Z",
+				"string": "Tue Apr 20 -271821 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Tue, 20 Apr -271821 00:00:00 GMT",
+				"gmt": "Tue, 20 Apr -271821 00:00:00 GMT",
+				"date": "Tue Apr 20 -271821",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "4/20/271822, 12:00:00 AM",
+				"localeDate": "4/20/271822",
+				"localeTime": "12:00:00 AM",
+				"local": [-271821, 3, 20, 2, 0, 0, 0, 0, 0],
+				"utcParts": [-271821, 3, 20, 2, 0, 0, 0, 0]
+			},
+			{
+				"ms": 8640000000000001,
+				"iso": "RangeError: Invalid time value",
+				"time": null,
+				"value": null,
+				"json": null,
+				"string": "Invalid Date",
+				"utc": "Invalid Date",
+				"gmt": "Invalid Date",
+				"date": "Invalid Date",
+				"clock": "Invalid Date",
+				"locale": "Invalid Date",
+				"localeDate": "Invalid Date",
+				"localeTime": "Invalid Date",
+				"local": [null, null, null, null, null, null, null, null, null],
+				"utcParts": [null, null, null, null, null, null, null, null]
+			},
+			{
+				"ms": -2208988800000,
+				"iso": "1900-01-01T00:00:00.000Z",
+				"time": -2208988800000,
+				"value": -2208988800000,
+				"json": "1900-01-01T00:00:00.000Z",
+				"string": "Mon Jan 01 1900 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Mon, 01 Jan 1900 00:00:00 GMT",
+				"gmt": "Mon, 01 Jan 1900 00:00:00 GMT",
+				"date": "Mon Jan 01 1900",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/1900, 12:00:00 AM",
+				"localeDate": "1/1/1900",
+				"localeTime": "12:00:00 AM",
+				"local": [1900, 0, 1, 1, 0, 0, 0, 0, 0],
+				"utcParts": [1900, 0, 1, 1, 0, 0, 0, 0]
+			},
+			{
+				"ms": 1e300,
+				"iso": "RangeError: Invalid time value",
+				"time": null,
+				"value": null,
+				"json": null,
+				"string": "Invalid Date",
+				"utc": "Invalid Date",
+				"gmt": "Invalid Date",
+				"date": "Invalid Date",
+				"clock": "Invalid Date",
+				"locale": "Invalid Date",
+				"localeDate": "Invalid Date",
+				"localeTime": "Invalid Date",
+				"local": [null, null, null, null, null, null, null, null, null],
+				"utcParts": [null, null, null, null, null, null, null, null]
+			},
+			{
+				"ms": 1.5,
+				"iso": "1970-01-01T00:00:00.001Z",
+				"time": 1,
+				"value": 1,
+				"json": "1970-01-01T00:00:00.001Z",
+				"string": "Thu Jan 01 1970 00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"gmt": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"date": "Thu Jan 01 1970",
+				"clock": "00:00:00 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/1970, 12:00:00 AM",
+				"localeDate": "1/1/1970",
+				"localeTime": "12:00:00 AM",
+				"local": [1970, 0, 1, 4, 0, 0, 0, 1, 0],
+				"utcParts": [1970, 0, 1, 4, 0, 0, 0, 1]
+			},
+			{
+				"ms": -1.5,
+				"iso": "1969-12-31T23:59:59.999Z",
+				"time": -1,
+				"value": -1,
+				"json": "1969-12-31T23:59:59.999Z",
+				"string": "Wed Dec 31 1969 23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Wed, 31 Dec 1969 23:59:59 GMT",
+				"gmt": "Wed, 31 Dec 1969 23:59:59 GMT",
+				"date": "Wed Dec 31 1969",
+				"clock": "23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"locale": "12/31/1969, 11:59:59 PM",
+				"localeDate": "12/31/1969",
+				"localeTime": "11:59:59 PM",
+				"local": [1969, 11, 31, 3, 23, 59, 59, 999, 0],
+				"utcParts": [1969, 11, 31, 3, 23, 59, 59, 999]
+			},
+			{
+				"ms": 86399999,
+				"iso": "1970-01-01T23:59:59.999Z",
+				"time": 86399999,
+				"value": 86399999,
+				"json": "1970-01-01T23:59:59.999Z",
+				"string": "Thu Jan 01 1970 23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"utc": "Thu, 01 Jan 1970 23:59:59 GMT",
+				"gmt": "Thu, 01 Jan 1970 23:59:59 GMT",
+				"date": "Thu Jan 01 1970",
+				"clock": "23:59:59 GMT+0000 (Coordinated Universal Time)",
+				"locale": "1/1/1970, 11:59:59 PM",
+				"localeDate": "1/1/1970",
+				"localeTime": "11:59:59 PM",
+				"local": [1970, 0, 1, 4, 23, 59, 59, 999, 0],
+				"utcParts": [1970, 0, 1, 4, 23, 59, 59, 999]
+			}
+		],
+		"parsed": [
+			{
+				"text": "2020-02-29",
+				"parse": 1582934400000,
+				"iso": "2020-02-29T00:00:00.000Z"
+			},
+			{
+				"text": "2020-02-30",
+				"parse": 1583020800000,
+				"iso": "2020-03-01T00:00:00.000Z"
+			},
+			{
+				"text": "2021-02-29T00:00:00Z",
+				"parse": 1614556800000,
+				"iso": "2021-03-01T00:00:00.000Z"
+			},
+			{
+				"text": "2020-01-01T10:20:30.123456Z",
+				"parse": 1577874030123,
+				"iso": "2020-01-01T10:20:30.123Z"
+			},
+			{
+				"text": "2020-01-01T10:20:30.1+02:30",
+				"parse": 1577865030100,
+				"iso": "2020-01-01T07:50:30.100Z"
+			},
+			{
+				"text": "2020-01-01T10:20",
+				"parse": 1577874000000,
+				"iso": "2020-01-01T10:20:00.000Z"
+			},
+			{
+				"text": "2020-01-01T24:00:00Z",
+				"parse": 1577923200000,
+				"iso": "2020-01-02T00:00:00.000Z"
+			},
+			{
+				"text": "2020-01-01T24:00:01Z",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "2020-1-1",
+				"parse": 1577836800000,
+				"iso": "2020-01-01T00:00:00.000Z"
+			},
+			{
+				"text": "2020-01-01 10:00:00",
+				"parse": 1577872800000,
+				"iso": "2020-01-01T10:00:00.000Z"
+			},
+			{
+				"text": "+275760-09-13T00:00:00.000Z",
+				"parse": 8640000000000000,
+				"iso": "+275760-09-13T00:00:00.000Z"
+			},
+			{
+				"text": "+275760-09-13T00:00:00.001Z",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "-271821-04-20T00:00:00.000Z",
+				"parse": -8640000000000000,
+				"iso": "-271821-04-20T00:00:00.000Z"
+			},
+			{
+				"text": "-000000-01-01T00:00:00Z",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "+010000-01-01",
+				"parse": 253402300800000,
+				"iso": "+010000-01-01T00:00:00.000Z"
+			},
+			{
+				"text": "-000001-12-31T23:59:59.999Z",
+				"parse": -62167219200001,
+				"iso": "-000001-12-31T23:59:59.999Z"
+			},
+			{
+				"text": "Thu, 01 Jan 1970 00:00:00 GMT",
+				"parse": 0,
+				"iso": "1970-01-01T00:00:00.000Z"
+			},
+			{
+				"text": "Wed Mar 04 2020 05:06:07 GMT+0100 (Central European Standard Time)",
+				"parse": 1583294767000,
+				"iso": "2020-03-04T04:06:07.000Z"
+			},
+			{
+				"text": "Wed Mar 04 2020",
+				"parse": 1583280000000,
+				"iso": "2020-03-04T00:00:00.000Z"
+			},
+			{
+				"text": "March 7, 2020 10:00 PM",
+				"parse": 1583618400000,
+				"iso": "2020-03-07T22:00:00.000Z"
+			},
+			{
+				"text": "7 March 2020",
+				"parse": 1583539200000,
+				"iso": "2020-03-07T00:00:00.000Z"
+			},
+			{
+				"text": "12/31/1999 23:59:59",
+				"parse": 946684799000,
+				"iso": "1999-12-31T23:59:59.000Z"
+			},
+			{
+				"text": "1/2/03",
+				"parse": 1041465600000,
+				"iso": "2003-01-02T00:00:00.000Z"
+			},
+			{
+				"text": "Jan 1 2000 00:00 PST",
+				"parse": 946713600000,
+				"iso": "2000-01-01T08:00:00.000Z"
+			},
+			{
+				"text": "Jan 1 2000 00:00 GMT-0830",
+				"parse": 946715400000,
+				"iso": "2000-01-01T08:30:00.000Z"
+			},
+			{
+				"text": "2000-01-01T00:00:00.000Z garbage",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "not a date",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "1e3",
+				"parse": null,
+				"iso": "RangeError: Invalid time value"
+			},
+			{
+				"text": "   2020-05-05   ",
+				"parse": 1588636800000,
+				"iso": "2020-05-05T00:00:00.000Z"
+			}
+		],
+		"built": [
+			{
+				"p": [2020, 1],
+				"local": "2020-02-01T00:00:00.000Z",
+				"utc": null
+			},
+			{
+				"p": [99, 11, 31],
+				"local": "1999-12-31T00:00:00.000Z",
+				"utc": null
+			},
+			{
+				"p": [0, 0, 1],
+				"local": "1900-01-01T00:00:00.000Z",
+				"utc": null
+			},
+			{
+				"p": [2020, 1, 30, 25, 61, 61, 1001],
+				"local": "2020-03-02T02:02:02.001Z",
+				"utc": 1583114522001
+			},
+			{
+				"p": [2020, -1, 1, 0, 0, 0, 0],
+				"local": "2019-12-01T00:00:00.000Z",
+				"utc": 1575158400000
+			},
+			{
+				"p": [-1, 0, 1, 0, 0, 0, 0],
+				"local": "-000001-01-01T00:00:00.000Z",
+				"utc": -62198755200000
+			},
+			{
+				"p": [275760, 8, 13, 0, 0, 0, 1],
+				"local": "RangeError: Invalid time value",
+				"utc": null
+			},
+			{
+				"p": [1970, 0, 1, 0, 0, 0, -1],
+				"local": "1969-12-31T23:59:59.999Z",
+				"utc": -1
+			}
+		],
+		"steps": [
+			1740832245678,
+			1772541045678,
+			1772281845678,
+			1772330522001,
+			1772330342001,
+			1772330430005,
+			1772330429999,
+			-79170001,
+			-28936770001,
+			-30319170001,
+			-30326400000,
+			-30324600000,
+			-30324585000,
+			-30324584001,
+			null,
+			null,
+			946684800000
+		],
+		"after": "2000-01-01T00:00:00.000Z",
+		"shifted": "2000-01-03T00:00:00.000Z",
+		"elapsed": 90000,
+		"before": true,
+		"escapes": {
+			"object": {
+				"start": "2026-11-12T00:00:00.123Z"
+			},
+			"array": ["2026-11-12T00:00:00.123Z", null],
+			"stringify": "\"2026-11-12T00:00:00.123Z\"",
+			"stringifyBad": "{\"bad\":null}",
+			"template": "start=Thu Nov 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+			"plus": "start=Thu Nov 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)",
+			"string": "Invalid Date",
+			"number": 1794441600124,
+			"unary": 1794441600123,
+			"maybe": "undefined",
+			"maybeJson": "2026-11-12T00:00:00.123Z",
+			"invalidTime": null,
+			"invalidParts": [null, null, null],
+			"invalidText": ["Invalid Date", "Invalid Date", "Invalid Date", null],
+			"utcEdge": [915148800000, -59011459200000, -62198755200000, null],
+			"invalidSet": [null, null]
+		}
+	},
+	"effects": [
+		{
+			"step": "Pause",
+			"kind": "wait",
+			"args": {
+				"name": "Pause",
+				"duration": 90000
+			}
+		},
+		{
+			"step": "Report",
+			"kind": "http",
+			"args": {
+				"name": "Report",
+				"method": "POST",
+				"url": "https://api.example.com/dates",
+				"body": {
+					"at": "2026-11-12T00:00:00.123Z",
+					"bad": null,
+					"list": ["2026-11-12T00:00:00.123Z", null],
+					"label": "at Thu Nov 12 2026 00:00:00 GMT+0000 (Coordinated Universal Time)"
+				}
+			}
+		}
+	]
+}

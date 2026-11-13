@@ -1,0 +1,89 @@
+{
+	"status": "ok",
+	"result": {
+		"seen": ["a", "b", "c", "d", "e"],
+		"attempts": 3,
+		"n": 8
+	},
+	"effects": [
+		{
+			"step": "Fetch page",
+			"kind": "http",
+			"args": {
+				"name": "Fetch page",
+				"method": "GET",
+				"url": "https://api.example.com/items",
+				"qs": {
+					"page": 1
+				}
+			}
+		},
+		{
+			"step": "Fetch page",
+			"kind": "http",
+			"args": {
+				"name": "Fetch page",
+				"method": "GET",
+				"url": "https://api.example.com/items",
+				"qs": {
+					"page": 3
+				}
+			}
+		},
+		{
+			"step": "Fetch page",
+			"kind": "http",
+			"args": {
+				"name": "Fetch page",
+				"method": "GET",
+				"url": "https://api.example.com/items",
+				"qs": {
+					"page": 4
+				}
+			}
+		},
+		{
+			"step": "Poll job",
+			"kind": "http",
+			"args": {
+				"name": "Poll job",
+				"method": "GET",
+				"url": "https://api.example.com/job"
+			}
+		},
+		{
+			"step": "Back off",
+			"kind": "wait",
+			"args": {
+				"name": "Back off",
+				"duration": 1000
+			}
+		},
+		{
+			"step": "Poll job",
+			"kind": "http",
+			"args": {
+				"name": "Poll job",
+				"method": "GET",
+				"url": "https://api.example.com/job"
+			}
+		},
+		{
+			"step": "Back off",
+			"kind": "wait",
+			"args": {
+				"name": "Back off",
+				"duration": 2000
+			}
+		},
+		{
+			"step": "Poll job",
+			"kind": "http",
+			"args": {
+				"name": "Poll job",
+				"method": "GET",
+				"url": "https://api.example.com/job"
+			}
+		}
+	]
+}

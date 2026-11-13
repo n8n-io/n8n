@@ -1,0 +1,21 @@
+{
+	"trigger": {
+		"body": {
+			"people": [
+				{ "name": "Kai", "age": 30 },
+				{ "name": "Ana", "age": 25 },
+				{ "name": "Bo", "age": 30 },
+				{ "name": "Cy", "age": 25 },
+				{ "name": "Di", "age": 40 },
+				{ "name": "Ed", "age": 25 }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Scores": [{ "status": 200, "headers": {}, "body": { "scores": [5, 99, 23, 42, 7] } }]
+	}
+}

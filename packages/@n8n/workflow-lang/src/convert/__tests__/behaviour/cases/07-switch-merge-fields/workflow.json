@@ -1,0 +1,254 @@
+{
+	"name": "Basket pricing",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "basket",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, -100],
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			}
+		},
+		{
+			"id": "get-prices",
+			"name": "Get prices",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 200],
+			"parameters": {
+				"url": "http://127.0.0.1:47123/prices",
+				"options": {}
+			}
+		},
+		{
+			"id": "switch",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.2,
+			"position": [400, -100],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c1",
+										"leftValue": "={{ $json.category }}",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"rightValue": "fruit"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c1",
+										"leftValue": "={{ $json.category }}",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"rightValue": "veg"
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {
+					"fallbackOutput": "extra"
+				}
+			}
+		},
+		{
+			"id": "fruit",
+			"name": "Fruit",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, -200],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "kind",
+							"name": "kind",
+							"value": "F",
+							"type": "string"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "veg",
+			"name": "Veg",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "kind",
+							"name": "kind",
+							"value": "V",
+							"type": "string"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "other",
+			"name": "Other",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "kind",
+							"name": "kind",
+							"value": "?",
+							"type": "string"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [800, 0],
+			"parameters": {
+				"mode": "combine",
+				"fieldsToMatchString": "sku",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get prices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Fruit",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Veg",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Other",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fruit": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get prices": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

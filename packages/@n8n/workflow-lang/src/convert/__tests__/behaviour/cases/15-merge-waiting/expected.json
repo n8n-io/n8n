@@ -1,0 +1,55 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Flag set", "B", "After B", "Merge"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"flag": false
+					}
+				}
+			]
+		],
+		"Flag set": [
+			[],
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"flag": false
+					}
+				}
+			]
+		],
+		"B": [
+			[
+				{
+					"from": "b"
+				}
+			]
+		],
+		"After B": [
+			[
+				{
+					"after": "b"
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"from": "b"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

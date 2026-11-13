@@ -1,0 +1,117 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Route", "Old IF", "Hash", "B items", "Choose"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": [
+							{
+								"kind": "a",
+								"n": 7
+							},
+							{
+								"kind": "b1",
+								"n": 1
+							},
+							{
+								"kind": "a",
+								"n": 2
+							},
+							{
+								"kind": "zz",
+								"n": 0
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"kind": "a",
+					"n": 7
+				},
+				{
+					"kind": "b1",
+					"n": 1
+				},
+				{
+					"kind": "a",
+					"n": 2
+				},
+				{
+					"kind": "zz",
+					"n": 0
+				}
+			]
+		],
+		"Route": [
+			[
+				{
+					"kind": "a",
+					"n": 7
+				},
+				{
+					"kind": "a",
+					"n": 2
+				}
+			],
+			[
+				{
+					"kind": "b1",
+					"n": 1
+				}
+			],
+			[]
+		],
+		"Old IF": [
+			[
+				{
+					"kind": "a",
+					"n": 7
+				}
+			],
+			[
+				{
+					"kind": "a",
+					"n": 2
+				}
+			]
+		],
+		"Hash": [
+			[
+				{
+					"kind": "a",
+					"n": 7,
+					"hash": "0cc175b9c0f1b6a831c399e269772661"
+				}
+			]
+		],
+		"B items": [
+			[
+				{
+					"kind": "b1",
+					"n": 1
+				}
+			]
+		],
+		"Choose": [
+			[
+				{
+					"kind": "a",
+					"n": 7,
+					"hash": "0cc175b9c0f1b6a831c399e269772661"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

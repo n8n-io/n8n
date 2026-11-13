@@ -1,0 +1,48 @@
+{
+	"description": "Switch (rules, fallback output) and Merge by matching fields; parallel branch from the trigger",
+	"trigger": {
+		"body": {
+			"items": [
+				{
+					"sku": "a",
+					"category": "fruit"
+				},
+				{
+					"sku": "b",
+					"category": "veg"
+				},
+				{
+					"sku": "c",
+					"category": "fruit"
+				},
+				{
+					"sku": "d",
+					"category": "toy"
+				}
+			]
+		}
+	},
+	"http": {
+		"Get prices": {
+			"path": "prices",
+			"responses": [
+				{
+					"body": [
+						{
+							"sku": "a",
+							"price": 1.5
+						},
+						{
+							"sku": "c",
+							"price": 0.5
+						},
+						{
+							"sku": "b",
+							"price": 2
+						}
+					]
+				}
+			]
+		}
+	}
+}

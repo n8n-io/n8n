@@ -1,0 +1,20 @@
+{
+	"trigger": {
+		"body": {
+			"tickets": [
+				{ "id": 1, "priority": "p0", "tags": ["billing"] },
+				{ "id": 2, "priority": "p2", "tags": [] },
+				{ "id": 3, "priority": "p9", "tags": ["ui"] },
+				{ "id": 4, "priority": "p1", "tags": ["api", "auth"] }
+			]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Page on-call": [{ "status": 202, "headers": {}, "body": {} }],
+		"Classify": [[{ "label": "x" }]]
+	}
+}

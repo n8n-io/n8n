@@ -1,0 +1,121 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Remove Duplicates", "Aggregate", "Summary", "Respond"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"events": [
+							{
+								"userId": "u1",
+								"score": 3
+							},
+							{
+								"userId": "u2",
+								"score": 9
+							},
+							{
+								"userId": "u1",
+								"score": 4
+							},
+							{
+								"userId": "u3",
+								"score": 1
+							},
+							{
+								"userId": "u2",
+								"score": 2
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"userId": "u1",
+					"score": 3
+				},
+				{
+					"userId": "u2",
+					"score": 9
+				},
+				{
+					"userId": "u1",
+					"score": 4
+				},
+				{
+					"userId": "u3",
+					"score": 1
+				},
+				{
+					"userId": "u2",
+					"score": 2
+				}
+			]
+		],
+		"Remove Duplicates": [
+			[
+				{
+					"userId": "u1",
+					"score": 3
+				},
+				{
+					"userId": "u2",
+					"score": 9
+				},
+				{
+					"userId": "u3",
+					"score": 1
+				}
+			]
+		],
+		"Aggregate": [
+			[
+				{
+					"users": ["u1", "u2", "u3"],
+					"score": [3, 9, 1]
+				}
+			]
+		],
+		"Summary": [
+			[
+				{
+					"users": ["u1", "u2", "u3"],
+					"score": [3, 9, 1],
+					"count": 3,
+					"best": 9
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"users": ["u1", "u2", "u3"],
+					"score": [3, 9, 1],
+					"count": 3,
+					"best": 9
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": {
+				"users": ["u1", "u2", "u3"],
+				"score": [3, 9, 1],
+				"count": 3,
+				"best": 9
+			},
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

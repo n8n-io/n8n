@@ -1,0 +1,57 @@
+{
+  "name": "@n8n/workflow-lang",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Compiler for workflows written in a TypeScript subset (proof of concept)",
+  "type": "module",
+  "bin": {
+    "wfc": "src/cli.ts"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "wfc": "node src/cli.ts",
+    "generate": "node scripts/generate-sources.ts",
+    "translate:declarative": "node scripts/translate-declarative.ts && node scripts/generate-sources.ts",
+    "record:v1-requests": "node scripts/record-v1-requests.ts",
+    "credential-coverage": "node scripts/credential-coverage.ts",
+    "corpus:build": "node scripts/generate-sources.ts && biome format --write corpus && node scripts/corpus-build.ts && biome format --write corpus",
+    "expression-coverage": "node scripts/expression-coverage.ts"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "typescript": "catalog:typescript-tooling"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@typescript/native": "catalog:typescript-tooling",
+    "n8n-workflow": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

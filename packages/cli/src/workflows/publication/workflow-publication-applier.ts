@@ -10,7 +10,7 @@ import {
 	WorkflowRepository,
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
@@ -22,6 +22,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import {
@@ -131,13 +132,31 @@ export class WorkflowPublicationApplier {
 		// `activeVersionId` is the source of truth for activity; `active` is deprecated.
 		// A null `activeVersionId` means the workflow has been unpublished, so we
 		// reconcile its triggers down to nothing rather than to a target version.
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		const compiled = compiledEngine.handles(workflow);
+
 		if (workflow.activeVersionId === null) {
-			return await this.unpublish(workflow, oldVersion, record, abort);
+			const result = await this.unpublish(workflow, oldVersion, record, abort);
+			if (compiledEngine.isEnabled) await compiledEngine.get().deactivate(workflow.id);
+			return result;
 		}
 
 		if (!newVersion) return { type: 'version-missing' };
 
-		return await this.publish(workflow, oldVersion, newVersion, record, abort);
+		const result = await this.publish(workflow, oldVersion, newVersion, record, abort);
+		if (!compiled) {
+			// A workflow that left the compiled engine must not keep its triggers in `wfrt`.
+			if (compiledEngine.isEnabled) await compiledEngine.get().deactivate(workflow.id);
+			return result;
+		}
+		if (result.type !== 'completed' && result.type !== 'partial') return result;
+		try {
+			workflow.activeVersion = newVersion;
+			await compiledEngine.get().activate(workflow);
+		} catch (e) {
+			return { type: 'failed', error: ensureError(e) };
+		}
+		return result;
 	}
 
 	/**
@@ -176,6 +195,11 @@ export class WorkflowPublicationApplier {
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
+		if (Container.get(CompiledEngineBridge).handles(workflow)) {
+			// `wfrt` holds the schedules of a compiled workflow, not n8n's in-memory
+			// registry, so the reconciler must not look for them there.
+			for (const nodeId of triggerKinds.keys()) triggerKinds.set(nodeId, 'persisted');
+		}
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,

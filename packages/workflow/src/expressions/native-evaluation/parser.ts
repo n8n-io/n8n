@@ -15,11 +15,14 @@ import {
 	RESERVED_NAMES,
 	TIME_MEMBERS,
 	TIME_METHODS,
+	TIME_OPS,
 	TIME_ROOTS,
 	UNARY_OPS,
 	isOneOf,
 	type Literal,
 	type SimpleNode,
+	type TimeArg,
+	type TimeSource,
 } from './grammar';
 import { isSafeObjectProperty } from '../../utils';
 
@@ -145,14 +148,121 @@ function parseNodeRef(node: AstNode): NodeRef | null {
 	return null;
 }
 
-type TimeRef = Extract<SimpleNode, { kind: 'timeRoot' }>;
+/** The longest chain of time operations (`$now.minus(...).startOf(...)...`). */
+const MAX_TIME_OPS = 8;
 
-// `$now` or `$today` in object/receiver position. As with parseNodeRef, only
-// the member and call parsers ask, so the DateTime never stands alone.
-function parseTimeRoot(node: AstNode): TimeRef | null {
-	if (node.type !== 'Identifier' || !isOneOf(TIME_ROOTS, node.name)) return null;
+// A DateTime in object/receiver position: `$now`, `$today`, `DateTime.now()`,
+// or a time operation on one of these. As with parseNodeRef, only the member
+// and call parsers ask, so the DateTime never stands alone. Every esprima
+// node read here is checked for comments, as parseSimple does.
+function parseTimeSource(node: AstNode, ops = 0): TimeSource | null {
+	if (node.comments?.length) return null;
+	if (node.type === 'Identifier') {
+		return isOneOf(TIME_ROOTS, node.name) ? { kind: 'timeRoot', name: node.name } : null;
+	}
+	if (node.type !== 'CallExpression' || node.optional === true || ops >= MAX_TIME_OPS) return null;
 
-	return { kind: 'timeRoot', name: node.name };
+	const callee = node.callee;
+	if (callee.type !== 'MemberExpression' || callee.computed === true) return null;
+	if (callee.optional === true || callee.comments?.length) return null;
+	const property = callee.property;
+	if (property.type !== 'Identifier') return null;
+
+	if (isDateTimeNow(callee.object, property.name)) {
+		return node.arguments.length === 0 ? { kind: 'timeNow' } : null;
+	}
+
+	if (!isOneOf(TIME_OPS, property.name)) return null;
+	const receiver = parseTimeSource(callee.object, ops + 1);
+	if (receiver === null) return null;
+	const args = parseTimeArgs(property.name, node.arguments);
+	if (args === null) return null;
+
+	return { kind: 'timeOp', receiver, op: property.name, args };
+}
+
+/** `DateTime.now`: the callee of `DateTime.now()`. */
+function isDateTimeNow(object: namedTypes.MemberExpression['object'], method: string): boolean {
+	return (
+		object.type === 'Identifier' &&
+		object.name === 'DateTime' &&
+		!object.comments?.length &&
+		method === 'now'
+	);
+}
+
+/** The arguments of a time operation, in the shapes that TIME_OPS describes. */
+function parseTimeArgs(
+	op: (typeof TIME_OPS)[number],
+	args: namedTypes.CallExpression['arguments'],
+): TimeArg[] | null {
+	const parsed: TimeArg[] = [];
+	for (const arg of args) {
+		if (arg.comments?.length) return null;
+		const value = arg.type === 'ObjectExpression' ? parseDuration(arg) : parseNumberOrString(arg);
+		if (value === null) return null;
+		parsed.push(value);
+	}
+	const [first, second] = parsed;
+	const isNumber = (a: TimeArg | undefined) => a?.kind === 'literal' && typeof a.value === 'number';
+	const isString = (a: TimeArg | undefined) => a?.kind === 'literal' && typeof a.value === 'string';
+	switch (op) {
+		case 'plus':
+		case 'minus':
+			if (parsed.length === 1 && (first.kind === 'duration' || isNumber(first))) return parsed;
+			if (parsed.length === 2 && isNumber(first) && isString(second)) return parsed;
+			return null;
+		case 'startOf':
+		case 'endOf':
+		case 'setZone':
+			return parsed.length === 1 && isString(first) ? parsed : null;
+		case 'toUTC':
+			return parsed.length === 0 ? parsed : null;
+	}
+}
+
+/** A number or string literal; a number may have a leading minus. */
+function parseNumberOrString(node: AstNode | namedTypes.Property['value']): Literal | null {
+	if (node.type === 'Literal') {
+		const literal = parseLiteral(node);
+		return literal !== null &&
+			(typeof literal.value === 'number' || typeof literal.value === 'string')
+			? literal
+			: null;
+	}
+	if (
+		node.type === 'UnaryExpression' &&
+		node.operator === '-' &&
+		node.argument.type === 'Literal' &&
+		!node.argument.comments?.length &&
+		typeof node.argument.value === 'number'
+	) {
+		return { kind: 'literal', value: -node.argument.value };
+	}
+	return null;
+}
+
+/** `{ days: 1, hours: -2 }`: plain keys with number literals. */
+function parseDuration(node: namedTypes.ObjectExpression): TimeArg | null {
+	const fields: Array<[string, number]> = [];
+	for (const property of node.properties) {
+		if (property.comments?.length) return null;
+		if (property.type !== 'Property' || property.kind !== 'init') return null;
+		if (property.computed === true || property.method === true || property.shorthand === true) {
+			return null;
+		}
+		const key =
+			property.key.type === 'Identifier'
+				? property.key.name
+				: property.key.type === 'Literal' && typeof property.key.value === 'string'
+					? property.key.value
+					: null;
+		if (key === null || !isSafeObjectProperty(key)) return null;
+		const value = parseNumberOrString(property.value);
+		if (value === null || typeof value.value !== 'number') return null;
+		fields.push([key, value.value]);
+	}
+	return { kind: 'duration', fields };
 }
 
 // Only static keys are representable. Dynamic keys ($json[$json.key]) need
@@ -174,7 +284,7 @@ function parseMember(node: namedTypes.MemberExpression, parse: ParseChild): Simp
 		return { kind: 'member', object: ref, key, optional: node.optional === true };
 	}
 
-	const time = parseTimeRoot(node.object);
+	const time = parseTimeSource(node.object);
 	if (time !== null) {
 		if (typeof key !== 'string' || !TIME_MEMBERS.has(key)) return null;
 
@@ -247,7 +357,7 @@ function parseTimeCall(
 	callee: namedTypes.MemberExpression,
 	method: string,
 ): SimpleNode | null {
-	const time = parseTimeRoot(callee.object);
+	const time = parseTimeSource(callee.object);
 	if (time === null || !TIME_METHODS.has(method) || node.arguments.length > 0) return null;
 
 	const optional = node.optional === true || callee.optional === true;

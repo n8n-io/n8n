@@ -37,6 +37,8 @@ export type SimpleNode =
 	| { kind: 'nodeRef'; ref: 'node'; name: string }
 	| { kind: 'nodeRef'; ref: 'legacy'; name: string }
 	| { kind: 'timeRoot'; name: TimeRoot }
+	| { kind: 'timeNow' }
+	| { kind: 'timeOp'; receiver: TimeSource; op: TimeOp; args: TimeArg[] }
 	| { kind: 'undefined' }
 	| { kind: 'member'; object: SimpleNode; key: string | number; optional: boolean }
 	| { kind: 'chain'; expression: SimpleNode }
@@ -57,6 +59,17 @@ export type SimpleNode =
 
 export type Literal = Extract<SimpleNode, { kind: 'literal' }>;
 
+/**
+ * An expression whose value is a Luxon DateTime: a time root, `DateTime.now()`,
+ * or one of TIME_OPS on another time source. Like a time root, it only stands
+ * as the object of a TIME_MEMBERS getter or the receiver of a TIME_METHODS
+ * method, so the DateTime itself is never a result.
+ */
+export type TimeSource = Extract<SimpleNode, { kind: 'timeRoot' | 'timeNow' | 'timeOp' }>;
+
+/** An argument of a time operation: a literal, or a duration object of numeric literals. */
+export type TimeArg = Literal | { kind: 'duration'; fields: Array<[string, number]> };
+
 // Data roots: plain reads off the data proxy. `$now`/`$today` are Luxon
 // DateTimes, which this grammar cannot hold as a value; they are time roots
 // below, readable only through an allowlisted getter or method.
@@ -72,6 +85,9 @@ export const DATA_ROOTS = [
 	'$json',
 	'$parameter',
 	'$vars',
+	// The credential data that a credential type's `authenticate` rule reads
+	// (`Bearer {{$credentials.accessToken}}`), an additional key of the proxy.
+	'$credentials',
 	'$binary',
 	'$itemIndex',
 	'$runIndex',
@@ -234,6 +250,29 @@ export const TIME_METHODS = captureMethods(dateTimeProto, [
 	'toISOTime',
 	'toString',
 ]);
+
+// Operations that give a DateTime. `plus` and `minus` are the Date expression
+// extensions in every engine (extendSyntax rewrites them), so the native path
+// calls the same `extend()` dispatch. The others are Luxon's own methods, and
+// no extension has their names. The argument shapes are fixed by the parser:
+// plus/minus a duration object, a number, or a number and a unit; startOf,
+// endOf and setZone one string; toUTC none. toFormat and the locale methods
+// stay on the engine (see the note on TIME_ROOTS).
+export const TIME_OPS = ['plus', 'minus', 'startOf', 'endOf', 'setZone', 'toUTC'] as const;
+export type TimeOp = (typeof TIME_OPS)[number];
+
+export const TIME_OP_METHODS = captureMethods(dateTimeProto, [
+	'startOf',
+	'endOf',
+	'setZone',
+	'toUTC',
+]);
+
+const capturedNow: unknown = Reflect.get(DateTime ?? {}, 'now');
+
+/** `DateTime.now`, captured at import as the other intrinsics. */
+export const dateTimeNow: (() => unknown) | undefined =
+	typeof capturedNow === 'function' ? () => Reflect.apply(capturedNow, DateTime, []) : undefined;
 
 export const CALLABLE_METHODS = new Set([
 	...STRING_METHODS.keys(),

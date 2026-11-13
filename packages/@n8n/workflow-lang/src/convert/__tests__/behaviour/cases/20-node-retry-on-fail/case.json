@@ -1,0 +1,14 @@
+{
+	"description": "HTTP Request with retry on fail and continue on fail: v1 sends the request again after an error",
+	"trigger": { "body": { "id": 7 } },
+	"http": {
+		"Fetch": {
+			"path": "flaky",
+			"responses": [
+				{ "status": 500, "body": { "message": "busy" } },
+				{ "status": 500, "body": { "message": "busy" } },
+				{ "status": 200, "body": { "ok": true } }
+			]
+		}
+	}
+}

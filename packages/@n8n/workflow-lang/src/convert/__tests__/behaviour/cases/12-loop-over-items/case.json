@@ -1,0 +1,24 @@
+{
+	"description": "Loop Over Items (batch 2) \u2192 Set with $runIndex and the node context \u2192 back; done \u2192 Aggregate",
+	"trigger": {
+		"body": {
+			"items": [
+				{
+					"name": "a"
+				},
+				{
+					"name": "b"
+				},
+				{
+					"name": "c"
+				},
+				{
+					"name": "d"
+				},
+				{
+					"name": "e"
+				}
+			]
+		}
+	}
+}

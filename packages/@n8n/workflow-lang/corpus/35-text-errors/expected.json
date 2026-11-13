@@ -1,0 +1,109 @@
+{
+	"status": "ok",
+	"result": {
+		"forms": [
+			{
+				"nfc": "Crème brûlée",
+				"nfd": "Crème brûlée",
+				"nfkc": "Crème brûlée",
+				"nfkd": "Crème brûlée"
+			},
+			{
+				"nfc": "Ångström",
+				"nfd": "Ångström",
+				"nfkc": "Ångström",
+				"nfkd": "Ångström"
+			},
+			{
+				"nfc": "ﬁﬂ ①②",
+				"nfd": "ﬁﬂ ①②",
+				"nfkc": "fifl 12",
+				"nfkd": "fifl 12"
+			},
+			{
+				"nfc": "한국어",
+				"nfd": "한국어",
+				"nfkc": "한국어",
+				"nfkd": "한국어"
+			},
+			{
+				"nfc": "Ⅻ ㎒",
+				"nfd": "Ⅻ ㎒",
+				"nfkc": "XII MHz",
+				"nfkd": "XII MHz"
+			},
+			{
+				"nfc": "ẹ́",
+				"nfd": "ẹ́",
+				"nfkc": "ẹ́",
+				"nfkd": "ẹ́"
+			},
+			{
+				"nfc": "Ǖ",
+				"nfd": "Ǖ",
+				"nfkc": "Ǖ",
+				"nfkd": "Ǖ"
+			}
+		],
+		"errors": [
+			{
+				"name": "SyntaxError",
+				"message": "Expected double-quoted property name in JSON at position 7 (line 1 column 8)"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Unexpected end of JSON input"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Unexpected token 'o', \"not json at\"... is not valid JSON"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Expected ',' or ']' after array element in JSON at position 5 (line 1 column 6)"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Unexpected number in JSON at position 1 (line 1 column 2)"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Unterminated string in JSON at position 3 (line 1 column 4)"
+			},
+			null,
+			{
+				"name": "SyntaxError",
+				"message": "\"undefined\" is not valid JSON"
+			}
+		],
+		"sorted": [
+			"10",
+			"9",
+			"Ångström",
+			"co-op",
+			"coop",
+			"Crème brûlée",
+			"ẹ́",
+			"ﬁﬂ ①②",
+			"resume",
+			"Resume",
+			"Ǖ",
+			"Ⅻ ㎒",
+			"한국어",
+			"中文",
+			"日本"
+		],
+		"coerced": [
+			[0, 0, 1, 1, 1, 1],
+			[-1, -1, 0, -1, 1, -1],
+			[-1, -1, 1, 0, 1, -1],
+			[-1, -1, -1, -1, 0, -1],
+			[-1, -1, 1, -1, 1, -1]
+		]
+	},
+	"effects": []
+}

@@ -1,0 +1,156 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Schedule Trigger",
+		"Get orders",
+		"Split Out",
+		"Is large",
+		"Tag large",
+		"Tag small",
+		"Merge",
+		"Aggregate"
+	],
+	"nodes": {
+		"Schedule Trigger": [
+			[
+				{
+					"scheduledAt": 1700000000000
+				}
+			]
+		],
+		"Get orders": [
+			[
+				{
+					"orders": [
+						{
+							"id": 1,
+							"amount": 5
+						},
+						{
+							"id": 2,
+							"amount": 50
+						},
+						{
+							"id": 3,
+							"amount": 12
+						},
+						{
+							"id": 4,
+							"amount": 1
+						}
+					]
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"id": 1,
+					"amount": 5
+				},
+				{
+					"id": 2,
+					"amount": 50
+				},
+				{
+					"id": 3,
+					"amount": 12
+				},
+				{
+					"id": 4,
+					"amount": 1
+				}
+			]
+		],
+		"Is large": [
+			[
+				{
+					"id": 2,
+					"amount": 50
+				},
+				{
+					"id": 3,
+					"amount": 12
+				}
+			],
+			[
+				{
+					"id": 1,
+					"amount": 5
+				},
+				{
+					"id": 4,
+					"amount": 1
+				}
+			]
+		],
+		"Tag large": [
+			[
+				{
+					"id": 2,
+					"amount": 50,
+					"size": "large"
+				},
+				{
+					"id": 3,
+					"amount": 12,
+					"size": "large"
+				}
+			]
+		],
+		"Tag small": [
+			[
+				{
+					"id": 1,
+					"amount": 5,
+					"size": "small"
+				},
+				{
+					"id": 4,
+					"amount": 1,
+					"size": "small"
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"id": 2,
+					"amount": 50,
+					"size": "large"
+				},
+				{
+					"id": 3,
+					"amount": 12,
+					"size": "large"
+				},
+				{
+					"id": 1,
+					"amount": 5,
+					"size": "small"
+				},
+				{
+					"id": 4,
+					"amount": 1,
+					"size": "small"
+				}
+			]
+		],
+		"Aggregate": [
+			[
+				{
+					"id": [2, 3, 1, 4],
+					"sizes": ["large", "large", "small", "small"]
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/orders",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

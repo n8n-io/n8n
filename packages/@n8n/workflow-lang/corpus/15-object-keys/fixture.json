@@ -1,0 +1,6 @@
+{
+	"trigger": { "body": { "zeta": 1, "7": 7, "alpha": 2, "3": 3 }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": { "Save": [{ "status": 200, "headers": {}, "body": {} }] }
+}

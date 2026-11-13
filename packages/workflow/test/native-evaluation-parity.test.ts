@@ -133,7 +133,10 @@ describe('Expression - fast native evaluation parity', () => {
 			: { data: runExecutionData, items: [item] };
 	// `$vars` comes in through additionalKeys; `$('Source').item` resolves the
 	// paired item through executeData.source.
-	const additionalKeys = { $vars: { region: 'eu' } };
+	const additionalKeys = {
+		$vars: { region: 'eu' },
+		$credentials: { accessToken: 'tok-1', nested: { scope: 'read' } },
+	};
 	const executeDataFor = (items: Array<ReturnType<typeof makeItem>>) => ({
 		node: workflow.getNode('Current')!,
 		data: { main: [items] },

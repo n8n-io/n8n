@@ -1,0 +1,12 @@
+{
+	"trigger": {
+		"body": {
+			"raw": "{\"k\": [1, 2.50, true, null, \"\\u00e9\"], \"2\": \"two\", \"1\": \"one\"}"
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": { "Send": [{ "status": 200, "headers": {}, "body": {} }] }
+}

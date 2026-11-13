@@ -1,0 +1,133 @@
+{
+	"name": "Loop over items",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "loop",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.items",
+				"options": {}
+			}
+		},
+		{
+			"id": "loop-over-items",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"batchSize": 2,
+				"options": {}
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [600, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "batch",
+							"name": "batch",
+							"value": "={{ $runIndex }}",
+							"type": "number"
+						},
+						{
+							"id": "left",
+							"name": "left",
+							"value": "={{ $node[\"Loop Over Items\"].context[\"noItemsLeft\"] }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "total",
+			"name": "Total",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [600, -100],
+			"parameters": {
+				"aggregate": "aggregateAllItemData",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Total",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Tag",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

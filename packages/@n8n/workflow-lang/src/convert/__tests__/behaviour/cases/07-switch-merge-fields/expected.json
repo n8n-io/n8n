@@ -1,0 +1,151 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split Out", "Switch", "Fruit", "Veg", "Other", "Get prices", "Merge"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"items": [
+							{
+								"sku": "a",
+								"category": "fruit"
+							},
+							{
+								"sku": "b",
+								"category": "veg"
+							},
+							{
+								"sku": "c",
+								"category": "fruit"
+							},
+							{
+								"sku": "d",
+								"category": "toy"
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split Out": [
+			[
+				{
+					"sku": "a",
+					"category": "fruit"
+				},
+				{
+					"sku": "b",
+					"category": "veg"
+				},
+				{
+					"sku": "c",
+					"category": "fruit"
+				},
+				{
+					"sku": "d",
+					"category": "toy"
+				}
+			]
+		],
+		"Switch": [
+			[
+				{
+					"sku": "a",
+					"category": "fruit"
+				},
+				{
+					"sku": "c",
+					"category": "fruit"
+				}
+			],
+			[
+				{
+					"sku": "b",
+					"category": "veg"
+				}
+			],
+			[
+				{
+					"sku": "d",
+					"category": "toy"
+				}
+			]
+		],
+		"Fruit": [
+			[
+				{
+					"sku": "a",
+					"category": "fruit",
+					"kind": "F"
+				},
+				{
+					"sku": "c",
+					"category": "fruit",
+					"kind": "F"
+				}
+			]
+		],
+		"Veg": [
+			[
+				{
+					"sku": "b",
+					"category": "veg",
+					"kind": "V"
+				}
+			]
+		],
+		"Other": [
+			[
+				{
+					"sku": "d",
+					"category": "toy",
+					"kind": "?"
+				}
+			]
+		],
+		"Get prices": [
+			[
+				{
+					"sku": "a",
+					"price": 1.5
+				},
+				{
+					"sku": "c",
+					"price": 0.5
+				},
+				{
+					"sku": "b",
+					"price": 2
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"sku": "a",
+					"category": "fruit",
+					"kind": "F",
+					"price": 1.5
+				},
+				{
+					"sku": "c",
+					"category": "fruit",
+					"kind": "F",
+					"price": 0.5
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/prices",
+			"method": "GET"
+		}
+	],
+	"responses": []
+}

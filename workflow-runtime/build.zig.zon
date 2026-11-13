@@ -1,0 +1,8 @@
+.{
+    .name = .workflow_runtime,
+    .version = "0.0.0",
+    .fingerprint = 0xd7ea9acbd02e7f44,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{},
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+}

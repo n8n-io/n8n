@@ -1,0 +1,39 @@
+{
+	"status": "ok",
+	"result": {
+		"count": 16,
+		"snapshots": [0, 10, 20],
+		"total": 14,
+		"tagged": ["id-3:odd", "id-4:even", "id-7:odd"],
+		"status": "done",
+		"fact": 3628800
+	},
+	"effects": [
+		{
+			"step": "Report",
+			"kind": "http",
+			"args": {
+				"name": "Report",
+				"method": "POST",
+				"url": "https://status.example.com",
+				"body": {
+					"s": "running",
+					"total": 14
+				}
+			}
+		},
+		{
+			"step": "Report",
+			"kind": "http",
+			"args": {
+				"name": "Report",
+				"method": "POST",
+				"url": "https://status.example.com",
+				"body": {
+					"s": "done",
+					"total": 14
+				}
+			}
+		}
+	]
+}

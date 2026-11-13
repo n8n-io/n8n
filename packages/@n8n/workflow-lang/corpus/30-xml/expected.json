@@ -1,0 +1,186 @@
+{
+	"status": "ok",
+	"result": {
+		"results": [
+			{
+				"rss": {
+					"$": {
+						"version": "2.0",
+						"xmlns:dc": "http://purl.org/dc/elements/1.1/",
+						"xmlns:content": "http://purl.org/rss/1.0/modules/content/"
+					},
+					"channel": [
+						{
+							"title": ["News & Views"],
+							"link": ["https://example.com/"],
+							"item": [
+								{
+									"title": ["First ’post’  ©"],
+									"link": ["https://example.com/1"],
+									"description": ["<p>Hello <b>world</b></p><br/>Line two &amp; more"],
+									"dc:creator": ["Ada"],
+									"category": [
+										"a",
+										{
+											"_": "b",
+											"$": {
+												"domain": "x"
+											}
+										}
+									],
+									"guid": [
+										{
+											"_": "id-1",
+											"$": {
+												"isPermaLink": "false"
+											}
+										}
+									],
+									"enclosure": [
+										{
+											"$": {
+												"url": "https://example.com/a.mp3",
+												"length": "10",
+												"type": "audio/mpeg"
+											}
+										}
+									],
+									"pubDate": ["Mon, 06 May 2024 10:00:00 GMT"]
+								},
+								{
+									"title": ["Second"],
+									"description": [
+										{
+											"_": "Plain  text",
+											"span": [
+												{
+													"_": "inline",
+													"$": {
+														"class": "x"
+													}
+												}
+											]
+										}
+									],
+									"empty": [""],
+									"self": [""],
+									"ws": ["   "],
+									"sanitized___proto__": [
+										{
+											"_": "bad",
+											"$": {
+												"sanitized_constructor": "1",
+												"a": "1"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"feed": {
+					"$": {
+						"xmlns": "http://www.w3.org/2005/Atom"
+					},
+					"title": [
+						{
+							"_": "Atom",
+							"$": {
+								"type": "text"
+							}
+						}
+					],
+					"entry": [
+						{
+							"id": ["1"],
+							"link": [
+								{
+									"$": {
+										"rel": "alternate",
+										"href": "https://e.com/1"
+									}
+								}
+							],
+							"content": [
+								{
+									"_": "<p>Hi</p>",
+									"$": {
+										"type": "html"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"a": {
+					"_": "😀 x  z  ",
+					"b": ["y"]
+				}
+			},
+			{
+				"a": "   "
+			},
+			null,
+			null,
+			{
+				"error": "Non-whitespace before first tag.\nLine: 0\nColumn: 1\nChar: h"
+			},
+			{
+				"error": "Unexpected close tag\nLine: 0\nColumn: 10\nChar: >"
+			},
+			{
+				"error": "Invalid character entity\nLine: 0\nColumn: 10\nChar: ;"
+			},
+			{
+				"error": "Unquoted attribute value\nLine: 0\nColumn: 6\nChar: 1"
+			},
+			{
+				"error": "Malformed comment\nLine: 0\nColumn: 13\nChar:  "
+			},
+			{
+				"error": "Attribute without value\nLine: 0\nColumn: 5\nChar: >"
+			},
+			{
+				"error": "Unclosed root tag\nLine: 0\nColumn: 3\nChar: "
+			},
+			{
+				"error": "Unmatched closing tag: a\nLine: 0\nColumn: 4\nChar: >"
+			},
+			{
+				"error": "No whitespace between attributes\nLine: 0\nColumn: 9\nChar: c"
+			},
+			{
+				"error": "Text data outside of root node.\nLine: 1\nColumn: 1\nChar: h"
+			},
+			{
+				"error": "Invalid character entity\nLine: 0\nColumn: 7\nChar: ;"
+			},
+			{
+				"error": "Invalid code point 99999999"
+			},
+			{
+				"a": "&A)"
+			},
+			{
+				"a": {
+					"b": [" 1 ", "2"]
+				}
+			}
+		],
+		"snippets": [
+			"Hello world\nLine two & more",
+			"a\ncd\ne",
+			"café ¬it; & AA – �",
+			"x<li\rclass>y\nTitle\nz",
+			"<\nq"
+		],
+		"contents": ["<p>Hello <b>world</b></p><br/>Line two &amp; more", "Plain  text"],
+		"plain": "just text"
+	},
+	"effects": []
+}

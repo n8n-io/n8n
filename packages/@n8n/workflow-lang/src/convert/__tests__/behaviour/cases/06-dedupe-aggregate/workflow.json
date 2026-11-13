@@ -1,0 +1,163 @@
+{
+	"name": "Event summary",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "events",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.events",
+				"options": {}
+			}
+		},
+		{
+			"id": "remove-duplicates",
+			"name": "Remove Duplicates",
+			"type": "n8n-nodes-base.removeDuplicates",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"compare": "selectedFields",
+				"fieldsToCompare": "userId",
+				"options": {}
+			}
+		},
+		{
+			"id": "aggregate",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "userId",
+							"renameField": true,
+							"outputFieldName": "users"
+						},
+						{
+							"fieldToAggregate": "score"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "summary",
+			"name": "Summary",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "count",
+							"name": "count",
+							"value": "={{ $json.users.length }}",
+							"type": "number"
+						},
+						{
+							"id": "best",
+							"name": "best",
+							"value": "={{ Math.max(...$json.score) }}",
+							"type": "number"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [1000, 0],
+			"parameters": {
+				"respondWith": "firstIncomingItem",
+				"options": {
+					"responseCode": 200
+				}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Remove Duplicates",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Remove Duplicates": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Aggregate": {
+			"main": [
+				[
+					{
+						"node": "Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Summary": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

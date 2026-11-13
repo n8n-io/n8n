@@ -1,0 +1,53 @@
+{
+	"trigger": {
+		"body": {
+			"ids": [1, 2, 3, 6, 4, 5]
+		},
+		"headers": {},
+		"query": {}
+	},
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Process": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": {
+					"ok": true
+				}
+			},
+			{
+				"$error": "timeout"
+			},
+			{
+				"status": 200,
+				"headers": {},
+				"body": {
+					"ok": false
+				}
+			},
+			{
+				"status": 200,
+				"headers": {},
+				"body": {
+					"ok": true
+				}
+			}
+		],
+		"Audit": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": {}
+			}
+		],
+		"Lookup": [
+			{
+				"status": 200,
+				"headers": {},
+				"body": {}
+			}
+		]
+	}
+}

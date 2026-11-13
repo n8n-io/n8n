@@ -1,0 +1,20 @@
+{
+	"status": "ok",
+	"result": {
+		"slot": 472222,
+		"label": "slot-22",
+		"count": 42,
+		"lagMs": 2500
+	},
+	"effects": [
+		{
+			"step": "Fetch report",
+			"kind": "http",
+			"args": {
+				"name": "Fetch report",
+				"method": "GET",
+				"url": "https://reports.example.com/hourly?from=1699996500000&to=1700000100000"
+			}
+		}
+	]
+}

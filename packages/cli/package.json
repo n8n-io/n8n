@@ -76,6 +76,7 @@
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@n8n/workflow-lang": "workspace:*",
     "@redocly/cli": "^2.76.0",
     "@types/bcryptjs": "^2.4.2",
     "@types/compression": "catalog:",

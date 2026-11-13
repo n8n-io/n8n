@@ -1,0 +1,85 @@
+{
+	"name": "Sub-workflows",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "sub",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"fieldToSplitOut": "body.people",
+				"options": {}
+			}
+		},
+		{
+			"id": "greet-each",
+			"name": "Greet each",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.1,
+			"position": [400, -100],
+			"parameters": {
+				"source": "parameter",
+				"workflowJson": "{\"name\": \"Greeter\", \"nodes\": [{\"id\": \"start\", \"name\": \"Start\", \"type\": \"n8n-nodes-base.executeWorkflowTrigger\", \"typeVersion\": 1, \"position\": [0, 0], \"parameters\": {}}, {\"id\": \"greet\", \"name\": \"Greet\", \"type\": \"n8n-nodes-base.set\", \"typeVersion\": 3.4, \"position\": [200, 0], \"parameters\": {\"assignments\": {\"assignments\": [{\"id\": \"greeting\", \"name\": \"greeting\", \"value\": \"=hi {{ $json.name }}\", \"type\": \"string\"}]}, \"options\": {}, \"includeOtherFields\": true}}], \"connections\": {\"Start\": {\"main\": [[{\"node\": \"Greet\", \"type\": \"main\", \"index\": 0}]]}}}",
+				"mode": "each",
+				"options": {}
+			}
+		},
+		{
+			"id": "count-all",
+			"name": "Count all",
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.1,
+			"position": [400, 100],
+			"parameters": {
+				"source": "parameter",
+				"workflowJson": "{\"name\": \"Counter\", \"nodes\": [{\"id\": \"start\", \"name\": \"Start\", \"type\": \"n8n-nodes-base.executeWorkflowTrigger\", \"typeVersion\": 1, \"position\": [0, 0], \"parameters\": {}}, {\"id\": \"count\", \"name\": \"Count\", \"type\": \"n8n-nodes-base.aggregate\", \"typeVersion\": 1, \"position\": [200, 0], \"parameters\": {\"fieldsToAggregate\": {\"fieldToAggregate\": [{\"fieldToAggregate\": \"name\"}]}, \"options\": {}}}], \"connections\": {\"Start\": {\"main\": [[{\"node\": \"Count\", \"type\": \"main\", \"index\": 0}]]}}}",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Greet each",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Count all",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

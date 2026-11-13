@@ -1,0 +1,93 @@
+{
+	"status": "ok",
+	"result": {
+		"rates": {
+			"EUR": 1.08,
+			"GBP": "NodeError@Fetch rate: rate limited",
+			"JPY": 0.0067
+		},
+		"fallback": "ok 2",
+		"error": {
+			"name": "Error",
+			"message": ""
+		},
+		"typed": {
+			"name": "TypeError",
+			"message": "bad type"
+		}
+	},
+	"effects": [
+		{
+			"step": "Fetch rate",
+			"kind": "http",
+			"args": {
+				"name": "Fetch rate",
+				"method": "GET",
+				"url": "https://fx.example.com/EUR"
+			}
+		},
+		{
+			"step": "Fetch rate",
+			"kind": "http",
+			"args": {
+				"name": "Fetch rate",
+				"method": "GET",
+				"url": "https://fx.example.com/GBP"
+			}
+		},
+		{
+			"step": "Fetch rate",
+			"kind": "http",
+			"args": {
+				"name": "Fetch rate",
+				"method": "GET",
+				"url": "https://fx.example.com/JPY"
+			}
+		},
+		{
+			"step": "Legacy node",
+			"kind": "node",
+			"args": {
+				"name": "Legacy node",
+				"type": "n8n-nodes-community.legacy",
+				"parameters": {
+					"mode": "x"
+				},
+				"retry": {
+					"max": 2,
+					"delayMs": 10
+				}
+			}
+		},
+		{
+			"step": "Legacy node",
+			"kind": "node",
+			"args": {
+				"name": "Legacy node",
+				"type": "n8n-nodes-community.legacy",
+				"parameters": {
+					"mode": "x"
+				},
+				"retry": {
+					"max": 2,
+					"delayMs": 10
+				}
+			}
+		},
+		{
+			"step": "Legacy node",
+			"kind": "node",
+			"args": {
+				"name": "Legacy node",
+				"type": "n8n-nodes-community.legacy",
+				"parameters": {
+					"mode": "x"
+				},
+				"retry": {
+					"max": 2,
+					"delayMs": 10
+				}
+			}
+		}
+	]
+}

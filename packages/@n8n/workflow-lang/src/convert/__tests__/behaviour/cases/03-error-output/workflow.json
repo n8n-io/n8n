@@ -1,0 +1,159 @@
+{
+	"name": "Charge with error branch",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "charge",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "charge",
+			"name": "Charge",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 0],
+			"parameters": {
+				"method": "POST",
+				"url": "http://127.0.0.1:47123/charge",
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "customer",
+							"value": "={{ $json.body.customer }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"onError": "continueErrorOutput"
+		},
+		{
+			"id": "paid",
+			"name": "Paid",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "status",
+							"name": "status",
+							"value": "paid",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "failed",
+			"name": "Failed",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "status",
+							"name": "status",
+							"value": "failed",
+							"type": "string"
+						},
+						{
+							"id": "customer",
+							"name": "customer",
+							"value": "={{ $json.body.customer }}",
+							"type": "string"
+						},
+						{
+							"id": "hasError",
+							"name": "hasError",
+							"value": "={{ $json.error !== undefined }}",
+							"type": "boolean"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"parameters": {
+				"respondWith": "firstIncomingItem",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Charge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Charge": {
+			"main": [
+				[
+					{
+						"node": "Paid",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Paid": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Failed": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

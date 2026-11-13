@@ -1,0 +1,10 @@
+{
+	"trigger": { "body": { "user": "u1" }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": {
+		"Load profile": [{ "status": 200, "headers": {}, "body": { "name": "Zoë" } }],
+		"Optional enrich": [{ "$error": "503" }],
+		"Sync CRM": [{ "$error": "connection reset" }]
+	}
+}

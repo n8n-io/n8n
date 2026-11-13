@@ -1,0 +1,6 @@
+{
+	"description": "If boolean is-false on a missing field, Filter with always output data, Remove Duplicates that fails and continues, $itemIndex in an all-items Code node",
+	"trigger": {
+		"body": { "rows": [{ "url": "a" }, { "url": "b" }] }
+	}
+}

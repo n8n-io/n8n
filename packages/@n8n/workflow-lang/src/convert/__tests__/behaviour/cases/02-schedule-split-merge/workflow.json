@@ -1,0 +1,234 @@
+{
+	"name": "Nightly orders",
+	"nodes": [
+		{
+			"id": "schedule-trigger",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 3
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "get-orders",
+			"name": "Get orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 0],
+			"parameters": {
+				"url": "http://127.0.0.1:47123/orders",
+				"options": {}
+			}
+		},
+		{
+			"id": "split-out",
+			"name": "Split Out",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"parameters": {
+				"fieldToSplitOut": "orders",
+				"options": {}
+			}
+		},
+		{
+			"id": "is-large",
+			"name": "Is large",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [600, 0],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.amount }}",
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							},
+							"rightValue": 10
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "tag-large",
+			"name": "Tag large",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "size",
+							"name": "size",
+							"value": "large",
+							"type": "string"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "tag-small",
+			"name": "Tag small",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [800, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "size",
+							"name": "size",
+							"value": "small",
+							"type": "string"
+						}
+					]
+				},
+				"options": {},
+				"includeOtherFields": true
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.1,
+			"position": [1000, 0],
+			"parameters": {}
+		},
+		{
+			"id": "aggregate",
+			"name": "Aggregate",
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [1200, 0],
+			"parameters": {
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{
+							"fieldToAggregate": "id"
+						},
+						{
+							"fieldToAggregate": "size",
+							"renameField": true,
+							"outputFieldName": "sizes"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Get orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get orders": {
+			"main": [
+				[
+					{
+						"node": "Split Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out": {
+			"main": [
+				[
+					{
+						"node": "Is large",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Is large": {
+			"main": [
+				[
+					{
+						"node": "Tag large",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Tag small",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag large": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Tag small": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Aggregate",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

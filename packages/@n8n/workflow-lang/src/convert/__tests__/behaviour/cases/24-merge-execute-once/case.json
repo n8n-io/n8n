@@ -1,0 +1,4 @@
+{
+	"description": "A Merge (append) with \"execute once\": v1 keeps the first item of each input",
+	"trigger": { "body": { "rows": [{ "n": 1 }, { "n": 2 }, { "n": 3 }] } }
+}

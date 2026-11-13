@@ -16,6 +16,8 @@ import {
 	STRING_METHODS,
 	TIME_MEMBERS,
 	TIME_METHODS,
+	TIME_OP_METHODS,
+	dateTimeNow,
 	hasOwn,
 	isArray,
 	isObj,
@@ -24,6 +26,8 @@ import {
 	type BinaryOp,
 	type NativeMethod,
 	type SimpleNode,
+	type TimeArg,
+	type TimeSource,
 } from './grammar';
 
 // ── Evaluation: total over the grammar. ────────────────────────────────────
@@ -139,6 +143,9 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
 	if (node.object.kind === 'timeRoot') {
 		return evalTimeRead(env.data[node.object.name], TIME_MEMBERS.get(toStr(node.key)));
+	}
+	if (node.object.kind === 'timeNow' || node.object.kind === 'timeOp') {
+		return evalTimeRead(evalTimeSource(node.object, env), TIME_MEMBERS.get(toStr(node.key)));
 	}
 
 	const object = evalNode(node.object, env);
@@ -411,6 +418,9 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 	if (node.receiver.kind === 'timeRoot') {
 		return evalTimeRead(evalReceiver(node, env), TIME_METHODS.get(node.method));
 	}
+	if (node.receiver.kind === 'timeNow' || node.receiver.kind === 'timeOp') {
+		return evalTimeRead(evalTimeSource(node.receiver, env), TIME_METHODS.get(node.method));
+	}
 
 	if (EXTENSION_METHODS.has(node.method)) return evalExtension(node, env);
 
@@ -551,6 +561,47 @@ function evalTimeRead(root: unknown, fn: NativeMethod | undefined): unknown {
 	return result;
 }
 
+const timeArgValue = (arg: TimeArg): unknown =>
+	arg.kind === 'duration' ? Object.fromEntries(arg.fields) : arg.value;
+
+/**
+ * The DateTime of a time source. Each step must give a valid Luxon DateTime;
+ * anything else (a root that is not one, an error, an invalid result such as
+ * an unknown zone) is the engine's, which keeps errors and edge cases in
+ * parity without copying them here.
+ */
+function evalTimeSource(node: TimeSource, env: Env): DateTime {
+	let value: unknown;
+	if (node.kind === 'timeRoot') {
+		value = env.data[node.name];
+	} else if (node.kind === 'timeNow') {
+		// The data proxy gives the engines Luxon's DateTime; a different one is theirs.
+		if (env.data.DateTime !== DateTime || dateTimeNow === undefined) {
+			throw new EngineFallbackError('unsupported_method');
+		}
+		value = dateTimeNow();
+	} else {
+		const receiver = evalTimeSource(node.receiver, env);
+		const args = node.args.map(timeArgValue);
+		if (++env.steps > MAX_STEPS) throw new EngineFallbackError('too_much_work');
+		try {
+			if (node.op === 'plus' || node.op === 'minus') {
+				value = extend(receiver, node.op, args);
+			} else {
+				const method = TIME_OP_METHODS.get(node.op);
+				if (method === undefined) throw new EngineFallbackError('unsupported_method');
+				value = method.apply(receiver, args);
+			}
+		} catch {
+			throw new EngineFallbackError('unsupported_method');
+		}
+	}
+	if (!DateTime.isDateTime(value) || !value.isValid) {
+		throw new EngineFallbackError('unsupported_method');
+	}
+	return value;
+}
+
 function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
 	if (node.ref === 'input') return env.data.$input;
 	if (node.ref === 'legacy') return env.data.$node[node.name];
@@ -622,6 +673,10 @@ function evalNode(node: SimpleNode, env: Env): unknown {
 			return evalNodeRef(node, env);
 		case 'timeRoot':
 			return env.data[node.name];
+		case 'timeNow':
+		case 'timeOp':
+			// Only a getter or method of the time sources reads these (evalMember, evalCall).
+			return evalTimeSource(node, env);
 		case 'undefined':
 			return undefined;
 		case 'member':

@@ -1,0 +1,10 @@
+{
+	"trigger": { "body": { "ids": ["a", "c", "d"] } },
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {},
+	"staticData": {
+		"global": { "seen": ["a", "b"], "runs": 4 },
+		"node:Gmail Trigger": { "lastTimeChecked": 1600000000 }
+	}
+}

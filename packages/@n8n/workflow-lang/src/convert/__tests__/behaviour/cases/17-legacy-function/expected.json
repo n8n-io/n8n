@@ -1,0 +1,116 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Source0", "Source1", "Function", "Function Item", "Only JSON", "Respond"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"names": ["a", "b"]
+					}
+				}
+			]
+		],
+		"Source0": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"names": ["a", "b"]
+					},
+					"data": "zero"
+				}
+			]
+		],
+		"Source1": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"names": ["a", "b"]
+					},
+					"data": "one"
+				}
+			]
+		],
+		"Function": [
+			[
+				{
+					"seen": [true, true]
+				},
+				{
+					"seen": []
+				}
+			]
+		],
+		"Function Item": [
+			[
+				{
+					"seen": [true, true],
+					"before": "NIL",
+					"after": ["file"]
+				},
+				{
+					"seen": [],
+					"before": "NIL",
+					"after": ["file"]
+				}
+			]
+		],
+		"Only JSON": [
+			[
+				{
+					"seen": [true, true],
+					"before": "NIL",
+					"after": ["file"]
+				},
+				{
+					"seen": [],
+					"before": "NIL",
+					"after": ["file"]
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"seen": [true, true],
+					"before": "NIL",
+					"after": ["file"]
+				},
+				{
+					"seen": [],
+					"before": "NIL",
+					"after": ["file"]
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"seen": [true, true],
+					"before": "NIL",
+					"after": ["file"]
+				},
+				{
+					"seen": [],
+					"before": "NIL",
+					"after": ["file"]
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

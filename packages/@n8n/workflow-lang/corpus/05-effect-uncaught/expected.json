@@ -1,0 +1,38 @@
+{
+	"status": "needs_attention",
+	"result": {
+		"step": "Sync CRM"
+	},
+	"effects": [
+		{
+			"step": "Load profile",
+			"kind": "http",
+			"args": {
+				"name": "Load profile",
+				"method": "GET",
+				"url": "https://api.example.com/users/u1"
+			}
+		},
+		{
+			"step": "Optional enrich",
+			"kind": "http",
+			"args": {
+				"name": "Optional enrich",
+				"method": "GET",
+				"url": "https://enrich.example.com"
+			}
+		},
+		{
+			"step": "Sync CRM",
+			"kind": "http",
+			"args": {
+				"name": "Sync CRM",
+				"method": "POST",
+				"url": "https://crm.example.com",
+				"body": {
+					"name": "Zoë"
+				}
+			}
+		}
+	]
+}

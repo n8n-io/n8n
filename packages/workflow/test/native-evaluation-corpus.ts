@@ -162,6 +162,9 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $itemIndex }}',
 	'={{ $runIndex + 1 }}',
 	'={{ $vars.region }}',
+	'=Bearer {{$credentials.accessToken}}',
+	'={{ $credentials.nested.scope }}',
+	"={{ $credentials.missing ?? '' }}",
 	"={{ $vars.missing ?? 'default' }}",
 	'={{ $binary }}',
 	'={{ $binary.file.fileName }}',
@@ -262,6 +265,10 @@ export const HANDLED_CORPUS: string[] = [
 // Fits the subset, but a runtime value falls outside what the parse proved:
 // evaluation bails and the engine result must come back unchanged.
 export const RUNTIME_BAILOUT_CORPUS: string[] = [
+	// an invalid DateTime or a Luxon error is the engine's
+	'={{ $now.setZone("Not/AZone").toISO() }}',
+	'={{ $now.minus({ fortnights: 1 }).toISO() }}',
+	'={{ $now.startOf("decade").toISO() }}',
 	// The receiver is above the content cap.
 	'={{ $json.item.huge.toJsonString() }}',
 	// Allowlisted method on a receiver of another type.
@@ -322,6 +329,17 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 ];
 
 export const DECLINED_CORPUS: string[] = [
+	// a DateTime as the result, a non-literal duration, an optional or
+	// locale-dependent time operation
+	'={{ $now.minus({ days: 1 }) }}',
+	'={{ DateTime.now() }}',
+	'={{ $now.minus({ days: $json.item.count }).toISO() }}',
+	'={{ $now.minus({ days }).toISO() }}',
+	'={{ $now?.minus({ days: 1 }).toISO() }}',
+	'={{ $now.minus({ days: 1 }).toFormat("yyyy") }}',
+	'={{ $now.setZone($json.item.name).toISO() }}',
+	'={{ $now.startOf("month", { useLocaleWeeks: true }).toISO() }}',
+	'={{ $now.toUTC(0).toISO() }}',
 	// Excluded extensions: superlinear in the receiver, or a per-call regex
 	// budget that an iterator multiplies.
 	'={{ $json.item.name.isDomain() }}',
@@ -377,9 +395,6 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $now.toFormat("yyyy") }}',
 	'={{ $now.toLocaleString() }}',
 	'={{ $now.zoneName }}',
-	'={{ $now.setZone("UTC").toISO() }}',
-	'={{ $now.plus(1, "day").toISO() }}',
-	'={{ $now.minus({ days: 1 }).toISO() }}',
 	'={{ $now.isWeekend() }}',
 	'={{ $now.format("yyyy") }}',
 	'={{ $now.c.year }}',
@@ -563,6 +578,26 @@ export const TIME_CORPUS: string[] = [
 	'={{ $today.weekday > 5 ? "weekend" : "weekday" }}',
 	'={{ $today.toMillis() < $now.toMillis() }}',
 	'=since {{ $today.toISODate() }}',
+	// time operations: the Date extensions plus/minus, and Luxon's own
+	// startOf/endOf/setZone/toUTC, ending in a primitive getter or method
+	'={{ $now.minus({days: 1}).toISO() }}',
+	'={{ $now.minus({ days: 1 }).toISODate() }}',
+	'={{ $now.plus({ hours: 12 }).toMillis() }}',
+	'={{ $now.plus({ "minutes": 30, seconds: -5 }).toISO() }}',
+	'={{ $now.minus(1, "days").toISODate() }}',
+	'={{ $now.plus(5).toMillis() }}',
+	'={{ $today.minus({ weeks: 1, days: -2 }).toISODate() }}',
+	'={{ $today.minus({ days: 1 }).year }}',
+	'={{ $now.startOf("month").toISO() }}',
+	'={{ $now.endOf("day").toMillis() }}',
+	'={{ $now.toUTC().toISO() }}',
+	'={{ $now.setZone("Europe/Berlin").toISO() }}',
+	'={{ $now.setZone("UTC").toISO() }}',
+	'={{ $now.plus(1, "day").toISO() }}',
+	'={{ DateTime.now().toMillis() }}',
+	'={{ DateTime.now().setZone("Europe/Berlin").toISO() }}',
+	'={{ DateTime.now().minus({ hours: 1 }).setZone("Europe/Berlin").toISO() }}',
+	'={{ $now.minus({ days: 1 }).toMillis() < $now.toMillis() }}',
 ];
 
 export const ALL_CORPORA: string[] = [

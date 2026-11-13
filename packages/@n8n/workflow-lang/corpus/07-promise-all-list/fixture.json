@@ -1,0 +1,14 @@
+{
+	"trigger": { "body": { "userId": "u9" }, "headers": {}, "query": {} },
+	"now": 1000,
+	"seed": 1,
+	"effects": {
+		"Profile": [{ "status": 200, "headers": {}, "body": { "name": "Ada" } }],
+		"Orders": [{ "status": 200, "headers": {}, "body": { "orders": ["o1", "o2"] } }],
+		"More orders": [{ "status": 200, "headers": {}, "body": { "orders": ["o3"] } }],
+		"Score": [[{ "score": 0.75 }]],
+		"Ping A": [{ "status": 200, "headers": {}, "body": {} }],
+		"Ping B": [{ "status": 200, "headers": {}, "body": {} }],
+		"Ping C": [{ "status": 200, "headers": {}, "body": {} }]
+	}
+}

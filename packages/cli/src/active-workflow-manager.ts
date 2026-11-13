@@ -10,7 +10,7 @@ import {
 	OnShutdown,
 	PubSubCommandMap,
 } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
 import {
@@ -60,6 +60,7 @@ import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-tri
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { OwnershipService } from '@/services/ownership.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -585,7 +586,11 @@ export class ActiveWorkflowManager {
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = this.shouldAddWebhooks(activationMode);
-		const shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers();
+		// The compiled engine runs schedules itself. n8n keeps only the webhook
+		// rows, so that it can route production requests to `wfrt`.
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		const runsOnCompiledEngine = compiledEngine.handles(dbWorkflow);
+		const shouldAddNonWebhookTriggers = this.shouldAddNonWebhookTriggers() && !runsOnCompiledEngine;
 
 		try {
 			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
@@ -711,6 +716,11 @@ export class ActiveWorkflowManager {
 			await this.activationErrorsService.deregister(workflowId);
 
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+
+			if (runsOnCompiledEngine) {
+				await compiledEngine.get().activate(dbWorkflow);
+				added.triggersAndPollers = true;
+			}
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -1075,6 +1085,22 @@ export class ActiveWorkflowManager {
 
 		// If it is active in memory, it is a non-webhook trigger workflow.
 		await this.removeNonWebhookTriggers(workflowId);
+
+		await this.removeFromCompiledEngine(workflowId);
+	}
+
+	/** Stops the triggers of the workflow in `wfrt`, when the compiled engine is enabled. */
+	private async removeFromCompiledEngine(workflowId: WorkflowId) {
+		const compiledEngine = Container.get(CompiledEngineBridge);
+		if (!compiledEngine.isEnabled) return;
+		try {
+			await compiledEngine.get().deactivate(workflowId);
+		} catch (error) {
+			this.errorReporter.error(error);
+			this.logger.error(
+				`Could not remove workflow "${workflowId}" from the compiled engine: "${ensureError(error).message}"`,
+			);
+		}
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })

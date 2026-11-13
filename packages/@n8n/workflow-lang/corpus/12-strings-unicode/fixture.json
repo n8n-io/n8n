@@ -1,0 +1,6 @@
+{
+	"trigger": { "body": { "text": "Grüße 😀 café — naïve!" }, "headers": {}, "query": {} },
+	"now": 0,
+	"seed": 1,
+	"effects": { "Store": [{ "status": 201, "headers": {}, "body": {} }] }
+}

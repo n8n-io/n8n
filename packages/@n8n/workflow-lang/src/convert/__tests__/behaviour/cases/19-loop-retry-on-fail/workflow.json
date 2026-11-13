@@ -1,0 +1,113 @@
+{
+	"name": "Loop retry on fail",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "retry",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "code",
+			"name": "Mark Failed",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: $input.first().json.body.n, error: 'upstream failed' } }];"
+			}
+		},
+		{
+			"id": "loop",
+			"name": "Loop Over Items",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"options": {}
+			},
+			"retryOnFail": true,
+			"waitBetweenTries": 0
+		},
+		{
+			"id": "body",
+			"name": "Loop Body",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"parameters": {}
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [800, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Mark Failed",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mark Failed": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Body",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Body": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {}
+}

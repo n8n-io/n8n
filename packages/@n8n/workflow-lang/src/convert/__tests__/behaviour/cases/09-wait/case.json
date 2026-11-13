@@ -1,0 +1,8 @@
+{
+	"description": "Wait (time interval) \u2192 Set \u2192 Respond (text)",
+	"trigger": {
+		"body": {
+			"id": "x-1"
+		}
+	}
+}

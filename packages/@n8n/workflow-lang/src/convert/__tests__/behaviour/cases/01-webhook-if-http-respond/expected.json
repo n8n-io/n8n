@@ -1,0 +1,72 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Edit Fields", "Is big", "Notify", "Respond"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"qty": 3,
+						"price": 50,
+						"customer": "ann"
+					}
+				}
+			]
+		],
+		"Edit Fields": [
+			[
+				{
+					"total": 150,
+					"customer": "ann"
+				}
+			]
+		],
+		"Is big": [
+			[
+				{
+					"total": 150,
+					"customer": "ann"
+				}
+			],
+			[]
+		],
+		"Notify": [
+			[
+				{
+					"sent": true
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"sent": true
+				}
+			]
+		]
+	},
+	"requests": [
+		{
+			"path": "/notify/ann",
+			"method": "POST",
+			"body": {
+				"total": 150,
+				"orderOf": "ann"
+			}
+		}
+	],
+	"responses": [
+		{
+			"body": {
+				"ok": true,
+				"customer": "ann"
+			},
+			"headers": {},
+			"statusCode": 201
+		}
+	]
+}

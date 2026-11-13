@@ -1,0 +1,456 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "all"
+      },
+      "sourceRange": {
+        "start": 151,
+        "end": 1507
+      },
+      "durable": true,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "Profile",
+      "name": "Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ `https://api.example.com/users/${id}` }}"
+      },
+      "sourceRange": {
+        "start": 795,
+        "end": 917
+      },
+      "durable": true,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "const id = trigger.body.userId;\nconst loadOrders = async (limit: number) => { const first = await ctx.http<{ orders: string[] }>({ name: 'Orders', method: 'GET', url: `https://shop.example.com/${id}/orders`, qs: { limit }, }); const more = await ctx.http<{ orders: string[] }>({ name: 'More orders', method: 'GET', url: `https://shop.example.com/${id}/orders`, qs: { offset: limit }, }); return [...first.body.orders, ...more.body.orders]; };"
+    },
+    {
+      "id": "Orders",
+      "name": "Orders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ `https://shop.example.com/${id}/orders` }}",
+        "qs": {
+          "limit": "={{ limit }}"
+        }
+      },
+      "sourceRange": {
+        "start": 344,
+        "end": 490
+      },
+      "durable": true,
+      "position": [
+        220,
+        160
+      ]
+    },
+    {
+      "id": "More orders",
+      "name": "More orders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ `https://shop.example.com/${id}/orders` }}",
+        "qs": {
+          "offset": "={{ limit }}"
+        }
+      },
+      "sourceRange": {
+        "start": 514,
+        "end": 673
+      },
+      "durable": true,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "id": "transform:21",
+      "name": "Transform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [...first.body.orders, ...more.body.orders];"
+      },
+      "sourceRange": {
+        "start": 678,
+        "end": 729
+      },
+      "durable": false,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "id": "Settle",
+      "name": "Settle",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "parameters": {
+        "duration": 50
+      },
+      "sourceRange": {
+        "start": 940,
+        "end": 982
+      },
+      "durable": true,
+      "position": [
+        220,
+        320
+      ]
+    },
+    {
+      "id": "Score",
+      "name": "Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{score: 1}]"
+      },
+      "sourceRange": {
+        "start": 987,
+        "end": 1062
+      },
+      "durable": true,
+      "position": [
+        220,
+        480
+      ]
+    },
+    {
+      "id": "merge:23:44",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 4
+      },
+      "sourceRange": {
+        "start": 778,
+        "end": 1068
+      },
+      "durable": true,
+      "position": [
+        440,
+        160
+      ]
+    },
+    {
+      "id": "Ping A",
+      "name": "Ping A",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "https://a.example.com"
+      },
+      "sourceRange": {
+        "start": 1126,
+        "end": 1199
+      },
+      "durable": true,
+      "position": [
+        660,
+        160
+      ],
+      "notes": "let failed = 'no';",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "Ping B",
+      "name": "Ping B",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "https://b.example.com"
+      },
+      "sourceRange": {
+        "start": 1205,
+        "end": 1278
+      },
+      "durable": true,
+      "position": [
+        660,
+        320
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "Ping C",
+      "name": "Ping C",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "https://c.example.com"
+      },
+      "sourceRange": {
+        "start": 1284,
+        "end": 1357
+      },
+      "durable": true,
+      "position": [
+        660,
+        480
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "merge:35:10",
+      "name": "Merge 2",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      },
+      "sourceRange": {
+        "start": 1108,
+        "end": 1364
+      },
+      "durable": true,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "id": "transform:41",
+      "name": "Transform 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "failed = e.message;"
+      },
+      "sourceRange": {
+        "start": 1385,
+        "end": 1404
+      },
+      "durable": false,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "id": "transform:43",
+      "name": "Transform 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return { name: profile.body.name, orders, score: score[0].score, now: ctx.now(), failed };"
+      },
+      "sourceRange": {
+        "start": 1411,
+        "end": 1501
+      },
+      "durable": false,
+      "position": [
+        1100,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Profile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Orders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Settle",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orders": {
+      "main": [
+        [
+          {
+            "node": "More orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "More orders": {
+      "main": [
+        [
+          {
+            "node": "Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Profile": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settle": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Score": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Ping A",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ping B",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ping C",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping A": {
+      "main": [
+        [
+          {
+            "node": "Merge 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transform 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping B": {
+      "main": [
+        [
+          {
+            "node": "Merge 2",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Transform 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping C": {
+      "main": [
+        [
+          {
+            "node": "Merge 2",
+            "type": "main",
+            "index": 2
+          }
+        ],
+        [
+          {
+            "node": "Transform 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge 2": {
+      "main": [
+        [
+          {
+            "node": "Transform 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform 2": {
+      "main": [
+        [
+          {
+            "node": "Transform 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

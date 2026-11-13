@@ -1,0 +1,94 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Mark Failed", "Loop Over Items", "Loop Body", "Loop Over Items", "Respond"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"n": 1
+					}
+				}
+			]
+		],
+		"Mark Failed": [
+			[
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			]
+		],
+		"Loop Over Items": [
+			[
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			],
+			[
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			]
+		],
+		"Loop Body": [
+			[
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			]
+		],
+		"Respond": [
+			[
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": [
+		{
+			"body": [
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				},
+				{
+					"n": 1,
+					"error": "upstream failed"
+				}
+			],
+			"headers": {},
+			"statusCode": 200
+		}
+	]
+}

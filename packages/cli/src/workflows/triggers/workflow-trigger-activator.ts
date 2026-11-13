@@ -5,7 +5,7 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb, WorkflowEntity, WorkflowPublicationTriggerKind } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
@@ -43,6 +43,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import type { WorkflowTriggerVersion } from '@/workflows/triggers/enabled-trigger-nodes';
 import { getEnabledTriggerNodes } from '@/workflows/triggers/enabled-trigger-nodes';
 import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
+import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 import { retryTriggerActivation } from '@/workflows/triggers/trigger-activation-retry';
 import { TriggerCountService } from '@/workflows/triggers/trigger-count.service';
@@ -297,6 +298,11 @@ export class WorkflowTriggerActivator {
 		abort: TriggerOperationAbort,
 	): Promise<TriggerActivationOutcome> {
 		const startedAt = Date.now();
+		if (Container.get(CompiledEngineBridge).handles(dbWorkflow)) {
+			// `wfrt` runs the schedules of a compiled workflow. n8n keeps only its webhook rows.
+			const nonWebhook = new Set(this.getNonWebhookTriggerNodeIds(version.nodes));
+			nodeIds = new Set([...nodeIds].filter((id) => !nonWebhook.has(id)));
+		}
 		try {
 			const outcome = await this.activateInternal(
 				dbWorkflow,

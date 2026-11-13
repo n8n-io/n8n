@@ -1,0 +1,137 @@
+{
+	"status": "ok",
+	"result": {
+		"log": [
+			"done 1",
+			"finally 1",
+			"finally 2",
+			"caught NodeError: timeout",
+			"finally 3",
+			"caught Error: not ok 6",
+			"finally 6",
+			"finally 4",
+			"inner finally",
+			"outer finally"
+		],
+		"nested": "inner"
+	},
+	"effects": [
+		{
+			"step": "Process",
+			"kind": "http",
+			"args": {
+				"name": "Process",
+				"method": "POST",
+				"url": "https://api.example.com/p",
+				"body": {
+					"id": 1
+				}
+			}
+		},
+		{
+			"step": "Audit",
+			"kind": "http",
+			"args": {
+				"name": "Audit",
+				"method": "POST",
+				"url": "https://audit.example.com",
+				"body": {
+					"id": 1
+				}
+			}
+		},
+		{
+			"step": "Audit",
+			"kind": "http",
+			"args": {
+				"name": "Audit",
+				"method": "POST",
+				"url": "https://audit.example.com",
+				"body": {
+					"id": 2
+				}
+			}
+		},
+		{
+			"step": "Process",
+			"kind": "http",
+			"args": {
+				"name": "Process",
+				"method": "POST",
+				"url": "https://api.example.com/p",
+				"body": {
+					"id": 3
+				}
+			}
+		},
+		{
+			"step": "Audit",
+			"kind": "http",
+			"args": {
+				"name": "Audit",
+				"method": "POST",
+				"url": "https://audit.example.com",
+				"body": {
+					"id": 3
+				}
+			}
+		},
+		{
+			"step": "Process",
+			"kind": "http",
+			"args": {
+				"name": "Process",
+				"method": "POST",
+				"url": "https://api.example.com/p",
+				"body": {
+					"id": 6
+				}
+			}
+		},
+		{
+			"step": "Audit",
+			"kind": "http",
+			"args": {
+				"name": "Audit",
+				"method": "POST",
+				"url": "https://audit.example.com",
+				"body": {
+					"id": 6
+				}
+			}
+		},
+		{
+			"step": "Process",
+			"kind": "http",
+			"args": {
+				"name": "Process",
+				"method": "POST",
+				"url": "https://api.example.com/p",
+				"body": {
+					"id": 4
+				}
+			}
+		},
+		{
+			"step": "Audit",
+			"kind": "http",
+			"args": {
+				"name": "Audit",
+				"method": "POST",
+				"url": "https://audit.example.com",
+				"body": {
+					"id": 4
+				}
+			}
+		},
+		{
+			"step": "Lookup",
+			"kind": "http",
+			"args": {
+				"name": "Lookup",
+				"method": "GET",
+				"url": "https://api.example.com/lookup"
+			}
+		}
+	]
+}

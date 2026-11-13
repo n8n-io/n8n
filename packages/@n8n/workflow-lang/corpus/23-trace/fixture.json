@@ -1,0 +1,17 @@
+{
+	"trigger": {
+		"body": {
+			"orders": [
+				{ "id": 1, "total": 250 },
+				{ "id": 2, "total": 40, "note": "gift" },
+				{ "id": 3, "total": 100 }
+			]
+		}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"trace": true,
+	"effects": {
+		"Price": [{ "status": 200, "headers": {}, "body": { "currency": "EUR", "rate": 1.08 } }]
+	}
+}

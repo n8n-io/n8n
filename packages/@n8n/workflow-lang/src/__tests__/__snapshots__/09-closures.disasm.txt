@@ -1,0 +1,344 @@
+; hash 7cc981877316f865d61af4241c1fc5be4df4f4a434dedfc80239f62ec9c3c6f3
+; native true
+; meta {"compilerVersion":"0.1.0","sourceHash":"f889390e5352bcf0b6ffc2757c33f49c40394946faec11dcc66602642dade751","triggers":[{"kind":"webhook","path":"closures"}],"credentials":{},"durability":"full","triggerHeaders":false}
+
+steps:
+  0: http "Report" id="Report" type=n8n-nodes-base.httpRequest
+
+paths:
+  body.values.map
+
+fn0 run params=1 regs=37 caps=0 async
+     0  CLOSURE r19, fn1 <makeCounter>, r0
+     1  MOV r2, r19
+     2  LOADUNDEF r19
+     3  LOADS r1, "id-"
+     4  LOADUNDEF r19
+     5  NEWCELL r8, r19
+     6  LOADUNDEF r20
+     7  NEWCELL r16, r20
+     8  LOADUNDEF r21
+     9  NEWCELL r18, r21
+    10  LOADUNDEF r22
+    11  NEWCELL r13, r22
+    12  LOADUNDEF r23
+    13  NEWCELL r14, r23
+    14  LOADUNDEF r24
+    15  NEWCELL r15, r24
+    16  MOV r26, r14
+    17  MOV r27, r1
+    18  CLOSURE r25, fn5 <label>, r26
+    19  SETCELL r13, r25
+    20  MOV r26, r15
+    21  CLOSURE r25, fn6 <isEven>, r26
+    22  SETCELL r14, r25
+    23  MOV r26, r14
+    24  CLOSURE r25, fn7 <isOdd>, r26
+    25  SETCELL r15, r25
+    26  LOADUNDEF r25
+    27  MOV r26, r2
+    28  LOADI r27, 10
+    29  CALL r3, r26, r27..+1
+    30  GETPROP r26, r3, "inc"
+    31  CALL r25, r26, r0..+0
+    32  GETPROP r26, r3, "add"
+    33  LOADI r27, 5
+    34  CALL r25, r26, r27..+1
+    35  LOADUNDEF r25
+    36  NEWARR r4
+    37  LOADUNDEF r25
+    38  NEWCELL r5, r25
+    39  LOADI r26, 0
+    40  SETCELL r5, r26
+    41  GETCELL r26, r5
+    42  LOADI r27, 3
+    43  LT r25, r26, r27
+    44  JF r25, @58
+    45  MOV r26, r4
+    46  MOV r28, r5
+    47  CLOSURE r27, fn8 <anon@25>, r28
+    48  CALLM r25, "push", r26..+1
+    49  GETCELL r25, r5
+    50  NEWCELL r5, r25
+    51  GETCELL r30, r5
+    52  TONUM r27, r30
+    53  LOADI r29, 1
+    54  ADD r28, r27, r29
+    55  SETCELL r5, r28
+    56  MOV r26, r27
+    57  JMP @41
+    58  LOADUNDEF r25
+    59  MOV r26, r4
+    60  CALLN r30, "Array.isArray", r26..+1
+    61  JT r30, @73
+    62  JNULLISH r26, @65
+    63  LOADS r31, "map is not a function"
+    64  JMP @71
+    65  LOADNULL r30
+    66  SEQ r30, r26, r30
+    67  JT r30, @70
+    68  LOADS r31, "Cannot read properties of undefined (reading 'map')"
+    69  JMP @71
+    70  LOADS r31, "Cannot read properties of null (reading 'map')"
+    71  NEWERR r30, TypeError, r31
+    72  THROW r30
+    73  NEWARR r27
+    74  LOADI r28, 0
+    75  LOADI r29, 1
+    76  GETPROP r30, r26, "length"
+    77  LT r30, r28, r30
+    78  JF r30, @87
+    79  GETELEM r31, r26, r28
+    80  MOV r32, r31
+    81  MOV r7, r32
+    82  MOV r34, r7
+    83  CALL r33, r34, r0..+0
+    84  PUSH r27, r33
+    85  ADD r28, r28, r29
+    86  JMP @76
+    87  MOV r6, r27
+    88  LOADUNDEF r25
+    89  LOADI r26, 0
+    90  SETCELL r8, r26
+    91  LOADUNDEF r25
+    92  MOV r26, r8
+    93  CLOSURE r9, fn9 <accumulate>, r26
+    94  GETPROP r26, r0, "body"
+    95  GETPROP r25, r26, "values"
+    96  LOADI r26, 0
+    97  GETPROP r27, r25, "length"
+    98  LT r27, r26, r27
+    99  JF r27, @108
+   100  GETELEM r28, r25, r26
+   101  MOV r10, r28
+   102  MOV r28, r9
+   103  MOV r29, r10
+   104  CALL r27, r28, r29..+1
+   105  LOADI r27, 1
+   106  ADD r26, r26, r27
+   107  JMP @97
+   108  LOADUNDEF r25
+   109  GETPROP r27, r0, "body"
+   110  GETPROP r26, r27, "values"
+   111  MOV r27, r26
+   112  CALLN r31, "Array.isArray", r27..+1
+   113  JT r31, @125
+   114  JNULLISH r27, @117
+   115  LOADS r32, "map is not a function"
+   116  JMP @123
+   117  LOADNULL r31
+   118  SEQ r31, r27, r31
+   119  JT r31, @122
+   120  LOADS r32, "Cannot read properties of undefined (reading 'map')"
+   121  JMP @123
+   122  LOADS r32, "Cannot read properties of null (reading 'map')"
+   123  NEWERR r31, TypeError, r32
+   124  THROW r31
+   125  NEWARR r28
+   126  LOADI r29, 0
+   127  LOADI r30, 1
+   128  GETPROP r31, r27, "length"
+   129  LT r31, r29, r31
+   130  JF r31, @140
+   131  GETELEM r32, r27, r29
+   132  MOV r33, r32
+   133  MOV r12, r33
+   134  GETCELL r35, r13
+   135  MOV r36, r12
+   136  CALL r34, r35, r36..+1
+   137  PUSH r28, r34
+   138  ADD r29, r29, r30
+   139  JMP @128
+   140  MOV r11, r28
+   141  LOADUNDEF r25
+   142  LOADS r26, "pending"
+   143  SETCELL r16, r26
+   144  LOADUNDEF r25
+   145  MOV r26, r8
+   146  MOV r27, r16
+   147  CLOSURE r17, fn10 <setStatus>, r26
+   148  MOV r26, r17
+   149  LOADS r27, "running"
+   150  CALL r25, r26, r27..+1
+   151  MOV r26, r17
+   152  LOADS r27, "done"
+   153  CALL r25, r26, r27..+1
+   154  LOADUNDEF r25
+   155  MOV r27, r18
+   156  CLOSURE r26, fn11 <fact>, r27
+   157  SETCELL r18, r26
+   158  NEWOBJ r25
+   159  GETPROP r27, r3, "get"
+   160  CALL r26, r27, r0..+0
+   161  SETPROP r25, "count", r26
+   162  SETPROP r25, "snapshots", r6
+   163  GETCELL r26, r8
+   164  SETPROP r25, "total", r26
+   165  SETPROP r25, "tagged", r11
+   166  GETCELL r26, r16
+   167  SETPROP r25, "status", r26
+   168  GETCELL r27, r18
+   169  LOADI r28, 10
+   170  CALL r26, r27, r28..+1
+   171  SETPROP r25, "fact", r26
+   172  RET r25
+   173  LOADUNDEF r25
+   174  RET r25
+
+fn1 makeCounter params=1 regs=5 caps=0
+     0  LOADUNDEF r2
+     1  NEWCELL r1, r2
+     2  MOV r3, r0
+     3  SETCELL r1, r3
+     4  NEWOBJ r2
+     5  MOV r4, r1
+     6  CLOSURE r3, fn2 <inc>, r4
+     7  SETPROP r2, "inc", r3
+     8  MOV r4, r1
+     9  CLOSURE r3, fn3 <add>, r4
+    10  SETPROP r2, "add", r3
+    11  MOV r4, r1
+    12  CLOSURE r3, fn4 <get>, r4
+    13  SETPROP r2, "get", r3
+    14  RET r2
+    15  LOADUNDEF r2
+    16  RET r2
+
+fn2 inc params=0 regs=6 caps=1
+     0  GETCAP r4, cap0
+     1  GETCELL r4, r4
+     2  TONUM r1, r4
+     3  LOADI r3, 1
+     4  ADD r2, r1, r3
+     5  GETCAP r5, cap0
+     6  SETCELL r5, r2
+     7  MOV r0, r2
+     8  RET r0
+
+fn3 add params=1 regs=4 caps=1
+     0  GETCAP r2, cap0
+     1  GETCELL r2, r2
+     2  ADD r1, r2, r0
+     3  GETCAP r3, cap0
+     4  SETCELL r3, r1
+     5  GETCAP r1, cap0
+     6  GETCELL r1, r1
+     7  RET r1
+     8  LOADUNDEF r1
+     9  RET r1
+
+fn4 get params=0 regs=1 caps=1
+     0  GETCAP r0, cap0
+     1  GETCELL r0, r0
+     2  RET r0
+
+fn5 label params=1 regs=6 caps=2
+     0  GETCAP r3, cap0
+     1  GETCELL r3, r3
+     2  MOV r4, r0
+     3  CALL r2, r3, r4..+1
+     4  JF r2, @14
+     5  GETCAP r4, cap1
+     6  TOSTR r3, r4
+     7  MOV r2, r3
+     8  TOSTR r5, r0
+     9  ADD r2, r2, r5
+    10  LOADS r5, ":even"
+    11  ADD r2, r2, r5
+    12  MOV r1, r2
+    13  JMP @22
+    14  GETCAP r4, cap1
+    15  TOSTR r3, r4
+    16  MOV r2, r3
+    17  TOSTR r5, r0
+    18  ADD r2, r2, r5
+    19  LOADS r5, ":odd"
+    20  ADD r2, r2, r5
+    21  MOV r1, r2
+    22  RET r1
+    23  LOADUNDEF r1
+    24  RET r1
+
+fn6 isEven params=1 regs=5 caps=1
+     0  LOADI r3, 0
+     1  SEQ r2, r0, r3
+     2  JF r2, @5
+     3  LOADBOOL r1, true
+     4  JMP @10
+     5  GETCAP r2, cap0
+     6  GETCELL r2, r2
+     7  LOADI r4, 1
+     8  SUB r3, r0, r4
+     9  CALL r1, r2, r3..+1
+    10  RET r1
+    11  LOADUNDEF r1
+    12  RET r1
+
+fn7 isOdd params=1 regs=5 caps=1
+     0  LOADI r3, 0
+     1  SEQ r2, r0, r3
+     2  JF r2, @5
+     3  LOADBOOL r1, false
+     4  JMP @10
+     5  GETCAP r2, cap0
+     6  GETCELL r2, r2
+     7  LOADI r4, 1
+     8  SUB r3, r0, r4
+     9  CALL r1, r2, r3..+1
+    10  RET r1
+    11  LOADUNDEF r1
+    12  RET r1
+
+fn8 anon@25 params=0 regs=3 caps=1
+     0  GETCAP r1, cap0
+     1  GETCELL r1, r1
+     2  LOADI r2, 10
+     3  MUL r0, r1, r2
+     4  RET r0
+
+fn9 accumulate params=1 regs=4 caps=1
+     0  GETCAP r2, cap0
+     1  GETCELL r2, r2
+     2  ADD r1, r2, r0
+     3  GETCAP r3, cap0
+     4  SETCELL r3, r1
+     5  LOADUNDEF r1
+     6  RET r1
+
+fn10 setStatus params=1 regs=5 caps=2 async
+     0  NEWOBJ r2
+     1  LOADS r3, "Report"
+     2  SETPROP r2, "name", r3
+     3  LOADS r3, "POST"
+     4  SETPROP r2, "method", r3
+     5  LOADS r3, "https://status.example.com"
+     6  SETPROP r2, "url", r3
+     7  NEWOBJ r3
+     8  SETPROP r3, "s", r0
+     9  GETCAP r4, cap0
+    10  GETCELL r4, r4
+    11  SETPROP r3, "total", r4
+    12  SETPROP r2, "body", r3
+    13  LOADI r3, 0
+    14  SUSPEND r1, http, step r3, args r2
+        ; resume step=0 live { r0=s: string }
+    15  MOV r1, r0
+    16  GETCAP r2, cap1
+    17  SETCELL r2, r1
+    18  LOADUNDEF r1
+    19  RET r1
+
+fn11 fact params=1 regs=7 caps=1
+     0  LOADI r3, 1
+     1  LE r2, r0, r3
+     2  JF r2, @5
+     3  LOADI r1, 1
+     4  JMP @12
+     5  MOV r2, r0
+     6  GETCAP r4, cap0
+     7  GETCELL r4, r4
+     8  LOADI r6, 1
+     9  SUB r5, r0, r6
+    10  CALL r3, r4, r5..+1
+    11  MUL r1, r2, r3
+    12  RET r1

@@ -1,0 +1,372 @@
+{
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "loops"
+      },
+      "sourceRange": {
+        "start": 152,
+        "end": 1083
+      },
+      "durable": true,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "loop:8:3",
+      "name": "Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "parameters": {
+        "loop": "let page = 1; page <= trigger.body.pages; page++"
+      },
+      "sourceRange": {
+        "start": 288,
+        "end": 653
+      },
+      "durable": true,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "id": "transform:9",
+      "name": "Transform",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "if (trigger.body.skip.includes(page)) continue;"
+      },
+      "sourceRange": {
+        "start": 348,
+        "end": 395
+      },
+      "durable": false,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "id": "Fetch page",
+      "name": "Fetch page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/items",
+        "qs": {
+          "page": "={{ page }}"
+        }
+      },
+      "sourceRange": {
+        "start": 417,
+        "end": 570
+      },
+      "durable": true,
+      "position": [
+        660,
+        0
+      ],
+      "notes": "const seen: string[] = [];"
+    },
+    {
+      "id": "transform:16",
+      "name": "Transform 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "for (const id of res.body.ids) seen.push(id);\nif (res.body.last) break;"
+      },
+      "sourceRange": {
+        "start": 575,
+        "end": 649
+      },
+      "durable": false,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "id": "loop:21:3",
+      "name": "Loop 2",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "parameters": {
+        "loop": "!ready"
+      },
+      "sourceRange": {
+        "start": 697,
+        "end": 995
+      },
+      "durable": true,
+      "position": [
+        440,
+        160
+      ]
+    },
+    {
+      "id": "transform:22",
+      "name": "Transform 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "attempts++;"
+      },
+      "sourceRange": {
+        "start": 717,
+        "end": 728
+      },
+      "durable": false,
+      "position": [
+        660,
+        160
+      ]
+    },
+    {
+      "id": "Poll job",
+      "name": "Poll job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.example.com/job"
+      },
+      "sourceRange": {
+        "start": 753,
+        "end": 869
+      },
+      "durable": true,
+      "position": [
+        880,
+        160
+      ],
+      "notes": "let attempts = 0;\nlet ready = false;"
+    },
+    {
+      "id": "transform:28",
+      "name": "Transform 4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "ready = status.body.state === 'done';"
+      },
+      "sourceRange": {
+        "start": 874,
+        "end": 911
+      },
+      "durable": false,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "id": "if:29:4",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "parameters": {
+        "condition": "={{ !ready }}"
+      },
+      "sourceRange": {
+        "start": 915,
+        "end": 991
+      },
+      "durable": true,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "id": "Back off",
+      "name": "Back off",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "parameters": {
+        "duration": "={{ 1000 * attempts }}"
+      },
+      "sourceRange": {
+        "start": 933,
+        "end": 990
+      },
+      "durable": true,
+      "position": [
+        1540,
+        0
+      ]
+    },
+    {
+      "id": "transform:31",
+      "name": "Transform 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "let n = 0;\ndo {\n\t\t\tn += 2;\n\t\t} while (n < 7);\nreturn { seen, attempts, n };"
+      },
+      "sourceRange": {
+        "start": 998,
+        "end": 1077
+      },
+      "durable": false,
+      "position": [
+        660,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "Loop 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform": {
+      "main": [
+        [
+          {
+            "node": "Fetch page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch page": {
+      "main": [
+        [
+          {
+            "node": "Transform 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform 2": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop 2": {
+      "main": [
+        [
+          {
+            "node": "Transform 5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transform 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform 3": {
+      "main": [
+        [
+          {
+            "node": "Poll job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll job": {
+      "main": [
+        [
+          {
+            "node": "Transform 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform 4": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Back off",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Back off": {
+      "main": [
+        [
+          {
+            "node": "Loop 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,147 @@
+{
+	"status": "ok",
+	"result": {
+		"rss": [
+			{
+				"creator": "Ada",
+				"title": "First ’post’",
+				"link": "https://example.com/1",
+				"pubDate": "Mon, 06 May 2024 10:00:00 GMT",
+				"author": "ada@example.com (Ada)",
+				"content:encoded": "<div>Full <i>text</i></div><p>Next</p>",
+				"content:encodedSnippet": "Full text\nNext",
+				"enclosure": {
+					"url": "https://example.com/a.mp3",
+					"length": "10",
+					"type": "audio/mpeg"
+				},
+				"dc:creator": "Ada",
+				"comments": "https://example.com/1#c",
+				"content": "<p>Hello <b>world</b></p><br/>Line two &amp; more &nbsp;",
+				"contentSnippet": "Hello world\nLine two & more",
+				"guid": "id-1",
+				"categories": [
+					"a",
+					{
+						"_": "b",
+						"$": {
+							"domain": "x"
+						}
+					}
+				],
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			},
+			{
+				"title": "Second",
+				"pubDate": "Tue, 07 May 2024 08:30:00 +0200",
+				"content": "Plain  text",
+				"contentSnippet": "Plain  text",
+				"guid": "https://example.com/2",
+				"isoDate": "2024-05-07T06:30:00.000Z"
+			},
+			{
+				"title": "No date",
+				"pubDate": "not a date"
+			}
+		],
+		"atom": [
+			{
+				"title": "Entry <one>",
+				"link": "https://e.com/1",
+				"pubDate": "2024-05-06T10:00:00.000Z",
+				"author": "Bob",
+				"content": "<p>Hi &amp; bye</p>",
+				"contentSnippet": "Hi & bye",
+				"summary": "Short",
+				"id": "urn:1",
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			},
+			{
+				"title": "Two",
+				"link": "https://e.com/2",
+				"pubDate": "2024-05-07T06:00:00.000Z",
+				"isoDate": "2024-05-07T06:00:00.000Z"
+			}
+		],
+		"podcast": [
+			{
+				"title": "Ep 1",
+				"enclosure": {
+					"url": "https://e.com/1.mp3",
+					"type": "audio/mpeg",
+					"length": "1"
+				},
+				"itunes": {
+					"summary": "About",
+					"duration": "12:34",
+					"image": "https://e.com/ep1.png",
+					"episode": "1"
+				}
+			}
+		],
+		"rdf": [
+			{
+				"date": "2024-05-06T10:00:00Z",
+				"title": "A",
+				"link": "https://e.com/a",
+				"dc:date": "2024-05-06T10:00:00Z",
+				"rdf:about": "https://e.com/a",
+				"isoDate": "2024-05-06T10:00:00.000Z"
+			}
+		]
+	},
+	"effects": [
+		{
+			"step": "RSS",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://feeds.example.com/rss.xml",
+				"headers": {
+					"User-Agent": "rss-parser",
+					"Accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				},
+				"qs": {}
+			}
+		},
+		{
+			"step": "Atom",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://feeds.example.com/atom.xml",
+				"headers": {
+					"User-Agent": "rss-parser",
+					"Accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				},
+				"qs": {}
+			}
+		},
+		{
+			"step": "Podcast",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://feeds.example.com/podcast.xml",
+				"headers": {
+					"User-Agent": "rss-parser",
+					"Accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				},
+				"qs": {}
+			}
+		},
+		{
+			"step": "RDF",
+			"kind": "http",
+			"args": {
+				"method": "GET",
+				"url": "https://feeds.example.com/rdf.xml",
+				"headers": {
+					"User-Agent": "rss-parser",
+					"Accept": "application/rss+xml, application/rdf+xml;q=0.8, application/atom+xml;q=0.6, application/xml;q=0.4, text/xml;q=0.4"
+				},
+				"qs": {}
+			}
+		}
+	]
+}

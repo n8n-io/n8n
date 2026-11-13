@@ -1,0 +1,38 @@
+{
+	"trigger": {
+		"body": {
+			"docs": [
+				"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE rss [<!ENTITY x \"y\">]>\n<!-- a feed -->\n<rss version=\"2.0\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">\n  <channel>\n    <title>News &amp; Views</title>\n    <link>https://example.com/</link>\n    <item>\n      <title>First &#8217;post&#x2019; &nbsp;&copy;</title>\n      <link>https://example.com/1</link>\n      <description><![CDATA[<p>Hello <b>world</b></p><br/>Line two &amp; more]]></description>\n      <dc:creator>Ada</dc:creator>\n      <category>a</category><category domain=\"x\">b</category>\n      <guid isPermaLink=\"false\">id-1</guid>\n      <enclosure url=\"https://example.com/a.mp3\" length=\"10\" type=\"audio/mpeg\"/>\n      <pubDate>Mon, 06 May 2024 10:00:00 GMT</pubDate>\n    </item>\n    <item>\n      <title>Second</title>\n      <description>Plain <span class=\"x\">inline</span> text</description>\n      <empty></empty><self/>\n      <ws>   </ws>\n      <__proto__ constructor=\"1\" a=\"1\" a=\"2\">bad</__proto__>\n    </item>\n  </channel>\n</rss>\ntrailing text is not read",
+				"<feed xmlns=\"http://www.w3.org/2005/Atom\"><title type=\"text\">Atom</title><entry><id>1</id><link rel=\"alternate\" href=\"https://e.com/1\"/><content type=\"html\">&lt;p&gt;Hi&lt;/p&gt;</content></entry></feed>",
+				"﻿<a>😀 x <b>y</b> z <![CDATA[ ]]></a>",
+				"<a><![CDATA[   ]]></a>",
+				"",
+				"   \n ",
+				"hello <a/>",
+				"<a><b></a>",
+				"<a>&bogus;</a>",
+				"<a x=1/>",
+				"<a><!-- x -- y --></a>",
+				"<a x></a>",
+				"<a>",
+				"</a>",
+				"<a b=\"1\"c=\"2\"/>",
+				"<?xml version=\"1.0\"?>\nhi<a/>",
+				"<a>&#0;</a>",
+				"<a>&#99999999;</a>",
+				"<a>&AMP;&#X41;&#0041;</a>",
+				"<a>\n  <b> 1 </b>\n  <b>2</b>\n</a>"
+			],
+			"html": [
+				"<p>Hello <b>world</b></p><br/>Line two &amp; more",
+				"a<p>\nb>c<div>d</div>e",
+				"  &nbsp;caf&eacute; &notit; &amp &#x41;&#65 &#150; &#xD800; </p>  ",
+				"x<li\rclass>y<h1>Title</h1>z",
+				"<<p>q"
+			]
+		}
+	},
+	"now": 1700000000000,
+	"seed": 7,
+	"effects": {}
+}

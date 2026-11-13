@@ -1,0 +1,69 @@
+{
+	"name": "Node retry on fail",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "retry2",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "fetch",
+			"name": "Fetch",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 0],
+			"parameters": {
+				"url": "=http://127.0.0.1:47123/flaky/{{ $json.body.id }}",
+				"options": {}
+			},
+			"retryOnFail": true,
+			"maxTries": 3,
+			"waitBetweenTries": 10,
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "respond",
+			"name": "Respond",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"parameters": {
+				"respondWith": "allIncomingItems",
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Fetch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Fetch": {
+			"main": [
+				[
+					{
+						"node": "Respond",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {}
+}

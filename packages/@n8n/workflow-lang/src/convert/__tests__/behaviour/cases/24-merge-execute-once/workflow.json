@@ -1,0 +1,68 @@
+{
+	"name": "Merge once",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "merge-once", "options": {} }
+		},
+		{
+			"id": "split",
+			"name": "Split",
+			"type": "n8n-nodes-base.splitOut",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": { "fieldToSplitOut": "body.rows", "options": {} }
+		},
+		{
+			"id": "a",
+			"name": "A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a", "name": "side", "value": "a", "type": "string" }]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "b",
+			"name": "B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "b", "name": "side", "value": "b", "type": "string" }]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "merge",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [600, 0],
+			"executeOnce": true,
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Split", "type": "main", "index": 0 }]] },
+		"Split": {
+			"main": [
+				[{ "node": "A", "type": "main", "index": 0 }, { "node": "B", "type": "main", "index": 0 }]
+			]
+		},
+		"A": { "main": [[{ "node": "Merge", "type": "main", "index": 0 }]] },
+		"B": { "main": [[{ "node": "Merge", "type": "main", "index": 1 }]] }
+	}
+}

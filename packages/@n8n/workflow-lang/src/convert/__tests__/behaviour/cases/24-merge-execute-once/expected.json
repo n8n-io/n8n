@@ -1,0 +1,88 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Split", "A", "B", "Merge"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"rows": [
+							{
+								"n": 1
+							},
+							{
+								"n": 2
+							},
+							{
+								"n": 3
+							}
+						]
+					}
+				}
+			]
+		],
+		"Split": [
+			[
+				{
+					"n": 1
+				},
+				{
+					"n": 2
+				},
+				{
+					"n": 3
+				}
+			]
+		],
+		"A": [
+			[
+				{
+					"n": 1,
+					"side": "a"
+				},
+				{
+					"n": 2,
+					"side": "a"
+				},
+				{
+					"n": 3,
+					"side": "a"
+				}
+			]
+		],
+		"B": [
+			[
+				{
+					"n": 1,
+					"side": "b"
+				},
+				{
+					"n": 2,
+					"side": "b"
+				},
+				{
+					"n": 3,
+					"side": "b"
+				}
+			]
+		],
+		"Merge": [
+			[
+				{
+					"n": 1,
+					"side": "a"
+				},
+				{
+					"n": 1,
+					"side": "b"
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

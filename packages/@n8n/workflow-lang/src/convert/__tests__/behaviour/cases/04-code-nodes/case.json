@@ -1,0 +1,9 @@
+{
+	"description": "Code nodes in both modes, $input, $itemIndex and $('Node')",
+	"trigger": {
+		"body": {
+			"numbers": [1, 2, 3, 4],
+			"label": "sum"
+		}
+	}
+}
