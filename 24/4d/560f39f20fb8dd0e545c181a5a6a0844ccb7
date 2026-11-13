@@ -1,0 +1,37 @@
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_dd7e80244d88e6::t_043a4a460287f1 4,84-85
+packages/cli/src/modules/agent-evals/agent-eval-judge.ts
+  s_dd7e80244d88e6::t_5b01969946a28c 15,21-40
+  s_dd7e80244d88e6::t_847d3118aa8137 41-44,81-83
+packages/cli/src/modules/agent-evals/agent-eval-checks-judge.ts
+  s_dd7e80244d88e6::t_9c377875260cbc 1-120
+  s_dd7e80244d88e6::t_1448dcc25e73ae 121-128
+packages/@n8n/api-types/src/index.ts
+  s_dd7e80244d88e6::t_aee2964cc68465 885-894
+  s_dd7e80244d88e6::t_f2c1f5ea43fa5f 884
+packages/@n8n/api-types/src/schemas/__tests__/agent-eval-checks.schema.test.ts
+  s_dd7e80244d88e6::t_1a3421ddbfe15a 1-17
+  s_dd7e80244d88e6::t_2209f73be4a8b6 18-34
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-checks-judge.test.ts
+  s_dd7e80244d88e6::t_85ce0a8d668705 1-79
+  s_dd7e80244d88e6::t_dd0534685d0a64 80-107
+packages/@n8n/api-types/src/schemas/agent-eval-checks.schema.ts
+  s_dd7e80244d88e6::t_27cf6db501628e 1-43
+  s_dd7e80244d88e6::t_c6ac1423459335 44-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "244d560f39f20fb8dd0e545c181a5a6a0844ccb7",
+  "prompts": {},
+  "sessions": {
+    "s_dd7e80244d88e6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18cf2-d4b8-71df-9e22-8184693749a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}
