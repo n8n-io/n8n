@@ -79,7 +79,7 @@ vi.mock('@/app/init/toastNotifier', () => ({
 // The real one dynamically imports the QuickJS runtime bundle, which has no
 // place in this graph. It stays inert on the default `legacy` setting anyway.
 vi.mock('@/app/init/expressionEngine', () => ({
-	initializeExpressionEngine: vi.fn(),
+	initializeExpressionEngine: vi.fn(async () => {}),
 }));
 
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
@@ -259,9 +259,61 @@ describe('Init', () => {
 			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
 		});
 
-		// Public settings omit the engine, so an unauthenticated boot leaves the
-		// legacy evaluator in place and the login hook is the first point where
-		// the choice is known.
+		it('should not wait for the expression engine when no user is signed in', async () => {
+			usersStore.currentUser = null;
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () => await new Promise<void>(() => {}),
+			);
+
+			await initializeCore();
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should wait for the expression engine in preview mode', async () => {
+			usersStore.currentUser = null;
+			settingsStore.isPreviewMode = true;
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await new Promise((resolve) => setTimeout(resolve));
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+			settingsStore.isPreviewMode = false;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should load the user while the expression engine starts, and wait for the engine', async () => {
+			usersStore.currentUser = mock<IUser>({ id: '123' });
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await vi.waitFor(() => expect(usersStore.initialize).toHaveBeenCalled());
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		// A boot that could not read the settings leaves the legacy evaluator in
+		// place, and the login hook is the next point where the choice is known.
 		it('should start the expression engine in the login hook with authenticated settings', async () => {
 			settingsStore.getSettings.mockImplementation(async () => {
 				settingsStore.settings.expressionEngine = 'quickjs';
