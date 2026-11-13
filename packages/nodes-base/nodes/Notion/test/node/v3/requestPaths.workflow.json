@@ -1,0 +1,514 @@
+{
+	"name": "Notion v3 request paths",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "block",
+				"operation": "append",
+				"blockId": {
+					"__rl": true,
+					"value": "2f4b7c1e9a3d4e8f8b6a1c2d3e4f5a71",
+					"mode": "id"
+				},
+				"blockUi": {}
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000001",
+			"name": "Append Block",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 0],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "block",
+				"operation": "getMarkdown",
+				"blockId": {
+					"__rl": true,
+					"value": "2f4b7c1e9a3d4e8f8b6a1c2d3e4f5a72",
+					"mode": "id"
+				},
+				"includeTranscript": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000002",
+			"name": "Get Block Markdown",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 200],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "block",
+				"operation": "getAll",
+				"blockId": {
+					"__rl": true,
+					"value": "2f4b7c1e9a3d4e8f8b6a1c2d3e4f5a73",
+					"mode": "id"
+				},
+				"returnAll": false,
+				"limit": 2,
+				"fetchNestedBlocks": true,
+				"simplifyOutput": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000003",
+			"name": "Get Child Blocks",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 400],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "database",
+				"operation": "get",
+				"databaseId": {
+					"__rl": true,
+					"value": "138fb9cb-4cf0-804c-8663-d8ecdd5e6911",
+					"mode": "id"
+				},
+				"simple": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000004",
+			"name": "Get Database",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 600],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "dataSource",
+				"operation": "get",
+				"dataSourceId": {
+					"__rl": true,
+					"value": "248fb9cb-4cf0-804c-8663-d8ecdd5e6912",
+					"mode": "id"
+				},
+				"simple": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000005",
+			"name": "Get Data Source",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 800],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "create",
+				"dataSourceId": {
+					"__rl": true,
+					"value": "248fb9cb-4cf0-804c-8663-d8ecdd5e6913",
+					"mode": "id"
+				},
+				"title": "Weekly sync",
+				"simple": false,
+				"options": {}
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000006",
+			"name": "Create Database Page",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 1000],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "get",
+				"pageId": {
+					"__rl": true,
+					"value": "15bfb9cb4cf081c7aab4c5855b8cb612",
+					"mode": "id"
+				},
+				"simple": false,
+				"options": {}
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000007",
+			"name": "Get Database Page",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 1200],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "getAll",
+				"dataSourceId": {
+					"__rl": true,
+					"value": "248fb9cb-4cf0-804c-8663-d8ecdd5e6914",
+					"mode": "id"
+				},
+				"returnAll": false,
+				"limit": 2,
+				"filterType": "none",
+				"simple": false,
+				"options": {}
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000008",
+			"name": "Get Database Pages",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 1400],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "databasePage",
+				"operation": "update",
+				"pageId": {
+					"__rl": true,
+					"value": "15bfb9cb4cf081c7aab4c5855b8cb614",
+					"mode": "id"
+				},
+				"simple": false,
+				"propertiesUi": {},
+				"options": {}
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000009",
+			"name": "Update Database Page",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 1600],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "archive",
+				"pageId": {
+					"__rl": true,
+					"value": "15bfb9cb4cf081c7aab4c5855b8cb615",
+					"mode": "id"
+				},
+				"simple": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000010",
+			"name": "Archive Page",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 1800],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "getMarkdown",
+				"pageId": {
+					"__rl": true,
+					"value": "15bfb9cb4cf081c7aab4c5855b8cb616",
+					"mode": "id"
+				},
+				"includeTranscript": false
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000011",
+			"name": "Get Page Markdown",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 2000],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "updateMarkdown",
+				"pageId": {
+					"__rl": true,
+					"value": "15bfb9cb4cf081c7aab4c5855b8cb617",
+					"mode": "id"
+				},
+				"markdownUpdateType": "replace_content",
+				"markdown": "# Weekly sync"
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000012",
+			"name": "Update Page Markdown",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 2200],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "34a945c6-de97-4efc-90d6-6d7cc14a6584"
+			},
+			"id": "0b8e6a3c-1f4d-4c55-9d7a-000000000013",
+			"name": "Get User",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 3,
+			"position": [220, 2400],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Append Block": [
+			{
+				"json": {
+					"object": "list",
+					"id": "2f4b7c1e9a3d4e8f8b6a1c2d3e4f5a71"
+				}
+			}
+		],
+		"Get Block Markdown": [
+			{
+				"json": {
+					"object": "page_markdown",
+					"markdown": "Block notes"
+				}
+			}
+		],
+		"Get Child Blocks": [
+			{
+				"json": {
+					"object": "block",
+					"id": "7a1e2b3c-4d5e-4f60-8172-839405a6b7d1",
+					"type": "paragraph",
+					"has_children": true
+				}
+			},
+			{
+				"json": {
+					"object": "block",
+					"parent_id": "7a1e2b3c-4d5e-4f60-8172-839405a6b7d1",
+					"id": "7a1e2b3c-4d5e-4f60-8172-839405a6b7d2",
+					"type": "paragraph",
+					"has_children": false
+				}
+			}
+		],
+		"Get Database": [
+			{
+				"json": {
+					"object": "database",
+					"id": "138fb9cb-4cf0-804c-8663-d8ecdd5e6911"
+				}
+			}
+		],
+		"Get Data Source": [
+			{
+				"json": {
+					"object": "data_source",
+					"id": "248fb9cb-4cf0-804c-8663-d8ecdd5e6912"
+				}
+			}
+		],
+		"Create Database Page": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb611"
+				}
+			}
+		],
+		"Get Database Page": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb612"
+				}
+			}
+		],
+		"Get Database Pages": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb613"
+				}
+			}
+		],
+		"Update Database Page": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb614"
+				}
+			}
+		],
+		"Archive Page": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb615"
+				}
+			}
+		],
+		"Get Page Markdown": [
+			{
+				"json": {
+					"object": "page_markdown",
+					"markdown": "Page notes"
+				}
+			}
+		],
+		"Update Page Markdown": [
+			{
+				"json": {
+					"object": "page_markdown",
+					"markdown": "# Weekly sync"
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"object": "user",
+					"id": "34a945c6-de97-4efc-90d6-6d7cc14a6584"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Append Block",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Block Markdown",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Child Blocks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Database",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Data Source",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Database Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Database Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Database Pages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Database Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Archive Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Page Markdown",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Page Markdown",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -7,6 +7,7 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -204,6 +205,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					skillRefs,
 					policy,
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
@@ -300,6 +304,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					Container.get(AgentSkillRefsService),
 					mock<AgentPolicyService>(),
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				setup,
 				transactionRunner,

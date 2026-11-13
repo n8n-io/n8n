@@ -1,5 +1,10 @@
 import type { INode, IPollFunctions } from 'n8n-workflow';
+<<<<<<< HEAD
 import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+=======
+import { UnexpectedError } from '@n8n/errors';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
+>>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
@@ -69,7 +74,7 @@ describe('listJobRuns', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/runs/list`,
+				url: requestUrl`${HOST}/api/2.2/jobs/runs/list`,
 				qs: {
 					job_id: JOB_ID,
 					start_time_from: 1788260000000,
@@ -297,7 +302,7 @@ describe('listPipelineEvents', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.0/pipelines/${PIPELINE_ID}/events`,
+				url: requestUrl`${HOST}/api/2.0/pipelines/${PIPELINE_ID}/events`,
 				qs: {
 					max_results: 25,
 					filter: `level in ('ERROR', 'WARN') AND timestamp > '${CURSOR}'`,

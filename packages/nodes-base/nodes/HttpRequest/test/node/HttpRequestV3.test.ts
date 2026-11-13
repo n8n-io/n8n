@@ -1,6 +1,15 @@
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
+<<<<<<< HEAD
 import { NodeHelpers } from 'n8n-workflow';
+=======
+import {
+	NodeApiError,
+	NodeHelpers,
+	READ_ONLY_ANNOTATIONS,
+	resolveNodeAnnotations,
+} from 'n8n-workflow';
+>>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import { Socket } from 'net';
 import type {
 	IExecuteFunctions,
@@ -905,6 +914,93 @@ describe('HttpRequestV3', () => {
 				body: responseBody,
 				context: { itemIndex: 0 },
 			});
+		});
+
+		it('should remove request options from continued errors', async () => {
+			const headerName = 'x-custom-header-name';
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'genericCredentialType';
+					case 'genericAuthType':
+						return 'httpHeaderAuth';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: headerName,
+				value: headerValue,
+			});
+			(executeFunctions.helpers.request as Mock).mockImplementation(
+				async (requestOptions: { headers: Record<string, unknown> }) => {
+					expect(requestOptions.headers[headerName]).toBe(headerValue);
+
+					throw Object.assign(new Error('Request failed'), {
+						statusCode: 400,
+						error: { message: 'Bad Request' },
+						options: { headers: requestOptions.headers },
+					});
+				},
+			);
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error;
+
+			expect(outputError).toMatchObject({ message: 'Request failed', statusCode: 400 });
+			expect(outputError).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError)).not.toContain(headerValue);
+		});
+
+		it('should remove request options from the cause of continued errors', async () => {
+			const headerValue = 'header-value';
+
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.continueOnFail as Mock).mockReturnValue(true);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'predefinedCredentialType';
+					case 'nodeCredentialType':
+						return 'testApi';
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({ apiKey: headerValue });
+			(executeFunctions.helpers.requestWithAuthentication as Mock).mockImplementation(async () => {
+				const cause = Object.assign(new Error('Request failed'), {
+					statusCode: 401,
+					error: { message: 'Unauthorized' },
+					options: { headers: { Authorization: `Bearer ${headerValue}` } },
+				});
+
+				throw new NodeApiError(executeFunctions.getNode(), cause as unknown as JsonObject);
+			});
+
+			const result = await node.execute.call(executeFunctions);
+			const outputError = result[0][0].json.error as NodeApiError;
+
+			expect(outputError).toBeInstanceOf(NodeApiError);
+			expect(outputError.cause).toMatchObject({ message: 'Request failed', statusCode: 401 });
+			expect(outputError.cause).not.toHaveProperty('options');
+			expect(JSON.stringify(outputError.cause)).not.toContain(headerValue);
 		});
 
 		const errorResponseBodies: Array<{

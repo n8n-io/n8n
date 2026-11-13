@@ -31,6 +31,7 @@ import {
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -1875,6 +1876,78 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
 			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
 			.expect(404);
+	});
+
+	test('a role with folder:move but without workflow:move cannot transfer the workflows of a folder', async () => {
+		const sourceProject = await createTeamProject('source project', owner);
+		const role = await createCustomRoleWithScopeSlugs(
+			['folder:read', 'folder:list', 'folder:move'],
+			{
+				roleType: 'project',
+			},
+		);
+		await linkUserToProject(member, sourceProject, role.slug);
+
+		const sourceFolder = await createFolder(sourceProject, { name: 'Source Folder' });
+		// The only workflow sits in a subfolder, so the check must cover the whole folder tree.
+		const childFolder = await createFolder(sourceProject, {
+			name: 'Child Folder',
+			parentFolder: sourceFolder,
+		});
+		const workflow = await createWorkflow({ parentFolder: childFolder }, sourceProject);
+
+		await testServer
+			.authAgentFor(member)
+			.get(`/projects/${sourceProject.id}/folders/${sourceFolder.id}/transfer-preview`)
+			.query({ destinationProjectId: memberProject.id })
+			.expect(403);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder.id}/transfer`)
+			.send({ destinationProjectId: memberProject.id, destinationParentFolderId: '0' })
+			.expect(403);
+
+		const workflowSharing = await getWorkflowSharing(workflow);
+		expect(workflowSharing).toHaveLength(1);
+		expect(workflowSharing[0]).toMatchObject({
+			projectId: sourceProject.id,
+			role: 'workflow:owner',
+		});
+		const folder = await folderRepository.findOneOrFail({
+			where: { id: sourceFolder.id },
+			relations: ['homeProject'],
+		});
+		expect(folder.homeProject.id).toBe(sourceProject.id);
+	});
+
+	test('a role without folder:create in the destination project cannot transfer a folder into it', async () => {
+		const sourceFolder = await createFolder(memberProject, { name: 'Source Folder' });
+		await createWorkflow({ parentFolder: sourceFolder }, memberProject);
+
+		const destinationProject = await createTeamProject('destination project', owner);
+		const role = await createCustomRoleWithScopeSlugs(['workflow:create'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, destinationProject, role.slug);
+
+		await testServer
+			.authAgentFor(member)
+			.get(`/projects/${memberProject.id}/folders/${sourceFolder.id}/transfer-preview`)
+			.query({ destinationProjectId: destinationProject.id })
+			.expect(404);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${memberProject.id}/folders/${sourceFolder.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+			.expect(404);
+
+		const folder = await folderRepository.findOneOrFail({
+			where: { id: sourceFolder.id },
+			relations: ['homeProject'],
+		});
+		expect(folder.homeProject.id).toBe(memberProject.id);
 	});
 
 	test.each<ProjectRole>([PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG])(

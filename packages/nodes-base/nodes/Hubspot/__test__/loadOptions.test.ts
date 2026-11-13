@@ -29,7 +29,7 @@ function createContext(properties: DealProperty[], pageBreakAfter?: number) {
 	const requestWithAuthentication = vi.fn(async (_credentialType: string, options: any) => {
 		const after = options.qs?.after as string | undefined;
 		cursorsSent.push(after);
-		urisRequested.push(options.uri as string);
+		urisRequested.push(String(options.uri));
 		if (pageBreakAfter === undefined) {
 			return { results: properties };
 		}

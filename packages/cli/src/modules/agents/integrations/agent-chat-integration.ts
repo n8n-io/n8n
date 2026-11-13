@@ -49,6 +49,12 @@ export class InboundAttachmentAccessError extends UserError {}
  * Channel identity, without the decrypted credential. Enough for checks that
  * only read our own state — see {@link AgentChatIntegration.assertStartupPreconditions}.
  */
+/** A sender identity that the platform guarantees, never a display name. */
+export interface VerifiedSender {
+	userId: string;
+	userName?: string;
+}
+
 export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
@@ -669,9 +675,20 @@ export abstract class AgentChatIntegration {
 	 * Optional per-user authorisation check called on every inbound mention,
 	 * subscribed message, and action before the bridge subscribes / executes.
 	 * Default (no implementation): allow. Telegram uses this to enforce the
-	 * Private-mode allowlist.
+	 * Private-mode allowlist. `sender` is the identity from {@link verifiedSender}.
 	 */
-	isUserAllowed?(author: Author, settings: AgentIntegrationConfig | undefined): boolean;
+	isUserAllowed?(
+		author: Author,
+		settings: AgentIntegrationConfig | undefined,
+		sender?: VerifiedSender,
+	): boolean;
+
+	/**
+	 * Optional: the sender identity read from the raw inbound event, for
+	 * {@link isUserAllowed}. Returns `undefined` when the event has no
+	 * individual user as its sender.
+	 */
+	verifiedSender?(raw: unknown): VerifiedSender | undefined;
 
 	/**
 	 * Optional platform context needed by the bridge before execution. Slack uses

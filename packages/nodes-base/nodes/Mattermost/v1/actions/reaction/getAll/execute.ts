@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -11,7 +12,7 @@ export async function getAll(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endpoint = `posts/${postId}/reactions`;
+	const endpoint = requestPath`posts/${postId}/reactions`;
 	const body = {} as IDataObject;
 
 	let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

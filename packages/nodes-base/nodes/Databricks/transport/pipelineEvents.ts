@@ -1,6 +1,11 @@
+import { UnexpectedError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
+<<<<<<< HEAD
 import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+=======
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
+>>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 
 import {
 	databricksApiRequest,
@@ -134,13 +139,17 @@ async function fetchPipelineEventsPage(
 	if (!UUID_PATTERN.test(params.pipelineId)) {
 		throw new NodeOperationError(context.getNode(), 'Pipeline ID must be a UUID');
 	}
-	const response: unknown = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.0/pipelines/${params.pipelineId}/events`,
-		qs: toQuery(params),
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response: unknown = await databricksApiRequest(
+		context,
+		credentialType,
+		requestUrl`${host}/api/2.0/pipelines/${params.pipelineId}/events`,
+		{
+			method: 'GET',
+			qs: toQuery(params),
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	if (!isPipelineEventsResponse(response)) {
 		throw new NodeOperationError(
 			context.getNode(),

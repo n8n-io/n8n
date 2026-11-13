@@ -1,4 +1,3 @@
-import get from 'lodash/get';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -6,21 +5,29 @@ import type {
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { OperationalError } from 'n8n-workflow';
+=======
+import { OperationalError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
+
+import { parseNextPageLink } from '../parseNextPageLink';
+>>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('venafiTlsProtectDatacenterApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -28,7 +35,7 @@ export async function venafiApiRequest(
 		body,
 		qs,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
-		uri: uri || `${credentials.domain}${resource}`,
+		uri: requestUrl`${credentials.domain}${resource}`,
 		json: true,
 	};
 
@@ -63,19 +70,24 @@ export async function venafiApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
+	let next: { resource: RequestPath; qs: IDataObject } | undefined = {
+		resource: endpoint,
+		qs: query,
+	};
 
 	do {
-		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
-		endpoint = get(responseData, '_links[0].Next');
+		responseData = await venafiApiRequest.call(this, method, next.resource, body, next.qs);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData._links?.[0].Next);
+		const nextLink: string | undefined = responseData._links?.[0]?.Next;
+		next = nextLink ? parseNextPageLink(this, nextLink, next.resource) : undefined;
+	} while (next);
 
 	return returnData;
 }

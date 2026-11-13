@@ -6,10 +6,17 @@ import type {
 	IWebhookFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { UserError } from 'n8n-workflow';
 
 const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
+=======
+import { UserError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
+>>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 
 function isValidAuthenticationMethod(value: unknown): value is 'apiToken' | 'oAuth2' {
 	return typeof value === 'string' && ['apiToken', 'oAuth2'].includes(value);
@@ -18,7 +25,7 @@ function isValidAuthenticationMethod(value: unknown): value is 'apiToken' | 'oAu
 export async function beeminderApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -34,11 +41,11 @@ export async function beeminderApiRequest(
 		credentialType = 'beeminderOAuth2Api';
 	}
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs: query,
-		uri: `${BEEMINDER_URI}${endpoint}`,
+		uri: requestUrl`https://www.beeminder.com/api/v1${endpoint}`,
 		json: true,
 	};
 
@@ -56,7 +63,7 @@ export async function beeminderApiRequest(
 export async function beeminderApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

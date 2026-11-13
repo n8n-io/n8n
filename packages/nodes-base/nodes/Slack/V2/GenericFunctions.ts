@@ -9,8 +9,10 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IWebhookFunctions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import {
@@ -140,25 +142,32 @@ export function formatUserLabel(user: { name: string; real_name?: string }): str
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath | `https://${string}`,
 	body: object = {},
 	query: IDataObject = {},
 	headers: {} | undefined = undefined,
-	option: Partial<IRequestOptions> = {},
+	option: Pick<IRequestOptions, 'formData' | 'form' | 'resolveWithFullResponse' | 'simple'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: IRequestOptions = {
+	const baseOptions = {
 		method,
 		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		uri: resource.startsWith('https') ? resource : `https://slack.com/api${resource}`,
 		json: true,
+		...option,
 	};
-	options = Object.assign({}, options, option);
+	const options: LegacyRequestOptions =
+		typeof resource === 'string'
+			? { ...baseOptions, uri: resource }
+			: { ...baseOptions, uri: requestUrl`https://slack.com/api${resource}` };
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
@@ -214,7 +223,7 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 	options: RateLimitOptions = {},
@@ -226,7 +235,7 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
 	//https://api.slack.com/docs/pagination#classic
-	if (endpoint.includes('files.list')) {
+	if (endpoint.value.includes('files.list')) {
 		query.count = 100;
 	} else {
 		query.limit = query.limit ?? 100;
@@ -315,7 +324,7 @@ export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
@@ -326,7 +335,7 @@ export async function slackApiRequestAllItems(
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
 	//https://api.slack.com/docs/pagination#classic
-	if (endpoint.includes('files.list')) {
+	if (endpoint.value.includes('files.list')) {
 		query.count = 100;
 	} else {
 		query.limit = query.limit ?? 100;
@@ -363,7 +372,7 @@ export async function searchContextItems(
 		const responseData = await slackApiRequest.call(
 			this,
 			'POST',
-			'/assistant.search.context',
+			requestPath`/assistant.search.context`,
 			{
 				...body,
 				limit: Math.min(SEARCH_CONTEXT_PAGE_SIZE, maxResults - returnData.length),

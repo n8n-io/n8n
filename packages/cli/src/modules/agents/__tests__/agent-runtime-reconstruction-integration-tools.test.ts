@@ -297,6 +297,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentTaskRepository,
 				skillRefs,
 				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,

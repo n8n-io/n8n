@@ -5,23 +5,25 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import type { Page } from './types';
 
 export async function mistralApiRequest(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | FormData = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs,
-		url: `https://api.mistral.ai${resource}`,
+		url: requestUrl`https://api.mistral.ai${resource}`,
 		json: true,
 	};
 

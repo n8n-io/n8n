@@ -8,6 +8,24 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AgentsCredentialProvider } from '../agents-credential-provider';
 
 describe('AgentsCredentialProvider', () => {
+	describe('list', () => {
+		it('lists every credential the user can read in the project', async () => {
+			const credentialsService = mock<CredentialsService>();
+			const readable = [{ id: 'credential-1', name: 'Header', type: 'httpHeaderAuth' }];
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(readable as never);
+			const user = { id: 'user-1' } as User;
+
+			const provider = new AgentsCredentialProvider(credentialsService, 'proj-1', user);
+
+			await expect(provider.list()).resolves.toEqual(readable);
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId: 'proj-1',
+				excludePersonalRoute: true,
+				excludeResolvable: true,
+			});
+		});
+	});
+
 	describe('resolveAiGatewayModelCredential', () => {
 		const projectId = 'proj-1';
 		const user = { id: 'user-1' } as User;

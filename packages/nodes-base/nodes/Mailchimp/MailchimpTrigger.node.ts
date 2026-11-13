@@ -9,7 +9,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { mailchimpApiRequest } from './GenericFunctions';
 import { verifySignature } from './MailchimpTriggerHelpers';
@@ -169,7 +169,7 @@ export class MailchimpTrigger implements INodeType {
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const response = await mailchimpApiRequest.call(this, '/lists', 'GET');
+				const response = await mailchimpApiRequest.call(this, requestPath`/lists`, 'GET');
 				const lists = response.lists;
 				for (const list of lists) {
 					const listName = list.name;
@@ -194,7 +194,7 @@ export class MailchimpTrigger implements INodeType {
 					// No webhook id is set so no webhook can exist
 					return false;
 				}
-				const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/lists/${listId}/webhooks/${webhookData.webhookId}`;
 				try {
 					await mailchimpApiRequest.call(this, endpoint, 'GET');
 				} catch (error) {
@@ -232,7 +232,7 @@ export class MailchimpTrigger implements INodeType {
 						return object;
 					}, {}),
 				};
-				const endpoint = `/lists/${listId}/webhooks`;
+				const endpoint = requestPath`/lists/${listId}/webhooks`;
 				const webhook = await mailchimpApiRequest.call(this, endpoint, 'POST', body);
 				if (webhook.id === undefined) {
 					return false;
@@ -253,7 +253,7 @@ export class MailchimpTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const listId = this.getNodeParameter('list') as string;
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/lists/${listId}/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/lists/${listId}/webhooks/${webhookData.webhookId}`;
 					try {
 						await mailchimpApiRequest.call(this, endpoint, 'DELETE', {});
 					} catch (error) {

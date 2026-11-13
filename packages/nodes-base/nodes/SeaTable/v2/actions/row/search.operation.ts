@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -121,7 +122,7 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/sql',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/sql`,
 		{
 			sql: sqlQuery,
 			convert_keys: options.convert ?? true,

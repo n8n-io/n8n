@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,7 +21,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentRepository } from '../repositories/agent.repository';
 
 describe('AgentIntegrationManagementService', () => {
-	const user = { id: 'user-1' };
+	const user = { id: 'user-1', role: GLOBAL_MEMBER_ROLE };
 	const integration = {
 		type: 'slack',
 		credentialId: 'credential-1',
@@ -44,6 +46,10 @@ describe('AgentIntegrationManagementService', () => {
 		const logger = mock<Logger>();
 		const agentRepository = mock<AgentRepository>();
 		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: integration.credentialId,
+		} as never);
 		const implementation = mock<AgentChatIntegration>({
 			type: 'slack',
 			displayLabel: 'Slack',
@@ -67,6 +73,7 @@ describe('AgentIntegrationManagementService', () => {
 				logger,
 				agentRepository,
 				agentUpdateBroadcaster,
+				credentialsFinderService,
 			),
 			persistenceService,
 			credentialsService,
@@ -74,6 +81,7 @@ describe('AgentIntegrationManagementService', () => {
 			implementation,
 			agentRepository,
 			agentUpdateBroadcaster,
+			credentialsFinderService,
 		};
 	}
 
@@ -288,6 +296,23 @@ describe('AgentIntegrationManagementService', () => {
 		it('rejects a credential the user cannot use', async () => {
 			const { service, persistenceService, credentialsService, chatService } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+			await expect(
+				service.connect({ agent: makeAgent(), user: user as never, integration }),
+			).rejects.toThrow(NotFoundError);
+
+			expect(chatService.connect).not.toHaveBeenCalled();
+			expect(persistenceService.applyIntegrationDelta).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential the user can only read', async () => {
+			const { service, persistenceService, credentialsFinderService, chatService } = makeService();
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) =>
+					scopes.includes('credential:connect')
+						? null
+						: ({ id: integration.credentialId, isGlobal: false, isResolvable: false } as never),
+			);
 
 			await expect(
 				service.connect({ agent: makeAgent(), user: user as never, integration }),

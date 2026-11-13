@@ -138,12 +138,13 @@ export class EmbeddingsAwsBedrock implements INodeType {
 
 		const region = resolveBedrockRegion(modelName, credentialRegion);
 
-		const client = createBedrockRuntimeClient({
+		const client = await createBedrockRuntimeClient({
 			region,
 			credentials,
 			bedrockRuntimeEndpoint,
 			maxRetries: options.maxRetries,
 			timeout: options.timeout,
+			egressFilter: this.helpers.getSecureEgressFilter(),
 		});
 
 		let additionalModelRequestFields: Record<string, unknown> | undefined;

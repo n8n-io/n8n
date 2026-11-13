@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 import type { File } from './interfaces';
@@ -37,7 +38,7 @@ export async function uploadFile(
 		filename: fileName ?? 'file',
 		contentType: mimeType,
 	});
-	return (await apiRequest.call(this, 'POST', '/v1/files', {
+	return (await apiRequest.call(this, 'POST', requestPath`/v1/files`, {
 		headers: form.getHeaders(),
 		body: form,
 	})) as File;

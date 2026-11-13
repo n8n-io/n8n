@@ -45,6 +45,7 @@ import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import type { RequestPath, RequestUrl } from './request-target';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
@@ -605,6 +606,16 @@ export type IgnoreStatusErrorConfig = {
 	except: number[];
 };
 
+type RequestTargetField = 'url' | 'uri';
+
+export type WithRequestTarget<T, K extends RequestTargetField = 'url'> = Omit<
+	T,
+	RequestTargetField | 'baseURL'
+> & { [P in Exclude<RequestTargetField, K> & keyof T]?: undefined } & (
+		| ({ baseURL: string } & Record<K, RequestPath>)
+		| ({ baseURL?: undefined } & Record<K, RequestUrl>)
+	);
+
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
@@ -1045,17 +1056,24 @@ export interface NodeEgressFilter {
 	validateRedirectSync(url: string): void;
 }
 
+export type LegacyRequestOptions =
+	| IRequestOptions
+	| WithRequestTarget<IRequestOptions, 'uri'>
+	| WithRequestTarget<IRequestOptions, 'url'>;
+
 export interface RequestHelperFunctions {
-	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+	httpRequest(
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+	): Promise<any>;
 	httpRequestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IHttpRequestOptions,
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
@@ -1067,7 +1085,7 @@ export interface RequestHelperFunctions {
 	 * @deprecated Use .httpRequest instead
 	 * @see RequestHelperFunctions.httpRequest
 	 */
-	request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+	request(uriOrObject: string | LegacyRequestOptions, options?: LegacyRequestOptions): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
@@ -1075,7 +1093,7 @@ export interface RequestHelperFunctions {
 	requestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		itemIndex?: number,
 	): Promise<any>;
@@ -1086,7 +1104,7 @@ export interface RequestHelperFunctions {
 	requestOAuth1(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 	): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
@@ -1095,7 +1113,7 @@ export interface RequestHelperFunctions {
 	requestOAuth2(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
 	refreshOAuth2Token(
@@ -3891,6 +3909,8 @@ export interface IWorkflowExecutionDataProcess {
 	pinData?: IPinData;
 	retryOf?: string | null;
 	pushRef?: string;
+	/** The user who owns `pushRef`, set only on a worker from the job data. */
+	pushRefUserId?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId?: string;

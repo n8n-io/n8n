@@ -16,6 +16,7 @@ import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -221,6 +222,56 @@ describe('GET /executions/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toBeDefined();
+	});
+
+	describe('push session fields', () => {
+		const PUSH_REF = 'push-ref-of-the-owner';
+		const PUSH_REF_USER_ID = 'user-id-of-the-owner';
+
+		const createWaitingExecutionForViewer = async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:viewer');
+			const workflow = await createWorkflow({}, teamProject);
+			return await createExecution(
+				{
+					finished: false,
+					status: 'waiting',
+					waitTill: new Date(),
+					data: stringify({
+						pushRef: PUSH_REF,
+						pushRefUserId: PUSH_REF_USER_ID,
+						resultData: { runData: {} },
+					}),
+				},
+				workflow,
+			);
+		};
+
+		test('keeps the stored push session fields after a read', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(200);
+
+			const stored = await Container.get(ExecutionPersistence).findSingleExecution(execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(stored?.data.pushRef).toBe(PUSH_REF);
+			expect(stored?.data.pushRefUserId).toBe(PUSH_REF_USER_ID);
+		});
+
+		test('hides the push session fields from a project viewer', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parse(response.body.data.data);
+			expect(data).not.toHaveProperty('pushRef');
+			expect(data).not.toHaveProperty('pushRefUserId');
+		});
 	});
 
 	test('project admins can view executions for workflows in the project without the sharing license', async () => {
@@ -655,6 +706,115 @@ describe('POST /executions/:id/retry', () => {
 
 		expect(response.statusCode).toBe(404);
 		expect(ran).toBe(false);
+	});
+});
+
+describe('POST /executions/:id/retry with private credentials', () => {
+	/**
+	 * A failed execution that ran as `executedBy` with a private credential.
+	 * The retry run is mocked, so the test checks who may start it.
+	 */
+	const retryPrivateCredentialRun = async ({
+		executedBy,
+		retriedBy,
+		loadWorkflow,
+		runtimeData = {
+			usesDynamicCredentials: true,
+			executedByUserId: executedBy.id,
+		},
+	}: {
+		executedBy: User;
+		retriedBy: User;
+		loadWorkflow: boolean;
+		runtimeData?: Record<string, unknown>;
+	}) => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createExecution(
+			{
+				finished: false,
+				status: 'error',
+				data: stringify({
+					resultData: { runData: {} },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: {
+							version: 1,
+							establishedAt: Date.now(),
+							source: 'manual',
+							...runtimeData,
+						},
+					},
+				}),
+			},
+			workflow,
+		);
+
+		const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+		const outcome = vi
+			.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+			.mockResolvedValue({
+				data: { resultData: { runData: {} } },
+				mode: 'retry',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			} as unknown as IRun);
+
+		const response = await testServer
+			.authAgentFor(retriedBy)
+			.post(`/executions/${execution.id}/retry`)
+			.send({ loadWorkflow });
+
+		const ran = run.mock.calls.length > 0;
+		const runData = run.mock.calls[0]?.[0];
+		run.mockRestore();
+		outcome.mockRestore();
+		return { response, ran, runData };
+	};
+
+	test.each([true, false])(
+		'a project editor cannot retry a run of another user (loadWorkflow: %s)',
+		async (loadWorkflow) => {
+			const { response, ran } = await retryPrivateCredentialRun({
+				executedBy: owner,
+				retriedBy: member,
+				loadWorkflow,
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(ran).toBe(false);
+		},
+	);
+
+	test('a project editor retries a run of another user without the original identity', async () => {
+		const { response, ran, runData } = await retryPrivateCredentialRun({
+			executedBy: owner,
+			retriedBy: member,
+			loadWorkflow: false,
+			runtimeData: { credentials: 'encrypted-owner-identity' },
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
+		expect(runData?.executionData?.executionData?.runtimeData).not.toHaveProperty('credentials');
+	});
+
+	test('a project editor can retry their own run', async () => {
+		const { response, ran } = await retryPrivateCredentialRun({
+			executedBy: member,
+			retriedBy: member,
+			loadWorkflow: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
 	});
 });
 

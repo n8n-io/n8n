@@ -1,5 +1,6 @@
 import { buildHitlCallbackReference, markSlackInteractionRequest } from 'n8n-core';
 import type { IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as sendAndWaitUtils from '../../../../../utils/sendAndWait/utils';
@@ -285,7 +286,7 @@ describe('slackSendAndWaitWebhook', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.postEphemeral',
+			requestPath`/chat.postEphemeral`,
 			expect.objectContaining({ channel: 'C1', user: 'U_OTHER' }),
 		);
 		// Must acknowledge with a 200 so Slack doesn't time out and retry the same click.
@@ -313,7 +314,7 @@ describe('slackSendAndWaitWebhook', () => {
 
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.postEphemeral',
+			requestPath`/chat.postEphemeral`,
 			expect.objectContaining({
 				channel: 'C1',
 				user: 'U_OTHER',
@@ -381,7 +382,11 @@ describe('slackSendAndWaitWebhook', () => {
 
 		// No lock attempt (neither response_url nor chat.update), but the execution still resumes.
 		expect(httpRequest).not.toHaveBeenCalled();
-		expect(slackApiRequest).not.toHaveBeenCalledWith('POST', '/chat.update', expect.anything());
+		expect(slackApiRequest).not.toHaveBeenCalledWith(
+			'POST',
+			requestPath`/chat.update`,
+			expect.anything(),
+		);
 		expect(result.workflowData[0][0].json.data.approved).toBe(true);
 	});
 
@@ -427,7 +432,7 @@ describe('slackSendAndWaitWebhook', () => {
 		});
 		verifySignature.mockResolvedValue(true);
 		slackApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/users.info') return { user: { profile: {} } };
+			if (String(resource) === '/users.info') return { user: { profile: {} } };
 			return { ok: true };
 		});
 		httpRequest.mockRejectedValue(new Error('response_url expired'));
@@ -436,7 +441,7 @@ describe('slackSendAndWaitWebhook', () => {
 
 		expect(slackApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/chat.update',
+			requestPath`/chat.update`,
 			expect.objectContaining({ channel: 'C1', ts: '111.222' }),
 		);
 	});
@@ -556,7 +561,7 @@ describe('slackSendAndWaitWebhook', () => {
 		verifySignature.mockResolvedValue(true);
 		httpRequest.mockRejectedValue(new Error('response_url expired'));
 		slackApiRequest.mockImplementation(async (_method, resource) => {
-			if (resource === '/users.info') return { user: { profile: {} } };
+			if (String(resource) === '/users.info') return { user: { profile: {} } };
 			throw new Error('missing chat:write scope');
 		});
 

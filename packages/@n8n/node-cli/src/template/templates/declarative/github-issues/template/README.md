@@ -65,7 +65,7 @@ Refer to the [GitHub Authorizing OAuth apps documentation](https://docs.github.c
 
 ## Compatibility
 
-Compatible with n8n@1.60.0 or later
+This node needs n8n 2.46.1 or later.
 
 ## Resources
 

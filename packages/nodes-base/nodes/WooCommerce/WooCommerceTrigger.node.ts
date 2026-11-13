@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { verifySignature } from '../../utils/webhook-signature-verification';
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
@@ -107,7 +107,7 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const currentEvent = this.getNodeParameter('event') as string;
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 
 				const webhooks = await woocommerceApiRequest.call(
 					this,
@@ -129,7 +129,7 @@ export class WooCommerceTrigger implements INodeType {
 								await woocommerceApiRequest.call(
 									this,
 									'DELETE',
-									`/webhooks/${webhook.id}`,
+									requestPath`/webhooks/${webhook.id}`,
 									{},
 									{ force: true },
 								);
@@ -155,7 +155,7 @@ export class WooCommerceTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const event = this.getNodeParameter('event') as string;
 				const secret = getAutomaticSecret(credentials);
-				const endpoint = '/webhooks';
+				const endpoint = requestPath`/webhooks`;
 				const body: IDataObject = {
 					delivery_url: webhookUrl,
 					topic: event,
@@ -168,8 +168,8 @@ export class WooCommerceTrigger implements INodeType {
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks/${webhookData.webhookId}`;
 				try {
+					const endpoint = requestPath`/webhooks/${webhookData.webhookId}`;
 					await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, { force: true });
 				} catch (error) {
 					return false;

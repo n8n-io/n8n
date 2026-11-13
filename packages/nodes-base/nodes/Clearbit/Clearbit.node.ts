@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './CompanyDescription';
 import { clearbitApiRequest } from './GenericFunctions';
@@ -106,7 +106,7 @@ export class Clearbit implements INodeType {
 							this,
 							'GET',
 							`${resource}-stream`,
-							'/v2/people/find',
+							requestPath`/v2/people/find`,
 							{},
 							qs,
 						);
@@ -133,7 +133,7 @@ export class Clearbit implements INodeType {
 							this,
 							'GET',
 							`${resource}-stream`,
-							'/v2/companies/find',
+							requestPath`/v2/companies/find`,
 							{},
 							qs,
 						);
@@ -145,7 +145,7 @@ export class Clearbit implements INodeType {
 							this,
 							'GET',
 							'autocomplete',
-							'/v1/companies/suggest',
+							requestPath`/v1/companies/suggest`,
 							{},
 							qs,
 						);

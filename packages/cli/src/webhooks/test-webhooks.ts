@@ -28,6 +28,7 @@ import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -73,6 +74,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly publisher: Publisher,
 		private readonly webhookService: WebhookService,
 		private readonly executionContextService: ExecutionContextService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -204,6 +206,7 @@ export class TestWebhooks implements IWebhookManager {
 								data: { workflowId: webhook?.workflowId, executionId },
 							},
 							pushRef,
+							webhook.userId,
 						);
 					}
 				} catch (error) {
@@ -456,6 +459,15 @@ export class TestWebhooks implements IWebhookManager {
 				return { nodeNames: [], formTestUrls: [] }; // no webhooks found to start a workflow
 			}
 
+			// Creating a webhook calls the node's webhook methods with its credentials
+			// before any run starts, and the webhook phase can load sub-nodes with theirs.
+			// So it must pass the check that the run passes, on the same nodes.
+			await this.credentialsPermissionChecker.check(
+				workflowEntity.id,
+				workflowEntity.nodes,
+				userId,
+			);
+
 			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
 			const timeoutDuration =
 				timeoutMs !== undefined && timeoutMs > 0
@@ -615,7 +627,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!registration) continue;
 
-			const { pushRef, workflowEntity } = registration;
+			const { pushRef, workflowEntity, webhook } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
 
@@ -625,7 +637,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (pushRef !== undefined) {
 				try {
-					this.push.send({ type: 'testWebhookDeleted', data: { workflowId } }, pushRef);
+					this.push.send(
+						{ type: 'testWebhookDeleted', data: { workflowId } },
+						pushRef,
+						webhook.userId,
+					);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}

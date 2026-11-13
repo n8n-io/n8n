@@ -1,5 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -55,6 +60,16 @@ function asOptionalString(value: unknown): string | undefined {
 	return typeof value === 'string' && value !== '' ? value : undefined;
 }
 
+function queryToQs(query: string): IDataObject {
+	const values = new Map<string, string[]>();
+	for (const [key, value] of new URLSearchParams(query)) {
+		values.set(key, [...(values.get(key) ?? []), value]);
+	}
+	return Object.fromEntries(
+		[...values].map(([key, list]) => [key, list.length === 1 ? list[0] : list]),
+	);
+}
+
 export const execute: ConfluenceBinaryOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -70,7 +85,7 @@ export const execute: ConfluenceBinaryOperation = async function (
 				itemIndex,
 			);
 	const download = this.getNodeParameter('download', itemIndex, false);
-	const endpoint = `/wiki/api/v2/pages/${encodeURIComponent(pageId)}/attachments`;
+	const endpoint = requestPath`/wiki/api/v2/pages/${pageId}/attachments`;
 
 	const attachments = await fetchPaginatedResults.call(this, endpoint, limit);
 	const items: INodeExecutionData[] = attachments.map((attachment) => ({ json: attachment }));
@@ -87,14 +102,14 @@ export const execute: ConfluenceBinaryOperation = async function (
 				);
 			}
 			// downloadLink is server-relative to /wiki with a raw, unencoded filename in the
-			// path; encode the segments and keep the query string (version/cache params) intact
+			// path; encode the segments and send the query string (version/cache params) as qs
 			const querySplit = downloadLink.lastIndexOf('?');
 			const path = (querySplit === -1 ? downloadLink : downloadLink.slice(0, querySplit))
 				.split('/')
-				.map(encodeURIComponent)
-				.join('/');
+				.filter(Boolean)
+				.reduce((parent, segment) => requestPath`${parent}/${segment}`, requestPath`/wiki`);
 			const query = querySplit === -1 ? '' : downloadLink.slice(querySplit);
-			const buffer = await confluenceApiRequestBinary.call(this, `/wiki${path}${query}`);
+			const buffer = await confluenceApiRequestBinary.call(this, path, queryToQs(query));
 			item.binary = {
 				[binaryPropertyName]: await this.helpers.prepareBinaryData(
 					buffer,
