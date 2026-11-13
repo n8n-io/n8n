@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_62ee85ce3f6f91::t_97e210416808b2 11,69,374-398
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 12,64
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupContext.ts
+  s_62ee85ce3f6f91::t_a598450e86fbb6 70-74,95
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentSetupSavedTelemetry.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 62
+  s_62ee85ce3f6f91::t_61428a4dbe7ac8 88
+  s_62ee85ce3f6f91::t_63cf396042c30a 1-61,63-87,89-98
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupTelemetry.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 124-125
+  s_62ee85ce3f6f91::t_84cb1152c6e74e 4,7,112-114,123
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/workflowSetupSavedTelemetry.ts
+  s_62ee85ce3f6f91::t_24aa2e335f99db 1-91
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 4,157-158
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_62ee85ce3f6f91::t_7bbc4197db5c8b 50,54,71,136,138-142,145-152,167-171
+  s_62ee85ce3f6f91::t_a2eb3ad890d6be 163-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_62ee85ce3f6f91::t_7bbc4197db5c8b 98-101,246-250
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentSetupSavedTelemetry.test.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 100
+  s_62ee85ce3f6f91::t_e904fdee51c9f8 1-99,101-129
+packages/@n8n/telemetry/src/schemas.ts
+  s_62ee85ce3f6f91::t_8dab268b5ee8ca 7-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/InstanceAiWorkflowSetup.vue
+  s_62ee85ce3f6f91::t_a598450e86fbb6 7-11,30,45
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupActions.test.ts
+  s_62ee85ce3f6f91::t_e6ca44d7f5b512 171-213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2d50a900fe011597bec2aedff93acb9191c24e80",
+  "prompts": {},
+  "sessions": {
+    "s_62ee85ce3f6f91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24bcf20b-3f2d-482b-86d6-c5e066cd57df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
