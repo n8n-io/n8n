@@ -1,5 +1,7 @@
 import type { Pinia } from 'pinia';
 import { createPinia, setActivePinia } from 'pinia';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { nextTick, reactive } from 'vue';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
@@ -14,17 +16,21 @@ import {
 	mockRestrictedCredentialTypes,
 	mockRestrictedNodeTypes,
 } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockEngineV2Compatibility } from '@n8n/frontend-module-engine-v2/__tests__/mocks';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useViewStacks } from '../../composables/useViewStacks';
 import NodeItem from './NodeItem.vue';
 import type { AddedNodesAndConnections } from '@/Interface';
 
-const mockDocumentStoreState = {
+const mockDocumentStoreState = reactive({
 	allNodes: [],
+	connectionsBySourceNode: {},
+	settings: {} as IWorkflowSettings,
 	workflowTriggerNodes: [],
 	aiNodes: [],
 	getExpressionHandler: () => null,
-};
+});
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
@@ -302,6 +308,79 @@ describe('NodeItem', () => {
 			expect(queryByTestId('node-creator-restricted-item')).not.toBeInTheDocument();
 			expect(queryByTestId('node-restricted-icon')).not.toBeInTheDocument();
 			expect(container.querySelector('[draggable="true"]')).toBeInTheDocument();
+		});
+	});
+
+	describe('engine v2 compatibility', () => {
+		const set = () =>
+			mockSimplifiedNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				group: ['input'],
+			});
+
+		beforeEach(() => {
+			useSettingsStore().settings.activeModules = ['engine-v2'];
+			mockDocumentStoreState.settings = { engineType: 'v2' };
+		});
+
+		afterEach(() => {
+			mockDocumentStoreState.settings = {};
+		});
+
+		it('disables and labels a node type that engine v2 does not support', () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { container, getByTestId, getByText } = render({ pinia, props: { nodeType: set() } });
+
+			const row = getByTestId('node-creator-node-item');
+			expect(row.getAttribute('draggable')).toBe('false');
+			expect(row.className).toContain('disabled');
+			expect(getByText('Not compatible')).toBeInTheDocument();
+			expect(container.querySelector('[data-icon="arrow-right"]')).not.toBeInTheDocument();
+		});
+
+		it('removes the label when the workflow changes to engine v1', async () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+			expect(queryByText('Not compatible')).toBeInTheDocument();
+
+			mockDocumentStoreState.settings = { engineType: 'v1' };
+			await nextTick();
+
+			const row = getByTestId('node-creator-node-item');
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(row.getAttribute('draggable')).toBe('true');
+			expect(row.className).not.toContain('disabled');
+		});
+
+		it('shows no label when the engine-v2 module is off', () => {
+			useSettingsStore().settings.activeModules = [];
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(getByTestId('node-creator-node-item').getAttribute('draggable')).toBe('true');
+		});
+
+		it('renders a normal row for a supported node type', () => {
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.webhook'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
+			expect(getByTestId('node-creator-node-item').getAttribute('draggable')).toBe('true');
+		});
+
+		it('keeps the policy explanation for a type that is also restricted', () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.set': 'instance' });
+			mockEngineV2Compatibility({ unsupportedNodeTypes: ['n8n-nodes-base.set'] });
+
+			const { getByTestId, queryByText } = render({ pinia, props: { nodeType: set() } });
+
+			expect(getByTestId('node-restricted-icon')).toBeInTheDocument();
+			expect(queryByText('Not compatible')).not.toBeInTheDocument();
 		});
 	});
 });

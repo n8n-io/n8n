@@ -25,6 +25,8 @@
 			"@n8n/composables*": ["../@n8n/composables/src*"],
 			"@n8n/constants*": ["../../@n8n/constants/src*"],
 			"@n8n/frontend-module-sdk": ["../@n8n/frontend-module-sdk/src/index.ts"],
+			"@n8n/frontend-module-engine-v2": ["../../modules/engine-v2/frontend/src/index.ts"],
+			"@n8n/frontend-module-engine-v2/*": ["../../modules/engine-v2/frontend/src/*"],
 			"@n8n/frontend-module-promotions": ["../../modules/promotions/frontend/src/index.ts"],
 			"@n8n/frontend-module-promotions/*": ["../../modules/promotions/frontend/src/*"],
 			"@n8n/frontend-module-apps": ["../../modules/apps/frontend/src/index.ts"],
