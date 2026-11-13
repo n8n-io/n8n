@@ -1,3 +1,26 @@
+## [2.48.3](https://github.com/n8n-io/n8n/compare/n8n@2.48.2...n8n@2.48.3) (2026-11-13)
+
+
+### Bug Fixes
+
+* **core:** Keep trusted-source cache keys in one Redis cluster slot ([#43626](https://github.com/n8n-io/n8n/issues/43626)) ([1df6774](https://github.com/n8n-io/n8n/commit/1df677415f567a623db88ac6fc1b9a8e470c43fb))
+* **core:** Let agents turn off prompt caching for endpoints that reject the cache fields ([#43672](https://github.com/n8n-io/n8n/issues/43672)) ([d2d992e](https://github.com/n8n-io/n8n/commit/d2d992ebc43460fb7454985a9a0d3bfa88b75249))
+* **core:** Read legacy-format data with the instance key when the stored key differs ([#43724](https://github.com/n8n-io/n8n/issues/43724)) ([ca222b6](https://github.com/n8n-io/n8n/commit/ca222b6d98f650f212587fc7434571aafa30bb47))
+* **editor:** Make JSON highlight color visible on light theme ([#43688](https://github.com/n8n-io/n8n/issues/43688)) ([55d8171](https://github.com/n8n-io/n8n/commit/55d81715397b73956e57d73ef2bb32548d382b47))
+* **Pinecone Vector Store Node:** Search indexes with a document schema through the documents API ([#43649](https://github.com/n8n-io/n8n/issues/43649)) ([fbfe531](https://github.com/n8n-io/n8n/commit/fbfe5313e0060c6e67bd37517cb0c6cfca3ebdf0))
+
+
+### Features
+
+* **editor:** Show Gateway credits promotions from the Gateway config ([#43662](https://github.com/n8n-io/n8n/issues/43662)) ([11d9fc6](https://github.com/n8n-io/n8n/commit/11d9fc6b1223502f64d22325f2cd73665c976685))
+
+
+### Performance Improvements
+
+* **core:** Keep the replaceSpecialChars character map out of the runtime bundle ([#43727](https://github.com/n8n-io/n8n/issues/43727)) ([2fa2434](https://github.com/n8n-io/n8n/commit/2fa2434f04e483dcefddee9d12dc6b4702a0e5e9))
+* **core:** Reduce per-item setup in the expression runtime ([#43437](https://github.com/n8n-io/n8n/issues/43437)) ([3f2736b](https://github.com/n8n-io/n8n/commit/3f2736bfb87b6d6a7b655c0c043b2744fd9dc050))
+
+
 ## [2.48.2](https://github.com/n8n-io/n8n/compare/n8n@2.48.1...n8n@2.48.2) (2026-11-12)
 
 
