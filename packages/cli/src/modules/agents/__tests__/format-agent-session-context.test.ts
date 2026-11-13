@@ -449,7 +449,7 @@ describe('formatFullSessionContextPage', () => {
 		expect(transcript).not.toContain('Turn three');
 	});
 
-	it('keeps the position when turns are added between pages', () => {
+	it('keeps the turns of the first page when turns are added between pages', () => {
 		const executions = [
 			makeExecution({ id: 'exec-1', userMessage: `${'a'.repeat(300)}-end` }),
 			makeExecution({ id: 'exec-2', userMessage: 'Second' }),
@@ -465,9 +465,47 @@ describe('formatFullSessionContextPage', () => {
 
 		expect(second).toMatchObject({ ok: true, nextCursor: null });
 		const transcript = first.transcript + (second.ok ? second.transcript : '');
-		expect(transcript).toContain(`User: ${'a'.repeat(300)}-end`);
-		expect(transcript).toContain('User: Second');
-		expect(transcript).toContain('User: Third');
+		expect(transcript).toBe(joined(readAllPages(executions)));
+		expect(transcript).toContain('turns: 2');
+		expect(transcript.match(/## Turn/g)).toHaveLength(2);
+		expect(transcript).not.toContain('User: Third');
+	});
+
+	it('ends with the closing tag when a turn is added before a footer cursor is used', () => {
+		const executions = [makeExecution({ id: 'exec-1', userMessage: 'First' })];
+		const complete = joined(readAllPages(executions));
+		const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+		const first = formatFullSessionContextPage(makeThread(), executions, {
+			maxChars: complete.length - closing.length,
+		});
+		if (!first.ok) throw new Error(first.reason);
+
+		const second = formatFullSessionContextPage(
+			makeThread(),
+			[...executions, makeExecution({ id: 'exec-2', userMessage: 'Second' })],
+			{ cursor: first.nextCursor! },
+		);
+
+		expect(second).toEqual({ ok: true, transcript: closing, nextCursor: null });
+		expect(first.transcript + closing).toBe(complete);
+	});
+
+	it('reports session_changed when a turn of the first page was removed', () => {
+		const executions = [
+			makeExecution({ id: 'exec-1', userMessage: 'First' }),
+			makeExecution({ id: 'exec-2', userMessage: `${'b'.repeat(300)}-end` }),
+		];
+		const first = formatFullSessionContextPage(makeThread(), executions, { maxChars: 400 });
+		if (!first.ok) throw new Error(first.reason);
+
+		expect(
+			formatFullSessionContextPage(makeThread(), [executions[1]], { cursor: first.nextCursor! }),
+		).toEqual({ ok: false, reason: 'session_changed' });
+		expect(
+			formatFullSessionContextPage(makeThread(), [executions[1], executions[0]], {
+				cursor: first.nextCursor!,
+			}),
+		).toEqual({ ok: false, reason: 'session_changed' });
 	});
 
 	it('returns execution_not_found for an unknown executionId', () => {

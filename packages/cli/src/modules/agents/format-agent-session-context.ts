@@ -278,6 +278,10 @@ interface TranscriptCursor {
 	sessionId: string;
 	/** The `executionId` scope that the cursor belongs to. */
 	scope: string | null;
+	/** Number of turns in the transcript when the first page was made. */
+	turns: number;
+	/** Hash of the IDs of those turns. Detects removed or reordered turns. */
+	turnsHash: string;
 	/** The segment to continue in: `header`, `footer`, or `turn:<executionId>`. */
 	segment: string;
 	/** The character offset in the segment. */
@@ -297,6 +301,10 @@ function decodeTranscriptCursor(cursor: string): TranscriptCursor | null {
 			isRecord(parsed) &&
 			typeof parsed.sessionId === 'string' &&
 			(parsed.scope === null || typeof parsed.scope === 'string') &&
+			typeof parsed.turns === 'number' &&
+			Number.isSafeInteger(parsed.turns) &&
+			parsed.turns >= 0 &&
+			typeof parsed.turnsHash === 'string' &&
 			typeof parsed.segment === 'string' &&
 			typeof parsed.offset === 'number' &&
 			Number.isSafeInteger(parsed.offset) &&
@@ -306,6 +314,8 @@ function decodeTranscriptCursor(cursor: string): TranscriptCursor | null {
 			return {
 				sessionId: parsed.sessionId,
 				scope: parsed.scope,
+				turns: parsed.turns,
+				turnsHash: parsed.turnsHash,
 				segment: parsed.segment,
 				offset: parsed.offset,
 				hash: parsed.hash,
@@ -319,6 +329,10 @@ function decodeTranscriptCursor(cursor: string): TranscriptCursor | null {
 
 function hashSegment(text: string): string {
 	return createHash('sha256').update(text).digest('base64url').slice(0, 16);
+}
+
+function hashTurns(turns: AgentSessionTurn[]): string {
+	return hashSegment(turns.map(({ id }) => id).join('\n'));
 }
 
 /** Moves a slice end back by one when it would split a UTF-16 surrogate pair. */
@@ -335,11 +349,13 @@ function sliceEndOutsideSurrogatePair(value: string, end: number, start: number)
  * Concatenate the `transcript` of each page in order to get the complete
  * transcript. `nextCursor` is `null` on the last page.
  *
- * The cursor points at a turn by its execution ID, so turns that are added
- * to the session between two calls do not move the position. If the text at
- * the cursor position changed since the cursor was made, for example in a turn
- * that was still running, the result is `session_changed`. Only the turns from
- * the cursor to the end of the page are formatted.
+ * All pages show the turns that existed when the first page was made, so the
+ * turn count in the header matches the joined transcript. Turns that are added
+ * to the session after the first page are left out: read the transcript again
+ * to get them. The result is `session_changed` if one of those turns was
+ * removed or reordered, or if the text at the cursor position changed since
+ * the cursor was made, for example in a turn that was still running. Only the
+ * turns from the cursor to the end of the page are formatted.
  */
 export function formatFullSessionContextPage(
 	thread: AgentSessionThread,
@@ -350,25 +366,36 @@ export function formatFullSessionContextPage(
 	const scoped = scopeExecutions(executions, executionId);
 	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
 
-	const keys = ['header', ...scoped.map((execution) => `turn:${execution.id}`), 'footer'];
+	const decoded = cursor === undefined ? undefined : decodeTranscriptCursor(cursor);
+	if (
+		decoded === null ||
+		(decoded !== undefined &&
+			(decoded.sessionId !== thread.id || decoded.scope !== (executionId ?? null)))
+	) {
+		return { ok: false, reason: 'invalid_cursor' };
+	}
+
+	// Keep the turn set of the first page for the whole traversal.
+	const turns = decoded === undefined ? scoped : scoped.slice(0, decoded.turns);
+	const turnsHash = hashTurns(turns);
+	if (
+		decoded !== undefined &&
+		(turns.length !== decoded.turns || turnsHash !== decoded.turnsHash)
+	) {
+		return { ok: false, reason: 'session_changed' };
+	}
+
+	const keys = ['header', ...turns.map((execution) => `turn:${execution.id}`), 'footer'];
 	const formatSegment = (index: number): string => {
-		if (index === 0) return formatPrefix(thread, scoped, executionId);
+		if (index === 0) return formatPrefix(thread, turns, executionId);
 		if (index === keys.length - 1) return `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
-		return `\n${formatExecution(scoped[index - 1], undefined)}`;
+		return `\n${formatExecution(turns[index - 1], undefined)}`;
 	};
 
 	let index = 0;
 	let offset = 0;
 	let text = formatSegment(0);
-	if (cursor !== undefined) {
-		const decoded = decodeTranscriptCursor(cursor);
-		if (
-			decoded === null ||
-			decoded.sessionId !== thread.id ||
-			decoded.scope !== (executionId ?? null)
-		) {
-			return { ok: false, reason: 'invalid_cursor' };
-		}
+	if (decoded !== undefined) {
 		index = keys.indexOf(decoded.segment);
 		if (index === -1) return { ok: false, reason: 'invalid_cursor' };
 		text = formatSegment(index);
@@ -401,6 +428,8 @@ export function formatFullSessionContextPage(
 			? encodeTranscriptCursor({
 					sessionId: thread.id,
 					scope: executionId ?? null,
+					turns: turns.length,
+					turnsHash,
 					segment: keys[index],
 					offset,
 					hash: hashSegment(text),
