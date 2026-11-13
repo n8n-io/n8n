@@ -3,8 +3,12 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { type Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
-import { UnexpectedError } from '@n8n/errors';
-import { assertParamIsString, type IDataObject, type INodeProperties } from 'n8n-workflow';
+import {
+	assertParamIsString,
+	type IDataObject,
+	type INodeProperties,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { createQdrantClient, type QdrantCredential } from './Qdrant.utils';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
