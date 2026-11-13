@@ -165,9 +165,12 @@ export class ProjectsPublicController {
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Query _query: DeleteProjectQueryPublicDto,
 	): Promise<void> {
-		await this.projectService.deleteProject(req.user, projectId, {
-			publicApi: req.publicApiClient,
-		});
+		await this.projectService.deleteProject(
+			req.user,
+			projectId,
+			{ publicApi: req.publicApiClient },
+			req.ctx,
+		);
 	}
 
 	@Get('/:projectId/users')
@@ -221,12 +224,15 @@ export class ProjectsPublicController {
 	): Promise<void> {
 		await this.assertProjectRolesNotManaged();
 
-		await this.projectService.addUsersToProject({
-			user: req.user,
-			projectId,
-			relations: body.relations,
-			publicApi: req.publicApiClient,
-		});
+		await this.projectService.addUsersToProject(
+			{
+				user: req.user,
+				projectId,
+				relations: body.relations,
+				publicApi: req.publicApiClient,
+			},
+			req.ctx,
+		);
 	}
 
 	@Patch('/:projectId/users/:userId')
