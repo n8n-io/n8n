@@ -1,0 +1,14 @@
+packages/@n8n/config/src/configs/code-execution.config.ts
+  h_8fb27e0cdf6d1e 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2503afff87a8517ea912b469fd408f40f02f62db",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
