@@ -63,8 +63,8 @@ Add components under `src/`. Keep files small and focused.
      Create data tables, workflows and agents only after that commit. See
      [Build order for a new app](#build-order-for-a-new-app).
      If the user cancels, do not create, open, or edit app files.
-   - Always include a `plan` in the blueprint. The user sees it as a wireframe
-     next to the chat. See [Plan the app](#plan-the-app).
+   - Always include a `plan` in the blueprint of a new app. The user sees it as
+     a wireframe next to the chat. See [Plan the app](#plan-the-app).
    - If `create` returns `revisionRequested`, the user asked for a change to the
      plan in the chat. `feedback` holds the request and `planIds` the parts they
      selected. Change only what they asked for and call `create` again with the
@@ -75,7 +75,9 @@ Add components under `src/`. Keep files small and focused.
    - Existing app: use the `appId` from the conversation context. If the
      conversation has no id, call `list` (optionally with a `search` text) and
      pick the app by name. If several apps match, ask the user which one. Then
-     call `open`.
+     call `open`. Do not make a plan for a change to an existing app. Small
+     changes, such as a color, a label or one button, go straight into the
+     code.
    - `open` returns the app folder, `apps/<appId>`. It keeps a folder that is
      already open, with your uncommitted edits.
 2. **Apply the selected theme.**
@@ -185,7 +187,7 @@ two levels, one step at a time:
 
 - `fidelity: "mid"` (first step): the real structure of the part, its real
   labels, columns and states, and believable sample content (names, numbers,
-  dates) that matches the plan. Neutral grays, a plain system font, simple
+  dates) that matches the plan. Neutral grays, the font of the wireframe (inherit it), simple
   borders. No brand colors, shadows or decoration.
   Write it for a white background. In a dark theme, n8n inverts the grays.
 - `fidelity: "high"` (only when asked): the same structure and content with
