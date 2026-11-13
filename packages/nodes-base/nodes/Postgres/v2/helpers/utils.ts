@@ -370,6 +370,9 @@ export const isSelectQuery = (query: string): boolean => {
 	return statements.every((statement) => findTopLevelCommand(statement) === 'SELECT');
 };
 
+// Operations that read: an empty result is no rows, not a success report
+const READ_OPERATIONS = ['select', 'listSchemas', 'listTables'];
+
 export function configureQueryRunner(
 	this: IExecuteFunctions,
 	node: INode,
@@ -379,8 +382,11 @@ export function configureQueryRunner(
 ): QueriesRunner {
 	return async (queries: QueryWithValues[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
-		const emptyReturnData: INodeExecutionData[] =
-			options.operation === 'select' ? [] : [{ json: { success: true } }];
+		const emptyReturnData: INodeExecutionData[] = READ_OPERATIONS.includes(
+			options.operation as string,
+		)
+			? []
+			: [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
