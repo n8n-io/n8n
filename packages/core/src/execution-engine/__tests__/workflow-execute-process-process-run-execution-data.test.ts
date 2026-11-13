@@ -1,3 +1,4 @@
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
@@ -5,17 +6,12 @@ import type {
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
-<<<<<<< HEAD
-=======
-	IPairedItemData,
 	INode,
->>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 	INodeExecutionData,
 	INodeType,
 	IRunExecutionData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, createRunExecutionData } from 'n8n-workflow';
-import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';

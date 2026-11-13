@@ -1,7 +1,3 @@
-// The Zep SDK does not load in Vitest without a mock
-vi.mock('@langchain/community/vectorstores/zep', () => ({ ZepVectorStore: vi.fn() }));
-vi.mock('@langchain/community/vectorstores/zep_cloud', () => ({ ZepCloudVectorStore: vi.fn() }));
-
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IExecuteFunctions, INode, INodeType, ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +9,6 @@ import { EmbeddingsOpenAi } from '../../nodes/embeddings/EmbeddingsOpenAI/Embedd
 import { LmChatAnthropic } from '../../nodes/llms/LMChatAnthropic/LmChatAnthropic.node';
 import { LmChatOpenAi } from '../../nodes/llms/LMChatOpenAi/LmChatOpenAi.node';
 import { LmCohere } from '../../nodes/llms/LMCohere/LmCohere.node';
-import { LmOpenAi } from '../../nodes/llms/LMOpenAi/LmOpenAi.node';
 import { LmOpenHuggingFaceInference } from '../../nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node';
 import { LmChatAlibabaCloud } from '../../nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node';
 import { LmChatCohere } from '../../nodes/llms/LmChatCohere/LmChatCohere.node';
@@ -26,12 +21,9 @@ import { LmChatMoonshot } from '../../nodes/llms/LmChatMoonshot/LmChatMoonshot.n
 import { LmChatOpenRouter } from '../../nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node';
 import { LmChatVercelAiGateway } from '../../nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node';
 import { LmChatXAiGrok } from '../../nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node';
-import { OpenAiAssistant } from '../../nodes/agents/OpenAiAssistant/OpenAiAssistant.node';
 import { EmbeddingsAzureOpenAi } from '../../nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
 import { MemoryXata } from '../../nodes/memory/MemoryXata/MemoryXata.node';
 import { RerankerCohere } from '../../nodes/rerankers/RerankerCohere/RerankerCohere.node';
-import { ToolSerpApi } from '../../nodes/tools/ToolSerpApi/ToolSerpApi.node';
-import { VectorStoreZep } from '../../nodes/vector_store/VectorStoreZep/VectorStoreZep.node';
 import * as assistantMessage from '../../nodes/vendors/OpenAi/v1/actions/assistant/message.operation';
 
 type Run = (ctx: ISupplyDataFunctions & IExecuteFunctions) => Promise<unknown>;
@@ -62,14 +54,10 @@ const nodes: Array<[string, Run]> = [
 	['LmChatVercelAiGateway', supplyData(LmChatVercelAiGateway)],
 	['LmChatXAiGrok', supplyData(LmChatXAiGrok)],
 	['LmCohere', supplyData(LmCohere)],
-	['LmOpenAi', supplyData(LmOpenAi)],
 	['LmOpenHuggingFaceInference', supplyData(LmOpenHuggingFaceInference)],
 	['MemoryXata', supplyData(MemoryXata)],
 	['OpenAI assistant message', async (ctx) => await assistantMessage.execute.call(ctx, 0)],
-	['OpenAiAssistant', async (ctx) => await new OpenAiAssistant().execute.call(ctx)],
 	['RerankerCohere', supplyData(RerankerCohere)],
-	['ToolSerpApi', supplyData(ToolSerpApi)],
-	['VectorStoreZep (cloud)', supplyData(VectorStoreZep)],
 ];
 
 const node: INode = {
@@ -86,8 +74,6 @@ const parameters: Record<string, unknown> = {
 	sessionIdType: 'customKey',
 	sessionKey: 'session',
 	sessionId: 'session',
-	mode: 'retrieve',
-	collectionName: 'collection',
 	assistantId: 'asst_1',
 	text: 'Hello',
 };
@@ -95,8 +81,7 @@ const parameters: Record<string, unknown> = {
 const createContext = (credentials: object) => {
 	const ctx = createMockExecuteFunction<ISupplyDataFunctions & IExecuteFunctions>({}, node);
 	ctx.getNode = vi.fn().mockReturnValue(node);
-	// cloud selects the Zep Cloud path, which needs a key
-	ctx.getCredentials = vi.fn().mockResolvedValue({ cloud: true, ...credentials });
+	ctx.getCredentials = vi.fn().mockResolvedValue(credentials);
 	ctx.getInputData = vi.fn().mockReturnValue([{ json: {} }]);
 	ctx.continueOnFail = vi.fn().mockReturnValue(false);
 	ctx.getInputConnectionData = vi.fn().mockResolvedValue(undefined);

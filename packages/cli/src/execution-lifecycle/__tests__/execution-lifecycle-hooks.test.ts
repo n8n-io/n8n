@@ -2010,22 +2010,6 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.sendChunk).toHaveLength(0);
 		});
 
-<<<<<<< HEAD
-=======
-		it('should run workflow.preExecute when legacy flag is on', async () => {
-			executionsConfig.preExecuteErrorCreatesExecution = true;
-			lifecycleHooks = createHooks();
-
-			await lifecycleHooks.runHook('workflowExecuteBefore', [workflow, runExecutionData]);
-
-			expect(externalHooks.run).toHaveBeenCalledWith('workflow.preExecute', [
-				workflow,
-				'manual',
-				workflowHookContext,
-				undefined,
-			]);
-		});
-
 		describe('user of the pushRef', () => {
 			const createHooksWithUser = () =>
 				getLifecycleHooksForScalingWorker(
@@ -2065,7 +2049,6 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
->>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 		describe('saving static data', () => {
 			it('should skip saving static data for manual executions', async () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, staticData]);

@@ -11,11 +11,8 @@ import {
 	type IWebhookResponseData,
 	type IBinaryKeyData,
 	NodeConnectionTypes,
-<<<<<<< HEAD
 	NodeOperationError,
-=======
 	requestPath,
->>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';

@@ -8,11 +8,12 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { isSafeObjectProperty, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-=======
-import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
->>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
+import {
+	isSafeObjectProperty,
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 
 import {
 	googleApiRequest,
