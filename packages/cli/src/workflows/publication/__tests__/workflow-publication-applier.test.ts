@@ -438,8 +438,7 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 		});
 
-		// Left as `activated`, these rows read as drift and get re-enqueued forever.
-		test('reports every desired trigger as failed so no activated rows survive', async () => {
+		test('reports the refusal for every requested trigger', async () => {
 			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([
 				triggerNode('a'),
 				triggerNode('b'),
@@ -506,6 +505,44 @@ describe('WorkflowPublicationApplier', () => {
 			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('boom');
 		});
 	});
+
+	test.each(['credentials', 'policy'] as const)(
+		'keeps live trigger state when %s refuse a same-version retry',
+		async (refusalSource) => {
+			const version = { ...newVersion, nodes: [triggerNode('a')] };
+			workflowHistoryRepository.findOneBy.mockResolvedValue(version);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(version));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation(
+				(candidate) => candidate?.nodes ?? [],
+			);
+			const error =
+				refusalSource === 'credentials'
+					? new UserError('Credential access changed')
+					: new PolicyViolationError([
+							{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+						]);
+			if (refusalSource === 'credentials') {
+				credentialsPermissionChecker.check.mockRejectedValueOnce(error);
+			} else {
+				policyEnforcementService.enforceWorkflowPublish.mockRejectedValueOnce(error);
+			}
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error,
+				previousTriggerState: {
+					versionId: 'v-2',
+					triggerStatuses: [{ nodeId: 'a', status: 'activated' }],
+				},
+				triggerStatuses: [{ nodeId: 'a', status: 'failed', errorMessage: error.message }],
+			});
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		},
+	);
 
 	test('returns version-missing when the published version history row is gone', async () => {
 		workflowHistoryRepository.findOneBy.mockResolvedValue(null);

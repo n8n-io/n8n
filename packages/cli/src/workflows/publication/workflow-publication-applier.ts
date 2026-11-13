@@ -163,7 +163,9 @@ export class WorkflowPublicationApplier {
 		if (healSkip !== null) return healSkip;
 
 		const oversized = this.rejectOversizedTriggerNodeIds(workflow, newVersion);
-		if (oversized !== null) return oversized;
+		if (oversized !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, oversized);
+		}
 
 		const unrunnable = await this.handleUnrunnableVersion(
 			workflow,
@@ -175,10 +177,14 @@ export class WorkflowPublicationApplier {
 		if (unrunnable !== null) return unrunnable;
 
 		const blocked = await this.enforcePublishPolicy(workflow, newVersion);
-		if (blocked !== null) return blocked;
+		if (blocked !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, blocked);
+		}
 
 		const refused = await this.refuseUnusableTriggerCredentials(workflow, newVersion);
-		if (refused !== null) return refused;
+		if (refused !== null) {
+			return await this.preserveRunningTriggerStatuses(workflow, oldVersion, refused);
+		}
 
 		const { old, oldTriggerCandidates } = this.resolveOldTriggerCandidates(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
@@ -517,9 +523,53 @@ export class WorkflowPublicationApplier {
 		}
 	}
 
+	/** Keep live trigger state separate from a request refused before trigger changes. */
+	private async preserveRunningTriggerStatuses(
+		workflow: WorkflowEntity,
+		oldVersion: WorkflowHistory | null,
+		result: PublicationResult,
+	): Promise<PublicationResult> {
+		if (result.type !== 'failed' || oldVersion === null || oldVersion.nodes.length === 0) {
+			return result;
+		}
+
+		const { runnable } = this.partitionByResolvability(oldVersion);
+		const triggers = this.workflowTriggerActivator.getEnabledTriggerNodes(runnable);
+		const missingNonWebhooks =
+			this.workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds(workflow.id, triggers);
+		const missingWebhooks = await this.workflowTriggerActivator.getNodesWithUnregisteredWebhooks(
+			workflow,
+			runnable,
+		);
+		// Stored activation rows alone do not prove that triggers survived a restart.
+		const missingTriggers = triggers.filter(
+			(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
+		);
+		if (missingTriggers.length === triggers.length) return result;
+
+		return {
+			...result,
+			previousTriggerState: {
+				versionId: oldVersion.versionId,
+				triggerStatuses: this.buildTriggerStatuses(
+					triggers,
+					this.workflowTriggerActivator.getTriggerKinds(triggers),
+					{
+						activated: [],
+						failures: missingTriggers.map((node) => ({
+							nodeId: node.id,
+							nodeName: node.name,
+							error: result.error,
+						})),
+					},
+				),
+			},
+		};
+	}
+
 	/**
-	 * Reports every trigger as failed: `activated` rows left behind read as drift
-	 * to the reconciler, which would then re-enqueue this forever.
+	 * Report the refused request's trigger failures. Retry suppression prevents
+	 * reconciliation from retrying it when the previous version stays live.
 	 */
 	private failAllTriggers(newVersion: WorkflowHistory, error: Error): PublicationResult {
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);

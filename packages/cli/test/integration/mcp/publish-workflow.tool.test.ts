@@ -9,9 +9,11 @@ import { WorkflowsConfig } from '@n8n/config';
 import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
+	WorkflowPublishedVersionRepository,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -24,9 +26,12 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { createPublishWorkflowTool } from '@/modules/mcp/tools/publish-workflow.tool';
 import { createWorkflowDetailsTool } from '@/modules/mcp/tools/get-workflow-details.tool';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { Push } from '@/push';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
@@ -296,6 +301,132 @@ describe('publish_workflow trigger activation', () => {
 			workflow: { active: true, publicationStatus: { status: 'published' } },
 		});
 	});
+
+	test.each(
+		(['credentials', 'policy'] as const).flatMap((refusalSource) =>
+			(['live', 'failed', 'unregistered', 'partially_registered'] as const).map(
+				(previousState) => ({
+					refusalSource,
+					previousState,
+				}),
+			),
+		),
+	)(
+		'reports the $previousState previous version after a queued $refusalSource refusal',
+		async ({ refusalSource, previousState }) => {
+			const trigger = scheduleNode('original', previousState === 'failed' ? 60 : 30);
+			const { workflow, owner } = await publishAndActivate([
+				trigger,
+				...(previousState === 'partially_registered' ? [scheduleNode('missing', 30)] : []),
+			]);
+			const registeredTrigger = Container.get(ActiveWorkflowTriggers)
+				.get(workflow.id)
+				?.get(trigger.id);
+			if (previousState === 'unregistered') {
+				await Container.get(ActiveWorkflowTriggers).remove(workflow.id);
+			} else if (previousState === 'partially_registered') {
+				await Container.get(ActiveWorkflowTriggers).removeTriggers(
+					workflow.id,
+					new Set(['missing']),
+				);
+			}
+			const previousLive = previousState === 'live' || previousState === 'partially_registered';
+			const versionId = uuid();
+			await createWorkflowHistory(
+				{ ...workflow, versionId, nodes: [scheduleNode('replacement', 30)] },
+				owner,
+			);
+			const publicationQueued = createDeferredPromise();
+			publicationNotifier.requestDrain.mockImplementationOnce(() => publicationQueued.resolve());
+			const tool = createPublishWorkflowTool(
+				owner,
+				Container.get(WorkflowFinderService),
+				Container.get(WorkflowService),
+				telemetry,
+				collaborationService,
+				statusService,
+			);
+			const response = Promise.resolve(tool.handler({ workflowId: workflow.id, versionId }));
+			await Promise.race([publicationQueued.promise, response]);
+			const record = await outboxRepository.claimNextPendingRecord();
+			expect(record).toMatchObject({ publishedVersionId: versionId });
+
+			// Refuse only after the synchronous publish checks and the outbox commit.
+			const policy = Container.get(PolicyEnforcementService);
+			const hasChecks = vi
+				.spyOn(policy, 'hasChecksFor')
+				.mockReturnValue(refusalSource === 'policy');
+			const error =
+				refusalSource === 'credentials'
+					? new UserError('Credential access changed')
+					: new PolicyViolationError([
+							{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+						]);
+			const refuse =
+				refusalSource === 'credentials'
+					? vi.spyOn(Container.get(CredentialsPermissionChecker), 'check')
+					: vi.spyOn(policy, 'enforceWorkflowPublish');
+			refuse.mockRejectedValueOnce(error);
+			const expectedTriggers = previousLive
+				? [
+						{ nodeId: trigger.id, status: 'activated', errorMessage: null },
+						...(previousState === 'partially_registered'
+							? [{ nodeId: 'missing', status: 'failed', errorMessage: error.message }]
+							: []),
+					]
+				: [{ nodeId: 'replacement', status: 'failed', errorMessage: error.message }];
+			const publicationStatus = {
+				status: 'failed',
+				versionId,
+				liveVersionId: previousLive ? workflow.versionId : null,
+				errorMessage: error.message,
+				triggers: expect.arrayContaining(expectedTriggers),
+			};
+			try {
+				await consumer.processRecord(record!, new AbortController().signal);
+
+				expect((await response).structuredContent).toMatchObject({
+					success: false,
+					activeVersionId: previousLive ? workflow.versionId : null,
+					error: error.message,
+					publicationStatus,
+				});
+				for (const detailLevel of ['full', 'execution'] as const) {
+					expect(
+						(await detailsFor(owner, workflow.id, detailLevel)).structuredContent,
+					).toMatchObject({
+						workflow: {
+							active: previousLive,
+							publicationStatus,
+						},
+					});
+				}
+				expect(Container.get(ActiveWorkflowTriggers).get(workflow.id)?.get(trigger.id)).toBe(
+					previousLive ? registeredTrigger : undefined,
+				);
+				expect(
+					Container.get(ActiveWorkflowTriggers).get(workflow.id)?.has('replacement') ?? false,
+				).toBe(false);
+				expect(
+					await Container.get(WorkflowPublishedVersionRepository).getPublishedVersionId(
+						workflow.id,
+					),
+				).toBe(workflow.versionId);
+				expect(await outboxRepository.findTriggerStatusDriftedWorkflowIds()).not.toContain(
+					workflow.id,
+				);
+				expect(await outboxRepository.findVersionSkewedWorkflowIds()).not.toContain(workflow.id);
+				expect(
+					await Container.get(
+						WorkflowPublicationTriggerStatusRepository,
+					).findActivatedInMemoryTriggers(),
+				).toEqual(previousLive ? [{ workflowId: workflow.id, nodeId: trigger.id }] : []);
+			} finally {
+				refuse.mockRestore();
+				hasChecks.mockRestore();
+			}
+		},
+	);
 
 	test('keeps a newer successful publication after completed outbox cleanup', async () => {
 		const { workflow, owner, recordId } = await publishAndActivate([scheduleNode('invalid', 60)]);

@@ -106,14 +106,16 @@ export class PublicationStatusReporter {
 				// The record's failure stays the activation error; the abandoned
 				// deregistrations (whose teardown already ran) get their own report.
 				this.surfaceTeardownFailures(result.teardownFailures);
-				const { triggerStatuses } = result;
+				const { triggerStatuses, previousTriggerState } = result;
+				const rows = previousTriggerState
+					? this.toRows(
+							{ publishedVersionId: previousTriggerState.versionId },
+							previousTriggerState.triggerStatuses,
+						)
+					: triggerStatuses && this.toRows(record, triggerStatuses);
 				await this.transactionRunner.run({}, async (ctx) => {
-					if (triggerStatuses) {
-						await this.triggerStatusRepository.replaceForWorkflow(
-							record.workflowId,
-							this.toRows(record, triggerStatuses),
-							ctx,
-						);
+					if (rows) {
+						await this.triggerStatusRepository.replaceForWorkflow(record.workflowId, rows, ctx);
 					}
 					await this.retryStateRepository.suppressRetry(
 						record.workflowId,
@@ -199,7 +201,7 @@ export class PublicationStatusReporter {
 
 	/** Maps trigger publication statuses to repository row objects, stamping the published version. */
 	private toRows(
-		record: WorkflowPublicationOutbox,
+		record: Pick<WorkflowPublicationOutbox, 'publishedVersionId'>,
 		statuses: TriggerPublicationStatus[],
 	): TriggerStatusRow[] {
 		return statuses.map((triggerStatus) => ({
