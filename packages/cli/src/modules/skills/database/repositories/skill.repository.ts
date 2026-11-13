@@ -653,6 +653,7 @@ export class SkillRepository {
 		await this.table.managerFor(ctx).find(Skill, {
 			select: ['id'],
 			where: { id: In(unique(skillIds)) },
+			// Attaches, publishes, and source deletes can lock overlapping sets of skills.
 			order: { id: 'ASC' },
 			lock: { mode },
 		});

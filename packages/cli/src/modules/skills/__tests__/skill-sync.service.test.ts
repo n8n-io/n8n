@@ -1,4 +1,4 @@
-import type { User, TransactionRunner } from '@n8n/db';
+import type { TransactionRunner, User } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -7,6 +7,7 @@ import { TX_CTX } from './test-utils/skill-services';
 import type { SkillSourceConnection } from '../database/entities/skill-source-connection.entity';
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { SkillSourceRepository } from '../database/repositories/skill-source.repository';
+import type { SkillRepository } from '../database/repositories/skill.repository';
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import type { SkillAccessService } from '../services/skill-access.service';
 import type { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
@@ -19,6 +20,7 @@ describe('SkillSyncService', () => {
 	const flagGate = mock<SkillSyncFlagGate>();
 	const access = mock<SkillAccessService>();
 	const sources = mock<SkillSourceRepository>();
+	const skills = mock<SkillRepository>();
 	const telemetry = mock<SkillsTelemetry>();
 	const txRunner = mock<TransactionRunner>();
 	const service = new SkillSyncService(
@@ -26,7 +28,7 @@ describe('SkillSyncService', () => {
 		flagGate,
 		access,
 		sources,
-		mock(),
+		skills,
 		mock(),
 		mock(),
 		mock(),
@@ -52,6 +54,20 @@ describe('SkillSyncService', () => {
 	});
 
 	describe('stopSyncing', () => {
+		it('waits for the skill lock before it removes the link', async () => {
+			givenLink(null);
+			const acquired = createDeferredPromise<undefined>();
+			skills.lockForEdit.mockReturnValueOnce(acquired.promise);
+
+			const stopped = service.stopSyncing(user, 'skill_a');
+			await vi.waitFor(() => expect(skills.lockForEdit).toHaveBeenCalled());
+			expect(sources.deleteLink).not.toHaveBeenCalled();
+			expect(telemetry.stoppedSync).not.toHaveBeenCalled();
+			acquired.resolve(undefined);
+			await stopped;
+			expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
+		});
+
 		it.each([
 			{ pending: null, hadPendingUpdate: false },
 			{ pending: 'hash-of-update', hadPendingUpdate: true },

@@ -15,6 +15,7 @@ import {
 	type SkillSourceListItem,
 	type MoveSkillSourceDto,
 	type SkillSourceMovePreview,
+	type SkillSourceDeleteBlock,
 	skillNameKey,
 } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
@@ -41,7 +42,6 @@ import {
 } from '../database/repositories/skill-source.repository';
 import { SkillRepository } from '../database/repositories/skill.repository';
 import { SkillSourceMoveError } from '../errors/skill-source-move.error';
-import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillParseError } from '../errors/skill-parse.error';
 import {
 	SkillSourceRequestError,
@@ -74,6 +74,7 @@ import { findLosingAgents, isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
+import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
@@ -128,9 +129,8 @@ type ReadSkill = {
 };
 
 /**
- * Connects sources and imports their skills. A source lives in one scope, and its skills get
- * that scope. The service checks access itself, and writes skills only through
- * `SkillService.createTrusted`, so the skill rules stay in one place.
+ * Manages sources and their synced skills. A source and its skills share one scope.
+ * The service checks access itself and imports skills through `SkillService.createTrusted`.
  */
 @Service()
 export class SkillSourceService {
@@ -254,7 +254,7 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canMove] = await Promise.all([
+		const [counts, projects, canReview, canDelete] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
@@ -278,7 +278,8 @@ export class SkillSourceService {
 				health: skillSourceHealth(source.lastErrorReason),
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
 				canReview: canReview(source),
-				canMove: canMove(source),
+				canMove: canDelete(source),
+				canDelete: canDelete(source),
 			};
 		});
 	}
@@ -448,6 +449,14 @@ export class SkillSourceService {
 		const { canReadSource, canReadTarget, agentProjectIds } = access;
 		const nameConflicts: SkillSourceMovePreview['nameConflicts'] = [];
 		const usageConflicts: SkillSourceMovePreview['usageConflicts'] = [];
+		const usingBySkill =
+			target.projectId === null
+				? new Map<string, string[]>()
+				: await this.skillUsage.findUsingAgentIdsBySkill(skillIds, ctx);
+		const agents = await this.skillUsage.findAgents(
+			[...new Set([...usingBySkill.values()].flat())],
+			ctx,
+		);
 		for (const skillId of skillIds) {
 			const name = names.get(skillId)?.name;
 			const skill = { id: skillId, name: canReadSource ? (name ?? skillId) : null };
@@ -458,8 +467,7 @@ export class SkillSourceService {
 				});
 			}
 			if (target.projectId === null) continue;
-			const ids = await this.skillUsage.findUsingAgentIds(skillId, ctx);
-			const agents = await this.skillUsage.findAgents(ids, ctx);
+			const ids = usingBySkill.get(skillId) ?? [];
 			const losing = findLosingAgents(ids, target, agents);
 			if (losing.length === 0) continue;
 			const visible = losing.flatMap((id) => {
@@ -502,6 +510,80 @@ export class SkillSourceService {
 				duplicate.kind !== 'blocked' &&
 				credential.reason === null,
 		};
+	}
+
+	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
+	async delete(user: User, sourceId: string): Promise<void> {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		// Resolve permissions before the transaction so a one-connection pool can run the delete.
+		const canDelete = await this.skillAccess.accessCheck(user, 'delete');
+		if (!canDelete(source)) {
+			throw new ForbiddenError('You are not allowed to delete this source.');
+		}
+		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
+				if (!locked) throw new NotFoundError('Source not found');
+				if (!canDelete(locked)) {
+					throw new ForbiddenError('You are not allowed to delete this source.');
+				}
+				const links = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				// Attaches and publishes wait until the usage check and delete end.
+				await this.skillRepository.lockForEdit(
+					links.map(({ skillId }) => skillId),
+					ctx,
+				);
+				// Stop syncing or a skill delete may have finished while the locks waited.
+				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				const agentIds = new Set<string>();
+				for (const { skillId } of current) {
+					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);
+				}
+				if (agentIds.size > 0) {
+					const agents = await this.skillUsage.findAgents([...agentIds], ctx);
+					const visible = [...agents].filter(
+						([, agent]) => readable === null || readable.includes(agent.projectId),
+					);
+					const projects = await this.skillRepository.findProjects(
+						visible.map(([, agent]) => agent.projectId),
+						ctx,
+					);
+					const block: SkillSourceDeleteBlock = {
+						reason: 'skills_in_use',
+						agents: visible.map(([agentId, agent]) => ({
+							agentId,
+							agentName: agent.name,
+							projectId: agent.projectId,
+							projectName: projects.get(agent.projectId)?.name ?? agent.projectId,
+						})),
+						hiddenAgents: agentIds.size - visible.length,
+					};
+					throw new ConflictError(
+						'Remove the skills from these agents before you delete the source.',
+						undefined,
+						block,
+					);
+				}
+				for (const { skillId } of current) await this.skillRepository.deleteSkill(skillId, ctx);
+				await this.sourceRepository.deleteSource(sourceId, ctx);
+			});
+		} catch (error) {
+			await this.skillsTelemetry.deletedSource(
+				{
+					provider: source.type,
+					status: 'failure',
+					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
+				},
+				user.id,
+			);
+			throw error;
+		}
+		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
 	}
 
 	// ---------------------------------------------------------------- steps

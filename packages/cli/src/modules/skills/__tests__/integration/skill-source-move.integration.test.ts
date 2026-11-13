@@ -28,6 +28,7 @@ import { SkillSourceService } from '../../services/skill-source.service';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
+import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
@@ -210,7 +211,12 @@ describe('Skill source scope moves', () => {
 	it('lists agents that lose access, but permits a move to Global', async () => {
 		const { sourceId, skills } = await sourceIn(from.id);
 		const agent = await attach(skills[0].id, from.id, 'Support agent');
+		const usage = Container.get(SkillUsageProxy);
+		const singleUsage = vi.spyOn(usage, 'findUsingAgentIds');
+		const batchUsage = vi.spyOn(usage, 'findUsingAgentIdsBySkill');
 		const result = await preview(sourceId, request(from.id, to.id));
+		expect(singleUsage).not.toHaveBeenCalled();
+		expect(batchUsage).toHaveBeenCalledOnce();
 		expect(result.usageConflicts).toEqual([
 			{
 				skill: { id: skills[0].id, name: 'First skill' },
@@ -464,7 +470,7 @@ describe('Skill source scope moves', () => {
 					await lock(ids, ctx);
 				});
 			const saving = service.update(ownerUser, existing.id, {
-				description: 'Saved first',
+				name: 'Saved name',
 				baseSkillHash: detail.skillHash,
 			});
 			await locked.promise;
@@ -490,7 +496,7 @@ describe('Skill source scope moves', () => {
 						},
 						target: { projectId: to.id },
 						usedBy: [],
-						base: { skillHash: detail.skillHash, versionId: detail.versionId },
+						base: { skillHash: detail.skillHash, versionId: existing.versionId },
 					},
 				],
 			});

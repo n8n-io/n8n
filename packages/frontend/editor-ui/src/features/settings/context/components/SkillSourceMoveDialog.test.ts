@@ -41,6 +41,7 @@ const source: SkillSourceListItem = {
 	health: 'connected',
 	lastCheckedAt: null,
 	canReview: true,
+	canDelete: true,
 	canMove: true,
 };
 const clearPreview = (): SkillSourceMovePreview => ({
@@ -109,7 +110,9 @@ it('links each existing skill in another tab and keeps selections when the user 
 	const view = setup();
 	view.store.previewSourceMove.mockResolvedValue(conflictPreview());
 	await select(view, 'source-move-scope', 'Target');
-	await waitFor(() => expect(view.getByTestId('source-move-credential')).not.toBeDisabled());
+	await waitFor(() =>
+		expect(view.getByTestId('source-move-credential')).not.toHaveAttribute('data-disabled'),
+	);
 	await select(view, 'source-move-credential', 'GitHub');
 	const links = await view.findAllByTestId('source-move-existing-skill');
 	expect(links[0]).toHaveAttribute('href', '/settings/context/skills?skillId=existing-1');
@@ -174,6 +177,10 @@ it('emits success only after the move completes', async () => {
 	await select(view, 'source-move-scope', 'Global');
 	await waitFor(() => expect(view.getByTestId('source-move-submit')).toBeEnabled());
 	await userEvent.click(view.getByTestId('source-move-submit'));
+	expect(view.store.moveSource).toHaveBeenCalledWith('source-1', {
+		scope: 'instance',
+		fromProjectId: 'origin',
+	});
 	expect(view.emitted('moved')).toBeUndefined();
 	moved.resolve();
 	await waitFor(() => expect(view.emitted('moved')).toEqual([['source-1']]));
@@ -232,5 +239,44 @@ it('keeps the blocker details returned by a rejected move without another reques
 	expect(await view.findAllByTestId('source-move-existing-skill')).toHaveLength(2);
 	expect(view.store.previewSourceMove).toHaveBeenCalledTimes(1);
 	expect(view.getByTestId('source-move-scope')).toHaveTextContent('Target');
+	expect(view.getByTestId('source-move-submit')).toBeDisabled();
+});
+
+it('sends the destination credential in both preview and move', async () => {
+	const view = setup();
+	await select(view, 'source-move-scope', 'Target');
+	await waitFor(() =>
+		expect(view.getByTestId('source-move-credential')).not.toHaveAttribute('data-disabled'),
+	);
+	await select(view, 'source-move-credential', 'GitHub');
+	const payload = {
+		scope: 'project',
+		projectId: 'target',
+		fromProjectId: 'origin',
+		credentialId: 'credential-1',
+	};
+	await waitFor(() =>
+		expect(view.store.previewSourceMove).toHaveBeenLastCalledWith('source-1', payload),
+	);
+	await waitFor(() => expect(view.getByTestId('source-move-submit')).toBeEnabled());
+	await userEvent.click(view.getByTestId('source-move-submit'));
+	expect(view.store.moveSource).toHaveBeenCalledWith('source-1', payload);
+});
+
+it.each([
+	[
+		'global',
+		'This repository is already connected in Global. Resolve the duplicate source before moving this one.',
+	],
+	['scope', 'This repository is already connected in the destination. Choose another scope.'],
+] as const)('shows a duplicate in %s and blocks submission', async (where, message) => {
+	const view = setup();
+	view.store.previewSourceMove.mockResolvedValue({
+		...clearPreview(),
+		canMove: false,
+		duplicate: { kind: 'blocked', where, sourceId: 'other-source' },
+	});
+	await select(view, 'source-move-scope', 'Target');
+	expect(await view.findByText(message)).toBeVisible();
 	expect(view.getByTestId('source-move-submit')).toBeDisabled();
 });

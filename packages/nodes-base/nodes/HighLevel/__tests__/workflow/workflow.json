@@ -1,0 +1,181 @@
+{
+	"name": "HighLevel Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300],
+			"id": "0b0f3a4e-5d0c-4b0e-9a57-2a8f4a1f0001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "opportunity",
+				"operation": "update",
+				"pipelineId": "bCkKGpDsyPP4peuKBmyb",
+				"opportunityId": "zgzD7Ozd2ZAXx3pdKfmN",
+				"updateFields": {
+					"monetaryValue": 250
+				}
+			},
+			"type": "n8n-nodes-base.highLevel",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "0b0f3a4e-5d0c-4b0e-9a57-2a8f4a1f0002",
+			"name": "HighLevel V1 > Update Opportunity",
+			"credentials": {
+				"highLevelApi": {
+					"id": "hlApiCredential01",
+					"name": "HighLevel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"contactId": "ocQHyuzHvysMo5N5VsXc",
+				"taskId": "TxbGPBOtYbYQXPsyITsA",
+				"updateFields": {
+					"description": "Call back"
+				}
+			},
+			"type": "n8n-nodes-base.highLevel",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "0b0f3a4e-5d0c-4b0e-9a57-2a8f4a1f0003",
+			"name": "HighLevel V1 > Update Task",
+			"credentials": {
+				"highLevelApi": {
+					"id": "hlApiCredential01",
+					"name": "HighLevel account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"email": "jane@example.com",
+				"additionalFields": {
+					"notes": "First call done"
+				}
+			},
+			"type": "n8n-nodes-base.highLevel",
+			"typeVersion": 2,
+			"position": [220, 400],
+			"id": "0b0f3a4e-5d0c-4b0e-9a57-2a8f4a1f0004",
+			"name": "HighLevel V2 > Create Contact",
+			"credentials": {
+				"highLevelOAuth2Api": {
+					"id": "hlOAuth2Credential01",
+					"name": "HighLevel OAuth2 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"contactId": "ocQHyuzHvysMo5N5VsXc",
+				"taskId": "TxbGPBOtYbYQXPsyITsA",
+				"updateFields": {
+					"completed": true
+				}
+			},
+			"type": "n8n-nodes-base.highLevel",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"id": "0b0f3a4e-5d0c-4b0e-9a57-2a8f4a1f0005",
+			"name": "HighLevel V2 > Update Task",
+			"credentials": {
+				"highLevelOAuth2Api": {
+					"id": "hlOAuth2Credential01",
+					"name": "HighLevel OAuth2 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"HighLevel V1 > Update Opportunity": [
+			{
+				"json": {
+					"id": "zgzD7Ozd2ZAXx3pdKfmN",
+					"name": "Website deal",
+					"status": "open",
+					"monetaryValue": 250
+				}
+			}
+		],
+		"HighLevel V1 > Update Task": [
+			{
+				"json": {
+					"id": "TxbGPBOtYbYQXPsyITsA",
+					"title": "Follow up",
+					"description": "Call back",
+					"contactId": "ocQHyuzHvysMo5N5VsXc"
+				}
+			}
+		],
+		"HighLevel V2 > Create Contact": [
+			{
+				"json": {
+					"id": "seD4PfOuKoVMLkEZqohJ",
+					"locationId": "ve9EPM428h8vShlRW1KT",
+					"email": "jane@example.com"
+				}
+			}
+		],
+		"HighLevel V2 > Update Task": [
+			{
+				"json": {
+					"task": {
+						"id": "TxbGPBOtYbYQXPsyITsA",
+						"title": "Follow up",
+						"completed": true
+					},
+					"contactId": "ocQHyuzHvysMo5N5VsXc"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "HighLevel V1 > Update Opportunity",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HighLevel V1 > Update Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HighLevel V2 > Create Contact",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HighLevel V2 > Update Task",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6a1d2c4e-8f3b-4c51-9e7a-1b2c3d4e5f60",
+	"meta": {
+		"instanceId": "0000000000000000000000000000000000000000000000000000000000000000"
+	},
+	"id": "hlWorkflowTest01",
+	"tags": []
+}

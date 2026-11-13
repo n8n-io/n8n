@@ -1,0 +1,149 @@
+{
+	"name": "slack v1 request urls",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c01",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "message",
+				"operation": "postEphemeral",
+				"channel": "C08514ZPKB8",
+				"user": "U0362BXQYJW",
+				"text": "ephemeral message",
+				"otherOptions": {},
+				"jsonParameters": false
+			},
+			"id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d02",
+			"name": "Post Ephemeral",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "reaction",
+				"channelId": "C08514ZPKB8",
+				"timestamp": "1734322671.726339",
+				"name": "thumbsup"
+			},
+			"id": "3c4d5e6f-7a8b-4c9d-8e0f-2a3b4c5d6e03",
+			"name": "Add Reaction",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [220, -50],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "user",
+				"user": "U0362BXQYJW"
+			},
+			"id": "4d5e6f7a-8b9c-4d0e-9f1a-3b4c5d6e7f04",
+			"name": "Get User",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "file",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "5e6f7a8b-9c0d-4e1f-8a2b-4c5d6e7f8a05",
+			"name": "Get Many Files",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [220, 250],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Post Ephemeral": [
+			{
+				"json": {
+					"ok": true,
+					"message_ts": "1734322671.726339"
+				}
+			}
+		],
+		"Add Reaction": [
+			{
+				"json": {
+					"ok": true
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"id": "U0362BXQYJW",
+					"name": "jane"
+				}
+			}
+		],
+		"Get Many Files": [
+			{
+				"json": {
+					"id": "F07A1B2C3D4",
+					"name": "report.txt"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{ "node": "Post Ephemeral", "type": "main", "index": 0 },
+					{ "node": "Add Reaction", "type": "main", "index": 0 },
+					{ "node": "Get User", "type": "main", "index": 0 },
+					{ "node": "Get Many Files", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6f7a8b9c-0d1e-4f2a-9b3c-5d6e7f8a9b06",
+	"meta": {
+		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+	},
+	"id": "slackRequestUrlsV1",
+	"tags": []
+}

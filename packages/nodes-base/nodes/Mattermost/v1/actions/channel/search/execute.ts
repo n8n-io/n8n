@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -11,7 +12,7 @@ export async function search(
 	const requestMethod = 'POST';
 	const teamId = this.getNodeParameter('teamId', index);
 	const returnAll = this.getNodeParameter('returnAll', 0);
-	const endpoint = `teams/${teamId}/channels/search`;
+	const endpoint = requestPath`teams/${teamId}/channels/search`;
 
 	body.term = this.getNodeParameter('term', index) as string;
 

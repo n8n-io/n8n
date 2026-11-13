@@ -46,6 +46,11 @@ export class SkillUsageProxy extends SkillUsage {
 		return await this.impl.findUsingAgentIds(skillId, ctx);
 	}
 
+	async findUsingAgentIdsBySkill(skillIds: string[], ctx: OperationContext = {}) {
+		if (!this.impl || skillIds.length === 0) return new Map<string, string[]>();
+		return await this.impl.findUsingAgentIdsBySkill(skillIds, ctx);
+	}
+
 	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext = {}) {
 		if (!this.impl) return [];
 		return await this.impl.findSkillIdsUsedByAgent(agentId, ctx);

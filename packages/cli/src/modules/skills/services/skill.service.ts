@@ -602,7 +602,9 @@ export class SkillService {
 			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
 				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
-			await this.skillRepository.lockNames(txCtx);
+			if (skillNameKey(skill.name) !== skillNameKey(current.name)) {
+				await this.skillRepository.lockNames(txCtx);
+			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(

@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { JOBS_ARRAY_PAGE_SIZE, JOBS_PAGES_MAX } from '../../constants';
@@ -32,7 +32,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			this,
 			credentialType,
 			host,
-			'/api/2.2/jobs/get',
+			requestPath`/api/2.2/jobs/get`,
 			{ job_id: jobId, include_trigger_state: true },
 			pageToken,
 		);

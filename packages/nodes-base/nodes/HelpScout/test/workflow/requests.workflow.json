@@ -1,0 +1,476 @@
+{
+	"name": "Help Scout Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "create",
+				"mailboxId": 321,
+				"status": "active",
+				"subject": "Printer is broken",
+				"type": "email",
+				"resolveData": true,
+				"additionalFields": {
+					"customerEmail": "ada@example.com"
+				},
+				"threadsUi": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Conversation Create",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 120],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "delete",
+				"conversationId": "1001"
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Conversation Delete",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "get",
+				"conversationId": "1001"
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Conversation Get",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 360],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"options": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Conversation Get Many",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "conversation",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Conversation Get All",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "create",
+				"resolveData": false,
+				"additionalFields": {
+					"firstName": "Ada"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Customer Create",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 720],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "properties"
+			},
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Customer Properties",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 840],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "501"
+			},
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Customer Get",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"options": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Customer Get Many",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1080],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "501",
+				"updateFields": {
+					"firstName": "Grace"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Customer Update",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "mailbox",
+				"operation": "get",
+				"mailboxId": "321"
+			},
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Mailbox Get",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1320],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "mailbox",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2
+			},
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Mailbox Get Many",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "thread",
+				"operation": "create",
+				"conversationId": "1001",
+				"type": "note",
+				"text": "Checked",
+				"additionalFields": {
+					"customerId": 501
+				},
+				"attachmentsUi": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Thread Create",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1560],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "thread",
+				"operation": "getAll",
+				"conversationId": "1001",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Thread Get Many",
+			"type": "n8n-nodes-base.helpScout",
+			"typeVersion": 1,
+			"position": [220, 1680],
+			"credentials": {
+				"helpScoutOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Conversation Create": [
+			{
+				"json": {
+					"id": 1001,
+					"subject": "Printer is broken"
+				}
+			}
+		],
+		"Conversation Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Conversation Get": [
+			{
+				"json": {
+					"id": 1001
+				}
+			}
+		],
+		"Conversation Get Many": [
+			{
+				"json": {
+					"id": 1001
+				}
+			}
+		],
+		"Conversation Get All": [
+			{
+				"json": {
+					"id": 1001
+				}
+			},
+			{
+				"json": {
+					"id": 1002
+				}
+			}
+		],
+		"Customer Create": [
+			{
+				"json": {
+					"id": "501",
+					"uri": "https://api.helpscout.net/v2/customers/501"
+				}
+			}
+		],
+		"Customer Properties": [
+			{
+				"json": {
+					"slug": "plan"
+				}
+			}
+		],
+		"Customer Get": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Customer Get Many": [
+			{
+				"json": {
+					"id": 501
+				}
+			}
+		],
+		"Customer Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Mailbox Get": [
+			{
+				"json": {
+					"id": 321
+				}
+			}
+		],
+		"Mailbox Get Many": [
+			{
+				"json": {
+					"id": 321
+				}
+			}
+		],
+		"Thread Create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Thread Get Many": [
+			{
+				"json": {
+					"id": 9001
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Conversation Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Conversation Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Conversation Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Conversation Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Conversation Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Properties",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mailbox Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Mailbox Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Thread Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Thread Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

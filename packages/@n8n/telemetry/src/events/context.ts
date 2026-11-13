@@ -582,6 +582,17 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: skillSourceReason,
 		}),
 	},
+	USER_DELETED_SKILL_SOURCE: {
+		name: 'User deleted skill source',
+		description:
+			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+		}),
+	},
 	USER_STOPPED_SKILL_SYNC: {
 		name: 'User stopped skill sync',
 		description:

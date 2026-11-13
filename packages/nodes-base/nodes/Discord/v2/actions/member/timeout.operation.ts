@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { getAuditLogReasonHeaders, parseDiscordError, prepareErrorData } from '../../helpers/utils';
@@ -52,7 +53,7 @@ export async function execute(
 			await discordApiRequest.call(
 				this,
 				'PATCH',
-				`/guilds/${guildId}/members/${userId}`,
+				requestPath`/guilds/${guildId}/members/${userId}`,
 				{ communication_disabled_until: communicationDisabledUntil },
 				undefined,
 				getAuditLogReasonHeaders.call(this, i),

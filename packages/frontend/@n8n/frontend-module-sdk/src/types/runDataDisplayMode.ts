@@ -52,8 +52,9 @@ export type RunDataDisplayModeSupports = {
 
 export type RunDataDisplayModeContribution = {
 	/**
-	 * The registry key. Also the stored display mode value and the telemetry
-	 * `view` value, so do not change it after release.
+	 * The registry key, in lowercase kebab-case (for example `chart` or `geo-map`).
+	 * Also the stored display mode value and the telemetry `view` value, so do not
+	 * change it after release.
 	 */
 	id: string;
 	/** A getter, so the label follows a locale change. */

@@ -282,7 +282,12 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 	const parser = Container.get(N8nPackageParser);
 	const options = request(overrides);
 	return await orchestrator.plan({
-		context: { user: options.user, projectId: options.projectId!, folderId: null },
+		context: {
+			user: options.user,
+			projectId: options.projectId!,
+			folderId: null,
+			publicApi: false,
+		},
 		agents: await parser.getAgents(reader),
 		skills: await parser.getSkills(reader),
 		folders: [],
@@ -1161,6 +1166,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findByProjectId(project.id);
 		const result = await orchestrator.publishPackage({
 			user: member,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1189,6 +1195,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findById(current.id);
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1227,6 +1234,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 			});
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy: 'publish-all',
 			subWorkflowRequirements: undefined,

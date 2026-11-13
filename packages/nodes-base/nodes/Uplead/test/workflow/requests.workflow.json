@@ -1,0 +1,89 @@
+{
+	"name": "Uplead Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "enrich",
+				"email": "nathan@example.com"
+			},
+			"id": "uplead-0",
+			"name": "Person Enrich",
+			"type": "n8n-nodes-base.uplead",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"upleadApi": {
+					"id": "1",
+					"name": "Uplead account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "enrich",
+				"domain": "example.com"
+			},
+			"id": "uplead-1",
+			"name": "Company Enrich",
+			"type": "n8n-nodes-base.uplead",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"upleadApi": {
+					"id": "1",
+					"name": "Uplead account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Person Enrich": [
+			{
+				"json": {
+					"id": 1,
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Company Enrich": [
+			{
+				"json": {
+					"id": 2,
+					"domain": "example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Person Enrich",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Company Enrich",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -92,7 +92,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 			expect(mock.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/projects/test-owner%2Ftest-repo/repository/files/images%2Flogo.png',
+				expect.objectContaining({
+					value: '/projects/test-owner%2Ftest-repo/repository/files/images%2Flogo.png',
+				}),
 				{
 					branch: 'main',
 					commit_message: 'Add logo',
@@ -144,7 +146,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/projects/test-owner%2Ftest-repo/repository/files/test%2Ffile.txt',
+				expect.objectContaining({
+					value: '/projects/test-owner%2Ftest-repo/repository/files/test%2Ffile.txt',
+				}),
 				{
 					branch: 'main',
 					commit_message: 'Add text file',
@@ -175,7 +179,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/projects/test-owner%2Ftest-repo/repository/files/test%2Ffile.txt',
+				expect.objectContaining({
+					value: '/projects/test-owner%2Ftest-repo/repository/files/test%2Ffile.txt',
+				}),
 				{
 					branch: 'main',
 					commit_message: 'Add text file',
@@ -254,7 +260,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 
 			expect(GenericFunctions.gitlabApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/projects/test-owner%2Ftest-repo/repository/files/images%2Flogo.png',
+				expect.objectContaining({
+					value: '/projects/test-owner%2Ftest-repo/repository/files/images%2Flogo.png',
+				}),
 				{
 					branch: 'main',
 					commit_message: 'Update logo',

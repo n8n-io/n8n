@@ -254,6 +254,7 @@ describe('SkillService', () => {
 			);
 
 			expect(result.skill.name).toBe('Renamed');
+			expect(skills.lockNames).toHaveBeenCalledWith(TX_CTX);
 			expect(skills.insertSavedVersion).toHaveBeenCalledWith(
 				'skill_a',
 				3,
@@ -307,13 +308,21 @@ describe('SkillService', () => {
 			);
 		});
 
-		it('does not check the name when the save keeps it', async () => {
-			const baseSkillHash = givenLatest(versionRow(skill, 2));
+		it.each([undefined, 'BRAND_VOICE'])(
+			'does not lock or check an unchanged name key (%s)',
+			async (name) => {
+				const baseSkillHash = givenLatest(versionRow(skill, 2));
 
-			await service.saveTrusted('skill_a', { baseSkillHash, instructions: 'new' }, user.id);
+				await service.saveTrusted(
+					'skill_a',
+					{ baseSkillHash, ...(name === undefined ? {} : { name }), instructions: 'new' },
+					user.id,
+				);
 
-			expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
-		});
+				expect(skills.lockNames).not.toHaveBeenCalled();
+				expect(skills.findLatestNamesInTarget).not.toHaveBeenCalled();
+			},
+		);
 
 		it('removes references set to an empty list', async () => {
 			const baseSkillHash = givenLatest(

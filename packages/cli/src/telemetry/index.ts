@@ -32,6 +32,9 @@ import { SourceControlPreferencesService } from '../modules/source-control.ee/so
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 import { summarizeFootprint } from './cluster-footprint';
 
+/** A full queue of 500 events takes under 2 s on a healthy server. */
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
+
 type ExecutionTrackDataKey =
 	| 'manual_error'
 	| 'manual_success'
@@ -591,7 +594,27 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+		this.flushBuffers();
+		await Promise.all([this.postHog.stop(), this.flushQueueBeforeExit()]);
+	}
+
+	/**
+	 * flush() sends every queued batch and retries each one, so a telemetry server
+	 * that does not answer can hold it past the graceful shutdown timeout. Give up
+	 * after a fixed time; the events are lost either way.
+	 */
+	private async flushQueueBeforeExit(): Promise<void> {
+		if (!this.rudderStack) return;
+
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
+		});
+		try {
+			await Promise.race([this.rudderStack.flush(), deadline]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	// Sets instance group properties and attaches user to instance group.

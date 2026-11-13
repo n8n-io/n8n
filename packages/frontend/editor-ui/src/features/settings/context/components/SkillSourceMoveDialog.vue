@@ -147,6 +147,24 @@ function recheck() {
 }
 useEventListener(window, 'focus', recheck);
 
+function agentConflictText(conflict: SkillSourceMovePreview['usageConflicts'][number]) {
+	const agents = conflict.agents.map(({ name }) => name);
+	if (conflict.hiddenAgents) {
+		agents.push(
+			i18n.baseText('settings.context.skills.moveSource.hiddenAgents', {
+				interpolate: { count: conflict.hiddenAgents },
+				adjustToNumber: conflict.hiddenAgents,
+			}),
+		);
+	}
+	return i18n.baseText('settings.context.skills.moveSource.agentConflict', {
+		interpolate: {
+			skill: conflict.skill.name ?? i18n.baseText('settings.context.skills.moveSource.hiddenSkill'),
+			agents: agents.join(i18n.baseText('settings.context.skills.moveSource.listSeparator')),
+		},
+	});
+}
+
 function skillHref(skillId: string) {
 	return router.resolve({ query: { skillId } }).href;
 }
@@ -277,7 +295,9 @@ function close(open: boolean) {
 						{{
 							i18n.baseText('settings.context.skills.moveSource.duplicateWarning', {
 								interpolate: {
-									projects: preview.duplicate.projects.map(({ name }) => name).join(', '),
+									projects: preview.duplicate.projects
+										.map(({ name }) => name)
+										.join(i18n.baseText('settings.context.skills.moveSource.listSeparator')),
 								},
 							})
 						}}
@@ -321,17 +341,7 @@ function close(open: boolean) {
 						<p>{{ i18n.baseText('settings.context.skills.moveSource.agentConflicts') }}</p>
 						<ul :class="$style.list">
 							<li v-for="conflict in preview.usageConflicts" :key="conflict.skill.id">
-								{{
-									conflict.skill.name ??
-									i18n.baseText('settings.context.skills.moveSource.hiddenSkill')
-								}}:
-								{{ conflict.agents.map(({ name }) => name).join(', ') }}
-								<span v-if="conflict.hiddenAgents">{{
-									i18n.baseText('settings.context.skills.moveSource.hiddenAgents', {
-										interpolate: { count: conflict.hiddenAgents },
-										adjustToNumber: conflict.hiddenAgents,
-									})
-								}}</span>
+								{{ agentConflictText(conflict) }}
 							</li>
 						</ul>
 					</N8nCallout>

@@ -1,0 +1,688 @@
+{
+	"name": "Coda Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\"columns\": {\"Name\": \"Ada\"}}",
+				"options": {}
+			},
+			"id": "set",
+			"name": "Row Data",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [300, -150]
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "createRow",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"options": {}
+			},
+			"id": "coda-0",
+			"name": "Table Create Row",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 0],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getRow",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"rowId": "Task%20One",
+				"options": {}
+			},
+			"id": "coda-1",
+			"name": "Table Get Row",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 150],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getAllRows",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "coda-2",
+			"name": "Table Get All Rows",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 300],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getAllRows",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"id": "coda-3",
+			"name": "Table Get Rows Limit",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 450],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "deleteRow",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"rowId": "i-tuVwxYz"
+			},
+			"id": "coda-4",
+			"name": "Table Delete Row",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 600],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "pushButton",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"rowId": "i-tuVwxYz",
+				"columnId": "c-tuVwxYz"
+			},
+			"id": "coda-5",
+			"name": "Table Push Button",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 750],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getColumn",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"columnId": "c-tuVwxYz"
+			},
+			"id": "coda-6",
+			"name": "Table Get Column",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 900],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getAllColumns",
+				"docId": "AbCDeFGH",
+				"tableId": "grid-pqRstUv",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "coda-7",
+			"name": "Table Get All Columns",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1050],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "formula",
+				"operation": "get",
+				"docId": "AbCDeFGH",
+				"formulaId": "f-fgHijkLm"
+			},
+			"id": "coda-8",
+			"name": "Formula Get",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1200],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "formula",
+				"operation": "getAll",
+				"docId": "AbCDeFGH",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "coda-9",
+			"name": "Formula Get Many",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1350],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "control",
+				"operation": "get",
+				"docId": "AbCDeFGH",
+				"controlId": "ctrl-cDefGhij"
+			},
+			"id": "coda-10",
+			"name": "Control Get",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1500],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "control",
+				"operation": "getAll",
+				"docId": "AbCDeFGH",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "coda-11",
+			"name": "Control Get Many",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1650],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "get",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW"
+			},
+			"id": "coda-12",
+			"name": "View Get",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1800],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAll",
+				"docId": "AbCDeFGH",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "coda-13",
+			"name": "View Get Many",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 1950],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAllViewRows",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"id": "coda-14",
+			"name": "View Get Rows",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 2100],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "deleteViewRow",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW",
+				"rowId": "i-tuVwxYz"
+			},
+			"id": "coda-15",
+			"name": "View Delete Row",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 2250],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "pushViewButton",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW",
+				"rowId": "i-tuVwxYz",
+				"columnId": "c-tuVwxYz"
+			},
+			"id": "coda-16",
+			"name": "View Push Button",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 2400],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "getAllViewColumns",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW",
+				"returnAll": false,
+				"limit": 5
+			},
+			"id": "coda-17",
+			"name": "View Get Columns",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 2550],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "view",
+				"operation": "updateViewRow",
+				"docId": "AbCDeFGH",
+				"viewId": "table-QrStUvW",
+				"rowId": "i-tuVwxYz",
+				"keyName": "columns",
+				"options": {}
+			},
+			"id": "coda-18",
+			"name": "View Update Row",
+			"type": "n8n-nodes-base.coda",
+			"typeVersion": 1.1,
+			"position": [600, 2700],
+			"credentials": {
+				"codaApi": {
+					"id": "1",
+					"name": "Coda account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Row Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Create Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get All Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get Rows Limit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Delete Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Push Button",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get Column",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Table Get All Columns",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Formula Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Formula Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Control Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Control Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Get Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Delete Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Push Button",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "View Get Columns",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Row Data": {
+			"main": [
+				[
+					{
+						"node": "View Update Row",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Table Create Row": [
+			{
+				"json": {}
+			}
+		],
+		"Table Get Row": [
+			{
+				"json": {
+					"id": "i-tuVwxYz",
+					"Name": "Ada"
+				}
+			}
+		],
+		"Table Get All Rows": [
+			{
+				"json": {
+					"id": "i-tuVwxYz",
+					"Name": "Ada"
+				}
+			},
+			{
+				"json": {
+					"id": "i-bcDefGh",
+					"Name": "Grace"
+				}
+			}
+		],
+		"Table Get Rows Limit": [
+			{
+				"json": {
+					"id": "i-tuVwxYz",
+					"Name": "Ada"
+				}
+			}
+		],
+		"Table Delete Row": [
+			{
+				"json": {}
+			}
+		],
+		"Table Push Button": [
+			{
+				"json": {
+					"requestId": "abc-123",
+					"rowId": "i-tuVwxYz",
+					"columnId": "c-tuVwxYz"
+				}
+			}
+		],
+		"Table Get Column": [
+			{
+				"json": {
+					"id": "c-tuVwxYz",
+					"name": "Name"
+				}
+			}
+		],
+		"Table Get All Columns": [
+			{
+				"json": {
+					"id": "c-tuVwxYz",
+					"name": "Name"
+				}
+			}
+		],
+		"Formula Get": [
+			{
+				"json": {
+					"id": "f-fgHijkLm",
+					"name": "Total"
+				}
+			}
+		],
+		"Formula Get Many": [
+			{
+				"json": {
+					"id": "f-fgHijkLm",
+					"name": "Total"
+				}
+			}
+		],
+		"Control Get": [
+			{
+				"json": {
+					"id": "ctrl-cDefGhij",
+					"name": "Slider"
+				}
+			}
+		],
+		"Control Get Many": [
+			{
+				"json": {
+					"id": "ctrl-cDefGhij",
+					"name": "Slider"
+				}
+			}
+		],
+		"View Get": [
+			{
+				"json": {
+					"id": "table-QrStUvW",
+					"name": "Open tasks"
+				}
+			}
+		],
+		"View Get Many": [
+			{
+				"json": {
+					"id": "table-QrStUvW",
+					"name": "Open tasks"
+				}
+			}
+		],
+		"View Get Rows": [
+			{
+				"json": {
+					"id": "i-tuVwxYz",
+					"Name": "Ada"
+				}
+			}
+		],
+		"View Delete Row": [
+			{
+				"json": {
+					"id": "i-tuVwxYz"
+				}
+			}
+		],
+		"View Push Button": [
+			{
+				"json": {
+					"requestId": "abc-124",
+					"rowId": "i-tuVwxYz",
+					"columnId": "c-tuVwxYz"
+				}
+			}
+		],
+		"View Get Columns": [
+			{
+				"json": {
+					"id": "c-tuVwxYz",
+					"name": "Name"
+				}
+			}
+		],
+		"View Update Row": [
+			{
+				"json": {
+					"columns": {
+						"Name": "Ada"
+					}
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

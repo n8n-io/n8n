@@ -422,6 +422,17 @@ describe('Microsoft SharePoint Node', () => {
 			});
 		});
 
+		it('encodes a site value that contains a slash as one path segment', async () => {
+			mockRequestWithAuthentication.mockReturnValue({ value: [] });
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site1/site2');
+
+			await node.methods.listSearch.getLists.call(loadOptionsFunctions);
+
+			expect(String(mockRequestWithAuthentication.mock.calls[0][1].url)).toBe(
+				'https://mydomain.sharepoint.com/_api/v2.0/sites/site1%2Fsite2/lists',
+			);
+		});
+
 		it('should list search lists with pagination', async () => {
 			const mockResponse = {
 				value: [
@@ -634,5 +645,35 @@ describe('Microsoft SharePoint Node', () => {
 				{ name: 'file-b.txt', value: 'file-b' },
 			]);
 		});
+
+		it.each(['getFiles', 'getFolders', 'getItems', 'getLists', 'getSites'] as const)(
+			'%s refuses a pagination token on another host and sends no request',
+			async (method) => {
+				loadOptionsFunctions.getNodeParameter.mockReturnValue('value');
+
+				await expect(
+					node.methods.listSearch[method].call(
+						loadOptionsFunctions,
+						undefined,
+						'https://other.example/_api/v2.0/sites?$skiptoken=abc',
+					),
+				).rejects.toThrow('Refusing to send credentials to an unexpected host');
+				expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['getFiles', 'getFolders', 'getItems', 'getLists', 'getSites'] as const)(
+			'%s follows a pagination token on the credential host',
+			async (method) => {
+				loadOptionsFunctions.getNodeParameter.mockReturnValue('value');
+				mockRequestWithAuthentication.mockReturnValue({ value: [] });
+				const token = 'https://mydomain.sharepoint.com/_api/v2.0/sites?$skiptoken=abc';
+
+				await node.methods.listSearch[method].call(loadOptionsFunctions, undefined, token);
+
+				expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(1);
+				expect(mockRequestWithAuthentication.mock.calls[0][1]).toMatchObject({ url: token });
+			},
+		);
 	});
 });

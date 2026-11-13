@@ -1,4 +1,4 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, RequestPath } from 'n8n-workflow';
 
 vi.mock('../../v2/GenericFunctions', async () => {
 	const actual = await vi.importActual<typeof _importType0>('../../v2/GenericFunctions');
@@ -159,8 +159,8 @@ describe('SeaTable > v2 > row operations', () => {
 				},
 			} as unknown as IExecuteFunctions;
 			mockedApiRequest.mockImplementation(
-				async (apiCtx: ICtx, _method: string, endpoint: string) => {
-					if (endpoint === '/api/v2.1/dtable/app-upload-link/') {
+				async (apiCtx: ICtx, _method: string, endpoint: RequestPath) => {
+					if (String(endpoint) === '/api/v2.1/dtable/app-upload-link/') {
 						apiCtx.credentials = {
 							environment: 'selfHosted',
 							domain: 'https://seatable.example.com/',
@@ -178,7 +178,7 @@ describe('SeaTable > v2 > row operations', () => {
 							upload_link: 'https://seatable.example.com/seafhttp/upload-api/abc',
 						};
 					}
-					if (endpoint.startsWith('/seafhttp/upload-api/')) return [{ name: 'a.txt' }];
+					if (String(endpoint).startsWith('/seafhttp/upload-api/')) return [{ name: 'a.txt' }];
 					return { success: true };
 				},
 			);

@@ -124,6 +124,21 @@ describe('Gitlab Node - Release Operations', () => {
 		});
 	});
 
+	describe('release:get with an encoded project path', () => {
+		beforeAll(() => {
+			api()
+				.get('/projects/acme%2Fbilling-service/releases/v1.0.0')
+				.query(true)
+				.reply(200, { tag_name: 'v1.0.0', name: 'Version 1.0.0', description: 'Notes' });
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['release.get.encodedProject.workflow.json'],
+			customAssertions: () => expect(nock.isDone()).toBe(true),
+		});
+	});
+
 	describe('release:getAll', () => {
 		describe('with returnAll=true', () => {
 			beforeAll(() => {

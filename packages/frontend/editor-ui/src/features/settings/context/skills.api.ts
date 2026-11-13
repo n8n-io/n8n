@@ -174,6 +174,11 @@ export async function listSkillSources(context: IRestApiContext): Promise<SkillS
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
 }
 
+/** Deletes a source and its synced skills. */
+export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+}
+
 /** Check for updates on one source. */
 export async function checkSkillSource(
 	context: IRestApiContext,

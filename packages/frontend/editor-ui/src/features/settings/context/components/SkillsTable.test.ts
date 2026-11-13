@@ -391,6 +391,7 @@ describe('SkillsTable', () => {
 			lastCheckedAt: null,
 			canReview: true,
 			canMove: true,
+			canDelete: true,
 			...overrides,
 		});
 
@@ -519,7 +520,9 @@ describe('SkillsTable', () => {
 
 		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
-				sources: [source({ updatesAvailable: 2, canReview: false })],
+				sources: [
+					source({ updatesAvailable: 2, canReview: false, canMove: false, canDelete: false }),
+				],
 			});
 
 			expect(queryByTestId('skill-group-updates')).toBeNull();
@@ -528,6 +531,28 @@ describe('SkillsTable', () => {
 				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
 			);
 			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeNull();
+		});
+
+		it('offers Delete source with delete permission even without update permission', async () => {
+			const row = source({ canReview: false });
+			const { getByTestId, emitted } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-deleteSource"]')!);
+			expect(emitted('deleteSource')).toEqual([[row]]);
+		});
+
+		it('hides Delete source from users with update permission but no delete permission', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canDelete: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
 		});
 
 		it('checks a source for updates from its menu', async () => {

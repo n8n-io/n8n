@@ -32,6 +32,63 @@
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
 			"position": [1140, 400]
+		},
+		{
+			"parameters": {
+				"resource": "summary",
+				"operation": "getActivity",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "5c0e1f4a-7b1d-4a8e-9f0e-000000000001",
+			"name": "Oura Activity",
+			"type": "n8n-nodes-base.oura",
+			"typeVersion": 1,
+			"position": [940, 600],
+			"credentials": {
+				"ouraApi": {
+					"id": "r083EOdhFatkVvFy",
+					"name": "Oura account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "summary",
+				"operation": "getReadiness",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "5c0e1f4a-7b1d-4a8e-9f0e-000000000002",
+			"name": "Oura Readiness",
+			"type": "n8n-nodes-base.oura",
+			"typeVersion": 1,
+			"position": [940, 800],
+			"credentials": {
+				"ouraApi": {
+					"id": "r083EOdhFatkVvFy",
+					"name": "Oura account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "summary",
+				"operation": "getSleep",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "5c0e1f4a-7b1d-4a8e-9f0e-000000000003",
+			"name": "Oura Sleep",
+			"type": "n8n-nodes-base.oura",
+			"typeVersion": 1,
+			"position": [940, 1000],
+			"credentials": {
+				"ouraApi": {
+					"id": "r083EOdhFatkVvFy",
+					"name": "Oura account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -46,6 +103,31 @@
 					"email": "nathan@n8n.io"
 				}
 			}
+		],
+		"Oura Activity": [
+			{
+				"json": {
+					"day": "2024-05-01",
+					"score": 82,
+					"steps": 10234
+				}
+			}
+		],
+		"Oura Readiness": [
+			{
+				"json": {
+					"day": "2024-05-01",
+					"score": 76
+				}
+			}
+		],
+		"Oura Sleep": [
+			{
+				"json": {
+					"day": "2024-05-01",
+					"score": 88
+				}
+			}
 		]
 	},
 	"connections": {
@@ -54,6 +136,21 @@
 				[
 					{
 						"node": "Oura",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Oura Activity",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Oura Readiness",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Oura Sleep",
 						"type": "main",
 						"index": 0
 					}

@@ -345,4 +345,22 @@ export type SkillSourceListItem = {
 	canReview: boolean;
 	/** Whether the user may remove the source from this scope. The destination is checked separately. */
 	canMove: boolean;
+	/** Whether the user may delete the source and its synced skills. */
+	canDelete: boolean;
 };
+
+/** A refused source delete names only the agents that the user may read. */
+export const skillSourceDeleteBlockSchema = z.object({
+	reason: z.literal('skills_in_use'),
+	agents: z.array(
+		z.object({
+			agentId: z.string(),
+			agentName: z.string(),
+			projectId: z.string(),
+			projectName: z.string(),
+		}),
+	),
+	hiddenAgents: z.number().int().nonnegative(),
+});
+
+export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;

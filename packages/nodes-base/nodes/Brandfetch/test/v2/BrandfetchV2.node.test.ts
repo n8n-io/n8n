@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
 import { BrandfetchV2 } from '../../v2/BrandfetchV2.node';
@@ -62,7 +63,7 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/brands/domain/n8n.io',
+			requestPath`/brands/domain/n8n.io`,
 		);
 		expect(result[0]).toEqual([brandData]);
 	});
@@ -75,7 +76,7 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/brands/isin/US%200378%2F331005',
+			expect.objectContaining({ value: '/brands/isin/US%200378%2F331005' }),
 		);
 	});
 
@@ -87,7 +88,7 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/brands/domain/n8n.io',
+			requestPath`/brands/domain/n8n.io`,
 		);
 	});
 
@@ -103,7 +104,7 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/brands/${type}/${identifier}`,
+			requestPath`/brands/${type}/${identifier}`,
 		);
 	});
 
@@ -280,10 +281,9 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/context/n8n.io',
+			requestPath`/context/n8n.io`,
 			{},
 			{},
-			undefined,
 			{ headers: { accept: 'application/json' } },
 		);
 		expect(result[0]).toEqual([context]);
@@ -302,10 +302,9 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/context/n8n.io',
+			requestPath`/context/n8n.io`,
 			{},
 			{},
-			undefined,
 			{ json: false, headers: { accept: 'text/markdown' } },
 		);
 		expect(result[0]).toEqual([{ context: '# n8n Brand Context' }]);
@@ -319,10 +318,9 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/context/n8n.io',
+			requestPath`/context/n8n.io`,
 			{},
 			{ cachedOnly: true },
-			undefined,
 			{ headers: { accept: 'application/json' } },
 		);
 	});
@@ -349,10 +347,9 @@ describe('BrandfetchV2.execute', () => {
 
 		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/context/${encodeURIComponent('bücher.example/path')}`,
+			expect.objectContaining({ value: `/context/${encodeURIComponent('bücher.example/path')}` }),
 			{},
 			{},
-			undefined,
 			{ headers: { accept: 'application/json' } },
 		);
 	});

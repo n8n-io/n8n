@@ -2,7 +2,7 @@ import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
 import { validate as isUuid } from 'uuid';
-import { GLOBAL_OWNER_ROLE, UserRepository, TransactionRunner, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';

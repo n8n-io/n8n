@@ -11,6 +11,7 @@ import {
 	type IWebhookResponseData,
 	type IBinaryKeyData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';
@@ -265,7 +266,7 @@ export class SlackTrigger implements INodeType {
 					this,
 					'channels',
 					'GET',
-					'/conversations.list',
+					requestPath`/conversations.list`,
 					{},
 					qs,
 				)) as Array<{ id: string; name: string }>;
@@ -295,7 +296,7 @@ export class SlackTrigger implements INodeType {
 					this,
 					'members',
 					'GET',
-					'/users.list',
+					requestPath`/users.list`,
 				)) as Array<{ id: string; name: string; real_name?: string }>;
 				for (const user of users) {
 					returnData.push({
