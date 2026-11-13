@@ -180,6 +180,12 @@ describe('Publisher', () => {
 			'display-workflow-publication-status',
 			'reload-public-api-rate-limit-settings',
 			'promotion-environment-changed',
+			// Debounce keys on the command name only, so two agents changed within the
+			// window would lose one invalidation.
+			'agent-config-changed',
+			'agent-tasks-changed',
+			'reload-agents-settings',
+			'agent-queue-available',
 		] as const)('should not debounce `%s`', async (command) => {
 			const publisher = new Publisher(
 				logger,
