@@ -816,6 +816,33 @@ it.each(['read', 'create', 'update', 'publish', 'unpublish'] as const)(
 	},
 );
 
+it('archives a matched Agent only with the agent:delete API-key grant', async () => {
+	const live = await download();
+	await agents.update({ projectId: sourceProject.id }, { isArchived: true });
+	const archived = await download();
+	await agents.delete({ projectId: sourceProject.id });
+	expect((await upload(live)).statusCode).toBe(200);
+	const scopes: ApiKeyScope[] = [
+		'agent:import',
+		'agent:read',
+		'agent:update',
+		'skill:create',
+		'skill:update',
+	];
+
+	const refused = await upload(archived, {}, await createOwnerWithApiKey({ scopes }));
+	expect(refused.statusCode).toBe(403);
+	expect(await agents.findOneByOrFail({ id: sourceAgents[0].id })).toMatchObject({
+		isArchived: false,
+	});
+
+	const granted = await createOwnerWithApiKey({ scopes: [...scopes, 'agent:delete'] });
+	expect((await upload(archived, {}, granted)).statusCode).toBe(200);
+	expect(await agents.findOneByOrFail({ id: sourceAgents[0].id })).toMatchObject({
+		isArchived: true,
+	});
+});
+
 it.each(['project:viewer', 'project:chatUser'] as const)(
 	'rejects an import for %s despite API-key grants',
 	async (role) => {

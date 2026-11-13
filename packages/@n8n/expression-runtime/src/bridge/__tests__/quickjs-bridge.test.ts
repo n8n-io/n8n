@@ -5,7 +5,9 @@ import { runInNewContext } from 'node:vm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ExpressionEvaluator } from '../../evaluator/expression-evaluator';
+import { classifyExpressionError } from '../../evaluator/error-classification';
 import type { BridgeConfig, RuntimeBridge } from '../../types';
+import { HostCallError, RuntimeRestartingError } from '../../types';
 import { QuickJsBridge } from '../quickjs-bridge';
 
 // Deep enough that V8 runs out of native stack inside the QuickJS WASM code
@@ -49,6 +51,27 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
 
+	it('should classify the host error and the restart that follows it apart from other errors', async () => {
+		const bridge = await newBridge();
+		const errorOf = (code: string, data: Record<string, unknown>) => {
+			try {
+				bridge.execute(code, data);
+			} catch (error) {
+				return error;
+			}
+			throw new Error('expected the call to fail');
+		};
+
+		const hostError = errorOf(OVERFLOW, deepData);
+		expect(hostError).toBeInstanceOf(HostCallError);
+		expect(hostError).toMatchObject({ hostErrorName: 'RangeError' });
+		expect(classifyExpressionError(hostError)).toBe('host_error');
+
+		const restarting = errorOf('return 1 + 1;', {});
+		expect(restarting).toBeInstanceOf(RuntimeRestartingError);
+		expect(classifyExpressionError(restarting)).toBe('engine_restarting');
+	});
+
 	it('should dispose a bridge after a native stack overflow', async () => {
 		const bridge = await newBridge();
 
@@ -74,6 +97,7 @@ describe('QuickJsBridge after a host error in a guest call', () => {
 		expect(() => bridge.execute(OVERFLOW, deepData)).toThrow(NATIVE_OVERFLOW);
 
 		expect(() => bridge.execute('return 1 + 1;', {})).toThrow(/restarting after an earlier error/);
+		expect(() => bridge.execute('return 1 + 1;', {})).toThrow(RuntimeRestartingError);
 
 		await waitForReplacementModule();
 		expect(bridge.execute('return 1 + 1;', {})).toBe(2);
@@ -179,8 +203,8 @@ describe('QuickJsBridge workflow data', () => {
 		bridge: QuickJsBridge,
 		override: (
 			call: number,
-			build: () => import('quickjs-emscripten').QuickJSHandle,
-		) => import('quickjs-emscripten').QuickJSHandle,
+			build: () => import('quickjs-emscripten-core').QuickJSHandle,
+		) => import('quickjs-emscripten-core').QuickJSHandle,
 	): void {
 		const vm = bridge['vm']!;
 		const newFunction = vm.newFunction.bind(vm);
@@ -191,8 +215,8 @@ describe('QuickJsBridge workflow data', () => {
 
 	/** Makes `handle.dispose()` free the handle and then throw. */
 	function failDispose(
-		handle: import('quickjs-emscripten').QuickJSHandle,
-	): import('quickjs-emscripten').QuickJSHandle {
+		handle: import('quickjs-emscripten-core').QuickJSHandle,
+	): import('quickjs-emscripten-core').QuickJSHandle {
 		const dispose = handle.dispose.bind(handle);
 		handle.dispose = () => {
 			dispose();

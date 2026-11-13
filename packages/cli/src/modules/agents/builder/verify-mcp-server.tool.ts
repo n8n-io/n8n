@@ -30,6 +30,8 @@ export interface VerifyMcpServerDeps {
 	projectId: string;
 	proxyFetch: CustomFetch;
 	resolveRegistryConnection?: BuildMcpClientDeps['resolveRegistryConnection'];
+	/** Rejects a credential that the user may read but not use. */
+	assertCredentialUsable: (credentialId: string) => Promise<void>;
 	/** When verification succeeds with a credential, writes it into the matching
 	 *  mcpServers entry so the builder can skip agent-context → agent_builder_patch_config. */
 	applyCredentialToMcpServer?: (
@@ -145,6 +147,9 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 			const timeoutMs = input.connectionTimeoutMs ?? DEFAULT_MCP_VERIFICATION_TIMEOUT_MS;
 			let client: McpClient | undefined;
 			try {
+				if (input.authentication !== 'none' && input.credential) {
+					await deps.assertCredentialUsable(input.credential);
+				}
 				client = await buildMcpClientForServer(
 					{
 						name: input.name,

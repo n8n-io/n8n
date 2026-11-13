@@ -5,8 +5,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Plivo.
@@ -15,7 +17,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function plivoApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -24,14 +26,14 @@ export async function plivoApiRequest(
 		authToken: string;
 	}>('plivoApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'user-agent': 'plivo-n8n',
 		},
 		method,
 		form: body,
 		qs,
-		uri: `https://api.plivo.com/v1/Account/${credentials.authId}${endpoint}/`,
+		uri: requestUrl`https://api.plivo.com/v1/Account/${credentials.authId}${endpoint}/`,
 		auth: {
 			user: credentials.authId,
 			pass: credentials.authToken,

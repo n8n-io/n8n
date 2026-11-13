@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../actions/attachment/delete.operation';
 import { confluenceApiRequest } from '../../../transport';
@@ -11,7 +11,7 @@ vi.mock('../../../transport', () => ({
 
 const apiRequest = vi.mocked(confluenceApiRequest);
 
-const ENDPOINT = '/wiki/api/v2/attachments/att123';
+const ENDPOINT = requestPath`/wiki/api/v2/attachments/att123`;
 
 const baseParams: Record<string, unknown> = {
 	resource: 'attachment',

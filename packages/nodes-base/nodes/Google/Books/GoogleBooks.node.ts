@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -14,13 +14,22 @@ export interface IGoogleAuthCredentials {
 	privateKey: string;
 }
 
+function decodeSearchQuery(value: string) {
+	const spaced = value.replace(/\+/g, ' ');
+	try {
+		return decodeURIComponent(spaced);
+	} catch {
+		return spaced;
+	}
+}
+
 export class GoogleBooks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Books',
 		name: 'googleBooks',
 		icon: 'file:googlebooks.svg',
 		group: ['input', 'output'],
-		version: [1, 2],
+		version: [1, 2, 2.1],
 		description: 'Read data from Google Books',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -89,7 +98,7 @@ export class GoogleBooks implements INodeType {
 				default: 'oAuth2',
 				displayOptions: {
 					show: {
-						'@version': [2],
+						'@version': [{ _cnd: { gte: 2 } }],
 					},
 				},
 			},
@@ -353,6 +362,7 @@ export class GoogleBooks implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
 		const qs: IDataObject = {};
 		let responseData;
 
@@ -361,24 +371,32 @@ export class GoogleBooks implements INodeType {
 				if (resource === 'volume') {
 					if (operation === 'get') {
 						const volumeId = this.getNodeParameter('volumeId', i) as string;
-						responseData = await googleApiRequest.call(this, 'GET', `v1/volumes/${volumeId}`, {});
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							requestPath`v1/volumes/${volumeId}`,
+							{},
+						);
 					} else if (operation === 'getAll') {
-						const searchQuery = this.getNodeParameter('searchQuery', i) as string;
+						const query = this.getNodeParameter('searchQuery', i) as string;
+						const searchQuery = nodeVersion < 2.1 ? decodeSearchQuery(query) : query;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
-								`v1/volumes?q=${searchQuery}`,
+								requestPath`v1/volumes`,
 								{},
+								{ q: searchQuery },
 							);
 						} else {
+							qs.q = searchQuery;
 							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`v1/volumes?q=${searchQuery}`,
+								requestPath`v1/volumes`,
 								{},
 								qs,
 							);
@@ -394,9 +412,9 @@ export class GoogleBooks implements INodeType {
 						let endpoint;
 						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
-							endpoint = `v1/users/${userId}/bookshelves/${shelfId}`;
+							endpoint = requestPath`v1/users/${userId}/bookshelves/${shelfId}`;
 						} else {
-							endpoint = `v1/mylibrary/bookshelves/${shelfId}`;
+							endpoint = requestPath`v1/mylibrary/bookshelves/${shelfId}`;
 						}
 
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {});
@@ -406,9 +424,9 @@ export class GoogleBooks implements INodeType {
 						let endpoint;
 						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
-							endpoint = `v1/users/${userId}/bookshelves`;
+							endpoint = requestPath`v1/users/${userId}/bookshelves`;
 						} else {
-							endpoint = 'v1/mylibrary/bookshelves';
+							endpoint = requestPath`v1/mylibrary/bookshelves`;
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -436,7 +454,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`v1/mylibrary/bookshelves/${shelfId}/addVolume`,
+							requestPath`v1/mylibrary/bookshelves/${shelfId}/addVolume`,
 							body,
 						);
 					}
@@ -446,7 +464,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`v1/mylibrary/bookshelves/${shelfId}/clearVolumes`,
+							requestPath`v1/mylibrary/bookshelves/${shelfId}/clearVolumes`,
 						);
 					}
 
@@ -457,9 +475,9 @@ export class GoogleBooks implements INodeType {
 						let endpoint;
 						if (!myLibrary) {
 							const userId = this.getNodeParameter('userId', i) as string;
-							endpoint = `v1/users/${userId}/bookshelves/${shelfId}/volumes`;
+							endpoint = requestPath`v1/users/${userId}/bookshelves/${shelfId}/volumes`;
 						} else {
-							endpoint = `v1/mylibrary/bookshelves/${shelfId}/volumes`;
+							endpoint = requestPath`v1/mylibrary/bookshelves/${shelfId}/volumes`;
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
@@ -487,7 +505,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`v1/mylibrary/bookshelves/${shelfId}/moveVolume`,
+							requestPath`v1/mylibrary/bookshelves/${shelfId}/moveVolume`,
 							body,
 						);
 					}
@@ -501,7 +519,7 @@ export class GoogleBooks implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`v1/mylibrary/bookshelves/${shelfId}/removeVolume`,
+							requestPath`v1/mylibrary/bookshelves/${shelfId}/removeVolume`,
 							body,
 						);
 					}

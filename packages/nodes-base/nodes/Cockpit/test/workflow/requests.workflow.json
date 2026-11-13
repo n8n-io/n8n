@@ -1,0 +1,207 @@
+{
+	"name": "Cockpit Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "create",
+				"collection": "posts",
+				"dataFieldsUi": {
+					"field": [
+						{
+							"name": "title",
+							"value": "Hello"
+						}
+					]
+				}
+			},
+			"id": "node-0",
+			"name": "Collection Create",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "getAll",
+				"collection": "posts",
+				"limit": 10,
+				"options": {}
+			},
+			"id": "node-1",
+			"name": "Collection Get Many",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"operation": "update",
+				"collection": "posts",
+				"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+				"dataFieldsUi": {
+					"field": [
+						{
+							"name": "title",
+							"value": "Hello"
+						}
+					]
+				}
+			},
+			"id": "node-2",
+			"name": "Collection Update",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "form",
+				"operation": "submit",
+				"form": "contact",
+				"dataFieldsUi": {
+					"field": [
+						{
+							"name": "email",
+							"value": "nathan@example.com"
+						}
+					]
+				}
+			},
+			"id": "node-3",
+			"name": "Form Submit",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "singleton",
+				"operation": "get",
+				"singleton": "settings"
+			},
+			"id": "node-4",
+			"name": "Singleton Get",
+			"type": "n8n-nodes-base.cockpit",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"cockpitApi": {
+					"id": "1",
+					"name": "Cockpit account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Collection Create": [
+			{
+				"json": {
+					"_id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"title": "Hello"
+				}
+			}
+		],
+		"Collection Get Many": [
+			{
+				"json": {
+					"_id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"title": "Hello"
+				}
+			}
+		],
+		"Collection Update": [
+			{
+				"json": {
+					"_id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"title": "Hello"
+				}
+			}
+		],
+		"Form Submit": [
+			{
+				"json": {
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Singleton Get": [
+			{
+				"json": {
+					"siteName": "Acme Corp"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Collection Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Collection Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Form Submit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Singleton Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

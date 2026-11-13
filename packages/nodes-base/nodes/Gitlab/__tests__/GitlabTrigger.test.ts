@@ -1,4 +1,5 @@
-import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, INode, IWebhookFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { GitlabTrigger } from '../GitlabTrigger.node';
 
@@ -13,7 +14,7 @@ vi.mock('../GenericFunctions', () => ({
 
 import { gitlabApiRequest } from '../GenericFunctions';
 import { verifySignature } from '../GitlabTriggerHelpers';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 describe('GitlabTrigger', () => {
@@ -95,6 +96,7 @@ describe('GitlabTrigger', () => {
 		let mockHookFunctions: Partial<IWebhookFunctions>;
 
 		const staticData = (webhookId: unknown) => ({
+			getNode: vi.fn().mockReturnValue(mock<INode>({ typeVersion: 1.1 })),
 			getWorkflowStaticData: vi.fn().mockReturnValue({ webhookId }),
 			getNodeParameter: vi.fn((name: string) => (name === 'owner' ? 'some-owner' : 'some-repo')),
 		});
@@ -125,7 +127,7 @@ describe('GitlabTrigger', () => {
 			expect(result).toBe(true);
 			expect(gitlabApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/projects/some-owner%2Fsome-repo/hooks/42',
+				requestPath`/projects/some-owner%2Fsome-repo/hooks/42`,
 				{},
 			);
 		});

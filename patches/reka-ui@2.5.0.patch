@@ -46,6 +46,106 @@ index ab18626e4d2e4de85df95dc2cc348ec2fea15271..de5b9c3bb3f95fe2bc6249a49363d5de
  		}
  		const resetSearchTerm = createEventHook();
  		const isUserInputted = ref(false);
+diff --git a/dist/Listbox/ListboxRoot.cjs b/dist/Listbox/ListboxRoot.cjs
+index 6fa8ee47b39fe294075a37a4b9760a076496e141..94850b416c1e2139787a272324dedf50d5d0525c 100644
+--- a/dist/Listbox/ListboxRoot.cjs
++++ b/dist/Listbox/ListboxRoot.cjs
+@@ -127,10 +127,10 @@ var ListboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ (0
+ 		function getCollectionItem() {
+ 			return getItems().map((i) => i.ref).filter((i) => i.dataset.disabled !== "");
+ 		}
+-		function changeHighlight(el, scrollIntoView = true) {
++		function changeHighlight(el, scrollIntoView = true, focus) {
+ 			if (!el) return;
+ 			highlightedElement.value = el;
+-			if (focusable.value) highlightedElement.value.focus();
++			if (focus ?? focusable.value) highlightedElement.value.focus();
+ 			if (scrollIntoView) highlightedElement.value.scrollIntoView({ block: "nearest" });
+ 			const highlightedItem = getItems().find((i) => i.ref === el);
+ 			emits("highlight", highlightedItem);
+@@ -240,20 +240,26 @@ var ListboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ (0
+ 				modelValue.value = values;
+ 			}
+ 		}
+-		async function highlightSelected(event) {
++		async function highlightSelected(event, scroll = true) {
+ 			await (0, vue.nextTick)();
+ 			if (isVirtual.value) virtualFocusHook.trigger(event);
+ 			else {
+ 				const collection = getCollectionItem();
+ 				const item = collection.find((i) => i.dataset.state === "checked");
+-				if (item) changeHighlight(item);
+-				else if (collection.length) changeHighlight(collection[0]);
++				const focus = scroll ? void 0 : false;
++				if (item) changeHighlight(item, scroll, focus);
++				else if (collection.length) changeHighlight(collection[0], scroll, focus);
+ 			}
+ 		}
++		let hasHighlightedOnMount = false;
+ 		(0, vue.watch)(modelValue, () => {
+-			if (!isUserAction.value) (0, vue.nextTick)(() => {
+-				highlightSelected();
+-			});
++			if (!isUserAction.value) {
++				const scroll = hasHighlightedOnMount;
++				hasHighlightedOnMount = true;
++				(0, vue.nextTick)(() => {
++					highlightSelected(void 0, scroll);
++				});
++			}
+ 		}, {
+ 			immediate: true,
+ 			deep: true
+diff --git a/dist/Listbox/ListboxRoot.js b/dist/Listbox/ListboxRoot.js
+index 704e2089dc284acc31de882d54276f2e7c822d8d..6e8063ba61aacae7979c839230b57cae52f5bb86 100644
+--- a/dist/Listbox/ListboxRoot.js
++++ b/dist/Listbox/ListboxRoot.js
+@@ -126,10 +126,10 @@ var ListboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ de
+ 		function getCollectionItem() {
+ 			return getItems().map((i) => i.ref).filter((i) => i.dataset.disabled !== "");
+ 		}
+-		function changeHighlight(el, scrollIntoView = true) {
++		function changeHighlight(el, scrollIntoView = true, focus) {
+ 			if (!el) return;
+ 			highlightedElement.value = el;
+-			if (focusable.value) highlightedElement.value.focus();
++			if (focus ?? focusable.value) highlightedElement.value.focus();
+ 			if (scrollIntoView) highlightedElement.value.scrollIntoView({ block: "nearest" });
+ 			const highlightedItem = getItems().find((i) => i.ref === el);
+ 			emits("highlight", highlightedItem);
+@@ -239,20 +239,26 @@ var ListboxRoot_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ de
+ 				modelValue.value = values;
+ 			}
+ 		}
+-		async function highlightSelected(event) {
++		async function highlightSelected(event, scroll = true) {
+ 			await nextTick();
+ 			if (isVirtual.value) virtualFocusHook.trigger(event);
+ 			else {
+ 				const collection = getCollectionItem();
+ 				const item = collection.find((i) => i.dataset.state === "checked");
+-				if (item) changeHighlight(item);
+-				else if (collection.length) changeHighlight(collection[0]);
++				const focus = scroll ? void 0 : false;
++				if (item) changeHighlight(item, scroll, focus);
++				else if (collection.length) changeHighlight(collection[0], scroll, focus);
+ 			}
+ 		}
++		let hasHighlightedOnMount = false;
+ 		watch(modelValue, () => {
+-			if (!isUserAction.value) nextTick(() => {
+-				highlightSelected();
+-			});
++			if (!isUserAction.value) {
++				const scroll = hasHighlightedOnMount;
++				hasHighlightedOnMount = true;
++				nextTick(() => {
++					highlightSelected(void 0, scroll);
++				});
++			}
+ 		}, {
+ 			immediate: true,
+ 			deep: true
 diff --git a/src/Combobox/ComboboxRoot.vue b/src/Combobox/ComboboxRoot.vue
 index ad142f07d8110fbef8f8793c54540e48cfec456d..8e74b2144596ce3cd71475e704b6818360d64cb6 100644
 --- a/src/Combobox/ComboboxRoot.vue
@@ -73,3 +173,71 @@ index ad142f07d8110fbef8f8793c54540e48cfec456d..8e74b2144596ce3cd71475e704b68183
  }
  
  const resetSearchTerm = createEventHook()
+diff --git a/src/Listbox/ListboxRoot.vue b/src/Listbox/ListboxRoot.vue
+index deabd228008359096191891043a2c9ccc46ca3d7..1c005ba65f5c21130464ff2468241e8a666860c4 100644
+--- a/src/Listbox/ListboxRoot.vue
++++ b/src/Listbox/ListboxRoot.vue
+@@ -27,7 +27,7 @@ type ListboxRootContext<T> = {
+ 
+   onLeave: (event: Event) => void
+   onEnter: (event: Event) => void
+-  changeHighlight: (el: HTMLElement, scrollIntoView?: boolean) => void
++  changeHighlight: (el: HTMLElement, scrollIntoView?: boolean, focus?: boolean) => void
+   onKeydownNavigation: (event: KeyboardEvent) => void
+   onKeydownEnter: (event: KeyboardEvent) => void
+   onKeydownTypeAhead: (event: KeyboardEvent) => void
+@@ -157,12 +157,12 @@ function getCollectionItem() {
+   return getItems().map(i => i.ref).filter(i => i.dataset.disabled !== '')
+ }
+ 
+-function changeHighlight(el: HTMLElement, scrollIntoView = true) {
++function changeHighlight(el: HTMLElement, scrollIntoView = true, focus?: boolean) {
+   if (!el)
+     return
+ 
+   highlightedElement.value = el
+-  if (focusable.value)
++  if (focus ?? focusable.value)
+     highlightedElement.value.focus()
+   if (scrollIntoView)
+     highlightedElement.value.scrollIntoView({ block: 'nearest' })
+@@ -320,7 +320,7 @@ function handleMultipleReplace(event: KeyboardEvent, targetEl: HTMLElement) {
+   }
+ }
+ 
+-async function highlightSelected(event?: Event) {
++async function highlightSelected(event?: Event, scroll = true) {
+   await nextTick()
+   if (isVirtual.value) {
+     // Trigger on nextTick for Virtualizer to be mounted
+@@ -329,18 +329,27 @@ async function highlightSelected(event?: Event) {
+   else {
+     const collection = getCollectionItem()
+     const item = collection.find(i => i.dataset.state === 'checked')
++    // The mount highlight only sets the roving-tabindex target. Focusing or
++    // scrolling here moves the page to a listbox the user has not opened.
++    const focus = scroll ? undefined : false
+     if (item)
+-      changeHighlight(item)
++      changeHighlight(item, scroll, focus)
+     else if (collection.length)
+-      changeHighlight(collection[0])
++      changeHighlight(collection[0], scroll, focus)
+   }
+ }
+ 
++// False until the mount highlight is queued. The watcher flips this before
++// nextTick, so the mount call stays scroll-free even when hydration order differs.
++let hasHighlightedOnMount = false
++
+ // watch for only programmatic changes
+ watch(modelValue, () => {
+   if (!isUserAction.value) {
++    const scroll = hasHighlightedOnMount
++    hasHighlightedOnMount = true
+     nextTick(() => {
+-      highlightSelected()
++      highlightSelected(undefined, scroll)
+     })
+   }
+ }, { immediate: true, deep: true })

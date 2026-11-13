@@ -23,6 +23,37 @@ gone. `src/repositories/deployment-key.repository.ts` is the in-package example;
 the root AGENTS.md "Repositories compose, they don't extend" bullet has the
 rules. Do not add new `extends BaseRepository` repositories.
 
+## Account kinds: User, Person, ServiceAccount
+
+One `user` table holds two kinds of account. The `kind` column splits them.
+
+**Pick the type by who the flow serves.**
+- `Person`: flows only a human can reach. Login, password, MFA, SSO, LDAP,
+  SCIM, invites, email. Load through `PersonRepository`.
+- `ServiceAccount`: flows only a service account can reach. Load through
+  `ServiceAccountRepository`.
+- `User`: flows that accept both kinds. Ownership, roles, project relations,
+  audit, `settings`. Load through `UserRepository`.
+
+**Narrow once, at the entry point.** Use `isPerson` or `isServiceAccount`
+(`src/utils/account-guards.ts`) where the account enters the flow, then pass the
+narrowed type down. Not `as Person`. Not a guard in every helper.
+
+**Only a real entity instance passes a guard.** A plain object, such as a cached
+copy or a test double, passes neither. In tests, build a person with
+`Object.assign(new Person(), …)`, not `mock<User>()`.
+
+**Person-only columns live on `Person`.** `email`, `firstName`, `lastName`,
+`password`, `mfaSecret`, `personalizationAnswers`, `lastActiveAt`,
+`authIdentities`, `apiKeys`. If the compiler rejects one of these on a `User`,
+decide which kind the flow serves. Do not move the column back to `User`.
+
+**Counts and lists in `UserRepository` include both kinds** unless you pass
+`kind`. Seats (license metrics) and the users list count people only.
+
+**Migrations use their own row types**, not entity types. Entities change. Old
+migrations must not.
+
 ## Transactions
 
 Both transaction primitives live here: the deprecated `withTransaction` helper

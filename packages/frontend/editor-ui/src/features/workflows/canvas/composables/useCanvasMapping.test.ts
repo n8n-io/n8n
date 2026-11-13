@@ -24,7 +24,8 @@ import type { INodeUi } from '@/Interface';
 import { CanvasNodeRenderType, type CanvasNodeData } from '../canvas.types';
 import { MarkerType } from '@vue-flow/core';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
-import { NO_OP_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { FREE_STICKY_Z_INDEX_OFFSET } from '../stores/canvasNodeGroups.constants';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -266,19 +267,27 @@ describe('useCanvasMapping — mapped nodes', () => {
 		expect(nodes.value[0].data?.render.type).toBe(CanvasNodeRenderType.StickyNote);
 	});
 
-	it('spreads additionalPropertiesByNodeId onto the mapped CanvasNode', () => {
-		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
+	it('maps the sticky z-index from render data, below expanded groups for free stickies', () => {
+		const member = createTestNode({ id: 'm', name: 'Member', type: STICKY_NODE_TYPE }) as INodeUi;
+		const free = createTestNode({ id: 'f', name: 'Free', type: STICKY_NODE_TYPE }) as INodeUi;
+		const group: IWorkflowGroup = { id: 'g1', name: 'G', nodeIds: ['m'] };
 		const rd = createEmptyCanvasRenderData({
-			additionalPropertiesByNodeId: computed(() => ({ a: { style: { zIndex: -42 } } })),
+			additionalPropertiesByNodeId: computed(() => ({
+				m: { style: { zIndex: -99 } },
+				f: { style: { zIndex: -100 } },
+			})),
 		});
 
 		const { nodes } = useCanvasMapping({
-			nodes: ref([node]),
+			nodes: ref([member, free]),
 			connections: ref({}),
 			renderData: shallowRef(rd),
+			allGroups: ref([group]),
 		});
 
-		expect(nodes.value[0].style).toEqual({ zIndex: -42 });
+		const [memberNode, freeNode] = nodes.value;
+		expect(memberNode.style).toEqual({ zIndex: -99 });
+		expect(freeNode.style).toEqual({ zIndex: -100 + FREE_STICKY_Z_INDEX_OFFSET });
 	});
 
 	it('attaches input/output connections derived from the connections prop', () => {
@@ -540,11 +549,10 @@ describe('useCanvasMapping — mapped connections', () => {
 		const { allNodes, connections } = makeWorkflow({
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
-		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.executionPinDataByNodeId.set(
-			'a',
-			computed(() => [{ json: { ok: true } }]),
-		);
+		const executionPinData = [{ json: { ok: true } }];
+		const rd = createEmptyCanvasRenderData({
+			getDisplayedExecutionPinData: (nodeId) => (nodeId === 'a' ? executionPinData : undefined),
+		});
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({
@@ -554,26 +562,6 @@ describe('useCanvasMapping — mapped connections', () => {
 		});
 
 		expect(mapped.value[0].data?.status).toBe('pinned');
-	});
-
-	it('does not mark a connection as pinned from workflow pin data while displaying an execution', () => {
-		const { allNodes, connections } = makeWorkflow({
-			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
-		});
-		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.pinnedDataByNodeId.set(
-			'a',
-			computed(() => [{ json: { stale: true } }]),
-		);
-		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
-
-		const { connections: mapped } = useCanvasMapping({
-			nodes: ref(allNodes),
-			connections: ref(connections),
-			renderData: shallowRef(rd),
-		});
-
-		expect(mapped.value[0].data?.status).not.toBe('pinned');
 	});
 
 	it('marks the connection as "success" when source produced run data and target has run data too', () => {
@@ -845,25 +833,6 @@ describe('useCanvasMapping — mapped connections', () => {
 			});
 
 			expect(mapped.value[0].label).toBe('2 items');
-		});
-
-		it('does not show item-count label from workflow pin data while displaying an execution', () => {
-			const { allNodes, connections } = makeWorkflow({
-				Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
-			});
-			const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-			rd.pinnedDataByNodeId.set(
-				'a',
-				computed(() => [{ json: { x: 1 } }, { json: { x: 2 } }]),
-			);
-
-			const { connections: mapped } = useCanvasMapping({
-				nodes: ref(allNodes),
-				connections: ref(connections),
-				renderData: shallowRef(rd),
-			});
-
-			expect(mapped.value[0].label).toBe('');
 		});
 	});
 });

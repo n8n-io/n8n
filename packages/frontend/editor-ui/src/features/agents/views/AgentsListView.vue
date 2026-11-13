@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import debounce from 'lodash/debounce';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { N8nCheckbox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -15,7 +16,6 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useAgentsListEmptyStateTemplatesExperiment } from '@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment';
 import {
 	duplicateAgent,
@@ -28,13 +28,14 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { useCreateAgent } from '../composables/useCreateAgent';
 import type { AgentTemplate } from '../agentTemplates';
-import type { AgentResource } from '../types';
+import { toAgentListItem, type Agent, type AgentListItem } from '../agent.types';
+import type { AgentListRowResource, AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 import AgentsListIntro from '../components/AgentsListIntro.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
-function isAgentResource(value: unknown): value is AgentResource {
+function isAgentListItem(value: unknown): value is AgentListItem {
 	return typeof value === 'object' && value !== null && 'id' in value;
 }
 
@@ -59,12 +60,12 @@ const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
-const { isFeatureEnabled: templatesExperimentEnabled } =
-	useAgentsListEmptyStateTemplatesExperiment();
-const instanceAiReady = useInstanceAiReady();
-const showTemplatesIntro = computed(
-	() => templatesExperimentEnabled.value && instanceAiReady.value,
-);
+const {
+	isFeatureEnabled: templatesExperimentEnabled,
+	variant: templatesVariant,
+	trackExposure: trackTemplatesExposure,
+} = useAgentsListEmptyStateTemplatesExperiment();
+const showTemplatesIntro = computed(() => templatesExperimentEnabled.value);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
@@ -72,8 +73,16 @@ const { canCreate: canCreateAgent } = useAgentPermissions(
 	() => projectId.value ?? homeProject.value?.id,
 );
 
-const allAgents = ref<AgentResource[]>([]);
-const filters = ref<BaseFilters>({ search: '', homeProject: '' });
+const allAgents = ref<AgentListItem[]>([]);
+/** The shared list layout only accepts resource-typed rows; the wrapper is added at render time. */
+const agentRows = computed<AgentListRowResource[]>(() =>
+	allAgents.value.map((agent) => ({ ...agent, resourceType: 'agent' })),
+);
+const filters = ref<BaseFilters>({
+	search: '',
+	homeProject: '',
+	showArchived: route.query.showArchived === 'true',
+});
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
@@ -82,14 +91,37 @@ const loading = ref(true);
 
 const projectId = computed(() => route.params.projectId as string | undefined);
 
+// Exposure covers both arms: control users see the default empty state, test users
+// the templates intro. The source mirrors the layout's empty-state condition, so a
+// filtered list never counts, and includes the variant so a late flag or Instance AI
+// readiness still fires while the surface is visible.
+watch(
+	() =>
+		!loading.value &&
+		allAgents.value.length === 0 &&
+		!filters.value.search &&
+		templatesVariant.value !== undefined,
+	(surfaceVisible) => {
+		if (surfaceVisible) trackTemplatesExposure();
+	},
+);
+
 const sortFns = {
-	lastUpdated: (a: AgentResource, b: AgentResource) =>
+	lastUpdated: (a: AgentListItem, b: AgentListItem) =>
 		new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-	lastCreated: (a: AgentResource, b: AgentResource) =>
+	lastCreated: (a: AgentListItem, b: AgentListItem) =>
 		new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-	nameAsc: (a: AgentResource, b: AgentResource) => a.name.localeCompare(b.name),
-	nameDesc: (a: AgentResource, b: AgentResource) => b.name.localeCompare(a.name),
+	nameAsc: (a: AgentListItem, b: AgentListItem) => a.name.localeCompare(b.name),
+	nameDesc: (a: AgentListItem, b: AgentListItem) => b.name.localeCompare(a.name),
 };
+
+function buildListFilter() {
+	const filter = {
+		...(filters.value.search ? { query: filters.value.search } : {}),
+		...(filters.value.showArchived === true ? { includeArchived: true } : {}),
+	};
+	return Object.keys(filter).length > 0 ? filter : undefined;
+}
 
 async function fetchAgents() {
 	const shouldDelayLoading = allAgents.value.length > 0;
@@ -108,7 +140,7 @@ async function fetchAgents() {
 			skip: (currentPage.value - 1) * pageSize.value,
 			take: pageSize.value,
 			sortBy: currentSort.value,
-			filter: filters.value.search ? { query: filters.value.search } : undefined,
+			filter: buildListFilter(),
 		};
 		const { count, data } = projectId.value
 			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
@@ -141,7 +173,7 @@ function onAgentDuplicate(agentId: string) {
 	if (!agent) return;
 	// An unconfigured agent has no config to clone — duplicating it would only
 	// yield an empty draft, so inform the user instead of opening the modal.
-	if (!agent.schema) {
+	if (!agent.hasConfig) {
 		toast.showMessage({
 			title: locale.baseText('agents.duplicate.modal.unconfigured'),
 			type: 'info',
@@ -185,13 +217,15 @@ function onAgentDuplicate(agentId: string) {
 	});
 }
 
-function onAgentPublished(updated: AgentResource) {
-	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
+function onAgentPublished(updated: Agent) {
+	const item = toAgentListItem(updated);
+	allAgents.value = allAgents.value.map((a) => (a.id === item.id ? item : a));
 	void fetchAgents();
 }
 
-function onAgentUnpublished(updated: AgentResource) {
-	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
+function onAgentUnpublished(updated: Agent) {
+	const item = toAgentListItem(updated);
+	allAgents.value = allAgents.value.map((a) => (a.id === item.id ? item : a));
 	void fetchAgents();
 }
 
@@ -203,6 +237,29 @@ function onAgentDeleted(agentId: string) {
 	}
 	void fetchAgents();
 }
+
+function onAgentArchived(updated: AgentResource) {
+	if (filters.value.showArchived === true) {
+		onAgentUnpublished(updated);
+		return;
+	}
+	onAgentDeleted(updated.id);
+}
+
+watch(
+	() => filters.value.showArchived === true,
+	async (showArchived) => {
+		const query = { ...route.query };
+		if (showArchived) {
+			query.showArchived = 'true';
+		} else {
+			delete query.showArchived;
+		}
+		await router.replace({ query });
+		currentPage.value = 1;
+		await fetchAgents();
+	},
+);
 
 async function onSearchUpdated(search: string) {
 	filters.value = { ...filters.value, search };
@@ -272,7 +329,7 @@ onMounted(async () => {
 		v-model:filters="filters"
 		resource-key="agents"
 		type="list-paginated"
-		:resources="allAgents"
+		:resources="agentRows"
 		:initialize="fetchAgents"
 		:loading="false"
 		:resources-refreshing="loading"
@@ -284,8 +341,8 @@ onMounted(async () => {
 		:total-items="totalAgents"
 		:dont-perform-sorting-and-filtering="true"
 		:shareable="false"
-		:ui-config="{ searchEnabled: true, showFiltersDropdown: false, sortEnabled: true }"
-		:display-name="(agent: AgentResource) => agent.name"
+		:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: true }"
+		:display-name="(agent: AgentListItem) => agent.name"
 		tab-key="agents"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
@@ -317,9 +374,18 @@ onMounted(async () => {
 			/>
 		</template>
 
+		<template #filters="{ setKeyValue }">
+			<N8nCheckbox
+				:label="locale.baseText('agents.list.filters.showArchived')"
+				:model-value="filters.showArchived === true"
+				data-test-id="agents-show-archived-checkbox"
+				@update:model-value="setKeyValue('showArchived', $event)"
+			/>
+		</template>
+
 		<template #item="{ item: data }">
 			<AgentCard
-				v-if="isAgentResource(data)"
+				v-if="isAgentListItem(data)"
 				class="mb-2xs"
 				:agent="data"
 				:project-id="data.projectId"
@@ -328,6 +394,8 @@ onMounted(async () => {
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"
+				@archived="onAgentArchived"
+				@unarchived="onAgentUnpublished"
 				@duplicate="onAgentDuplicate"
 			/>
 		</template>

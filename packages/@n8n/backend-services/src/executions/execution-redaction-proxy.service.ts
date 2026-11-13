@@ -6,6 +6,14 @@ import type {
 	RedactableExecution,
 } from './execution-redaction';
 
+/** Removes the editor session that a waiting manual run stores, so no read hands it out. */
+function hidePushSession(execution: RedactableExecution): void {
+	if (execution.data) {
+		delete execution.data.pushRef;
+		delete execution.data.pushRefUserId;
+	}
+}
+
 @Service()
 export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
 	private executionRedaction?: ExecutionRedaction;
@@ -18,6 +26,7 @@ export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
 		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
 	): Promise<RedactableExecution> {
+		hidePushSession(execution);
 		if (!this.executionRedaction) {
 			return execution;
 		}
@@ -28,6 +37,7 @@ export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
 		executions: RedactableExecution[],
 		options: ExecutionRedactionOptions,
 	): Promise<void> {
+		executions.forEach(hidePushSession);
 		if (!this.executionRedaction) return;
 		await this.executionRedaction.processExecutions(executions, options);
 	}

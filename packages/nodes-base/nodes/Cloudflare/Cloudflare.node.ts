@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { cloudflareApiRequest, cloudflareApiRequestAllItems } from './GenericFunctions';
 import { zoneCertificateFields, zoneCertificateOperations } from './ZoneCertificateDescription';
@@ -56,7 +56,7 @@ export class Cloudflare implements INodeType {
 		loadOptions: {
 			async getZones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { result: zones } = await cloudflareApiRequest.call(this, 'GET', '/zones');
+				const { result: zones } = await cloudflareApiRequest.call(this, 'GET', requestPath`/zones`);
 				for (const zone of zones) {
 					returnData.push({
 						name: zone.name,
@@ -88,7 +88,7 @@ export class Cloudflare implements INodeType {
 						responseData = await cloudflareApiRequest.call(
 							this,
 							'DELETE',
-							`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
+							requestPath`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
 							{},
 						);
 						responseData = responseData.result;
@@ -101,7 +101,7 @@ export class Cloudflare implements INodeType {
 						responseData = await cloudflareApiRequest.call(
 							this,
 							'GET',
-							`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
+							requestPath`/zones/${zoneId}/origin_tls_client_auth/${certificateId}`,
 							{},
 						);
 						responseData = responseData.result;
@@ -119,7 +119,7 @@ export class Cloudflare implements INodeType {
 								this,
 								'result',
 								'GET',
-								`/zones/${zoneId}/origin_tls_client_auth`,
+								requestPath`/zones/${zoneId}/origin_tls_client_auth`,
 								{},
 								qs,
 							);
@@ -129,7 +129,7 @@ export class Cloudflare implements INodeType {
 							responseData = await cloudflareApiRequest.call(
 								this,
 								'GET',
-								`/zones/${zoneId}/origin_tls_client_auth`,
+								requestPath`/zones/${zoneId}/origin_tls_client_auth`,
 								{},
 								qs,
 							);
@@ -150,7 +150,7 @@ export class Cloudflare implements INodeType {
 						responseData = await cloudflareApiRequest.call(
 							this,
 							'POST',
-							`/zones/${zoneId}/origin_tls_client_auth`,
+							requestPath`/zones/${zoneId}/origin_tls_client_auth`,
 							body,
 							qs,
 						);

@@ -1,0 +1,59 @@
+{
+	"name": "Pushover Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"userKey": "uQiRzpo4DXghDmr9QzzfQu27cmVRsG",
+				"message": "Hello",
+				"priority": 0,
+				"additionalFields": {}
+			},
+			"id": "node-0",
+			"name": "Message Push",
+			"type": "n8n-nodes-base.pushover",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"pushoverApi": {
+					"id": "1",
+					"name": "Pushover account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Message Push": [
+			{
+				"json": {
+					"status": 1,
+					"request": "647d2300-702c-4b38-8b2f-d56326ae460b"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Message Push",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

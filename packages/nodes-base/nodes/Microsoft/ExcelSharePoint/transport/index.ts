@@ -1,7 +1,8 @@
-import type { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestMethods, RequestPath } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH, type ExcelSharePointCredentialType } from '../helpers/constants';
-import { buildRequestOptions } from '../helpers/converters';
+import { buildRequestOptions, toGraphBaseUrl } from '../helpers/converters';
 import { getErrorMapper } from '../helpers/errorMappers';
 import type { AuthContext, GraphListResponse } from '../helpers/interfaces';
 
@@ -16,7 +17,7 @@ export function getExcelSharePointCredentialType(this: AuthContext): ExcelShareP
 export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
 	this: AuthContext,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -25,6 +26,16 @@ export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
 	const credentialType = getExcelSharePointCredentialType.call(this);
 	const mapError = getErrorMapper(credentialType);
 	const credentials = await this.getCredentials(credentialType);
+	if (
+		uri &&
+		(!URL.canParse(uri) ||
+			new URL(uri).origin !== new URL(toGraphBaseUrl(credentials.graphApiBaseUrl)).origin)
+	) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
 	const options = buildRequestOptions({
 		method,
 		resource,
@@ -35,11 +46,7 @@ export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
 		graphApiBaseUrl: credentials.graphApiBaseUrl,
 	});
 	try {
-		return await this.helpers.httpRequestWithAuthentication.call<
-			AuthContext,
-			[string, IHttpRequestOptions],
-			Promise<T>
-		>(this, credentialType, options);
+		return await this.helpers.httpRequestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw mapError.call(this, error);
 	}
@@ -52,7 +59,7 @@ export async function microsoftApiRequest<T extends IDataObject = IDataObject>(
  */
 export async function microsoftApiRequestAllItems<T extends IDataObject = IDataObject>(
 	this: AuthContext,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject = {},
 ): Promise<T[]> {
 	const returnData: T[] = [];
@@ -60,7 +67,7 @@ export async function microsoftApiRequestAllItems<T extends IDataObject = IDataO
 
 	do {
 		const response = uri
-			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, uri)
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', endpoint, {}, {}, uri)
 			: await (microsoftApiRequest<GraphListResponse<T>>).call(
 					this,
 					'GET',

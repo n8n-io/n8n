@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import { customerFields, customerOperations } from './CustomerDescription';
 import {
@@ -19,6 +19,7 @@ import {
 	magentoApiRequest,
 	magentoApiRequestAllItems,
 	sort,
+	toPathValue,
 	validateJSON,
 } from './GenericFunctions';
 import { invoiceFields, invoiceOperations } from './InvoiceDescription';
@@ -39,7 +40,8 @@ export class Magento2 implements INodeType {
 		name: 'magento2',
 		icon: 'file:magento.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Magento API',
 		defaults: {
@@ -98,7 +100,7 @@ export class Magento2 implements INodeType {
 				const countries = await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/directory/countries',
+					requestPath`/rest/default/V1/directory/countries`,
 				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const country of countries) {
@@ -115,7 +117,7 @@ export class Magento2 implements INodeType {
 				const group = await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/customerGroups/default',
+					requestPath`/rest/default/V1/customerGroups/default`,
 				);
 				const returnData: INodePropertyOptions[] = [];
 				returnData.push({
@@ -130,7 +132,7 @@ export class Magento2 implements INodeType {
 				const stores = await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/store/storeConfigs',
+					requestPath`/rest/default/V1/store/storeConfigs`,
 				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const store of stores) {
@@ -147,7 +149,7 @@ export class Magento2 implements INodeType {
 				const websites = await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/store/websites',
+					requestPath`/rest/default/V1/store/websites`,
 				);
 				const returnData: INodePropertyOptions[] = [];
 				for (const website of websites) {
@@ -165,7 +167,7 @@ export class Magento2 implements INodeType {
 				const attributes = (await magentoApiRequest.call(
 					this,
 					'GET',
-					`/rest/default/V1/attributeMetadata/${resource}`,
+					requestPath`/rest/default/V1/attributeMetadata/${resource}`,
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
@@ -186,7 +188,7 @@ export class Magento2 implements INodeType {
 				const attributes = (await magentoApiRequest.call(
 					this,
 					'GET',
-					`/rest/default/V1/attributeMetadata/${resource}`,
+					requestPath`/rest/default/V1/attributeMetadata/${resource}`,
 				)) as CustomerAttributeMetadata[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const attribute of attributes) {
@@ -206,7 +208,7 @@ export class Magento2 implements INodeType {
 				const types = (await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/products/types',
+					requestPath`/rest/default/V1/products/types`,
 				)) as IDataObject[];
 				const returnData: INodePropertyOptions[] = [];
 				for (const type of types) {
@@ -223,7 +225,7 @@ export class Magento2 implements INodeType {
 				const { items: categories } = (await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/categories/list',
+					requestPath`/rest/default/V1/categories/list`,
 					{},
 					{
 						search_criteria: {
@@ -256,7 +258,7 @@ export class Magento2 implements INodeType {
 				const { items: attributeSets } = (await magentoApiRequest.call(
 					this,
 					'GET',
-					'/rest/default/V1/products/attribute-sets/sets/list',
+					requestPath`/rest/default/V1/products/attribute-sets/sets/list`,
 					{},
 					{
 						search_criteria: 0,
@@ -311,6 +313,7 @@ export class Magento2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const version = this.getNode().typeVersion;
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -371,7 +374,12 @@ export class Magento2 implements INodeType {
 
 						Object.assign(body.customer!, rest);
 
-						responseData = await magentoApiRequest.call(this, 'POST', '/rest/V1/customers', body);
+						responseData = await magentoApiRequest.call(
+							this,
+							'POST',
+							requestPath`/rest/V1/customers`,
+							body,
+						);
 					}
 
 					if (operation === 'delete') {
@@ -381,7 +389,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'DELETE',
-							`/rest/default/V1/customers/${customerId}`,
+							requestPath`/rest/default/V1/customers/${customerId}`,
 						);
 
 						responseData = { success: true };
@@ -394,7 +402,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'GET',
-							`/rest/default/V1/customers/${customerId}`,
+							requestPath`/rest/default/V1/customers/${customerId}`,
 						);
 					}
 
@@ -438,7 +446,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/rest/default/V1/customers/search',
+								requestPath`/rest/default/V1/customers/search`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -448,7 +456,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								'/rest/default/V1/customers/search',
+								requestPath`/rest/default/V1/customers/search`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -518,7 +526,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'PUT',
-							`/rest/V1/customers/${customerId}`,
+							requestPath`/rest/V1/customers/${customerId}`,
 							body,
 						);
 					}
@@ -532,7 +540,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'POST',
-							`/rest/default/V1/order/${orderId}/invoice`,
+							requestPath`/rest/default/V1/order/${orderId}/invoice`,
 						);
 
 						responseData = { success: true };
@@ -547,7 +555,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'POST',
-							`/rest/default/V1/orders/${orderId}/cancel`,
+							requestPath`/rest/default/V1/orders/${orderId}/cancel`,
 						);
 
 						responseData = { success: true };
@@ -560,7 +568,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'GET',
-							`/rest/default/V1/orders/${orderId}`,
+							requestPath`/rest/default/V1/orders/${orderId}`,
 						);
 					}
 
@@ -571,7 +579,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'POST',
-							`/rest/default/V1/order/${orderId}/ship`,
+							requestPath`/rest/default/V1/order/${orderId}/ship`,
 						);
 
 						responseData = { success: true };
@@ -616,7 +624,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/rest/default/V1/orders',
+								requestPath`/rest/default/V1/orders`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -626,7 +634,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								'/rest/default/V1/orders',
+								requestPath`/rest/default/V1/orders`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -670,7 +678,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'POST',
-							'/rest/default/V1/products',
+							requestPath`/rest/default/V1/products`,
 							body,
 						);
 					}
@@ -682,7 +690,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'DELETE',
-							`/rest/default/V1/products/${sku}`,
+							requestPath`/rest/default/V1/products/${toPathValue(version, sku)}`,
 						);
 
 						responseData = { success: true };
@@ -695,7 +703,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'GET',
-							`/rest/default/V1/products/${sku}`,
+							requestPath`/rest/default/V1/products/${toPathValue(version, sku)}`,
 						);
 					}
 
@@ -738,7 +746,7 @@ export class Magento2 implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/rest/default/V1/products',
+								requestPath`/rest/default/V1/products`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -748,7 +756,7 @@ export class Magento2 implements INodeType {
 							responseData = await magentoApiRequest.call(
 								this,
 								'GET',
-								'/rest/default/V1/products',
+								requestPath`/rest/default/V1/products`,
 								{},
 								qs as unknown as IDataObject,
 							);
@@ -785,7 +793,7 @@ export class Magento2 implements INodeType {
 						responseData = await magentoApiRequest.call(
 							this,
 							'PUT',
-							`/rest/default/V1/products/${sku}`,
+							requestPath`/rest/default/V1/products/${toPathValue(version, sku)}`,
 							body,
 						);
 					}

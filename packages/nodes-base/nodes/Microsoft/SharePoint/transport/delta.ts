@@ -1,8 +1,8 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import { errorChain } from '@n8n/utils/errors/error-chain';
 import { sleep } from '@n8n/utils/sleep';
-import type { IDataObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type { IDataObject, RequestPath } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { microsoftApiRequest, type SharePointContext } from './index';
 
@@ -46,12 +46,10 @@ export type DeltaPage = {
 const asCursor = (value: unknown): string | undefined =>
 	typeof value === 'string' && value !== '' ? value : undefined;
 
-const deltaPath = (target: DeltaTarget): string =>
+const deltaPath = (target: DeltaTarget): RequestPath =>
 	target.feed === 'driveItem'
-		? `/v1.0/drives/${encodeURIComponent(target.driveId)}/root/delta`
-		: `/v1.0/sites/${encodeURIComponent(target.siteId)}/lists/${encodeURIComponent(
-				target.listId,
-			)}/items/delta`;
+		? requestPath`/v1.0/drives/${target.driveId}/root/delta`
+		: requestPath`/v1.0/sites/${target.siteId}/lists/${target.listId}/items/delta`;
 
 function statusOf(error: unknown): number | undefined {
 	const { status } = retryabilityFromError(error);
@@ -76,7 +74,7 @@ function resyncFromError(error: unknown): DeltaResync | undefined {
 
 async function requestPage(
 	this: SharePointContext,
-	endpoint: string,
+	endpoint: RequestPath,
 	uri: string | undefined,
 	qs: IDataObject,
 	headers: IDataObject,

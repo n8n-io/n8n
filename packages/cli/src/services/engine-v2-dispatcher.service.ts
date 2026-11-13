@@ -10,6 +10,7 @@ import {
 import type {
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -17,6 +18,7 @@ import type {
 import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -242,6 +244,7 @@ export class EngineV2Dispatcher {
 			triggerName: trigger.name,
 			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
+			pinData: this.resolvePinData(data),
 		});
 		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
@@ -293,6 +296,7 @@ export class EngineV2Dispatcher {
 
 		this.pushRegistry.register(executionId, {
 			pushRef,
+			userId: getPushRefUserId(data),
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
@@ -300,6 +304,12 @@ export class EngineV2Dispatcher {
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
 		});
+	}
+
+	/** v1's `resolvePinData`: a production run ignores pinned data. */
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
+		return data.pinData ?? data.workflowData.pinData;
 	}
 
 	/**

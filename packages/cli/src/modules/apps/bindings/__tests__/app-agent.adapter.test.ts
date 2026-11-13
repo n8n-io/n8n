@@ -1,11 +1,13 @@
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
+import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -13,6 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { AppAgentAdapter } from '../app-agent.adapter';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
+vi.mock('@/modules/agents/agent-publish.service', () => ({ AgentPublishService: class {} }));
 vi.mock('@/modules/agents/agents.service', () => ({ AgentsService: class {} }));
 vi.mock('@/modules/agents/agent-execution-orchestrator.service', () => ({
 	AgentExecutionOrchestratorService: class {},
@@ -20,6 +23,8 @@ vi.mock('@/modules/agents/agent-execution-orchestrator.service', () => ({
 vi.mock('@/modules/agents/integrations/n8n-checkpoint-storage', () => ({
 	N8NCheckpointStorage: class {},
 }));
+
+type ProjectAgent = NonNullable<Awaited<ReturnType<AgentsService['findById']>>>;
 
 const SESSION = '0190a8d6-4a2e-4000-8000-000000000001';
 
@@ -110,6 +115,95 @@ describe('AppAgentAdapter', () => {
 			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
 				NotFoundError,
 			);
+		});
+	});
+
+	describe('publishing', () => {
+		const binding = {
+			key: 'support',
+			kind: 'agent' as const,
+			agentId: 'agent-1',
+			permissions: ['chat' as const],
+		};
+
+		it.each([true, false])('reports the agent:publish scope (%s)', async (allowed) => {
+			const { adapter } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(allowed);
+
+			await expect(adapter.canPublish(mock(), 'project-1', binding)).resolves.toBe(allowed);
+			expect(userHasScopes).toHaveBeenCalledWith(expect.anything(), ['agent:publish'], false, {
+				projectId: 'project-1',
+			});
+		});
+
+		it.each([
+			['is not published', null, 'v1', { published: false, hasChanges: false }],
+			[
+				'has a draft that differs from the published version',
+				'v1',
+				'v2',
+				{ published: true, hasChanges: true },
+			],
+			[
+				'has a draft that matches the published version',
+				'v1',
+				'v1',
+				{ published: true, hasChanges: false },
+			],
+		])('reports an agent that %s', async (_, activeId, draftId, expected) => {
+			const { adapter, agents } = setup();
+			agents.findById.mockResolvedValue(
+				mock<ProjectAgent>({
+					id: 'agent-1',
+					name: 'Support',
+					versionId: draftId,
+					activeVersionId: activeId,
+				}),
+			);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
+				name: 'Support',
+				...expected,
+			});
+		});
+
+		it('reports nothing for an agent that is not in the project', async () => {
+			const { adapter, agents } = setup();
+			agents.findById.mockResolvedValue(null);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
+		});
+
+		it('reports nothing when the agents module is off', async () => {
+			const { adapter, agents } = setup({ active: false });
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
+			expect(agents.findById).not.toHaveBeenCalled();
+		});
+
+		it('publishes the agent as the acting user', async () => {
+			const { adapter } = setup();
+			const publishService = mock<AgentPublishService>();
+			Container.set(AgentPublishService, publishService);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+			const user = mock<User>();
+
+			await adapter.publish(user, 'project-1', binding);
+
+			expect(publishService.publishAgent).toHaveBeenCalledWith('agent-1', 'project-1', user, {
+				by: 'user',
+				trigger: 'explicit',
+			});
+		});
+
+		it('does not publish without the agent:publish scope', async () => {
+			const { adapter } = setup();
+			const publishService = mock<AgentPublishService>();
+			Container.set(AgentPublishService, publishService);
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(adapter.publish(mock(), 'project-1', binding)).rejects.toThrow(ForbiddenError);
+			expect(publishService.publishAgent).not.toHaveBeenCalled();
 		});
 	});
 

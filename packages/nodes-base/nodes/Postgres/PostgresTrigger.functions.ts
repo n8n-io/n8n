@@ -5,7 +5,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { configurePostgres } from './transport';
 import type { PgpDatabase, PostgresNodeCredentials } from './v2/helpers/interfaces';

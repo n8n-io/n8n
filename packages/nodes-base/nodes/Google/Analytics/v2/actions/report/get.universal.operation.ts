@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { IData, IDimension, IMetric } from '../../helpers/Interfaces';
 import {
@@ -692,7 +693,7 @@ export async function execute(
 	}
 
 	const method = 'POST';
-	const endpoint = '/v4/reports:batchGet';
+	const endpoint = requestPath`/v4/reports:batchGet`;
 
 	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(

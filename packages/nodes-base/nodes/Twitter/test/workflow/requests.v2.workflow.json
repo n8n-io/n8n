@@ -1,0 +1,369 @@
+{
+	"name": "X Requests (V2)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"me": true
+			},
+			"id": "twitter-0",
+			"name": "User Get Me",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 0],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"user": {
+					"__rl": true,
+					"value": "@n8n_io",
+					"mode": "username"
+				}
+			},
+			"id": "twitter-1",
+			"name": "User Get By Username",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 150],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"user": {
+					"__rl": true,
+					"value": "1285192200213626880",
+					"mode": "id"
+				}
+			},
+			"id": "twitter-2",
+			"name": "User Get By ID",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"text": "Hello",
+				"additionalFields": {}
+			},
+			"id": "twitter-3",
+			"name": "Tweet Create",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 450],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tweetDeleteId": {
+					"__rl": true,
+					"value": "1666357334740811776",
+					"mode": "id"
+				}
+			},
+			"id": "twitter-4",
+			"name": "Tweet Delete",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 600],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "like",
+				"tweetId": {
+					"__rl": true,
+					"value": "1666357334740811776",
+					"mode": "id"
+				},
+				"additionalFields": {}
+			},
+			"id": "twitter-5",
+			"name": "Tweet Like",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 750],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "retweet",
+				"tweetId": {
+					"__rl": true,
+					"value": "https://x.com/n8n_io/status/1666357334740811776",
+					"mode": "url"
+				},
+				"additionalFields": {}
+			},
+			"id": "twitter-6",
+			"name": "Tweet Retweet",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 900],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"list": {
+					"__rl": true,
+					"value": "1663852298521419776",
+					"mode": "id"
+				},
+				"user": {
+					"__rl": true,
+					"value": "n8n_io",
+					"mode": "username"
+				}
+			},
+			"id": "twitter-7",
+			"name": "List Add Member",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 1050],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "directMessage",
+				"user": {
+					"__rl": true,
+					"value": "n8n_io",
+					"mode": "username"
+				},
+				"text": "Hello",
+				"additionalFields": {}
+			},
+			"id": "twitter-8",
+			"name": "Direct Message Create",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 1200],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "directMessage",
+				"user": {
+					"__rl": true,
+					"value": "1285192200213626880",
+					"mode": "id"
+				},
+				"text": "Hello",
+				"additionalFields": {}
+			},
+			"id": "twitter-9",
+			"name": "Direct Message Create By ID",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [300, 1350],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "1",
+					"name": "X account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"User Get Me": [
+			{
+				"json": {
+					"id": "1285192200213626880",
+					"name": "n8n",
+					"username": "n8n_io"
+				}
+			}
+		],
+		"User Get By Username": [
+			{
+				"json": {
+					"id": "1285192200213626880",
+					"name": "n8n",
+					"username": "n8n_io"
+				}
+			}
+		],
+		"User Get By ID": [
+			{
+				"json": {
+					"id": "1285192200213626880",
+					"name": "n8n",
+					"username": "n8n_io"
+				}
+			}
+		],
+		"Tweet Create": [
+			{
+				"json": {
+					"id": "1666357334740811776",
+					"text": "Hello"
+				}
+			}
+		],
+		"Tweet Delete": [
+			{
+				"json": {
+					"deleted": true
+				}
+			}
+		],
+		"Tweet Like": [
+			{
+				"json": {
+					"liked": true
+				}
+			}
+		],
+		"Tweet Retweet": [
+			{
+				"json": {
+					"retweeted": true
+				}
+			}
+		],
+		"List Add Member": [
+			{
+				"json": {
+					"is_member": true
+				}
+			}
+		],
+		"Direct Message Create": [
+			{
+				"json": {
+					"dm_conversation_id": "1-2",
+					"dm_event_id": "3"
+				}
+			}
+		],
+		"Direct Message Create By ID": [
+			{
+				"json": {
+					"dm_conversation_id": "1-2",
+					"dm_event_id": "4"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "User Get Me",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get By Username",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User Get By ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tweet Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tweet Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tweet Like",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tweet Retweet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Add Member",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Direct Message Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Direct Message Create By ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

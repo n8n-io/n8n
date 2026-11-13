@@ -55,11 +55,15 @@ import {
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import AssistantAgentPanelThread from './AssistantAgentPanelThread.vue';
 import { useAgentMutationRefresh } from '../composables/useAgentMutationRefresh';
+import { useArtifactLinks } from '../artifactLinks';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
+	clearPendingThreadHandoff,
+	getPendingHandoffContext,
 	provisionSubjectThread,
+	stashPendingAgentAttachment,
 	stashPendingComposerDraft,
 	stashPendingHandoffContext,
 	type InstanceAiThreadLaunch,
@@ -131,6 +135,68 @@ const usesAssistantAgent = computed(
  * new. A new thread has no binding yet: the server writes it with the first message.
  */
 const panelAgentThreads = new Map<string, boolean>();
+// Drafts stay out of chat history until the user sends a message.
+const draftThreadIds = new Set<string>();
+const provisioningThreads = new Map<string, Promise<void>>();
+
+async function persistDraftThread(threadId: string): Promise<void> {
+	if (!draftThreadIds.has(threadId)) return;
+	const pending = provisioningThreads.get(threadId);
+	if (pending) return await pending;
+	const subjectAtStart = props.subject;
+	const context = getPendingHandoffContext(threadId);
+	const extraMetadata =
+		context?.source === 'agent-preview'
+			? {
+					[INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY]: {
+						agentId: context.agentId,
+						threadId: context.threadId,
+					},
+				}
+			: undefined;
+	const provisioning = (async () => {
+		await provisionSubjectThread(subjectAtStart, props.launch, extraMetadata, threadId);
+		if (
+			!mounted ||
+			props.subject.id !== subjectAtStart.id ||
+			props.subject.projectId !== subjectAtStart.projectId ||
+			props.subject.type !== subjectAtStart.type ||
+			props.threadId !== threadId
+		) {
+			clearPendingThreadHandoff(threadId);
+			void store.deleteThread(threadId, { silent: true });
+			throw new DOMException('Chat selection changed', 'AbortError');
+		}
+		draftThreadIds.delete(threadId);
+	})();
+	provisioningThreads.set(threadId, provisioning);
+	try {
+		await provisioning;
+	} finally {
+		provisioningThreads.delete(threadId);
+	}
+}
+
+async function beforeConversationSend(threadId: string): Promise<void> {
+	const subjectAtStart = props.subject;
+	await props.beforeSend?.();
+	if (
+		!mounted ||
+		props.threadId !== threadId ||
+		props.subject.id !== subjectAtStart.id ||
+		props.subject.projectId !== subjectAtStart.projectId ||
+		props.subject.type !== subjectAtStart.type
+	) {
+		throw new DOMException('Chat selection changed', 'AbortError');
+	}
+	try {
+		await persistDraftThread(threadId);
+	} catch (error) {
+		if (error instanceof DOMException && error.name === 'AbortError') throw error;
+		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
+		throw error;
+	}
+}
 const subjectAgentThreads = computed(() =>
 	usesAssistantAgent.value
 		? assistantAgentThreadsStore.knownThreads.filter((thread) =>
@@ -165,13 +231,10 @@ async function loadSubjectAgentThreads(): Promise<boolean> {
 
 // No preview panel here: artifact cards and chips open their resource in a new
 // tab, so the host page (and this conversation) stays put.
-function openInNewTab(path: string): boolean {
-	window.open(path, '_blank', 'noopener');
-	return true;
-}
-provide('openWorkflowPreview', (id: string) => openInNewTab(`/workflow/${id}`));
+const { openArtifactInNewTab } = useArtifactLinks();
+provide('openWorkflowPreview', (id: string) => openArtifactInNewTab('workflow', id));
 provide('openAgentPreview', (id: string, projectId: string) =>
-	openInNewTab(`/projects/${projectId}/agents/${id}`),
+	openArtifactInNewTab('agent', id, projectId),
 );
 // Scopes the header's popover history to this panel's subject — a stable
 // function reference so the list's `filter` prop doesn't re-run on every render.
@@ -344,6 +407,20 @@ async function mintThread() {
 			emitThreadId(threadId);
 			return;
 		}
+		if (props.subject.type === 'agent') {
+			if (
+				!mounted ||
+				props.subject.id !== mintedForSubjectId ||
+				props.threadId !== threadIdAtStart
+			) {
+				return;
+			}
+			const threadId = uuidv4();
+			draftThreadIds.add(threadId);
+			stashPendingAgentAttachment(threadId, props.subject);
+			emitThreadId(threadId);
+			return;
+		}
 		let threadId: string;
 		try {
 			threadId = await provisionSubjectThread(props.subject, props.launch);
@@ -470,6 +547,11 @@ async function fetchThread(threadId: string): Promise<PanelThread> {
  */
 async function verifyThreadId(threadId: string): Promise<void> {
 	threadIdVerified.value = false;
+	if (draftThreadIds.has(threadId)) {
+		isAgentThread.value = false;
+		threadIdVerified.value = true;
+		return;
+	}
 	if (panelAgentThreads.has(threadId)) {
 		isAgentThread.value = true;
 		threadIdVerified.value = true;
@@ -500,6 +582,7 @@ watch(
 	(next, previous) => {
 		if (previous && previous !== next && previous !== handedOffThreadId) {
 			store.disposeRuntime(previous);
+			if (draftThreadIds.delete(previous)) clearPendingThreadHandoff(previous);
 		}
 		// The host cleared the thread id (e.g. deleted elsewhere) — resume or mint,
 		// same as the initial mount with no thread id.
@@ -516,6 +599,7 @@ onUnmounted(() => {
 	emit('update:building', false);
 	emit('update:working', false);
 	if (props.threadId && props.threadId !== handedOffThreadId) store.disposeRuntime(props.threadId);
+	for (const threadId of draftThreadIds) clearPendingThreadHandoff(threadId);
 });
 
 function onAgentSessionCreated() {
@@ -555,6 +639,16 @@ async function openFullAssistant() {
 	if (!mounted || props.subject.id !== subjectIdAtStart || activeThreadId.value !== threadId) {
 		// Torn down, switched subjects, or the selected thread moved on while
 		// beforeSend was in flight — nothing left here to hand off.
+		return;
+	}
+	try {
+		await persistDraftThread(threadId);
+	} catch (error) {
+		if (error instanceof DOMException && error.name === 'AbortError') return;
+		toast.showError(error, i18n.baseText('instanceAi.handoff.openFailed.title'));
+		return;
+	}
+	if (!mounted || props.subject.id !== subjectIdAtStart || activeThreadId.value !== threadId) {
 		return;
 	}
 	handedOffThreadId = threadId;
@@ -606,7 +700,8 @@ const ThreadScope = defineComponent({
 					// Forward the live subject so the chat-input context chip follows a
 					// host rename instead of the snapshot stashed at thread mint.
 					subject: props.subject,
-					beforeSend: props.beforeSend,
+					newThread: draftThreadIds.has(scopeProps.threadId),
+					beforeSend: () => beforeConversationSend(scopeProps.threadId),
 					placeholder: props.placeholder,
 					placeholderPreview: props.placeholderPreview,
 					autofocus: props.visible,

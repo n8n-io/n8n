@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -63,7 +63,11 @@ describe('Job -> Get Run Output', () => {
 	const apiMock = (context: ReturnType<typeof setupContext>) =>
 		context.helpers.httpRequestWithAuthentication;
 	const getRequest = (path: string, qs: object) =>
-		expect.objectContaining({ method: 'GET', url: `${HOST}${path}`, qs });
+		expect.objectContaining({
+			method: 'GET',
+			url: expect.objectContaining({ value: `${HOST}${path}` }),
+			qs,
+		});
 
 	it('should return one item per task, tagged with the task and run IDs', async () => {
 		const context = setupContext({}, 2);
@@ -191,7 +195,7 @@ describe('Job -> Get Run Output', () => {
 			context: { itemIndex: 2 },
 		});
 		expect(apiMock(context)).toHaveBeenCalledTimes(20);
-		expect(apiMock(context).mock.calls.map(([, options]) => options.url)).not.toContain(
+		expect(apiMock(context).mock.calls.map(([, options]) => String(options.url))).not.toContain(
 			`${HOST}/api/2.2/jobs/runs/get-output`,
 		);
 	});
@@ -309,7 +313,7 @@ describe('listSearch -> getRuns', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/runs/list`,
+				url: requestUrl`${HOST}/api/2.2/jobs/runs/list`,
 				qs: { limit: 25, page_token: 'prev-token' },
 			}),
 		);

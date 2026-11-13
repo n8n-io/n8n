@@ -390,10 +390,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
 				steerableExecutionId.value = result.steerableExecutionId ?? null;
 			}
-		} catch (error) {
-			if (!disposed && target === targetKey() && version === queueVersion) {
-				showError(error, locale.baseText('agents.chat.queue.loadError'));
-			}
+		} catch {
+			// Background refresh: keep the last known queue. The next push event or reconnect
+			// retries, and a toast on every failed poll floods the UI while n8n is unreachable.
 		}
 	}
 
@@ -1271,6 +1270,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
+				addReplyAttachments(msg, tc);
 				const interactive = rebuildInteractiveFromHistory({ ...tc, output: undefined }, extensions);
 				if (interactive) {
 					interactive.runId = payload.runId;

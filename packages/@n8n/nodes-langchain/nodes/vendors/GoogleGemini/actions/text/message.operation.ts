@@ -6,6 +6,7 @@ import {
 	NodeOperationError,
 	accumulateTokenUsage,
 	jsonParse,
+	requestPath,
 	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
@@ -23,7 +24,7 @@ import type {
 	FunctionCallPart,
 	TextPart,
 } from '../../helpers/interfaces';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -530,11 +531,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...(toolConfig && { toolConfig }),
 	};
 
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
-
-	const captureUsage = () => {
+	const captureUsage = (response: GenerateContentResponse) => {
 		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
 			| { promptTokenCount: number; candidatesTokenCount: number }
 			| undefined;
@@ -547,7 +544,31 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	};
 
-	captureUsage();
+	const requestedModel = model.replace(/^models\//, '');
+	const generateContent = async () => {
+		const response = (await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+			{
+				body,
+			},
+		)) as GenerateContentResponse;
+		captureUsage(response);
+		if (
+			requestedModel.startsWith('gemma-') &&
+			response.modelVersion &&
+			response.modelVersion.replace(/^models\//, '') !== requestedModel
+		) {
+			throw new NodeOperationError(this.getNode(), 'Google returned a different model', {
+				itemIndex: i,
+				description: `Requested "${model}", but Google returned "${response.modelVersion}". Check that the selected model is available for your API key.`,
+			});
+		}
+		return response;
+	};
+
+	let response = await generateContent();
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -586,14 +607,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 						},
 					},
 				],
-				role: 'tool',
+				role: 'user',
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
-		captureUsage();
+		response = await generateContent();
 		toolCalls = getToolCalls(response);
 		currentIteration++;
 	}

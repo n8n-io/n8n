@@ -6,8 +6,10 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import type { SplunkCredentials, SplunkError } from '../helpers/interfaces';
@@ -16,21 +18,21 @@ import { extractErrorDescription, formatEntry, parseXml } from '../helpers/utils
 export async function splunkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const { baseUrl, allowUnauthorizedCerts } =
 		await this.getCredentials<SplunkCredentials>('splunkApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
 		form: body,
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
 		useQuerystring: true, // serialize roles array as `roles=A&roles=B`
@@ -91,7 +93,7 @@ export async function splunkApiRequest(
 export async function splunkApiJsonRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -100,11 +102,11 @@ export async function splunkApiJsonRequest(
 
 	qs.output_mode = 'json';
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs: qs ?? {},
-		url: `${baseUrl}${endpoint}`,
+		url: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 		skipSslCertificateValidation: allowUnauthorizedCerts,
 	};

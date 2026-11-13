@@ -42,7 +42,6 @@ import { MAX_HYDRATED_FILE_PARTS } from '../loop/hydrate-file-parts';
 import { StreamSink } from '../loop/stream-sink';
 import { DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION } from '../memory/episodic-memory-defaults';
 import { InMemoryMemory } from '../memory/memory-store';
-import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
 import {
@@ -421,6 +420,118 @@ function makeInterruptibleTool(): BuiltTool {
 // ---------------------------------------------------------------------------
 // execution counters
 // ---------------------------------------------------------------------------
+
+describe('AgentRuntime — reasoning from another OpenAI org', () => {
+	const persistence = { threadId: 'reasoning-thread', resourceId: 'user-1' };
+	// OpenAI answers this when the encrypted reasoning comes from another org,
+	// for example after a change from Gateway credits to an own API key.
+	const rejection = new APICallError({
+		message: 'The encrypted content could not be verified.',
+		url: 'https://api.openai.com/v1/responses',
+		requestBodyValues: {},
+		statusCode: 400,
+		data: { error: { type: 'invalid_request_error', code: 'invalid_encrypted_content' } },
+	});
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const reply = (encrypted: string) => ({
+		role: 'assistant',
+		content: [
+			{
+				type: 'reasoning',
+				text: '',
+				providerOptions: {
+					openai: { itemId: `rs_${encrypted}`, reasoningEncryptedContent: encrypted },
+				},
+			},
+			{ type: 'text', text: 'OK' },
+		],
+	});
+
+	function answer(encrypted: string) {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateSuccess(),
+			response: { messages: [reply(encrypted)] },
+		});
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			response: Promise.resolve({ messages: [reply(encrypted)] }),
+		});
+	}
+
+	function reject() {
+		generateText.mockRejectedValueOnce(rejection);
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			stream: makeChunkStream([{ type: 'error', error: rejection }]),
+			finishReason: silentReject(rejection),
+		});
+	}
+
+	async function run(memory: InMemoryMemory, mode: 'generate' | 'stream', text: string) {
+		const runtime = new AgentRuntime({
+			name: 'reasoning-test',
+			model: 'openai/gpt-5-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			checkpointStorage: 'memory',
+		});
+		if (mode === 'generate') return (await runtime.generate(text, { persistence })).error;
+		const chunks = await collectChunks((await runtime.stream(text, { persistence })).stream);
+		return chunks.find((chunk) => chunk.type === 'error');
+	}
+
+	it.each(['generate', 'stream'] as const)(
+		'%s retries once without the rejected reasoning and keeps it out of later turns',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const sent = (call: number) => JSON.stringify(model.mock.calls[call][0].messages);
+			const memory = new InMemoryMemory();
+			// A real backend returns copies, so only a save can change stored history.
+			const load = memory.getMessages.bind(memory);
+			vi.spyOn(memory, 'getMessages').mockImplementation(async (...args) =>
+				structuredClone(await load(...args)),
+			);
+
+			answer('enc_gateway');
+			expect(await run(memory, mode, 'Hi')).toBeUndefined();
+
+			// A normal turn replays earlier reasoning unchanged, which keeps the prompt cache.
+			reject();
+			answer('enc_own');
+			expect(await run(memory, mode, 'Again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(3);
+			expect(sent(1)).toContain('enc_gateway');
+			expect(sent(2)).not.toContain('enc_gateway');
+
+			// The stored history no longer holds the rejected reasoning: no new retry.
+			answer('enc_next');
+			expect(await run(memory, mode, 'And again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(4);
+			expect(sent(3)).not.toContain('enc_gateway');
+			expect(sent(3)).toContain('enc_own');
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s reports the error when the retry fails too',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const memory = new InMemoryMemory();
+			answer('enc_gateway');
+			await run(memory, mode, 'Hi');
+
+			reject();
+			reject();
+			expect(await run(memory, mode, 'Again')).toBeDefined();
+			expect(model).toHaveBeenCalledTimes(3);
+		},
+	);
+});
 
 describe('AgentRuntime — rejected attachments', () => {
 	const persistence = { threadId: 'attachment-thread', resourceId: 'user-1' };
@@ -8885,7 +8996,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await runtime.dispose();
 	});
 
-	it('loads only unobserved history when an observation cursor exists', async () => {
+	it('resumes from notes at turn start when the thread is over the limit', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: 'thread-1', resourceId: 'resource-1' });
@@ -8954,8 +9065,11 @@ describe('AgentRuntime — observation log jobs', () => {
 		>;
 		const [{ messages }] = generateTextMock.mock.calls[0];
 		const serialized = JSON.stringify(messages);
+		// Over the limit at turn start: the Observer catches up on the backlog
+		// first, so the resume point moves past the recent message too.
 		expect(serialized).not.toContain('OBSERVED_OLD_MESSAGE');
-		expect(serialized).toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).not.toContain('UNOBSERVED_RECENT_MESSAGE');
+		expect(serialized).toContain('Current turn question');
 
 		await runtime.dispose();
 	});
@@ -9126,6 +9240,8 @@ describe('AgentRuntime — mid-run observation', () => {
 			observationalMemory: {
 				observerThresholdTokens: 1,
 				observationLogTailLimit: 20,
+				// These tests assert the notes in the system prompt.
+				logPlacement: 'system',
 				observe: async () => await Promise.resolve(OBSERVE_TEXT),
 			},
 		});
@@ -9148,7 +9264,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		// After the first boundary's compaction the prompt is just the reminder,
 		// and the refreshed system prompt carries the observation.
 		const second = capturedCall(1);
-		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
+		// The turn's request stays visible after the swap.
+		expect(second.messages).toHaveLength(1);
+		expect(JSON.stringify(second.messages)).toContain('start work');
 		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
 		expect(second.instructions).toHaveLength(2);
 
@@ -9268,9 +9386,8 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.generate('Build it', { persistence: PERSISTENCE });
 		await runtime.dispose();
 
-		expect(capturedCall(1).messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expect(capturedCall(1).messages).toHaveLength(1);
+		expect(JSON.stringify(capturedCall(1).messages)).toContain('Build it');
 		expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 			'Wait for a real execution',
 		);
@@ -9543,11 +9660,9 @@ describe('AgentRuntime — mid-run observation', () => {
 		await runtime.dispose();
 
 		const resumeCall = capturedCall(2);
-		expect(JSON.stringify(resumeCall.messages)).not.toContain('start work');
-		expect(resumeCall.messages[0]).toEqual({
-			role: 'user',
-			content: OBSERVATION_CONTINUATION_REMINDER,
-		});
+		// The turn's request stays first; the observed step after it is masked.
+		expect(JSON.stringify(resumeCall.messages[0])).toContain('start work');
+		expect(JSON.stringify(resumeCall.messages)).not.toContain('tc-step');
 	});
 
 	it('observes at the resume boundary when the resumed tool results cross the budget', async () => {
@@ -9579,9 +9694,8 @@ describe('AgentRuntime — mid-run observation', () => {
 		// The first post-resume model call already sees the compacted window:
 		// the resumed tool results were observed before reaching the model.
 		const resumeCall = capturedCall(1);
-		expect(resumeCall.messages).toEqual([
-			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
-		]);
+		expect(resumeCall.messages).toHaveLength(1);
+		expect(JSON.stringify(resumeCall.messages)).toContain('start work');
 		expect(flattenInstructions(resumeCall.instructions)).toContain('Mid-run observation captured.');
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
