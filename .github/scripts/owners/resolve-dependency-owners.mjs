@@ -1,5 +1,4 @@
 import child_process from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -9,9 +8,6 @@ import { findOwningEntry, parseOwnersFile, teamHandleToSlug } from './owners.mjs
 const execFile = promisify(child_process.execFile);
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
-
-/** GitHub team slug -> Linear team name and key. */
-export const TEAMS = JSON.parse(readFileSync(join(import.meta.dirname, 'teams.json'), 'utf8'));
 
 /**
  * @typedef WhyNode One node of `pnpm why --json`: the package, or a package that depends on it.
@@ -66,12 +62,15 @@ export function collectImporters(trees, workspaceNames) {
 }
 
 /**
- * Decide which Linear team owns a dependency. A dependency has one owner.
+ * Decide which OWNERS team owns a dependency. A dependency has one owner.
+ *
+ * Returns OWNERS team slugs (`core-execution`), not Linear teams: the caller
+ * maps a team to its Linear team, so this repo keeps no second mapping.
  *
  * - Production uses only: dev-only dependencies are tooling and go to the OWNERS catch-all team.
  * - Direct production uses win over transitive ones.
  * - One owning team: `single`. Several: `round-robin`. The caller picks one of
- *   `candidateTeams`, because the round-robin state lives with the caller.
+ *   `candidates`, because the round-robin state lives with the caller.
  *
  * @param { object } input
  * @param { string } input.packageName
@@ -79,16 +78,8 @@ export function collectImporters(trees, workspaceNames) {
  * @param { Importer[] } input.importers
  * @param { Map<string, string> } input.importerDirs Workspace package name -> repo-relative directory.
  * @param { import('./owners.mjs').OwnersEntry[] } input.entries
- * @param { Record<string, { linearTeam: string }> } [input.teams]
  * */
-export function decideOwner({
-	packageName,
-	versions = [],
-	importers,
-	importerDirs,
-	entries,
-	teams = TEAMS,
-}) {
+export function decideOwner({ packageName, versions = [], importers, importerDirs, entries }) {
 	/** @param { string } name */
 	const ownerSlug = (name) => {
 		const dir = importerDirs.get(name) ?? '.';
@@ -103,27 +94,22 @@ export function decideOwner({
 
 	// No production use means tooling, owned by whoever owns unassigned files.
 	const catchAll = entries.find((entry) => entry.pattern === '*');
-	let slugs = [];
+	let candidates = [];
 	if (pool.length > 0)
-		slugs = [...new Set(pool.map((importer) => ownerSlug(importer.name)).filter(Boolean))];
-	else if (importers.length > 0 && catchAll) slugs = [teamHandleToSlug(catchAll.team)];
-
-	const unmapped = slugs.filter((slug) => !teams[slug]);
-	const candidateTeams = [
-		...new Set(slugs.filter((slug) => teams[slug]).map((slug) => teams[slug].linearTeam)),
-	].sort();
+		candidates = [...new Set(pool.map((importer) => ownerSlug(importer.name)).filter(Boolean))];
+	else if (importers.length > 0 && catchAll) candidates = [teamHandleToSlug(catchAll.team)];
+	candidates.sort();
 
 	let decision = 'none';
-	if (candidateTeams.length === 1) decision = pool.length > 0 ? 'single' : 'tooling';
-	else if (candidateTeams.length > 1) decision = 'round-robin';
+	if (candidates.length === 1) decision = pool.length > 0 ? 'single' : 'tooling';
+	else if (candidates.length > 1) decision = 'round-robin';
 
 	return {
 		package: packageName,
 		versions,
 		decision,
-		linearTeam: candidateTeams.length === 1 ? candidateTeams[0] : '',
-		candidateTeams,
-		unmapped,
+		owner: candidates.length === 1 ? candidates[0] : '',
+		candidates,
 		importers: importers.map((importer) => ({
 			...importer,
 			dir: importerDirs.get(importer.name) ?? '.',

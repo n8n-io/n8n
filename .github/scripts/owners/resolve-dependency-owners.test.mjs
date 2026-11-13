@@ -1,8 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { parseOwnersFile, teamHandleToSlug } from './owners.mjs';
-import { TEAMS, collectImporters, decideOwner } from './resolve-dependency-owners.mjs';
+import { collectImporters, decideOwner } from './resolve-dependency-owners.mjs';
 
 /**
  * Run these tests by running
@@ -10,12 +9,11 @@ import { TEAMS, collectImporters, decideOwner } from './resolve-dependency-owner
  * node --test ./.github/scripts/owners/resolve-dependency-owners.test.mjs
  * */
 
-const workspace = new Set(['@n8n/a', '@n8n/b', '@n8n/c', 'n8n-tooling']);
+const workspace = new Set(['@n8n/a', '@n8n/b', 'n8n-tooling']);
 
 const importerDirs = new Map([
 	['@n8n/a', 'packages/a'],
 	['@n8n/b', 'packages/b'],
-	['@n8n/c', 'packages/c'],
 	['n8n-tooling', 'packages/tooling'],
 ]);
 
@@ -23,18 +21,10 @@ const entries = [
 	{ pattern: '*', team: '@n8n-io/qa-dx', required: false, line: 1 },
 	{ pattern: 'packages/a/', team: '@n8n-io/nodes', required: false, line: 2 },
 	{ pattern: 'packages/b/', team: '@n8n-io/iam', required: false, line: 3 },
-	{ pattern: 'packages/c/', team: '@n8n-io/unknown-team', required: false, line: 4 },
 ];
 
-const teams = {
-	'qa-dx': { linearTeam: 'Developer Platform' },
-	nodes: { linearTeam: 'NODES' },
-	iam: { linearTeam: 'Identity & Access' },
-};
-
 /** @param {import('./resolve-dependency-owners.mjs').Importer[]} importers */
-const decide = (importers) =>
-	decideOwner({ packageName: 'dep', importers, importerDirs, entries, teams });
+const decide = (importers) => decideOwner({ packageName: 'dep', importers, importerDirs, entries });
 
 describe('collectImporters', () => {
 	it('marks direct and transitive importers and records the direct dependency that pulls it in', () => {
@@ -80,8 +70,8 @@ describe('decideOwner', () => {
 		]);
 
 		assert.equal(result.decision, 'single');
-		assert.equal(result.linearTeam, 'NODES');
-		assert.deepEqual(result.candidateTeams, ['NODES']);
+		assert.equal(result.owner, 'nodes');
+		assert.deepEqual(result.candidates, ['nodes']);
 	});
 
 	it('round-robins between the teams when several use it', () => {
@@ -91,40 +81,21 @@ describe('decideOwner', () => {
 		]);
 
 		assert.equal(result.decision, 'round-robin');
-		assert.equal(result.linearTeam, '');
-		assert.deepEqual(result.candidateTeams, ['Identity & Access', 'NODES']);
+		assert.equal(result.owner, '');
+		assert.deepEqual(result.candidates, ['iam', 'nodes']);
 	});
 
 	it('gives dev-only dependencies to the OWNERS catch-all team as tooling', () => {
 		const result = decide([{ name: '@n8n/a', direct: true, dev: true, via: [] }]);
 
 		assert.equal(result.decision, 'tooling');
-		assert.equal(result.linearTeam, 'Developer Platform');
-	});
-
-	it('reports owners with no Linear team and leaves them out of the candidates', () => {
-		const result = decide([
-			{ name: '@n8n/a', direct: true, dev: false, via: [] },
-			{ name: '@n8n/c', direct: true, dev: false, via: [] },
-		]);
-
-		assert.equal(result.decision, 'single');
-		assert.deepEqual(result.unmapped, ['unknown-team']);
+		assert.equal(result.owner, 'qa-dx');
 	});
 
 	it('returns no owner when no workspace package uses the dependency', () => {
 		const result = decide([]);
 
 		assert.equal(result.decision, 'none');
-		assert.deepEqual(result.candidateTeams, []);
-	});
-});
-
-describe('teams.json', () => {
-	it('maps every team in the real OWNERS file to a Linear team', () => {
-		const slugs = new Set(parseOwnersFile().map((entry) => teamHandleToSlug(entry.team)));
-		const missing = [...slugs].filter((slug) => !TEAMS[slug]?.linearTeam);
-
-		assert.deepEqual(missing, [], 'add these OWNERS teams to teams.json');
+		assert.deepEqual(result.candidates, []);
 	});
 });
