@@ -51,11 +51,7 @@ function isGenerateContentResponse(response: unknown): response is GenerateConte
 	const responseObj = response as Record<string, unknown>;
 
 	if (!('candidates' in responseObj) || responseObj.candidates === undefined) {
-		return (
-			'promptFeedback' in responseObj &&
-			typeof responseObj.promptFeedback === 'object' &&
-			responseObj.promptFeedback !== null
-		);
+		return true;
 	}
 
 	if (!Array.isArray(responseObj.candidates)) {
