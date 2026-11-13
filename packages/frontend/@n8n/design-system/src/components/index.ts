@@ -9,6 +9,7 @@ export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export type { ActionToggleItem } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
@@ -172,6 +173,22 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
+export {
+	default as N8nVersionHistory,
+	isVersionHistoryGroup,
+	isVersionHistoryHeading,
+} from './N8nVersionHistory';
+export type {
+	VersionHistoryActionPayload,
+	VersionHistoryEntry,
+	VersionHistoryGroup,
+	VersionHistoryHeading,
+	VersionHistoryItem,
+	VersionHistoryProps,
+	VersionHistoryStatus,
+	VersionHistoryTogglePayload,
+	VersionHistoryTooltip,
+} from './N8nVersionHistory';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';

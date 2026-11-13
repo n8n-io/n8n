@@ -21,6 +21,8 @@ A single-select list. Arrow keys move a highlight over the whole item. Pointer m
 - `value: string` Value this item selects. Unique among the items in the list.
 - `disabled?: boolean` The user cannot highlight or select this item. Arrow keys skip it. Tab from another item skips it when an enabled item follows. A click does not change the value. | `default: false`
 
+Other attributes on an item stay on the option. They stay current when the highlight and the selection stay the same.
+
 **Events**
 
 - `update:modelValue(value: string | undefined)` The selected value changed. `toggle` emits `undefined` when the user clears the value.
