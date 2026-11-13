@@ -8,6 +8,7 @@ import {
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
+	type FrontendModuleSettings,
 } from '@n8n/api-types';
 
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -24,6 +25,13 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
+}));
+
+const { settingsStoreState } = vi.hoisted(() => ({
+	settingsStoreState: { moduleSettings: {} as FrontendModuleSettings },
+}));
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => settingsStoreState,
 }));
 
 const { showErrorSpy, showMessageSpy } = vi.hoisted(() => ({
@@ -109,6 +117,7 @@ function setup(overrides: Partial<UseAgentKnowledgeDeps> = {}) {
 describe('useAgentKnowledge', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsStoreState.moduleSettings = {};
 		listAgentFilesMock.mockResolvedValue([]);
 		uploadAgentFilesMock.mockResolvedValue([]);
 		deleteAgentFileMock.mockResolvedValue(undefined);
@@ -280,7 +289,7 @@ describe('useAgentKnowledge', () => {
 			await knowledge.uploadFiles([makeFile('notes.txt')]);
 
 			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
-				interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+				interpolate: { size: `${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB` },
 			});
 			expect(showErrorSpy).toHaveBeenCalledWith(
 				expect.any(Error),
@@ -320,6 +329,138 @@ describe('useAgentKnowledge', () => {
 			expect(knowledge.agentFiles.value).toEqual([]);
 			expect(showMessageSpy).not.toHaveBeenCalled();
 			expect(knowledge.agentFilesUploading.value).toBe(true);
+		});
+	});
+
+	describe('upload limits from the module settings', () => {
+		const MB = 1024 * 1024;
+
+		it('falls back to the default limits while the module settings carry none', () => {
+			const { knowledge } = setup();
+
+			expect(knowledge.uploadLimits.value).toEqual({
+				maxFileSizeBytes: MAX_AGENT_FILE_SIZE_BYTES,
+				maxFilesPerUpload: MAX_AGENT_FILES_PER_UPLOAD,
+				maxTotalSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+			});
+		});
+
+		it('rejects a file above a lower configured size limit before the request, with the limit in the message', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: { maxFileSizeBytes: 5 * MB, maxFilesPerUpload: 10, maxTotalSizeBytes: 1536 * MB },
+				},
+			};
+			const { knowledge, telemetry } = setup();
+
+			await knowledge.uploadFiles([makeFile('big.txt', 5 * MB + 1)]);
+
+			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadFileTooLarge.message', {
+				interpolate: { name: 'big.txt', size: '5' },
+			});
+			expect(telemetry.trackRejectedFileUpload).toHaveBeenCalledWith('file_size', 1);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('accepts a file above the default size limit when the configured limit is higher', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: {
+						maxFileSizeBytes: 50 * MB,
+						maxFilesPerUpload: 10,
+						maxTotalSizeBytes: 1536 * MB,
+					},
+				},
+			};
+			const { knowledge, telemetry } = setup();
+			const file = makeFile('big.txt', MAX_AGENT_FILE_SIZE_BYTES + 1);
+
+			await knowledge.uploadFiles([file]);
+
+			expect(telemetry.trackRejectedFileUpload).not.toHaveBeenCalled();
+			expect(uploadAgentFilesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', [file]);
+		});
+
+		it('rejects more files than a lower configured count limit, with the limit in the message', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: { maxFileSizeBytes: 25 * MB, maxFilesPerUpload: 3, maxTotalSizeBytes: 1536 * MB },
+				},
+			};
+			const { knowledge, telemetry } = setup();
+
+			await knowledge.uploadFiles([
+				makeFile('1.txt'),
+				makeFile('2.txt'),
+				makeFile('3.txt'),
+				makeFile('4.txt'),
+			]);
+
+			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTooManyFiles.message', {
+				interpolate: { max: '3' },
+			});
+			expect(telemetry.trackRejectedFileUpload).toHaveBeenCalledWith('too_many_files', 4);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects a total above a lower configured total limit, with the limit in megabytes', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: { maxFileSizeBytes: 25 * MB, maxFilesPerUpload: 10, maxTotalSizeBytes: 500 * MB },
+				},
+			};
+			const { knowledge, telemetry } = setup();
+			knowledge.agentFiles.value = [makeAgentFile({ fileSizeBytes: 500 * MB })];
+
+			await knowledge.uploadFiles([makeFile('notes.txt')]);
+
+			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
+				interpolate: { size: '500 MB' },
+			});
+			expect(telemetry.trackRejectedFileUpload).toHaveBeenCalledWith('total_limit', 1);
+			expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+		});
+
+		it('states a configured total limit above one gigabyte in gigabytes', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: {
+						maxFileSizeBytes: 25 * MB,
+						maxFilesPerUpload: 10,
+						maxTotalSizeBytes: 2000 * MB,
+					},
+				},
+			};
+			const { knowledge } = setup();
+			knowledge.agentFiles.value = [makeAgentFile({ fileSizeBytes: 2000 * MB })];
+
+			await knowledge.uploadFiles([makeFile('notes.txt')]);
+
+			expect(baseTextSpy).toHaveBeenCalledWith('agents.builder.files.uploadTotalTooLarge.message', {
+				interpolate: { size: '1.95 GB' },
+			});
+		});
+
+		it('accepts a total above the default limit when the configured total limit is higher', async () => {
+			settingsStoreState.moduleSettings = {
+				knowledge: {
+					limits: {
+						maxFileSizeBytes: 25 * MB,
+						maxFilesPerUpload: 10,
+						maxTotalSizeBytes: 2000 * MB,
+					},
+				},
+			};
+			const { knowledge, telemetry } = setup();
+			knowledge.agentFiles.value = [
+				makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+			];
+			const file = makeFile('notes.txt');
+
+			await knowledge.uploadFiles([file]);
+
+			expect(telemetry.trackRejectedFileUpload).not.toHaveBeenCalled();
+			expect(uploadAgentFilesMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1', [file]);
 		});
 	});
 

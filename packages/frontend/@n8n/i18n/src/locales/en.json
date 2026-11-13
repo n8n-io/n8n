@@ -9794,7 +9794,7 @@
 	"agents.builder.files.uploadFileTooLarge.title": "File too large",
 	"agents.builder.files.uploadFileTooLarge.message": "{name} is larger than {size} MB.",
 	"agents.builder.files.uploadTotalTooLarge.title": "Knowledge base limit reached",
-	"agents.builder.files.uploadTotalTooLarge.message": "These files would make the knowledge base larger than {size} GB. Delete files or upload a smaller selection.",
+	"agents.builder.files.uploadTotalTooLarge.message": "These files would make the knowledge base larger than {size}. Delete files or upload a smaller selection.",
 	"agents.builder.files.uploadTooManyFiles.title": "Too many files",
 	"agents.builder.files.uploadTooManyFiles.message": "You can upload up to {max} files at a time. Select fewer files and try again.",
 	"agents.builder.files.empty": "No files uploaded",

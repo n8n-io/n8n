@@ -213,7 +213,7 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
 const createAgentShape = {
-	name: z.string().min(1),
+	name: z.string().trim().min(1).max(128),
 	id: clientMintedAgentIdSchema.optional(),
 	config: z.record(z.unknown()).optional(),
 	schema: AgentJsonConfigSchema.optional(),
@@ -340,6 +340,23 @@ export class AgentPublicDto extends Z.class(agentPublicShape) {}
 
 /** Single-agent response. `config` is the document `PUT` writes back. */
 export class AgentDto extends AgentPublicDto.extend(agentBuilderStateShape) {}
+
+/**
+ * Response of the Public API `DELETE /agents/:agentId`. Metadata of the
+ * removed agent: the deleted row has no runtime state or config to report.
+ */
+export const deletedAgentPublicSchema = z.object(agentPublicShape).pick({
+	id: true,
+	name: true,
+	projectId: true,
+	availableInMCP: true,
+	versionId: true,
+	activeVersionId: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class DeletedAgentPublicDto extends Z.class(deletedAgentPublicSchema.shape) {}
 
 const agentListItemShape = {
 	id: z.string(),
