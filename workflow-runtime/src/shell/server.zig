@@ -2613,6 +2613,11 @@ test {
     _ = fbf;
 }
 
+/// The most connection slots a test shard gives out. `acceptAll` uses a
+/// generation counter per slot, so a helper can tell a new connection from
+/// an old one in the same slot.
+const test_max_conns = 64;
+
 const TestRunner = struct {
     arena: std.heap.ArenaAllocator,
     /// `--fallback`: a path where no host listens, so the tests connect the host by hand.
@@ -2663,6 +2668,14 @@ const TestRunner = struct {
 
     /// Accept one client and send it `req`; the index of its connection.
     fn client(t: *TestRunner, req: []const u8) !struct { fd: c_int, idx: u32 } {
+        // A non-blocking connect returns before the kernel puts the
+        // connection in the accept queue, so the shard may accept it only
+        // some polls later. Another connection that is already open must not
+        // answer for it: remember the generations per slot, and wait for the
+        // slot that changed.
+        std.debug.assert(t.r.conns.len <= test_max_conns);
+        var before: [test_max_conns]u32 = @splat(0);
+        for (t.r.conns, 0..) |c, i| before[i] = c.gen;
         const fd = try sys.connectTcp(.{ 127, 0, 0, 1 }, t.port);
         var tries: u32 = 0;
         while (tries < 1000) : (tries += 1) {
@@ -2673,14 +2686,18 @@ const TestRunner = struct {
         tries = 0;
         while (idx == null and tries < 1000) : (tries += 1) {
             t.r.acceptAll();
-            for (t.r.conns, 0..) |c, i| if (c.fd >= 0) {
+            for (t.r.conns, 0..) |c, i| if (c.fd >= 0 and c.gen != before[i]) {
                 idx = @intCast(i);
             };
             if (idx == null) napTest();
         }
+        const i = idx orelse {
+            sys.close(fd);
+            return error.NoNewConn;
+        };
         napTest();
-        try t.r.readConn(idx.?);
-        return .{ .fd = fd, .idx = idx.? };
+        try t.r.readConn(i);
+        return .{ .fd = fd, .idx = i };
     }
 
     /// The response the client got, after the shard flushed.
@@ -2704,6 +2721,21 @@ const TestRunner = struct {
 fn napTest() void {
     var ts: std.c.timespec = .{ .sec = 0, .nsec = 2_000_000 };
     _ = std.c.nanosleep(&ts, null);
+}
+
+test "regression: a second client gets its own connection, not the one already open" {
+    // The connect is non-blocking, so the kernel may put the connection in
+    // the accept queue after the shard's first poll. Then a helper that takes
+    // the highest open slot returns the connection that was already open, and
+    // the test reads that connection's reply. Under load this failed.
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const a = try t.client("");
+    defer sys.close(a.fd);
+    const b = try t.client("");
+    defer sys.close(b.fd);
+    try std.testing.expect(b.idx != a.idx);
 }
 
 test "inbound requests leave room for the results of outbound requests" {
