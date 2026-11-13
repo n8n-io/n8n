@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/spreadsheet/delete.operation';
 import { apiRequest } from '../../../../v2/transport';
@@ -26,7 +27,7 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 
 	it('should successfully delete a spreadsheet', async () => {
 		const documentId = '1234567890';
-		const expectedUrl = `https://www.googleapis.com/drive/v3/files/${documentId}`;
+		const expectedUrl = requestUrl`https://www.googleapis.com/drive/v3/files/${documentId}`;
 
 		mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue(documentId);
 		(apiRequest.call as jest.Mock).mockResolvedValue({});
@@ -36,7 +37,7 @@ describe('GoogleSheetsDeleteSpreadsheet', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			mockExecuteFunction,
 			'DELETE',
-			'',
+			requestPath``,
 			{},
 			{},
 			expectedUrl,

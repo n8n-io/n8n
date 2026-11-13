@@ -1,4 +1,5 @@
 import {
+	requestPath,
 	updateDisplayOptions,
 	type IExecuteSingleFunctions,
 	type IN8nHttpFullResponse,
@@ -98,7 +99,7 @@ const properties: INodeProperties[] = [
 							const response = await microsoftSharePointApiRequest.call(
 								this,
 								'PUT',
-								`/sites/${site}/drive/items/${file}/content`,
+								requestPath`/sites/${site}/drive/items/${file}/content`,
 								binaryDataBuffer,
 							);
 							item.json = response;

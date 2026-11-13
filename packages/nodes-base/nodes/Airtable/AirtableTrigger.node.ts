@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { IRecord } from './v1/GenericFunctions';
 import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
@@ -242,7 +242,7 @@ export class AirtableTrigger implements INodeType {
 
 		const qs: IDataObject = {};
 
-		const endpoint = `${base}/${table}`;
+		const endpoint = requestPath`${base}/${table}`;
 
 		const now = moment().utc().format();
 

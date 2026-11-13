@@ -28,6 +28,8 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
+import { RoleService } from '@/services/role.service';
+
 import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
@@ -43,7 +45,28 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { RoleService } from '@/services/role.service';
+// Rough storage of one row besides its values: row header, `id`, `createdAt`, `updatedAt`
+// and the primary key index entry. The real size depends on the database.
+// This is a conservative estimate to avoid exceeding the storage limit.
+const ESTIMATED_ROW_OVERHEAD_BYTES = 64;
+
+// A number, boolean or date takes at most 8 bytes. Strings use their real length.
+const ESTIMATED_FIXED_VALUE_BYTES = 8;
+
+function estimateValueSize(value: DataTableColumnJsType | undefined): number {
+	if (value === null || value === undefined) {
+		return 0;
+	}
+
+	return typeof value === 'string' ? Buffer.byteLength(value) : ESTIMATED_FIXED_VALUE_BYTES;
+}
+
+function estimateSingleRowSize(row: DataTableRow): number {
+	return Object.values(row).reduce<number>(
+		(total, value) => total + estimateValueSize(value),
+		ESTIMATED_ROW_OVERHEAD_BYTES,
+	);
+}
 
 @Service()
 export class DataTableService {
@@ -72,7 +95,6 @@ export class DataTableService {
 		if (dto.fileId) {
 			try {
 				await this.importDataFromFile(projectId, result.id, dto.fileId, dto.hasHeaders ?? true);
-				await this.fileCleanupService.deleteFile(dto.fileId);
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
 				throw error;
@@ -90,21 +112,48 @@ export class DataTableService {
 		fileId: string,
 		hasHeaders: boolean,
 	) {
+		const claimedFileId = await this.fileCleanupService.claimFile(fileId);
 		try {
 			const tableColumns = await this.getColumns(dataTableId, projectId);
 
-			const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
+			const csvColumnNames = await this.csvParserService.parseColumnNames(
+				claimedFileId,
+				hasHeaders,
+			);
 
 			const columnMapping = new Map<string, string>();
-			csvMetadata.columns.forEach((csvColumn, index) => {
+			csvColumnNames.forEach((csvColumnName, index) => {
 				if (tableColumns[index]) {
-					columnMapping.set(csvColumn.name, tableColumns[index].name);
+					columnMapping.set(csvColumnName, tableColumns[index].name);
 				}
 			});
 
-			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
+			const rowBatches = this.transformCsvRowBatches(claimedFileId, hasHeaders, columnMapping);
 
-			const transformedRows = csvRows.map((csvRow) => {
+			await this.insertRowBatches(dataTableId, projectId, rowBatches);
+		} catch (error) {
+			if (error instanceof DataTableValidationError) {
+				throw error;
+			}
+
+			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
+			if (error instanceof FileUploadError) {
+				throw error;
+			}
+
+			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
+		} finally {
+			await this.fileCleanupService.deleteFile(claimedFileId);
+		}
+	}
+
+	private async *transformCsvRowBatches(
+		fileId: string,
+		hasHeaders: boolean,
+		columnMapping: Map<string, string>,
+	): AsyncGenerator<DataTableRow[]> {
+		for await (const csvRows of this.csvParserService.parseFileInBatches(fileId, hasHeaders)) {
+			yield csvRows.map((csvRow) => {
 				const transformedRow: DataTableRow = {};
 				for (const [csvColName, value] of Object.entries(csvRow)) {
 					const tableColName = columnMapping.get(csvColName);
@@ -114,14 +163,65 @@ export class DataTableService {
 				}
 				return transformedRow;
 			});
-
-			if (transformedRows.length > 0) {
-				await this.insertRows(dataTableId, projectId, transformedRows);
-			}
-		} catch (error) {
-			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
-			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
 		}
+	}
+
+	/**
+	 * Inserts all batches in one transaction, so a failure leaves the table without new rows.
+	 * Stops before a batch would take the data tables over the storage limit.
+	 */
+	private async insertRowBatches(
+		dataTableId: string,
+		projectId: string,
+		rowBatches: AsyncIterable<DataTableRows>,
+	): Promise<number> {
+		await this.validateDataTableSize();
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		const remainingBytes = await this.dataTableSizeValidator.getRemainingStorageBytes(
+			async () => await this.dataTableRepository.findDataTablesSize(),
+		);
+
+		const insertedRowCount = await this.dataTableColumnRepository.manager.transaction(
+			async (trx) => {
+				const columns = await this.dataTableColumnRepository.getColumns(dataTableId, trx);
+				let estimatedBytes = 0;
+				let insertedRows = 0;
+
+				for await (const rowsBatch of rowBatches) {
+					const transformedRows = this.validateAndTransformRows(rowsBatch, columns);
+
+					estimatedBytes += this.estimateRowsSize(transformedRows);
+					if (estimatedBytes > remainingBytes) {
+						throw new DataTableValidationError(
+							'Data table size limit exceeded: this file is too large for the remaining storage. No rows were imported.',
+						);
+					}
+
+					const result = await this.dataTableRowsRepository.insertRows(
+						dataTableId,
+						transformedRows,
+						columns,
+						'count',
+						trx,
+					);
+
+					insertedRows += result.insertedRows;
+				}
+
+				return insertedRows;
+			},
+		);
+
+		if (insertedRowCount > 0) {
+			this.dataTableSizeValidator.reset();
+		}
+
+		return insertedRowCount;
+	}
+
+	private estimateRowsSize(rows: DataTableRows): number {
+		return rows.reduce((total, row) => total + estimateSingleRowSize(row), 0);
 	}
 
 	// Updates data table properties (currently limited to renaming)

@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
@@ -78,7 +78,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/sub1',
+					requestPath`/v1.0/subscriptions/sub1`,
 				);
 				expect(staticData.subscriptionIds).toBeUndefined();
 			});
@@ -198,7 +198,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/sub-expiring',
+					requestPath`/v1.0/subscriptions/sub-expiring`,
 				);
 			});
 
@@ -234,7 +234,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/sub-other',
+					requestPath`/v1.0/subscriptions/sub-other`,
 				);
 				expect(staticData.subscriptionIds).toBeUndefined();
 				expect(staticData.webhookSecret).toBeUndefined();
@@ -292,7 +292,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'POST',
-					'/v1.0/subscriptions',
+					requestPath`/v1.0/subscriptions`,
 					expect.objectContaining({
 						changeType: 'created',
 						notificationUrl: 'https://webhook.url',
@@ -381,7 +381,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/subscription123',
+					requestPath`/v1.0/subscriptions/subscription123`,
 				);
 				expect(mockWebhookData.subscriptionIds).toBeUndefined();
 				expect(mockWebhookData.webhookSecret).toBeUndefined();
@@ -401,7 +401,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/stale1',
+					requestPath`/v1.0/subscriptions/stale1`,
 				);
 				expect(mockWebhookData.staleSubscriptionIds).toBeUndefined();
 			});
@@ -453,7 +453,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					mockWebhookFunctions,
 					'DELETE',
-					'/v1.0/subscriptions/subscription123',
+					requestPath`/v1.0/subscriptions/subscription123`,
 				);
 				// Nothing was removed on Graph, so the ids must survive for the next attempt.
 				expect(staticData.subscriptionIds).toEqual(['subscription123']);

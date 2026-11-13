@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, WorkflowOperationError, type IRun } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -63,6 +63,26 @@ describe('ExecutionService', () => {
 			 * Assert
 			 */
 			await expect(retry).rejects.toThrow(AbortedExecutionRetryError);
+		});
+
+		it('should hide the push session fields in the response', async () => {
+			executionRepository.findWithUnflattenedData.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status: 'error',
+					finished: false,
+					data: { executionData: { nodeExecutionStack: [] }, resultData: { runData: {} } },
+				}),
+			);
+			activeExecutions.getPostExecutePromise.mockResolvedValue({
+				data: { pushRef: 'push-ref', pushRefUserId: 'user-id', resultData: { runData: {} } },
+			} as IRun);
+			const req = mock<ExecutionRequest.Retry>({ body: { loadWorkflow: false } });
+
+			const response = await executionService.retry(req, []);
+
+			expect(response.data).toHaveProperty('resultData');
+			expect(response.data).not.toHaveProperty('pushRef');
+			expect(response.data).not.toHaveProperty('pushRefUserId');
 		});
 	});
 

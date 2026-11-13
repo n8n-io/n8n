@@ -179,4 +179,53 @@ describe('Test YouTube Node', () => {
 			workflowFiles: ['playlistItems.workflow.json'],
 		});
 	});
+
+	describe('Video', () => {
+		const video = {
+			kind: 'youtube#video',
+			etag: 'fakeEtagVideo1',
+			id: 'dQw4w9WgXcQ',
+			snippet: { title: 'Test Video', categoryId: '22' },
+		};
+
+		beforeAll(() => {
+			youtubeNock
+				.get('/v3/videos')
+				.query({
+					part: 'contentDetails,id,liveStreamingDetails,localizations,player,recordingDetails,snippet,statistics,status,topicDetails',
+					id: 'dQw4w9WgXcQ',
+				})
+				.reply(200, { items: [video] });
+			youtubeNock
+				.get('/v3/search')
+				.query({ part: 'snippet', type: 'video', forMine: true, maxResults: 2 })
+				.reply(200, {
+					items: [
+						{
+							kind: 'youtube#searchResult',
+							etag: 'fakeEtagSearch1',
+							id: { kind: 'youtube#video', videoId: 'dQw4w9WgXcQ' },
+						},
+					],
+				});
+			youtubeNock
+				.put('/v3/videos', {
+					id: 'dQw4w9WgXcQ',
+					snippet: { title: 'Updated Title', categoryId: '22' },
+					status: {},
+					recordingDetails: {},
+				})
+				.query({ part: 'snippet, status, recordingDetails' })
+				.reply(200, video);
+			youtubeNock.post('/v3/videos/rate', { id: 'dQw4w9WgXcQ', rating: 'like' }).reply(204);
+			youtubeNock.delete('/v3/videos', { id: 'dQw4w9WgXcQ' }).reply(204);
+		});
+
+		afterAll(() => youtubeNock.done());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['videos.workflow.json'],
+		});
+	});
 });

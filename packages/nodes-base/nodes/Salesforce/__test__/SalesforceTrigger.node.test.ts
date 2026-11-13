@@ -1,7 +1,7 @@
 import { mockDeep } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { SalesforceTrigger } from '../SalesforceTrigger.node';
@@ -86,7 +86,7 @@ describe('SalesforceTrigger', () => {
 				const result =
 					await trigger.methods!.loadOptions!.getCustomObjects.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects`);
 				expect(sortOptionsSpy).toHaveBeenCalled();
 
 				expect(result).toEqual([
@@ -179,7 +179,7 @@ describe('SalesforceTrigger', () => {
 			expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'records',
 				'GET',
-				'/query',
+				requestPath`/query`,
 				{},
 				expect.objectContaining({
 					q: 'SELECT id,name,type FROM Account WHERE CreatedDate >= 2023-01-01T00:00:00.000Z',

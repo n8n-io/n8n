@@ -102,7 +102,7 @@ export const objectOperations: INodeProperties[] = [
 					request: {
 						method: 'POST',
 						baseURL: 'https://storage.googleapis.com/upload/storage/v1',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/"}}',
 						qs: {
 							name: '={{$parameter["objectName"]}}',
 							uploadType: 'multipart',
@@ -198,7 +198,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						qs: {},
 					},
 				},
@@ -211,7 +211,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						returnFullResponse: true,
 						qs: {
 							alt: '={{$parameter["alt"]}}',
@@ -275,7 +275,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/"}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/"}}',
 						returnFullResponse: true,
 						qs: {},
 					},
@@ -339,7 +339,7 @@ export const objectOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '={{"/b/" + $parameter["bucketName"] + "/o/" + $parameter["objectName"]}}',
+						url: '={{"/b/" + toPathSegment($parameter["bucketName"]) + "/o/" + toPathSegment($parameter["objectName"])}}',
 						qs: {},
 						body: {},
 					},

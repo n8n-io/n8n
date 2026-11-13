@@ -6,7 +6,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { jsonParse, updateDisplayOptions } from 'n8n-workflow';
+import { jsonParse, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 
@@ -287,7 +287,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		..._omit(options, ['maxToolsIterations']),
 	};
 
-	let response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/chat/completions`, {
 		body,
 	})) as ChatCompletion;
 
@@ -330,7 +330,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/chat/completions', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/chat/completions`, {
 			body,
 		})) as ChatCompletion;
 

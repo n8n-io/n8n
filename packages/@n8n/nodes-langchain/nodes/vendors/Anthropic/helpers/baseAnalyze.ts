@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { requestPath, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import type { Content, MessagesResponse } from './interfaces';
 import { getBaseUrl, splitByComma } from './utils';
@@ -75,7 +75,7 @@ export async function baseAnalyze(
 		],
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/v1/messages', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/v1/messages`, {
 		body,
 	})) as MessagesResponse;
 

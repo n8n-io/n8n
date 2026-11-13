@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../../GenericFunctions';
 import { apiRequest, apiRequestAllItems } from '../../../v2/transport';
@@ -33,7 +34,7 @@ describe('Google Sheets Transport', () => {
 	describe('apiRequest', () => {
 		it('should make successful request with service account authentication', async () => {
 			const method = 'GET';
-			const resource = '/v4/spreadsheets';
+			const resource = requestPath`/v4/spreadsheets`;
 			const mockResponse = { data: 'test' };
 
 			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
@@ -53,14 +54,41 @@ describe('Google Sheets Transport', () => {
 						Authorization: `Bearer ${mockAccessToken}`,
 					}),
 					method,
-					uri: `https://sheets.googleapis.com${resource}`,
+					uri: requestUrl`https://sheets.googleapis.com/v4/spreadsheets`,
+				}),
+			);
+		});
+
+		it('should send the given request url with the request options', async () => {
+			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
+			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = jest.fn().mockResolvedValue({});
+
+			await apiRequest.call(
+				mockExecuteFunction,
+				'GET',
+				requestPath``,
+				undefined,
+				{},
+				requestUrl`https://docs.google.com/spreadsheets/export?id=1`,
+				undefined,
+				{ resolveWithFullResponse: true, encoding: null, json: false },
+			);
+
+			expect(mockExecuteFunction.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: requestUrl`https://docs.google.com/spreadsheets/export?id=1`,
+					resolveWithFullResponse: true,
+					encoding: null,
+					json: false,
 				}),
 			);
 		});
 
 		it('should make successful request with OAuth2 authentication', async () => {
 			const method = 'GET';
-			const resource = '/v4/spreadsheets';
+			const resource = requestPath`/v4/spreadsheets`;
 			const mockResponse = { data: 'test' };
 
 			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('oAuth2');
@@ -74,7 +102,7 @@ describe('Google Sheets Transport', () => {
 
 		it('should handle custom headers and query parameters', async () => {
 			const method = 'GET';
-			const resource = '/v4/spreadsheets';
+			const resource = requestPath`/v4/spreadsheets`;
 			const headers = { 'Custom-Header': 'value' };
 			const qs = { param: 'value' };
 
@@ -94,7 +122,7 @@ describe('Google Sheets Transport', () => {
 
 		it('should handle PERMISSION_DENIED error with custom description', async () => {
 			const method = 'GET';
-			const resource = '/v4/spreadsheets';
+			const resource = requestPath`/v4/spreadsheets`;
 			const error = new Error('PERMISSION_DENIED');
 			error.message = 'PERMISSION_DENIED Some error';
 
@@ -107,7 +135,7 @@ describe('Google Sheets Transport', () => {
 
 		it('should handle SSL certificate errors', async () => {
 			const method = 'GET';
-			const resource = '/v4/spreadsheets';
+			const resource = requestPath`/v4/spreadsheets`;
 			const error = new Error('ERR_OSSL_PEM_NO_START_LINE');
 
 			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
@@ -122,7 +150,7 @@ describe('Google Sheets Transport', () => {
 		it('should fetch all pages of results', async () => {
 			const propertyName = 'items';
 			const method = 'GET';
-			const endpoint = '/v4/spreadsheets';
+			const endpoint = requestPath`/v4/spreadsheets`;
 			const firstPage = {
 				items: [{ id: 1 }, { id: 2 }],
 				nextPageToken: 'token1',
@@ -155,7 +183,7 @@ describe('Google Sheets Transport', () => {
 		it('should handle empty response', async () => {
 			const propertyName = 'items';
 			const method = 'GET';
-			const endpoint = '/v4/spreadsheets';
+			const endpoint = requestPath`/v4/spreadsheets`;
 			const emptyResponse = {
 				items: [],
 			};

@@ -4,10 +4,11 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -72,9 +73,12 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -89,7 +93,7 @@ export async function execute(
 				const { address } = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 					undefined,
 					{
 						select: 'address',
@@ -103,7 +107,7 @@ export async function execute(
 			const responseData = await microsoftApiRequest.call(
 				this,
 				'POST',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/add`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/add`,
 				{
 					address: range,
 					hasHeaders,

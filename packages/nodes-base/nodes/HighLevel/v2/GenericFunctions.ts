@@ -15,8 +15,10 @@ import type {
 	INodePropertyOptions,
 	IPollFunctions,
 	IWebhookFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, toPathSegment } from 'n8n-workflow';
+import { ApplicationError, NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -165,13 +167,11 @@ export async function highLevelApiRequest(
 		| IHookFunctions
 		| ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	url?: string,
-	option: IDataObject = {},
 ) {
-	let options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 			Version: '2021-07-28',
@@ -179,7 +179,7 @@ export async function highLevelApiRequest(
 		method,
 		body,
 		qs,
-		url: url ?? `https://services.leadconnectorhq.com${resource}`,
+		url: requestUrl`https://services.leadconnectorhq.com${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -188,7 +188,6 @@ export async function highLevelApiRequest(
 	if (!Object.keys(qs).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 	return await this.helpers.httpRequestWithAuthentication.call(this, 'highLevelOAuth2Api', options);
 }
 
@@ -221,7 +220,7 @@ export const addNotePostReceiveAction = async function (
 	await highLevelApiRequest.call(
 		this,
 		'POST',
-		`/contacts/${toPathSegment(contactId)}/notes`,
+		requestPath`/contacts/${contactId}/notes`,
 		requestBody,
 		{},
 	);
@@ -237,7 +236,7 @@ export async function taskUpdatePreSendAction(
 	if (!body.title || !body.dueDate) {
 		const contactId = this.getNodeParameter('contactId');
 		const taskId = this.getNodeParameter('taskId');
-		const resource = `/contacts/${toPathSegment(contactId)}/tasks/${toPathSegment(taskId)}`;
+		const resource = requestPath`/contacts/${contactId}/tasks/${taskId}`;
 		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
 		body.title = body.title || responseData.title;
 		// the api response dueDate has to be formatted or it will error on update
@@ -313,7 +312,7 @@ export async function getPipelineStages(
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
 
 	const pipelines = (
-		await highLevelApiRequest.call(this, 'GET', '/opportunities/pipelines', undefined, {
+		await highLevelApiRequest.call(this, 'GET', requestPath`/opportunities/pipelines`, undefined, {
 			locationId,
 		})
 	).pipelines as IDataObject[];
@@ -335,7 +334,7 @@ export async function getPipelines(this: ILoadOptionsFunctions): Promise<INodePr
 	const responseData = await highLevelApiRequest.call(
 		this,
 		'GET',
-		'/opportunities/pipelines',
+		requestPath`/opportunities/pipelines`,
 		undefined,
 		{ locationId },
 	);
@@ -352,9 +351,15 @@ export async function getPipelines(this: ILoadOptionsFunctions): Promise<INodePr
 export async function getContacts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { locationId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/contacts/', undefined, {
-		locationId,
-	});
+	const responseData = await highLevelApiRequest.call(
+		this,
+		'GET',
+		requestPath`/contacts/`,
+		undefined,
+		{
+			locationId,
+		},
+	);
 
 	const contacts = responseData.contacts as [{ id: string; name: string; email: string }];
 	const options: INodePropertyOptions[] = contacts.map((contact) => {
@@ -368,9 +373,15 @@ export async function getContacts(this: ILoadOptionsFunctions): Promise<INodePro
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { locationId } =
 		((await this.getCredentials('highLevelOAuth2Api'))?.oauthTokenData as IDataObject) ?? {};
-	const responseData = await highLevelApiRequest.call(this, 'GET', '/users/', undefined, {
-		locationId,
-	});
+	const responseData = await highLevelApiRequest.call(
+		this,
+		'GET',
+		requestPath`/users/`,
+		undefined,
+		{
+			locationId,
+		},
+	);
 
 	const users = responseData.users as [{ id: string; name: string; email: string }];
 	const options: INodePropertyOptions[] = users.map((user) => {

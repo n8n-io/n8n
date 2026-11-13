@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { apiRequest } from './GenericFunctions';
@@ -64,7 +65,7 @@ export class TrelloTrigger implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
+				const endpoint = requestPath`tokens/${credentials.apiToken}/webhooks`;
 
 				const responseData = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -89,7 +90,7 @@ export class TrelloTrigger implements INodeType {
 
 				const idModel = this.getNodeParameter('id') as string;
 
-				const endpoint = `tokens/${credentials.apiToken}/webhooks`;
+				const endpoint = requestPath`tokens/${credentials.apiToken}/webhooks`;
 
 				const body = {
 					description: `n8n Webhook - ${idModel}`,
@@ -115,7 +116,7 @@ export class TrelloTrigger implements INodeType {
 				if (webhookData.webhookId !== undefined) {
 					const credentials = await this.getCredentials('trelloApi');
 
-					const endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
 
 					const body = {};
 

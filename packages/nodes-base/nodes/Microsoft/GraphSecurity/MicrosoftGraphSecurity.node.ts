@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	secureScoreControlProfileFields,
@@ -95,7 +95,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 						responseData = await msGraphSecurityApiRequest.call(
 							this,
 							'GET',
-							`/secureScores/${secureScoreId}`,
+							requestPath`/secureScores/${secureScoreId}`,
 						);
 						delete responseData['@odata.context'];
 					} else if (operation === 'getAll') {
@@ -124,7 +124,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 						}
 
 						responseData = (await msGraphSecurityApiRequest
-							.call(this, 'GET', '/secureScores', {}, qs)
+							.call(this, 'GET', requestPath`/secureScores`, {}, qs)
 							.then((response) => response.value)) as Array<{ controlScores: object[] }>;
 
 						if (!includeControlScores) {
@@ -147,7 +147,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							'secureScoreControlProfileId',
 							i,
 						);
-						const endpoint = `/secureScoreControlProfiles/${secureScoreControlProfileId}`;
+						const endpoint = requestPath`/secureScoreControlProfiles/${secureScoreControlProfileId}`;
 
 						responseData = await msGraphSecurityApiRequest.call(this, 'GET', endpoint);
 						delete responseData['@odata.context'];
@@ -174,7 +174,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 						}
 
 						responseData = await msGraphSecurityApiRequest
-							.call(this, 'GET', '/secureScoreControlProfiles', {}, qs)
+							.call(this, 'GET', requestPath`/secureScoreControlProfiles`, {}, qs)
 							.then((response) => response.value);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -201,7 +201,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 						}
 
 						const id = this.getNodeParameter('secureScoreControlProfileId', i);
-						const endpoint = `/secureScoreControlProfiles/${id}`;
+						const endpoint = requestPath`/secureScoreControlProfiles/${id}`;
 						const headers = { Prefer: 'return=representation' };
 
 						responseData = await msGraphSecurityApiRequest.call(

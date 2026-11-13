@@ -8,21 +8,22 @@ import type {
 	INodePropertyOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function calApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('calApi');
 
-	let options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		baseURL: credentials.host as string,
 		method,
 		body,
@@ -33,7 +34,6 @@ export async function calApiRequest(
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'calApi', options);
 	} catch (error) {

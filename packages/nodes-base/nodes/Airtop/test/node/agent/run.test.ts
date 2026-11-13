@@ -1,3 +1,5 @@
+import { requestUrl } from 'n8n-workflow';
+
 import * as run from '../../../actions/agent/run.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -57,9 +59,13 @@ describe('Test Airtop, agent run operation', () => {
 		const result = await run.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(apiRequestMock).toHaveBeenCalledTimes(1);
-		expect(apiRequestMock).toHaveBeenCalledWith('POST', baseNodeParameters.webhookUrl, {
-			key: 'value',
-		});
+		expect(apiRequestMock).toHaveBeenCalledWith(
+			'POST',
+			requestUrl`${baseNodeParameters.webhookUrl}`,
+			{
+				key: 'value',
+			},
+		);
 
 		expect(result).toEqual([
 			{
@@ -94,21 +100,26 @@ describe('Test Airtop, agent run operation', () => {
 		expect(apiRequestMock).toHaveBeenCalledTimes(3);
 
 		// First call should be the invocation
-		expect(apiRequestMock).toHaveBeenNthCalledWith(1, 'POST', baseNodeParameters.webhookUrl, {
-			key: 'value',
-		});
+		expect(apiRequestMock).toHaveBeenNthCalledWith(
+			1,
+			'POST',
+			requestUrl`${baseNodeParameters.webhookUrl}`,
+			{
+				key: 'value',
+			},
+		);
 
 		// Second and third calls should be status checks
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'https://api.airtop.ai/api/hooks/agents/test-agent-123/invocations/invocation-123/result',
+			requestUrl`https://api.airtop.ai/api/hooks/agents/test-agent-123/invocations/invocation-123/result`,
 		);
 
 		expect(apiRequestMock).toHaveBeenNthCalledWith(
 			3,
 			'GET',
-			'https://api.airtop.ai/api/hooks/agents/test-agent-123/invocations/invocation-123/result',
+			requestUrl`https://api.airtop.ai/api/hooks/agents/test-agent-123/invocations/invocation-123/result`,
 		);
 
 		expect(result).toEqual([

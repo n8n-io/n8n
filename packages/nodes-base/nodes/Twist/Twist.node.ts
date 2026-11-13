@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { channelFields, channelOperations } from './ChannelDescription';
@@ -85,7 +85,7 @@ export class Twist implements INodeType {
 			// select them easily
 			async getWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const workspaces = await twistApiRequest.call(this, 'GET', '/workspaces/get');
+				const workspaces = await twistApiRequest.call(this, 'GET', requestPath`/workspaces/get`);
 				for (const workspace of workspaces) {
 					returnData.push({
 						name: workspace.name,
@@ -102,7 +102,13 @@ export class Twist implements INodeType {
 				const qs: IDataObject = {
 					workspace_id: this.getCurrentNodeParameter('workspaceId') as string,
 				};
-				const conversations = await twistApiRequest.call(this, 'GET', '/conversations/get', {}, qs);
+				const conversations = await twistApiRequest.call(
+					this,
+					'GET',
+					requestPath`/conversations/get`,
+					{},
+					qs,
+				);
 				for (const conversation of conversations) {
 					returnData.push({
 						name: conversation.title || conversation.id,
@@ -119,7 +125,13 @@ export class Twist implements INodeType {
 				const qs: IDataObject = {
 					id: this.getCurrentNodeParameter('workspaceId') as string,
 				};
-				const users = await twistApiRequest.call(this, 'GET', '/workspaces/get_users', {}, qs);
+				const users = await twistApiRequest.call(
+					this,
+					'GET',
+					requestPath`/workspaces/get_users`,
+					{},
+					qs,
+				);
 				for (const user of users) {
 					returnData.push({
 						name: user.name,
@@ -136,7 +148,7 @@ export class Twist implements INodeType {
 				const qs: IDataObject = {
 					workspace_id: this.getCurrentNodeParameter('workspaceId') as string,
 				};
-				const groups = await twistApiRequest.call(this, 'GET', '/groups/get', {}, qs);
+				const groups = await twistApiRequest.call(this, 'GET', requestPath`/groups/get`, {}, qs);
 				for (const group of groups) {
 					returnData.push({
 						name: group.name,
@@ -170,19 +182,36 @@ export class Twist implements INodeType {
 						};
 						Object.assign(body, additionalFields);
 
-						responseData = await twistApiRequest.call(this, 'POST', '/channels/add', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/channels/add`,
+							body,
+						);
 					}
 					//https://developer.twist.com/v3/#remove-channel
 					if (operation === 'delete') {
 						qs.id = this.getNodeParameter('channelId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/channels/remove', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/channels/remove`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-channel
 					if (operation === 'get') {
 						qs.id = this.getNodeParameter('channelId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'GET', '/channels/getone', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/channels/getone`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-all-channels
 					if (operation === 'getAll') {
@@ -192,7 +221,13 @@ export class Twist implements INodeType {
 						qs.workspace_id = workspaceId;
 						Object.assign(qs, filters);
 
-						responseData = await twistApiRequest.call(this, 'GET', '/channels/get', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/channels/get`,
+							{},
+							qs,
+						);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -208,19 +243,36 @@ export class Twist implements INodeType {
 						};
 						Object.assign(body, updateFields);
 
-						responseData = await twistApiRequest.call(this, 'POST', '/channels/update', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/channels/update`,
+							body,
+						);
 					}
 					//https://developer.twist.com/v3/#archive-channel
 					if (operation === 'archive') {
 						qs.id = this.getNodeParameter('channelId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/channels/archive', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/channels/archive`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#unarchive-channel
 					if (operation === 'unarchive') {
 						qs.id = this.getNodeParameter('channelId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/channels/unarchive', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/channels/unarchive`,
+							{},
+							qs,
+						);
 					}
 				}
 				if (resource === 'comment') {
@@ -257,7 +309,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -286,19 +338,36 @@ export class Twist implements INodeType {
 							body.content = `${directMentions.join(' ')} ${body.content}`;
 						}
 
-						responseData = await twistApiRequest.call(this, 'POST', '/comments/add', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/comments/add`,
+							body,
+						);
 					}
 					//https://developer.twist.com/v3/#remove-comment
 					if (operation === 'delete') {
 						qs.id = this.getNodeParameter('commentId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/comments/remove', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/comments/remove`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-comment
 					if (operation === 'get') {
 						qs.id = this.getNodeParameter('commentId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'GET', '/comments/getone', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/comments/getone`,
+							{},
+							qs,
+						);
 						responseData = responseData?.comment;
 					}
 					//https://developer.twist.com/v3/#get-all-comments
@@ -319,7 +388,13 @@ export class Twist implements INodeType {
 							qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 						}
 
-						responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/comments/get`,
+							{},
+							qs,
+						);
 						if (qs.as_ids) {
 							responseData = (responseData as number[]).map((id) => ({ ID: id }));
 						}
@@ -355,7 +430,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -384,7 +459,12 @@ export class Twist implements INodeType {
 							body.content = `${directMentions.join(' ')} ${body.content}`;
 						}
 
-						responseData = await twistApiRequest.call(this, 'POST', '/comments/update', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/comments/update`,
+							body,
+						);
 					}
 				}
 				if (resource === 'messageConversation') {
@@ -423,7 +503,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -463,7 +543,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(
 							this,
 							'POST',
-							'/conversation_messages/add',
+							requestPath`/conversation_messages/add`,
 							body,
 						);
 					}
@@ -474,7 +554,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(
 							this,
 							'GET',
-							'/conversation_messages/getone',
+							requestPath`/conversation_messages/getone`,
 							{},
 							qs,
 						);
@@ -489,7 +569,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(
 							this,
 							'GET',
-							'/conversation_messages/get',
+							requestPath`/conversation_messages/get`,
 							{},
 							qs,
 						);
@@ -501,7 +581,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(
 							this,
 							'POST',
-							'/conversation_messages/remove',
+							requestPath`/conversation_messages/remove`,
 							{},
 							qs,
 						);
@@ -537,7 +617,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -569,7 +649,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(
 							this,
 							'POST',
-							'/conversation_messages/update',
+							requestPath`/conversation_messages/update`,
 							body,
 						);
 					}
@@ -610,7 +690,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -639,19 +719,36 @@ export class Twist implements INodeType {
 							body.content = `${directMentions.join(' ')} ${body.content}`;
 						}
 
-						responseData = await twistApiRequest.call(this, 'POST', '/threads/add', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/threads/add`,
+							body,
+						);
 					}
 					//https://developer.twist.com/v3/#remove-thread
 					if (operation === 'delete') {
 						qs.id = this.getNodeParameter('threadId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/threads/remove', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/threads/remove`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-thread
 					if (operation === 'get') {
 						qs.id = this.getNodeParameter('threadId', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'GET', '/threads/getone', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/threads/getone`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-all-threads
 					if (operation === 'getAll') {
@@ -671,7 +768,13 @@ export class Twist implements INodeType {
 							qs.newer_than_ts = moment(qs.newer_than_ts as string).unix();
 						}
 
-						responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							requestPath`/threads/get`,
+							{},
+							qs,
+						);
 						if (qs.as_ids) {
 							responseData = (responseData as number[]).map((id) => ({ ID: id }));
 						}
@@ -707,7 +810,7 @@ export class Twist implements INodeType {
 									(await twistApiRequest.call(
 										this,
 										'POST',
-										'/attachments/upload',
+										requestPath`/attachments/upload`,
 										{},
 										{},
 										{
@@ -736,7 +839,12 @@ export class Twist implements INodeType {
 							body.content = `${directMentions.join(' ')} ${body.content}`;
 						}
 
-						responseData = await twistApiRequest.call(this, 'POST', '/threads/update', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							requestPath`/threads/update`,
+							body,
+						);
 					}
 				}
 				if (Array.isArray(responseData)) {

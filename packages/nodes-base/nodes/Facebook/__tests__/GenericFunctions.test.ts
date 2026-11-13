@@ -1,3 +1,5 @@
+import { requestPath } from 'n8n-workflow';
+
 import * as utils from '../GenericFunctions';
 
 jest.mock('n8n-workflow', () => {
@@ -48,7 +50,7 @@ describe('Facebook GenericFunctions', () => {
 			await utils.facebookApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/me',
+				requestPath`/me`,
 				{},
 				{ fields: 'id,name' },
 			);
@@ -60,16 +62,19 @@ describe('Facebook GenericFunctions', () => {
 				qs: { access_token: 'test-access-token', fields: 'id,name' },
 				body: {},
 				gzip: true,
-				uri: 'https://graph.facebook.com/v23.0/me',
+				uri: expect.anything(),
 				json: true,
 			});
+			expect(String(mockExecuteFunctions.helpers.request.mock.calls[0][0].uri)).toBe(
+				'https://graph.facebook.com/v23.0/me',
+			);
 		});
 
 		it('should use app credentials for trigger nodes', async () => {
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
 			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
 
-			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
+			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/app`, {}, {});
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('facebookGraphAppApi');
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
@@ -79,21 +84,19 @@ describe('Facebook GenericFunctions', () => {
 			);
 		});
 
-		it('should allow custom URI', async () => {
+		it('should encode path values as a single segment', async () => {
 			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
-			const customUri = 'https://graph.facebook.com/v23.0/me/feed';
+			const appId = '123/subscriptions?x=1';
 
 			await utils.facebookApiRequest.call(
 				mockExecuteFunctions,
-				'POST',
-				'',
-				{ message: 'Hello' },
+				'GET',
+				requestPath`/${appId}/subscriptions`,
 				{},
-				customUri,
 			);
 
-			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
-				expect.objectContaining({ uri: customUri }),
+			expect(String(mockExecuteFunctions.helpers.request.mock.calls[0][0].uri)).toBe(
+				'https://graph.facebook.com/v23.0/123%2Fsubscriptions%3Fx=1/subscriptions',
 			);
 		});
 	});

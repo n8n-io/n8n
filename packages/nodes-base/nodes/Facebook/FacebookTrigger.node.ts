@@ -11,7 +11,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
@@ -189,7 +189,7 @@ export class FacebookTrigger implements INodeType {
 				const { data } = (await facebookApiRequest.call(
 					this,
 					'GET',
-					`/${appId}/subscriptions`,
+					requestPath`/${appId}/subscriptions`,
 					{},
 				)) as { data: FacebookWebhookSubscription[] };
 
@@ -231,7 +231,7 @@ export class FacebookTrigger implements INodeType {
 				const responseData = await facebookApiRequest.call(
 					this,
 					'POST',
-					`/${appId}/subscriptions`,
+					requestPath`/${appId}/subscriptions`,
 					body,
 				);
 
@@ -250,7 +250,7 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 
 				try {
-					await facebookApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
+					await facebookApiRequest.call(this, 'DELETE', requestPath`/${appId}/subscriptions`, {
 						object: snakeCase(object),
 					});
 				} catch (error) {

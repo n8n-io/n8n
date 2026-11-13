@@ -10,7 +10,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 import type { IJob } from './AnalyzerInterface';
@@ -80,7 +80,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					'/analyzer/_search?range=all',
+					requestPath`/analyzer/_search?range=all`,
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -98,7 +98,7 @@ export class Cortex implements INodeType {
 
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the enabled responders from instance
-				const requestResult = await cortexApiRequest.call(this, 'GET', '/responder');
+				const requestResult = await cortexApiRequest.call(this, 'GET', requestPath`/responder`);
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {
@@ -117,7 +117,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'GET',
-					`/analyzer/${selectedAnalyzerId}`,
+					requestPath`/analyzer/${selectedAnalyzerId}`,
 				);
 
 				// parse supported observable types  into options
@@ -137,7 +137,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'GET',
-					`/responder/${selectedResponderId}`,
+					requestPath`/responder/${selectedResponderId}`,
 				);
 				// parse the accepted dataType into options
 				const returnData: INodePropertyOptions[] = [];
@@ -208,10 +208,9 @@ export class Cortex implements INodeType {
 							responseData = (await cortexApiRequest.call(
 								this,
 								'POST',
-								`/analyzer/${analyzer.split('::')[0]}/run`,
+								requestPath`/analyzer/${analyzer.split('::')[0]}/run`,
 								{},
 								{ force },
-								'',
 								options,
 							)) as IJob;
 						} else {
@@ -222,7 +221,7 @@ export class Cortex implements INodeType {
 							responseData = (await cortexApiRequest.call(
 								this,
 								'POST',
-								`/analyzer/${analyzer.split('::')[0]}/run`,
+								requestPath`/analyzer/${analyzer.split('::')[0]}/run`,
 								body,
 								{ force },
 							)) as IJob;
@@ -232,7 +231,7 @@ export class Cortex implements INodeType {
 							responseData = await cortexApiRequest.call(
 								this,
 								'GET',
-								`/job/${responseData.id}/waitreport`,
+								requestPath`/job/${responseData.id}/waitreport`,
 								{},
 								{ atMost: `${additionalFields.timeout}second` },
 							);
@@ -245,13 +244,17 @@ export class Cortex implements INodeType {
 					if (operation === 'get') {
 						const jobId = this.getNodeParameter('jobId', i) as string;
 
-						responseData = await cortexApiRequest.call(this, 'GET', `/job/${jobId}`);
+						responseData = await cortexApiRequest.call(this, 'GET', requestPath`/job/${jobId}`);
 					}
 					//https://github.com/TheHive-Project/CortexDocs/blob/master/api/api-guide.md#get-details-and-report
 					if (operation === 'report') {
 						const jobId = this.getNodeParameter('jobId', i) as string;
 
-						responseData = await cortexApiRequest.call(this, 'GET', `/job/${jobId}/report`);
+						responseData = await cortexApiRequest.call(
+							this,
+							'GET',
+							requestPath`/job/${jobId}/report`,
+						);
 					}
 				}
 
@@ -361,7 +364,7 @@ export class Cortex implements INodeType {
 						responseData = (await cortexApiRequest.call(
 							this,
 							'POST',
-							`/responder/${responderId}/run`,
+							requestPath`/responder/${responderId}/run`,
 							body,
 						)) as IJob;
 					}

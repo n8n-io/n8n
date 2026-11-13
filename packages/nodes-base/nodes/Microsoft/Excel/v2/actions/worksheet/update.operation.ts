@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
@@ -15,7 +15,7 @@ import {
 	updateByAutoMaping,
 	updateByDefinedValues,
 } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -252,9 +252,12 @@ export async function execute(
 			qs.$select = options.fields;
 		}
 
-		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const workbookId = toWorkbookId.call(
+			this,
+			this.getNodeParameter('workbook', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
 		const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
 			extractValue: true,
@@ -271,7 +274,7 @@ export async function execute(
 			worksheetData = await microsoftApiRequest.call(
 				this,
 				'PATCH',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 			);
 		}
 
@@ -285,7 +288,7 @@ export async function execute(
 			worksheetData = await microsoftApiRequest.call(
 				this,
 				'GET',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 				undefined,
 				query,
 			);
@@ -302,7 +305,7 @@ export async function execute(
 			responseData = await microsoftApiRequest.call(
 				this,
 				'PATCH',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ values },
 				qs,
 			);
@@ -359,7 +362,7 @@ export async function execute(
 			responseData = await microsoftApiRequest.call(
 				this,
 				'PATCH',
-				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+				requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ values: updateSummary.updatedData },
 			);
 

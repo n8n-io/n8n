@@ -1,6 +1,11 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import {
+	type INode,
+	SEND_AND_WAIT_OPERATION,
+	type IExecuteFunctions,
+	requestPath,
+} from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleChat } from '../../GoogleChat.node';
@@ -32,7 +37,7 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
-		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('spaceID');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('spaces/spaceID');
 		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
 		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
 
@@ -55,8 +60,12 @@ describe('Test GoogleChat, message => sendAndWait', () => {
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith('POST', '/v1/spaceID/messages', {
-			text: 'my message\n\n\n*<http://localhost/waiting-webhook/nodeID?approved=true&signature=abc|Approve>*\n\n_This_ _message_ _was_ _sent_ _automatically_ _with_ _<https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.googleChat_instanceId|n8n>_',
-		});
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v1/spaces/spaceID/messages`,
+			{
+				text: 'my message\n\n\n*<http://localhost/waiting-webhook/nodeID?approved=true&signature=abc|Approve>*\n\n_This_ _message_ _was_ _sent_ _automatically_ _with_ _<https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.googleChat_instanceId|n8n>_',
+			},
+		);
 	});
 });

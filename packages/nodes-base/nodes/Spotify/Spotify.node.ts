@@ -6,6 +6,8 @@ import {
 	type INodeTypeDescription,
 	type IHttpRequestMethods,
 	NodeConnectionTypes,
+	type RequestPath,
+	requestPath,
 } from 'n8n-workflow';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
@@ -793,7 +795,7 @@ export class Spotify implements INodeType {
 		let qs: IDataObject;
 
 		let requestMethod: IHttpRequestMethods;
-		let endpoint: string;
+		let endpoint: RequestPath;
 		let returnAll: boolean;
 		let propertyName = '';
 		let responseData;
@@ -803,7 +805,7 @@ export class Spotify implements INodeType {
 
 		// Set initial values
 		requestMethod = 'GET';
-		endpoint = '';
+		endpoint = requestPath``;
 		qs = {};
 		returnAll = false;
 
@@ -817,7 +819,7 @@ export class Spotify implements INodeType {
 					if (operation === 'pause') {
 						requestMethod = 'PUT';
 
-						endpoint = '/me/player/pause';
+						endpoint = requestPath`/me/player/pause`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -825,7 +827,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'recentlyPlayed') {
 						requestMethod = 'GET';
 
-						endpoint = '/me/player/recently-played';
+						endpoint = requestPath`/me/player/recently-played`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
@@ -845,13 +847,13 @@ export class Spotify implements INodeType {
 					} else if (operation === 'currentlyPlaying') {
 						requestMethod = 'GET';
 
-						endpoint = '/me/player/currently-playing';
+						endpoint = requestPath`/me/player/currently-playing`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					} else if (operation === 'nextSong') {
 						requestMethod = 'POST';
 
-						endpoint = '/me/player/next';
+						endpoint = requestPath`/me/player/next`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -859,7 +861,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'previousSong') {
 						requestMethod = 'POST';
 
-						endpoint = '/me/player/previous';
+						endpoint = requestPath`/me/player/previous`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -867,7 +869,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'startMusic') {
 						requestMethod = 'PUT';
 
-						endpoint = '/me/player/play';
+						endpoint = requestPath`/me/player/play`;
 
 						const id = this.getNodeParameter('id', i) as string;
 
@@ -879,7 +881,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'addSongToQueue') {
 						requestMethod = 'POST';
 
-						endpoint = '/me/player/queue';
+						endpoint = requestPath`/me/player/queue`;
 
 						const id = this.getNodeParameter('id', i) as string;
 
@@ -893,7 +895,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'resume') {
 						requestMethod = 'PUT';
 
-						endpoint = '/me/player/play';
+						endpoint = requestPath`/me/player/play`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -901,7 +903,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'volume') {
 						requestMethod = 'PUT';
 
-						endpoint = '/me/player/volume';
+						endpoint = requestPath`/me/player/volume`;
 
 						const volumePercent = this.getNodeParameter('volumePercent', i) as number;
 
@@ -925,11 +927,11 @@ export class Spotify implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/albums/${id}`;
+						endpoint = requestPath`/albums/${id}`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					} else if (operation === 'getNewReleases') {
-						endpoint = '/browse/new-releases';
+						endpoint = requestPath`/browse/new-releases`;
 						requestMethod = 'GET';
 						propertyName = 'albums.items';
 
@@ -953,7 +955,7 @@ export class Spotify implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/albums/${id}/tracks`;
+						endpoint = requestPath`/albums/${id}/tracks`;
 
 						propertyName = 'tracks';
 
@@ -975,7 +977,7 @@ export class Spotify implements INodeType {
 					} else if (operation === 'search') {
 						requestMethod = 'GET';
 
-						endpoint = '/search';
+						endpoint = requestPath`/search`;
 
 						propertyName = 'albums.items';
 
@@ -1006,7 +1008,7 @@ export class Spotify implements INodeType {
 					const id = uri.replace('spotify:artist:', '');
 
 					if (operation === 'getAlbums') {
-						endpoint = `/artists/${id}/albums`;
+						endpoint = requestPath`/artists/${id}/albums`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
@@ -1024,7 +1026,7 @@ export class Spotify implements INodeType {
 							responseData = responseData.items;
 						}
 					} else if (operation === 'getRelatedArtists') {
-						endpoint = `/artists/${id}/related-artists`;
+						endpoint = requestPath`/artists/${id}/related-artists`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -1036,7 +1038,7 @@ export class Spotify implements INodeType {
 							country,
 						};
 
-						endpoint = `/artists/${id}/top-tracks`;
+						endpoint = requestPath`/artists/${id}/top-tracks`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -1044,13 +1046,13 @@ export class Spotify implements INodeType {
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
-						endpoint = `/artists/${id}`;
+						endpoint = requestPath`/artists/${id}`;
 
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					} else if (operation === 'search') {
 						requestMethod = 'GET';
 
-						endpoint = '/search';
+						endpoint = requestPath`/search`;
 
 						propertyName = 'artists.items';
 
@@ -1092,7 +1094,7 @@ export class Spotify implements INodeType {
 								},
 							];
 
-							endpoint = `/playlists/${id}/tracks`;
+							endpoint = requestPath`/playlists/${id}/tracks`;
 
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -1100,13 +1102,13 @@ export class Spotify implements INodeType {
 						} else if (operation === 'get') {
 							requestMethod = 'GET';
 
-							endpoint = `/playlists/${id}`;
+							endpoint = requestPath`/playlists/${id}`;
 
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 						} else if (operation === 'getTracks') {
 							requestMethod = 'GET';
 
-							endpoint = `/playlists/${id}/tracks`;
+							endpoint = requestPath`/playlists/${id}/tracks`;
 
 							returnAll = this.getNodeParameter('returnAll', i);
 
@@ -1143,14 +1145,14 @@ export class Spotify implements INodeType {
 								qs.position = additionalFields.position;
 							}
 
-							endpoint = `/playlists/${id}/tracks`;
+							endpoint = requestPath`/playlists/${id}/tracks`;
 
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 						}
 					} else if (operation === 'getUserPlaylists') {
 						requestMethod = 'GET';
 
-						endpoint = '/me/playlists';
+						endpoint = requestPath`/me/playlists`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
@@ -1178,11 +1180,17 @@ export class Spotify implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await spotifyApiRequest.call(this, 'POST', '/me/playlists', body, qs);
+						responseData = await spotifyApiRequest.call(
+							this,
+							'POST',
+							requestPath`/me/playlists`,
+							body,
+							qs,
+						);
 					} else if (operation === 'search') {
 						requestMethod = 'GET';
 
-						endpoint = '/search';
+						endpoint = requestPath`/search`;
 
 						propertyName = 'playlists.items';
 
@@ -1216,15 +1224,15 @@ export class Spotify implements INodeType {
 					requestMethod = 'GET';
 
 					if (operation === 'getAudioFeatures') {
-						endpoint = `/audio-features/${id}`;
+						endpoint = requestPath`/audio-features/${id}`;
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					} else if (operation === 'get') {
-						endpoint = `/tracks/${id}`;
+						endpoint = requestPath`/tracks/${id}`;
 						responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 					} else if (operation === 'search') {
 						requestMethod = 'GET';
 
-						endpoint = '/search';
+						endpoint = requestPath`/search`;
 
 						propertyName = 'tracks.items';
 
@@ -1254,7 +1262,7 @@ export class Spotify implements INodeType {
 					if (operation === 'getLikedTracks') {
 						requestMethod = 'GET';
 
-						endpoint = '/me/tracks';
+						endpoint = requestPath`/me/tracks`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
@@ -1276,7 +1284,7 @@ export class Spotify implements INodeType {
 					if (operation === 'getFollowingArtists') {
 						requestMethod = 'GET';
 
-						endpoint = '/me/following';
+						endpoint = requestPath`/me/following`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
 

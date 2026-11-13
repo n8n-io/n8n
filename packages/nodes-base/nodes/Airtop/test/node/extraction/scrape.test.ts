@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as scrape from '../../../actions/extraction/scrape.operation';
@@ -25,7 +26,7 @@ jest.mock('../../../transport', () => {
 	return {
 		...originalModule,
 		apiRequest: jest.fn(async function (method: string, endpoint: string) {
-			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+			if (method === 'DELETE' && String(endpoint).includes('/sessions/')) {
 				return { status: 'success' };
 			}
 			return mockResponse;
@@ -73,7 +74,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scrape-content',
+			requestPath`/sessions/test-session-123/windows/win-123/scrape-content`,
 			{},
 		);
 
@@ -104,7 +105,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scrape-content',
+			requestPath`/sessions/test-session-123/windows/win-123/scrape-content`,
 			{},
 		);
 
@@ -135,7 +136,7 @@ describe('Test Airtop, scrape operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/new-session-456/windows/new-win-456/scrape-content',
+			requestPath`/sessions/new-session-456/windows/new-win-456/scrape-content`,
 			{},
 		);
 

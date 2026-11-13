@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	encodeEmail,
@@ -92,16 +93,20 @@ describe('replyToEmail', () => {
 		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/gmail/v1/users/me/messages/message123',
+			requestPath`/gmail/v1/users/me/messages/message123`,
 			{},
 			{ format: 'metadata' },
 		);
-		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(2, 'GET', '/gmail/v1/users/me/profile');
+		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			requestPath`/gmail/v1/users/me/profile`,
+		);
 
 		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(
 			3,
 			'POST',
-			'/gmail/v1/users/me/messages/send',
+			requestPath`/gmail/v1/users/me/messages/send`,
 			expect.objectContaining({
 				threadId: 'thread123',
 				raw: expect.any(String),
@@ -204,7 +209,7 @@ describe('replyToEmail', () => {
 		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(
 			3,
 			'POST',
-			'/gmail/v1/users/me/messages/send',
+			requestPath`/gmail/v1/users/me/messages/send`,
 			expect.anything(),
 			expect.objectContaining({
 				userId: 'me',
@@ -353,7 +358,7 @@ describe('replyToEmail', () => {
 		expect(mockedGoogleApiRequest).toHaveBeenNthCalledWith(
 			3,
 			'POST',
-			'/gmail/v1/users/me/messages/send',
+			requestPath`/gmail/v1/users/me/messages/send`,
 			expect.objectContaining({
 				threadId: 'thread123',
 			}),

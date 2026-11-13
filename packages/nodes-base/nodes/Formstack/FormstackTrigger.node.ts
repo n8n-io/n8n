@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { IFormstackWebhookResponseBody } from './GenericFunctions';
 import { apiRequest, getForms } from './GenericFunctions';
@@ -107,7 +107,7 @@ export class FormstackTrigger implements INodeType {
 
 				const formId = this.getNodeParameter('formId') as string;
 
-				const endpoint = `form/${formId}/webhook.json`;
+				const endpoint = requestPath`form/${formId}/webhook.json`;
 
 				const { webhooks } = await apiRequest.call(this, 'GET', endpoint);
 
@@ -125,7 +125,7 @@ export class FormstackTrigger implements INodeType {
 
 				const formId = this.getNodeParameter('formId') as string;
 
-				const endpoint = `form/${formId}/webhook.json`;
+				const endpoint = requestPath`form/${formId}/webhook.json`;
 
 				// TODO: Add handshake key support
 				const body = {
@@ -145,9 +145,8 @@ export class FormstackTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `webhook/${webhookData.webhookId}.json`;
-
 					try {
+						const endpoint = requestPath`webhook/${webhookData.webhookId}.json`;
 						const body = {};
 						await apiRequest.call(this, 'DELETE', endpoint, body);
 					} catch (e) {

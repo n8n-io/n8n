@@ -1,0 +1,529 @@
+{
+	"name": "Microsoft To Do request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2b000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "linkedResource",
+				"operation": "create",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"applicationName": "n8n",
+				"displayName": "Ticket",
+				"additionalFields": {}
+			},
+			"id": "2b000000-0000-4000-8000-000000000001",
+			"name": "Linked Resource > Create",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "linkedResource",
+				"operation": "delete",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"linkedResourceId": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9"
+			},
+			"id": "2b000000-0000-4000-8000-000000000002",
+			"name": "Linked Resource > Delete",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "linkedResource",
+				"operation": "get",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"linkedResourceId": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9"
+			},
+			"id": "2b000000-0000-4000-8000-000000000003",
+			"name": "Linked Resource > Get",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 400],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "linkedResource",
+				"operation": "getAll",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"returnAll": false,
+				"limit": 2
+			},
+			"id": "2b000000-0000-4000-8000-000000000004",
+			"name": "Linked Resource > Get Many",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 600],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "linkedResource",
+				"operation": "update",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"linkedResourceId": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9",
+				"updateFields": {
+					"displayName": "Ticket 2"
+				}
+			},
+			"id": "2b000000-0000-4000-8000-000000000005",
+			"name": "Linked Resource > Update",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 800],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"title": "Review report",
+				"additionalFields": {}
+			},
+			"id": "2b000000-0000-4000-8000-000000000006",
+			"name": "Task > Create",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 1000],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA="
+			},
+			"id": "2b000000-0000-4000-8000-000000000007",
+			"name": "Task > Delete",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 1200],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA="
+			},
+			"id": "2b000000-0000-4000-8000-000000000008",
+			"name": "Task > Get",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 1400],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"returnAll": false,
+				"limit": 2
+			},
+			"id": "2b000000-0000-4000-8000-000000000009",
+			"name": "Task > Get Many",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 1600],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"taskListId": "AAMkADIyAAAhrbPXAAA=",
+				"taskId": "AAMkADIyAAAhrbPYAAA=",
+				"updateFields": {
+					"title": "Review report"
+				}
+			},
+			"id": "2b000000-0000-4000-8000-000000000010",
+			"name": "Task > Update",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 1800],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"displayName": "Project"
+			},
+			"id": "2b000000-0000-4000-8000-000000000011",
+			"name": "List > Create",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 2000],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "delete",
+				"listId": "AAMkADIyAAAhrbPXAAA="
+			},
+			"id": "2b000000-0000-4000-8000-000000000012",
+			"name": "List > Delete",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 2200],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "get",
+				"listId": "AAMkADIyAAAhrbPXAAA="
+			},
+			"id": "2b000000-0000-4000-8000-000000000013",
+			"name": "List > Get",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 2400],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "2b000000-0000-4000-8000-000000000014",
+			"name": "List > Get Many",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 2600],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "update",
+				"listId": "AAMkADIyAAAhrbPXAAA=",
+				"displayName": "Project"
+			},
+			"id": "2b000000-0000-4000-8000-000000000015",
+			"name": "List > Update",
+			"type": "n8n-nodes-base.microsoftToDo",
+			"typeVersion": 1,
+			"position": [260, 2800],
+			"credentials": {
+				"microsoftToDoOAuth2Api": {
+					"id": "1",
+					"name": "Microsoft To Do account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Linked Resource > Create": [
+			{
+				"json": {
+					"id": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9",
+					"applicationName": "n8n",
+					"displayName": "Ticket"
+				}
+			}
+		],
+		"Linked Resource > Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Linked Resource > Get": [
+			{
+				"json": {
+					"id": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9",
+					"applicationName": "n8n",
+					"displayName": "Ticket"
+				}
+			}
+		],
+		"Linked Resource > Get Many": [
+			{
+				"json": {
+					"id": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9",
+					"applicationName": "n8n",
+					"displayName": "Ticket"
+				}
+			}
+		],
+		"Linked Resource > Update": [
+			{
+				"json": {
+					"id": "f9cddce2-dce2-f9cd-e2dc-cdf9e2dccdf9",
+					"applicationName": "n8n",
+					"displayName": "Ticket"
+				}
+			}
+		],
+		"Task > Create": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPYAAA=",
+					"title": "Review report",
+					"status": "notStarted"
+				}
+			}
+		],
+		"Task > Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task > Get": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPYAAA=",
+					"title": "Review report",
+					"status": "notStarted"
+				}
+			}
+		],
+		"Task > Get Many": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPYAAA=",
+					"title": "Review report",
+					"status": "notStarted"
+				}
+			}
+		],
+		"Task > Update": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPYAAA=",
+					"title": "Review report",
+					"status": "notStarted"
+				}
+			}
+		],
+		"List > Create": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPXAAA=",
+					"displayName": "Project"
+				}
+			}
+		],
+		"List > Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"List > Get": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPXAAA=",
+					"displayName": "Project"
+				}
+			}
+		],
+		"List > Get Many": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPXAAA=",
+					"displayName": "Project"
+				}
+			},
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPZAAA=",
+					"displayName": "Groceries"
+				}
+			}
+		],
+		"List > Update": [
+			{
+				"json": {
+					"id": "AAMkADIyAAAhrbPXAAA=",
+					"displayName": "Project"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Linked Resource > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Linked Resource > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Linked Resource > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Linked Resource > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Linked Resource > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List > Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"tags": []
+}

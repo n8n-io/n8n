@@ -1,6 +1,6 @@
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
 import { pollUntilAvailable } from '../../../../helpers/polling';
@@ -111,7 +111,7 @@ describe('OpenAI Response Operation', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.any(Object),
 			});
 		});
@@ -522,7 +522,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -610,7 +610,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [

@@ -1,4 +1,5 @@
 import { mockDeep } from 'jest-mock-extended';
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { downloadFile, getBaseUrl, getMimeType, splitByComma, uploadFile } from './utils';
@@ -90,7 +91,7 @@ describe('Anthropic -> utils', () => {
 
 			const result = await uploadFile.call(mockExecuteFunctions, fileContent, mimeType, fileName);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/files`, {
 				headers: expect.objectContaining({
 					'content-type': expect.stringContaining('multipart/form-data'),
 				}),
@@ -123,7 +124,7 @@ describe('Anthropic -> utils', () => {
 
 			const result = await uploadFile.call(mockExecuteFunctions, fileContent, mimeType);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/files`, {
 				headers: expect.objectContaining({
 					'content-type': expect.stringContaining('multipart/form-data'),
 				}),

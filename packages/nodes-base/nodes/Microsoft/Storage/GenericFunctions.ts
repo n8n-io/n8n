@@ -14,8 +14,10 @@ import type {
 	INodeParameterResourceLocator,
 	ICredentialDataDecryptedObject,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl, sanitizeXmlName } from 'n8n-workflow';
 import { Parser } from 'xml2js';
 import { firstCharLowerCase, parseBooleans, parseNumbers } from 'xml2js/lib/processors';
 
@@ -82,11 +84,10 @@ export const HeaderConstants = {
 export async function azureStorageApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
-	url?: string,
 ): Promise<string> {
 	const authentication = this.getNodeParameter('authentication', 0) as 'oAuth2' | 'sharedKey';
 	const credentialsType =
@@ -95,9 +96,9 @@ export async function azureStorageApiRequest(
 		baseUrl: string;
 	}>(credentialsType);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
-		url: url ?? `${credentials.baseUrl}${endpoint}`,
+		url: requestUrl`${credentials.baseUrl}${endpoint}`,
 		headers,
 		body,
 		qs,
@@ -524,13 +525,25 @@ export async function getBlobs(
 
 	if (paginationToken) {
 		qs.marker = paginationToken;
-		response = await azureStorageApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
+		response = await azureStorageApiRequest.call(
+			this,
+			'GET',
+			requestPath`/${container.value}`,
+			{},
+			qs,
+		);
 	} else {
 		qs.maxresults = 5000;
 		if (filter) {
 			qs.prefix = filter;
 		}
-		response = await azureStorageApiRequest.call(this, 'GET', `/${container.value}`, {}, qs);
+		response = await azureStorageApiRequest.call(
+			this,
+			'GET',
+			requestPath`/${container.value}`,
+			{},
+			qs,
+		);
 	}
 
 	const data = await parseBlobList(response);
@@ -563,13 +576,13 @@ export async function getContainers(
 
 	if (paginationToken) {
 		qs.marker = paginationToken;
-		response = await azureStorageApiRequest.call(this, 'GET', '/', {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', requestPath`/`, {}, qs);
 	} else {
 		qs.maxresults = 5000;
 		if (filter) {
 			qs.prefix = filter;
 		}
-		response = await azureStorageApiRequest.call(this, 'GET', '/', {}, qs);
+		response = await azureStorageApiRequest.call(this, 'GET', requestPath`/`, {}, qs);
 	}
 
 	const data = await parseContainerList(response);

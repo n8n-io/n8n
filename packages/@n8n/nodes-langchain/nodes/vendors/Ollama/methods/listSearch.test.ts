@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as transport from '../transport';
 import { modelSearch } from './listSearch';
@@ -35,7 +36,7 @@ describe('Ollama List Search Methods', () => {
 					{ name: 'phi3:latest', value: 'phi3:latest' },
 				],
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/api/tags');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/api/tags`);
 		});
 
 		it('should filter models by name (case insensitive)', async () => {

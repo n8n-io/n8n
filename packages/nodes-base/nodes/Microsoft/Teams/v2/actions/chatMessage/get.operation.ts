@@ -1,4 +1,10 @@
-import { type INodeProperties, type IExecuteFunctions, NodeOperationError } from 'n8n-workflow';
+import {
+	type INodeProperties,
+	type IExecuteFunctions,
+	NodeOperationError,
+	requestPath,
+	decodePathValue,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -31,13 +37,15 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 
 	try {
-		const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+		const chatId = decodePathValue(
+			this.getNodeParameter('chatId', i, '', { extractValue: true }) as string,
+		);
 		const messageId = this.getNodeParameter('messageId', i) as string;
 
 		return await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/chats/${chatId}/messages/${messageId}`,
+			requestPath`/v1.0/chats/${chatId}/messages/${messageId}`,
 		);
 	} catch (error) {
 		throw new NodeOperationError(

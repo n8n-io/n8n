@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/remove.operation';
 import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
@@ -42,15 +43,19 @@ describe('Google Sheet - Remove', () => {
 		);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/v4/spreadsheets/spreadsheet123:batchUpdate', {
-			requests: [
-				{
-					deleteSheet: {
-						sheetId: 'sheet456',
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v4/spreadsheets/spreadsheet123:batchUpdate`,
+			{
+				requests: [
+					{
+						deleteSheet: {
+							sheetId: 'sheet456',
+						},
 					},
-				},
-			],
-		});
+				],
+			},
+		);
 
 		expect(result).toEqual(constructedData);
 	});
@@ -83,7 +88,7 @@ describe('Google Sheet - Remove', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/v4/spreadsheets/spreadsheet123:batchUpdate',
+			requestPath`/v4/spreadsheets/spreadsheet123:batchUpdate`,
 			{
 				requests: [
 					{
@@ -97,7 +102,7 @@ describe('Google Sheet - Remove', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			'/v4/spreadsheets/spreadsheet123:batchUpdate',
+			requestPath`/v4/spreadsheets/spreadsheet123:batchUpdate`,
 			{
 				requests: [
 					{

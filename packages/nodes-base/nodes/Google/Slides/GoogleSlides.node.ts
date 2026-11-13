@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest } from './GenericFunctions';
 
@@ -370,7 +370,7 @@ export class GoogleSlides implements INodeType {
 				const { slides } = await googleApiRequest.call(
 					this,
 					'GET',
-					`/presentations/${presentationId}`,
+					requestPath`/presentations/${presentationId}`,
 					{},
 					{ fields: 'slides' },
 				);
@@ -411,7 +411,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/presentations/${presentationId}/pages/${pageObjectId}`,
+							requestPath`/presentations/${presentationId}/pages/${pageObjectId}`,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
@@ -429,7 +429,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
+							requestPath`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
 						);
 
 						const download = this.getNodeParameter('download', 0);
@@ -484,7 +484,12 @@ export class GoogleSlides implements INodeType {
 							title: this.getNodeParameter('title', i) as string,
 						};
 
-						responseData = await googleApiRequest.call(this, 'POST', '/presentations', body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath`/presentations`,
+							body,
+						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData as IDataObject),
@@ -501,7 +506,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/presentations/${presentationId}`,
+							requestPath`/presentations/${presentationId}`,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -519,7 +524,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/presentations/${presentationId}`,
+							requestPath`/presentations/${presentationId}`,
 							{},
 							{ fields: 'slides' },
 						);
@@ -568,7 +573,7 @@ export class GoogleSlides implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/presentations/${presentationId}:batchUpdate`,
+							requestPath`/presentations/${presentationId}:batchUpdate`,
 							{ requests },
 						);
 

@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { brandfetchApiRequest, fetchAndPrepareBinaryData } from './GenericFunctions';
 
@@ -160,7 +160,11 @@ export class Brandfetch implements INodeType {
 				if (operation === 'logo') {
 					const download = this.getNodeParameter('download', i);
 
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const response = await brandfetchApiRequest.call(
+						this,
+						'GET',
+						requestPath`/brands/${domain}`,
+					);
 
 					if (download) {
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
@@ -217,7 +221,11 @@ export class Brandfetch implements INodeType {
 					}
 				}
 				if (operation === 'color') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const response = await brandfetchApiRequest.call(
+						this,
+						'GET',
+						requestPath`/brands/${domain}`,
+					);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response.colors as IDataObject),
 						{ itemData: { item: i } },
@@ -225,7 +233,11 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 				if (operation === 'font') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const response = await brandfetchApiRequest.call(
+						this,
+						'GET',
+						requestPath`/brands/${domain}`,
+					);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response.fonts as IDataObject),
 						{ itemData: { item: i } },
@@ -233,7 +245,11 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 				if (operation === 'company') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const response = await brandfetchApiRequest.call(
+						this,
+						'GET',
+						requestPath`/brands/${domain}`,
+					);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response.company as IDataObject),
 						{ itemData: { item: i } },
@@ -241,7 +257,11 @@ export class Brandfetch implements INodeType {
 					responseData.push(...executionData);
 				}
 				if (operation === 'industry') {
-					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
+					const response = await brandfetchApiRequest.call(
+						this,
+						'GET',
+						requestPath`/brands/${domain}`,
+					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response as IDataObject),

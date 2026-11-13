@@ -8,6 +8,7 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export class ZscalerZiaApi implements ICredentialType {
 	name = 'zscalerZiaApi';
@@ -99,8 +100,7 @@ export class ZscalerZiaApi implements ICredentialType {
 
 		const response = await this.helpers.httpRequest({
 			method: 'POST',
-			baseURL: `https://${url}`,
-			url: '/api/v1/authenticatedSession',
+			url: requestUrl`https://${url}/api/v1/authenticatedSession`,
 			headers: {
 				'Content-Type': 'application/json',
 				'Cache-Control': 'no-cache',

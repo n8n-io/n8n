@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -108,7 +109,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
 		);
@@ -142,7 +143,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
 		);

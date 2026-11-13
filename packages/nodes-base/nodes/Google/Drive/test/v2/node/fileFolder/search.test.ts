@@ -1,4 +1,5 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as search from '../../../../v2/actions/fileFolder/search.operation';
 import * as transport from '../../../../v2/transport';
@@ -43,15 +44,20 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 		await search.execute.call(fakeExecuteFunction, 0);
 
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
-		expect(transport.googleApiRequest).toBeCalledWith('GET', '/drive/v3/files', undefined, {
-			corpora: 'allDrives',
-			fields: 'nextPageToken, files(id, name, starred, version)',
-			includeItemsFromAllDrives: true,
-			pageSize: 2,
-			q: "name contains 'test' and mimeType != 'application/vnd.google-apps.folder' and trashed = false and (mimeType = 'application/vnd.google-apps.document')",
-			spaces: 'appDataFolder, drive',
-			supportsAllDrives: true,
-		});
+		expect(transport.googleApiRequest).toBeCalledWith(
+			'GET',
+			requestPath`/drive/v3/files`,
+			undefined,
+			{
+				corpora: 'allDrives',
+				fields: 'nextPageToken, files(id, name, starred, version)',
+				includeItemsFromAllDrives: true,
+				pageSize: 2,
+				q: "name contains 'test' and mimeType != 'application/vnd.google-apps.folder' and trashed = false and (mimeType = 'application/vnd.google-apps.document')",
+				spaces: 'appDataFolder, drive',
+				supportsAllDrives: true,
+			},
+		);
 	});
 
 	it('returnAll = true', async () => {
@@ -92,7 +98,7 @@ describe('test GoogleDriveV2: fileFolder search', () => {
 		expect(transport.googleApiRequestAllItems).toBeCalledWith(
 			'GET',
 			'files',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			{},
 			{
 				corpora: 'drive',

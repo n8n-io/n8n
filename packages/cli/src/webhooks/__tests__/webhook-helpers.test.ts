@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { Project } from '@n8n/db';
 import type express from 'express';
 import { mock, type MockProxy } from 'jest-mock-extended';
 import {
@@ -24,6 +25,9 @@ import type {
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
+	INodeType,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -43,8 +47,17 @@ import {
 	prepareExecutionData,
 	handleHostedChatResponse,
 	_privateGetWebhookErrorMessage,
+	executeWebhook,
 } from '../webhook-helpers';
-import type { IWebhookResponseCallbackData } from '../webhook.types';
+import { WebhookService } from '../webhook.service';
+import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
+
+import { ActiveExecutions } from '@/active-executions';
+import { AuthService } from '@/auth/auth.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 
 jest.mock('stream/promises', () => ({
 	finished: jest.fn(),
@@ -573,6 +586,58 @@ describe('getWebhookErrorMessage', () => {
 		const err = new NodeOperationError(workflowStartNode, new Error('test'));
 		expect(_privateGetWebhookErrorMessage(err, 'Webhook')).toContain(
 			'Error: Workflow could not be started',
+		);
+	});
+});
+
+describe('executeWebhook', () => {
+	it('runs a test webhook with the user of the webhook as the user of the pushRef', async () => {
+		mockInstance(OwnershipService).getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-id' }),
+		);
+		jest
+			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
+			.mockResolvedValue(mock<IWorkflowExecuteAdditionalData>());
+		mockInstance(WebhookService).runWebhook.mockResolvedValue({
+			workflowData: [[{ json: {} }]],
+		});
+		mockInstance(WorkflowStatisticsService);
+		mockInstance(AuthService);
+		mockInstance(ActiveExecutions).getPostExecutePromise.mockReturnValue(new Promise(() => {}));
+		const workflowRunner = mockInstance(WorkflowRunner);
+		workflowRunner.run.mockResolvedValue('execution-id');
+		const workflow = mock<Workflow>({
+			nodeTypes: {
+				getByNameAndVersion: jest
+					.fn()
+					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
+			},
+			expression: {
+				getSimpleParameterValue: jest.fn().mockReturnValue('onReceived'),
+				getComplexParameterValue: jest.fn().mockReturnValue(undefined),
+			},
+		});
+
+		await executeWebhook(
+			workflow,
+			mock<IWebhookData>({ userId: 'editor' }),
+			mock<IWorkflowBase>({ id: 'workflow-id' }),
+			mock<INode>({ name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2 }),
+			'manual',
+			'push-ref',
+			undefined,
+			undefined,
+			mock<WebhookRequest>({ contentType: undefined }),
+			mock<express.Response>({ headersSent: false }),
+			jest.fn(),
+		);
+
+		expect(workflowRunner.run).toHaveBeenCalledWith(
+			expect.objectContaining({ pushRef: 'push-ref', pushRefUserId: 'editor' }),
+			true,
+			false,
+			undefined,
+			undefined,
 		);
 	});
 });

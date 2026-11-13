@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { getCategoriesNames, getFolders, getCalendarGroups } from '../../../v2/methods/loadOptions';
 import * as transport from '../../../v2/transport';
@@ -35,7 +36,7 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/outlook/masterCategories',
+				requestPath`/outlook/masterCategories`,
 			);
 			expect(result).toEqual([
 				{ name: 'Red Category', value: 'Red Category' },
@@ -123,7 +124,7 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/mailFolders',
+				requestPath`/mailFolders`,
 				{},
 			);
 			expect(mockTransport.getSubfolders).toHaveBeenCalledWith(mockResponse);
@@ -220,7 +221,7 @@ describe('MicrosoftOutlookV2 - loadOptions methods', () => {
 			expect(mockTransport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 				'value',
 				'GET',
-				'/calendarGroups',
+				requestPath`/calendarGroups`,
 				{},
 			);
 			expect(result).toEqual([

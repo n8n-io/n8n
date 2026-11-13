@@ -1,4 +1,5 @@
 import type { IDataObject, INodeExecutionData, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { seaTableApiRequest } from '../../GenericFunctions';
 
@@ -18,7 +19,7 @@ export async function execute(
 		this,
 		{},
 		'DELETE',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 		requestBody,
 	);
 

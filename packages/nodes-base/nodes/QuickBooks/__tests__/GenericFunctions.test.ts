@@ -1,6 +1,31 @@
+import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { processLines } from '../GenericFunctions';
+import { getSyncToken, processLines } from '../GenericFunctions';
+
+describe('getSyncToken', () => {
+	it('should encode the resource ID as one path segment', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.getNodeParameter.mockImplementation((name: string) =>
+			name === 'invoiceId' ? '130/send?x=1' : 'invoice',
+		);
+		context.getCredentials.mockResolvedValue({ environment: 'production' });
+		context.helpers.requestOAuth2.mockResolvedValue({ Invoice: { SyncToken: '2' } });
+
+		await getSyncToken.call(context, 0, '9130357766900000', 'invoice');
+
+		expect(context.helpers.requestOAuth2).toHaveBeenCalledWith(
+			'quickBooksOAuth2Api',
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value:
+						'https://quickbooks.api.intuit.com/v3/company/9130357766900000/invoice/130%2Fsend%3Fx=1',
+				}),
+			}),
+		);
+	});
+});
+
 describe('processLines', () => {
 	const mockExecuteFunctions: Partial<IExecuteFunctions> = {
 		getNodeParameter: jest.fn(),

@@ -9,6 +9,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { stringify } from 'flatted';
 import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
 
 import {
@@ -113,6 +114,29 @@ describe('GET /executions/:id', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(execution.workflowId);
 		expect(waitTill).toBeNull();
+	});
+
+	test('hides the push session fields of a single execution with includeData', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{
+				status: 'success',
+				data: stringify({
+					pushRef: 'push-ref-of-the-owner',
+					pushRefUserId: 'user-id-of-the-owner',
+					resultData: { runData: {} },
+				}),
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent
+			.get(`/executions/${execution.id}`)
+			.query({ includeData: true });
+
+		expect(response.body.data).toHaveProperty('resultData');
+		expect(response.body.data).not.toHaveProperty('pushRef');
+		expect(response.body.data).not.toHaveProperty('pushRefUserId');
 	});
 
 	test('owner should be able to read executions of other users', async () => {
@@ -442,6 +466,28 @@ describe('GET /executions', () => {
 			expect(waitTill).toBeNull();
 			expect(status).toBe(successfulExecutions[i].status);
 		}
+	});
+
+	test('hides the push session fields with includeData', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createExecution(
+			{
+				status: 'success',
+				data: stringify({
+					pushRef: 'push-ref-of-the-owner',
+					pushRefUserId: 'user-id-of-the-owner',
+					resultData: { runData: {} },
+				}),
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get('/executions').query({ includeData: true });
+
+		const [{ data }] = response.body.data;
+		expect(data).toHaveProperty('resultData');
+		expect(data).not.toHaveProperty('pushRef');
+		expect(data).not.toHaveProperty('pushRefUserId');
 	});
 
 	describe('with query status', () => {

@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -194,7 +195,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const responseData = await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/messages/${draftId}`,
+		requestPath`/messages/${draftId}`,
 		body,
 		{},
 	);

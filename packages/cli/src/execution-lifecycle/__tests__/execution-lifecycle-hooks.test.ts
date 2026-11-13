@@ -307,6 +307,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(push.send).toHaveBeenCalledWith(
 					{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data: taskStartedData } },
 					pushRef,
+					userId,
 				);
 			});
 		});
@@ -358,6 +359,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 
 				expect(push.send).toHaveBeenNthCalledWith(
@@ -374,6 +376,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 					true,
 				);
 			});
@@ -422,6 +425,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -445,6 +449,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -457,6 +462,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: { executionId },
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -615,6 +621,85 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
+		describe('user of the pushRef', () => {
+			const EDITOR_ID = 'editor';
+
+			it('sends push events to the stored user of the pushRef', async () => {
+				const executionData = Object.assign(
+					createRunExecutionData({ resultData: { runData: {} } }),
+					{
+						pushRefUserId: EDITOR_ID,
+					},
+				);
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId: 'publisher',
+						executionData,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteBefore' }),
+					pushRef,
+					EDITOR_ID,
+				);
+			});
+
+			it('sends push events to the stored manual run user when no pushRef user is stored', async () => {
+				const executionData = createRunExecutionData({
+					resultData: { runData: {} },
+					manualData: { userId: EDITOR_ID },
+				});
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId: undefined,
+						executionData,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteBefore' }),
+					pushRef,
+					EDITOR_ID,
+				);
+			});
+
+			it('stores the user of the pushRef when a manual run goes to waiting', async () => {
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionRepository.updateExistingExecution.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBe(userId);
+			});
+
+			it('stores no user of the pushRef when a manual run without a pushRef goes to waiting', async () => {
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, retryOf, userId },
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionRepository.updateExistingExecution.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBeUndefined();
+			});
+		});
+
 		describe("when pushRef isn't set", () => {
 			beforeEach(() => {
 				lifecycleHooks = getLifecycleHooksForRegularMain(
@@ -759,6 +844,45 @@ describe('Execution Lifecycle Hooks', () => {
 			expect(handlers.nodeFetchedData).toHaveLength(1);
 			expect(handlers.sendResponse).toHaveLength(0);
 			expect(handlers.sendChunk).toHaveLength(0);
+		});
+
+		describe('user of the pushRef', () => {
+			const createHooksWithUser = () =>
+				getLifecycleHooksForScalingWorker(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
+					executionId,
+				);
+
+			it('stores the user of the pushRef when a manual run goes to waiting', async () => {
+				lifecycleHooks = createHooksWithUser();
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionRepository.updateExistingExecution.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBe(userId);
+			});
+
+			describe('on a worker process', () => {
+				beforeEach(() => {
+					mockInstance(InstanceSettings, { isWorker: true });
+				});
+
+				afterEach(() => {
+					mockInstance(InstanceSettings);
+				});
+
+				it('sends push events to the user of the pushRef on a worker', async () => {
+					lifecycleHooks = createHooksWithUser();
+
+					await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({ type: 'nodeExecuteBefore' }),
+						pushRef,
+						userId,
+					);
+				});
+			});
 		});
 
 		describe('saving static data', () => {

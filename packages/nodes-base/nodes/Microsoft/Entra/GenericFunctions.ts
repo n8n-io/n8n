@@ -4,30 +4,29 @@ import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestMethods,
-	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	INodeExecutionData,
 	IN8nHttpFullResponse,
 	INodePropertyOptions,
 	INodeListSearchResult,
 	INodeListSearchItems,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl, sanitizeXmlName } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
 	url?: string,
 ): Promise<any> {
-	const options: IHttpRequestOptions = {
+	const options = {
 		method,
-		url: url ?? `https://graph.microsoft.com/v1.0${endpoint}`,
+		...(url ? { url } : { url: requestUrl`https://graph.microsoft.com/v1.0${endpoint}` }),
 		json: true,
 		headers,
 		body,
@@ -44,7 +43,7 @@ export async function microsoftApiRequest(
 export async function microsoftApiPaginateRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
@@ -52,9 +51,9 @@ export async function microsoftApiPaginateRequest(
 	itemIndex: number = 0,
 ): Promise<IDataObject[]> {
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
-	const options: IRequestOptions = {
+	const options = {
 		method,
-		uri: url ?? `https://graph.microsoft.com/v1.0${endpoint}`,
+		...(url ? { uri: url } : { uri: requestUrl`https://graph.microsoft.com/v1.0${endpoint}` }),
 		json: true,
 		headers,
 		body,
@@ -252,7 +251,7 @@ export async function getGroupProperties(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#groups');
+	const response = await microsoftApiRequest.call(this, 'GET', requestPath`/$metadata#groups`);
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
 		tagNameProcessors: [sanitizeXmlName],
@@ -290,7 +289,7 @@ export async function getUserProperties(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await microsoftApiRequest.call(this, 'GET', '/$metadata#users');
+	const response = await microsoftApiRequest.call(this, 'GET', requestPath`/$metadata#users`);
 	const metadata = await parseStringPromise(response as string, {
 		explicitArray: false,
 		tagNameProcessors: [sanitizeXmlName],
@@ -336,7 +335,7 @@ export async function getGroups(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'/groups',
+			requestPath`/groups`,
 			{},
 			undefined,
 			undefined,
@@ -351,7 +350,7 @@ export async function getGroups(
 			headers.ConsistencyLevel = 'eventual';
 			qs.$search = `"displayName:${filter}"`;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', '/groups', {}, qs, headers);
+		response = await microsoftApiRequest.call(this, 'GET', requestPath`/groups`, {}, qs, headers);
 	}
 
 	const groups: Array<{
@@ -381,7 +380,7 @@ export async function getUsers(
 		response = await microsoftApiRequest.call(
 			this,
 			'GET',
-			'/users',
+			requestPath`/users`,
 			{},
 			undefined,
 			undefined,
@@ -395,7 +394,7 @@ export async function getUsers(
 		if (filter) {
 			qs.$filter = `startsWith(displayName, '${filter}') OR startsWith(userPrincipalName, '${filter}')`;
 		}
-		response = await microsoftApiRequest.call(this, 'GET', '/users', {}, qs, headers);
+		response = await microsoftApiRequest.call(this, 'GET', requestPath`/users`, {}, qs, headers);
 	}
 
 	const users: Array<{

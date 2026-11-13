@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type {
 	GristCredentials,
@@ -18,7 +20,7 @@ import type {
 export async function gristApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
@@ -27,12 +29,12 @@ export async function gristApiRequest(
 
 	const gristapiurl =
 		planType === 'free'
-			? `https://docs.getgrist.com/api${endpoint}`
+			? requestUrl`https://docs.getgrist.com/api${endpoint}`
 			: planType === 'paid'
-				? `https://${customSubdomain}.getgrist.com/api${endpoint}`
-				: `${selfHostedUrl}/api${endpoint}`;
+				? requestUrl`https://${customSubdomain}.getgrist.com/api${endpoint}`
+				: requestUrl`${selfHostedUrl}/api${endpoint}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 		},

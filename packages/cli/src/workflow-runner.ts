@@ -34,6 +34,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getPushRefUserId,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -283,6 +284,7 @@ export class WorkflowRunner {
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
+				userId: getPushRefUserId(data),
 			});
 
 			if (data.executionData !== undefined) {
@@ -376,6 +378,7 @@ export class WorkflowRunner {
 			executionId,
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
+			pushRefUserId: getPushRefUserId(data),
 			streamingEnabled: data.streamingEnabled,
 		};
 

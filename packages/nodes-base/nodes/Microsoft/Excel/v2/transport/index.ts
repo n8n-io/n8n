@@ -3,28 +3,42 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IRequestOptions,
 	JsonObject,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { decodePathValue, NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+
+export function toWorkbookId(this: IExecuteFunctions | ILoadOptionsFunctions, id: string): string {
+	return this.getNode().typeVersion < 2.3 ? decodePathValue(id) : id.replaceAll('%21', '!');
+}
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const baseUrl = 'https://graph.microsoft.com';
+
+	if (uri && (!URL.canParse(uri) || new URL(uri).origin !== new URL(baseUrl).origin)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
+
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
+		...(uri ? { uri } : { uri: requestUrl`${baseUrl}/v1.0/me/drive${resource}` }),
 		json: true,
 	};
 	try {
@@ -41,7 +55,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -67,7 +81,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

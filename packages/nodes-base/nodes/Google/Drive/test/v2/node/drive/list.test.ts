@@ -1,4 +1,5 @@
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as list from '../../../../v2/actions/drive/list.operation';
 import * as transport from '../../../../v2/transport';
@@ -37,7 +38,7 @@ describe('test GoogleDriveV2: drive list', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/v3/drives',
+			requestPath`/drive/v3/drives`,
 			{},
 			{ pageSize: 20 },
 		);
@@ -59,7 +60,7 @@ describe('test GoogleDriveV2: drive list', () => {
 		expect(transport.googleApiRequestAllItems).toHaveBeenCalledWith(
 			'GET',
 			'drives',
-			'/drive/v3/drives',
+			requestPath`/drive/v3/drives`,
 			{},
 			{},
 		);

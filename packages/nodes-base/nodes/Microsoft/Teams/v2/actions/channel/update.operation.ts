@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath, decodePathValue } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -50,7 +51,9 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-patch?view=graph-rest-beta&tabs=http
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const channelId = decodePathValue(
+		this.getNodeParameter('channelId', i, '', { extractValue: true }) as string,
+	);
 	const newName = this.getNodeParameter('name', i) as string;
 	const newDescription = this.getNodeParameter('options.description', i, '') as string;
 
@@ -64,7 +67,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/v1.0/teams/${teamId}/channels/${channelId}`,
+		requestPath`/v1.0/teams/${teamId}/channels/${channelId}`,
 		body,
 	);
 	return { success: true };

@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { wordpressApiRequest, wordpressApiRequestAllItems } from './GenericFunctions';
 import { pageFields, pageOperations } from './PageDescription';
@@ -75,7 +75,12 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const categories = await wordpressApiRequestAllItems.call(this, 'GET', '/categories', {});
+				const categories = await wordpressApiRequestAllItems.call(
+					this,
+					'GET',
+					requestPath`/categories`,
+					{},
+				);
 				for (const category of categories) {
 					const categoryName = category.name;
 					const categoryId = category.id;
@@ -91,7 +96,7 @@ export class Wordpress implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await wordpressApiRequestAllItems.call(this, 'GET', '/tags', {});
+				const tags = await wordpressApiRequestAllItems.call(this, 'GET', requestPath`/tags`, {});
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.id;
@@ -110,7 +115,7 @@ export class Wordpress implements INodeType {
 				const authors = await wordpressApiRequestAllItems.call(
 					this,
 					'GET',
-					'/users',
+					requestPath`/users`,
 					{},
 					{ who: 'authors' },
 				);
@@ -190,7 +195,7 @@ export class Wordpress implements INodeType {
 						if (additionalFields.date) {
 							body.date = additionalFields.date as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', '/posts', body);
+						responseData = await wordpressApiRequest.call(this, 'POST', requestPath`/posts`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#update-a-post
 					if (operation === 'update') {
@@ -245,7 +250,12 @@ export class Wordpress implements INodeType {
 						if (updateFields.date) {
 							body.date = updateFields.date as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', `/posts/${postId}`, body);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'POST',
+							requestPath`/posts/${postId}`,
+							body,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#retrieve-a-post
 					if (operation === 'get') {
@@ -257,7 +267,13 @@ export class Wordpress implements INodeType {
 						if (options.context) {
 							qs.context = options.context as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'GET', `/posts/${postId}`, {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'GET',
+							requestPath`/posts/${postId}`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 					if (operation === 'getAll') {
@@ -303,10 +319,22 @@ export class Wordpress implements INodeType {
 							qs.status = options.status as string;
 						}
 						if (returnAll) {
-							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
+							responseData = await wordpressApiRequestAllItems.call(
+								this,
+								'GET',
+								requestPath`/posts`,
+								{},
+								qs,
+							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
+							responseData = await wordpressApiRequest.call(
+								this,
+								'GET',
+								requestPath`/posts`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
@@ -319,7 +347,7 @@ export class Wordpress implements INodeType {
 						responseData = await wordpressApiRequest.call(
 							this,
 							'DELETE',
-							`/posts/${postId}`,
+							requestPath`/posts/${postId}`,
 							{},
 							qs,
 						);
@@ -370,7 +398,7 @@ export class Wordpress implements INodeType {
 						if (additionalFields.featuredMediaId) {
 							body.featured_media = additionalFields.featuredMediaId as number;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', '/pages', body);
+						responseData = await wordpressApiRequest.call(this, 'POST', requestPath`/pages`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#update-a-page
 					if (operation === 'update') {
@@ -419,7 +447,12 @@ export class Wordpress implements INodeType {
 						if (updateFields.featuredMediaId) {
 							body.featured_media = updateFields.featuredMediaId as number;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', `/pages/${pageId}`, body);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'POST',
+							requestPath`/pages/${pageId}`,
+							body,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#retrieve-a-page
 					if (operation === 'get') {
@@ -431,7 +464,13 @@ export class Wordpress implements INodeType {
 						if (options.context) {
 							qs.context = options.context as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'GET', `/pages/${pageId}`, {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'GET',
+							requestPath`/pages/${pageId}`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#list-pages
 					if (operation === 'getAll') {
@@ -471,10 +510,22 @@ export class Wordpress implements INodeType {
 							qs.page = options.page as number;
 						}
 						if (returnAll) {
-							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/pages', {}, qs);
+							responseData = await wordpressApiRequestAllItems.call(
+								this,
+								'GET',
+								requestPath`/pages`,
+								{},
+								qs,
+							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await wordpressApiRequest.call(this, 'GET', '/pages', {}, qs);
+							responseData = await wordpressApiRequest.call(
+								this,
+								'GET',
+								requestPath`/pages`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://developer.wordpress.org/rest-api/reference/pages/#delete-a-page
@@ -487,7 +538,7 @@ export class Wordpress implements INodeType {
 						responseData = await wordpressApiRequest.call(
 							this,
 							'DELETE',
-							`/pages/${pageId}`,
+							requestPath`/pages/${pageId}`,
 							{},
 							qs,
 						);
@@ -523,7 +574,7 @@ export class Wordpress implements INodeType {
 						if (additionalFields.slug) {
 							body.slug = additionalFields.slug as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', '/users', body);
+						responseData = await wordpressApiRequest.call(this, 'POST', requestPath`/users`, body);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#update-a-user
 					if (operation === 'update') {
@@ -562,7 +613,12 @@ export class Wordpress implements INodeType {
 						if (updateFields.slug) {
 							body.slug = updateFields.slug as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'POST', `/users/${userId}`, body);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'POST',
+							requestPath`/users/${userId}`,
+							body,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#retrieve-a-user
 					if (operation === 'get') {
@@ -571,7 +627,13 @@ export class Wordpress implements INodeType {
 						if (options.context) {
 							qs.context = options.context as string;
 						}
-						responseData = await wordpressApiRequest.call(this, 'GET', `/users/${userId}`, {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/${userId}`,
+							{},
+							qs,
+						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#list-users
 					if (operation === 'getAll') {
@@ -593,10 +655,22 @@ export class Wordpress implements INodeType {
 							qs.who = options.who as string;
 						}
 						if (returnAll) {
-							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
+							responseData = await wordpressApiRequestAllItems.call(
+								this,
+								'GET',
+								requestPath`/users`,
+								{},
+								qs,
+							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
+							responseData = await wordpressApiRequest.call(
+								this,
+								'GET',
+								requestPath`/users`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
@@ -604,7 +678,13 @@ export class Wordpress implements INodeType {
 						const reassign = this.getNodeParameter('reassign', i) as string;
 						qs.reassign = reassign;
 						qs.force = true;
-						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
+						responseData = await wordpressApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/users/me`,
+							{},
+							qs,
+						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

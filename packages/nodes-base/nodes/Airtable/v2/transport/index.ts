@@ -8,8 +8,11 @@ import type {
 	IPairedItemData,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
 import { ApplicationError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
 
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 import { flattenOutput } from '../helpers/utils';
@@ -21,27 +24,21 @@ import { flattenOutput } from '../helpers/utils';
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query?: IDataObject,
-	uri?: string,
-	option: IDataObject = {},
 ) {
 	query = query || {};
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://api.airtable.com/v0/${endpoint}`,
+		uri: requestUrl`https://api.airtable.com/v0/${endpoint}`,
 		useQuerystring: false,
 		json: true,
 	};
-
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
-	}
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
@@ -60,7 +57,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body?: IDataObject,
 	query?: IDataObject,
 ) {
@@ -109,10 +106,11 @@ export async function downloadRecordAttachments(
 		for (const fieldName of fieldNames) {
 			if (record.fields[fieldName] !== undefined) {
 				for (const [index, attachment] of (record.fields[fieldName] as IAttachment[]).entries()) {
-					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
-						json: false,
-						encoding: null,
-					});
+					const file = await this.helpers.requestWithAuthentication.call(
+						this,
+						this.getNodeParameter('authentication', 0) as string,
+						{ method: 'GET', uri: attachment.url, json: false, encoding: null },
+					);
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file as string),
 						attachment.filename,
@@ -131,7 +129,7 @@ export async function downloadRecordAttachments(
 
 export async function batchUpdate(
 	this: IExecuteFunctions | IPollFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	updateRecords: IDataObject[],
 ) {

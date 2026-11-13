@@ -1,0 +1,2315 @@
+{
+	"name": "Freshservice Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "create",
+				"email": "nathan@example.com",
+				"firstName": "Nathan",
+				"roles": {
+					"roleProperties": [
+						{
+							"role": 21000204000,
+							"assignment_scope": "entire_helpdesk"
+						}
+					]
+				}
+			},
+			"id": "node-0",
+			"name": "Agent Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "delete",
+				"agentId": "21001397559"
+			},
+			"id": "node-1",
+			"name": "Agent Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "get",
+				"agentId": "21001397559"
+			},
+			"id": "node-2",
+			"name": "Agent Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-3",
+			"name": "Agent Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "update",
+				"agentId": "21001397559",
+				"updateFields": {
+					"first_name": "Nathan"
+				}
+			},
+			"id": "node-4",
+			"name": "Agent Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentGroup",
+				"operation": "create",
+				"name": "Support"
+			},
+			"id": "node-5",
+			"name": "AgentGroup Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentGroup",
+				"operation": "delete",
+				"agentGroupId": "21000187001"
+			},
+			"id": "node-6",
+			"name": "AgentGroup Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentGroup",
+				"operation": "get",
+				"agentGroupId": "21000187001"
+			},
+			"id": "node-7",
+			"name": "AgentGroup Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentGroup",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-8",
+			"name": "AgentGroup Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentGroup",
+				"operation": "update",
+				"agentGroupId": "21000187001",
+				"updateFields": {
+					"name": "Support"
+				}
+			},
+			"id": "node-9",
+			"name": "AgentGroup Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentRole",
+				"operation": "get",
+				"agentRoleId": "21000204000"
+			},
+			"id": "node-10",
+			"name": "AgentRole Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "agentRole",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-11",
+			"name": "AgentRole Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "announcement",
+				"operation": "create",
+				"title": "Maintenance",
+				"bodyHtml": "<p>Downtime</p>",
+				"visibleFrom": "2025-09-01T10:00:00"
+			},
+			"id": "node-12",
+			"name": "Announcement Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "announcement",
+				"operation": "delete",
+				"announcementId": "21000012345"
+			},
+			"id": "node-13",
+			"name": "Announcement Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "announcement",
+				"operation": "get",
+				"announcementId": "21000012345"
+			},
+			"id": "node-14",
+			"name": "Announcement Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "announcement",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-15",
+			"name": "Announcement Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2250],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "announcement",
+				"operation": "update",
+				"announcementId": "21000012345",
+				"updateFields": {
+					"title": "Maintenance"
+				}
+			},
+			"id": "node-16",
+			"name": "Announcement Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assetType",
+				"operation": "create",
+				"name": "Laptop"
+			},
+			"id": "node-17",
+			"name": "AssetType Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2550],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assetType",
+				"operation": "delete",
+				"assetTypeId": "21000533000"
+			},
+			"id": "node-18",
+			"name": "AssetType Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2700],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assetType",
+				"operation": "get",
+				"assetTypeId": "21000533000"
+			},
+			"id": "node-19",
+			"name": "AssetType Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 2850],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assetType",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-20",
+			"name": "AssetType Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "assetType",
+				"operation": "update",
+				"assetTypeId": "21000533000",
+				"updateFields": {
+					"name": "Laptop"
+				}
+			},
+			"id": "node-21",
+			"name": "AssetType Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3150],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "create",
+				"requesterId": 21001397559,
+				"subject": "DB upgrade",
+				"plannedStartDate": "2025-09-08T09:00:00",
+				"plannedEndDate": "2025-09-08T17:00:00"
+			},
+			"id": "node-22",
+			"name": "Change Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3300],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "delete",
+				"changeId": "15"
+			},
+			"id": "node-23",
+			"name": "Change Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3450],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "get",
+				"changeId": "15"
+			},
+			"id": "node-24",
+			"name": "Change Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-25",
+			"name": "Change Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3750],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "change",
+				"operation": "update",
+				"changeId": "15",
+				"updateFields": {
+					"subject": "DB upgrade"
+				}
+			},
+			"id": "node-26",
+			"name": "Change Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 3900],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "department",
+				"operation": "create",
+				"name": "Finance"
+			},
+			"id": "node-27",
+			"name": "Department Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4050],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "department",
+				"operation": "delete",
+				"departmentId": "21000098000"
+			},
+			"id": "node-28",
+			"name": "Department Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "department",
+				"operation": "get",
+				"departmentId": "21000098000"
+			},
+			"id": "node-29",
+			"name": "Department Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4350],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "department",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-30",
+			"name": "Department Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4500],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "department",
+				"operation": "update",
+				"departmentId": "21000098000",
+				"updateFields": {
+					"name": "Finance"
+				}
+			},
+			"id": "node-31",
+			"name": "Department Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4650],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "location",
+				"operation": "create",
+				"name": "Berlin"
+			},
+			"id": "node-32",
+			"name": "Location Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "location",
+				"operation": "delete",
+				"locationId": "21000045000"
+			},
+			"id": "node-33",
+			"name": "Location Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 4950],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "location",
+				"operation": "get",
+				"locationId": "21000045000"
+			},
+			"id": "node-34",
+			"name": "Location Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5100],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "location",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-35",
+			"name": "Location Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5250],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "location",
+				"operation": "update",
+				"locationId": "21000045000",
+				"updateFields": {
+					"name": "Berlin"
+				}
+			},
+			"id": "node-36",
+			"name": "Location Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5400],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "problem",
+				"operation": "create",
+				"subject": "VPN drops",
+				"requesterId": 21001397559,
+				"dueBy": "2025-09-10T09:00:00"
+			},
+			"id": "node-37",
+			"name": "Problem Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5550],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "problem",
+				"operation": "delete",
+				"problemId": "7"
+			},
+			"id": "node-38",
+			"name": "Problem Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5700],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "problem",
+				"operation": "get",
+				"problemId": "7"
+			},
+			"id": "node-39",
+			"name": "Problem Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 5850],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "problem",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-40",
+			"name": "Problem Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6000],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "problem",
+				"operation": "update",
+				"problemId": "7",
+				"updateFields": {
+					"subject": "VPN drops"
+				}
+			},
+			"id": "node-41",
+			"name": "Problem Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6150],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "create",
+				"assetTypeId": 21000533000,
+				"name": "ThinkPad"
+			},
+			"id": "node-42",
+			"name": "Product Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6300],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "delete",
+				"productId": "21000033000"
+			},
+			"id": "node-43",
+			"name": "Product Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6450],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "get",
+				"productId": "21000033000"
+			},
+			"id": "node-44",
+			"name": "Product Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6600],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-45",
+			"name": "Product Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6750],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "update",
+				"productId": "21000033000",
+				"updateFields": {
+					"name": "ThinkPad"
+				}
+			},
+			"id": "node-46",
+			"name": "Product Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 6900],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "create",
+				"subject": "Q3 release",
+				"releaseType": 1,
+				"status": 1,
+				"priority": 1,
+				"plannedStartDate": "2025-09-08T09:00:00",
+				"plannedEndDate": "2025-09-08T17:00:00"
+			},
+			"id": "node-47",
+			"name": "Release Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7050],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "delete",
+				"releaseId": "3"
+			},
+			"id": "node-48",
+			"name": "Release Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7200],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "get",
+				"releaseId": "3"
+			},
+			"id": "node-49",
+			"name": "Release Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7350],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-50",
+			"name": "Release Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7500],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "release",
+				"operation": "update",
+				"releaseId": "3",
+				"updateFields": {
+					"subject": "Q3 release"
+				}
+			},
+			"id": "node-51",
+			"name": "Release Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7650],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requester",
+				"operation": "create",
+				"firstName": "Nathan",
+				"primaryEmail": "nathan@example.com"
+			},
+			"id": "node-52",
+			"name": "Requester Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7800],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requester",
+				"operation": "delete",
+				"requesterId": "21001931696"
+			},
+			"id": "node-53",
+			"name": "Requester Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 7950],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requester",
+				"operation": "get",
+				"requesterId": "21001931696"
+			},
+			"id": "node-54",
+			"name": "Requester Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8100],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requester",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-55",
+			"name": "Requester Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8250],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requester",
+				"operation": "update",
+				"requesterId": "21001931696",
+				"updateFields": {
+					"first_name": "Nathan"
+				}
+			},
+			"id": "node-56",
+			"name": "Requester Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8400],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requesterGroup",
+				"operation": "create",
+				"name": "Staff"
+			},
+			"id": "node-57",
+			"name": "RequesterGroup Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8550],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requesterGroup",
+				"operation": "delete",
+				"requesterGroupId": "21000011000"
+			},
+			"id": "node-58",
+			"name": "RequesterGroup Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8700],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requesterGroup",
+				"operation": "get",
+				"requesterGroupId": "21000011000"
+			},
+			"id": "node-59",
+			"name": "RequesterGroup Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 8850],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requesterGroup",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-60",
+			"name": "RequesterGroup Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9000],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "requesterGroup",
+				"operation": "update",
+				"requesterGroupId": "21000011000",
+				"updateFields": {
+					"name": "Staff"
+				}
+			},
+			"id": "node-61",
+			"name": "RequesterGroup Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9150],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "software",
+				"operation": "create",
+				"applicationType": "desktop",
+				"name": "Slack"
+			},
+			"id": "node-62",
+			"name": "Software Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9300],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "software",
+				"operation": "delete",
+				"softwareId": "21000077000"
+			},
+			"id": "node-63",
+			"name": "Software Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9450],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "software",
+				"operation": "get",
+				"softwareId": "21000077000"
+			},
+			"id": "node-64",
+			"name": "Software Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9600],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "software",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-65",
+			"name": "Software Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9750],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "software",
+				"operation": "update",
+				"softwareId": "21000077000",
+				"updateFields": {
+					"name": "Slack"
+				}
+			},
+			"id": "node-66",
+			"name": "Software Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 9900],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "create",
+				"email": "nathan@example.com",
+				"subject": "Printer",
+				"description": "Broken",
+				"priority": 1,
+				"status": 2
+			},
+			"id": "node-67",
+			"name": "Ticket Create",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 10050],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": "42"
+			},
+			"id": "node-68",
+			"name": "Ticket Delete",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 10200],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": "42"
+			},
+			"id": "node-69",
+			"name": "Ticket Get",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 10350],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-70",
+			"name": "Ticket Get Many",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 10500],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": "42",
+				"updateFields": {
+					"subject": "Printer"
+				}
+			},
+			"id": "node-71",
+			"name": "Ticket Update",
+			"type": "n8n-nodes-base.freshservice",
+			"typeVersion": 1,
+			"position": [300, 10650],
+			"credentials": {
+				"freshserviceApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Agent Create": [
+			{
+				"json": {
+					"id": 21001397559,
+					"name": "agent 21001397559"
+				}
+			}
+		],
+		"Agent Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Agent Get": [
+			{
+				"json": {
+					"id": 21001397559,
+					"name": "agent 21001397559"
+				}
+			}
+		],
+		"Agent Get Many": [
+			{
+				"json": {
+					"id": 21001397559,
+					"name": "agent 21001397559"
+				}
+			}
+		],
+		"Agent Update": [
+			{
+				"json": {
+					"id": 21001397559,
+					"name": "agent 21001397559"
+				}
+			}
+		],
+		"AgentGroup Create": [
+			{
+				"json": {
+					"id": 21000187001,
+					"name": "agentGroup 21000187001"
+				}
+			}
+		],
+		"AgentGroup Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"AgentGroup Get": [
+			{
+				"json": {
+					"id": 21000187001,
+					"name": "agentGroup 21000187001"
+				}
+			}
+		],
+		"AgentGroup Get Many": [
+			{
+				"json": {
+					"id": 21000187001,
+					"name": "agentGroup 21000187001"
+				}
+			}
+		],
+		"AgentGroup Update": [
+			{
+				"json": {
+					"id": 21000187001,
+					"name": "agentGroup 21000187001"
+				}
+			}
+		],
+		"AgentRole Get": [
+			{
+				"json": {
+					"id": 21000204000,
+					"name": "agentRole 21000204000"
+				}
+			}
+		],
+		"AgentRole Get Many": [
+			{
+				"json": {
+					"id": 21000204000,
+					"name": "agentRole 21000204000"
+				}
+			}
+		],
+		"Announcement Create": [
+			{
+				"json": {
+					"id": 21000012345,
+					"name": "announcement 21000012345"
+				}
+			}
+		],
+		"Announcement Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Announcement Get": [
+			{
+				"json": {
+					"id": 21000012345,
+					"name": "announcement 21000012345"
+				}
+			}
+		],
+		"Announcement Get Many": [
+			{
+				"json": {
+					"id": 21000012345,
+					"name": "announcement 21000012345"
+				}
+			}
+		],
+		"Announcement Update": [
+			{
+				"json": {
+					"id": 21000012345,
+					"name": "announcement 21000012345"
+				}
+			}
+		],
+		"AssetType Create": [
+			{
+				"json": {
+					"id": 21000533000,
+					"name": "assetType 21000533000"
+				}
+			}
+		],
+		"AssetType Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"AssetType Get": [
+			{
+				"json": {
+					"id": 21000533000,
+					"name": "assetType 21000533000"
+				}
+			}
+		],
+		"AssetType Get Many": [
+			{
+				"json": {
+					"id": 21000533000,
+					"name": "assetType 21000533000"
+				}
+			}
+		],
+		"AssetType Update": [
+			{
+				"json": {
+					"id": 21000533000,
+					"name": "assetType 21000533000"
+				}
+			}
+		],
+		"Change Create": [
+			{
+				"json": {
+					"id": 15,
+					"name": "change 15"
+				}
+			}
+		],
+		"Change Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Change Get": [
+			{
+				"json": {
+					"id": 15,
+					"name": "change 15"
+				}
+			}
+		],
+		"Change Get Many": [
+			{
+				"json": {
+					"id": 15,
+					"name": "change 15"
+				}
+			}
+		],
+		"Change Update": [
+			{
+				"json": {
+					"id": 15,
+					"name": "change 15"
+				}
+			}
+		],
+		"Department Create": [
+			{
+				"json": {
+					"id": 21000098000,
+					"name": "department 21000098000"
+				}
+			}
+		],
+		"Department Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Department Get": [
+			{
+				"json": {
+					"id": 21000098000,
+					"name": "department 21000098000"
+				}
+			}
+		],
+		"Department Get Many": [
+			{
+				"json": {
+					"id": 21000098000,
+					"name": "department 21000098000"
+				}
+			}
+		],
+		"Department Update": [
+			{
+				"json": {
+					"id": 21000098000,
+					"name": "department 21000098000"
+				}
+			}
+		],
+		"Location Create": [
+			{
+				"json": {
+					"id": 21000045000,
+					"name": "location 21000045000"
+				}
+			}
+		],
+		"Location Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Location Get": [
+			{
+				"json": {
+					"id": 21000045000,
+					"name": "location 21000045000"
+				}
+			}
+		],
+		"Location Get Many": [
+			{
+				"json": {
+					"id": 21000045000,
+					"name": "location 21000045000"
+				}
+			}
+		],
+		"Location Update": [
+			{
+				"json": {
+					"id": 21000045000,
+					"name": "location 21000045000"
+				}
+			}
+		],
+		"Problem Create": [
+			{
+				"json": {
+					"id": 7,
+					"name": "problem 7"
+				}
+			}
+		],
+		"Problem Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Problem Get": [
+			{
+				"json": {
+					"id": 7,
+					"name": "problem 7"
+				}
+			}
+		],
+		"Problem Get Many": [
+			{
+				"json": {
+					"id": 7,
+					"name": "problem 7"
+				}
+			}
+		],
+		"Problem Update": [
+			{
+				"json": {
+					"id": 7,
+					"name": "problem 7"
+				}
+			}
+		],
+		"Product Create": [
+			{
+				"json": {
+					"id": 21000033000,
+					"name": "product 21000033000"
+				}
+			}
+		],
+		"Product Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Product Get": [
+			{
+				"json": {
+					"id": 21000033000,
+					"name": "product 21000033000"
+				}
+			}
+		],
+		"Product Get Many": [
+			{
+				"json": {
+					"id": 21000033000,
+					"name": "product 21000033000"
+				}
+			}
+		],
+		"Product Update": [
+			{
+				"json": {
+					"id": 21000033000,
+					"name": "product 21000033000"
+				}
+			}
+		],
+		"Release Create": [
+			{
+				"json": {
+					"id": 3,
+					"name": "release 3"
+				}
+			}
+		],
+		"Release Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Release Get": [
+			{
+				"json": {
+					"id": 3,
+					"name": "release 3"
+				}
+			}
+		],
+		"Release Get Many": [
+			{
+				"json": {
+					"id": 3,
+					"name": "release 3"
+				}
+			}
+		],
+		"Release Update": [
+			{
+				"json": {
+					"id": 3,
+					"name": "release 3"
+				}
+			}
+		],
+		"Requester Create": [
+			{
+				"json": {
+					"id": 21001931696,
+					"name": "requester 21001931696"
+				}
+			}
+		],
+		"Requester Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Requester Get": [
+			{
+				"json": {
+					"id": 21001931696,
+					"name": "requester 21001931696"
+				}
+			}
+		],
+		"Requester Get Many": [
+			{
+				"json": {
+					"id": 21001931696,
+					"name": "requester 21001931696"
+				}
+			}
+		],
+		"Requester Update": [
+			{
+				"json": {
+					"id": 21001931696,
+					"name": "requester 21001931696"
+				}
+			}
+		],
+		"RequesterGroup Create": [
+			{
+				"json": {
+					"id": 21000011000,
+					"name": "requesterGroup 21000011000"
+				}
+			}
+		],
+		"RequesterGroup Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"RequesterGroup Get": [
+			{
+				"json": {
+					"id": 21000011000,
+					"name": "requesterGroup 21000011000"
+				}
+			}
+		],
+		"RequesterGroup Get Many": [
+			{
+				"json": {
+					"id": 21000011000,
+					"name": "requesterGroup 21000011000"
+				}
+			}
+		],
+		"RequesterGroup Update": [
+			{
+				"json": {
+					"id": 21000011000,
+					"name": "requesterGroup 21000011000"
+				}
+			}
+		],
+		"Software Create": [
+			{
+				"json": {
+					"id": 21000077000,
+					"name": "software 21000077000"
+				}
+			}
+		],
+		"Software Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Software Get": [
+			{
+				"json": {
+					"id": 21000077000,
+					"name": "software 21000077000"
+				}
+			}
+		],
+		"Software Get Many": [
+			{
+				"json": {
+					"id": 21000077000,
+					"name": "software 21000077000"
+				}
+			}
+		],
+		"Software Update": [
+			{
+				"json": {
+					"id": 21000077000,
+					"name": "software 21000077000"
+				}
+			}
+		],
+		"Ticket Create": [
+			{
+				"json": {
+					"id": 42,
+					"name": "ticket 42"
+				}
+			}
+		],
+		"Ticket Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Ticket Get": [
+			{
+				"json": {
+					"id": 42,
+					"name": "ticket 42"
+				}
+			}
+		],
+		"Ticket Get Many": [
+			{
+				"json": {
+					"id": 42,
+					"name": "ticket 42"
+				}
+			}
+		],
+		"Ticket Update": [
+			{
+				"json": {
+					"id": 42,
+					"name": "ticket 42"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Agent Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Agent Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Agent Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Agent Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Agent Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentGroup Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentGroup Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentGroup Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentGroup Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentGroup Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentRole Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AgentRole Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Announcement Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Announcement Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Announcement Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Announcement Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Announcement Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AssetType Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AssetType Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AssetType Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AssetType Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "AssetType Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Change Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Change Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Change Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Change Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Change Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Department Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Department Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Department Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Department Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Department Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Location Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Location Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Location Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Location Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Location Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Problem Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Problem Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Problem Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Problem Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Problem Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Release Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Requester Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Requester Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Requester Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Requester Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Requester Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RequesterGroup Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RequesterGroup Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RequesterGroup Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RequesterGroup Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "RequesterGroup Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Software Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Software Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Software Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Software Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Software Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

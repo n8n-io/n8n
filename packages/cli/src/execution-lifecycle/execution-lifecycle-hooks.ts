@@ -98,6 +98,7 @@ class ModulesHooksRegistry {
 type HooksSetupParameters = {
 	saveSettings: ExecutionSaveSettings;
 	pushRef?: string;
+	pushRefUserId?: string;
 	retryOf?: string;
 };
 
@@ -157,7 +158,7 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, pushRefUserId, retryOf }: HooksSetupParameters,
 ) {
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
@@ -175,6 +176,7 @@ function hookFunctionsPush(
 		pushInstance.send(
 			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
 			pushRef,
+			pushRefUserId,
 		);
 	});
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
@@ -195,6 +197,7 @@ function hookFunctionsPush(
 				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
 			},
 			pushRef,
+			pushRefUserId,
 		);
 
 		// We send the node execution data as a WS binary message to the FE. Not
@@ -210,6 +213,7 @@ function hookFunctionsPush(
 				data: { executionId, nodeName, itemCountByConnectionType, data },
 			},
 			pushRef,
+			pushRefUserId,
 			asBinary,
 		);
 	});
@@ -238,6 +242,7 @@ function hookFunctionsPush(
 				},
 			},
 			pushRef,
+			pushRefUserId,
 		);
 	});
 	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
@@ -251,11 +256,16 @@ function hookFunctionsPush(
 
 		const { status } = fullRunData;
 		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
+			pushInstance.send(
+				{ type: 'executionWaiting', data: { executionId } },
+				pushRef,
+				pushRefUserId,
+			);
 		} else {
 			pushInstance.send(
 				{ type: 'executionFinished', data: { executionId, workflowId, status } },
 				pushRef,
+				pushRefUserId,
 			);
 		}
 	});
@@ -310,7 +320,7 @@ function hookFunctionsStatistics(hooks: ExecutionLifecycleHooks) {
  */
 function hookFunctionsSave(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings }: HooksSetupParameters,
+	{ pushRef, pushRefUserId, retryOf, saveSettings }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -381,9 +391,10 @@ function hookFunctionsSave(
 				retryOf,
 			});
 
-			// When going into the waiting state, store the pushRef in the execution-data
+			// When going into the waiting state, store the pushRef and its user in the execution-data
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
+				fullExecutionData.data.pushRefUserId = pushRefUserId;
 			}
 
 			await updateExistingExecution({
@@ -411,7 +422,7 @@ function hookFunctionsSave(
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
+	{ pushRef, pushRefUserId, retryOf }: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -453,9 +464,10 @@ function hookFunctionsSaveWorker(
 				retryOf,
 			});
 
-			// When going into the waiting state, store the pushRef in the execution-data
+			// When going into the waiting state, store the pushRef and its user in the execution-data
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
+				fullExecutionData.data.pushRefUserId = pushRefUserId;
 			}
 
 			await updateExistingExecution({
@@ -494,6 +506,22 @@ export function getLifecycleHooksForSubExecutions(
 	return hooks;
 }
 
+/** The user who owns `pushRef`, so push messages for this run go only to that user's editor. */
+export function getPushRefUserId(data: IWorkflowExecutionDataProcess): string | undefined {
+	// Written into the job by the main, read on a worker.
+	const ownerFromJob = data.pushRefUserId;
+	// Stored when a manual run went to waiting, read when it resumes.
+	const ownerStoredOnWait = data.executionData?.pushRefUserId;
+	// Comes after the stored owner, because a resumed run can start as the publisher.
+	const runUser = data.userId;
+	// A manual run that a worker loads from the database keeps its user only here.
+	const manualRunUser = data.executionData?.manualData?.userId;
+
+	return data.pushRef === undefined
+		? undefined
+		: (ownerFromJob ?? ownerStoredOnWait ?? runUser ?? manualRunUser);
+}
+
 /**
  * Returns ExecutionLifecycleHooks instance for worker in scaling mode.
  */
@@ -504,7 +532,12 @@ export function getLifecycleHooksForScalingWorker(
 	const { pushRef, retryOf, executionMode, workflowData } = data;
 	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
+	const optionalParameters = {
+		pushRef,
+		pushRefUserId: getPushRefUserId(data),
+		retryOf: retryOf ?? undefined,
+		saveSettings,
+	};
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSaveWorker(hooks, optionalParameters);
@@ -593,7 +626,12 @@ export function getLifecycleHooksForRegularMain(
 	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
 	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
-	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
+	const optionalParameters = {
+		pushRef,
+		pushRefUserId: getPushRefUserId(data),
+		retryOf: retryOf ?? undefined,
+		saveSettings,
+	};
 	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);

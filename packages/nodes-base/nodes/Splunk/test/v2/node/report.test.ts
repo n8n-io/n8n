@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { SPLUNK } from '../../../v1/types';
 import * as report from '../../../v2/actions/report';
@@ -47,44 +48,70 @@ describe('Splunk, report resource', () => {
 
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/search/jobs/12345',
+			requestPath`/services/search/jobs/12345`,
 		);
-		expect(transport.splunkApiRequest).toHaveBeenCalledWith('POST', '/services/saved/searches', {
-			alert_type: 'always',
-			cron_schedule: '*/5 * * * *',
-			'dispatch.earliest_time': '2020-01-01T00:00:00.000Z',
-			'dispatch.latest_time': '2020-01-01T00:05:00.000Z',
-			is_scheduled: true,
-			name: 'someName',
-			search: 'search index=_internal | stats count by source',
-		});
+		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/services/saved/searches`,
+			{
+				alert_type: 'always',
+				cron_schedule: '*/5 * * * *',
+				'dispatch.earliest_time': '2020-01-01T00:00:00.000Z',
+				'dispatch.latest_time': '2020-01-01T00:05:00.000Z',
+				is_scheduled: true,
+				name: 'someName',
+				search: 'search index=_internal | stats count by source',
+			},
+		);
 		expect(responseData).toEqual([{ entryUrl: '1', id: '1', key1: 'value1' }]);
 	});
 
 	test('deleteReport operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 		executeFunctions.getNodeParameter.mockReturnValue('12345');
 		(transport.splunkApiRequest as jest.Mock).mockReturnValue({});
 		const responseData = await report.deleteReport.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/services/saved/searches/12345',
+			requestPath`/services/saved/searches/12345`,
 		);
 		expect(responseData).toEqual({ success: true });
 	});
 
 	test('get operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 		executeFunctions.getNodeParameter.calledWith('reportId', 0).mockReturnValue('12345');
 
 		(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue([{ test: 'test' }]);
 		const responseData = await report.get.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/saved/searches/12345',
+			requestPath`/services/saved/searches/12345`,
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
+
+	test.each([
+		[2, 'My Item'],
+		[2.1, 'My%20Item'],
+	])(
+		'get operation sends the id as entered from version 2.1 (version %s)',
+		async (typeVersion, id) => {
+			const executeFunctions = mock<IExecuteFunctions>();
+			executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+			executeFunctions.getNodeParameter.calledWith('reportId', 0).mockReturnValue('My%20Item');
+			(transport.splunkApiJsonRequest as jest.Mock).mockReturnValue([]);
+
+			await report.get.execute.call(executeFunctions, 0);
+
+			expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/services/saved/searches/${id}`,
+			);
+		},
+	);
 
 	test('getAll operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
@@ -95,7 +122,7 @@ describe('Splunk, report resource', () => {
 		const responseData = await report.getAll.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/saved/searches',
+			requestPath`/services/saved/searches`,
 			{},
 			{ count: 0 },
 		);

@@ -6,8 +6,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestUrl } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
 	description: INodeTypeDescription = {
@@ -171,9 +172,9 @@ export class Mailgun implements INodeType {
 				const options = {
 					method: 'POST',
 					formData,
-					uri: `https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
+					uri: requestUrl`https://${credentials.apiDomain}/v3/${credentials.emailDomain}/messages`,
 					json: true,
-				} satisfies IRequestOptions;
+				} satisfies WithRequestTarget<IRequestOptions, 'uri'>;
 
 				let responseData;
 

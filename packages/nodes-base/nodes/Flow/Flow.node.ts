@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
@@ -122,7 +122,7 @@ export class Flow implements INodeType {
 					}
 					body.task = task;
 					try {
-						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await flowApiRequest.call(this, 'POST', requestPath`/tasks`, body);
 						responseData = responseData.task;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -190,7 +190,12 @@ export class Flow implements INodeType {
 					}
 					body.task = task;
 					try {
-						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
+						responseData = await flowApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/tasks/${taskId}`,
+							body,
+						);
 						responseData = responseData.task;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -205,7 +210,13 @@ export class Flow implements INodeType {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
-						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
+						responseData = await flowApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tasks/${taskId}`,
+							{},
+							qs,
+						);
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
@@ -248,13 +259,13 @@ export class Flow implements INodeType {
 								this,
 								'tasks',
 								'GET',
-								'/tasks',
+								requestPath`/tasks`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
+							responseData = await flowApiRequest.call(this, 'GET', requestPath`/tasks`, {}, qs);
 							responseData = responseData.tasks;
 						}
 					} catch (error) {

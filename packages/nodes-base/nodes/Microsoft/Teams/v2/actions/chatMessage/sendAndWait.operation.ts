@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, decodePathValue } from 'n8n-workflow';
 
 import {
 	getSendAndWaitConfig,
@@ -20,7 +21,9 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 ).filter((p) => p.name !== 'subject');
 
 export async function execute(this: IExecuteFunctions, i: number, instanceId: string) {
-	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+	const chatId = decodePathValue(
+		this.getNodeParameter('chatId', i, '', { extractValue: true }) as string,
+	);
 	const config = getSendAndWaitConfig(this);
 
 	const buttons = config.options.map((option) => `<a href="${option.url}">${option.label}</a>`);
@@ -41,5 +44,10 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		},
 	};
 
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1.0/chats/${chatId}/messages`,
+		body,
+	);
 }

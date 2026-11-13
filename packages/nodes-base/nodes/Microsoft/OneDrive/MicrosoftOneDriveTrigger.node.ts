@@ -6,10 +6,26 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { getPath, microsoftApiRequest, microsoftApiRequestAllItemsDelta } from './GenericFunctions';
 import { triggerDescription } from './TriggerDescription';
+
+// Compare decoded pathnames so that encoding differences (e.g. `@` vs `%40`) keep the
+// link, but require the same origin first because the link is sent with the credential.
+function isInDeltaScope(link: string, deltaRoot: string): boolean {
+	try {
+		const linkUrl = new URL(link);
+		const rootUrl = new URL(deltaRoot);
+		return (
+			linkUrl.origin === rootUrl.origin &&
+			decodeURIComponent(linkUrl.pathname).startsWith(decodeURIComponent(rootUrl.pathname))
+		);
+	} catch {
+		return false;
+	}
+}
 
 export class MicrosoftOneDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,9 +59,14 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		const workflowData = this.getWorkflowStaticData('node');
 		let responseData: IDataObject[];
 
+		const deltaRoot = 'https://graph.microsoft.com/v1.0/me/drive/root/delta';
+
+		// Use a persisted delta link only when it points to the delta feed of this drive.
+		const persistedLastLink = workflowData.LastLink as string | undefined;
 		const lastLink: string =
-			(workflowData.LastLink as string) ||
-			'https://graph.microsoft.com/v1.0/me/drive/root/delta?token=latest';
+			persistedLastLink && isInDeltaScope(persistedLastLink, deltaRoot)
+				? persistedLastLink
+				: `${deltaRoot}?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;
@@ -66,14 +87,7 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		try {
 			if (this.getMode() === 'manual') {
 				responseData = (
-					await microsoftApiRequest.call(
-						this,
-						'GET',
-						'',
-						{},
-						{},
-						'https://graph.microsoft.com/v1.0/me/drive/root/delta',
-					)
+					await microsoftApiRequest.call(this, 'GET', requestPath``, {}, {}, deltaRoot)
 				).value as IDataObject[];
 			} else {
 				const response: IDataObject = (await microsoftApiRequestAllItemsDelta.call(

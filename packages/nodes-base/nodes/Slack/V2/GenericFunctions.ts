@@ -7,8 +7,10 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 	IWebhookFunctions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type { SendAndWaitMessageBody } from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
@@ -17,25 +19,32 @@ import { createUtmCampaignLink } from '../../../utils/utilities';
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath | `https://${string}`,
 	body: object = {},
 	query: IDataObject = {},
 	headers: {} | undefined = undefined,
-	option: {} = {},
+	option: Pick<IRequestOptions, 'formData' | 'form' | 'resolveWithFullResponse' | 'simple'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
-	let options: IRequestOptions = {
+	const baseOptions = {
 		method,
 		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
 		qs: query,
-		uri: resource.startsWith('https') ? resource : `https://slack.com/api${resource}`,
 		json: true,
+		...option,
 	};
-	options = Object.assign({}, options, option);
+	const options: LegacyRequestOptions =
+		typeof resource === 'string'
+			? { ...baseOptions, uri: resource }
+			: { ...baseOptions, uri: requestUrl`https://slack.com/api${resource}` };
 	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
@@ -110,7 +119,7 @@ export async function slackApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
@@ -121,7 +130,7 @@ export async function slackApiRequestAllItems(
 	query.page = 1;
 	//if the endpoint uses legacy pagination use count
 	//https://api.slack.com/docs/pagination#classic
-	if (endpoint.includes('files.list')) {
+	if (endpoint.value.includes('files.list')) {
 		query.count = 100;
 	} else {
 		query.limit = query.limit ?? 100;

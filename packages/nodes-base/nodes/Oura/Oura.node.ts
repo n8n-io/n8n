@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { ouraApiRequest } from './GenericFunctions';
 import { profileOperations } from './ProfileDescription';
@@ -81,7 +81,11 @@ export class Oura implements INodeType {
 						//         profile: get
 						// ----------------------------------
 
-						responseData = await ouraApiRequest.call(this, 'GET', '/usercollection/personal_info');
+						responseData = await ouraApiRequest.call(
+							this,
+							'GET',
+							requestPath`/usercollection/personal_info`,
+						);
 					}
 				} else if (resource === 'summary') {
 					// *********************************************************************
@@ -115,7 +119,7 @@ export class Oura implements INodeType {
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_activity',
+							requestPath`/usercollection/daily_activity`,
 							{},
 							qs,
 						);
@@ -133,7 +137,7 @@ export class Oura implements INodeType {
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_readiness',
+							requestPath`/usercollection/daily_readiness`,
 							{},
 							qs,
 						);
@@ -151,7 +155,7 @@ export class Oura implements INodeType {
 						responseData = await ouraApiRequest.call(
 							this,
 							'GET',
-							'/usercollection/daily_sleep',
+							requestPath`/usercollection/daily_sleep`,
 							{},
 							qs,
 						);

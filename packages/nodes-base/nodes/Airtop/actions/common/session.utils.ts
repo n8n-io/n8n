@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	validateSessionAndWindowId,
@@ -21,7 +22,7 @@ export async function executeRequestWithSessionManagement(
 	index: number,
 	request: {
 		method: 'POST' | 'DELETE';
-		path: string;
+		path: (sessionId: string, windowId: string) => RequestPath;
 		body: IDataObject;
 	},
 ): Promise<IAirtopResponse> {
@@ -34,13 +35,17 @@ export async function executeRequestWithSessionManagement(
 
 		const shouldTerminateSession = this.getNodeParameter('autoTerminateSession', index, false);
 
-		const endpoint = request.path.replace('{sessionId}', sessionId).replace('{windowId}', windowId);
-		const response = await apiRequest.call(this, request.method, endpoint, request.body);
+		const response = await apiRequest.call(
+			this,
+			request.method,
+			request.path(sessionId, windowId),
+			request.body,
+		);
 
 		validateAirtopApiResponse(this.getNode(), response);
 
 		if (shouldTerminateSession) {
-			await apiRequest.call(this, 'DELETE', `/sessions/${sessionId}`);
+			await apiRequest.call(this, 'DELETE', requestPath`/sessions/${sessionId}`);
 			this.logger.info(`[${this.getNode().name}] Session terminated.`);
 			return response;
 		}
@@ -49,7 +54,7 @@ export async function executeRequestWithSessionManagement(
 	} catch (error) {
 		// terminate session on error
 		if (airtopSessionId) {
-			await apiRequest.call(this, 'DELETE', `/sessions/${airtopSessionId}`);
+			await apiRequest.call(this, 'DELETE', requestPath`/sessions/${airtopSessionId}`);
 			this.logger.info(`[${this.getNode().name}] Session terminated.`);
 		}
 		throw error;

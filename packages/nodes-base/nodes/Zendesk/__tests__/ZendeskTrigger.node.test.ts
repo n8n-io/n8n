@@ -1,3 +1,5 @@
+import { requestPath } from 'n8n-workflow';
+
 import { ZendeskTrigger } from '../ZendeskTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
 import * as ZendeskTriggerHelpers from '../ZendeskTriggerHelpers';
@@ -56,7 +58,10 @@ describe('ZendeskTrigger Node', () => {
 			const trigger = new ZendeskTrigger();
 			await trigger.webhookMethods.default.create.call(mockThis);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/webhooks/webhook-789/signing_secret');
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/webhooks/webhook-789/signing_secret`,
+			);
 		});
 	});
 

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as deleteFolder from '../../../../v2/actions/folder/deleteFolder.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -33,7 +34,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/folderIDxxxxxx',
+			requestPath`/drive/v3/files/folderIDxxxxxx`,
 			{ trashed: true },
 			{ supportsAllDrives: true },
 		);
@@ -59,7 +60,7 @@ describe('test GoogleDriveV2: folder deleteFolder', () => {
 
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/drive/v3/files/folderIDxxxxxx',
+			requestPath`/drive/v3/files/folderIDxxxxxx`,
 			undefined,
 			{ supportsAllDrives: true },
 		);

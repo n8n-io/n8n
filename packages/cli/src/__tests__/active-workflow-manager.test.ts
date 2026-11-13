@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type {
 	WorkflowParameters,
 	INode,
@@ -9,9 +9,11 @@ import type {
 	INodeTypeDescription,
 	WorkflowActivateMode,
 } from 'n8n-workflow';
-import { createDeferredPromise, Workflow } from 'n8n-workflow';
+import { createDeferredPromise, UserError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -23,12 +25,14 @@ describe('ActiveWorkflowManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const errorReporter = mock<ErrorReporter>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		activeWorkflowManager = new ActiveWorkflowManager(
 			mockLogger(),
-			mock(),
+			errorReporter,
 			mock(),
 			mock(),
 			mock(),
@@ -44,6 +48,7 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			credentialsPermissionChecker,
 		);
 	});
 
@@ -215,7 +220,7 @@ describe('ActiveWorkflowManager', () => {
 			await expectRetryAfter(1000);
 			await expectRetryAfter(2000);
 
-			await jest.advanceTimersByTimeAsync(60_001);
+			await jest.advanceTimersByTimeAsync(60_000);
 
 			await expectRetryAfter(1000);
 		});
@@ -272,6 +277,22 @@ describe('ActiveWorkflowManager', () => {
 			activation.resolve(activated);
 			await jest.advanceTimersByTimeAsync(0);
 
+			await expectRetryAfter(1000);
+		});
+
+		test('does not reschedule a failed activation after the workflow is removed', async () => {
+			await expectRetryAfter(1000);
+			const activation = createDeferredPromise<typeof activated>();
+			jest.mocked(activeWorkflowManager.add).mockReturnValueOnce(activation.promise);
+			await expectRetryAfter(2000);
+
+			await activeWorkflowManager.remove('wf-1');
+			const reportedErrors = errorReporter.error.mock.calls.length;
+			activation.reject(new Error('activation failed'));
+			await jest.advanceTimersByTimeAsync(0);
+
+			expect(errorReporter.error).toHaveBeenCalledTimes(reportedErrors);
+			expect(activeWorkflowManager['queuedActivations']).toEqual({});
 			await expectRetryAfter(1000);
 		});
 
@@ -375,6 +396,94 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
+	describe('trigger credential access', () => {
+		const refusal = new UserError('Node "GitLab Trigger" does not have access to the credential');
+
+		const activeNodes: INode[] = [
+			{
+				id: 'trigger-1',
+				name: 'GitLab Trigger',
+				type: 'n8n-nodes-base.gitlabTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'tool-1',
+				name: 'MCP Client Tool',
+				type: '@n8n/n8n-nodes-langchain.mcpClientTool',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+
+		const createWorkflowEntity = () =>
+			mock<WorkflowEntity>({
+				id: 'workflow-1',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				nodes: [],
+				connections: {},
+				activeVersion: mock<WorkflowHistory>({ versionId: 'v1', nodes: activeNodes }),
+			});
+
+		beforeEach(() => {
+			Object.assign(instanceSettings, { isLeader: true, isMultiMain: false });
+		});
+
+		// A trigger can load its sub-nodes, with their credentials, so every node is checked.
+		test('checks every node of the active version and registers nothing on refusal', async () => {
+			credentialsPermissionChecker.check.mockRejectedValueOnce(refusal);
+			jest.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
+			const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
+			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowManager, 'addTriggersAndPollers');
+
+			await expect(
+				activeWorkflowManager.add('workflow-1', 'activate', createWorkflowEntity()),
+			).rejects.toBeInstanceOf(TriggerCredentialAccessError);
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('workflow-1', activeNodes);
+			expect(addWebhooksSpy).not.toHaveBeenCalled();
+			expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+		});
+
+		test('does not report, run the error workflow or retry a refusal at startup', async () => {
+			workflowRepository.findById.mockResolvedValue(createWorkflowEntity());
+			jest
+				.spyOn(activeWorkflowManager, 'add')
+				.mockRejectedValue(new TriggerCredentialAccessError(refusal));
+			const executeErrorWorkflowSpy = jest
+				.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+				.mockImplementation(() => {});
+
+			await activeWorkflowManager['activateWorkflow']('workflow-1', 'init');
+
+			expect(errorReporter.error).not.toHaveBeenCalled();
+			expect(executeErrorWorkflowSpy).not.toHaveBeenCalled();
+			expect(activeWorkflowManager['queuedActivations']).toEqual({});
+		});
+
+		test('leaves the retry queue on a refusal', async () => {
+			jest.useFakeTimers();
+			try {
+				jest
+					.spyOn(activeWorkflowManager, 'add')
+					.mockRejectedValue(new TriggerCredentialAccessError(refusal));
+
+				activeWorkflowManager['addQueuedWorkflowActivation']('init', createWorkflowEntity());
+				await jest.runOnlyPendingTimersAsync();
+
+				expect(errorReporter.error).not.toHaveBeenCalled();
+				expect(activeWorkflowManager['queuedActivations']).toEqual({});
+				expect(activeWorkflowManager['recentReactivations']).toEqual(new Map());
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
+
 	describe('handleAddWebhooksTriggersAndPollers', () => {
 		const push = mock<Push>();
 		const publisher = mock<Publisher>();
@@ -404,6 +513,7 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				workflowPushNotifier,
+				mock(),
 			);
 		});
 
@@ -519,6 +629,7 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				workflowPushNotifier,
+				mock(),
 			);
 		});
 

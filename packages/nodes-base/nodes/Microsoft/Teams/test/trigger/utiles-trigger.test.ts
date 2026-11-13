@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	fetchAllTeams,
@@ -47,7 +47,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				mockLoadOptionsFunctions,
 				'GET',
-				'/v1.0/me/joinedTeams',
+				requestPath`/v1.0/me/joinedTeams`,
 			);
 		});
 
@@ -78,7 +78,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				mockLoadOptionsFunctions,
 				'GET',
-				'/v1.0/teams/team1/channels',
+				requestPath`/v1.0/teams/team1/channels`,
 			);
 		});
 
@@ -161,12 +161,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				mockHookFunctions,
 				'DELETE',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 			);
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				mockHookFunctions,
 				'DELETE',
-				'/v1.0/subscriptions/sub2',
+				requestPath`/v1.0/subscriptions/sub2`,
 			);
 		});
 
@@ -297,11 +297,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).toBe('/teams/team123/channels');
 		});
 
-		it('should return the correct resource path for newChannel event with teamId missing', async () => {
+		it('should throw for newChannel event with teamId missing', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValueOnce(undefined);
 
-			const result = await getResourcePath.call(mockHookFunctions, 'newChannel');
-			expect(result).toBe('/teams/undefined/channels');
+			await expect(getResourcePath.call(mockHookFunctions, 'newChannel')).rejects.toThrow(
+				'Invalid identifier: a value is required',
+			);
 		});
 
 		it('should return the correct resource path for newChannelMessage event with a specific team and channel', async () => {
@@ -323,11 +324,12 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(result).toBe('/teams/team123/members');
 		});
 
-		it('should return the correct resource path for newTeamMember event with teamId missing', async () => {
+		it('should throw for newTeamMember event with teamId missing', async () => {
 			mockHookFunctions.getNodeParameter.mockReturnValueOnce(undefined);
 
-			const result = await getResourcePath.call(mockHookFunctions, 'newTeamMember');
-			expect(result).toBe('/teams/undefined/members');
+			await expect(getResourcePath.call(mockHookFunctions, 'newTeamMember')).rejects.toThrow(
+				'Invalid identifier: a value is required',
+			);
 		});
 
 		it('should return the correct resource path for newTeamMember event with watchAllTeams', async () => {

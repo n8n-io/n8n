@@ -10,6 +10,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { hidePushSession } from '@/executions/execution.utils';
 
 import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
@@ -85,6 +86,8 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			hidePushSession(execution);
+
 			Container.get(EventService).emit('user-retrieved-execution', {
 				userId: req.user.id,
 				publicApi: true,
@@ -134,6 +137,7 @@ export = {
 
 			const executions =
 				await Container.get(ExecutionRepository).getExecutionsForPublicApi(filters);
+			executions.forEach(hidePushSession);
 
 			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 

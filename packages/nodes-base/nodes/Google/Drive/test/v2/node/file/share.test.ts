@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as share from '../../../../v2/actions/file/share.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -46,7 +47,7 @@ describe('test GoogleDriveV2: file share', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(1);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/drive/v3/files/fileIDxxxxxx/permissions',
+			requestPath`/drive/v3/files/fileIDxxxxxx/permissions`,
 			{ emailAddress: 'user@gmail.com', role: 'owner', type: 'user' },
 			{
 				emailMessage: 'some message',

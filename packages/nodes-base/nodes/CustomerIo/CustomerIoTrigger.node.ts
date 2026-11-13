@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { customerIoApiRequest, eventExists } from './GenericFunctions';
 
@@ -229,7 +229,7 @@ export class CustomerIoTrigger implements INodeType {
 
 				const currentEvents = this.getNodeParameter('events', []) as string[];
 
-				const endpoint = '/reporting_webhooks';
+				const endpoint = requestPath`/reporting_webhooks`;
 
 				let { reporting_webhooks: webhooks } = await customerIoApiRequest.call(
 					this,
@@ -259,7 +259,7 @@ export class CustomerIoTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events', []) as string[];
 
-				const endpoint = '/reporting_webhooks';
+				const endpoint = requestPath`/reporting_webhooks`;
 
 				const data: IEvent = {
 					customer: {},
@@ -306,7 +306,7 @@ export class CustomerIoTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/reporting_webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/reporting_webhooks/${webhookData.webhookId}`;
 					try {
 						await customerIoApiRequest.call(this, 'DELETE', endpoint, {}, 'beta');
 					} catch (error) {

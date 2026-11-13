@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -105,7 +105,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments/createUploadSession`,
+			requestPath`/messages/${messageId}/attachments/createUploadSession`,
 			body,
 		);
 		const uploadUrl = responseData.uploadUrl;
@@ -143,7 +143,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/messages/${messageId}/attachments`,
+			requestPath`/messages/${messageId}/attachments`,
 			body,
 			{},
 		);

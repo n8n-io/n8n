@@ -1,6 +1,6 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions, requestPath } from 'n8n-workflow';
 
 import { description } from '../../../../v2/actions/node.description';
 import { MicrosoftOutlookV2 } from '../../../../v2/MicrosoftOutlookV2.node';
@@ -62,7 +62,7 @@ describe('Test MicrosoftOutlookV2, message => sendAndWait', () => {
 		expect(transport.microsoftApiRequest).toHaveBeenCalledTimes(1);
 		expect(mockExecuteFunctions.putExecutionToWait).toHaveBeenCalledTimes(1);
 
-		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', '/sendMail', {
+		expect(transport.microsoftApiRequest).toHaveBeenCalledWith('POST', requestPath`/sendMail`, {
 			message: {
 				body: {
 					content: expect.stringContaining(

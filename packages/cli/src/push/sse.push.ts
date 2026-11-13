@@ -25,7 +25,7 @@ export class SSEPush extends AbstractPush<Connection> {
 		super.add(pushRef, userId, connection);
 
 		// When the client disconnects, remove the client
-		const removeClient = () => this.remove(pushRef);
+		const removeClient = () => this.remove(pushRef, userId, connection);
 		req.once('end', removeClient);
 		req.once('close', removeClient);
 		res.once('finish', removeClient);

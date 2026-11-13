@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -7,7 +8,7 @@ async function baseModelSearch(
 	modelFilter: (model: string) => boolean,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response = (await apiRequest.call(this, 'GET', '/v1beta/models', {
+	const response = (await apiRequest.call(this, 'GET', requestPath`/v1beta/models`, {
 		qs: {
 			pageSize: 1000,
 		},

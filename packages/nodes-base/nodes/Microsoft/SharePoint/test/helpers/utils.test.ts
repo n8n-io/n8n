@@ -1,6 +1,7 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import type { IBinaryData, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	downloadFilePostReceive,
@@ -98,7 +99,7 @@ describe('Microsoft SharePoint Node', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/sites/site1/lists/list1/items',
+				requestPath`/sites/site1/lists/list1/items`,
 				{},
 				{ $filter: "fields/Title eq 'O''Brien'" },
 				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
@@ -132,11 +133,39 @@ describe('Microsoft SharePoint Node', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/sites/site1/lists/list1/items',
+				requestPath`/sites/site1/lists/list1/items`,
 				{},
 				{ $filter: "fields/Title eq 'A' and fields/Status eq 'B'" },
 				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
 			);
 		});
+
+		it.each(['update', 'upsert'])(
+			'should send the matched item ID as a single path segment for %s',
+			async (operation) => {
+				const params: Record<string, unknown> = {
+					columns: {
+						mappingMode: 'defineBelow',
+						matchingColumns: ['id'],
+						value: { id: '1/x', Title: 'A' },
+						schema: [],
+					},
+					operation,
+					site: 'site1',
+					list: 'list1',
+				};
+				executeSingleFunctions.getNodeParameter.mockImplementation(
+					(name: string) => params[name] as never,
+				);
+				const requestOptions: IHttpRequestOptions = {
+					method: 'POST',
+					url: '/sites/site1/lists/list1/items',
+				};
+
+				await itemColumnsPreSend.call(executeSingleFunctions, requestOptions);
+
+				expect(requestOptions.url).toBe('/sites/site1/lists/list1/items/1%2Fx');
+			},
+		);
 	});
 });

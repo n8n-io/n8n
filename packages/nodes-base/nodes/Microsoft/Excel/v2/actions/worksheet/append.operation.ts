@@ -5,12 +5,13 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { findAppendRange, prepareOutput } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -145,9 +146,12 @@ export async function execute(
 
 	const nodeVersion = this.getNode().typeVersion;
 
-	const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = toWorkbookId.call(
+		this,
+		this.getNodeParameter('workbook', 0, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
 		extractValue: true,
@@ -158,7 +162,7 @@ export async function execute(
 	const worksheetData = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+		requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 	);
 
 	let values: string[][] = [];
@@ -252,7 +256,7 @@ export async function execute(
 	const responseData: ExcelResponse = await microsoftApiRequest.call(
 		this,
 		'PATCH',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+		requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 		{ values },
 	);
 

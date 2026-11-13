@@ -1,6 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode, ILoadOptionsFunctions } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
@@ -87,7 +87,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT id, MasterLabel FROM LeadStatus' },
 				);
@@ -127,7 +127,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT id, Name FROM User' },
 				);
@@ -159,7 +159,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Case'",
@@ -168,7 +168,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT id, Name FROM User' },
 				);
@@ -206,7 +206,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: "SELECT Queue.Id, Queue.Name FROM QueuesObject where Queue.Type='Queue' and SobjectType = 'Lead'",
@@ -240,7 +240,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getLeadSources.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/lead/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Web', value: 'Web' },
 					{ name: 'Phone Inquiry', value: 'Phone Inquiry' },
@@ -265,7 +268,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getCustomFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/Account/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/Account/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Custom Field 1', value: 'CustomField1__c' },
 					{ name: 'Custom Field 2', value: 'CustomField2__c' },
@@ -289,7 +295,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: "SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = 'Account'",
@@ -319,7 +325,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: "SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = 'CustomObject__c'",
@@ -345,7 +351,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getExternalIdFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/Account/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/Account/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'External ID', value: 'ExternalId__c' },
 					{ name: 'Lookup Field', value: 'LookupField__c' },
@@ -372,7 +381,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/CustomObject__c/describe',
+					requestPath`/sobjects/CustomObject__c/describe`,
 				);
 				expect(result).toEqual([{ name: 'External Field', value: 'External__c' }]);
 			});
@@ -392,7 +401,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT id, Name FROM Account' },
 				);
@@ -417,7 +426,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT id, Name FROM Campaign' },
 				);
@@ -449,7 +458,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/opportunity/describe',
+					requestPath`/sobjects/opportunity/describe`,
 				);
 				expect(result).toEqual([
 					{ name: 'Prospecting', value: 'Prospecting' },
@@ -479,7 +488,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getAccountTypes.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/account/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/account/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Customer - Direct', value: 'Customer - Direct' },
 					{ name: 'Customer - Channel', value: 'Customer - Channel' },
@@ -508,7 +520,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getAccountSources.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/account/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/account/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Web', value: 'Web' },
 					{ name: 'Phone Inquiry', value: 'Phone Inquiry' },
@@ -536,7 +551,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getCaseTypes.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/case/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Feature Request', value: 'Feature Request' },
 					{ name: 'Problem', value: 'Problem' },
@@ -565,7 +583,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getCaseStatuses.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/case/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'New', value: 'New' },
 					{ name: 'Working', value: 'Working' },
@@ -590,7 +611,7 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getCustomObjects.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects`);
 				expect(result).toEqual([
 					{ name: 'Custom Object 1', value: 'CustomObject1__c' },
 					{ name: 'Custom Object 2', value: 'CustomObject2__c' },
@@ -616,7 +637,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/CustomObject__c/describe',
+					requestPath`/sobjects/CustomObject__c/describe`,
 				);
 				expect(result).toEqual([
 					{ name: 'ID', value: 'Id' },
@@ -641,7 +662,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getAccountFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/account/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/account/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Account ID', value: 'Id' },
 					{ name: 'Account Name', value: 'Name' },
@@ -661,7 +685,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getCaseFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/case/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Case ID', value: 'Id' },
 					{ name: 'Subject', value: 'Subject' },
@@ -680,7 +707,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getLeadFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/lead/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Lead ID', value: 'Id' },
 					{ name: 'First Name', value: 'FirstName' },
@@ -702,7 +732,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/opportunity/describe',
+					requestPath`/sobjects/opportunity/describe`,
 				);
 				expect(result).toEqual([
 					{ name: 'Opportunity ID', value: 'Id' },
@@ -722,7 +752,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getTaskFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/task/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/task/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Task ID', value: 'Id' },
 					{ name: 'Subject', value: 'Subject' },
@@ -741,7 +774,10 @@ describe('Salesforce', () => {
 
 				const result = await node.methods.loadOptions.getUserFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/user/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/user/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'User ID', value: 'Id' },
 					{ name: 'Full Name', value: 'Name' },
@@ -761,7 +797,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getContactFields.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/contact/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/contact/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Contact ID', value: 'Id' },
 					{ name: 'First Name', value: 'FirstName' },
@@ -783,7 +822,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/attachment/describe',
+					requestPath`/sobjects/attachment/describe`,
 				);
 				expect(result).toEqual([
 					{ name: 'Attachment ID', value: 'Id' },
@@ -812,7 +851,10 @@ describe('Salesforce', () => {
 				const result =
 					await node.methods.loadOptions.getTaskStatuses.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/task/describe');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/task/describe`,
+				);
 				expect(result).toEqual([
 					{ name: 'Not Started', value: 'Not Started' },
 					{ name: 'In Progress', value: 'In Progress' },
@@ -1086,7 +1128,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/lead',
+					requestPath`/sobjects/lead`,
 					expect.objectContaining({
 						Company: 'Test Company',
 						LastName: 'Test Lead',
@@ -1145,7 +1187,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/lead',
+					requestPath`/sobjects/lead`,
 					expect.objectContaining({
 						Company: 'ACME Corp',
 						LastName: 'Doe',
@@ -1212,7 +1254,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/lead/External_Id__c/EXT123',
+					requestPath`/sobjects/lead/External_Id__c/EXT123`,
 					expect.objectContaining({
 						Company: 'Upsert Company',
 						LastName: 'Upsert Lead',
@@ -1223,6 +1265,33 @@ describe('Salesforce', () => {
 				// Ensure external ID field is removed from body
 				const callArgs = salesforceApiRequestSpy.mock.calls[0];
 				expect(callArgs[2]).not.toHaveProperty('External_Id__c');
+			});
+
+			it.each([
+				['INV%2F001', '/sobjects/lead/External_Id__c/INV%2F001'],
+				['INV/001', '/sobjects/lead/External_Id__c/INV%2F001'],
+				['A+B', '/sobjects/lead/External_Id__c/A%2BB'],
+			])('should send external ID value %s to %s', async (externalIdValue, expectedPath) => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+					const params: Record<string, unknown> = {
+						resource: 'lead',
+						operation: 'upsert',
+						company: 'Upsert Company',
+						lastname: 'Upsert Lead',
+						externalId: 'External_Id__c',
+						externalIdValue,
+						additionalFields: {},
+					};
+					return params[param];
+				});
+
+				salesforceApiRequestSpy.mockResolvedValue({ id: 'lead789', success: true });
+
+				await node.execute.call(mockExecuteFunctions);
+
+				expect(salesforceApiRequestSpy.mock.calls[0][1]).toEqual(
+					expect.objectContaining({ value: expectedPath }),
+				);
 			});
 		});
 
@@ -1278,7 +1347,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/lead/lead123',
+					requestPath`/sobjects/lead/lead123`,
 					expect.objectContaining({
 						HasOptedOutOfEmail: false,
 						hasOptedOutOfFax: true, // Note: This is a bug in the original code (should be HasOptedOutOfFax)
@@ -1346,7 +1415,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead/lead123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/lead/lead123`,
+				);
 			});
 
 			it('should handle lead getAll operation with returnAll true', async () => {
@@ -1375,7 +1447,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT Id,FirstName,LastName FROM Lead' },
 				);
@@ -1416,7 +1488,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('DELETE', '/sobjects/lead/lead123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'DELETE',
+					requestPath`/sobjects/lead/lead123`,
+				);
 			});
 
 			it('should handle lead getSummary operation', async () => {
@@ -1433,7 +1508,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/lead');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects/lead`);
 			});
 
 			it('should handle lead addToCampaign operation', async () => {
@@ -1454,7 +1529,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/CampaignMember',
+					requestPath`/sobjects/CampaignMember`,
 					expect.objectContaining({
 						LeadId: 'lead123',
 						CampaignId: 'campaign456',
@@ -1485,7 +1560,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/note',
+					requestPath`/sobjects/note`,
 					expect.objectContaining({
 						Title: 'Important Note',
 						ParentId: 'lead123',
@@ -1521,7 +1596,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/case',
+					requestPath`/sobjects/case`,
 					expect.objectContaining({
 						Type: 'Problem',
 					}),
@@ -1562,7 +1637,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/case',
+					requestPath`/sobjects/case`,
 					expect.objectContaining({
 						Type: 'Feature Request',
 						Origin: 'Web',
@@ -1609,7 +1684,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/case',
+					requestPath`/sobjects/case`,
 					expect.objectContaining({
 						Type: 'Question',
 						Custom_Field1__c: 'Custom Value 1',
@@ -1655,7 +1730,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/case/case123',
+					requestPath`/sobjects/case/case123`,
 					expect.objectContaining({
 						Type: 'Updated Problem',
 						Origin: 'Email',
@@ -1701,7 +1776,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/case/case789',
+					requestPath`/sobjects/case/case789`,
 					expect.objectContaining({
 						Updated_Custom_Field__c: 'Updated Custom Value',
 					}),
@@ -1725,7 +1800,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case/case123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/case/case123`,
+				);
 			});
 
 			it('should handle case getAll operation with returnAll true', async () => {
@@ -1754,7 +1832,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT Id,Subject,Type FROM Case' },
 				);
@@ -1813,7 +1891,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('DELETE', '/sobjects/case/case123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'DELETE',
+					requestPath`/sobjects/case/case123`,
+				);
 			});
 
 			it('should handle case delete operation error handling', async () => {
@@ -1845,7 +1926,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/case');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects/case`);
 			});
 
 			it('should handle case addComment operation', async () => {
@@ -1868,7 +1949,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/casecomment',
+					requestPath`/sobjects/casecomment`,
 					expect.objectContaining({
 						ParentId: 'case123',
 						CommentBody: 'This is a test comment',
@@ -1894,7 +1975,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/casecomment',
+					requestPath`/sobjects/casecomment`,
 					expect.objectContaining({
 						ParentId: 'case456',
 					}),
@@ -1926,7 +2007,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/contact',
+					requestPath`/sobjects/contact`,
 					expect.objectContaining({
 						LastName: 'Test Contact',
 					}),
@@ -1987,7 +2068,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/contact',
+					requestPath`/sobjects/contact`,
 					expect.objectContaining({
 						LastName: 'Smith',
 						Fax: '1234567890',
@@ -2056,7 +2137,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/contact/External_Contact_Id__c/EXT_CONTACT_123',
+					requestPath`/sobjects/contact/External_Contact_Id__c/EXT_CONTACT_123`,
 					expect.objectContaining({
 						LastName: 'Upsert Contact',
 						Email: 'upsert@contact.com',
@@ -2125,7 +2206,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/contact/contact123',
+					requestPath`/sobjects/contact/contact123`,
 					expect.objectContaining({
 						LastName: 'Updated Contact',
 						Fax: '9876543210',
@@ -2197,7 +2278,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/contact/contact123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/contact/contact123`,
+				);
 			});
 
 			it('should handle contact getAll operation with returnAll true', async () => {
@@ -2230,7 +2314,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT Id,FirstName,LastName FROM Contact' },
 				);
@@ -2252,7 +2336,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'DELETE',
-					'/sobjects/contact/contact123',
+					requestPath`/sobjects/contact/contact123`,
 				);
 			});
 
@@ -2270,7 +2354,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/contact');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects/contact`);
 			});
 
 			it('should handle contact addToCampaign operation', async () => {
@@ -2291,7 +2375,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/CampaignMember',
+					requestPath`/sobjects/CampaignMember`,
 					expect.objectContaining({
 						ContactId: 'contact123',
 						CampaignId: 'campaign456',
@@ -2322,7 +2406,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/note',
+					requestPath`/sobjects/note`,
 					expect.objectContaining({
 						Title: 'Contact Note',
 						ParentId: 'contact123',
@@ -2367,7 +2451,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/CustomObject__c',
+					requestPath`/sobjects/CustomObject__c`,
 					expect.objectContaining({
 						Name: 'Test Custom Object',
 						Custom_Field1__c: 'Custom Value 1',
@@ -2410,7 +2494,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/CustomObject__c/External_Id__c/EXT_CUSTOM_123',
+					requestPath`/sobjects/CustomObject__c/External_Id__c/EXT_CUSTOM_123`,
 					expect.objectContaining({
 						Name: 'Upsert Custom Object',
 					}),
@@ -2449,7 +2533,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/CustomObject__c/custom123',
+					requestPath`/sobjects/CustomObject__c/custom123`,
 					expect.objectContaining({
 						Name: 'Updated Custom Object',
 						Custom_Field1__c: 'Updated Custom Value 1',
@@ -2478,7 +2562,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/sobjects/CustomObject__c/custom123',
+					requestPath`/sobjects/CustomObject__c/custom123`,
 				);
 			});
 
@@ -2509,7 +2593,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT * FROM CustomObject__c' },
 				);
@@ -2532,7 +2616,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'DELETE',
-					'/sobjects/CustomObject__c/custom123',
+					requestPath`/sobjects/CustomObject__c/custom123`,
 				);
 			});
 		});
@@ -2583,7 +2667,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/ContentVersion',
+					requestPath`/sobjects/ContentVersion`,
 					{},
 					{},
 					undefined,
@@ -2689,7 +2773,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/actions/custom/flow/TestFlow',
+					requestPath`/actions/custom/flow/TestFlow`,
 					{
 						inputs: [{ input1: 'value1', input2: 'value2' }],
 					},
@@ -2719,7 +2803,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/actions/custom/flow/TestFlow',
+					requestPath`/actions/custom/flow/TestFlow`,
 					{
 						inputs: [{ VAR1: 'val1', VAR2: 'val2' }],
 					},
@@ -2748,7 +2832,10 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/actions/custom/flow');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/actions/custom/flow`,
+				);
 			});
 
 			it('should execute flow getAll operation with limit', async () => {
@@ -2799,7 +2886,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT Id, Name FROM Account' },
 				);
@@ -2841,7 +2928,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/sobjects/opportunity',
+					requestPath`/sobjects/opportunity`,
 					expect.objectContaining({
 						Name: 'Test Opportunity',
 						CloseDate: '2024-12-31',
@@ -2886,7 +2973,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/opportunity/External_Id__c/EXT123',
+					requestPath`/sobjects/opportunity/External_Id__c/EXT123`,
 					expect.objectContaining({
 						Name: 'Upsert Opportunity',
 						CloseDate: '2024-12-31',
@@ -2935,7 +3022,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/opportunity/opp123',
+					requestPath`/sobjects/opportunity/opp123`,
 					expect.objectContaining({
 						Name: 'Updated Opportunity',
 						CloseDate: '2025-01-31',
@@ -3086,34 +3173,38 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/account', {
-					Name: 'Test Account',
-					Fax: '555-0199',
-					Type: 'Customer - Direct',
-					Jigsaw: 'JIG123',
-					Phone: '555-0100',
-					OwnerId: 'user123',
-					SicDesc: 'Technology Services',
-					Website: 'https://test.com',
-					Industry: 'Technology',
-					ParentId: 'parent123',
-					BillingCity: 'San Francisco',
-					Description: 'Test account description',
-					BillingState: 'CA',
-					ShippingCity: 'San Francisco',
-					AccountNumber: 'ACC-001',
-					AccountSource: 'Web',
-					AnnualRevenue: 1000000,
-					BillingStreet: '123 Main St',
-					ShippingState: 'CA',
-					BillingCountry: 'USA',
-					ShippingStreet: '456 Oak Ave',
-					ShippingCountry: 'USA',
-					BillingPostalCode: '94105',
-					NumberOfEmployees: '50',
-					ShippingPostalCode: '94105',
-					RecordTypeId: 'rt123',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/sobjects/account`,
+					{
+						Name: 'Test Account',
+						Fax: '555-0199',
+						Type: 'Customer - Direct',
+						Jigsaw: 'JIG123',
+						Phone: '555-0100',
+						OwnerId: 'user123',
+						SicDesc: 'Technology Services',
+						Website: 'https://test.com',
+						Industry: 'Technology',
+						ParentId: 'parent123',
+						BillingCity: 'San Francisco',
+						Description: 'Test account description',
+						BillingState: 'CA',
+						ShippingCity: 'San Francisco',
+						AccountNumber: 'ACC-001',
+						AccountSource: 'Web',
+						AnnualRevenue: 1000000,
+						BillingStreet: '123 Main St',
+						ShippingState: 'CA',
+						BillingCountry: 'USA',
+						ShippingStreet: '456 Oak Ave',
+						ShippingCountry: 'USA',
+						BillingPostalCode: '94105',
+						NumberOfEmployees: '50',
+						ShippingPostalCode: '94105',
+						RecordTypeId: 'rt123',
+					},
+				);
 
 				expect(result).toEqual([[{ json: { id: 'acc123', success: true }, pairedItem: 0 }]]);
 			});
@@ -3140,11 +3231,15 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/account', {
-					Name: 'Test Account',
-					Custom_Field__c: 'Custom Value 1',
-					Another_Field__c: 'Custom Value 2',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/sobjects/account`,
+					{
+						Name: 'Test Account',
+						Custom_Field__c: 'Custom Value 1',
+						Another_Field__c: 'Custom Value 2',
+					},
+				);
 			});
 
 			it('should handle account upsert operation', async () => {
@@ -3171,7 +3266,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/account/AccountNumber/ACC-001',
+					requestPath`/sobjects/account/AccountNumber/ACC-001`,
 					{
 						Name: 'Test Account',
 						Fax: '555-0199',
@@ -3204,7 +3299,7 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/sobjects/task`, {
 					Status: 'Not Started',
 					TaskSubtype: 'Call',
 					WhoId: 'contact123',
@@ -3246,7 +3341,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/sobjects/task`, {
 					Status: 'In Progress',
 					ActivityDate: '2025-01-15',
 					IsReminderSet: true,
@@ -3288,7 +3383,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/task', {
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/sobjects/task`, {
 					Status: 'Not Started',
 					Custom_Priority__c: 'High',
 					Custom_Category__c: 'Sales',
@@ -3323,18 +3418,22 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
-					TaskSubtype: 'Email',
-					WhoId: 'contact456',
-					Status: 'Completed',
-					WhatId: 'account456',
-					OwnerId: 'user456',
-					Subject: 'Updated Task',
-					CallType: 'Outbound',
-					Priority: 'High',
-					CallObject: 'Lead',
-					Description: 'Updated description',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					requestPath`/sobjects/task/task123`,
+					{
+						TaskSubtype: 'Email',
+						WhoId: 'contact456',
+						Status: 'Completed',
+						WhatId: 'account456',
+						OwnerId: 'user456',
+						Subject: 'Updated Task',
+						CallType: 'Outbound',
+						Priority: 'High',
+						CallObject: 'Lead',
+						Description: 'Updated description',
+					},
+				);
 
 				expect(result).toEqual([[{ json: { id: 'task123', success: true }, pairedItem: 0 }]]);
 			});
@@ -3370,23 +3469,27 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
-					ActivityDate: '2025-01-20',
-					IsReminderSet: false,
-					RecurrenceType: 'RecursWeekly',
-					CallDisposition: 'No Answer',
-					ReminderDateTime: '2025-01-20T14:00:00Z',
-					RecurrenceInstance: 'Second',
-					RecurrenceInterval: 2,
-					RecurrenceDayOfMonth: 20,
-					CallDurationInSeconds: 900,
-					RecurrenceEndDateOnly: '2025-06-30',
-					RecurrenceMonthOfYear: 'June',
-					RecurrenceDayOfWeekMask: 'Friday',
-					RecurrenceStartDateOnly: '2025-01-20',
-					RecurrenceTimeZoneSidKey: 'America/New_York',
-					RecurrenceRegeneratedType: 'RecurChild',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					requestPath`/sobjects/task/task123`,
+					{
+						ActivityDate: '2025-01-20',
+						IsReminderSet: false,
+						RecurrenceType: 'RecursWeekly',
+						CallDisposition: 'No Answer',
+						ReminderDateTime: '2025-01-20T14:00:00Z',
+						RecurrenceInstance: 'Second',
+						RecurrenceInterval: 2,
+						RecurrenceDayOfMonth: 20,
+						CallDurationInSeconds: 900,
+						RecurrenceEndDateOnly: '2025-06-30',
+						RecurrenceMonthOfYear: 'June',
+						RecurrenceDayOfWeekMask: 'Friday',
+						RecurrenceStartDateOnly: '2025-01-20',
+						RecurrenceTimeZoneSidKey: 'America/New_York',
+						RecurrenceRegeneratedType: 'RecurChild',
+					},
+				);
 			});
 
 			it('should handle task update with custom fields', async () => {
@@ -3412,11 +3515,15 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('PATCH', '/sobjects/task/task123', {
-					Subject: 'Updated Task',
-					Custom_Status__c: 'In Review',
-					Custom_Notes__c: 'Updated notes',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'PATCH',
+					requestPath`/sobjects/task/task123`,
+					{
+						Subject: 'Updated Task',
+						Custom_Status__c: 'In Review',
+						Custom_Notes__c: 'Updated notes',
+					},
+				);
 			});
 		});
 
@@ -3452,7 +3559,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: 'SELECT Id,Subject,Status FROM Task LIMIT 10',
@@ -3522,12 +3629,16 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/attachment', {
-					Name: 'Test File',
-					ParentId: 'parent123',
-					Body: 'SGVsbG8gV29ybGQ=',
-					ContentType: 'text/plain',
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/sobjects/attachment`,
+					{
+						Name: 'Test File',
+						ParentId: 'parent123',
+						Body: 'SGVsbG8gV29ybGQ=',
+						ContentType: 'text/plain',
+					},
+				);
 
 				expect(result).toEqual([[{ json: { id: 'att123', success: true }, pairedItem: 0 }]]);
 			});
@@ -3566,15 +3677,19 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('POST', '/sobjects/attachment', {
-					Name: 'Important Document',
-					ParentId: 'parent456',
-					Body: 'UERGIGRhdGE=',
-					ContentType: 'application/pdf',
-					Description: 'Important business document',
-					OwnerId: 'user123',
-					IsPrivate: true,
-				});
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/sobjects/attachment`,
+					{
+						Name: 'Important Document',
+						ParentId: 'parent456',
+						Body: 'UERGIGRhdGE=',
+						ContentType: 'application/pdf',
+						Description: 'Important business document',
+						OwnerId: 'user123',
+						IsPrivate: true,
+					},
+				);
 			});
 
 			it('should throw error when binary property does not exist', async () => {
@@ -3640,7 +3755,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/attachment/att123',
+					requestPath`/sobjects/attachment/att123`,
 					{
 						Name: 'Updated File Name',
 						Body: 'VXBkYXRlZCBkYXRh',
@@ -3680,7 +3795,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'PATCH',
-					'/sobjects/attachment/att123',
+					requestPath`/sobjects/attachment/att123`,
 					{
 						Name: 'Updated Name Only',
 						Description: 'Updated description',
@@ -3735,7 +3850,10 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/attachment/att123');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/attachment/att123`,
+				);
 
 				expect(result).toEqual([[{ json: mockAttachment, pairedItem: 0 }]]);
 			});
@@ -3772,7 +3890,7 @@ describe('Salesforce', () => {
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{
 						q: 'SELECT Id,Name,ParentId FROM Attachment',
@@ -3849,7 +3967,7 @@ describe('Salesforce', () => {
 
 				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
 					'DELETE',
-					'/sobjects/attachment/att123',
+					requestPath`/sobjects/attachment/att123`,
 				);
 
 				expect(result).toEqual([[{ json: { id: 'att123', success: true }, pairedItem: 0 }]]);
@@ -3895,7 +4013,10 @@ describe('Salesforce', () => {
 
 				const result = await node.execute.call(mockExecuteFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects/attachment');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith(
+					'GET',
+					requestPath`/sobjects/attachment`,
+				);
 
 				expect(result).toEqual([[{ json: mockSummary, pairedItem: 0 }]]);
 			});

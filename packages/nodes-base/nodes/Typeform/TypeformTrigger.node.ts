@@ -10,7 +10,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, randomString } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, randomString, requestPath } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -160,7 +160,7 @@ export class TypeformTrigger implements INodeType {
 
 				const formId = this.getNodeParameter('formId') as string;
 
-				const endpoint = `forms/${formId}/webhooks`;
+				const endpoint = requestPath`forms/${formId}/webhooks`;
 
 				const { items } = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -179,7 +179,7 @@ export class TypeformTrigger implements INodeType {
 				const formId = this.getNodeParameter('formId') as string;
 				const webhookId = 'n8n-' + randomString(10).toLowerCase();
 
-				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
+				const endpoint = requestPath`forms/${formId}/webhooks/${webhookId}`;
 
 				// TODO: Add HMAC-validation once either the JSON data can be used for it or there is a way to access the binary-payload-data
 				const body = {
@@ -201,7 +201,7 @@ export class TypeformTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `forms/${formId}/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`forms/${formId}/webhooks/${webhookData.webhookId}`;
 
 					try {
 						const body = {};

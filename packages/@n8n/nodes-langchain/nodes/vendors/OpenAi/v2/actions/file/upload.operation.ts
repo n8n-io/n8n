@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions, NodeOperationError } from 'n8n-workflow';
+import { updateDisplayOptions, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
 import { apiRequest } from '../../../transport';
@@ -81,7 +81,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	});
 
 	try {
-		const response = await apiRequest.call(this, 'POST', '/files', {
+		const response = await apiRequest.call(this, 'POST', requestPath`/files`, {
 			option: { formData },
 			headers: formData.getHeaders(),
 		});

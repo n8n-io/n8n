@@ -7,7 +7,13 @@ import type {
 	JsonObject,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+	toPathSegment,
+} from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 
@@ -133,7 +139,7 @@ export async function itemColumnsPreSend(
 			const response = await microsoftSharePointApiRequest.call(
 				this,
 				'GET',
-				`/sites/${site}/lists/${list}/items`,
+				requestPath`/sites/${site}/lists/${list}/items`,
 				{},
 				{
 					$filter: mapperValue.matchingColumns
@@ -162,13 +168,13 @@ export async function itemColumnsPreSend(
 						},
 					);
 				}
-				requestOptions.url += '/' + mapperValue.value.id;
+				requestOptions.url += '/' + toPathSegment(mapperValue.value.id);
 				delete mapperValue.value.id;
 				requestOptions.method = 'PATCH';
 			}
 		} else if (operation === 'update') {
 			if (mapperValue.matchingColumns.includes('id') && mapperValue.value?.id) {
-				requestOptions.url += '/' + mapperValue.value.id;
+				requestOptions.url += '/' + toPathSegment(mapperValue.value.id);
 				delete mapperValue.value.id;
 			} else {
 				throw new NodeOperationError(

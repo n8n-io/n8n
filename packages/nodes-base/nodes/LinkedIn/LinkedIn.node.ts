@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -89,11 +89,11 @@ export class LinkedIn implements INodeType {
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = this.getNodeParameter('authentication', 0);
-				let endpoint = '/v2/me';
+				let endpoint = requestPath`/v2/me`;
 				if (authentication === 'standard') {
 					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
 					if (!legacy) {
-						endpoint = '/v2/userinfo';
+						endpoint = requestPath`/v2/userinfo`;
 					}
 				}
 				const person = await linkedInApiRequest.call(this, 'GET', endpoint, {});
@@ -173,7 +173,7 @@ export class LinkedIn implements INodeType {
 							const registerObject = await linkedInApiRequest.call(
 								this,
 								'POST',
-								'/images?action=initializeUpload',
+								requestPath`/images?action=initializeUpload`,
 								registerRequest,
 							);
 
@@ -237,7 +237,7 @@ export class LinkedIn implements INodeType {
 								const registerObject = await linkedInApiRequest.call(
 									this,
 									'POST',
-									'/images?action=initializeUpload',
+									requestPath`/images?action=initializeUpload`,
 									registerRequest,
 								);
 
@@ -274,7 +274,7 @@ export class LinkedIn implements INodeType {
 								commentary: text,
 							});
 						}
-						const endpoint = '/posts';
+						const endpoint = requestPath`/posts`;
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}

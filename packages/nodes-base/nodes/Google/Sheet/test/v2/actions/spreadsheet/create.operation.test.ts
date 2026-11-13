@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/spreadsheet/create.operation';
 import { apiRequest } from '../../../../v2/transport';
@@ -42,7 +43,7 @@ describe('Spreadsheet Create Operation', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				'/v4/spreadsheets',
+				requestPath`/v4/spreadsheets`,
 				{
 					properties: {
 						title: mockTitle,
@@ -79,7 +80,7 @@ describe('Spreadsheet Create Operation', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				'/v4/spreadsheets',
+				requestPath`/v4/spreadsheets`,
 				{
 					properties: {
 						title: 'Test Spreadsheet',
@@ -114,7 +115,7 @@ describe('Spreadsheet Create Operation', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				'/v4/spreadsheets',
+				requestPath`/v4/spreadsheets`,
 				{
 					properties: {
 						title: 'Test Spreadsheet',
@@ -168,7 +169,7 @@ describe('Spreadsheet Create Operation', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'POST',
-				'/v4/spreadsheets',
+				requestPath`/v4/spreadsheets`,
 				expect.objectContaining({
 					sheets: [],
 				}),
@@ -187,14 +188,19 @@ describe('Spreadsheet Create Operation', () => {
 
 			await execute.call(mockExecuteFunctions);
 
-			expect(apiRequest.call).toHaveBeenCalledWith(expect.anything(), 'POST', '/v4/spreadsheets', {
-				properties: {
-					title: 'Test Spreadsheet',
-					autoRecalc: undefined,
-					locale: undefined,
+			expect(apiRequest.call).toHaveBeenCalledWith(
+				expect.anything(),
+				'POST',
+				requestPath`/v4/spreadsheets`,
+				{
+					properties: {
+						title: 'Test Spreadsheet',
+						autoRecalc: undefined,
+						locale: undefined,
+					},
+					sheets: [],
 				},
-				sheets: [],
-			});
+			);
 		});
 	});
 });

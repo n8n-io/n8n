@@ -5,8 +5,9 @@ import type {
 	ILoadOptionsFunctions,
 	JsonObject,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, randomInt } from 'n8n-workflow';
+import { NodeApiError, randomInt, requestUrl } from 'n8n-workflow';
 
 const serviceJSONRPC = 'object';
 const methodJSONRPC = 'execute';
@@ -108,7 +109,7 @@ export async function odooJSONRPCRequest(
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
 	try {
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			headers: {
 				'User-Agent': 'n8n',
 				Connection: 'keep-alive',
@@ -117,7 +118,7 @@ export async function odooJSONRPCRequest(
 			},
 			method: 'POST',
 			body,
-			uri: `${url}/jsonrpc`,
+			uri: requestUrl`${url}/jsonrpc`,
 			json: true,
 		};
 

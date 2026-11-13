@@ -4,6 +4,7 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { IListColumnType } from '../helpers/interfaces';
 import { microsoftSharePointApiRequest } from '../transport';
@@ -43,7 +44,7 @@ export async function getMappingColumns(
 	const response = await microsoftSharePointApiRequest.call(
 		this,
 		'GET',
-		`/sites/${site}/lists/${list}/contentTypes`,
+		requestPath`/sites/${site}/lists/${list}/contentTypes`,
 		{},
 		{ expand: 'columns' },
 	);

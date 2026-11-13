@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { getEvents, lemlistApiRequest } from './GenericFunctions';
 
@@ -81,7 +81,7 @@ export class LemlistTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
-				const campaigns = await lemlistApiRequest.call(this, 'GET', '/campaigns');
+				const campaigns = await lemlistApiRequest.call(this, 'GET', requestPath`/campaigns`);
 				return campaigns.map(({ _id, name }: { _id: string; name: string }) => ({
 					name,
 					value: _id,
@@ -95,10 +95,14 @@ export class LemlistTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const webhooks = await lemlistApiRequest.call(this, 'GET', '/hooks');
+				const webhooks = await lemlistApiRequest.call(this, 'GET', requestPath`/hooks`);
 				for (const webhook of webhooks) {
 					if (webhook.targetUrl === webhookUrl) {
-						await lemlistApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
+						await lemlistApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/hooks/${webhookData.webhookId}`,
+						);
 						return false;
 					}
 				}
@@ -117,14 +121,18 @@ export class LemlistTrigger implements INodeType {
 					delete body.type;
 				}
 				Object.assign(body, options);
-				const webhook = await lemlistApiRequest.call(this, 'POST', '/hooks', body);
+				const webhook = await lemlistApiRequest.call(this, 'POST', requestPath`/hooks`, body);
 				webhookData.webhookId = webhook._id;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await lemlistApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
+					await lemlistApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/hooks/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}

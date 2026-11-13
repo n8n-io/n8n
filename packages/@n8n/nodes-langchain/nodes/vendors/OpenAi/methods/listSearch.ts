@@ -4,6 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Assistant } from 'openai/resources/beta/assistants';
 import type { Model } from 'openai/resources/models';
 
@@ -14,7 +15,7 @@ export async function fileSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const { data } = await apiRequest.call(this, 'GET', '/files');
+	const { data } = await apiRequest.call(this, 'GET', requestPath`/files`);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -44,7 +45,7 @@ export async function fileSearch(
 const getModelSearch =
 	(filterCondition: (model: Model) => boolean) =>
 	async (ctx: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> => {
-		let { data } = (await apiRequest.call(ctx, 'GET', '/models')) as { data: Model[] };
+		let { data } = (await apiRequest.call(ctx, 'GET', requestPath`/models`)) as { data: Model[] };
 
 		data = data?.filter((model) => filterCondition(model));
 
@@ -103,15 +104,20 @@ export async function assistantSearch(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const { data, has_more, last_id } = (await apiRequest.call(this, 'GET', '/assistants', {
-		headers: {
-			'OpenAI-Beta': 'assistants=v2',
+	const { data, has_more, last_id } = (await apiRequest.call(
+		this,
+		'GET',
+		requestPath`/assistants`,
+		{
+			headers: {
+				'OpenAI-Beta': 'assistants=v2',
+			},
+			qs: {
+				limit: 100,
+				after: paginationToken,
+			},
 		},
-		qs: {
-			limit: 100,
-			after: paginationToken,
-		},
-	})) as {
+	)) as {
 		data: Assistant[];
 		has_more: boolean;
 		last_id: string;

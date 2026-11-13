@@ -5,24 +5,26 @@ import type {
 	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export async function phantombusterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,
 		qs,
-		uri: `https://api.phantombuster.com/api/v2${path}`,
+		uri: requestUrl`https://api.phantombuster.com/api/v2${path}`,
 		json: true,
 	};
 	try {

@@ -1,4 +1,5 @@
 import type { IHookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { pipedriveApiRequest } from '../GenericFunctions';
 import { PipedriveTrigger } from '../PipedriveTrigger.node';
@@ -96,7 +97,7 @@ describe('PipedriveTrigger', () => {
 				expect(result).toBe(true);
 				expect(pipedriveApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/webhooks',
+					requestPath`/webhooks`,
 					expect.objectContaining({
 						event_action: '*',
 						event_object: 'deal',

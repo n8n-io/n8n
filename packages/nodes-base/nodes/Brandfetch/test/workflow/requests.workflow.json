@@ -1,0 +1,107 @@
+{
+	"name": "Brandfetch request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e01",
+			"name": "When clicking \u2018Execute workflow\u2019",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				0,
+				0
+			]
+		},
+		{
+			"parameters": {
+				"operation": "color",
+				"domain": "n8n.io"
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e07",
+			"name": "Get Colors V1",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 1,
+			"position": [
+				220,
+				450
+			],
+			"credentials": {
+				"brandfetchApi": {
+					"id": "1",
+					"name": "Brandfetch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "logo",
+				"domain": "example.com",
+				"download": true,
+				"imageTypes": [
+					"logo"
+				],
+				"imageFormats": [
+					"png"
+				]
+			},
+			"id": "8f1d5c2e-6a4b-4f7e-9c3d-1a2b3c4d5e08",
+			"name": "Download Logo V1",
+			"type": "n8n-nodes-base.Brandfetch",
+			"typeVersion": 1,
+			"position": [
+				220,
+				600
+			],
+			"credentials": {
+				"brandfetchApi": {
+					"id": "1",
+					"name": "Brandfetch account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \u2018Execute workflow\u2019": {
+			"main": [
+				[
+					{
+						"node": "Get Colors V1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Download Logo V1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Colors V1": [
+			{
+				"json": {
+					"hex": "#ea4b71",
+					"type": "brand"
+				}
+			}
+		],
+		"Download Logo V1": [
+			{
+				"json": [
+					{
+						"type": "logo",
+						"theme": "light",
+						"formats": [
+							{
+								"src": "https://cdn.brandfetch.io/idbrand/logo.png",
+								"format": "png"
+							}
+						]
+					}
+				]
+			}
+		]
+	}
+}

@@ -4,12 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -159,9 +160,12 @@ export async function execute(
 	try {
 		// TODO: At some point it should be possible to use item dependent parameters.
 		//       Is however important to then not make one separate request each.
-		const workbookId = this.getNodeParameter('workbook', 0, undefined, {
-			extractValue: true,
-		}) as string;
+		const workbookId = toWorkbookId.call(
+			this,
+			this.getNodeParameter('workbook', 0, undefined, {
+				extractValue: true,
+			}) as string,
+		);
 
 		const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
 			extractValue: true,
@@ -177,7 +181,7 @@ export async function execute(
 		const columnsData = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+			requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 			{},
 		);
 		const columnsRow = columnsData.value.map((column: IDataObject) => column.name);
@@ -240,13 +244,13 @@ export async function execute(
 		const { id } = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/drive/items/${workbookId}/workbook/createSession`,
+			requestPath`/items/${workbookId}/workbook/createSession`,
 			{ persistChanges: true },
 		);
 		const responseData = await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows/add`,
+			requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/rows/add`,
 			body,
 			{},
 			'',
@@ -255,7 +259,7 @@ export async function execute(
 		await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/drive/items/${workbookId}/workbook/closeSession`,
+			requestPath`/items/${workbookId}/workbook/closeSession`,
 			{},
 			{},
 			'',

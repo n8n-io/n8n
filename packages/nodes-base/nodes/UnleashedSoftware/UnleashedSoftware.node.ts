@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -104,7 +105,7 @@ export class UnleashedSoftware implements INodeType {
 							this,
 							'Items',
 							'GET',
-							'/SalesOrders',
+							requestPath`/SalesOrders`,
 							{},
 							qs,
 						);
@@ -114,7 +115,7 @@ export class UnleashedSoftware implements INodeType {
 						responseData = (await unleashedApiRequest.call(
 							this,
 							'GET',
-							'/SalesOrders',
+							requestPath`/SalesOrders`,
 							{},
 							qs,
 							1,
@@ -155,7 +156,7 @@ export class UnleashedSoftware implements INodeType {
 							this,
 							'Items',
 							'GET',
-							'/StockOnHand',
+							requestPath`/StockOnHand`,
 							{},
 							qs,
 						);
@@ -165,7 +166,7 @@ export class UnleashedSoftware implements INodeType {
 						responseData = (await unleashedApiRequest.call(
 							this,
 							'GET',
-							'/StockOnHand',
+							requestPath`/StockOnHand`,
 							{},
 							qs,
 							1,
@@ -182,7 +183,11 @@ export class UnleashedSoftware implements INodeType {
 
 				if (operation === 'get') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand/${productId}`);
+					responseData = await unleashedApiRequest.call(
+						this,
+						'GET',
+						requestPath`/StockOnHand/${productId}`,
+					);
 					convertNETDates(responseData);
 				}
 			}

@@ -13,7 +13,12 @@ import type {
 	INodeTypeDescription,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	requestPath,
+} from 'n8n-workflow';
 
 import {
 	// attachmentFields,
@@ -34,6 +39,8 @@ import {
 	createSendAndWaitMessageBody,
 	googleApiRequest,
 	googleApiRequestAllItems,
+	resourceNamePath,
+	toResourcePath,
 	validateJSON,
 } from './GenericFunctions';
 import type { IMessage, IMessageUi } from './MessageInterface';
@@ -163,7 +170,12 @@ export class GoogleChat implements INodeType {
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const spaces = await googleApiRequestAllItems.call(this, 'spaces', 'GET', '/v1/spaces');
+				const spaces = await googleApiRequestAllItems.call(
+					this,
+					'spaces',
+					'GET',
+					requestPath`/v1/spaces`,
+				);
 				for (const space of spaces) {
 					returnData.push({
 						name: space.displayName,
@@ -254,7 +266,8 @@ export class GoogleChat implements INodeType {
 			const spaceId = this.getNodeParameter('spaceId', 0) as string;
 			const body = createSendAndWaitMessageBody(this);
 
-			await googleApiRequest.call(this, 'POST', `/v1/${spaceId}/messages`, body);
+			const space = resourceNamePath.call(this, spaceId, 'spaces/*', 0);
+			await googleApiRequest.call(this, 'POST', requestPath`/v1${space}/messages`, body);
 
 			const waitTill = configureWaitTillDate(this);
 
@@ -282,9 +295,9 @@ export class GoogleChat implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							endpoint,
+							requestPath`/v1/media${toResourcePath(resourceName.split('/'))}`,
 							undefined,
-							undefined,
+							{ alt: 'media' },
 							undefined,
 							undefined,
 							encoding,
@@ -321,7 +334,11 @@ export class GoogleChat implements INodeType {
 
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
 
-						responseData = await googleApiRequest.call(this, 'GET', `/v1/${spaceId}`);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/v1${resourceNamePath.call(this, spaceId, 'spaces/*', i)}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             space: getAll
@@ -335,13 +352,19 @@ export class GoogleChat implements INodeType {
 								this,
 								'spaces',
 								'GET',
-								'/v1/spaces',
+								requestPath`/v1/spaces`,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
-							responseData = await googleApiRequest.call(this, 'GET', '/v1/spaces', undefined, qs);
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								requestPath`/v1/spaces`,
+								undefined,
+								qs,
+							);
 							responseData = responseData.spaces;
 						}
 					}
@@ -355,7 +378,9 @@ export class GoogleChat implements INodeType {
 
 						const memberId = this.getNodeParameter('memberId', i) as string;
 
-						responseData = await googleApiRequest.call(this, 'GET', `/v1/${memberId}`);
+						const member = resourceNamePath.call(this, memberId, 'spaces/*/members/*', i);
+
+						responseData = await googleApiRequest.call(this, 'GET', requestPath`/v1${member}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             member: getAll
@@ -364,6 +389,7 @@ export class GoogleChat implements INodeType {
 						// https://developers.google.com/chat/reference/rest/v1/spaces.members/list
 
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
+						const space = resourceNamePath.call(this, spaceId, 'spaces/*', i);
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
@@ -371,7 +397,7 @@ export class GoogleChat implements INodeType {
 								this,
 								'memberships',
 								'GET',
-								`/v1/${spaceId}/members`,
+								requestPath`/v1${space}/members`,
 								undefined,
 								qs,
 							);
@@ -382,7 +408,7 @@ export class GoogleChat implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/v1/${spaceId}/members`,
+								requestPath`/v1${space}/members`,
 								undefined,
 								qs,
 							);
@@ -398,6 +424,7 @@ export class GoogleChat implements INodeType {
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages/create
 
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
+						const space = resourceNamePath.call(this, spaceId, 'spaces/*', i);
 
 						// get additional fields for threadKey and requestId
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -450,7 +477,7 @@ export class GoogleChat implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/v1/${spaceId}/messages`,
+							requestPath`/v1${space}/messages`,
 							body,
 							qs,
 						);
@@ -463,7 +490,9 @@ export class GoogleChat implements INodeType {
 
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await googleApiRequest.call(this, 'DELETE', `/v1/${messageId}`);
+						const message = resourceNamePath.call(this, messageId, 'spaces/*/messages/*', i);
+
+						responseData = await googleApiRequest.call(this, 'DELETE', requestPath`/v1${message}`);
 					} else if (operation === 'get') {
 						// ----------------------------------------
 						//             message: get
@@ -473,7 +502,9 @@ export class GoogleChat implements INodeType {
 
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await googleApiRequest.call(this, 'GET', `/v1/${messageId}`);
+						const message = resourceNamePath.call(this, messageId, 'spaces/*/messages/*', i);
+
+						responseData = await googleApiRequest.call(this, 'GET', requestPath`/v1${message}`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             message: update
@@ -482,6 +513,7 @@ export class GoogleChat implements INodeType {
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages/update
 
 						const messageId = this.getNodeParameter('messageId', i) as string;
+						const messageName = resourceNamePath.call(this, messageId, 'spaces/*/messages/*', i);
 
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
@@ -528,7 +560,13 @@ export class GoogleChat implements INodeType {
 						updateMask = updateMask.slice(0, -1); // remove trailing comma
 						qs.updateMask = updateMask;
 
-						responseData = await googleApiRequest.call(this, 'PUT', `/v1/${messageId}`, body, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/v1${messageName}`,
+							body,
+							qs,
+						);
 					}
 				} else if (resource === 'attachment') {
 					if (operation === 'get') {
@@ -540,7 +578,14 @@ export class GoogleChat implements INodeType {
 
 						const attachmentName = this.getNodeParameter('attachmentName', i) as string;
 
-						responseData = await googleApiRequest.call(this, 'GET', `/v1/${attachmentName}`);
+						const attachment = resourceNamePath.call(
+							this,
+							attachmentName,
+							'spaces/*/messages/*/attachments/*',
+							i,
+						);
+
+						responseData = await googleApiRequest.call(this, 'GET', requestPath`/v1${attachment}`);
 					}
 				} else if (resource === 'incomingWebhook') {
 					if (operation === 'create') {
@@ -592,7 +637,15 @@ export class GoogleChat implements INodeType {
 						const body: IDataObject = {};
 						Object.assign(body, message);
 
-						responseData = await googleApiRequest.call(this, 'POST', '', body, qs, uri, true);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath``,
+							body,
+							qs,
+							uri,
+							true,
+						);
 					}
 				}
 

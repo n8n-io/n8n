@@ -1,3 +1,4 @@
+import { isObjectLiteral } from '@n8n/backend-common';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 /**
@@ -12,4 +13,12 @@ import type { IWorkflowBase } from 'n8n-workflow';
  */
 export function getWorkflowActiveStatusFromWorkflowData(workflowData: IWorkflowBase): boolean {
 	return !!workflowData.activeVersionId || workflowData.active;
+}
+
+/** Removes the editor session that a waiting manual run stores, so no read returns it. */
+export function hidePushSession(execution: object): void {
+	if ('data' in execution && isObjectLiteral(execution.data)) {
+		delete execution.data.pushRef;
+		delete execution.data.pushRefUserId;
+	}
 }

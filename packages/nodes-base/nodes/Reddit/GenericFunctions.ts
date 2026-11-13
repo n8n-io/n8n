@@ -5,8 +5,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an authenticated or unauthenticated API request to Reddit.
@@ -14,7 +16,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function redditApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
@@ -23,14 +25,14 @@ export async function redditApiRequest(
 
 	qs.api_type = 'json';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'user-agent': 'n8n',
 		},
 		method,
 		uri: authRequired
-			? `https://oauth.reddit.com/${endpoint}`
-			: `https://www.reddit.com/${endpoint}`,
+			? requestUrl`https://oauth.reddit.com/${endpoint}`
+			: requestUrl`https://www.reddit.com/${endpoint}`,
 		qs,
 		json: true,
 	};
@@ -60,7 +62,7 @@ export async function redditApiRequest(
 export async function redditApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 ): Promise<any> {
 	let responseData;
@@ -78,7 +80,7 @@ export async function redditApiRequestAllItems(
 			qs.after = responseData.data.after;
 		}
 
-		if (endpoint === 'api/search_subreddits.json') {
+		if (endpoint.value === 'api/search_subreddits.json') {
 			responseData.subreddits.forEach((child: any) => returnData.push(child as IDataObject));
 		} else if (resource === 'postComment' && operation === 'getAll') {
 			responseData[1].data.children.forEach((child: any) =>
@@ -103,7 +105,7 @@ export async function redditApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions,
 	i: number,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject = {},
 	requestMethod: 'GET' | 'POST' = 'GET',
 ): Promise<any> {

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as query from '../../../actions/extraction/query.operation';
@@ -30,7 +31,7 @@ jest.mock('../../../transport', () => {
 	return {
 		...originalModule,
 		apiRequest: jest.fn(async function (method: string, endpoint: string) {
-			if (method === 'DELETE' && endpoint.includes('/sessions/')) {
+			if (method === 'DELETE' && String(endpoint).includes('/sessions/')) {
 				return { status: 'success' };
 			}
 			return mockResponse;
@@ -83,7 +84,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -121,7 +122,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -161,7 +162,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'POST',
-			'/sessions/new-session-456/windows/new-win-456/page-query',
+			requestPath`/sessions/new-session-456/windows/new-win-456/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {
@@ -221,7 +222,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'List the colors of the products on the page',
 				configuration: {
@@ -259,7 +260,7 @@ describe('Test Airtop, query page operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/page-query',
+			requestPath`/sessions/test-session-123/windows/win-123/page-query`,
 			{
 				prompt: 'How many products are on the page and what is their price range?',
 				configuration: {

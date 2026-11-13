@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from '../GenericFunctions';
 
@@ -22,13 +22,13 @@ describe('Google GSuiteAdmin Node', () => {
 			success: true,
 		});
 
-		const result = await googleApiRequest.call(mockContext, 'GET', '/example/resource');
+		const result = await googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`);
 
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'gSuiteAdminOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				headers: { 'Content-Type': 'application/json' },
 				json: true,
 				qs: {},
@@ -42,7 +42,7 @@ describe('Google GSuiteAdmin Node', () => {
 			success: true,
 		});
 
-		await googleApiRequest.call(mockContext, 'GET', '/example/resource', {});
+		await googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`, {});
 
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'gSuiteAdminOAuth2Api',
@@ -56,9 +56,9 @@ describe('Google GSuiteAdmin Node', () => {
 			errorResponse,
 		);
 
-		await expect(googleApiRequest.call(mockContext, 'GET', '/example/resource')).rejects.toThrow(
-			NodeApiError,
-		);
+		await expect(
+			googleApiRequest.call(mockContext, 'GET', requestPath`/example/resource`),
+		).rejects.toThrow(NodeApiError);
 
 		expect(mockContext.getNode).toHaveBeenCalled();
 		expect(mockContext.helpers.httpRequestWithAuthentication).toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }]);
@@ -95,7 +95,7 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
@@ -106,7 +106,7 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
@@ -117,7 +117,7 @@ describe('Google GSuiteAdmin Node', () => {
 				method: 'GET',
 				qs: { maxResults: 100, pageToken: '' },
 				headers: { 'Content-Type': 'application/json' },
-				url: 'https://www.googleapis.com/admin/example/resource',
+				url: requestUrl`https://www.googleapis.com/admin/example/resource`,
 				json: true,
 			}),
 		);
@@ -133,7 +133,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([{ id: '1' }, { id: '2' }]);
@@ -150,7 +150,7 @@ describe('Google GSuiteAdmin Node', () => {
 			mockContext,
 			'items',
 			'GET',
-			'/example/resource',
+			requestPath`/example/resource`,
 		);
 
 		expect(result).toEqual([]);
@@ -164,7 +164,7 @@ describe('Google GSuiteAdmin Node', () => {
 		);
 
 		await expect(
-			googleApiRequestAllItems.call(mockContext, 'items', 'GET', '/example/resource'),
+			googleApiRequestAllItems.call(mockContext, 'items', 'GET', requestPath`/example/resource`),
 		).rejects.toThrow();
 
 		expect(mockContext.getNode).toHaveBeenCalled();

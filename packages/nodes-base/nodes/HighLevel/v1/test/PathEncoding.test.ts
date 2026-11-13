@@ -1,4 +1,5 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { opportunityUpdatePreSendAction, taskUpdatePreSendAction } from '../GenericFunctions';
 
@@ -27,7 +28,7 @@ describe('HighLevel v1 request paths', () => {
 		expect(context.helpers?.requestWithAuthentication).toHaveBeenCalledWith(
 			'highLevelApi',
 			expect.objectContaining({
-				uri: 'https://rest.gohighlevel.com/v1/pipelines/pipeline%2Fid%3Fx%23y/opportunities/opportunity%2Fid',
+				uri: requestUrl`https://rest.gohighlevel.com/v1/pipelines/pipeline%2Fid%3Fx%23y/opportunities/opportunity%2Fid`,
 			}),
 		);
 	});
@@ -48,7 +49,7 @@ describe('HighLevel v1 request paths', () => {
 		expect(context.helpers?.requestWithAuthentication).toHaveBeenCalledWith(
 			'highLevelApi',
 			expect.objectContaining({
-				uri: 'https://rest.gohighlevel.com/v1/contacts/contact%2Fid/tasks/task%2Fid%3Fx%23y',
+				uri: requestUrl`https://rest.gohighlevel.com/v1/contacts/contact%2Fid/tasks/task%2Fid%3Fx%23y`,
 			}),
 		);
 	});

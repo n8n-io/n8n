@@ -350,6 +350,9 @@ describe('Test Gmail Node v2', () => {
 			it('should return a list of Gmail thread messages', async () => {
 				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
 					getNode: jest.fn(() => mock<INode>()),
+					getNodeParameter: jest.fn((name: string) =>
+						name === 'threadId' ? 'test-thread-id' : undefined,
+					),
 					helpers: mock<ILoadOptionsFunctions['helpers']>({
 						requestWithAuthentication: jest.fn(async () => ({ messages })),
 					}),
@@ -365,6 +368,18 @@ describe('Test Gmail Node v2', () => {
 						value: 'z9y8x7w6v5u4t3s2',
 					},
 				]);
+			});
+
+			it('should return no options when the thread ID is empty', async () => {
+				const requestWithAuthentication = jest.fn();
+				const loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>({
+					getNode: jest.fn(() => mock<INode>()),
+					getNodeParameter: jest.fn(() => ''),
+					helpers: mock<ILoadOptionsFunctions['helpers']>({ requestWithAuthentication }),
+				});
+
+				expect(await getThreadMessages.call(loadOptionsFunctions)).toEqual([]);
+				expect(requestWithAuthentication).not.toHaveBeenCalled();
 			});
 		});
 

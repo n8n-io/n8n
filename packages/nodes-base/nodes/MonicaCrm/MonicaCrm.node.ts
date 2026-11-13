@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -155,7 +156,7 @@ export class MonicaCrm implements INodeType {
 				const responseData = (await monicaCrmApiRequest.call(
 					this,
 					'GET',
-					'/activitytypes',
+					requestPath`/activitytypes`,
 				)) as LoaderGetResponse;
 				return toOptions(responseData);
 			},
@@ -164,7 +165,7 @@ export class MonicaCrm implements INodeType {
 				const responseData = await monicaCrmApiRequestAllItems.call(
 					this,
 					'GET',
-					'/tags',
+					requestPath`/tags`,
 					{},
 					{},
 					{ forLoader: true },
@@ -178,7 +179,7 @@ export class MonicaCrm implements INodeType {
 				const responseData = await monicaCrmApiRequestAllItems.call(
 					this,
 					'GET',
-					'/tags',
+					requestPath`/tags`,
 					{},
 					{},
 					{ forLoader: true },
@@ -190,7 +191,7 @@ export class MonicaCrm implements INodeType {
 				const responseData = (await monicaCrmApiRequest.call(
 					this,
 					'GET',
-					'/contactfieldtypes',
+					requestPath`/contactfieldtypes`,
 				)) as LoaderGetResponse;
 				return toOptions(responseData);
 			},
@@ -199,7 +200,7 @@ export class MonicaCrm implements INodeType {
 				const responseData = (await monicaCrmApiRequest.call(
 					this,
 					'GET',
-					'/genders',
+					requestPath`/genders`,
 				)) as LoaderGetResponse;
 				return toOptions(responseData);
 			},
@@ -245,7 +246,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/activities', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/activities`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             activity: delete
@@ -255,7 +261,7 @@ export class MonicaCrm implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i);
 
-						const endpoint = `/activities/${activityId}`;
+						const endpoint = requestPath`/activities/${activityId}`;
 						await monicaCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -267,7 +273,7 @@ export class MonicaCrm implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i);
 
-						const endpoint = `/activities/${activityId}`;
+						const endpoint = requestPath`/activities/${activityId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -276,7 +282,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/activities#list-all-the-activities-in-your-account
 
-						const endpoint = '/activities';
+						const endpoint = requestPath`/activities`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -290,7 +296,7 @@ export class MonicaCrm implements INodeType {
 						const { data } = await monicaCrmApiRequest.call(
 							this,
 							'GET',
-							`/activities/${activityId}`,
+							requestPath`/activities/${activityId}`,
 						);
 
 						const body = {
@@ -312,7 +318,7 @@ export class MonicaCrm implements INodeType {
 							body.contacts = body.contacts.split(',');
 						}
 
-						const endpoint = `/activities/${activityId}`;
+						const endpoint = requestPath`/activities/${activityId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'call') {
@@ -333,7 +339,7 @@ export class MonicaCrm implements INodeType {
 							content: this.getNodeParameter('content', i),
 						} as IDataObject;
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/calls', body);
+						responseData = await monicaCrmApiRequest.call(this, 'POST', requestPath`/calls`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               call: delete
@@ -343,7 +349,11 @@ export class MonicaCrm implements INodeType {
 
 						const callId = this.getNodeParameter('callId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'DELETE', `/calls/${callId}`);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/calls/${callId}`,
+						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -354,7 +364,11 @@ export class MonicaCrm implements INodeType {
 
 						const callId = this.getNodeParameter('callId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'GET', `/calls/${callId}`);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/calls/${callId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               call: getAll
@@ -362,7 +376,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/calls#list-all-the-calls-in-your-account
 
-						const endpoint = '/calls';
+						const endpoint = requestPath`/calls`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -373,7 +387,11 @@ export class MonicaCrm implements INodeType {
 
 						const callId = this.getNodeParameter('callId', i);
 
-						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/calls/${callId}`);
+						const { data } = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/calls/${callId}`,
+						);
 
 						const body = {
 							called_at: data.called_at,
@@ -385,7 +403,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/calls/${callId}`, body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/calls/${callId}`,
+							body,
+						);
 					}
 				} else if (resource === 'contact') {
 					// **********************************************************************
@@ -442,7 +465,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, rest);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/contacts', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/contacts`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             contact: delete
@@ -452,7 +480,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						await monicaCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -464,7 +492,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -480,7 +508,13 @@ export class MonicaCrm implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/contacts', {}, qs);
+						responseData = await monicaCrmApiRequestAllItems.call(
+							this,
+							'GET',
+							requestPath`/contacts`,
+							{},
+							qs,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             contact: update
@@ -488,7 +522,11 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/contacts/${contactId}`);
+						const { data } = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/contacts/${contactId}`,
+						);
 
 						const body = {
 							first_name: data.first_name,
@@ -532,7 +570,7 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, rest);
 						}
 
-						const endpoint = `/contacts/${contactId}`;
+						const endpoint = requestPath`/contacts/${contactId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'contactField') {
@@ -553,7 +591,12 @@ export class MonicaCrm implements INodeType {
 							data: this.getNodeParameter('data', i),
 						} as IDataObject;
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/contactfields', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/contactfields`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//           contactField: delete
@@ -563,7 +606,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactFieldId = this.getNodeParameter('contactFieldId', i);
 
-						const endpoint = `/contactfields/${contactFieldId}`;
+						const endpoint = requestPath`/contactfields/${contactFieldId}`;
 						await monicaCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -575,7 +618,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactFieldId = this.getNodeParameter('contactFieldId', i);
 
-						const endpoint = `/contactfields/${contactFieldId}`;
+						const endpoint = requestPath`/contactfields/${contactFieldId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -586,7 +629,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contact/${contactId}/contactfields`;
+						const endpoint = requestPath`/contact/${contactId}/contactfields`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -603,7 +646,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactFieldId = this.getNodeParameter('contactFieldId', i);
 
-						const endpoint = `/contactfields/${contactFieldId}`;
+						const endpoint = requestPath`/contactfields/${contactFieldId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'contactTag') {
@@ -624,7 +667,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}/setTags`;
+						const endpoint = requestPath`/contacts/${contactId}/setTags`;
 						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------
@@ -639,7 +682,7 @@ export class MonicaCrm implements INodeType {
 
 						const contactId = this.getNodeParameter('contactId', i);
 
-						const endpoint = `/contacts/${contactId}/unsetTag`;
+						const endpoint = requestPath`/contacts/${contactId}/unsetTag`;
 						responseData = await monicaCrmApiRequest.call(this, 'POST', endpoint, body);
 					}
 				} else if (resource === 'conversation') {
@@ -660,7 +703,12 @@ export class MonicaCrm implements INodeType {
 							happened_at: this.getNodeParameter('happenedAt', i),
 						} as IDataObject;
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/conversations', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/conversations`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//           conversation: delete
@@ -670,7 +718,7 @@ export class MonicaCrm implements INodeType {
 
 						const conversationId = this.getNodeParameter('conversationId', i);
 
-						const endpoint = `/conversations/${conversationId}`;
+						const endpoint = requestPath`/conversations/${conversationId}`;
 						await monicaCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -682,7 +730,7 @@ export class MonicaCrm implements INodeType {
 
 						const conversationId = this.getNodeParameter('conversationId', i);
 
-						const endpoint = `/conversations/${conversationId}`;
+						const endpoint = requestPath`/conversations/${conversationId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -698,7 +746,7 @@ export class MonicaCrm implements INodeType {
 
 						const conversationId = this.getNodeParameter('conversationId', i);
 
-						const endpoint = `/conversations/${conversationId}`;
+						const endpoint = requestPath`/conversations/${conversationId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'conversationMessage') {
@@ -711,12 +759,12 @@ export class MonicaCrm implements INodeType {
 
 						const conversationId = this.getNodeParameter('conversationId', i);
 
-						const endpoint = `/conversations/${conversationId}/messages`;
+						const endpoint = requestPath`/conversations/${conversationId}/messages`;
 
 						const { data } = await monicaCrmApiRequest.call(
 							this,
 							'GET',
-							`/conversations/${conversationId}`,
+							requestPath`/conversations/${conversationId}`,
 						);
 
 						const body = {
@@ -735,14 +783,14 @@ export class MonicaCrm implements INodeType {
 						// https://www.monicahq.com/api/conversations#update-a-message-in-a-conversation
 						const conversationId = this.getNodeParameter('conversationId', i);
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
+						const endpoint = requestPath`/conversations/${conversationId}/messages/${messageId}`;
 
 						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const { data } = await monicaCrmApiRequest.call(
 							this,
 							'GET',
-							`/conversations/${conversationId}`,
+							requestPath`/conversations/${conversationId}`,
 						);
 
 						const message = data.messages.filter(
@@ -779,7 +827,12 @@ export class MonicaCrm implements INodeType {
 							post: this.getNodeParameter('post', i),
 						} as IDataObject;
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/journal', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/journal`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//           journalEntry: delete
@@ -789,7 +842,7 @@ export class MonicaCrm implements INodeType {
 
 						const journalId = this.getNodeParameter('journalId', i);
 
-						await monicaCrmApiRequest.call(this, 'DELETE', `/journal/${journalId}`);
+						await monicaCrmApiRequest.call(this, 'DELETE', requestPath`/journal/${journalId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -800,7 +853,11 @@ export class MonicaCrm implements INodeType {
 
 						const journalId = this.getNodeParameter('journalId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'GET', `/journal/${journalId}`);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/journal/${journalId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//           journalEntry: getAll
@@ -808,7 +865,11 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/journal#list-all-the-entries-in-your-journal
 
-						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/journal');
+						responseData = await monicaCrmApiRequestAllItems.call(
+							this,
+							'GET',
+							requestPath`/journal`,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           journalEntry: update
@@ -818,7 +879,11 @@ export class MonicaCrm implements INodeType {
 
 						const journalId = this.getNodeParameter('journalId', i);
 
-						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/journal/${journalId}`);
+						const { data } = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/journal/${journalId}`,
+						);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -834,7 +899,7 @@ export class MonicaCrm implements INodeType {
 						responseData = await monicaCrmApiRequest.call(
 							this,
 							'PUT',
-							`/journal/${journalId}`,
+							requestPath`/journal/${journalId}`,
 							body,
 						);
 					}
@@ -857,7 +922,7 @@ export class MonicaCrm implements INodeType {
 
 						body.is_favorited = this.getNodeParameter('additionalFields.isFavorited', i, false);
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/notes', body);
+						responseData = await monicaCrmApiRequest.call(this, 'POST', requestPath`/notes`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               note: delete
@@ -867,7 +932,7 @@ export class MonicaCrm implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i);
 
-						await monicaCrmApiRequest.call(this, 'DELETE', `/notes/${noteId}`);
+						await monicaCrmApiRequest.call(this, 'DELETE', requestPath`/notes/${noteId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -878,7 +943,11 @@ export class MonicaCrm implements INodeType {
 
 						const noteId = this.getNodeParameter('noteId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'GET', `/notes/${noteId}`);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/notes/${noteId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               note: getAll
@@ -886,7 +955,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/notes#list-all-the-notes-in-your-account
 
-						const endpoint = '/notes';
+						const endpoint = requestPath`/notes`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -899,7 +968,11 @@ export class MonicaCrm implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/notes/${noteId}`);
+						const { data } = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/notes/${noteId}`,
+						);
 
 						const body = {
 							body: data.body,
@@ -910,7 +983,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/notes/${noteId}`, body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/notes/${noteId}`,
+							body,
+						);
 					}
 				} else if (resource === 'reminder') {
 					// **********************************************************************
@@ -940,7 +1018,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/reminders', body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'POST',
+							requestPath`/reminders`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             reminder: delete
@@ -950,7 +1033,7 @@ export class MonicaCrm implements INodeType {
 
 						const reminderId = this.getNodeParameter('reminderId', i);
 
-						const endpoint = `/reminders/${reminderId}`;
+						const endpoint = requestPath`/reminders/${reminderId}`;
 						await monicaCrmApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -962,7 +1045,7 @@ export class MonicaCrm implements INodeType {
 
 						const reminderId = this.getNodeParameter('reminderId', i);
 
-						const endpoint = `/reminders/${reminderId}`;
+						const endpoint = requestPath`/reminders/${reminderId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -971,7 +1054,11 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/reminders#list-all-the-reminders-in-your-account
 
-						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/reminders');
+						responseData = await monicaCrmApiRequestAllItems.call(
+							this,
+							'GET',
+							requestPath`/reminders`,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//             reminder: update
@@ -984,7 +1071,7 @@ export class MonicaCrm implements INodeType {
 						const { data } = await monicaCrmApiRequest.call(
 							this,
 							'GET',
-							`/reminders/${reminderId}`,
+							requestPath`/reminders/${reminderId}`,
 						);
 
 						const body = {
@@ -1003,7 +1090,7 @@ export class MonicaCrm implements INodeType {
 
 						body.initial_date = (body.initial_date as string).split('T')[0];
 
-						const endpoint = `/reminders/${reminderId}`;
+						const endpoint = requestPath`/reminders/${reminderId}`;
 						responseData = await monicaCrmApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'tag') {
@@ -1022,7 +1109,7 @@ export class MonicaCrm implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/tags', body);
+						responseData = await monicaCrmApiRequest.call(this, 'POST', requestPath`/tags`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               tag: delete
@@ -1032,7 +1119,7 @@ export class MonicaCrm implements INodeType {
 
 						const tagId = this.getNodeParameter('tagId', i);
 
-						await monicaCrmApiRequest.call(this, 'DELETE', `/tags/${tagId}`);
+						await monicaCrmApiRequest.call(this, 'DELETE', requestPath`/tags/${tagId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1043,7 +1130,7 @@ export class MonicaCrm implements INodeType {
 
 						const tagId = this.getNodeParameter('tagId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'GET', `/tags/${tagId}`);
+						responseData = await monicaCrmApiRequest.call(this, 'GET', requestPath`/tags/${tagId}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               tag: getAll
@@ -1051,7 +1138,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/tags#list-all-your-tags
 
-						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', '/tags');
+						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', requestPath`/tags`);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               tag: update
@@ -1065,7 +1152,12 @@ export class MonicaCrm implements INodeType {
 
 						const tagId = this.getNodeParameter('tagId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/tags/${tagId}`, body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/tags/${tagId}`,
+							body,
+						);
 					}
 				} else if (resource === 'task') {
 					// **********************************************************************
@@ -1090,7 +1182,7 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await monicaCrmApiRequest.call(this, 'POST', requestPath`/tasks`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               task: delete
@@ -1100,7 +1192,7 @@ export class MonicaCrm implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						await monicaCrmApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
+						await monicaCrmApiRequest.call(this, 'DELETE', requestPath`/tasks/${taskId}`);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -1111,7 +1203,11 @@ export class MonicaCrm implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						responseData = await monicaCrmApiRequest.call(this, 'GET', `/tasks/${taskId}`);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tasks/${taskId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               task: getAll
@@ -1119,7 +1215,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/tasks#list-all-the-tasks-of-a-specific-contact
 
-						const endpoint = '/tasks';
+						const endpoint = requestPath`/tasks`;
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1130,7 +1226,11 @@ export class MonicaCrm implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						const { data } = await monicaCrmApiRequest.call(this, 'GET', `/tasks/${taskId}`);
+						const { data } = await monicaCrmApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tasks/${taskId}`,
+						);
 
 						const body = {
 							contact_id: data.contact.id,
@@ -1144,7 +1244,12 @@ export class MonicaCrm implements INodeType {
 							Object.assign(body, updateFields);
 						}
 
-						responseData = await monicaCrmApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
+						responseData = await monicaCrmApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/tasks/${taskId}`,
+							body,
+						);
 					}
 				}
 			} catch (error) {

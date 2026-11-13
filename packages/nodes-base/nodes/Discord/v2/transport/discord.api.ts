@@ -6,16 +6,29 @@ import type {
 	IHookFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IRequestOptions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
+import { sleep, NodeApiError, jsonParse, requestUrl } from 'n8n-workflow';
 
 import { getCredentialsType, requestApi } from './helpers';
+
+async function getRequestTarget(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentialType: string,
+	endpoint: RequestPath,
+) {
+	if (credentialType !== 'discordWebhookApi') {
+		return { url: requestUrl`https://discord.com/api/v10${endpoint}` };
+	}
+	const credentials = await this.getCredentials('discordWebhookApi');
+	return { url: credentials.webhookUri as string };
+}
 
 export async function discordApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body?: IDataObject,
 	qs?: IDataObject,
 ) {
@@ -24,19 +37,14 @@ export async function discordApiRequest(
 
 	const credentialType = getCredentialsType(authentication);
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers,
 		method,
 		qs,
 		body,
-		url: `https://discord.com/api/v10${endpoint}`,
+		...(await getRequestTarget.call(this, credentialType, endpoint)),
 		json: true,
 	};
-
-	if (credentialType === 'discordWebhookApi') {
-		const credentials = await this.getCredentials('discordWebhookApi');
-		options.url = credentials.webhookUri as string;
-	}
 
 	try {
 		const response = await requestApi.call(this, options, credentialType, endpoint);
@@ -59,7 +67,7 @@ export async function discordApiRequest(
 export async function discordApiMultiPartRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	formData: FormData,
 ) {
 	const headers: IDataObject = {
@@ -69,17 +77,12 @@ export async function discordApiMultiPartRequest(
 
 	const credentialType = getCredentialsType(authentication);
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers,
 		method,
 		formData,
-		url: `https://discord.com/api/v10${endpoint}`,
+		...(await getRequestTarget.call(this, credentialType, endpoint)),
 	};
-
-	if (credentialType === 'discordWebhookApi') {
-		const credentials = await this.getCredentials('discordWebhookApi');
-		options.url = credentials.webhookUri as string;
-	}
 
 	try {
 		const response = await requestApi.call(this, options, credentialType, endpoint);

@@ -6,12 +6,15 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { ExecutionRepository, type User } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { parse, stringify } from 'flatted';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { WaitTracker } from '@/wait-tracker';
 
 import {
+	createExecution,
 	createSuccessfulExecution,
 	createWaitingExecution,
 	getAllExecutions,
@@ -89,6 +92,58 @@ describe('GET /executions/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toBeDefined();
+	});
+
+	describe('push session fields', () => {
+		const PUSH_REF = 'push-ref-of-the-owner';
+		const PUSH_REF_USER_ID = 'user-id-of-the-owner';
+
+		const createWaitingExecutionForViewer = async () => {
+			testServer.license.enable('feat:sharing');
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:viewer');
+			const workflow = await createWorkflow({}, teamProject);
+			return await createExecution(
+				{
+					finished: false,
+					status: 'waiting',
+					waitTill: new Date(),
+					data: stringify({
+						pushRef: PUSH_REF,
+						pushRefUserId: PUSH_REF_USER_ID,
+						resultData: { runData: {} },
+					}),
+				},
+				workflow,
+			);
+		};
+
+		test('keeps the stored push session fields after a read', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(200);
+
+			const stored = await Container.get(ExecutionRepository).findSingleExecution(execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(stored?.data.pushRef).toBe(PUSH_REF);
+			expect(stored?.data.pushRefUserId).toBe(PUSH_REF_USER_ID);
+		});
+
+		test('hides the push session fields from a project viewer', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parse(response.body.data.data);
+			expect(data).toHaveProperty('resultData');
+			expect(data).not.toHaveProperty('pushRef');
+			expect(data).not.toHaveProperty('pushRefUserId');
+		});
 	});
 
 	test('only returns executions of shared workflows if sharing is enabled', async () => {

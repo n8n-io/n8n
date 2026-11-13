@@ -1,0 +1,859 @@
+{
+	"name": "Salesforce Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "a0a4c958-c39a-5204-a7b0-7ff7bc689688",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "create",
+				"company": "Acme Corp",
+				"lastname": "Lovelace"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "f809090f-6ee7-56df-974e-1561905be279",
+			"name": "Lead > Create",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "upsert",
+				"externalId": "Email",
+				"externalIdValue": "ada@example.com",
+				"company": "Acme Corp",
+				"lastname": "Lovelace"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "e342c662-027d-5640-b3fe-13a039ea8bed",
+			"name": "Lead > Upsert",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "update",
+				"leadId": "00Q5g00000A1b2CEAR",
+				"updateFields": {
+					"hasOptedOutOfEmail": true
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "893f7627-f40e-5765-b988-cb1a53cab5ac",
+			"name": "Lead > Update",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"leadId": "00Q5g00000A1b2CEAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "f1bb53ec-9aa7-5f0f-8e44-226657892584",
+			"name": "Lead > Get",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "8cbe17a2-a575-5911-87db-dd46eb3af5e1",
+			"name": "Lead > Get Many",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "delete",
+				"leadId": "00Q5g00000A1b2CEAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "f06be312-e47b-5cc0-8683-e4b810bda3bb",
+			"name": "Lead > Delete",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "getSummary"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "dd3b8570-f47a-5dd9-bba6-c0c576de20ff",
+			"name": "Lead > Get Summary",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "addToCampaign",
+				"leadId": "00Q5g00000A1b2CEAR",
+				"campaignId": "7015g00000E5f6GAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "d64dd53d-cb3b-5343-838f-5261b4922418",
+			"name": "Lead > Add To Campaign",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "addNote",
+				"leadId": "00Q5g00000A1b2CEAR",
+				"title": "Intro call"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "b389a396-cdc6-5594-8f87-653177c1bc56",
+			"name": "Lead > Add Note",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"lastname": "Hopper"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "f74e90dd-0289-546d-82ed-871a5fcae80b",
+			"name": "Contact > Create",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "upsert",
+				"externalId": "Email",
+				"externalIdValue": "grace@example.com",
+				"lastname": "Hopper"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "556ee43c-f492-52a5-8bf0-86582e0f721d",
+			"name": "Contact > Upsert",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "0035g00000B2c3DAAR",
+				"updateFields": {
+					"lastName": "Hopper"
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "b72729be-a020-5933-ab10-2fcecd7f5956",
+			"name": "Contact > Update",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "0035g00000B2c3DAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "9c0ac77b-9147-58f5-8a57-971fa1513c68",
+			"name": "Contact > Get",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "0035g00000B2c3DAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "bb4bb1e5-989e-5f19-89a9-bd04930a377a",
+			"name": "Contact > Delete",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getSummary"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "a0dbe349-cea8-5a18-a86e-b9b244c99260",
+			"name": "Contact > Get Summary",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "addToCampaign",
+				"contactId": "0035g00000B2c3DAAR",
+				"campaignId": "7015g00000E5f6GAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "c351530d-4177-52ca-a071-dc054a92d4ea",
+			"name": "Contact > Add To Campaign",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "addNote",
+				"contactId": "0035g00000B2c3DAAR",
+				"title": "Follow-up"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "c2a96de5-9089-5964-99d1-f1626c0821a4",
+			"name": "Contact > Add Note",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customObject",
+				"operation": "create",
+				"customObject": "Invoice__c",
+				"customFieldsUi": {
+					"customFieldsValues": [
+						{
+							"fieldId": "Amount__c",
+							"value": "100"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "73e127a1-d328-544e-af3c-1f6d4b66a13b",
+			"name": "Custom Object > Create",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customObject",
+				"operation": "upsert",
+				"customObject": "Invoice__c",
+				"externalId": "External_Id__c",
+				"externalIdValue": "INV-1001",
+				"customFieldsUi": {
+					"customFieldsValues": [
+						{
+							"fieldId": "Amount__c",
+							"value": "100"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "a38b49d7-5384-5328-b1fa-fd0cc40beb74",
+			"name": "Custom Object > Upsert",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customObject",
+				"operation": "update",
+				"customObject": "Invoice__c",
+				"recordId": "a005g00000F6g7HAAR",
+				"customFieldsUi": {
+					"customFieldsValues": [
+						{
+							"fieldId": "Amount__c",
+							"value": "200"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "dbe191e7-b1b1-554b-90e8-1e03106bbb56",
+			"name": "Custom Object > Update",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customObject",
+				"operation": "get",
+				"customObject": "Invoice__c",
+				"recordId": "a005g00000F6g7HAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "db201603-b552-5fe3-8716-121491a1d0af",
+			"name": "Custom Object > Get",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customObject",
+				"operation": "delete",
+				"customObject": "Invoice__c",
+				"recordId": "a005g00000F6g7HAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "a9996924-9ac9-5f5e-ba77-5803ec424105",
+			"name": "Custom Object > Delete",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "create",
+				"type": "Problem"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 4400],
+			"id": "a207fc89-b639-594a-a77d-c0014294b38a",
+			"name": "Case > Create",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "update",
+				"caseId": "5005g00000C3d4EAAR",
+				"updateFields": {
+					"type": "Question"
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 4600],
+			"id": "ca7144b5-bf3b-5bfd-aed3-2a84d3eb216c",
+			"name": "Case > Update",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "get",
+				"caseId": "5005g00000C3d4EAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"id": "705ff383-00cc-5b78-a581-83fe0568977f",
+			"name": "Case > Get",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "delete",
+				"caseId": "5005g00000C3d4EAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 5000],
+			"id": "a3c9a940-6863-569d-b51b-fb857d4c6d6f",
+			"name": "Case > Delete",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "getSummary"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 5200],
+			"id": "7fffcd15-2ca4-52c4-b265-f974b0ff3148",
+			"name": "Case > Get Summary",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "case",
+				"operation": "addComment",
+				"caseId": "5005g00000C3d4EAAR",
+				"options": {
+					"commentBody": "Checked"
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 5400],
+			"id": "f09d3d44-6b94-5fcb-ba77-90066c1630c3",
+			"name": "Case > Add Comment",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "update",
+				"attachmentId": "00P5g00000D4e5FAAR",
+				"updateFields": {
+					"name": "contract.pdf"
+				}
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 5600],
+			"id": "230106be-40f5-5918-b44c-ea591a85388a",
+			"name": "Attachment > Update",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "get",
+				"attachmentId": "00P5g00000D4e5FAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 5800],
+			"id": "00cb1d86-2daa-5c2a-aea3-4fcdf203d313",
+			"name": "Attachment > Get",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "delete",
+				"attachmentId": "00P5g00000D4e5FAAR"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 6000],
+			"id": "38fa50d4-3306-521d-8ac8-799595643fea",
+			"name": "Attachment > Delete",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "getSummary"
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 6200],
+			"id": "a2f9ecc1-7de3-5c18-b4a7-b208cf573901",
+			"name": "Attachment > Get Summary",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "flow",
+				"operation": "invoke",
+				"apiName": "Order_Sync_Flow",
+				"jsonParameters": false
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 6400],
+			"id": "ba850975-494c-5314-b7c1-bf5dffc65b7b",
+			"name": "Flow > Invoke",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "flow",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.salesforce",
+			"typeVersion": 1,
+			"position": [300, 6600],
+			"id": "5fe5a217-8fd4-5456-87dd-25a1ad3bcc64",
+			"name": "Flow > Get Many",
+			"credentials": {
+				"salesforceOAuth2Api": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Lead > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Get Summary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Add To Campaign",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lead > Add Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Get Summary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Add To Campaign",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact > Add Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Object > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Object > Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Object > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Object > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Object > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Get Summary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Case > Add Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment > Get Summary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Flow > Invoke",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Flow > Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

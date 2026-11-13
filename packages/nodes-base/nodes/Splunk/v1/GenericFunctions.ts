@@ -5,8 +5,17 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sanitizeXmlName, sleep } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	decodePathValue,
+	requestUrl,
+	sanitizeXmlName,
+	sleep,
+} from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import {
@@ -117,20 +126,20 @@ export function toUnixEpoch(timestamp: string) {
 export async function splunkApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const { baseUrl, allowUnauthorizedCerts } = await this.getCredentials('splunkApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
 		form: body,
 		qs,
-		uri: `${baseUrl}${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 		rejectUnauthorized: !allowUnauthorizedCerts,
 		useQuerystring: true, // serialize roles array as `roles=A&roles=B`
@@ -266,5 +275,5 @@ export function getId(
 ) {
 	const id = this.getNodeParameter(idType, i) as string;
 
-	return id.includes(endpoint) ? id.split(endpoint).pop() : id;
+	return decodePathValue(id.split(endpoint).pop() ?? id);
 }

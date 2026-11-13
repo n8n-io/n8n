@@ -1,4 +1,21 @@
-import { encodeBinaryData, processResponseData } from '../GenericFunctions';
+import { mockDeep } from 'jest-mock-extended';
+import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+import { encodeBinaryData, mistralApiRequest, processResponseData } from '../GenericFunctions';
+
+describe('mistralApiRequest', () => {
+	it('should encode path values', async () => {
+		const context = mockDeep<IExecuteFunctions>();
+		context.helpers.httpRequestWithAuthentication.mockResolvedValue({ id: 'job-1' });
+
+		const jobId = 'job-1/cancel?x=1';
+		await mistralApiRequest.call(context, 'GET', requestPath`/v1/batch/jobs/${jobId}`);
+
+		const [, options] = context.helpers.httpRequestWithAuthentication.mock.calls[0];
+		expect(String(options.url)).toBe('https://api.mistral.ai/v1/batch/jobs/job-1%2Fcancel%3Fx=1');
+	});
+});
 
 describe('Mistral OCR Generic Functions', () => {
 	describe('encodeBinaryData', () => {

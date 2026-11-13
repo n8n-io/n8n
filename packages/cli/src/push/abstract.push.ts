@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { assert, jsonStringify } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
 
 import type { OnPushMessage } from '@/push/types';
 import { TypedEmitter } from '@/typed-emitter';
@@ -11,6 +11,11 @@ import { TypedEmitter } from '@/typed-emitter';
 export interface AbstractPushEvents {
 	message: OnPushMessage;
 }
+
+type PushTarget<Connection> = { pushRef: string; userId: User['id']; connection: Connection };
+
+/** User ids are UUIDs with no `:`, so two pairs never share a key. */
+const connectionKey = (pushRef: string, userId: User['id']): string => `${userId}:${pushRef}`;
 
 /**
  * Abstract class for two-way push communication.
@@ -20,9 +25,8 @@ export interface AbstractPushEvents {
  */
 @Service()
 export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPushEvents> {
-	protected connections: Record<string, Connection> = {};
-
-	protected userIdByPushRef: Record<string, string> = {};
+	/** One entry per user and push ref, so users on the same push ref never replace each other. */
+	protected connections = new Map<string, PushTarget<Connection>>();
 
 	protected abstract close(connection: Connection): void;
 	protected abstract sendToOneConnection(
@@ -41,93 +45,102 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
-	protected add(pushRef: string, userId: User['id'], connection: Connection) {
-		const { connections, userIdByPushRef } = this;
+	protected add(pushRef: string, userId: User['id'], connection: Connection): void {
 		this.logger.debug('Add editor-UI session', { pushRef });
 
-		const existingConnection = connections[pushRef];
+		const key = connectionKey(pushRef, userId);
+		const existing = this.connections.get(key);
 
-		if (existingConnection) {
-			// Make sure to remove existing connection with the same ID
-			this.close(existingConnection);
+		if (existing) {
+			// Make sure to remove the existing connection of this user with the same ID
+			this.close(existing.connection);
 		}
 
-		connections[pushRef] = connection;
-		userIdByPushRef[pushRef] = userId;
+		this.connections.set(key, { pushRef, userId, connection });
 	}
 
-	protected onMessageReceived(pushRef: string, msg: unknown) {
+	protected onMessageReceived(pushRef: string, userId: User['id'], msg: unknown): void {
 		this.logger.debug('Received message from editor-UI', { pushRef, msg });
-
-		const userId = this.userIdByPushRef[pushRef];
 
 		this.emit('message', { pushRef, userId, msg });
 	}
 
-	protected remove(pushRef?: string) {
-		if (!pushRef) return;
-
-		this.logger.debug('Removed editor-UI session', { pushRef });
-
-		delete this.connections[pushRef];
-		delete this.userIdByPushRef[pushRef];
+	/** Skips the removal when a newer connection of the same user already replaced `connection`. */
+	protected remove(pushRef: string, userId: User['id'], connection: Connection): void {
+		const key = connectionKey(pushRef, userId);
+		if (this.connections.get(key)?.connection === connection) {
+			this.logger.debug('Removed editor-UI session', { pushRef });
+			this.connections.delete(key);
+		}
 	}
 
-	private sendTo({ type, data }: PushMessage, pushRefs: string[], asBinary: boolean = false) {
+	private sendTo(
+		{ type, data }: PushMessage,
+		targets: Array<PushTarget<Connection>>,
+		asBinary: boolean = false,
+	): void {
 		this.logger.debug(`Pushed to frontend: ${type}`, {
 			dataType: type,
-			pushRefs: pushRefs.join(', '),
+			pushRefs: targets.map(({ pushRef }) => pushRef).join(', '),
 		});
 
 		const stringifiedPayload = jsonStringify({ type, data }, { replaceCircularRefs: true });
 
-		for (const pushRef of pushRefs) {
-			const connection = this.connections[pushRef];
-			assert(connection);
+		for (const { connection } of targets) {
 			this.sendToOneConnection(connection, stringifiedPayload, asBinary);
 		}
 	}
 
-	private pingAll() {
-		for (const pushRef in this.connections) {
-			this.ping(this.connections[pushRef]);
+	private pingAll(): void {
+		for (const { connection } of this.connections.values()) {
+			this.ping(connection);
 		}
 	}
 
-	sendToAll(pushMsg: PushMessage) {
-		this.sendTo(pushMsg, Object.keys(this.connections));
+	sendToAll(pushMsg: PushMessage): void {
+		this.sendTo(pushMsg, [...this.connections.values()]);
 	}
 
-	sendToOne(pushMsg: PushMessage, pushRef: string, asBinary: boolean = false) {
-		if (this.connections[pushRef] === undefined) {
-			this.logger.debug(`The session "${pushRef}" is not registered.`, { pushRef });
-			return;
+	sendToOne(
+		pushMsg: PushMessage,
+		pushRef: string,
+		userId: User['id'] | undefined,
+		asBinary: boolean = false,
+	): void {
+		const target =
+			userId === undefined ? undefined : this.connections.get(connectionKey(pushRef, userId));
+
+		if (target) {
+			this.sendTo(pushMsg, [target], asBinary);
+		} else {
+			this.logger.debug(`The session "${pushRef}" is not registered for this user.`, { pushRef });
 		}
-
-		this.sendTo(pushMsg, [pushRef], asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
-		const { connections } = this;
+	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>): void {
 		const userIdSet = new Set(userIds);
-		const userPushRefs = Object.keys(connections).filter((pushRef) =>
-			userIdSet.has(this.userIdByPushRef[pushRef]),
+		const userTargets = [...this.connections.values()].filter(({ userId }) =>
+			userIdSet.has(userId),
 		);
 
-		this.sendTo(pushMsg, userPushRefs);
+		this.sendTo(pushMsg, userTargets);
 	}
 
-	closeAllConnections() {
-		for (const pushRef in this.connections) {
+	closeAllConnections(): void {
+		for (const { connection } of this.connections.values()) {
 			// Signal the connection that we want to close it.
 			// We are not removing the sessions here because it should be
 			// the implementation's responsibility to do so once the connection
 			// has actually closed.
-			this.close(this.connections[pushRef]);
+			this.close(connection);
 		}
 	}
 
-	hasPushRef(pushRef: string) {
-		return this.connections[pushRef] !== undefined;
+	hasPushRef(pushRef: string): boolean {
+		return [...this.connections.values()].some((target) => target.pushRef === pushRef);
+	}
+
+	hasPushRefOfUser(pushRef: string, userId: User['id'] | undefined): boolean {
+		return userId !== undefined && this.connections.has(connectionKey(pushRef, userId));
 	}
 }

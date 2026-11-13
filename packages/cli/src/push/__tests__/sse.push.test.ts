@@ -72,7 +72,7 @@ describe('SSEPush', () => {
 		beforeEach(() => jest.clearAllMocks());
 
 		it('to one connection', () => {
-			ssePush.sendToOne(pushMessage, pushRef);
+			ssePush.sendToOne(pushMessage, pushRef, userId);
 
 			expect(connection.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
 			expect(connection.res.flush).toHaveBeenCalled();
@@ -112,5 +112,59 @@ describe('SSEPush', () => {
 
 		expect(connection.res.end).toHaveBeenCalled();
 		expect(connection2.res.end).toHaveBeenCalled();
+	});
+
+	test.each([
+		['end', 'req'],
+		['close', 'req'],
+		['finish', 'res'],
+	])(
+		'keeps the new connection on "%s" event from the replaced connection of the same user',
+		(event, emitterKey) => {
+			const push = new SSEPush(mock(), mock());
+			const oldConn = createMockConnection();
+			const newConn = createMockConnection();
+			push.add(pushRef, userId, oldConn);
+			push.add(pushRef, userId, newConn);
+
+			oldConn[emitterKey as 'req' | 'res'].emit(event);
+			push.sendToOne(pushMessage, pushRef, userId);
+
+			expect(newConn.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
+		},
+	);
+
+	describe('when another user connects with the same push ref', () => {
+		const otherUserId = 'other-user';
+		let sharedPush: SSEPush;
+		let userConn: ReturnType<typeof createMockConnection>;
+		let otherUserConn: ReturnType<typeof createMockConnection>;
+
+		beforeEach(() => {
+			sharedPush = new SSEPush(mock(), mock());
+			userConn = createMockConnection();
+			otherUserConn = createMockConnection();
+			sharedPush.add(pushRef, userId, userConn);
+			sharedPush.add(pushRef, otherUserId, otherUserConn);
+		});
+
+		it('keeps the connection of the first user open', () => {
+			expect(userConn.res.end).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['end', 'req'],
+			['close', 'req'],
+			['finish', 'res'],
+		])(
+			'keeps the first user\'s connection on "%s" event from the other user\'s connection',
+			(event, emitterKey) => {
+				otherUserConn[emitterKey as 'req' | 'res'].emit(event);
+
+				sharedPush.sendToOne(pushMessage, pushRef, userId);
+
+				expect(userConn.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
+			},
+		);
 	});
 });

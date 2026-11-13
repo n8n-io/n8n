@@ -7,27 +7,30 @@ import type {
 	IOAuth2Options,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function boxApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Pick<IRequestOptions, 'encoding' | 'formData' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.box.com/2.0${resource}`,
+		uri: uri || requestUrl`https://api.box.com/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -51,7 +54,7 @@ export async function boxApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

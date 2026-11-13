@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { figmaApiRequest } from './GenericFunctions';
 
@@ -102,7 +102,7 @@ export class FigmaTrigger implements INodeType {
 				const { webhooks } = await figmaApiRequest.call(
 					this,
 					'GET',
-					`/v2/teams/${teamId}/webhooks`,
+					requestPath`/v2/teams/${teamId}/webhooks`,
 				);
 				for (const webhook of webhooks) {
 					if (
@@ -122,7 +122,7 @@ export class FigmaTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const teamId = this.getNodeParameter('teamId') as string;
-				const endpoint = '/v2/webhooks';
+				const endpoint = requestPath`/v2/webhooks`;
 
 				const body: IDataObject = {
 					event_type: snakeCase(triggerOn).toUpperCase(),
@@ -145,8 +145,8 @@ export class FigmaTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
+						const endpoint = requestPath`/v2/webhooks/${webhookData.webhookId}`;
 						await figmaApiRequest.call(this, 'DELETE', endpoint);
 					} catch (error) {
 						return false;

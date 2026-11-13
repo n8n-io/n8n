@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { gumroadApiRequest } from './GenericFunctions';
 
@@ -91,7 +91,7 @@ export class GumroadTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = '/resource_subscriptions';
+				const endpoint = requestPath`/resource_subscriptions`;
 				const { resource_subscriptions } = await gumroadApiRequest.call(this, 'GET', endpoint);
 				if (Array.isArray(resource_subscriptions)) {
 					for (const resource of resource_subscriptions) {
@@ -106,7 +106,7 @@ export class GumroadTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
-				const endpoint = '/resource_subscriptions';
+				const endpoint = requestPath`/resource_subscriptions`;
 				const body: IDataObject = {
 					post_url: webhookUrl,
 					resource_name: resource,
@@ -118,9 +118,12 @@ export class GumroadTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				let responseData;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/resource_subscriptions/${webhookData.webhookId}`;
 				try {
-					responseData = await gumroadApiRequest.call(this, 'DELETE', endpoint);
+					responseData = await gumroadApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/resource_subscriptions/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}

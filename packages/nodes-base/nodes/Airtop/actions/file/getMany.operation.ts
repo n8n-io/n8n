@@ -3,6 +3,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { requestAllFiles } from './helpers';
 import { wrapData } from '../../../../utils/utilities';
@@ -73,7 +74,7 @@ export async function execute(
 	const sessionIds = this.getNodeParameter('sessionIds', index, '') as string;
 	const outputSingleItem = this.getNodeParameter('outputSingleItem', index, true) as boolean;
 
-	const endpoint = '/files';
+	const endpoint = requestPath`/files`;
 	let files: IAirtopResponse[] = [];
 
 	const responseData = returnAll

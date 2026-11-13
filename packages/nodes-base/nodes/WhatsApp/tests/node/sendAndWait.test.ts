@@ -1,6 +1,6 @@
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { type IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, type IExecuteFunctions } from 'n8n-workflow';
 
 import { WhatsApp } from '../../WhatsApp.node';
 
@@ -62,7 +62,7 @@ describe('Test WhatsApp Business Cloud, sendAndWait operation', () => {
 					type: 'text',
 				},
 				method: 'POST',
-				url: '11111/messages',
+				url: requestPath`11111/messages`,
 			},
 		);
 	});

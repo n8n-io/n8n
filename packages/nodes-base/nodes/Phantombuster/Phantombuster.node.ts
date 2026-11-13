@@ -7,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { agentFields, agentOperations } from './AgentDescription';
@@ -62,7 +63,11 @@ export class Phantombuster implements INodeType {
 			async getAgents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
+				const responseData = await phantombusterApiRequest.call(
+					this,
+					'GET',
+					requestPath`/agents/fetch-all`,
+				);
 
 				for (const item of responseData) {
 					returnData.push({
@@ -115,9 +120,14 @@ export class Phantombuster implements INodeType {
 					if (operation === 'delete') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/delete', {
-							id: agentId,
-						});
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'POST',
+							requestPath`/agents/delete`,
+							{
+								id: agentId,
+							},
+						);
 
 						responseData = { success: true };
 					}
@@ -128,7 +138,7 @@ export class Phantombuster implements INodeType {
 						responseData = await phantombusterApiRequest.call(
 							this,
 							'GET',
-							'/agents/fetch',
+							requestPath`/agents/fetch`,
 							{},
 							{ id: agentId },
 						);
@@ -148,7 +158,7 @@ export class Phantombuster implements INodeType {
 						responseData = await phantombusterApiRequest.call(
 							this,
 							'GET',
-							'/agents/fetch-output',
+							requestPath`/agents/fetch-output`,
 							{},
 							qs,
 						);
@@ -157,7 +167,7 @@ export class Phantombuster implements INodeType {
 							const { resultObject } = await phantombusterApiRequest.call(
 								this,
 								'GET',
-								'/containers/fetch-result-object',
+								requestPath`/containers/fetch-result-object`,
 								{},
 								{ id: responseData.containerId },
 							);
@@ -173,7 +183,11 @@ export class Phantombuster implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'GET',
+							requestPath`/agents/fetch-all`,
+						);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
@@ -234,13 +248,18 @@ export class Phantombuster implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
+						responseData = await phantombusterApiRequest.call(
+							this,
+							'POST',
+							requestPath`/agents/launch`,
+							body,
+						);
 
 						if (resolveData) {
 							responseData = await phantombusterApiRequest.call(
 								this,
 								'GET',
-								'/containers/fetch',
+								requestPath`/containers/fetch`,
 								{},
 								{ id: responseData.containerId },
 							);

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as download from '../../../../v2/actions/file/download.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -35,13 +36,13 @@ describe('test GoogleDriveV2: file download', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/v3/files/fileIDxxxxxx',
+			requestPath`/drive/v3/files/fileIDxxxxxx`,
 			{},
 			{ fields: 'mimeType,name', supportsTeamDrives: true, supportsAllDrives: true },
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/drive/v3/files/fileIDxxxxxx',
+			requestPath`/drive/v3/files/fileIDxxxxxx`,
 			{},
 			{ alt: 'media', supportsAllDrives: true },
 			undefined,

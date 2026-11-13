@@ -39,8 +39,10 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -539,14 +541,15 @@ export class EnterpriseWorkflowService {
 		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
+		// A folder move also creates folders in the destination, so it needs `folder:create` there too.
 		const destinationProject = await this.projectService.getProjectWithScope(
 			user,
 			destinationProjectId,
-			['workflow:create'],
+			['workflow:create', 'folder:create'],
 		);
 		NotFoundError.isDefinedAndNotNull(
 			destinationProject,
-			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows in it.`,
+			`Could not find project with the id "${destinationProjectId}". Make sure you have the permission to create workflows and folders in it.`,
 		);
 
 		// 4. checks
@@ -559,6 +562,18 @@ export class EnterpriseWorkflowService {
 		}
 
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
+
+		// Moving a folder moves its workflows, so the user needs `workflow:move` on each of them.
+		// No project filter: the scope comes from the project that owns each workflow.
+		const movableWorkflows = await this.workflowFinderService.findAllWorkflowsForUser(
+			user,
+			['workflow:move'],
+			sourceFolderId,
+		);
+		const movableWorkflowIds = new Set(movableWorkflows.map((workflow) => workflow.id));
+		if (workflows.some((workflow) => !movableWorkflowIds.has(workflow.id))) {
+			throw new ForbiddenError('You do not have permission to move every workflow in this folder.');
+		}
 
 		for (const workflow of workflows) {
 			const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
@@ -631,6 +646,11 @@ export class EnterpriseWorkflowService {
 
 			if (error instanceof WorkflowActivationError) {
 				return this.formatActivationError(error);
+			}
+
+			// The move is done, so report the refusal instead of failing the request.
+			if (error instanceof TriggerCredentialAccessError) {
+				return { error: { name: error.name, message: error.message } };
 			}
 
 			throw error;

@@ -1,9 +1,10 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
 export async function upload(this: IExecuteFunctions, index: number) {
-	let body: IDataObject = {};
+	let body: Pick<IRequestOptions, 'formData' | 'json' | 'resolveWithFullResponse'> = {};
 	const requestMethod = 'POST';
 
 	const category = this.getNodeParameter('categoryId', index) as string;
@@ -34,7 +35,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	}
 
 	//endpoint
-	const endpoint = 'files';
+	const endpoint = requestPath`files`;
 	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
 	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop() });
 }

@@ -17,7 +17,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		it('should map columns', async () => {
-			loadOptionsFunctions.getCredentials.mockResolvedValue({});
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'mydomain' });
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('create');
@@ -850,7 +850,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		it('should map columns with id for update', async () => {
-			loadOptionsFunctions.getCredentials.mockResolvedValue({});
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'mydomain' });
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('update');

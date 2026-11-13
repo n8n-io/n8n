@@ -1,0 +1,255 @@
+{
+	"name": "OneDrive request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a0000000-0000-4000-8000-000000000000",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "copy",
+				"fileId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+				"additionalFields": {},
+				"parentReference": { "id": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB" }
+			},
+			"id": "a0000000-0000-4000-8000-000000000001",
+			"name": "File Copy",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"fileId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+			},
+			"id": "a0000000-0000-4000-8000-000000000002",
+			"name": "File Delete",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"fileId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+			},
+			"id": "a0000000-0000-4000-8000-000000000003",
+			"name": "File Download",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "get",
+				"fileId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K"
+			},
+			"id": "a0000000-0000-4000-8000-000000000004",
+			"name": "File Get",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "rename",
+				"itemId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+				"newName": "report-final.txt"
+			},
+			"id": "a0000000-0000-4000-8000-000000000006",
+			"name": "File Rename",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "search",
+				"query": "Q1 report"
+			},
+			"id": "a0000000-0000-4000-8000-000000000007",
+			"name": "File Search",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "share",
+				"fileId": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+				"type": "view",
+				"scope": "organization"
+			},
+			"id": "a0000000-0000-4000-8000-000000000008",
+			"name": "File Share",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"fileName": "notes v1.txt",
+				"parentId": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB",
+				"fileContent": "hello"
+			},
+			"id": "a0000000-0000-4000-8000-000000000009",
+			"name": "File Upload",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"name": "Reports/2026",
+				"options": {}
+			},
+			"id": "a0000000-0000-4000-8000-000000000010",
+			"name": "Folder Create",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"folderId": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB"
+			},
+			"id": "a0000000-0000-4000-8000-000000000011",
+			"name": "Folder Delete",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "getChildren",
+				"folderId": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB"
+			},
+			"id": "a0000000-0000-4000-8000-000000000012",
+			"name": "Folder Get Children",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "search",
+				"query": "Reports"
+			},
+			"id": "a0000000-0000-4000-8000-000000000013",
+			"name": "Folder Search",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "share",
+				"folderId": "01BYE5RZ5MYLM2SMX75ZBIPQZIHT6OAYPB",
+				"type": "edit",
+				"scope": "anonymous"
+			},
+			"id": "a0000000-0000-4000-8000-000000000014",
+			"name": "Folder Share",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"credentials": {
+				"microsoftOneDriveOAuth2Api": { "id": "1", "name": "Microsoft OneDrive account" }
+			}
+		}
+	],
+	"pinData": {
+		"File Get": [
+			{
+				"json": {
+					"id": "01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K",
+					"name": "report.txt",
+					"file": { "mimeType": "text/plain" }
+				}
+			}
+		],
+		"Folder Create": [
+			{ "json": { "id": "01BYE5RZ7ZQ4KXZ2W6KJGZ3ZC2026XYZAB", "name": "2026", "folder": {} } }
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "File Copy", "type": "main", "index": 0 },
+					{ "node": "File Delete", "type": "main", "index": 0 },
+					{ "node": "File Download", "type": "main", "index": 0 },
+					{ "node": "File Get", "type": "main", "index": 0 },
+					{ "node": "File Rename", "type": "main", "index": 0 },
+					{ "node": "File Search", "type": "main", "index": 0 },
+					{ "node": "File Share", "type": "main", "index": 0 },
+					{ "node": "File Upload", "type": "main", "index": 0 },
+					{ "node": "Folder Create", "type": "main", "index": 0 },
+					{ "node": "Folder Delete", "type": "main", "index": 0 },
+					{ "node": "Folder Get Children", "type": "main", "index": 0 },
+					{ "node": "Folder Search", "type": "main", "index": 0 },
+					{ "node": "Folder Share", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" }
+}

@@ -42,13 +42,16 @@ import {
 	UnexpectedError,
 	ensureError,
 	createRunExecutionData,
+	UserError,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -100,6 +103,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPushNotifier: WorkflowPushNotifier,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -512,6 +516,17 @@ export class ActiveWorkflowManager {
 				});
 			}
 		} catch (error) {
+			// A credential refusal holds until someone changes the credential access:
+			// no fault report, no error workflow and no retry, or every restart alerts.
+			if (error instanceof TriggerCredentialAccessError) {
+				this.logger.warn(
+					`Activation of ${formatWorkflow(dbWorkflow)} blocked by credential access`,
+					{ workflowId: dbWorkflow.id },
+				);
+
+				return;
+			}
+
 			this.errorReporter.error(error);
 			this.logger.error(
 				`Issue on initial workflow activation try of ${formatWorkflow(dbWorkflow)} (startup)`,
@@ -651,6 +666,8 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			await this.checkTriggerCredentialAccess(dbWorkflow.id, nodes);
+
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				workflowId: workflow.id,
 			});
@@ -698,6 +715,20 @@ export class ActiveWorkflowManager {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		return added;
+	}
+
+	/**
+	 * Checks the nodes of the active version with the check that a run uses.
+	 * All nodes, not only triggers: a trigger can load its sub-nodes, with their
+	 * credentials, in the webhook phase.
+	 */
+	private async checkTriggerCredentialAccess(workflowId: WorkflowId, nodes: INode[]) {
+		try {
+			await this.credentialsPermissionChecker.check(workflowId, nodes);
+		} catch (error) {
+			if (error instanceof UserError) throw new TriggerCredentialAccessError(error);
+			throw error;
+		}
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
@@ -864,16 +895,35 @@ export class ActiveWorkflowManager {
 				workflowId,
 				workflowName,
 			});
+			const queuedActivation = this.queuedActivations[workflowId];
+			if (!queuedActivation) return;
 			const attempt: RecentReactivation = {
-				lastTimeout:
-					this.queuedActivations[workflowId]?.lastTimeout ?? WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+				lastTimeout: queuedActivation.lastTimeout,
 			};
 			this.recentReactivations.set(workflowId, attempt);
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
+				if (
+					this.queuedActivations[workflowId] !== queuedActivation ||
+					this.recentReactivations.get(workflowId) !== attempt
+				) {
+					return;
+				}
+
+				// A credential refusal holds until someone changes the credential access:
+				// no fault report, and leave the queue rather than retrying forever.
+				if (error instanceof TriggerCredentialAccessError) {
+					this.logger.warn(`Activation of workflow "${workflowId}" blocked by credential access`, {
+						workflowId,
+					});
+					this.removeQueuedWorkflowActivation(workflowId);
+					this.recentReactivations.delete(workflowId);
+					return;
+				}
+
 				this.errorReporter.error(error);
-				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
+				let lastTimeout = queuedActivation.lastTimeout;
 				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 				}
@@ -889,8 +939,8 @@ export class ActiveWorkflowManager {
 					},
 				);
 
-				this.queuedActivations[workflowId].lastTimeout = lastTimeout;
-				this.queuedActivations[workflowId].timeout = setTimeout(retryFunction, lastTimeout);
+				queuedActivation.lastTimeout = lastTimeout;
+				queuedActivation.timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
 			if (this.recentReactivations.get(workflowId) === attempt) attempt.activatedAt = Date.now();
@@ -924,7 +974,10 @@ export class ActiveWorkflowManager {
 		if (!recent) return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
 
 		const { activatedAt } = recent;
-		if (activatedAt !== undefined && Date.now() - activatedAt > WORKFLOW_REACTIVATE_STABLE_PERIOD) {
+		if (
+			activatedAt !== undefined &&
+			Date.now() - activatedAt >= WORKFLOW_REACTIVATE_STABLE_PERIOD
+		) {
 			this.recentReactivations.delete(workflowId);
 			return WORKFLOW_REACTIVATE_INITIAL_TIMEOUT;
 		}

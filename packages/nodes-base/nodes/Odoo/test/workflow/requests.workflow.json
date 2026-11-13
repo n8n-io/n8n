@@ -1,0 +1,65 @@
+{
+	"name": "Odoo Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [
+				0,
+				0
+			]
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "42",
+				"options": {}
+			},
+			"id": "odoo-0",
+			"name": "V1 Contact Get",
+			"type": "n8n-nodes-base.odoo",
+			"typeVersion": 1,
+			"position": [
+				300,
+				0
+			],
+			"credentials": {
+				"odooApi": {
+					"id": "1",
+					"name": "Odoo account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"V1 Contact Get": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "V1 Contact Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

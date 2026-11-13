@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'jest-mock-extended';
 import { apiRequest } from '.';
 
@@ -14,7 +15,7 @@ describe('Anthropic transport', () => {
 			url: 'https://custom-url.com',
 		});
 
-		await apiRequest.call(executeFunctionsMock, 'GET', '/v1/messages', {
+		await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/v1/messages`, {
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -31,7 +32,7 @@ describe('Anthropic transport', () => {
 			'anthropicApi',
 			{
 				method: 'GET',
-				url: 'https://custom-url.com/v1/messages',
+				url: requestUrl`https://custom-url.com/v1/messages`,
 				json: true,
 				body: {
 					model: 'claude-sonnet-4-20250514',
@@ -52,13 +53,13 @@ describe('Anthropic transport', () => {
 	it('should use the default url if no custom url is provided', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
 
-		await apiRequest.call(executeFunctionsMock, 'GET', '/v1/messages');
+		await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/v1/messages`);
 
 		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'anthropicApi',
 			{
 				method: 'GET',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -68,35 +69,20 @@ describe('Anthropic transport', () => {
 		);
 	});
 
-	it('should override the values with `option`', async () => {
+	it('should encode path values that contain a slash', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
 
-		await apiRequest.call(executeFunctionsMock, 'GET', '', {
-			option: {
-				url: 'https://override-url.com',
-				returnFullResponse: true,
-			},
-		});
+		await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/v1/files/${'file_1/models'}`);
 
-		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-			'anthropicApi',
-			{
-				method: 'GET',
-				url: 'https://override-url.com',
-				json: true,
-				returnFullResponse: true,
-				headers: {
-					'anthropic-version': '2023-06-01',
-					'anthropic-beta': 'files-api-2025-04-14',
-				},
-			},
-		);
+		expect(
+			String(executeFunctionsMock.helpers.httpRequestWithAuthentication.mock.calls[0][1].url),
+		).toBe('https://api.anthropic.com/v1/files/file_1%2Fmodels');
 	});
 
 	it('should include prompt-tools beta when enableAnthropicBetas.promptTools is true', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`, {
 			enableAnthropicBetas: {
 				promptTools: true,
 			},
@@ -106,7 +92,7 @@ describe('Anthropic transport', () => {
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -119,7 +105,7 @@ describe('Anthropic transport', () => {
 	it('should include code-execution beta when enableAnthropicBetas.codeExecution is true', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`, {
 			enableAnthropicBetas: {
 				codeExecution: true,
 			},
@@ -129,7 +115,7 @@ describe('Anthropic transport', () => {
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -142,7 +128,7 @@ describe('Anthropic transport', () => {
 	it('should include both beta features when both are enabled', async () => {
 		executeFunctionsMock.getCredentials.mockResolvedValue({});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`, {
 			enableAnthropicBetas: {
 				promptTools: true,
 				codeExecution: true,
@@ -153,7 +139,7 @@ describe('Anthropic transport', () => {
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -171,13 +157,13 @@ describe('Anthropic transport', () => {
 			headerValue: 'custom-value-123',
 		});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`);
 
 		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -195,13 +181,13 @@ describe('Anthropic transport', () => {
 			headerValue: 'custom-value-123',
 		});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`);
 
 		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -218,7 +204,7 @@ describe('Anthropic transport', () => {
 			headerValue: 'custom-value-123',
 		});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages', {
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`, {
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -228,7 +214,7 @@ describe('Anthropic transport', () => {
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://api.anthropic.com/v1/messages',
+				url: requestUrl`https://api.anthropic.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',
@@ -248,13 +234,13 @@ describe('Anthropic transport', () => {
 			headerValue: 'custom-value-123',
 		});
 
-		await apiRequest.call(executeFunctionsMock, 'POST', '/v1/messages');
+		await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/v1/messages`);
 
 		expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'anthropicApi',
 			{
 				method: 'POST',
-				url: 'https://custom-url.com/v1/messages',
+				url: requestUrl`https://custom-url.com/v1/messages`,
 				json: true,
 				headers: {
 					'anthropic-version': '2023-06-01',

@@ -22,12 +22,24 @@ import type {
 	INodeExecutionData,
 	INodePropertyOptions,
 	IWebhookFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { safeRegex } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl, safeRegex } from 'n8n-workflow';
+
+function toRequestOptions<T extends { url: RequestPath }>(
+	baseUrl: unknown,
+	{ url, ...rest }: T,
+): WithRequestTarget<IHttpRequestOptions> {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
+		url: requestUrl`${baseUrl}${url}`,
+	};
+	return Object.assign(options, rest);
+}
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	option: IDataObject = {},
+	option: IDataObject & { url: RequestPath },
 ): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
@@ -40,32 +52,39 @@ export async function koBoToolboxApiRequest(
 		delete option.returnAll;
 	}
 
-	const options: IHttpRequestOptions = {
-		url: '',
+	const options: WithRequestTarget<IHttpRequestOptions> = toRequestOptions(credentials.URL, {
 		headers: {
 			Accept: 'application/json',
 		},
 		json: true,
-	};
-	if (Object.keys(option)) {
-		Object.assign(options, option);
-	}
-	if (options.url && !/^http(s)?:/.test(options.url)) {
-		options.url = (credentials.URL as string) + options.url;
-	}
+		...option,
+	});
 
+	let requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions> = options;
 	let results = null;
 	let keepLooking = true;
 	while (keepLooking) {
-		const response = await this.helpers.httpRequestWithAuthentication.call(
+		const response: IDataObject = await this.helpers.httpRequestWithAuthentication.call(
 			this,
 			'koBoToolboxApi',
-			options,
+			requestOptions,
 		);
 		// Append or set results
 		results = response.results ? concat(results || [], response.results) : response;
 		if (returnAll && response.next) {
-			options.url = response.next;
+			const next = String(response.next);
+			const baseUrl = String(credentials.URL);
+			if (
+				!URL.canParse(next) ||
+				!URL.canParse(baseUrl) ||
+				new URL(next).origin !== new URL(baseUrl).origin
+			) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Refusing to send credentials to an unexpected host',
+				);
+			}
+			requestOptions = { ...options, url: next };
 		} else {
 			keepLooking = false;
 		}
@@ -76,15 +95,13 @@ export async function koBoToolboxApiRequest(
 
 export async function koBoToolboxRawRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	option: IHttpRequestOptions,
+	option: Omit<IHttpRequestOptions, 'url' | 'baseURL'> & { url: RequestPath },
 ): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
-	if (option.url && !/^http(s)?:/.test(option.url)) {
-		option.url = (credentials.URL as string) + option.url;
-	}
+	const options: WithRequestTarget<IHttpRequestOptions> = toRequestOptions(credentials.URL, option);
 
-	return await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', options);
 }
 
 function parseGeoPoint(geoPoint: string): null | number[] {
@@ -299,7 +316,7 @@ export async function downloadAttachments(
 
 export async function loadForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const responseData = await koBoToolboxApiRequest.call(this, {
-		url: '/api/v2/assets/',
+		url: requestPath`/api/v2/assets/`,
 		qs: {
 			q: 'asset_type:survey',
 			ordering: 'name',

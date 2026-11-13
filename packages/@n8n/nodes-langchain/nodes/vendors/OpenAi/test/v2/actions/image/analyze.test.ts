@@ -1,5 +1,6 @@
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { ChatResponse } from '../../../../helpers/interfaces';
@@ -71,7 +72,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -136,7 +137,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -196,7 +197,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -250,7 +251,7 @@ describe('Image Analyze Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o-mini',
 					input: [
@@ -329,7 +330,7 @@ describe('Image Analyze Operation', () => {
 				mockBinaryFile.fileContent,
 			);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -411,7 +412,7 @@ describe('Image Analyze Operation', () => {
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(1, mockExecuteFunctions, 0, 'image1');
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'image2');
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -530,7 +531,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					model: 'gpt-4o',
 				}),
@@ -572,7 +573,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -619,7 +620,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					max_output_tokens: 300,
 				}),
@@ -655,7 +656,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -702,7 +703,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: [
 						{
@@ -835,7 +836,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o-mini',
 					input: [
@@ -891,7 +892,7 @@ describe('Image Analyze Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/responses', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					max_output_tokens: 300, // Default value
 					input: [

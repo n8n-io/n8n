@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { rocketchatApiRequest, validateJSON } from './GenericFunctions';
 
@@ -472,7 +472,7 @@ export class Rocketchat implements INodeType {
 
 						responseData = await rocketchatApiRequest.call(
 							this,
-							'/chat',
+							requestPath`/chat`,
 							'POST',
 							'postMessage',
 							body,

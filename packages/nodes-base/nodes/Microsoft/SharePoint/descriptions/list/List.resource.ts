@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 					request: {
 						ignoreHttpStatusErrors: true,
 						method: 'GET',
-						url: '=/sites/{{ $parameter["site"] }}/lists/{{ $parameter["list"] }}',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists/{{ toPathSegment($parameter["list"]) }}',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive, simplifyListPostReceive],
@@ -39,7 +39,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/sites/{{ $parameter["site"] }}/lists',
+						url: '=/sites/{{ toPathSegment($parameter["site"]) }}/lists',
 					},
 					output: {
 						postReceive: [

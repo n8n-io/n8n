@@ -9,7 +9,7 @@ import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
 jest.mock('../../GenericFunctions', () => ({
 	...jest.requireActual('../../GenericFunctions'),
 	microsoftApiRequest: jest.fn(async function (_: IHttpRequestMethods, resource: string) {
-		if (resource === '/drive/items/fileID') {
+		if (String(resource) === '/items/fileID') {
 			return {
 				name: 'MyFile',
 				'@microsoft.graph.downloadUrl': 'https://test.com/file',
@@ -18,7 +18,7 @@ jest.mock('../../GenericFunctions', () => ({
 				},
 			};
 		}
-		if (resource === '/drive/items/fileID/content') {
+		if (String(resource) === '/items/fileID/content') {
 			throw new ApplicationError('Error');
 		}
 	}),

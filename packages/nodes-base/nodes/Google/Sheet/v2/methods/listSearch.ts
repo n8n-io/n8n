@@ -4,7 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
@@ -33,10 +33,10 @@ export async function spreadSheetsSearch(
 	const res = await apiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		qs,
-		'https://www.googleapis.com/drive/v3/files',
+		requestUrl`https://www.googleapis.com/drive/v3/files`,
 	);
 	return {
 		results: res.files.map((sheet: IDataObject) => ({
@@ -67,7 +67,7 @@ export async function sheetsSearch(
 	const responseData = await apiRequest.call(
 		this,
 		'GET',
-		`/v4/spreadsheets/${spreadsheetId}`,
+		requestPath`/v4/spreadsheets/${spreadsheetId}`,
 		{},
 		query,
 	);

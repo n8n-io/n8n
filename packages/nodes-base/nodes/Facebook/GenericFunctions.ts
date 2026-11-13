@@ -8,18 +8,18 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function facebookApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	_option: IDataObject = {},
 ): Promise<any> {
 	let credentials;
 
@@ -31,7 +31,7 @@ export async function facebookApiRequest(
 
 	qs.access_token = credentials.accessToken;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			accept: 'application/json,text/*;q=0.99',
 		},
@@ -39,7 +39,7 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: uri || `https://graph.facebook.com/v23.0${resource}`,
+		uri: requestUrl`https://graph.facebook.com/v23.0${resource}`,
 		json: true,
 	};
 

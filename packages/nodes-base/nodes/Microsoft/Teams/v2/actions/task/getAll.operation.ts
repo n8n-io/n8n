@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -54,14 +55,15 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	if (tasksFor === 'member') {
 		//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
-		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
-			.id;
+		const memberId = (
+			(await microsoftApiRequest.call(this, 'GET', requestPath`/v1.0/me`)) as { id: string }
+		).id;
 		if (returnAll) {
 			return await microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
-				`/v1.0/users/${memberId}/planner/tasks`,
+				requestPath`/v1.0/users/${memberId}/planner/tasks`,
 			);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
@@ -69,7 +71,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				this,
 				'value',
 				'GET',
-				`/v1.0/users/${memberId}/planner/tasks`,
+				requestPath`/v1.0/users/${memberId}/planner/tasks`,
 				{},
 			);
 			return responseData.splice(0, limit);
@@ -82,7 +84,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				this,
 				'value',
 				'GET',
-				`/v1.0/planner/plans/${planId}/tasks`,
+				requestPath`/v1.0/planner/plans/${planId}/tasks`,
 			);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
@@ -90,7 +92,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				this,
 				'value',
 				'GET',
-				`/v1.0/planner/plans/${planId}/tasks`,
+				requestPath`/v1.0/planner/plans/${planId}/tasks`,
 				{},
 			);
 			return responseData.splice(0, limit);

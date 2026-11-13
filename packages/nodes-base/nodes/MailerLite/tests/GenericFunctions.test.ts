@@ -4,6 +4,8 @@ import {
 	type ILoadOptionsFunctions,
 	type IHookFunctions,
 	NodeApiError,
+	requestPath,
+	requestUrl,
 } from 'n8n-workflow';
 
 import {
@@ -31,7 +33,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 	it('should make a successful API request for type version 1', async () => {
 		const method = 'GET';
-		const path = '/test';
+		const path = requestPath`/test`;
 		const body = {};
 		const qs = {};
 
@@ -49,7 +51,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 			{
 				method,
 				qs,
-				url: 'https://api.mailerlite.com/api/v2/test',
+				url: requestUrl`https://api.mailerlite.com/api/v2/test`,
 				json: true,
 			},
 		);
@@ -59,7 +61,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 		setupMockFunctions(2);
 
 		const method = 'GET';
-		const path = '/test';
+		const path = requestPath`/test`;
 		const body = {};
 		const qs = {};
 
@@ -77,7 +79,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 			{
 				method,
 				qs,
-				url: 'https://connect.mailerlite.com/api/test',
+				url: requestUrl`https://connect.mailerlite.com/api/test`,
 				json: true,
 			},
 		);
@@ -85,7 +87,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 	it('should make an API request with an empty body', async () => {
 		const method = 'GET';
-		const path = '/test';
+		const path = requestPath`/test`;
 		const body = {};
 		const qs = {};
 
@@ -103,7 +105,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 			{
 				method,
 				qs,
-				url: 'https://api.mailerlite.com/api/v2/test',
+				url: requestUrl`https://api.mailerlite.com/api/v2/test`,
 				json: true,
 			},
 		);
@@ -111,7 +113,7 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 
 	it('should throw an error if the API request fails', async () => {
 		const method = 'GET';
-		const path = '/test';
+		const path = requestPath`/test`;
 		const body = {};
 		const qs = {};
 
@@ -124,6 +126,22 @@ describe('MailerLite -> mailerliteApiRequest', () => {
 		await expect(
 			mailerliteApiRequest.call(mockExecuteFunctions, method, path, body, qs),
 		).rejects.toThrow(NodeApiError);
+	});
+
+	it('should encode a path value that contains a slash', async () => {
+		setupMockFunctions(2);
+
+		await mailerliteApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/subscribers/${'123/webhooks'}`,
+		);
+
+		const options = (mockExecuteFunctions.helpers.httpRequestWithAuthentication as jest.Mock).mock
+			.calls[0][1];
+		expect(String(options.url)).toBe(
+			'https://connect.mailerlite.com/api/subscribers/123%2Fwebhooks',
+		);
 	});
 });
 
@@ -146,7 +164,7 @@ describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 
 	it('should handle pagination for type version 1', async () => {
 		const method = 'GET';
-		const endpoint = '/test';
+		const endpoint = requestPath`/test`;
 		const body = {};
 		const query = {};
 
@@ -173,7 +191,7 @@ describe('MailerLite -> mailerliteApiRequestAllItems', () => {
 		setupMockFunctions(2);
 
 		const method = 'GET';
-		const endpoint = '/test';
+		const endpoint = requestPath`/test`;
 		const body = {};
 		const query = {};
 

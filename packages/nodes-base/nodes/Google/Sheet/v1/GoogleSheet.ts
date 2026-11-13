@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
 
 import { googleApiRequest } from './GenericFunctions';
@@ -60,18 +60,6 @@ export class GoogleSheet {
 	}
 
 	/**
-	 * Encodes the range that also none latin character work
-	 *
-	 */
-	encodeRange(range: string): string {
-		if (range.includes('!')) {
-			const [sheet, ranges] = range.split('!');
-			range = `${encodeURIComponent(sheet)}!${ranges}`;
-		}
-		return range;
-	}
-
-	/**
 	 * Clears values from a sheet
 	 *
 	 */
@@ -84,7 +72,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}:clear`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${range}:clear`,
 			body,
 		);
 
@@ -105,7 +93,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}/values/${range}`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${range}`,
 			{},
 			query,
 		);
@@ -124,7 +112,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'GET',
-			`/v4/spreadsheets/${this.id}`,
+			requestPath`/v4/spreadsheets/${this.id}`,
 			{},
 			query,
 		);
@@ -143,7 +131,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}:batchUpdate`,
 			body,
 		);
 
@@ -162,7 +150,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values:batchUpdate`,
+			requestPath`/v4/spreadsheets/${this.id}/values:batchUpdate`,
 			body,
 		);
 
@@ -181,7 +169,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${range}`,
 			body,
 		);
 
@@ -193,7 +181,7 @@ export class GoogleSheet {
 	 */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
 		const body = {
-			range: decodeURIComponent(range),
+			range,
 			values: data,
 		};
 
@@ -204,7 +192,7 @@ export class GoogleSheet {
 		const response = await googleApiRequest.call(
 			this.executeFunctions,
 			'POST',
-			`/v4/spreadsheets/${this.id}/values/${range}:append`,
+			requestPath`/v4/spreadsheets/${this.id}/values/${range}:append`,
 			body,
 			query,
 		);
@@ -336,7 +324,7 @@ export class GoogleSheet {
 			rangeEndSplit[1]
 		}${keyRowIndex + 1}`;
 
-		const sheetDatakeyRow = await this.getData(this.encodeRange(keyRowRange), valueRenderMode);
+		const sheetDatakeyRow = await this.getData(keyRowRange, valueRenderMode);
 
 		if (sheetDatakeyRow === undefined) {
 			throw new NodeOperationError(
@@ -364,10 +352,7 @@ export class GoogleSheet {
 			sheet ? sheet + '!' : ''
 		}${keyColumn}${startRowIndex}:${keyColumn}${endRowIndex}`;
 
-		const sheetDataKeyColumn = await this.getData(
-			this.encodeRange(keyColumnRange),
-			valueRenderMode,
-		);
+		const sheetDataKeyColumn = await this.getData(keyColumnRange, valueRenderMode);
 
 		if (sheetDataKeyColumn === undefined) {
 			throw new NodeOperationError(
@@ -397,13 +382,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					await this.appendSheetData(
-						[inputItem],
-						this.encodeRange(range),
-						keyRowIndex,
-						valueInputMode,
-						false,
-					);
+					await this.appendSheetData([inputItem], range, keyRowIndex, valueInputMode, false);
 				}
 				continue;
 			}
@@ -413,13 +392,7 @@ export class GoogleSheet {
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					await this.appendSheetData(
-						[inputItem],
-						this.encodeRange(range),
-						keyRowIndex,
-						valueInputMode,
-						false,
-					);
+					await this.appendSheetData([inputItem], range, keyRowIndex, valueInputMode, false);
 				}
 				continue;
 			}

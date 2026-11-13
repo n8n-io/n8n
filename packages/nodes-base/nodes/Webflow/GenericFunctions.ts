@@ -7,27 +7,27 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 export async function webflowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ) {
 	let credentialsType = 'webflowOAuth2Api';
 
-	let options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		qs,
 		body,
-		url: uri || `https://api.webflow.com${resource}`,
+		url: requestUrl`https://api.webflow.com${resource}`,
 		json: true,
 	};
-	options = Object.assign({}, options, option);
 
 	// Keep support for v1 node
 	if (this.getNode().typeVersion === 1) {
@@ -38,7 +38,7 @@ export async function webflowApiRequest(
 		options.headers = { 'accept-version': '1.0.0' };
 	} else {
 		options.returnFullResponse = true;
-		options.url = `https://api.webflow.com/v2${resource}`;
+		options.url = requestUrl`https://api.webflow.com/v2${resource}`;
 	}
 
 	if (Object.keys(options.qs as IDataObject).length === 0) {
@@ -54,7 +54,7 @@ export async function webflowApiRequest(
 export async function webflowApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<IDataObject[]> {
@@ -85,7 +85,7 @@ export async function webflowApiRequestAllItems(
 // Load Options
 export async function getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const response = await webflowApiRequest.call(this, 'GET', '/sites');
+	const response = await webflowApiRequest.call(this, 'GET', requestPath`/sites`);
 
 	const sites = response.body?.sites || response;
 
@@ -100,7 +100,11 @@ export async function getSites(this: ILoadOptionsFunctions): Promise<INodeProper
 export async function getCollections(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const siteId = this.getCurrentNodeParameter('siteId');
-	const response = await webflowApiRequest.call(this, 'GET', `/sites/${siteId}/collections`);
+	const response = await webflowApiRequest.call(
+		this,
+		'GET',
+		requestPath`/sites/${siteId}/collections`,
+	);
 
 	const collections = response.body?.collections || response;
 
@@ -115,7 +119,11 @@ export async function getCollections(this: ILoadOptionsFunctions): Promise<INode
 export async function getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const collectionId = this.getCurrentNodeParameter('collectionId');
-	const response = await webflowApiRequest.call(this, 'GET', `/collections/${collectionId}`);
+	const response = await webflowApiRequest.call(
+		this,
+		'GET',
+		requestPath`/collections/${collectionId}`,
+	);
 
 	const fields = response.body?.fields || response;
 

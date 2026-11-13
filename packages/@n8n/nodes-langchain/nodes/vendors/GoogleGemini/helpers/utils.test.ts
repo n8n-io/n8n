@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { mockDeep } from 'jest-mock-extended';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
-import { downloadFile, uploadFile, transferFile } from './utils';
+import { downloadFile, isGeminiFileUrl, uploadFile, transferFile } from './utils';
 import * as transport from '../transport';
 
 jest.mock('axios');
@@ -16,6 +16,24 @@ describe('GoogleGemini -> utils', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		jest.useFakeTimers({ advanceTimers: true });
+	});
+
+	describe('isGeminiFileUrl', () => {
+		it('should accept a file URL on the Gemini API host', () => {
+			expect(
+				isGeminiFileUrl('https://generativelanguage.googleapis.com/v1beta/files/abc-123'),
+			).toBe(true);
+		});
+
+		it.each([
+			'https://generativelanguage.googleapis.com.example.org/v1beta/files/abc-123',
+			'https://generativelanguage.googleapis.com@example.org/v1beta/files/abc-123',
+			'http://generativelanguage.googleapis.com/v1beta/files/abc-123',
+			'https://example.org/generativelanguage.googleapis.com',
+			'not a URL',
+		])('should not accept %s', (url) => {
+			expect(isGeminiFileUrl(url)).toBe(false);
+		});
 	});
 
 	describe('downloadFile', () => {
@@ -101,7 +119,7 @@ describe('GoogleGemini -> utils', () => {
 				fileUri: 'https://google.com/files/test123',
 				mimeType: 'application/pdf',
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/upload/v1beta/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/upload/v1beta/files`, {
 				headers: {
 					'X-Goog-Upload-Protocol': 'resumable',
 					'X-Goog-Upload-Command': 'start',
@@ -109,9 +127,7 @@ describe('GoogleGemini -> utils', () => {
 					'X-Goog-Upload-Header-Content-Type': 'application/pdf',
 					'Content-Type': 'application/json',
 				},
-				option: {
-					returnFullResponse: true,
-				},
+				returnFullResponse: true,
 			});
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({
 				method: 'POST',
@@ -179,7 +195,7 @@ describe('GoogleGemini -> utils', () => {
 				fileUri: 'https://google.com/files/test123',
 				mimeType: 'application/pdf',
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/files/test123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/files/test123`);
 		});
 
 		it('should poll until file is active', async () => {
@@ -227,7 +243,7 @@ describe('GoogleGemini -> utils', () => {
 				mimeType: 'application/pdf',
 			});
 
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/files/abc123');
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1beta/files/abc123`);
 		});
 
 		it('should throw error when upload fails', async () => {
@@ -308,14 +324,14 @@ describe('GoogleGemini -> utils', () => {
 				responseType: 'stream',
 			});
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/upload/v1beta/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/upload/v1beta/files`, {
 				headers: {
 					'X-Goog-Upload-Protocol': 'resumable',
 					'X-Goog-Upload-Command': 'start',
 					'X-Goog-Upload-Header-Content-Type': 'application/pdf',
 					'Content-Type': 'application/json',
 				},
-				option: { returnFullResponse: true },
+				returnFullResponse: true,
 			});
 
 			expect(mockExecuteFunctions.helpers.httpRequest).toHaveBeenCalledWith({

@@ -4,12 +4,13 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { checkRange, prepareOutput } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC, worksheetRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -132,9 +133,12 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const qs: IDataObject = {};
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
 				extractValue: true,
@@ -156,7 +160,7 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 					{},
 					qs,
 				);
@@ -164,7 +168,7 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+					requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 					{},
 					qs,
 				);

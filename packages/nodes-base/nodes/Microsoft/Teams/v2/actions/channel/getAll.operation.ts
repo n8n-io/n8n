@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -27,7 +28,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			'value',
 			'GET',
-			`/v1.0/teams/${teamId}/channels`,
+			requestPath`/v1.0/teams/${teamId}/channels`,
 		);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
@@ -35,7 +36,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			this,
 			'value',
 			'GET',
-			`/v1.0/teams/${teamId}/channels`,
+			requestPath`/v1.0/teams/${teamId}/channels`,
 			{},
 		);
 		return responseData.splice(0, limit);

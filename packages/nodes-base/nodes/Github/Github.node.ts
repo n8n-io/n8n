@@ -9,11 +9,13 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
 
@@ -2324,7 +2326,7 @@ export class Github implements INodeType {
 		let qs: IDataObject;
 
 		let requestMethod: IHttpRequestMethods;
-		let endpoint: string;
+		let endpoint: RequestPath;
 
 		const operation = this.getNodeParameter('operation', 0);
 		const resource = this.getNodeParameter('resource', 0);
@@ -2345,7 +2347,7 @@ export class Github implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Inputs: Invalid JSON');
 			}
 
-			endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
+			endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
 			body = {
 				ref,
@@ -2381,7 +2383,7 @@ export class Github implements INodeType {
 			try {
 				// Reset all values
 				requestMethod = 'GET';
-				endpoint = '';
+				endpoint = requestPath``;
 				body = {};
 				qs = {};
 
@@ -2459,7 +2461,7 @@ export class Github implements INodeType {
 							}
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/contents/${filePath}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -2496,7 +2498,7 @@ export class Github implements INodeType {
 							body.branch as string | undefined,
 						);
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/contents/${filePath}`;
 					} else if (operation === 'get') {
 						requestMethod = 'GET';
 
@@ -2510,11 +2512,13 @@ export class Github implements INodeType {
 							qs.ref = additionalParameters.reference;
 						}
 
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/contents/${filePath}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
 						const filePath = removeTrailingSlash(this.getNodeParameter('filePath', i));
-						endpoint = `/repos/${owner}/${repository}/contents/${encodeURIComponent(filePath)}`;
+						endpoint = filePath
+							? requestPath`/repos/${owner}/${repository}/contents/${filePath}`
+							: requestPath`/repos/${owner}/${repository}/contents/`;
 					}
 				} else if (resource === 'issue') {
 					if (operation === 'create') {
@@ -2533,7 +2537,7 @@ export class Github implements INodeType {
 						body.labels = labels.map((data) => data.label);
 						body.assignees = assignees.map((data) => data.assignee);
 
-						endpoint = `/repos/${owner}/${repository}/issues`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues`;
 					} else if (operation === 'createComment') {
 						// ----------------------------------
 						//         createComment
@@ -2544,7 +2548,7 @@ export class Github implements INodeType {
 
 						body.body = this.getNodeParameter('body', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues/${issueNumber}/comments`;
 					} else if (operation === 'edit') {
 						// ----------------------------------
 						//         edit
@@ -2563,7 +2567,7 @@ export class Github implements INodeType {
 							body.assignees = (body.assignees as IDataObject[]).map((data) => data.assignee);
 						}
 
-						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues/${issueNumber}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -2573,7 +2577,7 @@ export class Github implements INodeType {
 
 						const issueNumber = this.getNodeParameter('issueNumber', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues/${issueNumber}`;
 					} else if (operation === 'lock') {
 						// ----------------------------------
 						//         lock
@@ -2585,7 +2589,7 @@ export class Github implements INodeType {
 
 						qs.lock_reason = this.getNodeParameter('lockReason', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues/${issueNumber}/lock`;
 					}
 				} else if (resource === 'release') {
 					if (operation === 'create') {
@@ -2599,7 +2603,7 @@ export class Github implements INodeType {
 
 						body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/releases`;
+						endpoint = requestPath`/repos/${owner}/${repository}/releases`;
 					}
 					if (operation === 'delete') {
 						// ----------------------------------
@@ -2610,7 +2614,7 @@ export class Github implements INodeType {
 
 						const releaseId = this.getNodeParameter('release_id', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/releases/${releaseId}`;
 					}
 					if (operation === 'get') {
 						// ----------------------------------
@@ -2621,7 +2625,7 @@ export class Github implements INodeType {
 
 						const releaseId = this.getNodeParameter('release_id', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/releases/${releaseId}`;
 					}
 					if (operation === 'getAll') {
 						// ----------------------------------
@@ -2630,7 +2634,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}/releases`;
+						endpoint = requestPath`/repos/${owner}/${repository}/releases`;
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -2649,7 +2653,7 @@ export class Github implements INodeType {
 
 						body = this.getNodeParameter('additionalFields', i, {});
 
-						endpoint = `/repos/${owner}/${repository}/releases/${releaseId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/releases/${releaseId}`;
 					}
 				} else if (resource === 'repository') {
 					if (operation === 'listPopularPaths') {
@@ -2659,7 +2663,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}/traffic/popular/paths`;
+						endpoint = requestPath`/repos/${owner}/${repository}/traffic/popular/paths`;
 					} else if (operation === 'listReferrers') {
 						// ----------------------------------
 						//         listReferrers
@@ -2667,7 +2671,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}/traffic/popular/referrers`;
+						endpoint = requestPath`/repos/${owner}/${repository}/traffic/popular/referrers`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -2675,7 +2679,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}`;
+						endpoint = requestPath`/repos/${owner}/${repository}`;
 					} else if (operation === 'getLicense') {
 						// ----------------------------------
 						//         getLicense
@@ -2683,7 +2687,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}/license`;
+						endpoint = requestPath`/repos/${owner}/${repository}/license`;
 					} else if (operation === 'getIssues') {
 						// ----------------------------------
 						//         getIssues
@@ -2693,7 +2697,7 @@ export class Github implements INodeType {
 
 						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
 
-						endpoint = `/repos/${owner}/${repository}/issues`;
+						endpoint = requestPath`/repos/${owner}/${repository}/issues`;
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -2709,7 +2713,7 @@ export class Github implements INodeType {
 
 						qs = this.getNodeParameter('getRepositoryPullRequestsFilters', i) as IDataObject;
 
-						endpoint = `/repos/${owner}/${repository}/pulls`;
+						endpoint = requestPath`/repos/${owner}/${repository}/pulls`;
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -2728,7 +2732,7 @@ export class Github implements INodeType {
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         getAll
@@ -2743,7 +2747,7 @@ export class Github implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
-						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
 					} else if (operation === 'create') {
 						// ----------------------------------
 						//         create
@@ -2759,7 +2763,7 @@ export class Github implements INodeType {
 							body.body = this.getNodeParameter('body', i) as string;
 						}
 
-						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
+						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         update
@@ -2771,7 +2775,7 @@ export class Github implements INodeType {
 
 						body.body = this.getNodeParameter('body', i) as string;
 
-						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					}
 				} else if (resource === 'user') {
 					if (operation === 'getRepositories') {
@@ -2781,7 +2785,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/users/${owner}/repos`;
+						endpoint = requestPath`/users/${owner}/repos`;
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -2794,7 +2798,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'GET';
 
-						endpoint = '/issues';
+						endpoint = requestPath`/issues`;
 
 						qs = this.getNodeParameter('getUserIssuesFilters', i, {}) as IDataObject;
 
@@ -2809,7 +2813,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'POST';
 						const org = this.getNodeParameter('organization', i) as string;
-						endpoint = `/orgs/${org}/invitations`;
+						endpoint = requestPath`/orgs/${org}/invitations`;
 						body.email = this.getNodeParameter('email', i) as string;
 					}
 				} else if (resource === 'organization') {
@@ -2820,7 +2824,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/orgs/${owner}/repos`;
+						endpoint = requestPath`/orgs/${owner}/repos`;
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
@@ -2839,7 +2843,7 @@ export class Github implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`;
 					}
 					if (operation === 'dispatch') {
 						// ----------------------------------
@@ -2852,7 +2856,7 @@ export class Github implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`;
 
 						const ref = this.getNodeParameter('ref', i, '', { extractValue: true }) as string;
 						body.ref = ref;
@@ -2877,7 +2881,7 @@ export class Github implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -2889,7 +2893,7 @@ export class Github implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}`;
 					} else if (operation === 'getUsage') {
 						// ----------------------------------
 						//         getUsage
@@ -2901,7 +2905,7 @@ export class Github implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`;
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
@@ -2909,7 +2913,7 @@ export class Github implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `/repos/${owner}/${repository}/actions/workflows`;
+						endpoint = requestPath`/repos/${owner}/${repository}/actions/workflows`;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {

@@ -7,7 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	BINARY_ENCODING,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 import { Readable } from 'stream';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
@@ -101,7 +106,7 @@ export class YouTube implements INodeType {
 					this,
 					'items',
 					'GET',
-					'/youtube/v3/i18nLanguages',
+					requestPath`/youtube/v3/i18nLanguages`,
 				);
 				for (const language of languages) {
 					const languageName = language.id.toUpperCase();
@@ -140,7 +145,7 @@ export class YouTube implements INodeType {
 					this,
 					'items',
 					'GET',
-					'/youtube/v3/videoCategories',
+					requestPath`/youtube/v3/videoCategories`,
 					{},
 					qs,
 				);
@@ -165,7 +170,7 @@ export class YouTube implements INodeType {
 					this,
 					'items',
 					'GET',
-					'/youtube/v3/playlists',
+					requestPath`/youtube/v3/playlists`,
 					{},
 					qs,
 				);
@@ -216,7 +221,13 @@ export class YouTube implements INodeType {
 
 						qs.id = channelId;
 
-						responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/channels', {}, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/youtube/v3/channels`,
+							{},
+							qs,
+						);
 
 						responseData = responseData.items;
 					}
@@ -256,7 +267,7 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/youtube/v3/channels',
+								requestPath`/youtube/v3/channels`,
 								{},
 								qs,
 							);
@@ -265,7 +276,7 @@ export class YouTube implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								'/youtube/v3/channels',
+								requestPath`/youtube/v3/channels`,
 								{},
 								qs,
 							);
@@ -374,7 +385,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							'/youtube/v3/channels',
+							requestPath`/youtube/v3/channels`,
 							body,
 							qs,
 						);
@@ -396,10 +407,9 @@ export class YouTube implements INodeType {
 						const response = await googleApiRequest.call(
 							this,
 							'POST',
-							'/upload/youtube/v3/channelBanners/insert',
+							requestPath`/upload/youtube/v3/channelBanners/insert`,
 							body,
 							qs,
-							undefined,
 							requestOptions,
 						);
 
@@ -410,7 +420,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							'/youtube/v3/channels',
+							requestPath`/youtube/v3/channels`,
 							{
 								id: channelId,
 								brandingSettings: {
@@ -443,7 +453,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							'/youtube/v3/playlists',
+							requestPath`/youtube/v3/playlists`,
 							{},
 							qs,
 						);
@@ -476,7 +486,7 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/youtube/v3/playlists',
+								requestPath`/youtube/v3/playlists`,
 								{},
 								qs,
 							);
@@ -485,7 +495,7 @@ export class YouTube implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								'/youtube/v3/playlists',
+								requestPath`/youtube/v3/playlists`,
 								{},
 								qs,
 							);
@@ -531,7 +541,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							'/youtube/v3/playlists',
+							requestPath`/youtube/v3/playlists`,
 							body,
 							qs,
 						);
@@ -579,7 +589,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'PUT',
-							'/youtube/v3/playlists',
+							requestPath`/youtube/v3/playlists`,
 							body,
 							qs,
 						);
@@ -600,7 +610,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							'/youtube/v3/playlists',
+							requestPath`/youtube/v3/playlists`,
 							body,
 						);
 
@@ -627,7 +637,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							'/youtube/v3/playlistItems',
+							requestPath`/youtube/v3/playlistItems`,
 							{},
 							qs,
 						);
@@ -657,7 +667,7 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/youtube/v3/playlistItems',
+								requestPath`/youtube/v3/playlistItems`,
 								{},
 								qs,
 							);
@@ -666,7 +676,7 @@ export class YouTube implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								'/youtube/v3/playlistItems',
+								requestPath`/youtube/v3/playlistItems`,
 								{},
 								qs,
 							);
@@ -719,7 +729,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							'/youtube/v3/playlistItems',
+							requestPath`/youtube/v3/playlistItems`,
 							body,
 							qs,
 						);
@@ -740,7 +750,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'DELETE',
-							'/youtube/v3/playlistItems',
+							requestPath`/youtube/v3/playlistItems`,
 							body,
 						);
 
@@ -787,13 +797,19 @@ export class YouTube implements INodeType {
 								this,
 								'items',
 								'GET',
-								'/youtube/v3/search',
+								requestPath`/youtube/v3/search`,
 								{},
 								qs,
 							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i);
-							responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/search', {}, qs);
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								requestPath`/youtube/v3/search`,
+								{},
+								qs,
+							);
 							responseData = responseData.items;
 						}
 					}
@@ -824,7 +840,13 @@ export class YouTube implements INodeType {
 
 						Object.assign(qs, options);
 
-						responseData = await googleApiRequest.call(this, 'GET', '/youtube/v3/videos', {}, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/youtube/v3/videos`,
+							{},
+							qs,
+						);
 
 						responseData = responseData.items;
 					}
@@ -878,14 +900,13 @@ export class YouTube implements INodeType {
 						const resumableUpload = await googleApiRequest.call(
 							this,
 							'POST',
-							'/upload/youtube/v3/videos',
+							requestPath`/upload/youtube/v3/videos`,
 							payload,
 							{
 								uploadType: 'resumable',
 								part: 'snippet,status,recordingDetails',
 								notifySubscribers: options.notifySubscribers ?? false,
 							},
-							undefined,
 							{
 								headers: {
 									'X-Upload-Content-Length': contentLength,
@@ -990,7 +1011,13 @@ export class YouTube implements INodeType {
 							body.snippet.defaultLanguage = updateFields.defaultLanguage as string;
 						}
 
-						responseData = await googleApiRequest.call(this, 'PUT', '/youtube/v3/videos', body, qs);
+						responseData = await googleApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/youtube/v3/videos`,
+							body,
+							qs,
+						);
 					}
 					//https://developers.google.com/youtube/v3/docs/videos/delete?hl=en
 					if (operation === 'delete') {
@@ -1005,7 +1032,12 @@ export class YouTube implements INodeType {
 							qs.onBehalfOfContentOwner = options.onBehalfOfContentOwner as string;
 						}
 
-						responseData = await googleApiRequest.call(this, 'DELETE', '/youtube/v3/videos', body);
+						responseData = await googleApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/youtube/v3/videos`,
+							body,
+						);
 
 						responseData = { success: true };
 					}
@@ -1022,7 +1054,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							'/youtube/v3/videos/rate',
+							requestPath`/youtube/v3/videos/rate`,
 							body,
 						);
 
@@ -1042,7 +1074,7 @@ export class YouTube implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							'/youtube/v3/videoCategories',
+							requestPath`/youtube/v3/videoCategories`,
 							{},
 							qs,
 						);

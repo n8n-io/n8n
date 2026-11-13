@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { gotifyApiRequest, gotifyApiRequestAllItems } from './GenericFunctions';
 
@@ -226,12 +226,16 @@ export class Gotify implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
+						responseData = await gotifyApiRequest.call(this, 'POST', requestPath`/message`, body);
 					}
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 
-						responseData = await gotifyApiRequest.call(this, 'DELETE', `/message/${messageId}`);
+						responseData = await gotifyApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/message/${messageId}`,
+						);
 						responseData = { success: true };
 					}
 
@@ -243,13 +247,19 @@ export class Gotify implements INodeType {
 								this,
 								'messages',
 								'GET',
-								'/message',
+								requestPath`/message`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await gotifyApiRequest.call(this, 'GET', '/message', {}, qs);
+							responseData = await gotifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/message`,
+								{},
+								qs,
+							);
 							responseData = responseData.messages;
 						}
 					}

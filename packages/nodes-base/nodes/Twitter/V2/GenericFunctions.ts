@@ -7,30 +7,33 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	fullOutput?: boolean,
-	uri?: string,
-	option: IDataObject = {},
 ) {
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		method,
 		body,
 		qs,
-		url: uri || `https://api.twitter.com/2${resource}`,
+		url: requestUrl`https://api.twitter.com/2${resource}`,
 		json: true,
 	};
 	try {
-		if (Object.keys(option).length !== 0) {
-			options = Object.assign({}, options, option);
-		}
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
@@ -60,7 +63,7 @@ export async function twitterApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -115,7 +118,7 @@ export async function returnIdFromUsername(
 		const user = (await twitterApiRequest.call(
 			this,
 			'GET',
-			`/users/by/username/${usernameRlc.value}`,
+			requestPath`/users/by/username/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
 		return user.id;
@@ -123,7 +126,7 @@ export async function returnIdFromUsername(
 		const list = (await twitterApiRequest.call(
 			this,
 			'GET',
-			`/list/by/name/${usernameRlc.value}`,
+			requestPath`/list/by/name/${usernameRlc.value}`,
 			{},
 		)) as { id: string };
 		return list.id;
