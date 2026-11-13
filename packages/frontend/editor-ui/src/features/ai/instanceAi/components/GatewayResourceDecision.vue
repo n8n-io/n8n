@@ -7,6 +7,7 @@ import { computed } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { redactTelemetryProperties } from '@n8n/telemetry';
+import { useAssistantRuntime } from '../assistantRuntime';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -43,6 +44,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const runtime = useAssistantRuntime();
 
 interface OptionEntry {
 	decision: InstanceGatewayResourceDecision;
@@ -86,6 +88,7 @@ function confirm(decision: InstanceGatewayResourceDecision) {
 		type: 'resource-decision',
 		provided_inputs: [{ label: props.resource, options: props.options, option_chosen: decision }],
 		skipped_inputs: [],
+		runtime,
 	};
 	// `resource` is the host the agent asked to reach — can be an internal
 	// hostname or a URL, so it goes through the egress policy like any other

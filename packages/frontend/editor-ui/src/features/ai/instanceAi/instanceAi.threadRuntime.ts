@@ -1020,6 +1020,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,

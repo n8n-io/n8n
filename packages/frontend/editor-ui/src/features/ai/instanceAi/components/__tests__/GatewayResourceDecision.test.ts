@@ -3,6 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 
+import { ASSISTANT_RUNTIME } from '../../assistantRuntime';
 import GatewayResourceDecision from '../GatewayResourceDecision.vue';
 
 const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
@@ -38,7 +39,22 @@ describe('GatewayResourceDecision', () => {
 				thread_id: 'thread-1',
 				input_thread_id: 'input-thread-1',
 				type: 'resource-decision',
+				runtime: 'instance-ai',
 			}),
+		);
+	});
+
+	it('reports the runtime that an Assistant agent thread provides', async () => {
+		const { getByTestId } = render({
+			props: { ...props, options: [...props.options] },
+			global: { provide: { [ASSISTANT_RUNTIME as symbol]: 'agents' } },
+		});
+
+		await fireEvent.click(getByTestId('gateway-decision-deny'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'User finished providing input',
+			expect.objectContaining({ type: 'resource-decision', runtime: 'agents' }),
 		);
 	});
 });
