@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import type { Context } from 'node:vm';
@@ -37,6 +38,23 @@ export class CodeStepError extends Error {
 		super(message);
 		this.name = 'CodeStepError';
 	}
+}
+
+/**
+ * The run clock offset of the step that runs now (`CLOCK-OFFSET`, spec 9).
+ * `step-worker.ts` gives each step its offset. The offset is 0 otherwise, so a
+ * step reads the real clock.
+ */
+const stepClock = new AsyncLocalStorage<number>();
+
+/** Runs `run` as a step with the clock offset `offsetMs`. */
+export function runWithClockOffset<T>(offsetMs: number, run: () => T): T {
+	return offsetMs === 0 ? run() : stepClock.run(offsetMs, run);
+}
+
+/** The clock offset of the step that runs now, in milliseconds. 0: the real clock. */
+export function clockOffsetMs(): number {
+	return stepClock.getStore() ?? 0;
 }
 
 export function parseCodeStepArgs(args: JsonObject): CodeStepArgs {
@@ -359,6 +377,44 @@ function stepGlobals(args: CodeStepArgs): Record<string, string | null> {
 	};
 }
 
+/**
+ * Gives the context a `Date` on the run clock of the step (`CLOCK-OFFSET`,
+ * spec 9). A proxy over the context's own `Date` keeps `instanceof Date` and
+ * the `Date.prototype` methods as they are: `new Date()` with no arguments,
+ * `Date.now()` and `Date()` read `now + offset`; `new Date(x)`, `Date.parse`
+ * and `Date.UTC` do not change. Luxon reads `Date.now()`, so `DateTime.now()`,
+ * `$now` and `$today` follow.
+ */
+const SHIFT_DATE_SOURCE = `(function (offset) {
+	var RealDate = Date;
+	var shifted = new Proxy(RealDate, {
+		construct: function (target, args, newTarget) {
+			var real = newTarget === shifted ? target : newTarget;
+			if (args.length === 0) return Reflect.construct(target, [RealDate.now() + offset], real);
+			return Reflect.construct(target, args, real);
+		},
+		apply: function () {
+			return new RealDate(RealDate.now() + offset).toString();
+		},
+		get: function (target, key) {
+			if (key === 'now') return function now() { return RealDate.now() + offset; };
+			return Reflect.get(target, key);
+		},
+	});
+	globalThis.Date = shifted;
+})`;
+
+let shiftDateScript: Script | undefined;
+
+/** Gives the context its run clock. Without an offset the context keeps its `Date`. */
+function installShiftedDate(context: Context, offsetMs: number): void {
+	if (offsetMs === 0) return;
+	shiftDateScript ??= new Script(SHIFT_DATE_SOURCE, { filename: 'run-clock.js' });
+	const install: unknown = shiftDateScript.runInContext(context);
+	if (typeof install !== 'function') throw new CodeStepError('The run clock did not load');
+	Reflect.apply(install, undefined, [offsetMs]);
+}
+
 /** The script and context of a code step. With `timers`, the context has n8n's timers. */
 function prepare(args: CodeStepArgs, timers: boolean): { script: Script; context: Context } {
 	const script = compiled(args);
@@ -393,6 +449,7 @@ function prepare(args: CodeStepArgs, timers: boolean): { script: Script; context
 		...(timers ? {} : { microtaskMode: 'afterEvaluate' as const }),
 	});
 	try {
+		installShiftedDate(context, clockOffsetMs());
 		HELPERS.runInContext(context);
 		if (USES_LUXON.test(args.code)) luxon().runInContext(context);
 	} catch (error) {

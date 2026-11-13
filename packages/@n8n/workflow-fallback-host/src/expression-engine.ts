@@ -27,6 +27,8 @@
 import { createRequire } from 'node:module';
 import { Expression, UnexpectedError } from 'n8n-workflow';
 
+import { clockOffsetMs } from './code-step';
+
 /**
  * Runs once in each new isolate context, after the runtime bundle and the
  * error handler. It skips the prototype and caller keys because the sandbox
@@ -89,6 +91,32 @@ const LOCKDOWN_SOURCE = `(function () {
 	seen.add(SafeError);
 	var proxied = [Object, Error, TypeError, SyntaxError, EvalError, RangeError, ReferenceError, URIError];
 	for (var p = 0; p < proxied.length; p++) guard(proxied[p], proxied[p].name);
+	// The run clock of the step (CLOCK-OFFSET, spec 9): new Date(),
+	// Date.now() and Date() read now + offset, and Luxon reads Date.now(),
+	// so $now and $today follow. The host sets the offset before each
+	// evaluation and resets it to 0 after it.
+	var RealDate = Date;
+	var offset = 0;
+	var shifted = function Date() {
+		if (new.target === undefined) return new RealDate(RealDate.now() + offset).toString();
+		var target = new.target === shifted ? RealDate : new.target;
+		if (arguments.length === 0) {
+			return Reflect.construct(RealDate, [RealDate.now() + offset], target);
+		}
+		return Reflect.construct(RealDate, arguments, target);
+	};
+	Reflect.setPrototypeOf(shifted, RealDate);
+	Object.defineProperty(shifted, 'now', {
+		value: function () { return RealDate.now() + offset; },
+		enumerable: false,
+		writable: false,
+		configurable: false,
+	});
+	Object.defineProperty(shifted, 'prototype', { value: RealDate.prototype });
+	globalThis.Date = shifted;
+	globalThis.__wfClockSet = function (ms) { offset = ms; };
+	// globalThis no longer reaches the real Date, so lock it here as before.
+	lock(RealDate, 'Date');
 	lock(globalThis, 'globalThis');
 	return setters.join(',');
 })()`;
@@ -100,6 +128,7 @@ interface ContextLike {
 interface BridgePrototype {
 	initialize(): Promise<void>;
 	initializeSync(): void;
+	execute(...args: unknown[]): unknown;
 }
 
 function isContextLike(value: unknown): value is ContextLike {
@@ -115,8 +144,44 @@ function isBridgePrototype(value: unknown): value is BridgePrototype {
 		typeof value === 'object' &&
 		value !== null &&
 		typeof Reflect.get(value, 'initialize') === 'function' &&
-		typeof Reflect.get(value, 'initializeSync') === 'function'
+		typeof Reflect.get(value, 'initializeSync') === 'function' &&
+		typeof Reflect.get(value, 'execute') === 'function'
 	);
+}
+
+/** The clock offset that the isolate's `Date` holds now. It is 0 at rest. */
+let isolateClock = 0;
+
+/** Evaluations nest for one step; the outermost one resets the clock. */
+let evaluateDepth = 0;
+
+function setIsolateClock(context: ContextLike, offsetMs: number): void {
+	context.evalSync(`__wfClockSet(${offsetMs})`);
+	isolateClock = offsetMs;
+}
+
+/**
+ * Runs one evaluation on the run clock of its step (`CLOCK-OFFSET`, spec 9).
+ * An evaluation is synchronous, so no other step runs between the change and
+ * the reset, and the reset gives the next step the real clock again.
+ */
+function withIsolateClock(context: ContextLike, run: () => unknown): unknown {
+	const offsetMs = clockOffsetMs();
+	evaluateDepth++;
+	try {
+		if (offsetMs !== isolateClock) setIsolateClock(context, offsetMs);
+		return run();
+	} finally {
+		evaluateDepth--;
+		if (evaluateDepth === 0 && isolateClock !== 0) {
+			try {
+				setIsolateClock(context, 0);
+			} catch {
+				// The isolate died in this step; the next step makes a new one.
+				isolateClock = 0;
+			}
+		}
+	}
 }
 
 /** Locks the context of a bridge that has just started. */
@@ -154,7 +219,7 @@ function patchBridge(): void {
 	if (!isBridgePrototype(proto)) {
 		throw new UnexpectedError('Cannot find the isolated-vm expression bridge');
 	}
-	const { initialize, initializeSync } = proto;
+	const { initialize, initializeSync, execute } = proto;
 	proto.initialize = async function (this: BridgePrototype) {
 		await initialize.call(this);
 		lockDown(this);
@@ -163,15 +228,40 @@ function patchBridge(): void {
 		initializeSync.call(this);
 		lockDown(this);
 	};
+	proto.execute = function (this: object, ...args: unknown[]) {
+		const context: unknown = Reflect.get(this, 'context');
+		if (!isContextLike(context)) return Reflect.apply(execute, this, args);
+		return withIsolateClock(context, () => Reflect.apply(execute, this, args));
+	};
 	patched = true;
 }
 
 let engine: Promise<void> | undefined;
 
+/**
+ * Luxon's `Settings.now` gives `DateTime.now()`, and so n8n's `$now` and
+ * `$today`, the run clock of the step that runs now (`CLOCK-OFFSET`, spec 9).
+ * The offset comes from the async context of the step, so steps that interleave
+ * in one worker each read their own clock. Without an offset it gives the real
+ * clock, as Luxon does.
+ */
+function patchLuxonClock(): void {
+	const workflowRequire = createRequire(require.resolve('n8n-workflow'));
+	const luxon: unknown = workflowRequire('luxon');
+	const settings: unknown =
+		typeof luxon === 'object' && luxon !== null ? Reflect.get(luxon, 'Settings') : undefined;
+	// Luxon 3 exports Settings as a class with a static `now`.
+	if (settings === null || (typeof settings !== 'object' && typeof settings !== 'function')) {
+		throw new UnexpectedError('Cannot find Luxon Settings for the run clock');
+	}
+	Reflect.set(settings, 'now', () => Date.now() + clockOffsetMs());
+}
+
 /** Starts the engine once for each process. */
 export async function ensureExpressionEngine(): Promise<void> {
 	engine ??= (async () => {
 		patchBridge();
+		patchLuxonClock();
 		await Expression.initExpressionEngine({
 			engine: 'vm',
 			poolSize: 1,
@@ -193,6 +283,8 @@ export async function ensureExpressionEngine(): Promise<void> {
 }
 
 export async function disposeExpressionEngine(): Promise<void> {
+	isolateClock = 0;
+	evaluateDepth = 0;
 	if (engine === undefined) return;
 	engine = undefined;
 	await Expression.disposeExpressionEngine();

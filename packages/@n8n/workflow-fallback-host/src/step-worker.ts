@@ -23,11 +23,17 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Socket } from 'node:net';
 
-import { messageOf } from './code-step';
+import { messageOf, runWithClockOffset } from './code-step';
 import { fileCredentialStore } from './credentials';
 import { GOAWAY, helloAnswer } from './hello';
 import { installSharedAgents } from './http-pool';
-import { encodeFrame, FrameDecoder, parseRequest, ProtocolError } from './protocol';
+import {
+	encodeFrame,
+	FrameDecoder,
+	parseRequest,
+	ProtocolError,
+	readClockOffset,
+} from './protocol';
 import type { StepRequest, StepResponse } from './protocol';
 import { StepHandler } from './server';
 import { ConnectionServices, type ServiceChannel, withServiceChannel } from './service-calls';
@@ -241,7 +247,11 @@ function main(): void {
 					);
 		scope.run(step, () => {
 			const handle = async () => await handler.handle(request);
-			void (channel ? withServiceChannel(channel, handle) : handle()).then(settle);
+			// The step reads its own run clock (`CLOCK-OFFSET`, spec 9) through this context.
+			const clockOffsetMs = readClockOffset(request.execution);
+			void runWithClockOffset(clockOffsetMs, async () =>
+				channel ? await withServiceChannel(channel, handle) : await handle(),
+			).then(settle);
 		});
 		void settled.then((response) => {
 			if (step.done) return;
