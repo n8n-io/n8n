@@ -135,9 +135,21 @@ const openInput = {
 	projectId: 'project-1',
 	testChatId: 'chat-1',
 	message: 'Post the release note',
+	testRunRequested: true,
 };
 
 describe('SimulationSessionService', () => {
+	it('keeps a draft run live with the flag on when no test run was asked for', async () => {
+		const backend = llmBackend();
+		const { service, flagGate } = setup({ backend });
+
+		await expect(
+			service.openForDraftRun({ ...openInput, testRunRequested: false }),
+		).resolves.toBeUndefined();
+		expect(flagGate.isEnabled).not.toHaveBeenCalled();
+		expect(backend.openWorld).not.toHaveBeenCalled();
+	});
+
 	it('returns no session when the flag is off, so the draft run stays live', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ flagOn: false, backend });
@@ -424,6 +436,14 @@ describe('SimulationSessionService', () => {
 			{ id: 'chat-1' },
 			{ simulation: { testRun: true } },
 		);
+	});
+
+	it('keeps a marked chat a test run when a later message does not ask for one', async () => {
+		const { service } = setup({ stored: { testRun: true } });
+
+		const session = await service.openForDraftRun({ ...openInput, testRunRequested: false });
+
+		expect(session).toBeDefined();
 	});
 
 	it('keeps a marked chat a test run with the flag off, even without a stored world', async () => {

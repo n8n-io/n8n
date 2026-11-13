@@ -1097,6 +1097,8 @@ export {
 	toolCallReasonSchema,
 	toolCallSimulationSchema,
 	toolTestabilitySchema,
+	agentChatModeSchema,
+	type AgentChatMode,
 	toolTestKindSchema,
 	toolTestCapabilitySchema,
 } from './schemas/agent-safe-testing.schema';
