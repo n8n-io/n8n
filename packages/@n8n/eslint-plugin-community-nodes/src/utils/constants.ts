@@ -1,4 +1,28 @@
-import type { WebhookSetupMethodNames } from 'n8n-workflow';
+import type {
+	NodeConnectionTypes as WorkflowNodeConnectionTypes,
+	WebhookSetupMethodNames,
+} from 'n8n-workflow';
+
+/**
+ * Mirrors `NodeConnectionTypes` from `n8n-workflow`, so the plugin does not load
+ * `n8n-workflow` at runtime. `satisfies` breaks type-checking when an entry
+ * upstream is added, removed, or changed.
+ */
+export const NodeConnectionTypes = {
+	AiAgent: 'ai_agent',
+	AiChain: 'ai_chain',
+	AiDocument: 'ai_document',
+	AiEmbedding: 'ai_embedding',
+	AiLanguageModel: 'ai_languageModel',
+	AiMemory: 'ai_memory',
+	AiOutputParser: 'ai_outputParser',
+	AiRetriever: 'ai_retriever',
+	AiReranker: 'ai_reranker',
+	AiTextSplitter: 'ai_textSplitter',
+	AiTool: 'ai_tool',
+	AiVectorStore: 'ai_vectorStore',
+	Main: 'main',
+} as const satisfies typeof WorkflowNodeConnectionTypes;
 
 export type WebhookLifecycleMethod = WebhookSetupMethodNames;
 
