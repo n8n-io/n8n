@@ -1,4 +1,5 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
@@ -184,6 +185,7 @@ function makeService() {
 		mock<AgentDefinitionService>(),
 		globalConfig,
 		tagService,
+		mock<AgentServiceAccountService>(),
 	);
 
 	return {
@@ -1066,7 +1068,12 @@ describe('AgentsService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({
+			id: agentId,
+			name: 'Agent',
+			projectId,
+			versionId: 'version-1',
+		});
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
@@ -1104,11 +1111,24 @@ describe('AgentsService', () => {
 		);
 	});
 
+	it('resolves the agent by ID alone when no project is given (Public API path)', async () => {
+		const { service, agentRepository } = makeService();
+		const agent = makeAgent();
+		agentRepository.findById.mockResolvedValue(agent);
+
+		await expect(service.delete(agentId)).resolves.toMatchObject({
+			id: agentId,
+			projectId,
+		});
+		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+	});
+
 	it('does not emit agent-deleted when the agent is missing', async () => {
 		const { service, agentRepository, eventService } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
@@ -1120,7 +1140,7 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({ id: agentId });
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
@@ -1135,14 +1155,16 @@ describe('AgentsService', () => {
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
-		await expect(service.delete(agentId, projectId, { requireArchived: true })).resolves.toBe(true);
+		await expect(
+			service.delete(agentId, projectId, { requireArchived: true }),
+		).resolves.toMatchObject({ id: agentId });
 	});
 
-	it('returns false when deleting a missing agent', async () => {
+	it('returns null when deleting a missing agent', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 

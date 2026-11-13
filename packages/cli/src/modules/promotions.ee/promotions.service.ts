@@ -61,6 +61,7 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
 import { projectHolding } from './branch-placement';
@@ -126,7 +127,7 @@ function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean 
 
 // Apply treats the package as source of truth. Callers cannot override this policy,
 // but a confirmed Continue uses `overwrite` for data tables.
-const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
+const IMPORT_POLICY: Omit<ImportRequest, 'user' | 'publicApi'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	conflictPolicy: ImportConflictPolicy.NewVersion,
 	idPolicy: WorkflowIdPolicy.Source,
@@ -744,18 +745,21 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		publicApi: PublicApiCaller = false,
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(environmentId, actor, expectedSource);
+		return await this.applyFromSource(environmentId, actor, publicApi, expectedSource);
 	}
 
 	async continueApply(
 		environmentId: string,
 		actor: User,
 		request: ContinueApplyPackageDto,
+		publicApi: PublicApiCaller = false,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
 			environmentId,
 			actor,
+			publicApi,
 			request.expectedSource,
 			request.confirmDestructiveChanges === true,
 		);
@@ -765,8 +769,10 @@ export class PromotionsService {
 		projectId: string,
 		actor: User,
 		request: ApplySelectionDto,
+		publicApi: PublicApiCaller = false,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applySelectionFromSource(projectId, actor, toApplySelection(request), {
+			publicApi,
 			expectedSource: request.expectedSource,
 			expectedPreviewRevision: request.expectedPreviewRevision,
 		});
@@ -776,8 +782,10 @@ export class PromotionsService {
 		projectId: string,
 		actor: User,
 		request: ContinueApplySelectionDto,
+		publicApi: PublicApiCaller = false,
 	): Promise<ApplyPackageResultDto> {
 		return await this.applySelectionFromSource(projectId, actor, toApplySelection(request), {
+			publicApi,
 			expectedSource: request.expectedSource,
 			expectedPreviewRevision: request.expectedPreviewRevision,
 			confirmDestructiveChanges: request.confirmDestructiveChanges === true,
@@ -867,10 +875,12 @@ export class PromotionsService {
 		actor: User,
 		selection: ApplySelection,
 		{
+			publicApi,
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
 		}: {
+			publicApi: PublicApiCaller;
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
@@ -886,6 +896,7 @@ export class PromotionsService {
 					input,
 					projectId,
 					actor,
+					publicApi,
 					selection,
 					expectedSource,
 					confirmDestructiveChanges,
@@ -898,6 +909,7 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		projectId: string,
 		actor: User,
+		publicApi: PublicApiCaller,
 		requested: ApplySelection,
 		expectedSource: ApplySelectionDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
@@ -935,7 +947,7 @@ export class PromotionsService {
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			applySelectionRequest(actor, confirmDestructiveChanges),
+			applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
 			reader,
 			selection,
 			'enforce',
@@ -976,6 +988,7 @@ export class PromotionsService {
 	private async applyFromSource(
 		environmentId: string,
 		actor: User,
+		publicApi: PublicApiCaller,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges = false,
 	): Promise<ApplyPackageResultDto> {
@@ -984,13 +997,21 @@ export class PromotionsService {
 			input,
 			actor,
 			{},
-			async () => await this.applyResolved(input, actor, expectedSource, confirmDestructiveChanges),
+			async () =>
+				await this.applyResolved(
+					input,
+					actor,
+					publicApi,
+					expectedSource,
+					confirmDestructiveChanges,
+				),
 		);
 	}
 
 	private async applyResolved(
 		input: PromotionOperationInput,
 		actor: User,
+		publicApi: PublicApiCaller,
 		expectedSource: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
 	): Promise<ApplyPackageResultDto> {
@@ -1006,7 +1027,7 @@ export class PromotionsService {
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
 			// Both Apply flows share the policies of a selection.
-			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, confirmDestructiveChanges) },
+			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges) },
 			reader,
 			'enforce',
 		);
@@ -1029,6 +1050,7 @@ export class PromotionsService {
 		);
 		const projectReconciliation = await this.reconcileTeamProjects(
 			actor,
+			publicApi,
 			importedProjectIds,
 			confirmedProjectIds,
 		);
@@ -1522,6 +1544,7 @@ export class PromotionsService {
 	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
+		publicApi: PublicApiCaller,
 		importedProjectIds: string[],
 		confirmedProjectIds: string[],
 	): Promise<ProjectReconciliationResult> {
@@ -1533,7 +1556,7 @@ export class PromotionsService {
 		);
 
 		for (const projectId of removedProjectIds) {
-			await this.projectService.deleteProject(actor, projectId);
+			await this.projectService.deleteProject(actor, projectId, { publicApi });
 		}
 
 		return { deletedProjectIds: removedProjectIds };

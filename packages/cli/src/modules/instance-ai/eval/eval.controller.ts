@@ -7,18 +7,12 @@ import {
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
-	findSeedFolderIssues,
-	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
 import type { InstanceAiEvalThreadMemoryResponse } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Middleware, Param, Post, RestController } from '@n8n/decorators';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import {
-	clearedAgentBuilderTargetMetadata,
-	meterEvalUsage,
-	seedAgentBuilderTargetMetadata,
-} from '@n8n/instance-ai';
+import { clearedAgentBuilderTargetMetadata, meterEvalUsage } from '@n8n/instance-ai';
 import type { NextFunction, Request, Response } from 'express';
 
 import { EvalAgentExecutionService } from './agent-execution.service';
@@ -219,105 +213,34 @@ export class InstanceAiEvalController {
 			throw new BadRequestError('Thread is not bound to a project');
 		}
 
-		const workflows = payload.workflows ?? [];
-		const agents = payload.agents ?? [];
-		const folders = payload.folders ?? [];
-		// Cross-field, so the schema can't own it: a seeded agent's workflow tool is
-		// resolved by DISPLAY NAME, and a name no seeded workflow carries restores a
-		// dead tool (or binds an unrelated ambient workflow of the same name).
-		const unbacked = findUnbackedSeedWorkflowTools(payload);
-		if (unbacked.length > 0) {
-			throw new BadRequestError(
-				unbacked
-					.map(
-						({ agentId, target }: { agentId: string; target: unknown }) =>
-							`Seed agent ${agentId} has a workflow tool targeting ${JSON.stringify(target)}, which no seeded workflow's name matches`,
-					)
-					.join('; '),
-			);
-		}
-		// Also cross-field: a workflow's `parentFolderId` must name a seeded folder.
-		// Checked before anything is created, so a typo costs no rollback.
-		const folderIssues = findSeedFolderIssues({ folders, workflows });
-		if (folderIssues.length > 0) {
-			throw new BadRequestError(folderIssues.join('; '));
-		}
-		// Folders first: the workflows are created inside them. `restoreFolders`
-		// rolls its own partial work back, so nothing else exists yet if it fails.
-		const folderIdMap = await this.evalThreadRestore.restoreFolders(folders, projectId, req.user);
-		// Positional to `folders`, like `workflowIds` to `workflows`, so the harness
-		// can pair each created id with the seed folder it came from.
-		const folderIds = folders.flatMap((folder) => {
-			const id = folderIdMap.get(folder.id);
-			return id === undefined ? [] : [id];
-		});
-		// Roll back everything we created if a later step fails, so a partial
-		// restore doesn't leak folders/tables/workflows/agents into the shared eval
-		// project.
+		// Seed node credentials resolve within the thread's pinned credential view,
+		// so a same-named credential of a concurrent case is never picked.
+		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
+		// Artifacts and publish come BEFORE the binding and the messages: the service
+		// rolls its own partial work back, and the messages cannot be rolled back.
+		const seed = await this.evalThreadRestore.restoreSeedArtifacts(
+			payload,
+			projectId,
+			req.user,
+			allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+		);
 		let restored = 0;
-		let dataTableIds: string[] = [];
-		let createdWorkflowIds: string[] = [];
-		let publishedWorkflowIds: string[] = [];
-		let createdAgentIds: string[] = [];
 		// Captured so the binding write is undoable: the message write happens after
 		// it, and without this a message failure left a binding pointing at agents the
 		// rollback had already deleted.
 		let priorMetadata: Record<string, unknown> | undefined;
 		let bindingWritten = false;
-		// Seed node credentials resolve within the thread's pinned credential view,
-		// so a same-named credential of a concurrent case is never picked.
-		const allowedCredentialIds = this.evalCredentialAllowlists.get(payload.threadId);
 		try {
-			// Data tables before workflows: the workflows reference them, and their ids
-			// are rewritten to the recreated tables' ids during workflow restore.
-			const idMap = await this.evalThreadRestore.restoreDataTables(
-				payload.dataTables ?? [],
-				projectId,
-				{ uniquifyNames: payload.uniquifyNames ?? true },
-			);
-			dataTableIds = [...idMap.values()];
-			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
-				workflows,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-				folderIdMap,
-			);
-			// BEFORE the messages, which the rollback cannot undo: a refused activation
-			// (no trigger, webhook conflict, unresolved credential) must fail while the
-			// restore is still fully rollback-able. The rollback unpublishes.
-			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(
-				agents,
-				projectId,
-				req.user,
-				idMap,
-				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
-			);
-			// Built (and validated) BEFORE the message write: a rejected binding — two
-			// agents whose refs collide — must fail while the restore is still fully
-			// rollback-able, not after the messages have committed.
-			const binding =
-				createdAgentIds.length > 0
-					? seedAgentBuilderTargetMetadata(
-							agents.map((agent) => ({
-								agentId: agent.id,
-								projectId,
-								name: agent.config.name,
-								ref: agent.config.name,
-							})),
-							payload.messages,
-						)
-					: undefined;
 			// Bind the thread as the conversation that built these agents would have, or
 			// the live turn's first `agent_builder_build_agent` call is rejected as an unknown agentRef.
 			// BEFORE the messages, and undoable: the catch restores the prior metadata,
 			// so a message failure can't leave a binding pointing at deleted agents, and
 			// a binding failure can't leave messages referencing them.
-			if (binding) {
+			if (seed.agentBuilderBinding) {
 				priorMetadata = await this.memoryService.getThreadMetadata(req.user.id, payload.threadId);
-				await this.memoryService.updateThread(payload.threadId, { metadata: binding });
+				await this.memoryService.updateThread(payload.threadId, {
+					metadata: seed.agentBuilderBinding,
+				});
 				bindingWritten = true;
 			}
 			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
@@ -341,26 +264,17 @@ export class InstanceAiEvalController {
 					// that triggered the rollback.
 				}
 			}
-			await this.evalThreadRestore.deleteAgents(createdAgentIds, projectId, req.user);
-			// Every seed this restore published, not only the created ones: a re-applied
-			// seed is not in `createdWorkflowIds`, so the delete below never sees it.
-			await this.evalThreadRestore.unpublishWorkflows(publishedWorkflowIds);
-			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
-			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
-			// Last, with the contents moved to the root: a re-applied seed workflow
-			// (moved into the folder, not created) is kept by this rollback, so the
-			// folder must not take it down.
-			await this.evalThreadRestore.deleteFolders(folders, folderIdMap, projectId, req.user);
+			await seed.rollback();
 			throw error;
 		}
 		return {
 			ok: true,
 			threadId: payload.threadId,
 			restored,
-			workflowIds: workflows.map((workflow) => workflow.id),
-			dataTableIds,
-			agentIds: createdAgentIds,
-			folderIds,
+			workflowIds: seed.workflowIds,
+			dataTableIds: seed.dataTableIds,
+			agentIds: seed.agentIds,
+			folderIds: seed.folderIds,
 		};
 	}
 

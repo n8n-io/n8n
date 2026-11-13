@@ -12,6 +12,7 @@ import {
 	chunkIds,
 	escapeLike,
 	LIKE_ESCAPE_CLAUSE,
+	ServiceAccountRepository,
 	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
@@ -74,6 +75,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly globalConfig: GlobalConfig,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
 		super(Agent, dataSource.manager, transactionRunner);
 	}
@@ -925,12 +927,25 @@ export class AgentRepository extends BaseRepository<Agent> {
 		agent: Agent,
 		ctx: OperationContext = {},
 		metadata: AgentDefinitionMetadata = {},
-		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
+		options: { allowArchivedUpdate?: boolean } = {},
+	): Promise<boolean> {
+		// The agent name is also the name of its identity, so both writes share one transaction.
+		return await this.runInTransaction(
+			ctx,
+			async (_tx, txCtx) => await this.writeDraftFenced(agent, txCtx, metadata, options),
+		);
+	}
+
+	private async writeDraftFenced(
+		agent: Agent,
+		ctx: OperationContext,
+		metadata: AgentDefinitionMetadata,
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean },
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
 			where: { id: agent.id },
-			select: ['integrations'],
+			select: ['integrations', 'name', 'identityId'],
 		});
 		const connectionsChanged = !isEqual(
 			(previous?.integrations ?? []).filter(isCredentialAgentIntegration),
@@ -962,11 +977,26 @@ export class AgentRepository extends BaseRepository<Agent> {
 		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			// Before the in-memory fields change, so a failed rename leaves the caller's agent as stored.
+			await this.renameIdentity(previous, agent.name, ctx);
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * Keeps the identity and its personal project named after the agent, as a
+	 * person's personal project follows the person. A blank name keeps the last one.
+	 */
+	private async renameIdentity(
+		previous: Pick<Agent, 'name' | 'identityId'> | null,
+		name: string,
+		ctx: OperationContext,
+	) {
+		if (!previous?.identityId || previous.name === name || name.trim() === '') return;
+		await this.serviceAccountRepository.rename(previous.identityId, name, ctx);
 	}
 
 	/** The project of each agent, to send an update push to the right project. */
