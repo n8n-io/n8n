@@ -34,6 +34,7 @@ packages/@n8n/task-runner/                              @n8n-io/core-execution
 packages/@n8n/task-runner-python/                       @n8n-io/core-execution
 packages/@n8n/expression-runtime/                       @n8n-io/core-execution
 packages/@n8n/tournament/                               @n8n-io/core-execution
+packages/@n8n/workflow-engine-check/                    @n8n-io/core-execution
 
 # Core Application
 
