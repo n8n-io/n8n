@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nChatScrollArea > should match the snapshot 1`] = `
+"<div class="chatScrollArea" style="--chat--input--height: 0px;" data-test-id="chat-scroll-area">
+  <div class="viewport" tabindex="0" role="region" aria-label="Messages" data-test-id="chat-scroll-area-viewport">
+    <div class="sentinel" aria-hidden="true"></div>
+    <div>
+      <p>First message</p>
+    </div>
+    <div class="spacer" aria-hidden="true"></div>
+    <div class="sentinel" aria-hidden="true"></div>
+  </div>
+  <div class="inputOverlay">
+    <transition-stub enteractiveclass="scrollDownButtonEnter" leaveactiveclass="scrollDownButtonLeave" appear="false" persisted="false" css="true">
+      <!--v-if-->
+    </transition-stub>
+    <div>Chat input</div>
+  </div>
+</div>"
+`;

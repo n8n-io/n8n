@@ -226,6 +226,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
 	N8nScrollArea: { template: '<div><slot /></div>' },
+	N8nChatScrollArea: {
+		name: 'N8nChatScrollArea',
+		template: '<div data-test-id="chat-scroll-area"><slot /><slot name="input" /></div>',
+		methods: { scrollToBottom: vi.fn() },
+	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
