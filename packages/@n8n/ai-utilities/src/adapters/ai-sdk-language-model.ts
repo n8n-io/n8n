@@ -69,9 +69,23 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 		const abortSignal = options.abortSignal
 			? AbortSignal.any([options.abortSignal, cancellation.signal])
 			: cancellation.signal;
+		// A chat model can ignore the signal. Each read races it, so the stream
+		// still ends when the call is aborted.
+		const aborted = new Promise<never>((_resolve, reject) => {
+			const fail = () => {
+				const { reason } = abortSignal;
+				reject(
+					reason instanceof Error ? reason : new Error('The call was aborted', { cause: reason }),
+				);
+			};
+			if (abortSignal.aborted) fail();
+			else abortSignal.addEventListener('abort', fail, { once: true });
+		});
+		void aborted.catch(() => undefined);
 		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
 		const modelId = this.modelId;
 		const converter = new AiSdkStreamConverter(this.provider, modelId);
+		let reading = false;
 
 		const stream = new ReadableStream<LanguageModelV4StreamPart>({
 			start(controller) {
@@ -83,8 +97,11 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				// a chunk gives parts or the chat model stream ends.
 				while (true) {
 					let parts: LanguageModelV4StreamPart[];
+					reading = true;
 					try {
-						const next = await iterator.next();
+						const next = await Promise.race([iterator.next(), aborted]);
+						// After a cancel the stream is closed, so a late chunk is dropped.
+						if (cancellation.signal.aborted) return;
 						if (next.done) {
 							for (const part of converter.end()) controller.enqueue(part);
 							controller.close();
@@ -92,11 +109,14 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 						}
 						parts = converter.convert(next.value);
 					} catch (error) {
+						if (cancellation.signal.aborted) return;
 						// A chunk that breaks the contract also stops the request it came from.
 						cancellation.abort();
 						controller.enqueue({ type: 'error', error });
 						controller.close();
 						return;
+					} finally {
+						reading = false;
 					}
 
 					for (const part of parts) controller.enqueue(part);
@@ -105,7 +125,10 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 			},
 			async cancel() {
 				cancellation.abort();
-				await iterator.return?.();
+				// The iterator closes only after a pending read settles, and a chat
+				// model that ignores the signal may never settle it. Do not wait then.
+				const closing = Promise.resolve(iterator.return?.()).catch(() => undefined);
+				if (!reading) await closing;
 			},
 		});
 

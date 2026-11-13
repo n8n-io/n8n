@@ -1175,6 +1175,44 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(parts.at(-1)).toMatchObject({ finishReason: { unified: 'other' } });
 		});
 
+		it('returns from cancel while a chat model that ignores the signal waits for a chunk', async () => {
+			const model = createFakeChatModel();
+			model.stream = async function* () {
+				yield { type: 'text-delta', delta: 'a' };
+				await new Promise(() => {});
+			};
+			const adapter = new AiSdkLanguageModelAdapter(model);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const reader = stream.getReader();
+			for (let i = 0; i < 4; i++) await reader.read();
+			void reader.read();
+
+			await expect(reader.cancel()).resolves.toBeUndefined();
+		});
+
+		it('ends the stream on abort while a chat model that ignores the signal waits for a chunk', async () => {
+			const model = createFakeChatModel();
+			model.stream = async function* () {
+				yield { type: 'text-delta', delta: 'a' };
+				await new Promise(() => {});
+			};
+			const adapter = new AiSdkLanguageModelAdapter(model);
+			const caller = new AbortController();
+
+			const { stream } = await adapter.doStream(callOptions({ abortSignal: caller.signal }));
+			const reader = stream.getReader();
+			for (let i = 0; i < 4; i++) await reader.read();
+			const pending = reader.read();
+			caller.abort(new Error('stop'));
+
+			await expect(pending).resolves.toEqual({
+				done: false,
+				value: { type: 'error', error: new Error('stop') },
+			});
+			await expect(reader.read()).resolves.toEqual({ done: true, value: undefined });
+		});
+
 		it('stops the chat model stream when the consumer cancels', async () => {
 			const onStreamClose = vi.fn();
 			const adapter = new AiSdkLanguageModelAdapter(
