@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_9416adef5f807e::t_eaecf0fdcd8b19 922-949
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_9416adef5f807e::t_fbd5fc911e14a7 1423-1430
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_9416adef5f807e::t_1d5a8e7c433800 202-210
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9416adef5f807e::t_da457ee196ec95 353-364,366-378,381-388
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_9416adef5f807e::t_ce64e386880509 164-165,176-177,179-180
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_72458a04daaf85 99-103
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9416adef5f807e::t_9747a625dafcb3 10,15-18,169-191
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9416adef5f807e::t_94418e572fda39 24,142-144,158-165,171,263-281
+packages/cli/src/modules/instance-ai/eval/web-search-mock.ts
+  s_9416adef5f807e::t_e03df26d345a1c 22-25,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a4bdf45e022040fa2362bdcc74a1790a492a559",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

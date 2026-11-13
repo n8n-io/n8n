@@ -1,0 +1,73 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_9416adef5f807e::t_4cec031941ebf9 12838-12859
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_9416adef5f807e::t_c29fbf565f5e86 430-433,447
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_9416adef5f807e::t_6985bbda869551 106-109
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_9416adef5f807e::t_401756b895de2b 1-20
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9416adef5f807e::t_8f2698ff61d979 35-58
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9416adef5f807e::t_3d42b01d6e315e 2393-2419
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_9416adef5f807e::t_8add793f6e7f16 653
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_9416adef5f807e::t_991fd34f4e4c6f 53,72,86
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9416adef5f807e::t_454875040946c5 268-272,1325-1328,1510-1513,1822
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_9416adef5f807e::t_b634d1fbf34985 146,914-921
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_9416adef5f807e::t_962b47c2c58a58 71
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_9416adef5f807e::t_02af7eb053b81f 154-157
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_9416adef5f807e::t_c0f042e7715886 83-84
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_9416adef5f807e::t_31ac613de717e7 35-52
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_9416adef5f807e::t_c9565c073a2559 98-117
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9416adef5f807e::t_e831316e4723bc 67-68,75-76,85,87,97-102,115,256-345,542-568
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9416adef5f807e::t_547e0e89d2abc1 539-565
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9416adef5f807e::t_274df22b65fd91 51,54-58,70-72
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_9416adef5f807e::t_6387c7ab18e74e 117-124,182-186
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_c2b79d320cbe78 21-22,63-64,66,74,76-77,127,164-169,203,206-212,229-230,232-235,237,239,241-242,283,287,289,312-314,328-338
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9416adef5f807e::t_f852fd90d2b467 16,98-105,245,280-285,346,394-399,405,412-415,417-422,426
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_9416adef5f807e::t_78641f9794cf56 225-248
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_9416adef5f807e::t_18a4f4e11f7852 349-352
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9416adef5f807e::t_a40fc7a049b208 505-525
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9416adef5f807e::t_380eb1f4391cc0 40,465,471-474
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9416adef5f807e::t_4ef4dab1df02cd 56-59,61,70,117-133,209-229
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9416adef5f807e::t_4ab35088490d45 22,76-82,90,92,97,136-137,183-186,210-220,228-250
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_9416adef5f807e::t_f3ed942eaa10cd 164-168,355
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4c85e4bbbdaaea015d69dce4ea6e4a74fe85eb0",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
