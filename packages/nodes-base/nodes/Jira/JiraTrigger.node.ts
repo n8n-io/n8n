@@ -7,7 +7,11 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { getAtlassianCloudId } from '@utils/atlassian';
 
 import {
 	allEvents,
@@ -22,6 +26,124 @@ import {
 	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
 } from './GenericFunctions';
 import type { JiraDynamicWebhook, JiraProject, JiraWebhook } from './types';
+
+const JWT_CLOCK_TOLERANCE_SECONDS = 60;
+
+/**
+ * A site lookup failure is worth a retry only when the request to Atlassian failed without a
+ * permanent 4xx. A lookup that succeeded but did not list the configured site is permanent too.
+ */
+function isRetryableLookupError(error: unknown): boolean {
+	if (!(error instanceof NodeApiError)) return false;
+	const status = Number(error.httpCode);
+	return !(status >= 400 && status < 500) || status === 408 || status === 429;
+}
+
+/**
+ * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
+ * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
+ * app client id as the issuer and the delivering site's cloudId in the `context` claim.
+ * Atlassian documents only that the token is signed with the client secret. The algorithm
+ * and the claims are observed from real deliveries.
+ *
+ * Returns a response that ends the request when the token is missing or invalid, or `undefined`
+ * when the request is verified and processing should continue. Fails closed: any error rejects.
+ */
+async function verifyCloudOAuth2Request(
+	this: IWebhookFunctions,
+): Promise<IWebhookResponseData | undefined> {
+	const reject = (statusCode: number): IWebhookResponseData => {
+		this.getResponseObject().status(statusCode).json({ message: 'Authorization failed' });
+		return { noWebhookResponse: true };
+	};
+
+	const authorization = this.getHeaderData().authorization;
+	const match = typeof authorization === 'string' ? authorization.match(/^Bearer\s+(.+)$/i) : null;
+	const token = match?.[1]?.trim();
+
+	if (!token) {
+		return reject(401);
+	}
+
+	let credentials: { clientId?: string; clientSecret?: string; domain?: string } | undefined;
+	try {
+		credentials = await this.getCredentials<{
+			clientId?: string;
+			clientSecret?: string;
+			domain?: string;
+		}>('jiraSoftwareCloudOAuth2Api');
+	} catch {}
+
+	const { clientId, clientSecret, domain } = credentials ?? {};
+
+	if (!clientId || !clientSecret) {
+		return reject(403);
+	}
+
+	let payload: JwtPayload;
+	try {
+		// Pin the algorithm so only HS256 is accepted (passing a secret already rejects `none`).
+		const verified = jwt.verify(token, clientSecret, {
+			algorithms: ['HS256'],
+			issuer: clientId,
+			clockTolerance: JWT_CLOCK_TOLERANCE_SECONDS,
+		});
+		if (typeof verified === 'string') {
+			return reject(403);
+		}
+		payload = verified;
+	} catch {
+		return reject(403);
+	}
+
+	// `jwt.verify` checks `exp` only when the claim is present, so require it.
+	if (typeof payload.exp !== 'number') {
+		return reject(403);
+	}
+
+	// Reject a token issued in the future, beyond the clock-skew allowance.
+	const now = Math.floor(Date.now() / 1000);
+	if (typeof payload.iat === 'number' && payload.iat > now + JWT_CLOCK_TOLERANCE_SECONDS) {
+		return reject(403);
+	}
+
+	// Bind the delivery to the site this trigger is configured for, so a token validly
+	// signed by the same OAuth app but issued for another site is not accepted.
+	const context: unknown = payload.context;
+	const tokenCloudId = isRecord(context) ? context.cloudId : undefined;
+	if (typeof tokenCloudId !== 'string' || tokenCloudId === '') {
+		return reject(403);
+	}
+
+	if (typeof domain !== 'string' || domain === '') {
+		return reject(403);
+	}
+
+	// A failed lookup request is not an auth failure: answer 503 (which Atlassian retries) rather than 403 (which it does not), so a transient
+	// error does not drop a genuine event. A permanent failure (the credential cannot reach
+	// the site, or Atlassian refuses the lookup) gets 403 and is not retried.
+	let siteCloudId: string;
+	try {
+		siteCloudId = await getAtlassianCloudId.call(
+			this,
+			'jiraSoftwareCloudOAuth2Api',
+			domain,
+			'jira',
+		);
+	} catch (error) {
+		this.logger.warn('Jira Trigger could not resolve the configured site to verify a webhook', {
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return reject(isRetryableLookupError(error) ? 503 : 403);
+	}
+
+	if (tokenCloudId !== siteCloudId) {
+		this.logger.warn('Jira Trigger rejected a webhook issued for another site');
+		return reject(403);
+	}
+
+	return undefined;
+}
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -786,6 +908,13 @@ export class JiraTrigger implements INodeType {
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 		if (jiraVersion === 'cloudOAuth2') {
+			// Verify the signed token before any work, so an unverified request cannot
+			// reach the workflow or trigger the refresh below.
+			const verificationResult = await verifyCloudOAuth2Request.call(this);
+			if (verificationResult) {
+				return verificationResult;
+			}
+
 			const webhookData = this.getWorkflowStaticData('node');
 			const lastRefreshed = webhookData.lastRefreshed as number | undefined;
 

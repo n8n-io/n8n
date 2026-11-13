@@ -1,3 +1,5 @@
+import type { IncomingHttpHeaders } from 'node:http';
+
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -5,6 +7,7 @@ import type {
 	INode,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import jwt from 'jsonwebtoken';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -434,7 +437,16 @@ describe('JiraTrigger', () => {
 			});
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
-			webhookFns.getCredentials.mockResolvedValue({ domain } as ICredentialDataDecryptedObject);
+			const clientId = 'oauth-client-id';
+			const clientSecret = 'oauth-client-secret';
+			webhookFns.getHeaderData.mockReturnValue({
+				authorization: `Bearer ${jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+			});
+			webhookFns.getCredentials.mockResolvedValue({
+				domain,
+				clientId,
+				clientSecret,
+			} as ICredentialDataDecryptedObject);
 			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
 				{ id: cloudId, url: domain },
 			]);
@@ -463,6 +475,8 @@ describe('JiraTrigger', () => {
 		test('should skip refresh in handler when interval has not elapsed', async () => {
 			const trigger = new JiraTrigger();
 
+			const cloudId = 'test-cloud-id';
+			const domain = 'https://test-oauth2.atlassian.net';
 			const freshData: IDataObject = {
 				webhookId: '4000',
 				endpoint: '/api/3/webhook',
@@ -479,13 +493,68 @@ describe('JiraTrigger', () => {
 			});
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
+			const clientId = 'oauth-client-id';
+			const clientSecret = 'oauth-client-secret';
+			webhookFns.getHeaderData.mockReturnValue({
+				authorization: `Bearer ${jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256', expiresIn: '15m' })}`,
+			});
+			webhookFns.getCredentials.mockResolvedValue({
+				domain,
+				clientId,
+				clientSecret,
+			} as ICredentialDataDecryptedObject);
+			// Site lookup so the delivery verifies and the refresh branch is actually reached.
+			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: domain },
+			]);
 			webhookFns.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) => [
 				{ json: data as IDataObject },
 			]);
 
-			await trigger.webhook.call(webhookFns);
+			const result = await trigger.webhook.call(webhookFns);
 
+			expect(result).toEqual({ workflowData: [[{ json: {} }]] });
 			expect(webhookFns.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		test('should not refresh the webhook when a delivery fails verification', async () => {
+			const trigger = new JiraTrigger();
+
+			// Stale enough that a verified delivery would trigger a refresh.
+			const staleData: IDataObject = {
+				webhookId: '5000',
+				endpoint: '/api/3/webhook',
+				lastRefreshed: Date.now() - OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS - 1,
+			};
+			const lastRefreshedBefore = staleData.lastRefreshed;
+
+			const webhookFns = mockDeep<IWebhookFunctions>();
+			webhookFns.getWorkflowStaticData.mockReturnValue(staleData);
+			webhookFns.getNode.mockReturnValue(mockJiraNode);
+			webhookFns.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'jiraVersion') return 'cloudOAuth2';
+				if (param === 'incomingAuthentication') return 'none';
+				return {};
+			});
+			webhookFns.getBodyData.mockReturnValue({});
+			webhookFns.getQueryData.mockReturnValue({});
+			// No Authorization header -> verification rejects before any refresh.
+			webhookFns.getHeaderData.mockReturnValue({});
+			webhookFns.getResponseObject.mockReturnValue({
+				status: vi.fn(() => ({ json: vi.fn() })),
+			} as unknown as ReturnType<IWebhookFunctions['getResponseObject']>);
+			webhookFns.getCredentials.mockResolvedValue({
+				domain: OAUTH2_DOMAIN,
+				clientId: 'oauth-client-id',
+				clientSecret: 'oauth-client-secret',
+			} as ICredentialDataDecryptedObject);
+
+			const result = await trigger.webhook.call(webhookFns);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(webhookFns.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(webhookFns.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(staleData.lastRefreshed).toBe(lastRefreshedBefore);
 		});
 
 		test('should filter unsupported events when registering OAuth2 webhook', async () => {
@@ -843,6 +912,152 @@ describe('JiraTrigger', () => {
 			});
 
 			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+	});
+
+	describe('Webhook request verification (Cloud OAuth2)', () => {
+		const clientId = 'oauth-client-id';
+		const clientSecret = 'oauth-client-secret';
+		const cloudId = 'site-cloud-id';
+		const domain = 'https://site.atlassian.net';
+		const credentials = { jiraSoftwareCloudOAuth2Api: { clientId, clientSecret, domain } };
+		const node = { parameters: { jiraVersion: 'cloudOAuth2', authenticateWebhook: false } };
+		const event = { webhookEvent: 'jira:issue_created', issue: { key: 'TEST-1' } };
+
+		const sign = (
+			payload: Record<string, unknown> = {},
+			secret: string = clientSecret,
+			options: jwt.SignOptions = {},
+		) =>
+			jwt.sign({ iss: clientId, sub: 'account-id', context: { cloudId }, ...payload }, secret, {
+				algorithm: 'HS256',
+				expiresIn: '15m',
+				...options,
+			});
+
+		// The verifier resolves the configured site's cloudId from the credential domain.
+		const callWebhook = async (headerData: IncomingHttpHeaders) =>
+			await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData,
+				helpers: {
+					httpRequestWithAuthentication: vi.fn().mockResolvedValue([{ id: cloudId, url: domain }]),
+				},
+			});
+
+		test('should pass a request carrying a valid signed token through', async () => {
+			const { responseData } = await callWebhook({ authorization: `Bearer ${sign()}` });
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should accept a case-insensitive scheme', async () => {
+			const { responseData } = await callWebhook({ authorization: `bearer ${sign()}` });
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should reject a request with no Authorization header', async () => {
+			const { responseData, response } = await callWebhook({});
+
+			expect(response.status).toHaveBeenCalledWith(401);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a non-Bearer Authorization header', async () => {
+			const { responseData, response } = await callWebhook({ authorization: 'Basic abc123' });
+
+			expect(response.status).toHaveBeenCalledWith(401);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject a valid token when the credential has no client secret', async () => {
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials: { jiraSoftwareCloudOAuth2Api: { clientId } },
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test.each([
+			['signed with a different secret', sign({}, 'another-secret')],
+			['that is expired', sign({}, clientSecret, { expiresIn: '-1m' })],
+			[
+				'without an expiry',
+				jwt.sign({ iss: clientId, context: { cloudId } }, clientSecret, { algorithm: 'HS256' }),
+			],
+			['signed with another HMAC algorithm', sign({}, clientSecret, { algorithm: 'HS384' })],
+			['with an unexpected issuer', sign({ iss: 'someone-else' })],
+			// Carries a valid issuer and site, so only the signature check can reject it.
+			[
+				'that is unsigned (alg none)',
+				jwt.sign({ iss: clientId, context: { cloudId } }, '', { algorithm: 'none' }),
+			],
+			['issued for a different site', sign({ context: { cloudId: 'another-site-cloud-id' } })],
+			['without a site in its context', sign({ context: undefined })],
+			['issued in the future', sign({ iat: Math.floor(Date.now() / 1000) + 600 })],
+		])('should reject a token %s', async (_name, token) => {
+			const { responseData, response } = await callWebhook({ authorization: `Bearer ${token}` });
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should answer 503 when the site lookup fails', async () => {
+			// A transient lookup failure is not an auth failure: answer a retryable 503, not 403.
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi.fn().mockRejectedValue(new Error('Atlassian down')),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(503);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should answer 403 when Atlassian refuses the site lookup', async () => {
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi
+						.fn()
+						.mockRejectedValue({ message: 'Unauthorized', httpCode: '401' }),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should answer 403 when the credential cannot reach the configured site', async () => {
+			// A site that never matches is permanent, so the answer must not be retryable.
+			const { responseData, response } = await testWebhookTriggerNode(JiraTrigger, {
+				node,
+				credentials,
+				bodyData: event,
+				headerData: { authorization: `Bearer ${sign()}` },
+				helpers: {
+					httpRequestWithAuthentication: vi
+						.fn()
+						.mockResolvedValue([{ id: 'other-cloud-id', url: 'https://other.atlassian.net' }]),
+				},
+			});
+
+			expect(response.status).toHaveBeenCalledWith(403);
+			expect(responseData).toEqual({ noWebhookResponse: true });
 		});
 	});
 });
