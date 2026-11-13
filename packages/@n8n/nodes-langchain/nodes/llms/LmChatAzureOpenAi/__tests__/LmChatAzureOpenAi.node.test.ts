@@ -7,6 +7,7 @@ import {
 	getProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	openAiTokensUsageParser,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeHelpers, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
@@ -198,6 +199,27 @@ describe('LmChatAzureOpenAi', () => {
 
 			expect(vi.mocked(ChatOpenAI).mock.calls[0][0]).toMatchObject({
 				useResponsesApi: enabled,
+			});
+		});
+
+		// Responses mode reports usage on the message, which the default parser does not read.
+		it('should read provider token usage on Foundry with Responses on', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, true);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(N8nLlmTracing)).toHaveBeenCalledWith(ctx, {
+				tokensUsageParser: openAiTokensUsageParser,
+			});
+		});
+
+		it('should read provider token usage on the classic route', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(vi.mocked(N8nLlmTracing)).toHaveBeenCalledWith(ctx, {
+				tokensUsageParser: openAiTokensUsageParser,
 			});
 		});
 
