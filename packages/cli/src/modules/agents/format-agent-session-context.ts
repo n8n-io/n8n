@@ -13,7 +13,7 @@ const MAX_TEXT_CHARS = 4_000;
 const MAX_TOOL_VALUE_CHARS = 2_000;
 const MAX_BLOCK_CHARS = 100_000;
 const TRUNCATION_FOOTER = '… [truncated]';
-const TRANSCRIPT_PAGE_CHARS = 50_000;
+const TRANSCRIPT_PAGE_CHARS = 40_000;
 const TURN_START = '\n## Turn (';
 
 interface ValueLimits {
