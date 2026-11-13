@@ -1126,6 +1126,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1186,6 +1187,7 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 
 		expect(runQueries).toHaveBeenCalledWith(
@@ -1247,8 +1249,589 @@ describe('Test PostgresV2, select operation', () => {
 			runQueries,
 			items,
 			nodeOptions,
+			createMockDb([]),
 		);
 		await expect(promise).rejects.toThrow('Failed to parse value to number');
+	});
+});
+
+describe('Test PostgresV2, select operation with Start After', () => {
+	const tableColumns: ColumnInfo[] = [
+		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
+		{ column_name: 'code', data_type: 'text', is_nullable: 'NO' },
+		{ column_name: 'amount', data_type: 'numeric', is_nullable: 'NO' },
+		{ column_name: 'created_on', data_type: 'date', is_nullable: 'NO' },
+		{ column_name: 'email', data_type: 'text', is_nullable: 'YES' },
+		{ column_name: 'happened_at', data_type: 'timestamp without time zone', is_nullable: 'NO' },
+		{ column_name: 'updated_at', data_type: 'timestamp with time zone', is_nullable: 'NO' },
+		{ column_name: 'raw', data_type: 'bytea', is_nullable: 'NO' },
+	];
+
+	/** `any` returns the columns of the table, `one` returns if a unique index covers the column */
+	const createColumnInfoDb = (isUnique = true) => {
+		const any = vi.fn().mockResolvedValue(tableColumns);
+		const one = vi.fn().mockResolvedValue({ is_unique: isUnique });
+		return { db: { any, one } as unknown as PgpDatabase, any, one };
+	};
+
+	const selectParameters = (
+		startAfter: IDataObject,
+		parameters: IDataObject = {},
+	): IDataObject => ({
+		operation: 'select',
+		schema: { __rl: true, mode: 'list', value: 'public' },
+		table: { __rl: true, value: 'orders', mode: 'list', cachedResultName: 'orders' },
+		limit: 100,
+		startAfter: { values: startAfter },
+		options: {},
+		...parameters,
+	});
+
+	// Like n8n, throw when a parameter is missing and there is no fallback value.
+	const createStrictMockExecuteFunction = (nodeParameters: IDataObject) => {
+		const context = createMockExecuteFunction(nodeParameters);
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((
+			name: string,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		) => {
+			const value = getNodeParameter(name, itemIndex, fallbackValue, options);
+			if (value === undefined) throw new Error(`Could not get parameter "${name}"`);
+			return value;
+		}) as IExecuteFunctions['getNodeParameter'];
+		return context;
+	};
+
+	const runSelect = async (
+		nodeParameters: IDataObject,
+		db: PgpDatabase = createColumnInfoDb().db,
+		inputItems = items,
+	) =>
+		await select.execute.call(
+			createStrictMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeParameters.options as IDataObject,
+			db,
+		);
+
+	const expectQuery = (query: string, values: unknown[]) =>
+		expect(runQueries).toHaveBeenCalledWith([{ query, values }], {});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should give the first page sorted by the column when the value is empty', async () => {
+		const { db, any, one } = createColumnInfoDb();
+
+		await runSelect(selectParameters({ column: 'id', value: '' }), db);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+		expect(any).toHaveBeenCalledWith(expect.stringContaining('information_schema.columns'), [
+			'public',
+			'orders',
+		]);
+		expect(one).toHaveBeenCalledWith(expect.stringContaining('pg_index'), [
+			'public',
+			'orders',
+			'id',
+		]);
+	});
+
+	it('should give the first page when the value is null', async () => {
+		await runSelect(selectParameters({ column: 'id', value: null }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+	});
+
+	it('should give the rows after the value and send the value as text', async () => {
+		await runSelect(selectParameters({ column: 'id', value: 5 }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'5',
+			'id',
+			100,
+		]);
+	});
+
+	it('should use 0 as a value, not as the first page', async () => {
+		await runSelect(selectParameters({ column: 'id', value: 0 }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'0',
+			'id',
+			100,
+		]);
+	});
+
+	it('should keep a text value that looks like a number as text', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'code', value: '10' },
+				{ table: { __rl: true, value: 'skus', mode: 'list' } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'skus',
+			'code',
+			'10',
+			'code',
+			100,
+		]);
+	});
+
+	it('should put brackets around the conditions in Select Rows', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '12' },
+				{
+					where: {
+						values: [
+							{ column: 'status', condition: 'equal', value: 'new' },
+							{ column: 'customer', condition: 'equal', value: 'Acme Corp' },
+						],
+					},
+					combineConditions: 'OR',
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE ($3:name = $4 OR $5:name = $6) AND $7:name > $8 ORDER BY $9:name ASC LIMIT $10',
+			['public', 'orders', 'status', 'new', 'customer', 'Acme Corp', 'id', '12', 'id', 100],
+		);
+	});
+
+	it('should keep the conditions in Select Rows as they are on the first page', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '' },
+				{
+					where: {
+						values: [
+							{ column: 'status', condition: 'equal', value: 'new' },
+							{ column: 'customer', condition: 'equal', value: 'Acme Corp' },
+						],
+					},
+					combineConditions: 'OR',
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name = $4 OR $5:name = $6 ORDER BY $7:name ASC LIMIT $8',
+			['public', 'orders', 'status', 'new', 'customer', 'Acme Corp', 'id', 100],
+		);
+	});
+
+	it('should give the rows before the value when the column is sorted DESC', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '901' },
+				{ sort: { values: [{ column: 'id', direction: 'DESC' }] } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name < $4 ORDER BY $5:name DESC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'901',
+			'id',
+			100,
+		]);
+	});
+
+	it('should give the biggest values first on the first page when the column is sorted DESC', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '' },
+				{ sort: { values: [{ column: 'id', direction: 'DESC' }] } },
+			),
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name DESC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+	});
+
+	it('should keep the sort rules after the column', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '5' },
+				{
+					sort: {
+						values: [
+							{ column: 'id', direction: 'ASC' },
+							{ column: 'customer', direction: 'DESC' },
+						],
+					},
+				},
+			),
+		);
+
+		expectQuery(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC, $6:name DESC LIMIT $7',
+			['public', 'orders', 'id', '5', 'id', 'customer', 100],
+		);
+	});
+
+	it('should throw when another sort rule comes before the column', async () => {
+		const { db, any, one } = createColumnInfoDb();
+
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{
+						sort: {
+							values: [
+								{ column: 'customer', direction: 'ASC' },
+								{ column: 'id', direction: 'ASC' },
+							],
+						},
+					},
+				),
+				db,
+			),
+		).rejects.toThrow('Sort by "id" first');
+		expect(any).not.toHaveBeenCalled();
+		expect(one).not.toHaveBeenCalled();
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should tell how to fix the sort when the column is in Sort but not first', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{
+						sort: {
+							values: [
+								{ column: 'customer', direction: 'ASC' },
+								{ column: 'id', direction: 'ASC' },
+							],
+						},
+					},
+				),
+			),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('Move "id" to the top of Sort.'),
+		});
+	});
+
+	it('should tell how to fix the sort when the column is not in Sort', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{ sort: { values: [{ column: 'customer', direction: 'ASC' }] } },
+				),
+			),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('Add "id" as the first sort rule'),
+		});
+	});
+
+	it('should throw when the value is a number too big to be exact', async () => {
+		await expect(
+			runSelect(selectParameters({ column: 'id', value: 9007199254740992 })),
+		).rejects.toThrow('The Start After value is too big to be exact');
+	});
+
+	it('should accept a big number as text', async () => {
+		await runSelect(selectParameters({ column: 'id', value: '9007199254740993' }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6', [
+			'public',
+			'orders',
+			'id',
+			'9007199254740993',
+			'id',
+			100,
+		]);
+	});
+
+	it('should throw when Output Columns is one string that is not the column', async () => {
+		await expect(
+			runSelect(
+				selectParameters({ column: 'id', value: '5' }, { options: { outputColumns: 'tenant_id' } }),
+			),
+		).rejects.toThrow('Add "id" to Output Columns');
+	});
+
+	it('should throw when Output Columns leaves out the column', async () => {
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'id', value: '5' },
+					{ options: { outputColumns: ['customer'] } },
+				),
+			),
+		).rejects.toThrow('Add "id" to Output Columns');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should accept Output Columns that include the column', async () => {
+		await runSelect(
+			selectParameters(
+				{ column: 'id', value: '5' },
+				{ options: { outputColumns: ['id', 'customer'] } },
+			),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name > $5 ORDER BY $6:name ASC LIMIT $7',
+					values: ['public', 'orders', ['id', 'customer'], 'id', '5', 'id', 100],
+				},
+			],
+			{ outputColumns: ['id', 'customer'] },
+		);
+	});
+
+	it.each([
+		[
+			'not unique',
+			'created_on',
+			false,
+			'Column "created_on" has no unique index that Start After can use',
+		],
+		['nullable', 'email', true, 'Column "email" can be null'],
+		[
+			'a timestamp',
+			'happened_at',
+			true,
+			'Start After does not support the timestamp column "happened_at"',
+		],
+		[
+			'a timestamp with time zone',
+			'updated_at',
+			true,
+			'Start After does not support the timestamp column "updated_at"',
+		],
+		[
+			'of a type that n8n outputs as an object',
+			'raw',
+			true,
+			'Start After does not support the column "raw" of type bytea',
+		],
+		['missing', 'nope', true, 'Cannot find column "nope" in "public.orders"'],
+	])('should throw when the column is %s', async (_, column, isUnique, message) => {
+		const { db } = createColumnInfoDb(isUnique);
+
+		await expect(runSelect(selectParameters({ column, value: '5' }), db)).rejects.toThrow(message);
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should name the problem in the error description', async () => {
+		const { db } = createColumnInfoDb(false);
+
+		await expect(
+			runSelect(selectParameters({ column: 'created_on', value: '' }), db),
+		).rejects.toMatchObject({
+			description: expect.stringContaining('unique index on this column alone'),
+		});
+	});
+
+	it('should not add a limit when Return All is on', async () => {
+		await runSelect(selectParameters({ column: 'id', value: '5' }, { returnAll: true }));
+
+		expectQuery('SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC', [
+			'public',
+			'orders',
+			'id',
+			'5',
+			'id',
+		]);
+	});
+
+	it('should read the indexes once per run for the same column', async () => {
+		const { db, any, one } = createColumnInfoDb();
+
+		await runSelect(selectParameters({ column: 'id', value: '5' }), db, [
+			{ json: {} },
+			{ json: {} },
+			{ json: {} },
+		]);
+
+		expect(any).toHaveBeenCalledTimes(1);
+		expect(one).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(3);
+	});
+
+	it('should read the columns and the indexes for each table', async () => {
+		const { db, any, one } = createColumnInfoDb();
+		const tables = ['orders', 'orders', 'customers'];
+		const context = createMockExecuteFunction(selectParameters({ column: 'id', value: '5' }));
+		const getNodeParameter = context.getNodeParameter.bind(context);
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) =>
+			name === 'table'
+				? tables[itemIndex]
+				: getNodeParameter(
+						name,
+						itemIndex,
+						...(rest as []),
+					)) as IExecuteFunctions['getNodeParameter'];
+
+		await select.execute.call(
+			context,
+			runQueries,
+			[{ json: {} }, { json: {} }, { json: {} }],
+			{},
+			db,
+		);
+
+		expect(any).toHaveBeenCalledTimes(2);
+		expect(any.mock.calls[1][1]).toEqual(['public', 'customers']);
+		expect(one).toHaveBeenCalledTimes(2);
+		expect(one.mock.calls[1][1]).toEqual(['public', 'customers', 'id']);
+	});
+
+	it('should throw when the node version is older than 2.7', async () => {
+		const { db, any, one } = createColumnInfoDb();
+
+		await expect(
+			runSelect(
+				selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.6 } }),
+				db,
+			),
+		).rejects.toThrow('Start After needs version 2.7 or later of the Postgres node');
+		expect(any).not.toHaveBeenCalled();
+		expect(one).not.toHaveBeenCalled();
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page from node version 2.7', async () => {
+		await runSelect(
+			selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.7 } }),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+					values: ['public', 'orders', 'id', '5', 'id', 100],
+				},
+			],
+			{ nodeVersion: 2.7 },
+		);
+	});
+
+	it('should build the same SQL as before on an old node version without Start After', async () => {
+		await runSelect(selectParameters({}, { startAfter: {}, options: { nodeVersion: 2.6 } }));
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[{ query: 'SELECT * FROM $1:name.$2:name LIMIT $3', values: ['public', 'orders', 100] }],
+			{ nodeVersion: 2.6 },
+		);
+	});
+
+	it('should throw for a numeric column when large numbers come back as numbers', async () => {
+		const { db } = createColumnInfoDb();
+
+		await expect(
+			runSelect(
+				selectParameters(
+					{ column: 'amount', value: '' },
+					{ options: { largeNumbersOutput: 'numbers' } },
+				),
+				db,
+			),
+		).rejects.toThrow('Set Output Large-Format Numbers As to Text to page by "amount"');
+		expect(runQueries).not.toHaveBeenCalled();
+	});
+
+	it('should page by a numeric column when large numbers come back as text', async () => {
+		const { db } = createColumnInfoDb();
+
+		await runSelect(
+			selectParameters(
+				{ column: 'amount', value: '0.12345678901234567' },
+				{ options: { largeNumbersOutput: 'text' } },
+			),
+			db,
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
+					values: ['public', 'orders', 'amount', '0.12345678901234567', 'amount', 100],
+				},
+			],
+			{ largeNumbersOutput: 'text' },
+		);
+	});
+
+	it('should throw when Column is empty', async () => {
+		await expect(runSelect(selectParameters({ column: '', value: '5' }))).rejects.toThrow(
+			'Choose a column in Start After',
+		);
+	});
+
+	it('should throw when the value is an object', async () => {
+		await expect(runSelect(selectParameters({ column: 'id', value: { id: 5 } }))).rejects.toThrow(
+			'The Start After value must be text or a number',
+		);
+	});
+
+	it('should build the same SQL as before when the node has no Start After parameter', async () => {
+		const { db, any, one } = createColumnInfoDb();
+		const { startAfter: _, ...parameters } = selectParameters({});
+
+		await runSelect({ ...parameters, limit: 5 }, db);
+
+		expectQuery('SELECT * FROM $1:name.$2:name LIMIT $3', ['public', 'orders', 5]);
+		expect(any).not.toHaveBeenCalled();
+		expect(one).not.toHaveBeenCalled();
+	});
+
+	it('should not read the indexes without Start After', async () => {
+		const { db, any, one } = createColumnInfoDb();
+
+		await runSelect(
+			selectParameters(
+				{},
+				{ startAfter: {}, sort: { values: [{ column: 'id', direction: 'ASC' }] } },
+			),
+			db,
+		);
+
+		expectQuery('SELECT * FROM $1:name.$2:name ORDER BY $3:name ASC LIMIT $4', [
+			'public',
+			'orders',
+			'id',
+			100,
+		]);
+		expect(any).not.toHaveBeenCalled();
+		expect(one).not.toHaveBeenCalled();
 	});
 });
 

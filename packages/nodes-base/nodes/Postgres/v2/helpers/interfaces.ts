@@ -11,6 +11,8 @@ export type QueryWithValues = { query: string; values?: QueryValues; options?: I
 
 export type WhereClause = { column: string; condition: string; value: string | number };
 export type SortRule = { column: string; direction: string };
+/** An empty `value` asks for the first page. */
+export type StartAfter = { column: string; value?: string };
 export type ColumnInfo = {
 	column_name: string;
 	data_type: string;

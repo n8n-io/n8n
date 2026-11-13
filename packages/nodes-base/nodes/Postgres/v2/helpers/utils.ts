@@ -6,6 +6,7 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
@@ -19,10 +20,11 @@ import type {
 	QueryValues,
 	QueryWithValues,
 	SortRule,
+	StartAfter,
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
-import { operatorOptions } from '../actions/common.descriptions';
+import { START_AFTER_MIN_VERSION, operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -141,28 +143,19 @@ export function parseParameterLoadingError(node: INode, error: unknown): NodeOpe
 	return new NodeOperationError(node, message);
 }
 
-export function addWhereClauses(
-	_node: INode,
-	_itemIndex: number,
-	query: string,
+function buildWhereConditions(
 	clauses: WhereClause[],
 	replacements: QueryValues,
 	combineConditions: string,
 ): [string, QueryValues] {
-	if (clauses.length === 0) return [query, replacements];
-
-	let combineWith = 'AND';
-
-	if (combineConditions === 'OR') {
-		combineWith = 'OR';
-	}
+	const combineWith = combineConditions === 'OR' ? 'OR' : 'AND';
 
 	let replacementIndex = replacements.length + 1;
 
-	let whereQuery = ' WHERE';
+	const conditions: string[] = [];
 	const values: QueryValues = [];
 
-	clauses.forEach((clause, index) => {
+	clauses.forEach((clause) => {
 		if (clause.condition === 'equal') {
 			clause.condition = '=';
 		}
@@ -183,12 +176,125 @@ export function addWhereClauses(
 			replacementIndex = replacementIndex + 1;
 		}
 
-		const operator = index === clauses.length - 1 ? '' : ` ${combineWith}`;
-
-		whereQuery += ` ${columnReplacement} ${clause.condition}${valueReplacement}${operator}`;
+		conditions.push(`${columnReplacement} ${clause.condition}${valueReplacement}`);
 	});
 
-	return [`${query}${whereQuery}`, replacements.concat(...values)];
+	return [conditions.join(` ${combineWith} `), replacements.concat(...values)];
+}
+
+export function addWhereClauses(
+	_node: INode,
+	_itemIndex: number,
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+): [string, QueryValues] {
+	if (clauses.length === 0) return [query, replacements];
+
+	const [conditions, values] = buildWhereConditions(clauses, replacements, combineConditions);
+
+	return [`${query} WHERE ${conditions}`, values];
+}
+
+/**
+ * Adds the Start After condition after the user's conditions. The brackets keep
+ * an OR in the user's conditions from also matching rows before the cursor.
+ * The value stays text, so Postgres casts it to the type of the column.
+ */
+export function addStartAfterClause(
+	query: string,
+	clauses: WhereClause[],
+	replacements: QueryValues,
+	combineConditions: string,
+	startAfter: StartAfter,
+	descending: boolean,
+): [string, QueryValues] {
+	const [conditions, values]: [string, QueryValues] =
+		clauses.length === 0
+			? ['', replacements]
+			: buildWhereConditions(clauses, replacements, combineConditions);
+
+	if (startAfter.value === undefined) {
+		return [conditions ? `${query} WHERE ${conditions}` : query, values];
+	}
+
+	const withCursor = [...values, startAfter.column, startAfter.value];
+	const cursorCondition = `$${withCursor.length - 1}:name ${descending ? '<' : '>'} $${withCursor.length}`;
+
+	return [
+		`${query} WHERE ${conditions ? `(${conditions}) AND ` : ''}${cursorCondition}`,
+		withCursor,
+	];
+}
+
+export function getStartAfter(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	nodeVersion?: number,
+): StartAfter | undefined {
+	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
+	if (!isRecord(startAfter)) return undefined;
+
+	// n8n removes Start After from older versions before a run, except when Return All is an expression
+	if (nodeVersion !== undefined && nodeVersion < START_AFTER_MIN_VERSION) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Start After needs version ${START_AFTER_MIN_VERSION} or later of the Postgres node`,
+			{
+				itemIndex,
+				description: `This node has version ${nodeVersion}. Add a new Postgres node to get the latest version.`,
+			},
+		);
+	}
+
+	const { column, value } = startAfter;
+	if (typeof column !== 'string' || column === '') {
+		throw new NodeOperationError(ctx.getNode(), 'Choose a column in Start After', {
+			itemIndex,
+			description: 'Start After needs a unique column, for example the primary key.',
+		});
+	}
+
+	if (value === undefined || value === null || value === '') return { column };
+	if (typeof value === 'object') {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value must be text or a number', {
+			itemIndex,
+			description: `Use the value of "${column}" in the last row of the page before.`,
+		});
+	}
+	if (typeof value === 'number' && Number.isInteger(value) && !Number.isSafeInteger(value)) {
+		throw new NodeOperationError(ctx.getNode(), 'The Start After value is too big to be exact', {
+			itemIndex,
+			description:
+				'n8n cannot keep all digits of a number above 9007199254740991, so the next page can skip rows. In Options, set Output Large-Format Numbers As to Text.',
+		});
+	}
+
+	return { column, value: String(value) };
+}
+
+/**
+ * The cursor column must be the first sort key. A key before it changes the
+ * order of the rows, so "after the last value" skips rows.
+ */
+export function getStartAfterSortRules(
+	node: INode,
+	itemIndex: number,
+	sortRules: SortRule[],
+	column: string,
+): SortRule[] {
+	if (sortRules.length === 0) return [{ column, direction: 'ASC' }];
+	if (sortRules[0].column === column) return sortRules;
+
+	const fix = sortRules.some((rule) => rule.column === column)
+		? `Move "${column}" to the top of Sort.`
+		: `Add "${column}" as the first sort rule, or remove the other sort rules.`;
+
+	throw new NodeOperationError(node, `Sort by "${column}" first`, {
+		itemIndex,
+		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
+	});
 }
 
 export function addSortRules(
@@ -617,6 +723,107 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 		[schema, table],
 	);
 	return unique as IDataObject[];
+}
+
+/** Whether a valid primary key or unique index covers this column alone, with no WHERE condition */
+export async function isUniqueColumn(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const { is_unique } = await db.one<{ is_unique: boolean }>(
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_index i
+			JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+			WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
+				AND (i.indisprimary OR i.indisunique)
+				AND i.indisvalid
+				AND i.indpred IS NULL
+				AND i.indnatts = 1
+				AND a.attname = $3
+		) AS is_unique;
+		`,
+		[schema, table, column],
+	);
+	return is_unique;
+}
+
+const TIMESTAMP_TYPES = ['timestamp without time zone', 'timestamp with time zone'];
+// n8n outputs values of these types as objects, so they cannot be a Start After value
+const OBJECT_TYPES = ['bytea', 'interval', 'json', 'jsonb', 'ARRAY'];
+
+async function getStartAfterColumnProblem(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+): Promise<{ message: string; description: string } | undefined> {
+	const columnInfo = (await getTableSchema(db, schema, table)).find(
+		({ column_name }) => column_name === column,
+	);
+
+	if (!columnInfo) {
+		return {
+			message: `Cannot find column "${column}" in "${schema}.${table}"`,
+			description: 'Check that the table exists and has this column.',
+		};
+	}
+	if (TIMESTAMP_TYPES.includes(columnInfo.data_type)) {
+		return {
+			message: `Start After does not support the timestamp column "${column}"`,
+			description: `"${column}" has the type ${columnInfo.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
+		};
+	}
+	if (OBJECT_TYPES.includes(columnInfo.data_type)) {
+		return {
+			message: `Start After does not support the column "${column}" of type ${columnInfo.data_type}`,
+			description:
+				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
+		};
+	}
+	if (columnInfo.data_type === 'numeric' && largeNumbersOutput === 'numbers') {
+		return {
+			message: `Set Output Large-Format Numbers As to Text to page by "${column}"`,
+			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+		};
+	}
+	if (!(await isUniqueColumn(db, schema, table, column))) {
+		return {
+			message: `Column "${column}" has no unique index that Start After can use`,
+			description:
+				'Start After needs a primary key or a unique index on this column alone. These do not count: a unique index on more than one column, with INCLUDE columns, with a WHERE condition or on an expression. A view has no indexes. If values repeat, a page skips the rows that share the last value.',
+		};
+	}
+	if (columnInfo.is_nullable === 'YES') {
+		return {
+			message: `Column "${column}" can be null`,
+			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		};
+	}
+
+	return undefined;
+}
+
+export async function checkStartAfterColumn(
+	db: PgpDatabase,
+	node: INode,
+	itemIndex: number,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
+) {
+	const problem = await getStartAfterColumnProblem(db, schema, table, column, largeNumbersOutput);
+	if (problem) {
+		throw new NodeOperationError(node, problem.message, {
+			itemIndex,
+			description: problem.description,
+		});
+	}
 }
 
 export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {

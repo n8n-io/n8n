@@ -61,3 +61,30 @@ describe('PostgresV2, annotations', () => {
 		);
 	});
 });
+
+describe('PostgresV2, Start After', () => {
+	const startAfter = versionDescription.properties.find(
+		(property) => property.name === 'startAfter',
+	) as INodeProperties;
+
+	it.each([
+		{ returnAll: false, typeVersion: 2.8, shown: true },
+		{ returnAll: true, typeVersion: 2.8, shown: false },
+		{ returnAll: false, typeVersion: 2.7, shown: true },
+		{ returnAll: false, typeVersion: 2.6, shown: false },
+	])(
+		'should show Start After: $shown when Return All is $returnAll at v$typeVersion',
+		({ returnAll, typeVersion, shown }) => {
+			const parameters = {
+				resource: 'database',
+				operation: 'select',
+				table: { __rl: true, mode: 'list', value: 'orders' },
+				returnAll,
+			};
+
+			expect(
+				NodeHelpers.displayParameter(parameters, startAfter, { typeVersion }, versionDescription),
+			).toBe(shown);
+		},
+	);
+});
