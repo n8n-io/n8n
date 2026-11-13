@@ -1,0 +1,21 @@
+packages/cli/package.json
+  s_2ada4383f567be::t_4b6f4c3500dedf 200
+pnpm-lock.yaml
+  s_2ada4383f567be::t_16b193b35b01e7 5102-5103,13177-13178,26218-26221,32032,32037,47268-47269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57335eded2bc18d91ff0497aa213cdf8ab961f77",
+  "prompts": {},
+  "sessions": {
+    "s_2ada4383f567be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d79130-f69a-4546-bc81-7e2c43a76b55",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jessie Auguste <jessie.auguste@n8n.io>"
+    }
+  }
+}
