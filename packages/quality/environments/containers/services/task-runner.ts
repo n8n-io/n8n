@@ -16,7 +16,8 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
-	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
+	shouldStart: (ctx) =>
+		(ctx.mains > 0 || ctx.workers > 0) && ctx.config.env?.N8N_RUNNERS_MODE !== 'internal',
 
 	getOptions(ctx) {
 		if (ctx.external) {
