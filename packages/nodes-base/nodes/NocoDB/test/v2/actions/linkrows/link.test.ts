@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/linkrows/link.operation';
@@ -71,7 +72,7 @@ describe('NocoDB Linkrows Link Node', () => {
 		expect(mockApiRequest.call).toHaveBeenCalledWith(
 			mockThis,
 			'POST',
-			'/api/v3/data/base1/table1/links/linkField1/row1',
+			requestPath`/api/v3/data/base1/table1/links/linkField1/row1`,
 			[{ id: 'linkedRow1' }],
 			{},
 		);
@@ -105,7 +106,7 @@ describe('NocoDB Linkrows Link Node', () => {
 		expect(mockApiRequest.call).toHaveBeenCalledWith(
 			mockThis,
 			'POST',
-			'/api/v3/data/base1/table1/links/linkField1/row1',
+			requestPath`/api/v3/data/base1/table1/links/linkField1/row1`,
 			[{ id: 'linkedRow1' }, { id: 'linkedRow2' }],
 			{},
 		);
@@ -180,7 +181,7 @@ describe('NocoDB Linkrows Link Node', () => {
 		expect(mockApiRequest.call).toHaveBeenCalledWith(
 			mockThis,
 			'POST',
-			'/api/v3/data/base1/table1/links/linkField1/row1',
+			requestPath`/api/v3/data/base1/table1/links/linkField1/row1`,
 			[{ id: 'exprRow1' }, { id: 'exprRow2' }],
 			{},
 		);
@@ -214,7 +215,7 @@ describe('NocoDB Linkrows Link Node', () => {
 		expect(mockApiRequest.call).toHaveBeenCalledWith(
 			mockThis,
 			'POST',
-			'/api/v3/data/base1/table1/links/linkField1/row1',
+			requestPath`/api/v3/data/base1/table1/links/linkField1/row1`,
 			[{ id: 'exprRowA' }, { id: 123 }],
 			{},
 		);

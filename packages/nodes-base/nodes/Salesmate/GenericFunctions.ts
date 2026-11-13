@@ -7,22 +7,23 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function salesmateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('salesmateApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			sessionToken: credentials.sessionToken,
 			'x-linkname': credentials.url,
@@ -31,7 +32,7 @@ export async function salesmateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://apis.salesmate.io${resource}`,
+		uri: requestUrl`https://apis.salesmate.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body as IDataObject).length) {
@@ -48,7 +49,7 @@ export async function salesmateApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

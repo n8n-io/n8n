@@ -16,6 +16,7 @@ export {
 	roleSchema,
 	type Role,
 	scopeSchema,
+	principalTypeSchema,
 } from './schemas.ee';
 
 export { hasScope } from './utilities/has-scope.ee';

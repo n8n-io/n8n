@@ -7,7 +7,7 @@ import {
 	type LifecycleEvent,
 } from '@n8n/engine';
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * The codec of the `lifecycle` topic. Each frame holds one event.
@@ -40,14 +40,27 @@ function serializeLifecycleEvent(
 	}
 
 	const bytes = Buffer.byteLength(serialized.result);
-	if (bytes > maxFrameBytes) {
-		// TODO(CET-302): decide what to send for an event over the size limit.
-		return failure(logger, 'Dropped a lifecycle event that exceeds the frame size limit', event, {
-			bytes,
-		});
+	if (bytes <= maxFrameBytes) return { ok: true, frame: serialized.result };
+
+	// Only the outputs of a completed step can grow past the limit. Without them
+	// the event still tells the consumer that the step completed; the outputs stay
+	// readable from the data plane.
+	if (event.type === 'step:completed' && event.outputs !== undefined) {
+		const { outputs: _outputs, ...withoutOutputs } = event;
+		const frame = JSON.stringify(withoutOutputs);
+		if (Buffer.byteLength(frame) <= maxFrameBytes) {
+			logger.debug('Sent a lifecycle event without its outputs: it exceeds the frame size limit', {
+				executionId: event.executionId,
+				stepId: event.stepId,
+				bytes,
+			});
+			return { ok: true, frame };
+		}
 	}
 
-	return { ok: true, frame: serialized.result };
+	return failure(logger, 'Dropped a lifecycle event that exceeds the frame size limit', event, {
+		bytes,
+	});
 }
 
 function deserializeLifecycleEvent(frame: string, logger: Logger): Result<LifecycleEvent, Error> {

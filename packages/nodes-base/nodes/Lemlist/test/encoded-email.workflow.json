@@ -1,0 +1,123 @@
+{
+	"name": "Lemlist encoded email",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"email": "nathan%40n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Get Lead v1",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"email": "nathan%40n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Lead v2",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"email": "nathan%40n8n.io"
+			},
+			"type": "n8n-nodes-base.lemlist",
+			"typeVersion": 2.1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Lead v2.1",
+			"credentials": {
+				"lemlistApi": {
+					"id": "cred1",
+					"name": "Lemlist account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Lead v1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Lead v2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Lead v2.1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"pinData": {
+		"Get Lead v1": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Get Lead v2": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		],
+		"Get Lead v2.1": [
+			{
+				"json": {
+					"_id": "lea_Z9Y8X7W6V5U4T3S2",
+					"email": "nathan@n8n.io",
+					"campaignId": "cam_A1B2C3D4E5F6G7H8I9"
+				}
+			}
+		]
+	}
+}

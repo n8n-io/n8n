@@ -9,7 +9,10 @@ import type {
 	INodePropertyOptions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Stripe
@@ -18,7 +21,7 @@ import type {
 export async function stripeApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 ) {
@@ -26,9 +29,9 @@ export async function stripeApiRequest(
 		method,
 		form: body,
 		qs: query,
-		uri: `https://api.stripe.com/v1${endpoint}`,
+		uri: requestUrl`https://api.stripe.com/v1${endpoint}`,
 		json: true,
-	} satisfies IRequestOptions;
+	} satisfies WithRequestTarget<IRequestOptions, 'uri'>;
 
 	if (options.qs && Object.keys(options.qs).length === 0) {
 		delete options.qs;
@@ -105,7 +108,7 @@ export async function loadResource(
 	this: ILoadOptionsFunctions,
 	resource: 'charge' | 'customer' | 'source',
 ): Promise<INodePropertyOptions[]> {
-	const responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, {});
+	const responseData = await stripeApiRequest.call(this, 'GET', requestPath`/${resource}s`, {}, {});
 
 	return responseData.data.map(({ name, id }: { name: string; id: string }) => ({
 		name,
@@ -129,7 +132,7 @@ export async function handleListing(
 	const limit = this.getNodeParameter('limit', i, 0);
 
 	do {
-		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);
+		responseData = await stripeApiRequest.call(this, 'GET', requestPath`/${resource}s`, {}, qs);
 		returnData.push(...(responseData.data as IDataObject[]));
 
 		if (!returnAll && returnData.length >= limit) {

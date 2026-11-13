@@ -122,6 +122,49 @@ describe('AppPublicationService', () => {
 		await expect(service.publish('project', appId, versionId)).rejects.toThrow('stored bundle');
 	});
 
+	describe('assertCanPublish', () => {
+		it('accepts a built version of the app', async () => {
+			const { service, apps, versions } = setup();
+
+			await expect(service.assertCanPublish('project', appId, versionId)).resolves.toBeUndefined();
+
+			expect(apps.setPublishedVersion).not.toHaveBeenCalled();
+			expect(versions.setDetails).not.toHaveBeenCalled();
+		});
+
+		it('rejects an app without a valid namespace', async () => {
+			const { service, hosts } = setup();
+			hosts.origin.mockReturnValue(null);
+
+			await expect(service.assertCanPublish('project', appId, versionId)).rejects.toThrow(
+				'valid app namespace',
+			);
+		});
+
+		it('rejects a version that is not built', async () => {
+			const { service, versions } = setup();
+			versions.findVersionById.mockResolvedValue(
+				mock<AppVersion>({ appId, buildStatus: 'failed', bundleArtifactId: null }),
+			);
+
+			await expect(service.assertCanPublish('project', appId, versionId)).rejects.toThrow(
+				'successful app version',
+			);
+		});
+
+		it('rejects an app of another project and ids that are not UUIDs', async () => {
+			const { service, apps } = setup();
+			apps.findInProject.mockResolvedValue(null);
+
+			await expect(service.assertCanPublish('other-project', appId, versionId)).rejects.toThrow(
+				'App not found',
+			);
+			await expect(service.assertCanPublish('project', appId, 'latest')).rejects.toThrow(
+				'not found',
+			);
+		});
+	});
+
 	it('rejects another app version and cross-project publication', async () => {
 		const { service, versions, apps } = setup();
 		versions.findVersionById.mockResolvedValue(mock<AppVersion>({ appId: 'other' }));

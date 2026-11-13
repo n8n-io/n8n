@@ -7,8 +7,10 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export interface IProduct {
 	fields: {
@@ -23,7 +25,7 @@ export interface IProduct {
 export async function activeCampaignApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
@@ -34,11 +36,11 @@ export async function activeCampaignApiRequest(
 		query = {};
 	}
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		qs: query,
-		uri: `${credentials.apiUrl}${endpoint}`,
+		uri: requestUrl`${credentials.apiUrl}${endpoint}`,
 		json: true,
 	};
 
@@ -76,7 +78,7 @@ export async function activeCampaignApiRequest(
 export async function activeCampaignApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,

@@ -1,0 +1,816 @@
+{
+	"name": "Clockify request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b0500000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "create",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"name": "Acme Corp"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b0500000-0000-4000-8000-000000000001",
+			"name": "client create",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "delete",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"clientId": "64b2c3d4e5f6a7b8c9d0e1f2"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "b0500000-0000-4000-8000-000000000002",
+			"name": "client delete",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "update",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"clientId": "64b2c3d4e5f6a7b8c9d0e1f2",
+				"name": "Acme Corp",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "b0500000-0000-4000-8000-000000000003",
+			"name": "client update",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "get",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"clientId": "64b2c3d4e5f6a7b8c9d0e1f2"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "b0500000-0000-4000-8000-000000000004",
+			"name": "client get",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "client",
+				"operation": "getAll",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "b0500000-0000-4000-8000-000000000005",
+			"name": "client getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "create",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"name": "Website",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "b0500000-0000-4000-8000-000000000006",
+			"name": "project create",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "delete",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "b0500000-0000-4000-8000-000000000007",
+			"name": "project delete",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "get",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "b0500000-0000-4000-8000-000000000008",
+			"name": "project get",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "getAll",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "b0500000-0000-4000-8000-000000000009",
+			"name": "project getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "update",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "b0500000-0000-4000-8000-000000000010",
+			"name": "project update",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "create",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"name": "billable"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "b0500000-0000-4000-8000-000000000011",
+			"name": "tag create",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "delete",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"tagId": "64d4e5f6a7b8c9d0e1f2a3b4"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "b0500000-0000-4000-8000-000000000012",
+			"name": "tag delete",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "getAll",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "b0500000-0000-4000-8000-000000000013",
+			"name": "tag getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "update",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"tagId": "64d4e5f6a7b8c9d0e1f2a3b4",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "b0500000-0000-4000-8000-000000000014",
+			"name": "tag update",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"name": "Design",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "b0500000-0000-4000-8000-000000000015",
+			"name": "task create",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"taskId": "64e5f6a7b8c9d0e1f2a3b4c5"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "b0500000-0000-4000-8000-000000000016",
+			"name": "task delete",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"taskId": "64e5f6a7b8c9d0e1f2a3b4c5"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "b0500000-0000-4000-8000-000000000017",
+			"name": "task get",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "b0500000-0000-4000-8000-000000000018",
+			"name": "task getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"projectId": "64c3d4e5f6a7b8c9d0e1f2a3",
+				"taskId": "64e5f6a7b8c9d0e1f2a3b4c5",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "b0500000-0000-4000-8000-000000000019",
+			"name": "task update",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "create",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"start": "2024-05-01T09:00:00",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "b0500000-0000-4000-8000-000000000020",
+			"name": "timeEntry create",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "delete",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"timeEntryId": "64f6a7b8c9d0e1f2a3b4c5d6"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "b0500000-0000-4000-8000-000000000021",
+			"name": "timeEntry delete",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "get",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"timeEntryId": "64f6a7b8c9d0e1f2a3b4c5d6"
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "b0500000-0000-4000-8000-000000000022",
+			"name": "timeEntry get",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "update",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"timeEntryId": "64f6a7b8c9d0e1f2a3b4c5d6",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 4400],
+			"id": "b0500000-0000-4000-8000-000000000023",
+			"name": "timeEntry update",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"workspaceId": "64a1b2c3d4e5f6a7b8c9d0e1",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 4600],
+			"id": "b0500000-0000-4000-8000-000000000024",
+			"name": "user getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workspace",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.clockify",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"id": "b0500000-0000-4000-8000-000000000025",
+			"name": "workspace getAll",
+			"credentials": {
+				"clockifyApi": {
+					"id": "credId",
+					"name": "Clockify account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"client create": [
+			{
+				"json": {
+					"id": "64b2c3d4e5f6a7b8c9d0e1f2"
+				}
+			}
+		],
+		"client delete": [
+			{
+				"json": {
+					"id": "64b2c3d4e5f6a7b8c9d0e1f2"
+				}
+			}
+		],
+		"client update": [
+			{
+				"json": {
+					"id": "64b2c3d4e5f6a7b8c9d0e1f2"
+				}
+			}
+		],
+		"client get": [
+			{
+				"json": {
+					"id": "64b2c3d4e5f6a7b8c9d0e1f2"
+				}
+			}
+		],
+		"client getAll": [
+			{
+				"json": {
+					"id": "64b2c3d4e5f6a7b8c9d0e1f2"
+				}
+			}
+		],
+		"project create": [
+			{
+				"json": {
+					"id": "64c3d4e5f6a7b8c9d0e1f2a3"
+				}
+			}
+		],
+		"project delete": [
+			{
+				"json": {
+					"id": "64c3d4e5f6a7b8c9d0e1f2a3"
+				}
+			}
+		],
+		"project get": [
+			{
+				"json": {
+					"id": "64c3d4e5f6a7b8c9d0e1f2a3"
+				}
+			}
+		],
+		"project getAll": [
+			{
+				"json": {
+					"id": "64c3d4e5f6a7b8c9d0e1f2a3"
+				}
+			}
+		],
+		"project update": [
+			{
+				"json": {
+					"id": "64c3d4e5f6a7b8c9d0e1f2a3"
+				}
+			}
+		],
+		"tag create": [
+			{
+				"json": {
+					"id": "64d4e5f6a7b8c9d0e1f2a3b4"
+				}
+			}
+		],
+		"tag delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"tag getAll": [
+			{
+				"json": {
+					"id": "64d4e5f6a7b8c9d0e1f2a3b4"
+				}
+			}
+		],
+		"tag update": [
+			{
+				"json": {
+					"id": "64d4e5f6a7b8c9d0e1f2a3b4"
+				}
+			}
+		],
+		"task create": [
+			{
+				"json": {
+					"id": "64e5f6a7b8c9d0e1f2a3b4c5"
+				}
+			}
+		],
+		"task delete": [
+			{
+				"json": {
+					"id": "64e5f6a7b8c9d0e1f2a3b4c5"
+				}
+			}
+		],
+		"task get": [
+			{
+				"json": {
+					"id": "64e5f6a7b8c9d0e1f2a3b4c5"
+				}
+			}
+		],
+		"task getAll": [
+			{
+				"json": {
+					"id": "64e5f6a7b8c9d0e1f2a3b4c5"
+				}
+			}
+		],
+		"task update": [
+			{
+				"json": {
+					"id": "64e5f6a7b8c9d0e1f2a3b4c5"
+				}
+			}
+		],
+		"timeEntry create": [
+			{
+				"json": {
+					"id": "64f6a7b8c9d0e1f2a3b4c5d6"
+				}
+			}
+		],
+		"timeEntry delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"timeEntry get": [
+			{
+				"json": {
+					"id": "64f6a7b8c9d0e1f2a3b4c5d6"
+				}
+			}
+		],
+		"timeEntry update": [
+			{
+				"json": {
+					"id": "64f6a7b8c9d0e1f2a3b4c5d6"
+				}
+			}
+		],
+		"user getAll": [
+			{
+				"json": {
+					"id": "6501a2b3c4d5e6f7a8b9c0d1"
+				}
+			}
+		],
+		"workspace getAll": [
+			{
+				"json": {
+					"id": "64a1b2c3d4e5f6a7b8c9d0e1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "client create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "client delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "client update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "client get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "client getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "project create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "project delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "project get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "project getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "project update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "tag create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "tag delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "tag getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "tag update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "user getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "workspace getAll",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -3,6 +3,7 @@ import { createVectorStoreNode, proxyFetch } from '@n8n/ai-utilities';
 import {
 	assertParamIsArray,
 	assertParamIsString,
+	requestUrl,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
@@ -240,7 +241,7 @@ async function searchIndexes(
 
 	const endpoints = await listDatabricksPages(
 		this,
-		`${host}/api/2.0/vector-search/endpoints`,
+		requestUrl`${host}/api/2.0/vector-search/endpoints`,
 		{},
 		(page: ListPage) => page.endpoints,
 	);
@@ -249,7 +250,7 @@ async function searchIndexes(
 			endpoints.map(async (endpoint) => {
 				const indexes = await listDatabricksPages(
 					this,
-					`${host}/api/2.0/vector-search/indexes`,
+					requestUrl`${host}/api/2.0/vector-search/indexes`,
 					{ endpoint_name: endpoint.name },
 					(page: ListPage) => page.vector_indexes,
 				);

@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -54,7 +55,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items`,
+			requestPath`/v1.0/sites/${SITE_ID}/drive/items`,
 			{},
 			{
 				$select: 'id,name,folder',
@@ -102,7 +103,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		const result = await getFolders.call(ctx, 'archive');
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(result.results).toEqual([{ name: 'Archive', value: 'folder-2' }]);
 		expect(result.paginationToken).toBeUndefined();
 	});
@@ -147,7 +148,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		const result = await getFolders.call(ctx);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(result.results).toEqual([{ name: 'Reports', value: 'folder-1' }]);
 	});
 
@@ -167,7 +168,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 	it('resolves a pasted site URL before listing folders', async () => {
 		setParams({ site: { mode: 'url', value: 'https://contoso.sharepoint.com/sites/mysite' } });
 		apiRequest.mockImplementation(async (_method: string, resource: string) =>
-			resource.startsWith('/v1.0/sites/contoso.sharepoint.com:')
+			String(resource).startsWith('/v1.0/sites/contoso.sharepoint.com:')
 				? { id: SITE_ID }
 				: { value: [{ id: 'folder-1', name: 'Reports', folder: {} }] },
 		);
@@ -176,7 +177,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/mysite',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/mysite' }),
 			{},
 			{ $select: 'id' },
 		);
@@ -203,7 +204,7 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		apiRequest.mockResolvedValueOnce({ value: [{ id: 'folder-2', name: 'Archive', folder: {} }] });
 		const secondPage = await getFolders.call(ctx, undefined, nextLink);
 
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(secondPage.results).toEqual([{ name: 'Archive', value: 'folder-2' }]);
 		expect(secondPage.paginationToken).toBeUndefined();
 	});

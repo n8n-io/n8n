@@ -1,5 +1,5 @@
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { JOB_RUN_DEFAULT_TIMEOUT_SECONDS } from '../../constants';
@@ -51,16 +51,20 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 	}
 
-	const runReference: DatabricksRunNowResponse = await databricksApiRequest(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.2/jobs/run-now`,
-		body: {
-			job_id: jobId,
-			...(Object.keys(jobParameters).length > 0 && { job_parameters: jobParameters }),
+	const runReference: DatabricksRunNowResponse = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.2/jobs/run-now`,
+		{
+			method: 'POST',
+			body: {
+				job_id: jobId,
+				...(Object.keys(jobParameters).length > 0 && { job_parameters: jobParameters }),
+			},
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
 		},
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	});
+	);
 
 	if (!waitForCompletion) {
 		return [{ json: runReference, pairedItem: { item: i } }];
@@ -69,9 +73,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const deadline = Date.now() + timeoutSeconds * 1000;
 	const abortSignal = this.getExecutionCancelSignal();
 	const fetchRun = async (): Promise<DatabricksJobRun> =>
-		await databricksApiRequest(this, credentialType, {
+		await databricksApiRequest(this, credentialType, requestUrl`${host}/api/2.2/jobs/runs/get`, {
 			method: 'GET',
-			url: `${host}/api/2.2/jobs/runs/get`,
 			qs: { run_id: runReference.run_id },
 			headers: { Accept: 'application/json' },
 			json: true,

@@ -4,7 +4,7 @@ This is an n8n community node. It lets you use _app/service name_ in your n8n wo
 
 _App/service name_ is _one or two sentences describing the service this node integrates with_.
 
-[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/n8n-community-license/) workflow automation platform.
 
 [Installation](#installation)
 [Operations](#operations)
@@ -27,6 +27,8 @@ _List the operations supported by your node._
 _If users need to authenticate with the app/service, provide details here. You should include prerequisites (such as signing up with the service), available authentication methods, and how to set them up._
 
 ## Compatibility
+
+This node needs n8n 2.46.1 or later.
 
 _State the minimum n8n version, as well as which versions you test against. You can also include any known version incompatibility issues._
 

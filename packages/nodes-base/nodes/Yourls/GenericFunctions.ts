@@ -5,8 +5,9 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export async function yourlsApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -20,11 +21,11 @@ export async function yourlsApiRequest(
 	qs.signature = credentials.signature as string;
 	qs.format = 'json';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `${credentials.url}/yourls-api.php`,
+		uri: requestUrl`${credentials.url}/yourls-api.php`,
 		json: true,
 	};
 	try {

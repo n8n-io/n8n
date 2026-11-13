@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { openThesaurusApiRequest } from './GenericFunctions';
 
@@ -160,7 +160,7 @@ export class OpenThesaurus implements INodeType {
 					responseData = await openThesaurusApiRequest.call(
 						this,
 						'GET',
-						'/synonyme/search',
+						requestPath`/synonyme/search`,
 						{},
 						qs,
 					);

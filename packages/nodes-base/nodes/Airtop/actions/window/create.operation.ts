@@ -4,7 +4,7 @@ import type {
 	IDataObject,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	validateAirtopApiResponse,
@@ -153,7 +153,7 @@ export async function execute(
 		...additionalFields,
 	};
 
-	response = await apiRequest.call(this, 'POST', `/sessions/${sessionId}/windows`, body);
+	response = await apiRequest.call(this, 'POST', requestPath`/sessions/${sessionId}/windows`, body);
 
 	if (!response?.data?.windowId) {
 		throw new NodeApiError(this.getNode(), {
@@ -169,7 +169,7 @@ export async function execute(
 		response = await apiRequest.call(
 			this,
 			'GET',
-			`/sessions/${sessionId}/windows/${windowId}`,
+			requestPath`/sessions/${sessionId}/windows/${windowId}`,
 			undefined,
 			{
 				...(includeNavigationBar && { includeNavigationBar: true }),

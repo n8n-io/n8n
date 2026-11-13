@@ -12,7 +12,7 @@ import type {
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, randomString } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, randomString, requestPath } from 'n8n-workflow';
 
 import type {
 	ITypeformAnswer,
@@ -163,7 +163,7 @@ export class TypeformTrigger implements INodeType {
 
 				const formId = this.getNodeParameter('formId') as string;
 
-				const endpoint = `forms/${formId}/webhooks`;
+				const endpoint = requestPath`forms/${formId}/webhooks`;
 
 				const { items } = await apiRequest.call(this, 'GET', endpoint, {});
 
@@ -182,7 +182,7 @@ export class TypeformTrigger implements INodeType {
 				const formId = this.getNodeParameter('formId') as string;
 				const webhookId = 'n8n-' + randomString(10).toLowerCase();
 
-				const endpoint = `forms/${formId}/webhooks/${webhookId}`;
+				const endpoint = requestPath`forms/${formId}/webhooks/${webhookId}`;
 
 				// Generate a secret for webhook signature verification
 				const webhookSecret = randomBytes(32).toString('hex');
@@ -208,7 +208,7 @@ export class TypeformTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `forms/${formId}/webhooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`forms/${formId}/webhooks/${webhookData.webhookId}`;
 
 					try {
 						const body = {};

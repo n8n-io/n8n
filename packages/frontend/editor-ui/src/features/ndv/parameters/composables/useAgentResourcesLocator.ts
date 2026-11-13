@@ -6,7 +6,7 @@ import {
 	getAgent,
 	type ListAgentsOptions,
 } from '@/features/agents/composables/useAgentApi';
-import type { AgentResource } from '@/features/agents/types';
+import { toAgentListItem, type AgentListItem } from '@/features/agents/agent.types';
 
 const PAGE_SIZE = 40;
 
@@ -46,19 +46,19 @@ export function useAgentResourcesLocator(
 
 	const hasMoreAgentsToLoad = computed(() => totalCount.value > agentsResources.value.length);
 
-	function constructName(agent: AgentResource) {
+	function constructName(agent: AgentListItem) {
 		// Prefix the project name when the agent lives outside the personal project
 		const projectName = resolveProjectName(agent.projectId);
 		return projectName ? `${projectName} — ${agent.name}` : agent.name;
 	}
 
-	function agentToResourceMapper(agent: AgentResource): AgentResourceOption {
+	function agentToResourceMapper(agent: AgentListItem): AgentResourceOption {
 		const name = constructName(agent);
 		nameCache.set(agent.id, name);
 		return {
 			name,
 			value: agent.id,
-			personalisation: agent.schema?.personalisation ?? null,
+			personalisation: agent.personalisation ?? null,
 			...(agent.isArchived ? { isArchived: true } : {}),
 		};
 	}
@@ -150,7 +150,7 @@ export function useAgentResourcesLocator(
 		const generation = ++refreshGeneration;
 		try {
 			const agent = await getAgent(rootStore.restApiContext, projectId.value, id);
-			const option = agentToResourceMapper(agent);
+			const option = agentToResourceMapper(toAgentListItem(agent));
 			// A newer refresh owns the archived selection.
 			if (generation === refreshGeneration) {
 				archivedSelection.value = option.isArchived ? option : null;

@@ -1,5 +1,5 @@
 import type { IExecuteData, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import { mock, mockDeep, mockReset } from 'vitest-mock-extended';
 
 import { execute } from './message.operation';
@@ -56,7 +56,7 @@ describe('Google Gemini message model identity', () => {
 			'googlePalmApi',
 			expect.objectContaining({
 				method: 'POST',
-				url: 'https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent',
+				url: requestUrl`https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent`,
 				body: expect.objectContaining({
 					contents: [{ role: 'user', parts: [{ text: 'Hello, world!' }] }],
 				}),

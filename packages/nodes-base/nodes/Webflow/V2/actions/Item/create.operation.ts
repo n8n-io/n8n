@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { webflowApiRequest } from '../../../GenericFunctions';
@@ -115,7 +116,9 @@ export async function execute(
 			responseData = await webflowApiRequest.call(
 				this,
 				'POST',
-				`/collections/${collectionId}/items${live ? '/live' : ''}`,
+				live
+					? requestPath`/collections/${collectionId}/items/live`
+					: requestPath`/collections/${collectionId}/items`,
 				body,
 			);
 

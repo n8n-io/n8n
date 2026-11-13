@@ -6,11 +6,10 @@ import {
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
 import * as api from '../self-healing.api';
-import { useSettingsStore } from '@n8n/stores/settings.store';
-
 import { useSelfHealingStore } from '../self-healing.store';
 import SelfHealingConfigView from './SelfHealingConfigView.vue';
 

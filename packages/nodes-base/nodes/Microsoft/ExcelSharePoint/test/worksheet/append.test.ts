@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,8 +18,8 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
-const SHEET_PATH = `${WORKBOOK_ROOT}/workbook/worksheets/Sheet1`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
+const SHEET_PATH = requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1`;
 
 describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 	let node: MicrosoftExcelSharePoint;
@@ -70,9 +71,14 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A3:B3')`, {
-			values: [['bob', 25]],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A3:B3')`,
+			{
+				values: [['bob', 25]],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ name: 'bob', age: 25 }]);
 	});
 
@@ -98,9 +104,14 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A3:B3')`, {
-			values: [['carl', '40']],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A3:B3')`,
+			{
+				values: [['carl', '40']],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ name: 'carl', age: '40' }]);
 	});
 
@@ -132,12 +143,17 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A3:B4')`, {
-			values: [
-				['x', 'y'],
-				['z', 'w'],
-			],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A3:B4')`,
+			{
+				values: [
+					['x', 'y'],
+					['z', 'w'],
+				],
+			},
+		);
 		expect(result[0][0].json).toEqual({
 			raw: {
 				values: [
@@ -172,12 +188,17 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A1:B2')`, {
-			values: [
-				['name', 'age'],
-				['dee', 19],
-			],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A1:B2')`,
+			{
+				values: [
+					['name', 'age'],
+					['dee', 19],
+				],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ name: 'dee', age: 19 }]);
 	});
 
@@ -202,12 +223,17 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A1:B2')`, {
-			values: [
-				['city', 'name'],
-				['Berlin', 'Sara'],
-			],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A1:B2')`,
+			{
+				values: [
+					['city', 'name'],
+					['Berlin', 'Sara'],
+				],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ city: 'Berlin', name: 'Sara' }]);
 	});
 
@@ -221,9 +247,14 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 		const result = await node.execute.call(ctx);
 
 		// Must land on row 2, not overwrite the existing header at A1
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A2:A2')`, {
-			values: [['hello']],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A2:A2')`,
+			{
+				values: [['hello']],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ Notes: 'hello' }]);
 	});
 
@@ -246,13 +277,18 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 		const result = await node.execute.call(ctx);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A1:B3')`, {
-			values: [
-				['name', 'age'],
-				['bob', 25],
-				['carl', 40],
-			],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A1:B3')`,
+			{
+				values: [
+					['name', 'age'],
+					['bob', 25],
+					['carl', 40],
+				],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([
 			{ name: 'bob', age: 25 },
 			{ name: 'carl', age: 40 },
@@ -292,12 +328,17 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 
 		// One GET, one PATCH, regardless of item count
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'PATCH', `${SHEET_PATH}/range(address='A3:B4')`, {
-			values: [
-				['bob', 25],
-				['carl', 40],
-			],
-		});
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'PATCH',
+			requestPath`${SHEET_PATH}/range(address='A3:B4')`,
+			{
+				values: [
+					['bob', 25],
+					['carl', 40],
+				],
+			},
+		);
 		expect(result[0].map((item) => item.json)).toEqual([
 			{ name: 'bob', age: 25 },
 			{ name: 'carl', age: 40 },

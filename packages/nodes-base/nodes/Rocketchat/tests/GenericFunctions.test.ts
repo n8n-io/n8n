@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import {
 	rocketchatApiRequest,
@@ -65,7 +66,7 @@ describe('RocketChat > GenericFunctions', () => {
 
 			const result = await rocketchatApiRequest.call(
 				context as unknown as IExecuteFunctions,
-				'/chat',
+				requestPath`/chat`,
 				'POST',
 				'postMessage',
 				{ text: 'hello' },
@@ -79,11 +80,31 @@ describe('RocketChat > GenericFunctions', () => {
 				'rocketchatApi',
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://chat.example.com/api/v1/chat.postMessage',
+					uri: requestUrl`https://chat.example.com/api/v1/chat.postMessage`,
 					body: { text: 'hello' },
 					qs: { foo: 'bar' },
 					headers: { header: 'x' },
 					json: true,
+				}),
+			);
+		});
+
+		it('should encode the operation in the path', async () => {
+			const { context, requestWithAuthentication } = createContext();
+
+			requestWithAuthentication.mockResolvedValueOnce({ ok: true });
+
+			await rocketchatApiRequest.call(
+				context as unknown as IExecuteFunctions,
+				requestPath`/chat`,
+				'GET',
+				'getMessage/x?y=1',
+			);
+
+			expect(requestWithAuthentication).toHaveBeenCalledWith(
+				'rocketchatApi',
+				expect.objectContaining({
+					uri: requestUrl`https://chat.example.com/api/v1/chat.getMessage%2Fx%3Fy=1`,
 				}),
 			);
 		});
@@ -95,7 +116,7 @@ describe('RocketChat > GenericFunctions', () => {
 
 			await rocketchatApiRequest.call(
 				context as unknown as IExecuteFunctions,
-				'/subscriptions',
+				requestPath`/subscriptions`,
 				'GET',
 				'get',
 				{},
@@ -114,7 +135,7 @@ describe('RocketChat > GenericFunctions', () => {
 			await expect(
 				rocketchatApiRequest.call(
 					context as unknown as IExecuteFunctions,
-					'/chat',
+					requestPath`/chat`,
 					'POST',
 					'postMessage',
 					{},
@@ -155,7 +176,7 @@ describe('RocketChat > GenericFunctions', () => {
 			const result = await rocketchatApiRequestAllItems.call(
 				context as unknown as IExecuteFunctions,
 				'messages',
-				'/dm',
+				requestPath`/dm`,
 				'GET',
 				'messages',
 				{},
@@ -191,7 +212,7 @@ describe('RocketChat > GenericFunctions', () => {
 			await rocketchatApiRequestAllItems.call(
 				context as unknown as IExecuteFunctions,
 				'messages',
-				'/dm',
+				requestPath`/dm`,
 				'GET',
 				'messages',
 				{},
