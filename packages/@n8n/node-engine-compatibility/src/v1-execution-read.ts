@@ -5,15 +5,7 @@
  * iteration.
  */
 
-import { deriveLoops } from '@n8n/engine';
-import type {
-	GraphEdge,
-	StepDetail,
-	StepError,
-	StepStatus,
-	WorkflowGraph,
-	WorkflowLoop,
-} from '@n8n/engine';
+import type { StepDetail, StepError, StepStatus, WorkflowGraph } from '@n8n/engine';
 import type {
 	ExecutionError,
 	ExecutionStatus,
@@ -27,7 +19,7 @@ import { createRunExecutionData } from 'n8n-workflow';
 import { MAIN_CONNECTION_TYPE } from './constants';
 import { fromStepInputs } from './io';
 import { fromV1ErrorDetails } from './v1-error-details';
-import { emptyRun, forwardEdgesByTarget, nodeNamesById, toSourceSlots } from './v1-run-data';
+import { emptyRun, toSourceLineage, toSourcesAt, type SourceLineage } from './v1-run-data';
 
 /**
  * Only a step that ran gets an entry. v1 reports a node that did not run by
@@ -58,15 +50,6 @@ interface StepRun {
 	step: StepDetail;
 	nodeName: string;
 	taskData: ITaskData;
-}
-
-/** What a step's input lineage needs, prepared once for the whole execution. */
-interface Lineage {
-	namesById: Map<string, string>;
-	/** Forward edges only, by target node. */
-	edgesByTarget: Map<string, GraphEdge[]>;
-	loops: WorkflowLoop[];
-	lastIterationByNodeId: Map<string, number>;
 }
 
 /** @param pinData The pin data the run used. The canvas marks those nodes as pinned, not as executed. */
@@ -119,14 +102,19 @@ function toStepRuns(graph: WorkflowGraph, steps: StepDetail[]): StepRun[] {
 		runs.push({
 			step,
 			nodeName,
-			taskData: toTaskData(step, executionStatus, runs.length, toSources(lineage, step)),
+			taskData: toTaskData(
+				step,
+				executionStatus,
+				runs.length,
+				toSourcesAt(lineage, step.nodeId, step.iteration),
+			),
 		});
 	}
 
 	return runs;
 }
 
-function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
+function toLineage(graph: WorkflowGraph, steps: StepDetail[]): SourceLineage {
 	const lastIterationByNodeId = new Map<string, number>();
 	for (const step of steps) {
 		// Only a reported pass counts. A pass v1 never hears about, such as a body
@@ -138,34 +126,7 @@ function toLineage(graph: WorkflowGraph, steps: StepDetail[]): Lineage {
 		}
 	}
 
-	return {
-		namesById: nodeNamesById(graph),
-		edgesByTarget: forwardEdgesByTarget(graph),
-		loops: deriveLoops(graph),
-		lastIterationByNodeId,
-	};
-}
-
-/** Unlike the execute path, a read reports which pass of the predecessor fed each one. */
-function toSources(lineage: Lineage, step: StepDetail): Array<ISourceData | null> {
-	return toSourceSlots(lineage.edgesByTarget.get(step.nodeId) ?? [], lineage.namesById, (edge) =>
-		toPreviousNodeRun(lineage, edge, step.iteration),
-	);
-}
-
-/**
- * Which run of the predecessor fed this pass. The cases follow `classifyEdge`
- * in the engine's `iteration-mapping`: an edge inside one loop keeps the pass,
- * an edge leaving a loop reads its last pass, and anything else reads run 0.
- */
-function toPreviousNodeRun(lineage: Lineage, edge: GraphEdge, iteration: number): number {
-	const sourceLoop = lineage.loops.find((loop) => loop.memberIds.has(edge.from));
-	// `plain` or `entry`: the predecessor ran once.
-	if (!sourceLoop) return 0;
-	// `intra`: both ends share a pass.
-	if (sourceLoop.memberIds.has(edge.to)) return iteration;
-	// `exit`: the predecessor's terminal pass.
-	return lineage.lastIterationByNodeId.get(edge.from) ?? 0;
+	return toSourceLineage(graph, lastIterationByNodeId);
 }
 
 function toTaskData(
