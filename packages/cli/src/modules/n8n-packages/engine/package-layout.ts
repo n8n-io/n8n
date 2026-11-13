@@ -55,6 +55,9 @@ export function placeCredentialData({
 		return {
 			...requirement,
 			...(packageData !== undefined ? { packageData } : {}),
+			...(credential?.description !== undefined
+				? { packageDescription: credential.description }
+				: {}),
 			...(credential?.dataIsComplete !== undefined
 				? { packageDataIsComplete: credential.dataIsComplete }
 				: {}),
