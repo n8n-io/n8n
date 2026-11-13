@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-environment-lock-multimain.spec.ts
+  s_3f0be57a237a94::t_2dcf4bfd8ad8d8 1-43,46-58,129,151,159,166-167
+  s_3f0be57a237a94::t_00286828892acc 44-45
+  s_3f0be57a237a94::t_00db987dbdbf61 59-128,130-150,152-158,160-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2026895db8f48704893c56b51872c0aca582f530",
+  "prompts": {},
+  "sessions": {
+    "s_3f0be57a237a94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a69826ca-27b9-4b9e-8a82-fd3ff131c8ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
