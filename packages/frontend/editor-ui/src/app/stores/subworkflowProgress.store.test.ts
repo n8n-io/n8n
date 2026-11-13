@@ -23,7 +23,6 @@ describe('subworkflowProgress.store', () => {
 		store.updateProgress(snapshot('Sub', 'c1', 2));
 
 		expect(store.getFor('p1', 'Sub')).toEqual({
-			executionId: 'c1',
 			currentNodeName: 'Node 2',
 			currentNodeIndex: 2,
 			totalNodes: 5,
@@ -34,7 +33,7 @@ describe('subworkflowProgress.store', () => {
 		store.updateProgress(snapshot('Sub', 'c1', 4));
 		store.updateProgress(snapshot('Sub', 'c2', 1));
 
-		expect(store.getFor('p1', 'Sub')).toMatchObject({ executionId: 'c2', currentNodeIndex: 1 });
+		expect(store.getFor('p1', 'Sub')).toMatchObject({ currentNodeIndex: 1 });
 	});
 
 	it('clears progress for one parent node only', () => {

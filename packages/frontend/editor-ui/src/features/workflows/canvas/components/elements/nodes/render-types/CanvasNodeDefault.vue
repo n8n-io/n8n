@@ -98,7 +98,7 @@ const classes = computed(() => {
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
-		[$style.progress]: running && Boolean(subworkflowProgress.value),
+		[$style.progress]: Boolean(subworkflowProgress.value),
 		[$style.waiting]: waiting,
 		[$style.pinned]: hasSubstitutedOutput.value,
 		[$style.configurable]: renderOptions.value.configurable,
@@ -150,10 +150,7 @@ const subworkflowProgressStyle = computed(() => {
 	const progress = subworkflowProgress.value;
 	if (!progress || progress.totalNodes <= 0) return {};
 
-	const fraction = Math.min(
-		Math.max(progress.currentNodeIndex / progress.totalNodes, 0),
-		MAX_PROGRESS_FRACTION,
-	);
+	const fraction = Math.min(progress.currentNodeIndex / progress.totalNodes, MAX_PROGRESS_FRACTION);
 	return { '--node--progress--fraction': `${(fraction * 100).toFixed(2)}%` };
 });
 
@@ -286,7 +283,7 @@ function onActivate(event: MouseEvent) {
 			<div
 				v-else-if="displaySubtitle && !isNotInstalledCommunityNode"
 				:class="$style.subtitle"
-				:title="displaySubtitle"
+				:title="subworkflowProgress ? displaySubtitle : undefined"
 			>
 				{{ displaySubtitle }}
 			</div>

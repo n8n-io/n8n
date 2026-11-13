@@ -21,7 +21,6 @@ describe('subworkflowNodeProgress', () => {
 		});
 
 		expect(useSubworkflowProgressStore().getFor('p1', 'Sub')).toEqual({
-			executionId: 'c1',
 			currentNodeName: 'Wait',
 			currentNodeIndex: 3,
 			totalNodes: 7,

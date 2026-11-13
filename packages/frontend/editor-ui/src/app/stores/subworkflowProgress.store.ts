@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { shallowReactive } from 'vue';
 import { STORES } from '@n8n/stores';
+import type { SubworkflowNodeProgress } from '@n8n/api-types/push/execution';
 
-export type SubworkflowProgress = {
-	executionId: string;
-	currentNodeName: string;
-	currentNodeIndex: number;
-	totalNodes: number;
-};
+export type SubworkflowProgress = Pick<
+	SubworkflowNodeProgress['data'],
+	'currentNodeName' | 'currentNodeIndex' | 'totalNodes'
+>;
 
 function makeKey(parentExecutionId: string, parentNodeName: string): string {
 	return `${parentExecutionId}::${parentNodeName}`;
@@ -18,50 +17,40 @@ function makeKey(parentExecutionId: string, parentNodeName: string): string {
  * several Execute Sub-workflow nodes can show progress at once.
  */
 export const useSubworkflowProgressStore = defineStore(STORES.SUBWORKFLOW_PROGRESS, () => {
-	const progressByKey = ref(new Map<string, SubworkflowProgress>());
+	// Mutated in place, so a reader only re-runs when its own key changes.
+	const progressByKey = shallowReactive(new Map<string, SubworkflowProgress>());
 
 	/** The newest snapshot wins, also when it comes from a different child of the same node. */
-	function updateProgress(payload: {
-		parentExecutionId: string;
-		parentNodeName: string;
-		executionId: string;
-		currentNodeName: string;
-		currentNodeIndex: number;
-		totalNodes: number;
-	}) {
-		const key = makeKey(payload.parentExecutionId, payload.parentNodeName);
-		const next = new Map(progressByKey.value);
-		next.set(key, {
-			executionId: payload.executionId,
-			currentNodeName: payload.currentNodeName,
-			currentNodeIndex: payload.currentNodeIndex,
-			totalNodes: payload.totalNodes,
+	function updateProgress({
+		parentExecutionId,
+		parentNodeName,
+		currentNodeName,
+		currentNodeIndex,
+		totalNodes,
+	}: SubworkflowNodeProgress['data']) {
+		progressByKey.set(makeKey(parentExecutionId, parentNodeName), {
+			currentNodeName,
+			currentNodeIndex,
+			totalNodes,
 		});
-		progressByKey.value = next;
 	}
 
 	function clear(parentExecutionId: string, parentNodeName: string) {
-		const key = makeKey(parentExecutionId, parentNodeName);
-		if (!progressByKey.value.has(key)) return;
-		const next = new Map(progressByKey.value);
-		next.delete(key);
-		progressByKey.value = next;
+		progressByKey.delete(makeKey(parentExecutionId, parentNodeName));
 	}
 
 	function getFor(
 		parentExecutionId: string,
 		parentNodeName: string,
 	): SubworkflowProgress | undefined {
-		return progressByKey.value.get(makeKey(parentExecutionId, parentNodeName));
+		return progressByKey.get(makeKey(parentExecutionId, parentNodeName));
 	}
 
 	function reset() {
-		if (progressByKey.value.size === 0) return;
-		progressByKey.value = new Map();
+		progressByKey.clear();
 	}
 
 	return {
-		progressByKey,
 		updateProgress,
 		clear,
 		getFor,

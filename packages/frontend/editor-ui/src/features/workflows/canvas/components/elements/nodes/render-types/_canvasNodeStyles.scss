@@ -54,25 +54,21 @@
 	--canvas-node--border-color: transparent;
 }
 
-$status-running-color: rgba(255, 109, 90, 1);
-
-$status-shimmer-gradient: conic-gradient(
-	from var(--node--gradient-angle),
-	$status-running-color,
-	$status-running-color 20%,
-	rgba(255, 109, 90, 0.2) 35%,
-	rgba(255, 109, 90, 0.2) 65%,
-	$status-running-color 90%,
-	$status-running-color
-);
-
 @mixin status-animated-after {
 	content: '';
 	position: absolute;
 	inset: -3px;
 	border-radius: 10px;
 	z-index: -1;
-	background: $status-shimmer-gradient;
+	background: conic-gradient(
+		from var(--node--gradient-angle),
+		rgba(255, 109, 90, 1),
+		rgba(255, 109, 90, 1) 20%,
+		rgba(255, 109, 90, 0.2) 35%,
+		rgba(255, 109, 90, 0.2) 65%,
+		rgba(255, 109, 90, 1) 90%,
+		rgba(255, 109, 90, 1)
+	);
 }
 
 // Own layer, not the running halo's ring: sharing it hid the shimmer behind the arc.

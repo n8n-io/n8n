@@ -272,15 +272,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const node = getNode(nodeId);
 		if (!node) return undefined;
 
-		const progress = subworkflowProgressStore.getFor(activeExecutionId, node.name);
-		if (!progress) return undefined;
-
-		// Only rendered fields, so a repeat compares equal and skips a canvas re-map.
-		return {
-			currentNodeName: progress.currentNodeName,
-			currentNodeIndex: progress.currentNodeIndex,
-			totalNodes: progress.totalNodes,
-		};
+		return subworkflowProgressStore.getFor(activeExecutionId, node.name);
 	}
 
 	// --- renderTypeByNodeId --------------------------------------------------

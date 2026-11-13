@@ -133,8 +133,8 @@ const restrictionTitle = computed(() =>
 );
 // No denominator: the total is only an estimate, the count is exact.
 const subworkflowStepLabel = computed(() => {
-	const currentNodeIndex = subworkflowProgress.value?.currentNodeIndex ?? 0;
-	if (currentNodeIndex <= 0) return undefined;
+	const currentNodeIndex = subworkflowProgress.value?.currentNodeIndex;
+	if (!currentNodeIndex) return undefined;
 
 	return i18n.baseText('node.subworkflow.progress.step', {
 		interpolate: { current: String(currentNodeIndex) },
