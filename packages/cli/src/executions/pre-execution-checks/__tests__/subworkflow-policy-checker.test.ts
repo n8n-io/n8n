@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, WorkflowEntity } from '@n8n/db';
+import { Person, type Project, type WorkflowEntity } from '@n8n/db';
 import type { INode, Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
