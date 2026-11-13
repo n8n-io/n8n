@@ -12,15 +12,16 @@ import { googleApiCredentials } from '../../../BigQuery/test/v2/node/credentials
 describe('Google Cloud Storage > Object > Workflows', () => {
 	const storagePath = mkdtempSync(path.join(tmpdir(), 'n8n-gcs-'));
 	const mockApi = nock('https://storage.googleapis.com');
+	const testHarness = new NodeTestHarness();
+	let binaryDataService: BinaryDataService;
 
 	beforeAll(async () => {
-		const binaryDataService = new BinaryDataService(
+		binaryDataService = new BinaryDataService(
 			mock<BinaryDataConfig>({ mode: 'filesystem', localStoragePath: storagePath }),
 			mock(),
 			mock(),
 		);
 		await binaryDataService.init();
-		Container.set(BinaryDataService, binaryDataService);
 
 		nock('https://oauth2.googleapis.com').persist().post('/token').reply(200, {
 			access_token: 'token',
@@ -43,11 +44,13 @@ describe('Google Cloud Storage > Object > Workflows', () => {
 		}
 	});
 
+	beforeEach(() => Container.set(BinaryDataService, binaryDataService));
+
 	afterAll(() => {
 		rmSync(storagePath, { recursive: true, force: true });
 	});
 
-	new NodeTestHarness().setupTests({
+	testHarness.setupTests({
 		credentials: {
 			googleApi: googleApiCredentials,
 			googleCloudStorageOAuth2Api: { oauthTokenData: { access_token: 'access-token' } },
