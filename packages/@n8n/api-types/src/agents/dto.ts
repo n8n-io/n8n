@@ -213,7 +213,7 @@ export class UpdateAgentsMcpAvailabilityDto extends Z.class({
 export const clientMintedAgentIdSchema = z.string().regex(/^[0-9A-Za-z]{16}$/);
 
 const createAgentShape = {
-	name: z.string().min(1),
+	name: z.string().trim().min(1).max(128),
 	id: clientMintedAgentIdSchema.optional(),
 	config: z.record(z.unknown()).optional(),
 	schema: AgentJsonConfigSchema.optional(),

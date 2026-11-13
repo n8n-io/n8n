@@ -172,14 +172,14 @@ describe('InstanceAiTerminalResponseGuard', () => {
 
 	it('tags the emitted error with a structured code when provided', () => {
 		const decision = guard().evaluateTerminal([runStart()], 'errored', {
-			errorMessage: "You've run out of AI credits.",
+			errorMessage: "You've run out of Assistant credits.",
 			errorCode: 'quota_exhausted',
 		});
 
 		expect(decision.action).toBe('emit');
 		expect(decision.event).toMatchObject({
 			type: 'error',
-			payload: { content: "You've run out of AI credits.", code: 'quota_exhausted' },
+			payload: { content: "You've run out of Assistant credits.", code: 'quota_exhausted' },
 		});
 	});
 

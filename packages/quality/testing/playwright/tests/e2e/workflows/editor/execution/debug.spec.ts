@@ -76,6 +76,35 @@ test.describe(
 			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
+		test('should show the structured error of a failed step, live and after import @engine:v2', async ({
+			n8n,
+		}) => {
+			// Manual Trigger -> `Error` Set node whose expression names a node that does
+			// not exist. No Code node, so the run works on both engines.
+			await n8n.start.fromImportedWorkflow('Engine_v2_run_error_details.json');
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				NOTIFICATIONS.PROBLEM_IN_NODE,
+				{ timeout: 10_000 },
+			);
+
+			// Live, from the push messages of the run.
+			await n8n.canvas.openNode('Error');
+			await expectMissingNodeError(n8n);
+			await n8n.ndv.close();
+
+			// After a reload, from the stored execution.
+			await importLastExecutionForDebugging(n8n);
+			await n8n.canvas.openNode('Error');
+			await expectMissingNodeError(n8n);
+		});
+
+		async function expectMissingNodeError(n8n: n8nPage) {
+			await expect(n8n.ndv.getNodeRunErrorMessage()).toContainText("Referenced node doesn't exist");
+			await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(
+				"The node 'Missing' doesn't exist, but it's used in an expression here.",
+			);
+		}
+
 		test('should exit debug mode after successful execution @engine:v2', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
 			await n8n.canvas.toggleNodeEnabled('Error');

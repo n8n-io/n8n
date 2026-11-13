@@ -249,6 +249,36 @@ describe('AssistantTurnTrace', () => {
 		);
 	});
 
+	it('records a host instruction as a span in the turn and counts it on the root', async () => {
+		const { context, rootRun, actorRun, startChildRun, finishRun, keepOpenUntilSettled } =
+			traceContext();
+		const trace = new AssistantTurnTrace(context, 'run-1', logger());
+		await trace.startOrchestratorRun();
+
+		const instruction = { reason: 'workflow_setup', content: 'Call setup_workflow.' };
+		trace.recordHostInstruction(instruction);
+		expect(keepOpenUntilSettled).toHaveBeenCalledTimes(1);
+		await keepOpenUntilSettled.mock.calls[0][0];
+
+		expect(startChildRun).toHaveBeenLastCalledWith(actorRun, {
+			name: 'host: workflow setup',
+			canonicalName: 'instance-ai.host_instruction',
+			runType: 'chain',
+			tags: ['host-instruction'],
+			metadata: { reason: 'workflow_setup' },
+			inputs: instruction,
+		});
+		expect(finishRun).toHaveBeenCalledWith(actorRun, { outputs: instruction });
+
+		await trace.finish({ status: 'completed' });
+		expect(finishRun).toHaveBeenCalledWith(
+			rootRun,
+			expect.objectContaining({
+				metadata: expect.objectContaining({ host_instruction_count: 1 }),
+			}),
+		);
+	});
+
 	it('marks a task card from the Assistant tools as the first visible state', async () => {
 		const { context, rootRun, finishRun } = traceContext();
 		const trace = new AssistantTurnTrace(context, 'run-1', logger());

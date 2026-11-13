@@ -21,6 +21,7 @@ import {
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
 } from '@n8n/api-types';
+import { selfHealingLaunchTelemetry } from './assistantAgent/assistantAgentThreads';
 import { ensureThread, type InstanceAiThreadLaunchInput } from './instanceAi.api';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -221,6 +222,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			...(typeof templateId === 'string' || typeof templateId === 'number'
 				? { template_id: templateId }
 				: {}),
+			...selfHealingLaunchTelemetry(launch),
 		});
 
 		const existingThread = threads.value.find((thread) => thread.id === threadId);

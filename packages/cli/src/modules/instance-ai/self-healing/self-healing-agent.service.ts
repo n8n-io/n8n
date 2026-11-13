@@ -26,6 +26,7 @@ import {
 	selfHealingOutputSchema,
 	streamAgentRun,
 	MAX_STEPS,
+	type BuilderUsageItem,
 	OutsideThreadProjectError,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
@@ -82,6 +83,8 @@ export type SelfHealingRunResult = {
 	validationError?: string;
 	error?: unknown;
 	usage: SelfHealingResultUsage;
+	/** A telemetry fact. It is not saved with the result. */
+	tokenUsage?: BuilderUsageItem[];
 	candidates?: Array<{
 		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
@@ -296,6 +299,7 @@ export class SelfHealingAgentService {
 			// Model work has stopped. The final charge must not cancel result persistence.
 			options.onFinalizing();
 			result.usage.durationSeconds = (Date.now() - startedAt) / 1000;
+			result.tokenUsage = stream?.usage?.usage;
 
 			if ('promptTokens' in result.usage) {
 				result.usage.promptTokens = stream?.usage?.promptTokens ?? null;
