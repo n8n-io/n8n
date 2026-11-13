@@ -76,7 +76,10 @@ export class ExecutionRecoveryService {
 	}
 
 	/** Returns `false` when the workflow does not exist. */
-	async autoDeactivateWorkflow(workflowId: string): Promise<boolean> {
+	async autoDeactivateWorkflow(
+		workflowId: string,
+		reason: 'crashes' | 'trigger-crashes' = 'crashes',
+	): Promise<boolean> {
 		// Get workflow to preserve existing meta
 		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
@@ -94,14 +97,17 @@ export class ExecutionRecoveryService {
 					workflowId,
 					'crash-recovery',
 				);
-				this.logger.warn(
-					`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
-				);
+				const cause =
+					reason === 'crashes'
+						? 'too many crashed executions'
+						: 'repeated crashes while its trigger was running';
+				this.logger.warn(`Autodeactivated workflow ${workflowId} due to ${cause}.`);
 
 				const recipient = await this.getAutodeactivationRecipient(workflow);
 				await this.userManagementMailer.notifyWorkflowAutodeactivated({
 					recipient,
 					workflow,
+					reason,
 				});
 
 				this.push.once('editorUiConnected', async () => {

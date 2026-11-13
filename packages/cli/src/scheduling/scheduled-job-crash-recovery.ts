@@ -56,7 +56,7 @@ export class ScheduledJobCrashRecovery {
 				'Scheduled job was in flight at each of the last crashes; deactivating its workflow',
 				{ workflowId, crashes: maxLastExecutions },
 			);
-			await this.executionRecoveryService.autoDeactivateWorkflow(workflowId);
+			await this.executionRecoveryService.autoDeactivateWorkflow(workflowId, 'trigger-crashes');
 		}
 	}
 }

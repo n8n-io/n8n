@@ -84,7 +84,10 @@ describe('ScheduledJobCrashRecovery', () => {
 		await recovery.recover();
 
 		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledTimes(1);
-		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledWith('wf-a');
+		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledWith(
+			'wf-a',
+			'trigger-crashes',
+		);
 	});
 
 	it('deactivates a workflow once when two of its jobs reached the threshold', async () => {
