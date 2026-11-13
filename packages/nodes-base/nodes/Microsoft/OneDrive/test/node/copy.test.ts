@@ -42,13 +42,13 @@ describe('Test MicrosoftOneDrive, file > copy item-id encoding', () => {
 		vi.clearAllMocks();
 	});
 
-	it('OAuth2: encodes a traversal-style item id in the copy URL path (.. escaped)', async () => {
+	it('OAuth2: encodes an item id containing a slash in the copy URL path', async () => {
 		mockExecuteFunctions.getNodeParameter.mockImplementation(((name: string) => {
 			const base: Record<string, unknown> = {
 				resource: 'file',
 				operation: 'copy',
 				authentication: 'microsoftOneDriveOAuth2Api',
-				fileId: '../secret',
+				fileId: 'a/secret',
 				additionalFields: {},
 				parentReference: {},
 			};
@@ -59,8 +59,7 @@ describe('Test MicrosoftOneDrive, file > copy item-id encoding', () => {
 
 		const [method, resource, , , , , , scopeRoot] = mockApiRequest.mock.calls[0];
 		expect(method).toBe('POST');
-		expect(resource).toBe('/drive/items/..%2Fsecret/copy');
-		// OAuth2 → no scope root threaded
+		expect(String(resource)).toBe('/items/a%2Fsecret/copy');
 		expect(scopeRoot).toBeUndefined();
 	});
 
@@ -81,6 +80,6 @@ describe('Test MicrosoftOneDrive, file > copy item-id encoding', () => {
 
 		const [, resource] = mockApiRequest.mock.calls[0];
 		// encodeURIComponent leaves `!` untouched, so common OneDrive ids are unchanged
-		expect(resource).toBe('/drive/items/170B5C65E30736A3!257/copy');
+		expect(String(resource)).toBe('/items/170B5C65E30736A3!257/copy');
 	});
 });

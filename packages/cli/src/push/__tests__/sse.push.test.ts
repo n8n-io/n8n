@@ -99,7 +99,7 @@ describe('SSEPush', () => {
 			expect(freshPush.hasPushRef(pushRef)).toBe(true);
 
 			// New connection still works
-			freshPush.sendToOne(pushMessage, pushRef);
+			freshPush.sendToOne(pushMessage, pushRef, userId);
 			expect(newConn.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
 		});
 	});
@@ -108,7 +108,7 @@ describe('SSEPush', () => {
 		beforeEach(() => vi.clearAllMocks());
 
 		it('to one connection', () => {
-			ssePush.sendToOne(pushMessage, pushRef);
+			ssePush.sendToOne(pushMessage, pushRef, userId);
 
 			expect(connection.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
 			expect(connection.res.flush).toHaveBeenCalled();
@@ -148,5 +148,39 @@ describe('SSEPush', () => {
 
 		expect(connection.res.end).toHaveBeenCalled();
 		expect(connection2.res.end).toHaveBeenCalled();
+	});
+
+	describe('when another user connects with the same push ref', () => {
+		const otherUserId = 'other-user';
+		let sharedPush: SSEPush;
+		let userConn: ReturnType<typeof createMockConnection>;
+		let otherUserConn: ReturnType<typeof createMockConnection>;
+
+		beforeEach(() => {
+			sharedPush = new SSEPush(mock(), mock());
+			userConn = createMockConnection();
+			otherUserConn = createMockConnection();
+			sharedPush.add(pushRef, userId, userConn);
+			sharedPush.add(pushRef, otherUserId, otherUserConn);
+		});
+
+		it('keeps the connection of the first user open', () => {
+			expect(userConn.res.end).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['end', 'req'],
+			['close', 'req'],
+			['finish', 'res'],
+		])(
+			'keeps the first user\'s connection on "%s" event from the other user\'s connection',
+			(event, emitterKey) => {
+				otherUserConn[emitterKey as 'req' | 'res'].emit(event);
+
+				sharedPush.sendToOne(pushMessage, pushRef, userId);
+
+				expect(userConn.res.write).toHaveBeenCalledWith(`data: ${expectedMsg}\n\n`);
+			},
+		);
 	});
 });

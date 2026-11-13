@@ -1,4 +1,9 @@
-import { jsonParse, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import {
+	jsonParse,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	requestUrl,
+} from 'n8n-workflow';
 
 import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
 
@@ -55,13 +60,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		};
 	}
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.0/vector-search/indexes/${indexName}/query`,
-		body,
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/vector-search/indexes/${indexName}/query`,
+		{
+			method: 'POST',
+			body,
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

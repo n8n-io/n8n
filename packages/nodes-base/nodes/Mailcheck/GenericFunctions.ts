@@ -6,23 +6,24 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	IWebhookFunctions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
+import { requestUrl } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('mailcheckApi');
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,
@@ -30,11 +31,10 @@ export async function mailCheckApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.mailcheck.co/v1${resource}`,
+		uri: requestUrl`https://api.mailcheck.co/v1${resource}`,
 		json: true,
 	};
 	try {
-		options = Object.assign({}, options, option);
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}

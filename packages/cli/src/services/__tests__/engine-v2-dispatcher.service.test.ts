@@ -827,6 +827,12 @@ describe('EngineV2Dispatcher', () => {
 				});
 			});
 
+			it('registers the push session with the user of the pushRef', async () => {
+				await dispatcher.start(runData({ pushRef: 'push-1', userId: 'user-1' }));
+
+				expect(pushRegistry.register.mock.calls[0][1].userId).toBe('user-1');
+			});
+
 			it('records the run before it dispatches, so no event can arrive first', async () => {
 				let registeredBeforeDispatch = false;
 				proxy.startExecution.mockImplementationOnce(async ({ executionId }) => {

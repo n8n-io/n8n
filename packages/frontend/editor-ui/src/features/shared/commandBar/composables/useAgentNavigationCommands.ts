@@ -82,8 +82,8 @@ export function useAgentNavigationCommands(options: {
 	}: CommandBarSearchRequest): Promise<CommandBarSearchResult> {
 		const trimmed = query.trim().slice(0, AGENT_N8N_CHAT_SEARCH_MAX_LENGTH);
 		const { count, data } = await listAgentsPageGlobal(rootStore.restApiContext, {
-			skip: offset,
-			take: limit,
+			offset,
+			limit,
 			sortBy: 'updatedAt:desc',
 			...(trimmed ? { filter: { query: trimmed } } : {}),
 		});

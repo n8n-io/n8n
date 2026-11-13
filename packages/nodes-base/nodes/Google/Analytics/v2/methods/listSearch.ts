@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { sortLoadOptions } from '../helpers/utils';
 import { googleApiRequest } from '../transport';
@@ -15,20 +16,20 @@ export async function searchProperties(
 	const { accounts } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://analyticsadmin.googleapis.com/v1alpha/accounts',
+		requestUrl`https://analyticsadmin.googleapis.com/v1alpha/accounts`,
 	);
 
 	for (const acount of accounts || []) {
 		const { properties } = await googleApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			{},
 			{ filter: `parent:${acount.name}` },
-			'https://analyticsadmin.googleapis.com/v1alpha/properties',
+			requestUrl`https://analyticsadmin.googleapis.com/v1alpha/properties`,
 		);
 
 		if (properties && properties.length > 0) {
@@ -50,10 +51,10 @@ export async function searchViews(this: ILoadOptionsFunctions): Promise<INodeLis
 	const { items } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles',
+		requestUrl`https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles`,
 	);
 
 	for (const item of items) {

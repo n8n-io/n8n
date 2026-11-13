@@ -44,6 +44,7 @@ export { ExecutionQueryService } from './execution-query.service';
 export { OrchestrationWorker } from './orchestration-worker';
 export { StepSettledHandler } from './step-settled-handler';
 export { StepReadyHandler } from './step-ready-handler';
+export { attachStepErrorDetails, stepErrorDetails } from './step-error-details';
 export { StepWorker } from './step-worker';
 export {
 	WaitSweeper,

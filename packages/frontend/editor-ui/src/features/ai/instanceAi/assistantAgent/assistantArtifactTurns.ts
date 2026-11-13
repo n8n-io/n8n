@@ -2,6 +2,7 @@ import {
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	setupItemsPayloadSchema,
 	tasksUpdatePayloadSchema,
+	unwrapToolCatalogCall,
 	workflowsArchivedPayloadSchema,
 	type TaskList,
 } from '@n8n/api-types';
@@ -39,10 +40,15 @@ function toolCallError(toolCall: DeepReadonly<ToolCall>): string | undefined {
 
 export function toArtifactToolCall(toolCall: DeepReadonly<ToolCall>): ArtifactToolCall {
 	const error = toolCallError(toolCall);
+	// The readers match tool names, so read a tool catalog `call_tool` call as the tool it runs.
+	const { toolName, args } = unwrapToolCatalogCall(
+		toolCall.tool,
+		isRecord(toolCall.input) ? toolCall.input : {},
+	);
 	return {
 		toolCallId: toolCall.toolCallId,
-		toolName: toolCall.tool,
-		args: isRecord(toolCall.input) ? toolCall.input : {},
+		toolName,
+		args,
 		// A failed call has no result. The readers check `result.success` and would
 		// read an error payload as a result.
 		...(error === undefined ? { result: toolCall.output } : { error }),
@@ -66,10 +72,12 @@ function appendToolCalls(turnCalls: ArtifactToolCall[], next: ArtifactToolCall[]
 			continue;
 		}
 		const previous = turnCalls[index];
-		turnCalls[index] = {
-			...toolCall,
-			args: Object.keys(toolCall.args).length > 0 ? toolCall.args : previous.args,
-		};
+		// A copy without input cannot name the tool that a `call_tool` call runs,
+		// so keep the earlier name together with the earlier arguments.
+		turnCalls[index] =
+			Object.keys(toolCall.args).length > 0
+				? toolCall
+				: { ...toolCall, toolName: previous.toolName, args: previous.args };
 	}
 }
 

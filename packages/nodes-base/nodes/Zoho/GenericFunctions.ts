@@ -8,8 +8,11 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	AllFields,
@@ -47,20 +50,20 @@ export function throwOnErrorStatus(
 export async function zohoApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 ) {
 	const { oauthTokenData } = await this.getCredentials<ZohoOAuth2ApiCredentials>('zohoOAuth2Api');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		body: {
 			data: [body],
 		},
 		method,
 		qs,
-		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri ?? requestUrl`${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 
@@ -95,7 +98,7 @@ export async function zohoApiRequest(
 export async function zohoApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -121,7 +124,7 @@ export async function zohoApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -379,7 +382,7 @@ export async function getFields(
 	let { fields } = (await zohoApiRequest.call(
 		this,
 		'GET',
-		'/settings/fields',
+		requestPath`/settings/fields`,
 		{},
 		qs,
 	)) as LoadedFields;
@@ -414,7 +417,7 @@ export async function getPicklistOptions(
 	const responseData = (await zohoApiRequest.call(
 		this,
 		'GET',
-		'/settings/layouts',
+		requestPath`/settings/layouts`,
 		{},
 		qs,
 	)) as LoadedLayouts;

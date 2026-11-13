@@ -46,6 +46,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		const requestedProjectId = ref<string | null>(null);
 		const isLoading = ref(false);
 		let latestRequest = 0;
+		let pendingLoad: Promise<void> | null = null;
 
 		/**
 		 * Keyed by parent and sub-workflow, because the answer depends on whether the parent may
@@ -63,12 +64,14 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 
 		async function fetchForProject(projectId: string): Promise<void> {
 			if (!isEnabled.value) return;
+			if (pendingLoad && requestedProjectId.value === projectId) return await pendingLoad;
 
 			requestedProjectId.value = projectId;
 			latestRequest++;
 
 			if (projectId === loadedProjectId.value) {
 				isLoading.value = false;
+				pendingLoad = null;
 				return;
 			}
 
@@ -88,6 +91,14 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 		 * neither is.
 		 */
 		async function load(projectId: string): Promise<void> {
+			const promise = runLoad(projectId).finally(() => {
+				if (pendingLoad === promise) pendingLoad = null;
+			});
+			pendingLoad = promise;
+			await promise;
+		}
+
+		async function runLoad(projectId: string): Promise<void> {
 			const request = ++latestRequest;
 			isLoading.value = true;
 			try {

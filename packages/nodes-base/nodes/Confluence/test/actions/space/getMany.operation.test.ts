@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/space/getMany.operation';
@@ -47,7 +47,12 @@ describe('Confluence space:getMany operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 2 });
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ limit: 2 },
+		);
 		expect(result).toEqual(spaces(1, 2));
 	});
 
@@ -66,11 +71,17 @@ describe('Confluence space:getMany operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(1, 'GET', '/wiki/api/v2/spaces', {}, { limit: 3 });
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ limit: 3 },
+		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			{ limit: 1, cursor: 'abc' },
 		);
@@ -89,11 +100,17 @@ describe('Confluence space:getMany operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(1, 'GET', '/wiki/api/v2/spaces', {}, { limit: 250 });
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ limit: 250 },
+		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			{ limit: 250, cursor: 'abc' },
 		);
@@ -106,7 +123,12 @@ describe('Confluence space:getMany operation', () => {
 
 		const result = await execute.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 250 });
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/wiki/api/v2/spaces`,
+			{},
+			{ limit: 250 },
+		);
 		expect(result).toHaveLength(250);
 	});
 
@@ -175,7 +197,7 @@ describe('Confluence space:getMany operation', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			{ limit: 250, cursor: 'abc' },
 		);
@@ -194,7 +216,7 @@ describe('Confluence space:getMany operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/spaces',
+			requestPath`/wiki/api/v2/spaces`,
 			{},
 			{ 'description-format': 'view', limit: 50 },
 		);

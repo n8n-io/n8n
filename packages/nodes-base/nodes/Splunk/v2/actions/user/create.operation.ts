@@ -1,4 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import type { SplunkFeedResponse } from '../../helpers/interfaces';
@@ -87,7 +88,7 @@ export async function execute(
 
 	populate(additionalFields, body);
 
-	const endpoint = '/services/authentication/users';
+	const endpoint = requestPath`/services/authentication/users`;
 	const responseData = (await splunkApiRequest.call(
 		this,
 		'POST',

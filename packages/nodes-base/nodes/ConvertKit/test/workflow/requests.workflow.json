@@ -1,0 +1,500 @@
+{
+	"name": "ConvertKit Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "customField",
+				"operation": "create",
+				"label": "Company"
+			},
+			"id": "node-0",
+			"name": "Custom Field Create",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customField",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-1",
+			"name": "Custom Field Get Many",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customField",
+				"operation": "update",
+				"id": "7",
+				"label": "Company"
+			},
+			"id": "node-2",
+			"name": "Custom Field Update",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customField",
+				"operation": "delete",
+				"id": "7"
+			},
+			"id": "node-3",
+			"name": "Custom Field Delete",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "form",
+				"operation": "addSubscriber",
+				"id": "123",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"id": "node-4",
+			"name": "Form Add Subscriber",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "form",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-5",
+			"name": "Form Get Many",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "form",
+				"operation": "getSubscriptions",
+				"id": "123",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "node-6",
+			"name": "Form Get Subscriptions",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "sequence",
+				"operation": "addSubscriber",
+				"id": "42",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"id": "node-7",
+			"name": "Sequence Add Subscriber",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "sequence",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-8",
+			"name": "Sequence Get Many",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "sequence",
+				"operation": "getSubscriptions",
+				"id": "42",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "node-9",
+			"name": "Sequence Get Subscriptions",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "create",
+				"name": "vip"
+			},
+			"id": "node-10",
+			"name": "Tag Create",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tag",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-11",
+			"name": "Tag Get Many",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tagSubscriber",
+				"operation": "add",
+				"tagId": "9",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"id": "node-12",
+			"name": "Tag Subscriber Add",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tagSubscriber",
+				"operation": "getAll",
+				"tagId": "9",
+				"returnAll": true
+			},
+			"id": "node-13",
+			"name": "Tag Subscriber Get Many",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "tagSubscriber",
+				"operation": "delete",
+				"tagId": "9",
+				"email": "nathan@example.com"
+			},
+			"id": "node-14",
+			"name": "Tag Subscriber Delete",
+			"type": "n8n-nodes-base.convertKit",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"convertKitApi": {
+					"id": "1",
+					"name": "ConvertKit account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Custom Field Create": [
+			{
+				"json": {
+					"id": 7,
+					"label": "Company"
+				}
+			}
+		],
+		"Custom Field Get Many": [
+			{
+				"json": {
+					"id": 7,
+					"label": "Company"
+				}
+			}
+		],
+		"Custom Field Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Custom Field Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Form Add Subscriber": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Form Get Many": [
+			{
+				"json": {
+					"id": 123,
+					"name": "Newsletter"
+				}
+			}
+		],
+		"Form Get Subscriptions": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Sequence Add Subscriber": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Sequence Get Many": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Onboarding"
+				}
+			}
+		],
+		"Sequence Get Subscriptions": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Tag Create": [
+			{
+				"json": {
+					"id": 9,
+					"name": "vip"
+				}
+			}
+		],
+		"Tag Get Many": [
+			{
+				"json": {
+					"id": 9,
+					"name": "vip"
+				}
+			}
+		],
+		"Tag Subscriber Add": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Tag Subscriber Get Many": [
+			{
+				"json": {
+					"id": 55,
+					"state": "active"
+				}
+			}
+		],
+		"Tag Subscriber Delete": [
+			{
+				"json": {
+					"id": 55
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Custom Field Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Field Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Field Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Custom Field Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Form Add Subscriber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Form Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Form Get Subscriptions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sequence Add Subscriber",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sequence Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sequence Get Subscriptions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag Subscriber Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag Subscriber Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Tag Subscriber Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

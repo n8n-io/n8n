@@ -5,11 +5,10 @@ import type { CredentialsFinderService } from '@n8n/backend-services';
 import { ForbiddenError } from '@n8n/errors';
 
 /**
- * Verifies the requesting user has access to every credential referenced by a
- * log streaming destination, mirroring the credential access check applied to
- * credentials referenced by workflow nodes. Credential access is project-scoped
- * while the eventBusDestination scopes are global, so destination credentials
- * must be authorized explicitly here.
+ * Verifies that the user can use every credential referenced by a destination.
+ * Destinations send credential secrets on each delivery and test. The finder
+ * excludes see-only project or sharing roles. Credential access is project-scoped,
+ * so global eventBusDestination scopes do not authorize credential use.
  */
 export async function assertUserCanUseDestinationCredentials(
 	credentialsFinderService: CredentialsFinderService,
@@ -23,9 +22,12 @@ export async function assertUserCanUseDestinationCredentials(
 		const credentialId = reference?.id;
 		if (!credentialId) continue;
 
-		const credential = await credentialsFinderService.findCredentialForUser(credentialId, user, [
-			'credential:read',
-		]);
+		const credential = await credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
 
 		if (!credential) {
 			throw new ForbiddenError(

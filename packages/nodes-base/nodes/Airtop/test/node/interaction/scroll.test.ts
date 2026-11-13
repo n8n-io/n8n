@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as scroll from '../../../actions/interaction/scroll.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -65,7 +66,7 @@ describe('Test Airtop, scroll operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scroll',
+			requestPath`/sessions/test-session-123/windows/win-123/scroll`,
 			{
 				scrollToElement: 'the bottom of the page',
 				configuration: {},
@@ -95,7 +96,7 @@ describe('Test Airtop, scroll operation', () => {
 
 		expect(apiRequestMock).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/scroll',
+			requestPath`/sessions/test-session-123/windows/win-123/scroll`,
 			{
 				configuration: {},
 				scrollToEdge: {

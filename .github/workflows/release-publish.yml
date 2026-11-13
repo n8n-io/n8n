@@ -57,10 +57,10 @@ jobs:
   setup-trusted-publishing:
     name: Setup trusted publishing for new packages
     needs: [determine-version-info]
-    if: |
-      github.event.pull_request.merged == true &&
-      needs.determine-version-info.outputs.bump == 'minor'
+    if: github.event.pull_request.merged == true
     uses: ./.github/workflows/release-setup-trusted-publishing.yml
+    with:
+      setup_required: ${{ needs.determine-version-info.outputs.bump == 'minor' }}
     secrets: inherit
 
   publish-to-npm:

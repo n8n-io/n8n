@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
 
@@ -355,7 +355,7 @@ export class Pushbullet implements INodeType {
 		loadOptions: {
 			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { devices } = await pushbulletApiRequest.call(this, 'GET', '/devices');
+				const { devices } = await pushbulletApiRequest.call(this, 'GET', requestPath`/devices`);
 				for (const device of devices) {
 					returnData.push({
 						name: device.nickname,
@@ -414,30 +414,43 @@ export class Pushbullet implements INodeType {
 								file_name,
 								file_type,
 								file_url,
-							} = await pushbulletApiRequest.call(this, 'POST', '/upload-request', {
+							} = await pushbulletApiRequest.call(this, 'POST', requestPath`/upload-request`, {
 								file_name: binaryData.fileName,
 								file_type: binaryData.mimeType,
 							});
 
 							//upload the file
-							await pushbulletApiRequest.call(this, 'POST', '', {}, {}, uploadUrl as string, {
-								formData: {
-									file: {
-										value: dataBuffer,
-										options: {
-											filename: binaryData.fileName,
+							await pushbulletApiRequest.call(
+								this,
+								'POST',
+								requestPath``,
+								{},
+								{},
+								uploadUrl as string,
+								{
+									formData: {
+										file: {
+											value: dataBuffer,
+											options: {
+												filename: binaryData.fileName,
+											},
 										},
 									},
+									json: false,
 								},
-								json: false,
-							});
+							);
 
 							body.file_name = file_name;
 							body.file_type = file_type;
 							body.file_url = file_url;
 						}
 
-						responseData = await pushbulletApiRequest.call(this, 'POST', '/pushes', body);
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'POST',
+							requestPath`/pushes`,
+							body,
+						);
 					}
 
 					if (operation === 'getAll') {
@@ -456,14 +469,20 @@ export class Pushbullet implements INodeType {
 								this,
 								'pushes',
 								'GET',
-								'/pushes',
+								requestPath`/pushes`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
 
-							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
+							responseData = await pushbulletApiRequest.call(
+								this,
+								'GET',
+								requestPath`/pushes`,
+								{},
+								qs,
+							);
 
 							responseData = responseData.pushes;
 						}
@@ -472,7 +491,11 @@ export class Pushbullet implements INodeType {
 					if (operation === 'delete') {
 						const pushId = this.getNodeParameter('pushId', i) as string;
 
-						responseData = await pushbulletApiRequest.call(this, 'DELETE', `/pushes/${pushId}`);
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/pushes/${pushId}`,
+						);
 
 						responseData = { success: true };
 					}
@@ -482,9 +505,14 @@ export class Pushbullet implements INodeType {
 
 						const dismissed = this.getNodeParameter('dismissed', i) as boolean;
 
-						responseData = await pushbulletApiRequest.call(this, 'POST', `/pushes/${pushId}`, {
-							dismissed,
-						});
+						responseData = await pushbulletApiRequest.call(
+							this,
+							'POST',
+							requestPath`/pushes/${pushId}`,
+							{
+								dismissed,
+							},
+						);
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(

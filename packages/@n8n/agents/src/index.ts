@@ -323,6 +323,7 @@ export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
 	getCreatedAt,
+	isHostInstruction,
 	isLlmMessage,
 	isRuntimeContextCue,
 } from './sdk/message';

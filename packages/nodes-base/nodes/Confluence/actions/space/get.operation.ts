@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -41,7 +41,7 @@ export const execute: ConfluenceOperation = async function (
 	return await confluenceApiRequest.call(
 		this,
 		'GET',
-		`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
+		requestPath`/wiki/api/v2/spaces/${spaceId}`,
 		{},
 		spaceDescriptionFormatQs(options),
 	);

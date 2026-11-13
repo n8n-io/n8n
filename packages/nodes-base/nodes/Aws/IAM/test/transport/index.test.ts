@@ -31,7 +31,7 @@ describe('AWS IAM transport - awsApiRequest', () => {
 	it('should use the aws credential when authentication is iam', async () => {
 		const context = createContext('iam');
 
-		await awsApiRequest.call(context, { url: '', method: 'POST' });
+		await awsApiRequest.call(context, { method: 'POST' });
 
 		expect(getCredentials).toHaveBeenCalledWith('aws');
 		expect(requestWithAuthentication).toHaveBeenCalledWith('aws', expect.any(Object));
@@ -40,7 +40,7 @@ describe('AWS IAM transport - awsApiRequest', () => {
 	it('should use the awsAssumeRole credential when authentication is assumeRole', async () => {
 		const context = createContext('assumeRole');
 
-		await awsApiRequest.call(context, { url: '', method: 'POST' });
+		await awsApiRequest.call(context, { method: 'POST' });
 
 		expect(getCredentials).toHaveBeenCalledWith('awsAssumeRole');
 		expect(requestWithAuthentication).toHaveBeenCalledWith('awsAssumeRole', expect.any(Object));
@@ -49,7 +49,7 @@ describe('AWS IAM transport - awsApiRequest', () => {
 	it('should fall back to the aws credential when the authentication parameter is missing', async () => {
 		const context = createContext(undefined);
 
-		await awsApiRequest.call(context, { url: '', method: 'POST' });
+		await awsApiRequest.call(context, { method: 'POST' });
 
 		expect(warn).toHaveBeenCalled();
 		expect(getCredentials).toHaveBeenCalledWith('aws');

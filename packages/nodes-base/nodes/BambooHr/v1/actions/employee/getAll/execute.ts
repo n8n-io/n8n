@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -8,7 +9,7 @@ export async function getAll(
 ): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endpoint = 'employees/directory';
+	const endpoint = requestPath`employees/directory`;
 
 	//limit parameters
 	const returnAll = this.getNodeParameter('returnAll', 0, false);

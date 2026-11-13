@@ -5,8 +5,10 @@ import type {
 	ILoadOptionsFunctions,
 	JsonObject,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -14,10 +16,10 @@ import { NodeApiError } from 'n8n-workflow';
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-	endpoint: string,
+	endpoint: RequestPath,
 	body: string[] | IDataObject = {},
 	query: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding' | 'formData' | 'json' | 'resolveWithFullResponse'> = {},
 ) {
 	const credentials = await this.getCredentials('bambooHrApi');
 
@@ -25,14 +27,11 @@ export async function apiRequest(
 	const apiKey = credentials.apiKey;
 	const subdomain = credentials.subdomain;
 
-	//set-up uri
-	const uri = `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`;
-
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		method,
 		body,
 		qs: query,
-		url: uri,
+		url: requestUrl`https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/${endpoint}`,
 		auth: {
 			username: apiKey as string,
 			password: 'x',

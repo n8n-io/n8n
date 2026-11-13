@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
@@ -193,7 +194,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				encodeCustomFieldsV2(customProperties, body);
 			}
 
-			const responseData = await pipedriveApiRequest.call(this, 'POST', '/persons', body);
+			const responseData = await pipedriveApiRequest.call(
+				this,
+				'POST',
+				requestPath`/persons`,
+				body,
+			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData.data as IDataObject),

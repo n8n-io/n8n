@@ -15,6 +15,12 @@ import { Telemetry } from '@/telemetry';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 /**
+ * The user ID that self-healing usage carries in the AI service. It is not the
+ * ID of a person, so billing can show this usage on its own line.
+ */
+export const SELF_HEALING_BILLING_USER_ID = 'self_healing';
+
+/**
  * Keeps the display total of threads that are not on the current Assistant
  * runtime, such as Assistant agent threads. Registered only when the Assistant
  * agent loads, so this service does not depend on the agents module.
@@ -130,7 +136,11 @@ export class InstanceAiCreditService {
 		// later run can re-attempt, and reports the failure.
 		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			result = await this.claimTokensWithRetry(user, threadId, dedupeId, usage);
+			// The billing page shows self-healing usage apart from the usage of a person.
+			const billingUser = {
+				id: source === 'self_healing' ? SELF_HEALING_BILLING_USER_ID : user.id,
+			};
+			result = await this.claimTokensWithRetry(billingUser, threadId, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -255,7 +265,7 @@ export class InstanceAiCreditService {
 	 * Authorization headers. Each caller gets a unique token (separate nanoid)
 	 * for audit tracking.
 	 */
-	private async getProxyAuth(user: User) {
+	private async getProxyAuth(user: Pick<User, 'id'>) {
 		const client = await this.aiService.getClient();
 		const token = await client.getInstanceAiApiProxyToken(
 			{ id: user.id },
@@ -272,7 +282,7 @@ export class InstanceAiCreditService {
 	 * `threadId` so the service can attach it to the claim telemetry.
 	 */
 	private async claimTokens(
-		user: User,
+		user: Pick<User, 'id'>,
 		threadId: string,
 		dedupeId: string,
 		usage: BuilderUsageItem[],
@@ -291,7 +301,7 @@ export class InstanceAiCreditService {
 	 * attempt fails.
 	 */
 	private async claimTokensWithRetry(
-		user: User,
+		user: Pick<User, 'id'>,
 		threadId: string,
 		dedupeId: string,
 		usage: BuilderUsageItem[],

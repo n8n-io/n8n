@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/create.operation';
@@ -80,7 +81,7 @@ describe('NocoDB Rows Create Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'POST',
-			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 			[
 				{
 					fields: mockColumnsToInsert,
@@ -146,7 +147,7 @@ describe('NocoDB Rows Create Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'POST',
-			`/api/v3/data/${mockBase}/${mockTable}/records`,
+			requestPath`/api/v3/data/${mockBase}/${mockTable}/records`,
 			[
 				{
 					fields: mockColumnsToInsert,

@@ -1,0 +1,98 @@
+{
+	"name": "Disqus request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 300],
+			"id": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0001"
+		},
+		{
+			"parameters": {
+				"id": "n8n-community",
+				"additionalFields": {
+					"attach": ["counters", "followsForum"],
+					"related": ["author"]
+				}
+			},
+			"name": "Get Forum",
+			"type": "n8n-nodes-base.disqus",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0002",
+			"credentials": { "disqusApi": { "id": "1", "name": "Disqus account" } }
+		},
+		{
+			"parameters": {
+				"operation": "getPosts",
+				"id": "n8n-community",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"name": "Get Many Posts",
+			"type": "n8n-nodes-base.disqus",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"id": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0003",
+			"credentials": { "disqusApi": { "id": "1", "name": "Disqus account" } }
+		},
+		{
+			"parameters": {
+				"operation": "getCategories",
+				"id": "n8n-community",
+				"limit": 2,
+				"additionalFields": {}
+			},
+			"name": "Get Many Categories",
+			"type": "n8n-nodes-base.disqus",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"id": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0004",
+			"credentials": { "disqusApi": { "id": "1", "name": "Disqus account" } }
+		},
+		{
+			"parameters": {
+				"operation": "getThreads",
+				"id": "n8n-community",
+				"limit": 5,
+				"additionalFields": {
+					"related": ["author", "forum"],
+					"include": ["closed", "open"],
+					"order": "asc"
+				}
+			},
+			"name": "Get Many Threads",
+			"type": "n8n-nodes-base.disqus",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"id": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0005",
+			"credentials": { "disqusApi": { "id": "1", "name": "Disqus account" } }
+		}
+	],
+	"pinData": {
+		"Get Forum": [{ "json": { "id": "n8n-community", "name": "n8n Community" } }],
+		"Get Many Posts": [{ "json": { "id": "5001" } }, { "json": { "id": "5002" } }],
+		"Get Many Categories": [{ "json": { "id": "3001", "title": "General" } }],
+		"Get Many Threads": [{ "json": { "id": "7001", "title": "Welcome" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Get Forum", "type": "main", "index": 0 },
+					{ "node": "Get Many Posts", "type": "main", "index": 0 },
+					{ "node": "Get Many Categories", "type": "main", "index": 0 },
+					{ "node": "Get Many Threads", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "d1a6f0a4-6f7a-4c55-9d43-4b5a1d6e00ff",
+	"meta": { "instanceId": "test" },
+	"id": "DisqusRequests",
+	"tags": []
+}

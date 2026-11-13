@@ -1,6 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { INode, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
@@ -81,7 +82,7 @@ describe('Google Calendar Node', () => {
 			expect(genericFunctions.googleApiRequestAllItems).toHaveBeenCalledWith(
 				'items',
 				'GET',
-				'/calendar/v3/calendars/myCalendar/events',
+				requestPath`/calendar/v3/calendars/myCalendar/events`,
 				{},
 				{
 					iCalUID: 'uid',
@@ -119,6 +120,7 @@ describe('Google Calendar Node', () => {
 
 			response = [
 				{
+					id: 'event1',
 					recurrence: ['RRULE:FREQ=DAILY;COUNT=5'],
 				},
 			];
@@ -130,7 +132,7 @@ describe('Google Calendar Node', () => {
 			expect(genericFunctions.googleApiRequestAllItems).toHaveBeenCalledWith(
 				'items',
 				'GET',
-				'/calendar/v3/calendars/myCalendar/events',
+				requestPath`/calendar/v3/calendars/myCalendar/events`,
 				{},
 				{
 					timeMax: '2024-12-25T23:00:00Z',
@@ -142,7 +144,7 @@ describe('Google Calendar Node', () => {
 				expect.objectContaining({
 					method: 'GET',
 					itemIndex: 0,
-					resource: '/calendar/v3/calendars/myCalendar/events/undefined/instances',
+					resource: requestPath`/calendar/v3/calendars/myCalendar/events/event1/instances`,
 				}),
 			);
 

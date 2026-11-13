@@ -289,7 +289,7 @@ export class WorkflowImporter {
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
 				parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
-				publicApi: true,
+				publicApi: context.publicApi,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
 				...(batchContext ? { batchContext } : {}),
@@ -300,7 +300,7 @@ export class WorkflowImporter {
 		const entity = prepareEntityForPersist(item.entity, bindings);
 
 		const updated = await this.workflowService.update(context.user, entity, item.existing.id, {
-			publicApi: true,
+			publicApi: context.publicApi,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
 			...(item.moveToFolderId !== undefined
@@ -330,10 +330,10 @@ export class WorkflowImporter {
 			transition === 'archive'
 				? await this.workflowService.archive(context.user, item.existing.id, {
 						skipArchived: true,
-						publicApi: true,
+						publicApi: context.publicApi,
 					})
 				: await this.workflowService.unarchive(context.user, item.existing.id, {
-						publicApi: true,
+						publicApi: context.publicApi,
 					});
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.
