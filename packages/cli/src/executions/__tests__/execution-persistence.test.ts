@@ -761,6 +761,41 @@ describe('ExecutionPersistence', () => {
 				);
 			});
 
+			it('should end the run only from the required statuses', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValueOnce(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'crashed' },
+					{ requireStatuses: ['new', 'running'] },
+				);
+
+				expect(result).toEqual({ updated: true, ended: true });
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: In(['new', 'running']) },
+					{ status: 'crashed' },
+				);
+			});
+
+			it('should use the plain write when every required status is terminal', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue(affected(1));
+
+				const result = await executionPersistence.saveExecutionOutcome(
+					executionId,
+					{ status: 'error' },
+					{ requireStatuses: ['success', 'error'] },
+				);
+
+				expect(result).toEqual({ updated: true, ended: false });
+				expect(executionRepository.update).toHaveBeenCalledTimes(1);
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: In(['success', 'error']) },
+					{ status: 'error' },
+				);
+			});
+
 			it('should never report ended for a status that is not terminal', async () => {
 				const executionPersistence = createPersistenceService('db');
 				executionRepository.update.mockResolvedValue(affected(1));

@@ -938,7 +938,11 @@ export class ExecutionPersistence {
 		const requiredStatus = conditions?.requireStatus;
 		if (requiredStatus) return isTerminalExecutionStatus(requiredStatus) ? undefined : where;
 
-		return { ...where, status: In([...UNFINISHED_EXECUTION_STATUSES]) };
+		const requiredStatuses = conditions?.requireStatuses;
+		const unfinished = requiredStatuses
+			? requiredStatuses.filter((status) => !isTerminalExecutionStatus(status))
+			: UNFINISHED_EXECUTION_STATUSES;
+		return unfinished.length > 0 ? { ...where, status: In([...unfinished]) } : undefined;
 	}
 
 	private async applyDataUpdate(
