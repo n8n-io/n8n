@@ -18,7 +18,7 @@ const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
 
-const description = computed(() => describeRestrictedNodeTypes(restricted, 'template'));
+const description = computed(() => describeRestrictedNodeTypes(restricted, 'replaceToSave'));
 
 const contactCopy = computed(() => sharedContactCopy(restricted));
 

@@ -208,10 +208,7 @@ export function describeRestrictedNodeTypes(
 	return [
 		i18n.baseText('typeAvailabilityPolicies.restrictedNodes.title'),
 		...scopeLines,
-		i18n.baseText(
-			(surface && CALLOUT_COPY[surface].severalNextStep) ??
-				sharedContactCopy(restricted).severalNextStep,
-		),
+		i18n.baseText(sharedContactCopy(restricted).severalNextStep),
 	].join('\n');
 }
 
@@ -225,14 +222,13 @@ export function getRestrictionMessage(
 	return verdict?.scope ?? 'generic';
 }
 
-export type RestrictedCalloutSurface = 'tool' | 'credential' | 'replaceToSave' | 'template';
+export type RestrictedCalloutSurface = 'tool' | 'credential' | 'replaceToSave';
 
 const CALLOUT_COPY: Record<
 	RestrictedCalloutSurface,
 	{
 		keys: Record<RestrictionMessage, BaseTextKey>;
 		interpolationKey: 'nodeType' | 'credentialType';
-		severalNextStep?: BaseTextKey;
 	}
 > = {
 	tool: {
@@ -261,16 +257,6 @@ const CALLOUT_COPY: Record<
 			generic: 'typeAvailabilityPolicies.restrictedNode.replaceToSave.generic',
 		},
 		interpolationKey: 'nodeType',
-	},
-	template: {
-		keys: {
-			instance: 'typeAvailabilityPolicies.restrictedNode.template.instance',
-			project: 'typeAvailabilityPolicies.restrictedNode.template.project',
-			optIn: 'typeAvailabilityPolicies.restrictedNode.template.optIn',
-			generic: 'typeAvailabilityPolicies.restrictedNode.template.generic',
-		},
-		interpolationKey: 'nodeType',
-		severalNextStep: 'typeAvailabilityPolicies.restrictedNodes.template.nextStep',
 	},
 };
 

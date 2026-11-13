@@ -27,7 +27,7 @@ describe('RestrictedTemplateNodesCallout', () => {
 		const { getByTestId } = render([{ displayName: 'Gmail Trigger', scope: 'instance' }]);
 
 		expect(getByTestId('restricted-template-nodes-callout')).toHaveTextContent(
-			'Gmail Trigger is restricted on this instance. Replace it after you use the template.',
+			'Gmail Trigger is restricted on this instance. Replace it to save the workflow.',
 		);
 		expect(getByTestId('restricted-template-nodes-contact-admin')).toHaveTextContent(
 			'Contact instance admin',
@@ -45,8 +45,9 @@ describe('RestrictedTemplateNodesCallout', () => {
 		expect(callout).toHaveTextContent('An administrator blocked these nodes:');
 		expect(callout).toHaveTextContent("Restricted on this instance: 'Gmail Trigger'.");
 		expect(callout).toHaveTextContent("Restricted in this project: 'Slack'.");
-		expect(callout).toHaveTextContent('Replace these nodes after you use the template.');
-		expect(callout).not.toHaveTextContent('to continue');
+		expect(callout).toHaveTextContent(
+			'Contact an instance admin or replace these nodes to continue.',
+		);
 	});
 
 	it('opens the contact dialog for every restricted node', async () => {
@@ -69,7 +70,7 @@ describe('RestrictedTemplateNodesCallout', () => {
 		const { getByTestId } = render([{ displayName: 'Slack', scope: 'project' }]);
 
 		expect(getByTestId('restricted-template-nodes-callout')).toHaveTextContent(
-			'Slack is restricted in this project. Replace it after you use the template.',
+			'Slack is restricted in this project. Replace it to save the workflow.',
 		);
 		expect(getByTestId('restricted-template-nodes-contact-admin')).toHaveTextContent(
 			'Contact project admin',
