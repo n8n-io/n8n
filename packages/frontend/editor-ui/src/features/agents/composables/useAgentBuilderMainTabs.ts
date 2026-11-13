@@ -1,3 +1,4 @@
+import type { TabOptions } from '@n8n/design-system';
 import type { ComputedRef } from 'vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -7,7 +8,9 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { EXECUTIONS_SECTION_KEY } from '../constants';
 
-export type AgentBuilderMainTab = 'agent' | 'knowledge' | 'sessions' | 'settings' | 'evals';
+export type AgentBuilderMainTab = TabOptions<
+	'agent' | 'knowledge' | 'sessions' | 'settings' | 'evals'
+>;
 
 type AgentBuilderSection =
 	| 'knowledge'
@@ -32,7 +35,7 @@ function getSectionFromQuery(
 	return null;
 }
 
-function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
+function getSectionFromTab(tab: AgentBuilderMainTab['value']): AgentBuilderSection {
 	if (tab === 'knowledge') return 'knowledge';
 	if (tab === 'sessions') return EXECUTIONS_SECTION_KEY;
 	if (tab === 'settings') return 'settings';
@@ -42,9 +45,11 @@ function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 
 export function useAgentBuilderMainTabs({
 	executionsCount,
+	hasFailedSession = computed(() => false),
 	routeBacked = computed(() => true),
 }: {
 	executionsCount: ComputedRef<number>;
+	hasFailedSession?: ComputedRef<boolean>;
 	routeBacked?: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
@@ -61,7 +66,7 @@ export function useAgentBuilderMainTabs({
 		});
 	}
 
-	const activeMainTab = computed<AgentBuilderMainTab>({
+	const activeMainTab = computed<AgentBuilderMainTab['value']>({
 		get() {
 			if (selectedSection.value === 'knowledge') return 'knowledge';
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'sessions';
@@ -74,13 +79,20 @@ export function useAgentBuilderMainTabs({
 		},
 	});
 
-	const mainTabOptions = computed<Array<{ label: string; value: AgentBuilderMainTab }>>(() => [
+	const mainTabOptions = computed<AgentBuilderMainTab[]>(() => [
 		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
 		{
 			label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
 			value: 'knowledge',
 		},
-		{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
+		{
+			label: i18n.baseText('agents.builder.header.tab.executions'),
+			value: 'sessions',
+			icon: hasFailedSession.value ? 'circle-alert' : undefined,
+			tooltip: hasFailedSession.value
+				? i18n.baseText('agents.builder.executions.hasFailedSession')
+				: undefined,
+		},
 		{
 			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
 			value: 'settings',

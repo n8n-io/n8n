@@ -15,6 +15,7 @@ import {
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { SessionTimelineMetadata } from '@/features/agents/types';
+import { compactTokenFormatter } from '@/features/agents/utils/token-count';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
@@ -91,11 +92,6 @@ function onMenuSelect(action: string) {
 	}
 }
 
-const tokenFormatter = new Intl.NumberFormat('en-US', {
-	notation: 'compact',
-	maximumFractionDigits: 1,
-});
-
 const costFormatter = new Intl.NumberFormat('en-US', {
 	maximumFractionDigits: 4,
 });
@@ -159,7 +155,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 				<li :class="$style.numericMetadata">
 					<N8nIcon color="text-light" icon="hash" />
 					<N8nText step="xs" bold>
-						{{ tokenFormatter.format(metadata.totalTokens).toUpperCase() }}
+						{{ compactTokenFormatter.format(metadata.totalTokens).toUpperCase() }}
 						<span v-if="metadata.totalCost !== null" :class="$style.innerLabel"
 							>(${{ costFormatter.format(metadata.totalCost) }})</span
 						>

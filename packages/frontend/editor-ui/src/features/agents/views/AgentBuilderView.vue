@@ -153,6 +153,8 @@ import {
 import {
 	AGENT_CONFIG_WRITE_KEY,
 	AGENT_BUILDER_STANDALONE_KEY,
+	AGENT_SESSION_ASSISTANT_KEY,
+	OPEN_AGENT_PREVIEW_KEY,
 	type AgentConfigWrite,
 } from '../components/agentBuilderInjectionKeys';
 import AgentBuilderChatMode from '../components/AgentBuilderChatMode.vue';
@@ -1115,6 +1117,7 @@ const previewDock = useTemplateRef<InstanceType<typeof AgentTestDock>>('previewD
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	hasFailedSession: computed(() => sessionsStore.hasFailedSession),
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
@@ -2111,7 +2114,23 @@ const runConfigWrite: AgentConfigWrite = async (write) => {
 		}
 	}
 };
+provide(AGENT_SESSION_ASSISTANT_KEY, {
+	isAvailable: computed(() => !isArtifactMode.value && instanceAiReady.value),
+	async handoff(params) {
+		/** A child session can target a different Agent. The panel guards the current route. */
+		if (params.projectId !== projectId.value) return false;
+		return await handoffToAssistantPanel(
+			buildInstanceAiAgentPreviewHandoffContext(params),
+			params.initialDraft,
+		);
+	},
+});
 provide(AGENT_CONFIG_WRITE_KEY, runConfigWrite);
+provide(OPEN_AGENT_PREVIEW_KEY, {
+	open: () => onOpenPreview(),
+	isRunnable: computed(() => agent.value?.isRunnable === true),
+	validationIssues: computed(() => configValidation.value?.issues ?? []),
+});
 
 async function flushAutosave(): Promise<AutosaveResult> {
 	return await flushAutosaveLoops();

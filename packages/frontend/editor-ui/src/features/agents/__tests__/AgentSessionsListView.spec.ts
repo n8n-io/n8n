@@ -81,6 +81,8 @@ vi.mock('@n8n/i18n', () => ({
 						'Sessions will appear here after you preview your agent.',
 					'agentSessions.emptyWithFilters': 'No sessions match these filters',
 					'agentSessions.status.running': 'Running',
+					'ai.thinking.active': 'Thinking',
+					'agentSessions.activity.responding': 'Responding',
 					'agentSessions.status.succeeded': 'Succeeded',
 					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
@@ -95,31 +97,45 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('vue-router', () => ({
 	useRoute: () => ({ params: {} }),
 	useRouter: () => ({ push: routerPush }),
+	RouterLink: {
+		name: 'RouterLink',
+		props: ['to'],
+		template: '<a><slot /></a>',
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionDropdown: {
-		name: 'N8nActionDropdown',
-		template: '<div data-test-id="agent-session-actions" />',
+	N8nDropdownMenu: {
+		name: 'N8nDropdownMenu',
+		template: '<div><slot name="trigger" /></div>',
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
+	},
+	N8nEmptyState: {
+		props: ['description'],
+		template:
+			'<div><slot name="heading" /><slot v-if="description" name="description" /><slot name="additionalContent" /></div>',
 	},
 	N8nBadge: {
 		props: ['leadingIcon'],
 		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
 	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
+	N8nTooltip: { props: ['content', 'placement'], template: '<span><slot /></span>' },
 	N8nCheckbox: {
 		props: ['modelValue', 'label'],
 		emits: ['update:modelValue'],
 		template:
 			'<label><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />{{ label }}</label>',
 	},
-	N8nIcon: { template: '<span :data-icon="icon" />', props: ['icon', 'size'] },
+	N8nIcon: {
+		template: '<span :data-icon="icon" :data-color="color" />',
+		props: ['icon', 'size', 'color'],
+	},
+	N8nSpinner: { template: '<span data-spinner />', props: ['size'] },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs"><slot /></button>',
 	},
-	N8nTableBase: { template: '<table><slot /></table>' },
 	N8nText: {
 		props: ['color'],
 		template: '<span :data-color="color"><slot /></span>',
@@ -190,6 +206,8 @@ vi.mock('element-plus', () => ({
 
 import type { AgentExecutionThread, AgentSessionFilters } from '../composables/useAgentThreadsApi';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
+import * as agentConfirmationModal from '../composables/useAgentConfirmationModal';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 const defaultFilters: AgentSessionFilters = {
 	status: 'all',
@@ -274,11 +292,49 @@ describe('AgentSessionsListView', () => {
 		documentRemoveEventListenerSpy.mockRestore();
 	});
 
+	it('deletes a child through its own agent and refreshes the parent list', async () => {
+		const confirmation = vi
+			.spyOn(agentConfirmationModal, 'useAgentConfirmationModal')
+			.mockReturnValue({
+				openAgentConfirmationModal: vi.fn().mockResolvedValue(MODAL_CONFIRM),
+			});
+		try {
+			const wrapper = await mountView({
+				threads: [makeThread({ agentId: 'child-agent', parentThreadId: 'parent-thread' })],
+			});
+			wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'delete');
+			await flushPromises();
+			expect(deleteThread).toHaveBeenCalledExactlyOnceWith('project-1', 'child-agent', 'thread-1');
+			expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+			wrapper.unmount();
+		} finally {
+			confirmation.mockRestore();
+		}
+	});
+
+	it('stops a child through its own agent and refreshes the parent list', async () => {
+		const wrapper = await mountView({
+			threads: [
+				makeThread({
+					status: 'running',
+					agentId: 'child-agent',
+					parentAgentId: 'agent-1',
+					parentThreadId: 'parent-thread',
+				}),
+			],
+		});
+		wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'stop');
+		await flushPromises();
+		expect(stopSession).toHaveBeenCalledExactlyOnceWith({}, 'project-1', 'child-agent', 'thread-1');
+		expect(refreshThreads).toHaveBeenCalledWith('project-1', 'agent-1');
+		wrapper.unmount();
+	});
+
 	it('offers Stop for a running session and refreshes after stopping it', async () => {
 		const wrapper = await mountView({
 			threads: [makeThread({ status: 'running', source: 'slack' })],
 		});
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		expect(menu.props('items')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'stop', disabled: false })]),
 		);
@@ -293,7 +349,7 @@ describe('AgentSessionsListView', () => {
 		'hides Stop for a %s session',
 		async (status) => {
 			const wrapper = await mountView({ threads: [makeThread({ status })] });
-			const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+			const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 			expect(menu.props('items')).not.toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
 			);
@@ -307,7 +363,7 @@ describe('AgentSessionsListView', () => {
 	it('hides Stop without execute permission', async () => {
 		agentPermissions.canExecute.value = false;
 		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		expect(menu.props('items')).not.toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'stop' })]),
 		);
@@ -321,7 +377,7 @@ describe('AgentSessionsListView', () => {
 		const pending = Promise.withResolvers<{ cancelRequested: boolean }>();
 		stopSession.mockReturnValueOnce(pending.promise);
 		const wrapper = await mountView({ threads: [makeThread({ status: 'running' })] });
-		const menu = wrapper.getComponent({ name: 'N8nActionDropdown' });
+		const menu = wrapper.getComponent({ name: 'N8nDropdownMenu' });
 		menu.vm.$emit('select', 'stop');
 		await flushPromises();
 		expect(menu.props('items')).toEqual(
@@ -334,52 +390,94 @@ describe('AgentSessionsListView', () => {
 		wrapper.unmount();
 	});
 
-	it('opens the trace from the row and keeps a native title button', async () => {
+	it.each([
+		{
+			status: 'running',
+			latestActivity: { type: 'reasoning' },
+			expected: 'instanceAi.agentPreview.building.',
+		},
+		{ status: 'running', latestActivity: { type: 'text' }, expected: 'Responding' },
+		{
+			status: 'running',
+			latestActivity: { type: 'tool-call', toolName: 'web_search' },
+			expected: 'Web search',
+		},
+		{
+			status: 'running',
+			latestActivity: {
+				type: 'tool-call',
+				toolName: 'send_mail',
+				displayName: 'Send weekly report',
+			},
+			expected: 'Send weekly report',
+		},
+		{ status: 'running', latestActivity: null, expected: 'My session' },
+		{ status: 'succeeded', latestActivity: { type: 'reasoning' }, expected: 'My session' },
+	] satisfies Array<
+		Pick<AgentExecutionThread, 'status' | 'latestActivity'> & { expected: string }
+	>)('shows $expected for $status activity', async ({ status, latestActivity, expected }) => {
+		const wrapper = await mountView({ threads: [makeThread({ status, latestActivity })] });
+		expect(wrapper.get('[data-test-id="agent-session-list-item"]').text()).toContain(expected);
+		wrapper.unmount();
+	});
+
+	it('keeps separate reasoning labels stable across renders', async () => {
+		const wrapper = await mountView({
+			threads: [
+				makeThread({ id: 'reasoning-1', status: 'running', latestActivity: { type: 'reasoning' } }),
+				makeThread({ id: 'reasoning-2', status: 'running', latestActivity: { type: 'reasoning' } }),
+			],
+		});
+		function reasoningRowLabels() {
+			return wrapper
+				.findAll('[data-test-id="agent-session-list-item"]')
+				.flatMap((row) =>
+					row.text().includes('instanceAi.agentPreview.building.') ? [row.text()] : [],
+				);
+		}
+
+		const labels = reasoningRowLabels();
+		expect(labels).toHaveLength(2);
+		for (const label of labels) {
+			expect(label).toContain('instanceAi.agentPreview.building.');
+		}
+
+		wrapper.vm.$forceUpdate();
+		await flushPromises();
+
+		expect(reasoningRowLabels()).toEqual(labels);
+		wrapper.unmount();
+	});
+
+	it('links each row to its trace', async () => {
 		const wrapper = await mountView();
 		const row = wrapper.get('[data-test-id="agent-session-list-item"]');
-		const expectedRoute = {
-			name: 'AgentSessionDetailView',
-			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
-		};
 
 		expect(wrapper.find('[data-test-id="agent-session-new-chat"]').exists()).toBe(false);
 		expect(row.attributes('role')).toBeUndefined();
 		expect(row.attributes('tabindex')).toBeUndefined();
-
-		await row.trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
-
-		const traceButton = wrapper.get('[data-test-id="agent-session-open"]');
-
-		expect(traceButton.element.tagName).toBe('BUTTON');
-		expect(traceButton.attributes('type')).toBe('button');
+		expect(row.getComponent({ name: 'RouterLink' }).props('to')).toEqual({
+			name: 'AgentSessionDetailView',
+			params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		});
 		expect(wrapper.get('[data-test-id="agent-session-title"]').text()).toBe('My session');
-
-		routerPush.mockClear();
-		await traceButton.trigger('click');
-
-		expect(routerPush).toHaveBeenCalledExactlyOnceWith(expectedRoute);
 	});
 
 	it.each([
-		['succeeded', 'Succeeded', 'success', true],
-		['error', 'Error', 'danger', true],
-		['cancelled', 'Canceled', 'warning', true],
-		['interrupted', 'Interrupted', 'warning', true],
-		['awaiting', 'Awaiting', 'secondary', true],
-		['running', 'Running', 'text-base', false],
-	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
+		['succeeded', 'Succeeded', 'success'],
+		['error', 'Error', 'danger'],
+		['cancelled', 'Canceled', 'text-xlight'],
+		['interrupted', 'Interrupted', 'text-xlight'],
+		['awaiting', 'Awaiting', 'secondary'],
+		['running', 'Running', undefined],
+	] as const)('renders the %s session state', async (status, label, color) => {
 		const wrapper = await mountView({
 			threads: [makeThread({ status })],
 		});
 		const indicator = wrapper.get('[data-testid="agent-session-status-indicator"]');
 
-		expect(indicator.text()).toBe(label);
+		expect(indicator.attributes('aria-label')).toBe(label);
 		expect(indicator.attributes('data-color')).toBe(color);
-		expect(wrapper.find('[data-testid="agent-session-status-duration"]').exists()).toBe(
-			showsDuration,
-		);
 	});
 
 	it.each(['success', 'failure'])(
@@ -499,7 +597,7 @@ describe('AgentSessionsListView', () => {
 			threads: [makeThread({ parentAgentId: 'parent-agent-1', parentThreadId: 'parent-thread-1' })],
 		});
 
-		wrapper.getComponent({ name: 'N8nActionDropdown' }).vm.$emit('select', 'goToParentRun');
+		wrapper.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'goToParentRun');
 		await flushPromises();
 
 		expect(routerPush).toHaveBeenCalledExactlyOnceWith({
@@ -568,18 +666,16 @@ describe('AgentSessionsListView', () => {
 
 		expect(fetchThreads).not.toHaveBeenCalled();
 		expect(startAutoRefresh).not.toHaveBeenCalled();
-		expect(documentAddEventListenerSpy).not.toHaveBeenCalledWith(
-			'visibilitychange',
-			expect.any(Function),
-		);
+
+		const visibilityListener = documentAddEventListenerSpy.mock.calls.find(
+			(call: unknown[]) => call[0] === 'visibilitychange',
+		)?.[1] as EventListener | undefined;
+		visibilityListener?.(new Event('visibilitychange'));
+		expect(refreshThreads).not.toHaveBeenCalled();
 
 		wrapper.unmount();
 
 		expect(stopAutoRefresh).not.toHaveBeenCalled();
-		expect(documentRemoveEventListenerSpy).not.toHaveBeenCalledWith(
-			'visibilitychange',
-			expect.any(Function),
-		);
 	});
 
 	it.each([
@@ -588,7 +684,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
 		[{ source: 'whatsapp' }, 'WhatsApp', 'whatsapp'],
-		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
+		[{ source: 'instance-ai' }, 'n8n Assistant', 'n8n-assistant'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
 		[{ source: 'chat' }, 'Preview', 'flask-conical'],
@@ -612,4 +708,196 @@ describe('AgentSessionsListView', () => {
 			expect(originPill.get('[data-icon]').attributes('data-icon')).toBe(expectedIcon);
 		},
 	);
+	describe('sub-agent tree', () => {
+		/** Builds a session whose title equals its id, so rows are easy to identify. */
+		function makeNode(
+			id: string,
+			parentThreadId: string | null = null,
+			createdAt = '2026-07-20T10:00:00.000Z',
+		) {
+			return makeThread({
+				id,
+				title: id,
+				parentThreadId,
+				parentAgentId: parentThreadId ? 'agent-1' : null,
+				createdAt,
+			});
+		}
+
+		function rows(wrapper: Awaited<ReturnType<typeof mountView>>) {
+			return wrapper.findAll('[data-test-id="agent-session-list-item"]');
+		}
+
+		function rowOrder(wrapper: Awaited<ReturnType<typeof mountView>>) {
+			return rows(wrapper).map((row) => [
+				row.get('[data-test-id="agent-session-title"]').text(),
+				row.attributes('data-depth'),
+			]);
+		}
+
+		function rowById(wrapper: Awaited<ReturnType<typeof mountView>>, id: string) {
+			const row = rows(wrapper).find(
+				(item) => item.get('[data-test-id="agent-session-title"]').text() === id,
+			);
+			if (!row) throw new Error(`Row ${id} not found`);
+			return row;
+		}
+
+		it('renders a child directly after its parent, even when the store lists it first', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('child', 'parent'), makeNode('other'), makeNode('parent')],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['other', '0'],
+				['parent', '0'],
+				['child', '1'],
+			]);
+		});
+
+		it('sorts children by start time and keeps the store order for roots', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root-b'),
+					makeNode('late', 'root-b', '2026-07-20T10:03:00.000Z'),
+					makeNode('early', 'root-b', '2026-07-20T10:01:00.000Z'),
+					makeNode('root-a'),
+				],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['root-b', '0'],
+				['early', '1'],
+				['late', '1'],
+				['root-a', '0'],
+			]);
+		});
+
+		it('nests grandchildren under their own parent', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('child-a', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('child-b', 'root', '2026-07-20T10:02:00.000Z'),
+					makeNode('grandchild', 'child-a'),
+				],
+			});
+
+			expect(rowOrder(wrapper)).toEqual([
+				['root', '0'],
+				['child-a', '1'],
+				['grandchild', '2'],
+				['child-b', '1'],
+			]);
+		});
+
+		it('renders a session as a root when its parent is not loaded', async () => {
+			const wrapper = await mountView({ threads: [makeNode('orphan', 'missing-parent')] });
+
+			expect(rowOrder(wrapper)).toEqual([['orphan', '0']]);
+			expect(wrapper.find('[data-test-id="agent-session-rail"]').exists()).toBe(false);
+		});
+
+		it('renders each session once when parent links form a cycle', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('self', 'self'), makeNode('a', 'b'), makeNode('b', 'a')],
+			});
+
+			const titles = rowOrder(wrapper).map(([title]) => title);
+			expect(titles).toHaveLength(new Set(titles).size);
+			expect(titles).toEqual(expect.arrayContaining(['self', 'a', 'b']));
+		});
+
+		it('draws one rail cell for each level of depth and none for roots', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), makeNode('child', 'root'), makeNode('grandchild', 'child')],
+			});
+
+			expect(rowById(wrapper, 'root').find('[data-test-id="agent-session-rail"]').exists()).toBe(
+				false,
+			);
+
+			const child = rowById(wrapper, 'child');
+			expect(child.findAll('[data-test-id="agent-session-rail-guide"]')).toHaveLength(0);
+			expect(child.findAll('[data-test-id="agent-session-rail-branch"]')).toHaveLength(1);
+
+			const grandchild = rowById(wrapper, 'grandchild');
+			expect(grandchild.findAll('[data-test-id="agent-session-rail-guide"]')).toHaveLength(1);
+			expect(grandchild.findAll('[data-test-id="agent-session-rail-branch"]')).toHaveLength(1);
+		});
+
+		it('draws a middle branch for earlier children and a last branch for the final child', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('first', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('second', 'root', '2026-07-20T10:02:00.000Z'),
+				],
+			});
+
+			function branchOf(id: string) {
+				return rowById(wrapper, id)
+					.get('[data-test-id="agent-session-rail-branch"]')
+					.attributes('data-branch');
+			}
+
+			expect(branchOf('first')).toBe('middle');
+			expect(branchOf('second')).toBe('last');
+		});
+
+		it('continues an ancestor rail only while that ancestor has siblings below', async () => {
+			const wrapper = await mountView({
+				threads: [
+					makeNode('root'),
+					makeNode('child-a', 'root', '2026-07-20T10:01:00.000Z'),
+					makeNode('child-b', 'root', '2026-07-20T10:02:00.000Z'),
+					makeNode('under-a', 'child-a'),
+					makeNode('under-b', 'child-b'),
+				],
+			});
+
+			function guideOf(id: string) {
+				return rowById(wrapper, id)
+					.get('[data-test-id="agent-session-rail-guide"]')
+					.attributes('data-continues');
+			}
+
+			expect(guideOf('under-a')).toBe('true');
+			expect(guideOf('under-b')).toBe('false');
+		});
+
+		it('draws the stub under the status icon only for parents', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), makeNode('child', 'root'), makeNode('lonely')],
+			});
+
+			function hasStub(id: string) {
+				return rowById(wrapper, id).find('[data-test-id="agent-session-rail-stub"]').exists();
+			}
+
+			expect(hasStub('root')).toBe(true);
+			expect(hasStub('child')).toBe(false);
+			expect(hasStub('lonely')).toBe(false);
+		});
+
+		it('keeps the link and parent action on child rows', async () => {
+			const wrapper = await mountView({
+				threads: [makeNode('root'), { ...makeNode('child', 'root'), agentId: 'child-agent' }],
+			});
+			const child = rowById(wrapper, 'child');
+
+			expect(child.getComponent({ name: 'RouterLink' }).props('to')).toEqual({
+				name: 'AgentSessionDetailView',
+				params: { projectId: 'project-1', agentId: 'child-agent', threadId: 'child' },
+			});
+
+			child.getComponent({ name: 'N8nDropdownMenu' }).vm.$emit('select', 'goToParentRun');
+			await flushPromises();
+
+			expect(routerPush).toHaveBeenCalledExactlyOnceWith({
+				name: 'AgentSessionDetailView',
+				params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'root' },
+			});
+		});
+	});
 });

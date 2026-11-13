@@ -388,6 +388,9 @@ function scroll(direction: 'left' | 'right') {
 .noText .icon {
 	display: block;
 }
+.icon {
+	color: var(--n8n-tabs--icon-color, currentColor);
+}
 
 .dangerTab {
 	color: var(--color--danger);
