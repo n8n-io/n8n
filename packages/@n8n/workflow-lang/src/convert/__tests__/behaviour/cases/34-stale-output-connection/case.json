@@ -1,0 +1,9 @@
+{
+	"description": "A Code node with a connection from output 1, which it does not have (a stale connection): v1 records only its one output list, so the node on the stale output gets no items",
+	"trigger": {
+		"body": {
+			"n": 7
+		}
+	},
+	"compare": ["Real", "Stale"]
+}

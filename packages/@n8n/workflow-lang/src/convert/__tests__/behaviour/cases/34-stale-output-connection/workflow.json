@@ -1,0 +1,58 @@
+{
+	"name": "Stale output connection",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "stale-output",
+				"options": {}
+			},
+			"webhookId": "4b1c9d7e-0a52-4f18-9c31-7e6a2d5b8f04"
+		},
+		{
+			"id": "code",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: $json.body.n } }, { json: { n: 2 } }];"
+			}
+		},
+		{
+			"id": "real",
+			"name": "Real",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, -100],
+			"parameters": {}
+		},
+		{
+			"id": "stale",
+			"name": "Stale",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 100],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Code", "type": "main", "index": 0 }]]
+		},
+		"Code": {
+			"main": [
+				[{ "node": "Real", "type": "main", "index": 0 }],
+				[{ "node": "Stale", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

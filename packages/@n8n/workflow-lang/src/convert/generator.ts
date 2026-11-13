@@ -40,6 +40,7 @@ import {
 import {
 	clusterMembers,
 	isClusterRoot,
+	knownMainOutputs,
 	LANGCHAIN_PREFIX,
 	lowerAiNode,
 	lowerCluster,
@@ -962,7 +963,7 @@ export class ModuleGenerator {
 			if (node.type.startsWith(LANGCHAIN_PREFIX) && isClusterRoot(c4.workflow, node.name)) {
 				lowerCluster(c4, clusterMembers(c4.workflow, node.name), this.runDataCode(b, node));
 			} else {
-				lowerWithRunData(c4, wholeNodeOutputs(node) ?? 1, this.runDataCode(b, node));
+				lowerWithRunData(c4, knownMainOutputs(node) ?? 1, this.runDataCode(b, node));
 			}
 			c4.warn(
 				'host-expression',
@@ -1056,7 +1057,7 @@ export class ModuleGenerator {
 			// Under `continueErrorOutput` too: the host gives the error output as v1 makes it.
 			const toErrorOutput = node.onError === 'continueErrorOutput' && lowerer === lowerFallback;
 			if (extra || toErrorOutput || (inputs.length > 1 && lowerer === lowerFallback)) {
-				lowerer = (hc) => lowerHostNode(hc, wholeNodeOutputs(node) ?? 1);
+				lowerer = (hc) => lowerHostNode(hc, knownMainOutputs(node));
 			}
 		}
 		if (lowerer === lowerLibrary || lowerer === lowerHttpRequest) this.directSteps.add(node.name);
@@ -1166,13 +1167,8 @@ export class ModuleGenerator {
 		let max = Math.max(0, errorOutput, ...outs.keys(), ...connected);
 		// A connection from an output that the node does not have (a stale connection)
 		// gives no output in v1 run data.
-		const known = def && !def.disabled ? wholeNodeOutputs(def) : undefined;
-		if (
-			known !== undefined &&
-			def?.type === 'n8n-nodes-base.switch' &&
-			def.parameters?.mode !== 'expression' &&
-			max > known - 1
-		) {
+		const known = def && !def.disabled ? knownMainOutputs(def) : undefined;
+		if (known !== undefined && max > known - 1) {
 			max = Math.max(known - 1, errorOutput, ...outs.keys());
 		}
 		return Array.from({ length: max + 1 }, (_, k) => outs.get(k) ?? '[]');
