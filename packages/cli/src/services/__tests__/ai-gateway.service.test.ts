@@ -661,6 +661,65 @@ describe('AiGatewayService', () => {
 			});
 		});
 
+		it('writes the token as OAuth2 token data when tokenFormat is oauth2', async () => {
+			const oauth2Config = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['zoomInfoPkceOAuth2Api'],
+				providerConfig: {
+					zoomInfoPkceOAuth2Api: {
+						gatewayPath: '/v1/gateway/zoominfo',
+						urlField: 'baseUrl',
+						apiKeyField: 'oauthTokenData',
+						tokenFormat: 'oauth2',
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(oauth2Config))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'zoomInfoPkceOAuth2Api',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				oauthTokenData: { access_token: 'mock-jwt-token', token_type: 'Bearer' },
+				tokenExpiredStatusCode: [],
+				baseUrl: `${BASE_URL}/v1/gateway/zoominfo`,
+			});
+		});
+
+		it('writes the token as a plain string when tokenFormat is unknown', async () => {
+			const unknownFormatConfig = {
+				...MOCK_GATEWAY_CONFIG,
+				credentialTypes: ['someApi'],
+				providerConfig: {
+					someApi: {
+						gatewayPath: '/v1/gateway/some',
+						urlField: 'url',
+						apiKeyField: 'apiKey',
+						tokenFormat: 'somethingNew',
+					},
+				},
+			};
+			requestMock
+				.mockResolvedValueOnce(ok(unknownFormatConfig))
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt-token', expiresIn: 3600 }));
+			const service = makeService();
+
+			const result = await service.getSyntheticCredential({
+				credentialType: 'someApi',
+				userId: USER_ID,
+			});
+
+			expect(result).toEqual({
+				apiKey: 'mock-jwt-token',
+				url: `${BASE_URL}/v1/gateway/some`,
+			});
+		});
+
 		it('fans a single credential out to multiple gateway URLs when routing is present', async () => {
 			const routingConfig = {
 				...MOCK_GATEWAY_CONFIG,
