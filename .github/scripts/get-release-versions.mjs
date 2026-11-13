@@ -1,7 +1,6 @@
 import semver from 'semver';
 import {
-	getCommitForRef,
-	listTagsPointingAt,
+	listRemoteTagsWithCommits,
 	RELEASE_PREFIX,
 	RELEASE_TRACKS,
 	stripReleasePrefixes,
@@ -31,20 +30,22 @@ function highestSemverTag(tags) {
 
 /**
  * @param {string} track
+ * @param {Map<string, string>} tagToSha
  **/
-function getSemverTagForTrack(track) {
-	const commit = getCommitForRef(track);
+export function getSemverTagForTrack(track, tagToSha) {
+	const commit = tagToSha.get(track);
 	if (!commit) return '';
 
-	const tags = listTagsPointingAt(commit);
+	const tags = [...tagToSha].filter(([, sha]) => sha === commit).map(([tag]) => tag);
 	return highestSemverTag(tags);
 }
 
 function main() {
+	const tagToSha = listRemoteTagsWithCommits();
 	/** @type { Record<string, string> } */
 	const outputs = {};
 	for (const track of RELEASE_TRACKS) {
-		outputs[track] = getSemverTagForTrack(track);
+		outputs[track] = getSemverTagForTrack(track, tagToSha);
 	}
 
 	writeGithubOutput(outputs);
@@ -55,9 +56,11 @@ function main() {
 	}
 }
 
-try {
-	main();
-} catch (err) {
-	console.error(String(err?.message ?? err));
-	process.exit(1);
+if (import.meta.url === `file://${process.argv[1]}`) {
+	try {
+		main();
+	} catch (err) {
+		console.error(String(err?.message ?? err));
+		process.exit(1);
+	}
 }
