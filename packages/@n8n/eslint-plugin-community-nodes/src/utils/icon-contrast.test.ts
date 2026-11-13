@@ -63,6 +63,37 @@ describe('getSvgPaintColors', () => {
 		expect(getSvgPaintColors('<svg><path/></svg>')).toEqual([parsePaintColor('black')]);
 	});
 
+	it.each([
+		'<path fill="white"/><path/>',
+		'<path/><path fill="white"/>',
+		'<g fill="white"><path/></g><path/>',
+		'<g><path style="fill: white"/></g><g><path/></g>',
+		'<style>.white { fill: white }</style><path class="white"/><path/>',
+		'<style>#white { fill: white }</style><g id="white"><path/></g><path/>',
+		'<style>g > path { fill: white }</style><g><path/></g><path/>',
+	])('includes default black beside an explicit fill: %s', (content) => {
+		const colors = getSvgPaintColors(`<svg>${content}</svg>`);
+		expect(colors).toEqual([parsePaintColor('white'), parsePaintColor('black')]);
+		expect(getBestContrast(colors ?? [], '#fff')).toBeCloseTo(21);
+	});
+
+	it.each([
+		'<svg fill="white"><g><path/></g></svg>',
+		'<svg><g style="fill: white"><path/><g><circle/></g></g></svg>',
+		'<svg><style>path { fill: white }</style><path/></svg>',
+		'<svg><style>.white { fill: white }</style><g class="white"><path/></g></svg>',
+		'<svg><path/><style>path { fill: white }</style></svg>',
+		'<svg><defs><clipPath id="clip"><rect/></clipPath></defs><path fill="white"/></svg>',
+	])('does not add default black to explicitly filled shapes: %s', (svg) => {
+		expect(getSvgPaintColors(svg)).toEqual([parsePaintColor('white')]);
+	});
+
+	it('does not add default black to shapes that inherit fill="none"', () => {
+		expect(getSvgPaintColors('<svg><g fill="none"><path stroke="white"/></g></svg>')).toEqual([
+			parsePaintColor('white'),
+		]);
+	});
+
 	it('does not treat comments and custom properties as paint', () => {
 		expect(
 			getSvgPaintColors(

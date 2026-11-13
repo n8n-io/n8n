@@ -1,8 +1,12 @@
+import { selectAll } from 'css-select';
 import { converter, parse, wcagContrast, type Color, type Rgb } from 'culori';
+import { Element, isTag } from 'domhandler';
 import { parse as parseCss } from 'postcss';
 import { SaxesParser } from 'saxes';
 
 const rgb = converter('rgb');
+const FILLED_SHAPES = new Set(['circle', 'ellipse', 'path', 'polygon', 'polyline', 'rect', 'text']);
+const DEFINITION_ELEMENTS = new Set(['defs', 'clipPath', 'mask', 'pattern', 'marker', 'symbol']);
 
 interface GradientPaint {
 	hasStops: boolean;
@@ -27,25 +31,46 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 	const paints: string[] = [];
 	const gradients = new Map<string, GradientPaint>();
 	const gradientStack: GradientPaint[] = [];
-	let hasFill = false;
+	const elements: Element[] = [];
+	const elementStack: Element[] = [];
+	const filledElements = new Set<Element>();
+	const fillSelectors: string[] = [];
+	let hasFillDeclaration = false;
 	let hasStops = false;
 	let hasStopColor = false;
 	let hasImage = false;
 	let inStyle = false;
 	let stylesheet = '';
 	const collect = (property: string, value: string) => {
-		if (property === 'fill') hasFill = true;
+		if (property === 'fill') hasFillDeclaration = true;
 		if (property === 'stop-color') hasStopColor = true;
 		if (['fill', 'stroke', 'stop-color'].includes(property)) paints.push(value);
 	};
-	const collectCss = (css: string) => {
+	const collectCss = (css: string, element?: Element) => {
 		parseCss(css).walkDecls((declaration) => {
-			collect(declaration.prop.toLowerCase(), declaration.value);
+			const property = declaration.prop.toLowerCase();
+			collect(property, declaration.value);
+			if (property !== 'fill') return;
+			if (element) filledElements.add(element);
+			else if (declaration.parent?.type === 'rule') fillSelectors.push(declaration.parent.selector);
 		});
 	};
 	const parser = new SaxesParser();
 	parser.on('opentag', (tag) => {
 		const name = tag.name.split(':').pop();
+		const element = new Element(name ?? tag.name, tag.attributes);
+		const parent = elementStack.at(-1);
+		if (parent) {
+			element.parent = parent;
+			const previous = parent.children.at(-1);
+			if (previous) {
+				element.prev = previous;
+				previous.next = element;
+			}
+			parent.children.push(element);
+		}
+		elements.push(element);
+		elementStack.push(element);
 		if (name === 'image' || name === 'foreignObject') hasImage = true;
 		if (name === 'linearGradient' || name === 'radialGradient') {
 			const gradient = {
@@ -62,8 +87,11 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 		}
 		if (name === 'style') inStyle = true;
 		for (const [property, value] of Object.entries(tag.attributes)) {
-			if (property === 'style') collectCss(`svg { ${value} }`);
-			else collect(property, value);
+			if (property === 'style') collectCss(`svg { ${value} }`, element);
+			else {
+				collect(property, value);
+				if (property === 'fill') filledElements.add(element);
+			}
 		}
 	});
 	parser.on('text', (text) => {
@@ -73,6 +101,7 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 		if (inStyle) stylesheet += text;
 	});
 	parser.on('closetag', (tag) => {
+		elementStack.pop();
 		const name = tag.name.split(':').pop();
 		if (name === 'linearGradient' || name === 'radialGradient') gradientStack.pop();
 		if (name === 'style') {
@@ -83,6 +112,12 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 	});
 	try {
 		parser.write(svg).close();
+		if (fillSelectors.length > 0) {
+			const roots = elements.filter((element) => !element.parent);
+			for (const element of selectAll(fillSelectors.join(','), roots, { xmlMode: true })) {
+				filledElements.add(element);
+			}
+		}
 	} catch {
 		// Invalid XML or CSS cannot give a reliable contrast result.
 		return null;
@@ -109,7 +144,16 @@ export function getSvgPaintColors(svg: string): Color[] | null {
 			return null;
 		}
 	}
-	if (!hasFill || (hasStops && !hasStopColor)) paints.push('black');
+	const hasDefaultFill = elements.some((element) => {
+		if (!FILLED_SHAPES.has(element.name)) return false;
+		let ancestor: Element | null = element;
+		while (ancestor) {
+			if (DEFINITION_ELEMENTS.has(ancestor.name) || filledElements.has(ancestor)) return false;
+			ancestor = ancestor.parent && isTag(ancestor.parent) ? ancestor.parent : null;
+		}
+		return true;
+	});
+	if (!hasFillDeclaration || hasDefaultFill || (hasStops && !hasStopColor)) paints.push('black');
 	return paints.map(parsePaintColor).filter((color) => color !== undefined);
 }
 

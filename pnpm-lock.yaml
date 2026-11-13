@@ -3023,9 +3023,15 @@ importers:
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
+      css-select:
+        specifier: ^6.0.0
+        version: 6.0.0
       culori:
         specifier: ^4.0.2
         version: 4.0.2
+      domhandler:
+        specifier: ^5.0.3
+        version: 5.0.3
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)

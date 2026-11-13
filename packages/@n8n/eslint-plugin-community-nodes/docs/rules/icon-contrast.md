@@ -15,7 +15,7 @@ This rule reads paint declarations from each SVG icon and checks the theme that 
 
 The rule collects `fill`, `stroke`, and `stop-color` from attributes, inline styles, and `<style>` blocks. It parses CSS colors with `culori` and compares the best color with the node background. The default minimum is 1.5:1. A black glyph scores 1.48:1 on the dark background, so the warning shows two decimal places.
 
-An SVG with no fill uses black. Because file icons render in an `<img>`, `currentColor` uses black and `var()` uses its fallback or black. Color alpha is composited with the theme background.
+Shapes with no declared or inherited fill use black. The rule matches stylesheet selectors to find fill declarations for each element. Because file icons render in an `<img>`, `currentColor` uses black and `var()` uses its fallback or black. Color alpha is composited with the theme background.
 
 The rule skips PNG files, embedded images, invalid SVG or CSS, and `url()` paint that does not refer to a local gradient with stops. Local gradient `href` and `xlink:href` chains are supported. It also skips missing files (`icon-validation` reports those) and icons with no visible paint.
 

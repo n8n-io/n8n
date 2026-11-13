@@ -22,6 +22,11 @@ const svgFiles: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M0 0h24v24H0z"/></svg>',
 	'white.svg':
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#fff" d="M0 0h24v24H0z"/></svg>',
+	'mixed-fill.svg': '<svg><path fill="white"/><path/></svg>',
+	'mixed-style.svg': '<svg><path style="fill: white"/><path/></svg>',
+	'mixed-stylesheet.svg':
+		'<svg><style>.white { fill: white }</style><path class="white"/><path/></svg>',
+	'inherited-fill.svg': '<svg><g fill="white"><path/></g></svg>',
 	'teal.svg':
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle fill="#18a589" cx="12" cy="12" r="12"/></svg>',
 	// A dark badge disappears on the dark theme, but its white glyph stays visible.
@@ -38,7 +43,7 @@ const svgFiles: Record<string, string> = {
 	'variable.svg': '<svg><path fill="var(--icon-color)"/></svg>',
 	'fallback.svg': '<svg><path fill="var(--icon-color, #fff)"/></svg>',
 	'style.svg': '<svg><path style="fill: rgb(255 255 255)"/></svg>',
-	'stylesheet.svg': '<svg><style>.icon { fill: oklch(100% 0 0) }</style><path/></svg>',
+	'stylesheet.svg': '<svg><style>.icon { fill: oklch(100% 0 0) }</style><path class="icon"/></svg>',
 	'stroke.svg': '<svg><path fill="none" stroke="#fff"/></svg>',
 	'gradient.svg':
 		'<svg><defs><linearGradient id="g"><stop stop-color="#fff"/></linearGradient></defs><path fill="url(#g)"/></svg>',
@@ -167,6 +172,18 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			code: createNodeCode('file:badge.svg'),
 			filename: nodeFilePath,
 		},
+		...['mixed-fill.svg', 'mixed-style.svg', 'mixed-stylesheet.svg'].flatMap((file) => [
+			{
+				name: `single icon with explicit white and default black: ${file}`,
+				code: createNodeCode(`file:${file}`),
+				filename: nodeFilePath,
+			},
+			{
+				name: `themed credential with explicit white and default black: ${file}`,
+				code: createCredentialCode({ light: `file:${file}`, dark: 'file:white.svg' }),
+				filename: credentialFilePath,
+			},
+		]),
 		{
 			name: 'icon that is not a file',
 			code: createNodeCode('fa:envelope'),
@@ -347,6 +364,7 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			'gradient.svg',
 			'quoted-gradient.svg',
 			'linked-gradient.svg',
+			'inherited-fill.svg',
 		].map((file) => ({
 			name: `white paint on the light theme: ${file}`,
 			code: createNodeCode(`file:${file}`),
