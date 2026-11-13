@@ -5,7 +5,9 @@ import {
 	N8nAlertDialog,
 	N8nButton,
 	N8nCopyInput,
+	N8nDropdownMenu,
 	N8nHeading,
+	N8nIconButton,
 	N8nOption,
 	N8nPreviewBadge,
 	N8nSelect,
@@ -18,6 +20,11 @@ import { useI18n } from '@n8n/i18n';
 import * as scimApi from '@n8n/rest-api-client/api/scim';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
+
+import { maskSecret, maskSecretParts } from '@/app/utils/maskSecret';
+
+/** Every SCIM token starts with this prefix, so the UI can show it unmasked. */
+const SCIM_TOKEN_PREFIX = 'n8n_scim_';
 
 const props = defineProps<{
 	/** SCIM works only while SAML or OIDC login is on. */
@@ -48,15 +55,34 @@ const selectValue = computed({
 	},
 });
 
+/** The token with its middle hidden. Null while there is no token. */
+const maskedToken = computed(() => {
+	if (newToken.value) return maskSecret(newToken.value, SCIM_TOKEN_PREFIX.length);
+	if (config.value?.hasToken && config.value.tokenHint) {
+		return maskSecretParts(SCIM_TOKEN_PREFIX, config.value.tokenHint);
+	}
+	return null;
+});
+
 const tokenDescription = computed(() => {
 	if (newToken.value) return i18n.baseText('settings.sso.scim.token.copyNow');
-	if (config.value?.hasToken) {
-		return i18n.baseText('settings.sso.scim.token.exists', {
-			interpolate: { hint: config.value.tokenHint ?? '' },
-		});
-	}
-	return i18n.baseText('settings.sso.scim.token.none');
+	if (maskedToken.value) return i18n.baseText('settings.sso.scim.token.active');
+	if (config.value?.enabled) return i18n.baseText('settings.sso.scim.token.none');
+	return i18n.baseText('settings.sso.scim.token.createdOnEnable');
 });
+
+const tokenMenuItems = computed(() => [
+	{
+		id: 'rotate',
+		label: i18n.baseText('settings.sso.scim.token.rotate'),
+		icon: { type: 'icon' as const, value: 'refresh-cw' as const },
+		testId: 'sso-scim-token-rotate',
+	},
+]);
+
+function onTokenMenu(action: string) {
+	if (action === 'rotate') showRegenerateDialog.value = true;
+}
 
 async function load() {
 	try {
@@ -79,6 +105,8 @@ async function save(): Promise<boolean> {
 		);
 		config.value = { ...config.value, enabled };
 		selectedEnabled.value = enabled;
+		// The identity provider needs a token, so turning SCIM on creates the first one.
+		if (enabled && !config.value.hasToken) await generateToken();
 		return true;
 	} catch (error) {
 		showError(error, i18n.baseText('settings.sso.scim.enable.error'));
@@ -105,11 +133,6 @@ async function generateToken() {
 	} finally {
 		generatingToken.value = false;
 	}
-}
-
-function onGenerateClick() {
-	if (config.value?.hasToken) showRegenerateDialog.value = true;
-	else void generateToken();
 }
 
 // The SSO page saves and discards SCIM with the SAML and OIDC settings.
@@ -194,29 +217,44 @@ watch(
 				:description="tokenDescription"
 			>
 				<template #action>
-					<div :class="$style.tokenAction">
+					<div v-if="maskedToken" :class="$style.tokenAction">
+						<!-- The full token is only known right after it is created, so only then it can be copied. -->
 						<N8nCopyInput
-							v-if="newToken"
-							:class="$style.copyInput"
-							:value="newToken"
+							:class="$style.tokenInput"
+							:value="newToken ?? maskedToken"
+							:display-value="maskedToken"
+							:allow-copy="newToken !== null"
 							:label="i18n.baseText('settings.sso.scim.token.title')"
 							size="medium"
 							redact
 							data-test-id="sso-scim-token"
 						/>
-						<N8nButton
-							:variant="config.hasToken ? 'outline' : 'solid'"
-							:disabled="generatingToken"
-							data-test-id="sso-scim-generate-token"
-							@click="onGenerateClick"
+						<N8nDropdownMenu
+							:items="tokenMenuItems"
+							placement="bottom-end"
+							data-test-id="sso-scim-token-menu"
+							@select="onTokenMenu"
 						>
-							{{
-								config.hasToken
-									? i18n.baseText('settings.sso.scim.token.regenerate')
-									: i18n.baseText('settings.sso.scim.token.generate')
-							}}
-						</N8nButton>
+							<template #trigger>
+								<N8nIconButton
+									variant="ghost"
+									size="medium"
+									icon="ellipsis"
+									:disabled="generatingToken"
+									:aria-label="i18n.baseText('settings.sso.scim.token.actions')"
+									data-test-id="sso-scim-token-menu-trigger"
+								/>
+							</template>
+						</N8nDropdownMenu>
 					</div>
+					<N8nButton
+						v-else-if="config.enabled"
+						:disabled="generatingToken"
+						data-test-id="sso-scim-generate-token"
+						@click="generateToken"
+					>
+						{{ i18n.baseText('settings.sso.scim.token.generate') }}
+					</N8nButton>
 				</template>
 			</N8nSettingsRow>
 		</N8nSettingsRowGroup>
@@ -225,7 +263,7 @@ watch(
 			:open="showRegenerateDialog"
 			:title="i18n.baseText('settings.sso.scim.regenerate.title')"
 			:description="i18n.baseText('settings.sso.scim.regenerate.description')"
-			:action-label="i18n.baseText('settings.sso.scim.token.regenerate')"
+			:action-label="i18n.baseText('settings.sso.scim.token.rotate')"
 			action-variant="destructive"
 			@action="generateToken"
 			@cancel="showRegenerateDialog = false"
@@ -249,13 +287,24 @@ watch(
 	width: 200px;
 }
 
+/*
+ * The base URL and the token field share one right edge: the token field plus the
+ * menu button is as wide as the base URL field. A narrow action keeps the row
+ * description readable.
+ */
 .tokenAction {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
+	width: 280px;
+}
+
+.tokenInput {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .copyInput {
-	width: 320px;
+	width: 280px;
 }
 </style>

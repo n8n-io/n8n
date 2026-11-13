@@ -197,8 +197,10 @@ onMounted(() => {
 </script>
 
 <template>
+	<!-- Full width: the role mapping rules need the room for their expressions. -->
 	<N8nSettingsLayout
 		:class="$style.layout"
+		full-width
 		show-back
 		:back-label="i18n.baseText('settings.authentication.back')"
 		data-test-id="sso-settings-view"
@@ -208,6 +210,7 @@ onMounted(() => {
 			:title="i18n.baseText('settings.sso.title')"
 			:description="i18n.baseText('settings.sso.info')"
 			docs-url="https://docs.n8n.io/user-management/saml/"
+			:class="$style.header"
 			data-test-id="sso-settings-header"
 		/>
 		<N8nCallout v-if="ssoStore.ssoManagedByEnv" theme="warning">
@@ -322,6 +325,12 @@ onMounted(() => {
 /* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
 	padding-top: 0;
+}
+
+/* On a full-width page the header lines up with the cards instead of a centered column. */
+.layout .header {
+	max-width: none;
+	margin-inline: 0;
 }
 
 .protocolCard {

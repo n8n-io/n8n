@@ -11,7 +11,7 @@ import type { SamlPreferencesExtractedData } from '@n8n/rest-api-client/api/sso'
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
-import { getScimConfig, setScimEnabled } from '@n8n/rest-api-client/api/scim';
+import { generateScimToken, getScimConfig, setScimEnabled } from '@n8n/rest-api-client/api/scim';
 
 const renderView = createComponentRenderer(SettingsSso);
 
@@ -953,6 +953,10 @@ describe('SettingsSso View', () => {
 			setUpScim();
 			ssoStore.isSamlLoginEnabled = true;
 			vi.mocked(setScimEnabled).mockResolvedValueOnce({ enabled: true });
+			vi.mocked(generateScimToken).mockResolvedValueOnce({
+				token: 'n8n_scim_Q1abnpRsYXQcCspzl1kOpxzQn',
+				baseUrl: 'https://n8n.example.com/scim/v2',
+			});
 
 			const { getByTestId } = renderView();
 			await chooseScimValue(getByTestId, 'Enabled');
@@ -962,6 +966,33 @@ describe('SettingsSso View', () => {
 
 			await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
 			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
+			// Turning SCIM on creates the first token for the identity provider.
+			await waitFor(() => expect(generateScimToken).toHaveBeenCalledTimes(1));
+			expect(
+				await screen.findByText('Copy this token now. You will not see it again.'),
+			).toBeVisible();
+		});
+
+		it('keeps the token that exists when the save turns SCIM on', async () => {
+			setUpScim();
+			ssoStore.isSamlLoginEnabled = true;
+			vi.mocked(getScimConfig).mockResolvedValueOnce({
+				enabled: false,
+				hasToken: true,
+				tokenHint: 'abcd',
+				baseUrl: 'https://n8n.example.com/scim/v2',
+				onDelete: 'disable',
+				dataAction: 'transfer',
+				transferProjectId: null,
+			});
+			vi.mocked(setScimEnabled).mockResolvedValueOnce({ enabled: true });
+
+			const { getByTestId } = renderView();
+			await chooseScimValue(getByTestId, 'Enabled');
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+
+			await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
+			expect(generateScimToken).not.toHaveBeenCalled();
 		});
 
 		it('does not send a SCIM change when the same save turns SSO off', async () => {

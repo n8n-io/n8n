@@ -24,6 +24,7 @@ import { useToast } from '@n8n/composables/useToast';
 
 import { useEncryptionKeysStore } from '../encryption-keys.store';
 import type { EncryptionKey, EncryptionKeySortField } from '../encryption-keys.types';
+import { maskSecret } from '@/app/utils/maskSecret';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -59,11 +60,6 @@ const formatDate = (value: string | null) => {
 	const parsed = new Date(value);
 	if (Number.isNaN(parsed.getTime())) return '—';
 	return dateFormatter.format(parsed);
-};
-
-const maskId = (id: string) => {
-	if (id.length <= 8) return id;
-	return `${id.slice(0, 4)}••••••••${id.slice(-4)}`;
 };
 
 const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
@@ -356,7 +352,7 @@ onMounted(async () => {
 				@update:options="onUpdateOptions"
 			>
 				<template #[`item.id`]="{ item }">
-					<code :class="$style.keyValue">{{ maskId(item.id) }}</code>
+					<code :class="$style.keyValue">{{ maskSecret(item.id) }}</code>
 				</template>
 
 				<template #[`item.status`]="{ item }">
