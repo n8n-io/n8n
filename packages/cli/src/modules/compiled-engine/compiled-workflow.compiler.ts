@@ -10,11 +10,12 @@ import type { IConnections, INode, INodeTypes, IWorkflowSettings } from 'n8n-wor
 import { InstanceSettings } from 'n8n-core';
 import { getGlobalState, NodeHelpers, nodeIssuesToString, Workflow } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { NodeTypes } from '@/node-types';
 
+import { ArtifactCache } from './compiled-engine-disk.service';
+import { CompiledEngineConfig } from './compiled-engine.config';
 import { CompiledEngineProcesses } from './compiled-engine-processes';
 import type { CompiledArtifact, CredentialSlotBinding } from './compiled-engine.types';
 import { CompiledSubWorkflowResolver } from './compiled-sub-workflow.resolver';
@@ -182,6 +183,9 @@ export class CompiledWorkflowCompiler {
 
 	private readonly inFlight = new Map<string, Promise<CompiledArtifact>>();
 
+	/** The files of the cache, bounded by `N8N_COMPILED_ENGINE_ARTIFACT_CACHE_MB`. */
+	private readonly artifacts: ArtifactCache;
+
 	constructor(
 		private readonly processes: CompiledEngineProcesses,
 		private readonly subWorkflows: CompiledSubWorkflowResolver,
@@ -189,12 +193,13 @@ export class CompiledWorkflowCompiler {
 		private readonly nodeTypes: NodeTypes,
 		private readonly urlService: UrlService,
 		private readonly instanceSettings: InstanceSettings,
+		config: CompiledEngineConfig,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
-	}
-
-	private get cacheDir() {
-		return join(this.processes.dataDir, 'artifacts');
+		this.artifacts = new ArtifactCache(
+			join(this.processes.dataDir, 'artifacts'),
+			config.artifactCacheMb * 1024 * 1024,
+		);
 	}
 
 	async compile(input: CompileInput): Promise<CompiledArtifact> {
@@ -214,10 +219,16 @@ export class CompiledWorkflowCompiler {
 			.update(getGlobalState().defaultTimezone)
 			.digest('hex');
 
-		const cached = this.cache.get(key) ?? (await this.readCached(key));
-		if (cached) {
-			this.cache.set(key, cached);
-			return { ...cached, workflowId: input.id, versionId: input.versionId };
+		const inMemory = this.cache.get(key);
+		if (inMemory) {
+			void this.artifacts.touch(key);
+			return { ...inMemory, workflowId: input.id, versionId: input.versionId };
+		}
+
+		const stored = await this.readCached(key);
+		if (stored) {
+			this.cache.set(key, stored);
+			return { ...stored, workflowId: input.id, versionId: input.versionId };
 		}
 
 		const pending = this.inFlight.get(key);
@@ -329,9 +340,9 @@ export class CompiledWorkflowCompiler {
 
 	private async readCached(key: string): Promise<CompiledArtifact | undefined> {
 		try {
-			const stored: StoredArtifact = JSON.parse(
-				await readFile(join(this.cacheDir, `${key}.json`), 'utf8'),
-			);
+			const contents = await this.artifacts.read(key);
+			if (contents === undefined) return undefined;
+			const stored: StoredArtifact = JSON.parse(contents);
 			return {
 				...stored,
 				module: stored.module ? Buffer.from(stored.module, 'base64') : undefined,
@@ -343,12 +354,11 @@ export class CompiledWorkflowCompiler {
 
 	private async writeCached(artifact: CompiledArtifact) {
 		try {
-			await mkdir(this.cacheDir, { recursive: true });
 			const stored: StoredArtifact = {
 				...artifact,
 				module: artifact.module?.toString('base64'),
 			};
-			await writeFile(join(this.cacheDir, `${artifact.key}.json`), JSON.stringify(stored));
+			await this.artifacts.write(artifact.key, JSON.stringify(stored));
 		} catch (error) {
 			this.logger.warn('Could not write the compiled workflow to the cache folder', {
 				error: error instanceof Error ? error.message : String(error),
