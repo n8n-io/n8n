@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { loadSidePanel, type ViewRuntimeAssets } from '@n8n/frontend-module-ui-extensions';
-import { defineAsyncComponent, inject, onBeforeUnmount, onMounted, shallowRef } from 'vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defineAsyncComponent, inject, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue';
 
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useUiExtensionPageContext } from '@/app/composables/useUiExtensionPageContext';
@@ -13,6 +14,7 @@ const workflowDocumentStore = inject(WorkflowDocumentStoreKey, shallowRef(null))
 const { pageContext, workflowAvailableInMcp } = useUiExtensionPageContext(workflowDocumentStore);
 
 const pushConnectionStore = usePushConnectionStore();
+const settingsStore = useSettingsStore();
 const runtime = shallowRef<ViewRuntimeAssets | null>(null);
 
 /**
@@ -27,15 +29,28 @@ async function loadRuntime() {
 	runtime.value = { js, css };
 }
 
+// A view from an MCP client must show without a reload on every page, and only
+// some layouts open the push connection. The store counts the owners.
+// The panel can mount after the login and before the full settings load. The
+// push client type comes from those settings, so the connection waits for them.
+let isPushConnected = false;
+const stopWaitingForSettings = watch(
+	() => settingsStore.pushBackend,
+	(pushBackend) => {
+		if (!pushBackend || isPushConnected) return;
+		isPushConnected = true;
+		pushConnectionStore.pushConnect();
+	},
+	{ immediate: true },
+);
+
 onMounted(() => {
-	// A view from an MCP client must show without a reload on every page, and only
-	// some layouts open the push connection. The store counts the owners.
-	pushConnectionStore.pushConnect();
 	void loadRuntime();
 });
 
 onBeforeUnmount(() => {
-	pushConnectionStore.pushDisconnect();
+	stopWaitingForSettings();
+	if (isPushConnected) pushConnectionStore.pushDisconnect();
 });
 </script>
 

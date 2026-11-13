@@ -58,6 +58,15 @@ describe('createViewBridge', () => {
 		expect(bridge.api.t('missing.key')).toBe('missing.key');
 	});
 
+	it.each(['__proto__', 'constructor', 'toString'])('returns the key %s itself', (key) => {
+		const { target, send } = createFrameWindow();
+		const bridge = createViewBridge(target);
+
+		send(contextMessage());
+
+		expect(bridge.api.t(key)).toBe(key);
+	});
+
 	it.each([
 		['a wrong source', { source: 'someone-else' }],
 		['a wrong version', { version: 2 }],

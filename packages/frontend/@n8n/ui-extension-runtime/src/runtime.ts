@@ -60,7 +60,7 @@ export function createViewBridge(target: RuntimeWindow) {
 	const fallbackContext: UiExtensionPageContext = { page: 'other', routeName: null };
 	const api: ViewApi = {
 		useContext: () => Vue.computed(() => context.value ?? fallbackContext),
-		t: (key) => strings.value[key] ?? key,
+		t: (key) => (Object.hasOwn(strings.value, key) ? strings.value[key] : key),
 	};
 
 	return {
