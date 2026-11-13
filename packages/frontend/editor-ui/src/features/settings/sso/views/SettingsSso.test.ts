@@ -988,7 +988,7 @@ describe('SettingsSso View', () => {
 			await userEvent.click(disabledOptions[0]);
 			const getScimConfigCalls = vi.mocked(getScimConfig).mock.calls.length;
 			// In the browser the SCIM reload runs while the save goes on, so it ends late.
-			const savedScimConfig = await vi.mocked(getScimConfig).getMockImplementation()!();
+			const savedScimConfig = await vi.mocked(getScimConfig).getMockImplementation()!({} as never);
 			vi.mocked(getScimConfig).mockImplementation(
 				async () => await new Promise((resolve) => setTimeout(() => resolve(savedScimConfig), 100)),
 			);
