@@ -37,7 +37,7 @@ export class AppServingController {
 			planUrl: '/plan.json',
 			editorUrl: this.preview.editorOrigin,
 			projectId,
-			progress: true,
+			progress: 'parent' as const,
 		};
 		const tag = `<script>${planOverlayScript(config)}</script>`;
 		const bodyClose = html.lastIndexOf('</body>');

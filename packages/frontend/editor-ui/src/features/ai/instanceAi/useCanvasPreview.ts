@@ -13,6 +13,7 @@ import {
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
 	getPendingAppPlan,
+	getLatestAppProgress,
 	getExecutionResultsByWorkflow,
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
@@ -444,6 +445,12 @@ export function useCanvasPreview({
 	// An app plan waiting for approval takes over the preview panel as a wireframe.
 	const pendingAppPlan = computed(() => getPendingAppPlan(thread.artifactTurns) ?? null);
 
+	// The plan part the builder works on, for the progress of the active app.
+	const activeAppBuildingPlanId = computed(() => {
+		const progress = getLatestAppProgress(thread.artifactTurns);
+		return progress && progress.appId === activeApp.value?.id ? progress.planId : null;
+	});
+
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
 	//   - During hydration (loading past conversations from the server) → skip,
@@ -630,6 +637,7 @@ export function useCanvasPreview({
 		activeSkillId,
 		activeApp,
 		pendingAppPlan,
+		activeAppBuildingPlanId,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		skillRefreshKey,

@@ -5,7 +5,12 @@ import { defineAsyncComponent, useTemplateRef, watch } from 'vue';
 
 import { useInstanceAiStore } from '../instanceAi.store';
 
-const props = defineProps<{ projectId: string; appId: string; refreshKey: number }>();
+const props = defineProps<{
+	projectId: string;
+	appId: string;
+	refreshKey: number;
+	buildingPlanId?: string | null;
+}>();
 
 const emit = defineEmits<{ deleted: [appId: string] }>();
 
@@ -32,6 +37,7 @@ function addElementToChat(element: AppPreviewElement) {
 		:app-id="appId"
 		inspectable
 		:element-selected="store.hasComposerElementFor(appId)"
+		:building-plan-id="buildingPlanId"
 		data-test-id="instance-ai-app-preview"
 		@deleted="emit('deleted', $event)"
 		@element-selected="addElementToChat"

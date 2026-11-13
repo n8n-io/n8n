@@ -51,6 +51,14 @@ const inputSchema = z.discriminatedUnion('action', [
 	z.object({ action: z.literal('open'), appId: appIdSchema }),
 	z.object({ action: z.literal('bindings'), appId: appIdSchema }),
 	z.object({
+		action: z.literal('progress'),
+		appId: appIdSchema,
+		planId: z
+			.string()
+			.max(40)
+			.describe('The plan id (`shell` or a component id) that you start to build now'),
+	}),
+	z.object({
 		action: z.literal('bind'),
 		appId: appIdSchema,
 		binding: z
@@ -267,6 +275,9 @@ async function handle(
 				path: appFolder(input.appId),
 				baseVersionId: await checkOutDraft(workspace, apps, input.appId),
 			};
+		case 'progress':
+			// The editor reads this call to show which part is in progress.
+			return { appId: input.appId, building: input.planId };
 	}
 }
 
@@ -283,7 +294,8 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`open` puts the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
 				'`commit` saves the folder as one version and builds it. ' +
 				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
-				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version.',
+				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version. ' +
+				'`progress` tells the user which plan part you start to build now. It saves nothing.',
 		)
 		.input(sanitizeInputSchema(inputSchema))
 		.suspend(

@@ -23,6 +23,7 @@ const props = defineProps<{
 	appId: string;
 	inspectable?: boolean;
 	elementSelected?: boolean;
+	buildingPlanId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -135,6 +136,7 @@ defineExpose({ refresh });
 						:versions="versions"
 						:inspectable="inspectable"
 						:element-selected="elementSelected"
+						:building-plan-id="buildingPlanId"
 						@element-selected="emit('element-selected', $event)"
 					/>
 					<AppConfigure v-else :app="app" :versions="versions" @updated="onAppUpdated" />

@@ -1076,6 +1076,7 @@ function handleNewThreadClick() {
 									:class="$style.previewSlot"
 									:project-id="preview.activeApp.value.projectId"
 									:app-id="preview.activeApp.value.id"
+									:building-plan-id="preview.activeAppBuildingPlanId.value"
 									:refresh-key="preview.appRefreshKey.value"
 									@deleted="preview.closeTab"
 								/>

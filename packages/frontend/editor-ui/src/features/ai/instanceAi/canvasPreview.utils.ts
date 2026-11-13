@@ -453,6 +453,17 @@ export function getLatestAppArtifactResult(
 	return getLatestToolArtifactResult(turns, getAppArtifactFromToolCall);
 }
 
+/** The plan part that the builder announced last with the `apps` tool `progress` action. */
+export function getLatestAppProgress(
+	turns: readonly ArtifactTurn[],
+): { appId: string; planId: string } | undefined {
+	return findLatestInTurns(turns, (tc) => {
+		if (tc.toolName !== APPS_TOOL_NAME || tc.args?.action !== 'progress') return undefined;
+		const { appId, planId } = tc.args;
+		return typeof appId === 'string' && typeof planId === 'string' ? { appId, planId } : undefined;
+	});
+}
+
 export interface PendingAppPlan {
 	toolCallId: string;
 	name: string;

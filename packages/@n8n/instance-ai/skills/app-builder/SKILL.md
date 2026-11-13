@@ -124,7 +124,16 @@ The `plan` is the wireframe of the app. Keep it short and concrete:
   short lowercase `id` (for example `drafts-table`), a `kind` (`kpi`, `table`,
   `list`, `chart`, `detail`, `form`, `filter`, `button`, `text`), a `label`,
   a `region` (`main` or `aside`) and a `span` of a 12-column grid. Use `items`
-  for table columns, form fields or filter options.
+  for table columns, form fields or filter names.
+- Make the wireframe look like the app you will build, so the user approves
+  the real thing:
+  - A row of KPI cards is one `kpi` component with one item per card, for
+    example `["Followers", "Views"]`. If the data exists, read it first and use
+    the real metric names.
+  - A chart sets `variant` (`line`, `bar` or `pie`) and lists its series in
+    `items`, for example `["Facebook", "Instagram"]`.
+  - A filter bar sets `variant` `select` (dropdowns) or `pills`, and lists the
+    filters in `items`.
 - `data`: for each component that shows data, the data table or workflow it
   reads (`new` or `existing`), the `fields`, and an `aggregation` in plain
   words, for example `count of drafts where status = pending`.
@@ -146,7 +155,15 @@ the app shell is the `<div class="wf-app" data-plan-id="shell">` element.
 the blocks you replaced. This section replaces
 [Build order for a new app](#build-order-for-a-new-app).
 
-Follow `buildOrder`. Do one step per commit, and do not batch steps:
+Follow `buildOrder`. Do one step per commit, and do not batch steps. The user
+watches the preview, so the first commit must come fast:
+
+- Do not prepare the whole app first. Do not write every component, shared
+  composables for all parts, or all bindings before the first commit. Write
+  shared code only when the step that needs it comes.
+- Commit the shell before you look at data or create resources.
+- Before each step, call `apps` with `action: "progress"`, the `appId` and the
+  `planId` of the step. The user then sees which part you build.
 
 1. **Shell.** Replace the `wf-app` class with your own app classes and
    styles: background, colors and type of the theme, page grid. Keep

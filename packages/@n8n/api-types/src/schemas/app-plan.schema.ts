@@ -59,8 +59,13 @@ export const appPlanComponentSchema = z.object({
 	region: z.enum(['main', 'aside']).optional(),
 	/** Columns of a 12-column grid. Defaults to 12. */
 	span: z.number().int().min(1).max(12).optional(),
-	/** Short hints the wireframe draws, e.g. table columns or form fields. */
+	/**
+	 * Short hints the wireframe draws: table columns, form fields, filter names,
+	 * chart series, or one KPI tile per item.
+	 */
 	items: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+	/** How a chart or filter looks: `line`, `bar` or `pie` charts, `select` or `pills` filters. */
+	variant: z.enum(['line', 'bar', 'pie', 'select', 'pills']).optional(),
 	data: appPlanDataSchema.optional(),
 	action: appPlanActionSchema.optional(),
 	status: appPlanComponentStatusSchema.optional(),

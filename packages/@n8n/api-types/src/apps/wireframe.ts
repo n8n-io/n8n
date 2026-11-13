@@ -16,11 +16,23 @@ export interface PlanLinkContext {
 	projectId?: string;
 }
 
+export interface PlanResourceInfo {
+	kind: string;
+	/** `data table`, `workflow` or `agent`. */
+	kindLabel: string;
+	name: string;
+	isNew: boolean;
+}
+
 export interface PlanComponentInfo {
 	title: string;
-	lines: string[];
-	status: string;
+	kind: string;
+	status: 'planned' | 'building' | 'built';
+	data?: PlanResourceInfo & { fields: string[]; shows?: string };
+	action?: PlanResourceInfo & { does: string };
 	link?: { label: string; href: string };
+	/** The same content as plain lines. */
+	lines: string[];
 }
 
 // Self-contained on purpose: the overlay script embeds it with `toString()`.
@@ -28,49 +40,63 @@ export function describePlanComponent(
 	component: AppPlanComponent,
 	context: PlanLinkContext,
 ): PlanComponentInfo {
-	const kindName: Record<string, string> = {
+	const kindLabels: Record<string, string> = {
 		dataTable: 'data table',
 		workflow: 'workflow',
 		agent: 'agent',
 	};
-	const lines: string[] = [];
+	const resource = (r: { kind: string; name: string; status: string }) => ({
+		kind: r.kind,
+		kindLabel: kindLabels[r.kind] ?? r.kind,
+		name: r.name,
+		isNew: r.status === 'new',
+	});
 	let link: PlanComponentInfo['link'];
-	const linkTo = (resource: { kind: string; name: string; resourceId?: string }) => {
-		if (link || !resource.resourceId || !context.editorUrl) return;
+	const linkTo = (r: { kind: string; name: string; resourceId?: string }) => {
+		if (link || !r.resourceId || !context.editorUrl) return;
 		const base = context.editorUrl.replace(/\/$/, '');
-		if (resource.kind === 'workflow') {
-			link = { label: `Open ${resource.name}`, href: `${base}/workflow/${resource.resourceId}` };
-		} else if (resource.kind === 'dataTable' && context.projectId) {
-			link = {
-				label: `Open ${resource.name}`,
-				href: `${base}/projects/${context.projectId}/datatables/${resource.resourceId}`,
-			};
-		} else if (resource.kind === 'agent' && context.projectId) {
-			link = {
-				label: `Open ${resource.name}`,
-				href: `${base}/projects/${context.projectId}/agents/${resource.resourceId}`,
-			};
-		}
+		const paths: Record<string, string | undefined> = {
+			workflow: `/workflow/${r.resourceId}`,
+			dataTable: context.projectId
+				? `/projects/${context.projectId}/datatables/${r.resourceId}`
+				: undefined,
+			agent: context.projectId
+				? `/projects/${context.projectId}/agents/${r.resourceId}`
+				: undefined,
+		};
+		const path = paths[r.kind];
+		if (path) link = { label: `Open ${r.name}`, href: `${base}${path}` };
 	};
-	const data = component.data;
-	if (data) {
+
+	const lines: string[] = [];
+	const info: PlanComponentInfo = {
+		title: component.label,
+		kind: component.kind,
+		status: component.status ?? 'planned',
+		lines,
+	};
+	if (component.data) {
+		const data = component.data;
+		info.data = { ...resource(data), fields: data.fields ?? [], shows: data.aggregation };
 		lines.push(
-			`Data from ${kindName[data.kind] ?? data.kind} "${data.name}" (${data.status === 'new' ? 'new' : 'existing'})`,
+			`Data from ${info.data.kindLabel} "${data.name}" (${info.data.isNew ? 'new' : 'existing'})`,
 		);
 		if (data.fields?.length) lines.push(`Fields: ${data.fields.join(', ')}`);
 		if (data.aggregation) lines.push(`Shows: ${data.aggregation}`);
 		linkTo(data);
 	}
-	const action = component.action;
-	if (action) {
+	if (component.action) {
+		const action = component.action;
+		info.action = { ...resource(action), does: action.does };
 		lines.push(
-			`Runs ${kindName[action.kind] ?? action.kind} "${action.name}" (${action.status === 'new' ? 'new' : 'existing'})`,
+			`Runs ${info.action.kindLabel} "${action.name}" (${info.action.isNew ? 'new' : 'existing'})`,
 		);
 		lines.push(action.does);
 		linkTo(action);
 	}
-	if (!data && !action) lines.push('No data or workflow behind this part');
-	return { title: component.label, lines, status: component.status ?? 'planned', link };
+	if (!component.data && !component.action) lines.push('No data or workflow behind this part');
+	info.link = link;
+	return info;
 }
 
 function escapeHtml(text: string): string {
@@ -85,6 +111,11 @@ function escapeHtml(text: string): string {
 }
 
 const SKETCH_LINE = '<span class="wf-line"></span>';
+const SPARKLINE =
+	'<svg class="wf-spark" viewBox="0 0 100 24" preserveAspectRatio="none"><path d="M0 18 L15 15 L30 17 L45 10 L60 12 L75 5 L100 8"/></svg>';
+const LINE_A = 'M0 80 L40 70 L80 74 L120 50 L160 56 L200 30 L240 36 L300 20';
+const LINE_B = 'M0 90 L40 86 L80 80 L120 82 L160 70 L200 72 L240 60 L300 64';
+const LINE_C = 'M0 60 L40 64 L80 50 L120 58 L160 44 L200 50 L240 46 L300 40';
 
 function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 	const items = (component.items ?? []).map(escapeHtml);
@@ -98,8 +129,11 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 				.join('');
 			return `<span class="wf-logo">${escapeHtml(component.label)}</span><span class="wf-nav-items">${links}</span>`;
 		}
-		case 'kpi':
-			return '<span class="wf-kpi-value">00</span><span class="wf-spark"></span>';
+		case 'kpi': {
+			const tile = (label: string) =>
+				`<div class="wf-kpi">${label ? `<span class="wf-k">${label}</span>` : ''}<span class="wf-kpi-value">00</span><span class="wf-kpi-delta">▲ 0 (0%)</span>${SPARKLINE}</div>`;
+			return items.length ? `<div class="wf-kpis">${items.map(tile).join('')}</div>` : tile('');
+		}
 		case 'table': {
 			const cols = items.length ? items : ['Column', 'Column', 'Column'];
 			const head = cols.map((c) => `<span>${c}</span>`).join('');
@@ -110,18 +144,32 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 			const row = `<div class="wf-li"><span class="wf-dot"></span><span class="wf-li-text">${SKETCH_LINE}${SKETCH_LINE}</span>${items.length ? `<span class="wf-tag">${items[0]}</span>` : ''}</div>`;
 			return row.repeat(4);
 		}
-		case 'chart':
-			return (
-				'<div class="wf-chart">' +
-				[40, 65, 30, 80, 55, 70].map((h) => `<span style="height:${h}%"></span>`).join('') +
-				'</div>'
-			);
+		case 'chart': {
+			const legend = items.length
+				? `<div class="wf-legend">${items.map((i, n) => `<span><i class="wf-swatch wf-s${n % 3}"></i>${i}</span>`).join('')}</div>`
+				: '';
+			if (component.variant === 'bar') {
+				return `${legend}<div class="wf-chart">${[40, 65, 30, 80, 55, 70].map((h) => `<span style="height:${h}%"></span>`).join('')}</div>`;
+			}
+			if (component.variant === 'pie') {
+				return `<div class="wf-pie-wrap"><svg class="wf-pie" viewBox="0 0 42 42"><circle r="15.9" cx="21" cy="21" class="wf-pie-a"/><circle r="15.9" cx="21" cy="21" class="wf-pie-b" stroke-dasharray="35 65"/></svg>${legend}</div>`;
+			}
+			const series = Math.max(1, Math.min(items.length, 3));
+			const paths = [LINE_A, LINE_B, LINE_C]
+				.slice(0, series)
+				.map((d, n) => `<path d="${d}" class="wf-s${n}"/>`)
+				.join('');
+			return `${legend}<svg class="wf-linechart" viewBox="0 0 300 100" preserveAspectRatio="none"><path d="M0 99H300M0 0V100" class="wf-axis"/>${paths}</svg>`;
+		}
 		case 'detail':
 			return `<div class="wf-detail">${(items.length ? items : ['Title', 'Body']).map((i) => `<div class="wf-kv"><span class="wf-k">${i}</span>${SKETCH_LINE}</div>`).join('')}</div>`;
 		case 'form':
 			return `${(items.length ? items : ['Field']).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input"></span></div>`).join('')}<span class="wf-btn">Submit</span>`;
 		case 'filter':
-			return `<div class="wf-pills">${(items.length ? items : ['All', 'Open', 'Done']).map((i, n) => `<span class="wf-pill${n === 0 ? ' active' : ''}">${i}</span>`).join('')}</div>`;
+			if (component.variant === 'pills') {
+				return `<div class="wf-pills">${(items.length ? items : ['All', 'Open', 'Done']).map((i, n) => `<span class="wf-pill${n === 0 ? ' active' : ''}">${i}</span>`).join('')}</div>`;
+			}
+			return `<div class="wf-selects">${(items.length ? items : ['Filter']).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input wf-select">All</span></div>`).join('')}</div>`;
 		case 'button':
 			return `<span class="wf-btn">${escapeHtml(component.label)}${component.action ? ' <span class="wf-mark">⚡</span>' : ''}</span>`;
 		case 'text':
@@ -238,8 +286,27 @@ export const WIREFRAME_CSS = `
 .wf-nav-items { display: flex; gap: 6px; }
 .wf-nav-item { padding: 3px 10px; border-radius: 999px; cursor: pointer; color: var(--wf-ink-soft); }
 .wf-nav-item.active { background: var(--wf-wash); color: var(--wf-ink); font-weight: 400; }
-.wf-kpi-value { display: block; font-size: 28px; font-weight: 700; color: var(--wf-ink-faint); }
-.wf-spark { display: block; height: 14px; margin-top: 4px; border-bottom: 2px dashed var(--wf-line-soft); }
+.wf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.wf-kpis .wf-kpi { border: 1.5px solid var(--wf-line-soft); border-radius: 8px; padding: 8px 10px; }
+.wf-kpi-value { display: block; font-size: 28px; font-weight: 700; color: var(--wf-ink-faint); line-height: 1.2; }
+.wf-kpi-delta { display: block; font-size: 11px; color: var(--wf-ink-soft); }
+.wf-spark { display: block; width: 100%; height: 22px; margin-top: 4px; }
+.wf-spark path, .wf-linechart path { fill: none; stroke: var(--wf-ink-faint); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.wf-linechart { display: block; width: 100%; height: 130px; }
+.wf-linechart .wf-axis { stroke: var(--wf-line); stroke-width: 2; }
+.wf-linechart .wf-s1 { stroke-dasharray: 6 4; }
+.wf-linechart .wf-s2 { stroke-dasharray: 2 4; }
+.wf-legend { display: flex; gap: 12px; justify-content: flex-end; font-size: 11px; color: var(--wf-ink-soft); margin-bottom: 4px; }
+.wf-swatch { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--wf-ink-faint); margin-right: 4px; vertical-align: middle; }
+.wf-swatch.wf-s1 { border-top-style: dashed; } .wf-swatch.wf-s2 { border-top-style: dotted; }
+.wf-pie-wrap { display: flex; align-items: center; gap: 16px; }
+.wf-pie { width: 110px; height: 110px; transform: rotate(-90deg); }
+.wf-pie circle { fill: none; stroke-width: 8; }
+.wf-pie-a { stroke: var(--wf-wash); } .wf-pie-b { stroke: var(--wf-ink-faint); }
+.wf-selects { display: flex; flex-wrap: wrap; gap: 10px; }
+.wf-selects .wf-field { flex: 1 1 120px; margin: 0; }
+.wf-select { display: flex; align-items: center; padding: 0 8px; font-size: 11px; color: var(--wf-ink-faint); }
+.wf-select::after { content: '▾'; margin-left: auto; }
 .wf-table { display: grid; }
 .wf-tr { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; padding: 6px 0; border-bottom: 1.5px solid var(--wf-line-soft); }
 .wf-th { font-weight: 400; color: var(--wf-ink-soft); border-bottom: 2px solid var(--wf-line); }
@@ -259,21 +326,50 @@ export const WIREFRAME_CSS = `
 .wf-pill.active { background: var(--wf-wash); color: var(--wf-ink); }
 `;
 
-/** Styles of the preview overlay: hover card, progress bar, shimmer on the block in progress. */
+/** Styles of the preview overlay: hover card, highlight, progress bar, shimmer on the block in progress. */
 export const PLAN_OVERLAY_CSS = `
-.plan-ov-tip { position: fixed; z-index: 2147483646; max-width: 300px; padding: 8px 10px; border-radius: 8px;
-  background: #1f1f1f; color: #fff; font: 12px/1.45 system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0,0,0,.25); pointer-events: auto; }
-.plan-ov-tip b { display: block; font-size: 12.5px; margin-bottom: 2px; }
-.plan-ov-tip .st { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #444; font-size: 10.5px; font-weight: 500; }
-.plan-ov-tip .st.built { background: #2e7d4f; } .plan-ov-tip .st.building { background: #b26b00; }
-.plan-ov-tip a { color: #ffb4a8; }
-.plan-ov-hl { outline: 2px dashed #ff6d5a !important; outline-offset: 2px; }
+.plan-ov-tip { position: fixed; z-index: 2147483646; width: 288px; box-sizing: border-box; border-radius: 12px;
+  background: #fff; color: #1f2328; border: 1px solid rgba(15, 23, 42, .08);
+  box-shadow: 0 12px 32px -8px rgba(15, 23, 42, .28), 0 2px 6px rgba(15, 23, 42, .08);
+  font: 12px/1.45 -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif; overflow: hidden;
+  animation: plan-ov-in .14s ease-out; }
+@keyframes plan-ov-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.plan-ov-tip * { box-sizing: border-box; }
+.plan-ov-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; }
+.plan-ov-kind { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  background: #fff1ee; color: #ea4b30; font-size: 13px; }
+.plan-ov-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-ov-st { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; background: #f1f3f5; color: #57606a; }
+.plan-ov-st::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.plan-ov-st.building { background: #fff4e5; color: #b25e00; }
+.plan-ov-st.building::before { animation: plan-ov-pulse 1s ease-in-out infinite; }
+.plan-ov-st.built { background: #e8f6ee; color: #1f7a45; }
+@keyframes plan-ov-pulse { 50% { opacity: .25; } }
+.plan-ov-sec { padding: 8px 12px; border-top: 1px solid #eef0f2; }
+.plan-ov-label { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8b949e; margin-bottom: 4px; }
+.plan-ov-res { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-ov-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 8px; border-radius: 6px;
+  background: #f6f8fa; border: 1px solid #e5e8eb; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-ov-new { font-size: 10.5px; font-weight: 600; color: #7c3aed; background: #f3edff; border-radius: 4px; padding: 1px 5px; }
+.plan-ov-fields { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.plan-ov-field { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; color: #57606a; background: #f6f8fa; border-radius: 4px; padding: 1px 5px; }
+.plan-ov-text { margin-top: 6px; color: #424a53; }
+.plan-ov-empty { padding: 0 12px 10px; color: #8b949e; }
+.plan-ov-foot { padding: 8px 12px; border-top: 1px solid #eef0f2; background: #fafbfc; }
+.plan-ov-foot a { color: #ea4b30; font-weight: 500; text-decoration: none; }
+.plan-ov-foot a:hover { text-decoration: underline; }
+.plan-ov-hl { position: fixed; z-index: 2147483645; pointer-events: none; border-radius: 10px;
+  box-shadow: 0 0 0 2px #ff6d5a, 0 0 0 6px rgba(255, 109, 90, .16); background: rgba(255, 109, 90, .04);
+  transition: all .12s ease-out; }
+.plan-ov-tag { position: absolute; left: -2px; top: -22px; padding: 2px 8px; border-radius: 6px 6px 6px 0;
+  background: #ff6d5a; color: #fff; font: 600 11px/16px system-ui, sans-serif; white-space: nowrap; }
 .plan-ov-selecting [data-plan-id] { cursor: crosshair; }
 .plan-ov-selected { outline: 2px solid #ff6d5a !important; outline-offset: 2px; }
-.plan-ov-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483645; display: flex; align-items: center; gap: 10px;
-  padding: 5px 12px; background: rgba(255,255,255,.94); border-bottom: 1px solid #e3e3e3; color: #333; font: 12px system-ui, sans-serif; backdrop-filter: blur(4px); }
+.plan-ov-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 2147483644; display: flex; align-items: center; gap: 10px;
+  padding: 5px 12px; background: rgba(255,255,255,.94); border-bottom: 1px solid #e3e3e3; color: #333; font: 12px system-ui, sans-serif; }
 .plan-ov-bar .track { flex: 0 0 140px; height: 5px; border-radius: 3px; background: #eee; overflow: hidden; }
-.plan-ov-bar .fill { height: 100%; background: #ff6d5a; transition: width .4s; }
+.plan-ov-bar .fill { display: block; height: 100%; background: #ff6d5a; transition: width .4s; }
 .plan-ov-bar.done .fill { background: #2e7d4f; }
 .plan-ov-building { position: relative; overflow: hidden; }
 .plan-ov-building::after { content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -288,14 +384,25 @@ export interface PlanOverlayConfig {
 	planUrl?: string;
 	editorUrl?: string;
 	projectId?: string;
-	/** Shows the build progress bar. */
-	progress?: boolean;
+	/**
+	 * `true` draws a progress bar on the page. `parent` posts the progress to the
+	 * parent page instead, which shows it in its own chrome.
+	 */
+	progress?: boolean | 'parent';
 	/** Lets the parent page turn on block selection with `postMessage`. */
 	selectable?: boolean;
 }
 
 /** `postMessage` source of the plan overlay. */
 export const PLAN_OVERLAY_MESSAGE_SOURCE = 'n8n-app-plan';
+
+/** Progress the overlay posts to the parent page when `progress` is `parent`. */
+export interface PlanOverlayProgress {
+	built: number;
+	total: number;
+	/** Label of the step in progress, or of the next step. */
+	current?: string;
+}
 
 /** Runs in the page. Self-contained: it is embedded with `toString()`. */
 export function planOverlayMain(
@@ -304,15 +411,39 @@ export function planOverlayMain(
 	config: PlanOverlayConfig,
 ): void {
 	const doc = document;
+	const source = 'n8n-app-plan';
 	const style = doc.createElement('style');
 	style.textContent = css;
 	doc.head.append(style);
 
+	const kindIcons: Record<string, string> = {
+		nav: '☰',
+		kpi: '#',
+		table: '▦',
+		list: '≣',
+		chart: '📈',
+		detail: '▤',
+		form: '✎',
+		filter: '⏷',
+		button: '⚡',
+		text: '¶',
+		shell: '▢',
+	};
 	let byId: Record<string, AppPlanComponent> = {};
 	let order: string[] = [];
+	// The step the builder announced. Without it, the next unbuilt step counts as current.
+	let buildingId: string | null = null;
 	let tip: HTMLElement | null = null;
+	let ring: HTMLElement | null = null;
 	let tipFor: Element | null = null;
 	let hideTimer = 0;
+
+	function el(tag: string, className?: string, text?: string): HTMLElement {
+		const node = doc.createElement(tag);
+		if (className) node.className = className;
+		if (text !== undefined) node.textContent = text;
+		return node;
+	}
 
 	function index(plan: AppPlan) {
 		byId = {};
@@ -326,74 +457,130 @@ export function planOverlayMain(
 			const shell = doc.querySelector('[data-plan-id="shell"]');
 			return !shell || !shell.classList.contains('wf-app');
 		}
-		const el = doc.querySelector(`[data-plan-id="${id}"]`);
-		return !!el && !el.classList.contains('wf-block');
+		const node = doc.querySelector(`[data-plan-id="${id}"]`);
+		return !!node && !node.classList.contains('wf-block');
+	}
+
+	function currentId(): string | undefined {
+		if (buildingId && !isBuilt(buildingId)) return buildingId;
+		return config.progress ? order.find((id) => !isBuilt(id)) : undefined;
 	}
 
 	function hideTip() {
 		tip?.remove();
+		ring?.remove();
 		tip = null;
-		tipFor?.classList.remove('plan-ov-hl');
+		ring = null;
 		tipFor = null;
 	}
 
-	function showTip(el: Element, comp: AppPlanComponent) {
-		if (tipFor === el) return;
+	function section(label: string): HTMLElement {
+		const sec = el('div', 'plan-ov-sec');
+		sec.append(el('div', 'plan-ov-label', label));
+		return sec;
+	}
+
+	function resourceRow(r: { kindLabel: string; name: string; isNew: boolean }): HTMLElement {
+		const row = el('div', 'plan-ov-res');
+		row.append(
+			el(
+				'span',
+				'plan-ov-chip',
+				`${r.kindLabel === 'data table' ? '▦' : r.kindLabel === 'agent' ? '✦' : '⚡'} ${r.name}`,
+			),
+		);
+		if (r.isNew) row.append(el('span', 'plan-ov-new', 'NEW'));
+		return row;
+	}
+
+	function showTip(target: Element, id: string) {
+		if (tipFor === target) return;
 		hideTip();
-		const status = isBuilt(comp.id) ? 'built' : (comp.status ?? 'planned');
+		const comp: AppPlanComponent = byId[id] ?? {
+			id: 'shell',
+			kind: 'text',
+			label: 'Layout and theme',
+		};
+		const status = isBuilt(id) ? 'built' : currentId() === id ? 'building' : 'planned';
 		const info = describe(
 			{ ...comp, status },
 			{ editorUrl: config.editorUrl, projectId: config.projectId },
 		);
-		tip = doc.createElement('div');
-		tip.className = 'plan-ov-tip';
-		const title = doc.createElement('b');
-		title.textContent = info.title;
-		const st = doc.createElement('span');
-		st.className = `st ${info.status}`;
-		st.textContent = info.status;
-		title.append(st);
-		tip.append(title);
-		info.lines.forEach((line) => {
-			const div = doc.createElement('div');
-			div.textContent = line;
-			tip!.append(div);
-		});
+
+		tip = el('div', 'plan-ov-tip');
+		const head = el('div', 'plan-ov-head');
+		head.append(
+			el('span', 'plan-ov-kind', kindIcons[id === 'shell' ? 'shell' : info.kind] ?? '▢'),
+			el('span', 'plan-ov-title', info.title),
+		);
+		// Once every part is built, the card only shows what the part is connected to.
+		if (!order.every(isBuilt)) {
+			head.append(
+				el(
+					'span',
+					`plan-ov-st ${info.status}`,
+					info.status === 'building' ? 'Building' : info.status === 'built' ? 'Built' : 'Planned',
+				),
+			);
+		}
+		tip.append(head);
+		if (info.data) {
+			const sec = section('Data');
+			sec.append(resourceRow(info.data));
+			if (info.data.fields.length) {
+				const fields = el('div', 'plan-ov-fields');
+				info.data.fields.forEach((f) => fields.append(el('span', 'plan-ov-field', f)));
+				sec.append(fields);
+			}
+			if (info.data.shows) sec.append(el('div', 'plan-ov-text', info.data.shows));
+			tip.append(sec);
+		}
+		if (info.action) {
+			const sec = section('On click');
+			sec.append(resourceRow(info.action), el('div', 'plan-ov-text', info.action.does));
+			tip.append(sec);
+		}
+		if (!info.data && !info.action)
+			tip.append(el('div', 'plan-ov-empty', 'Layout only. No data or workflow behind this part.'));
 		if (info.link) {
-			const a = doc.createElement('a');
-			a.href = info.link.href;
-			a.target = '_blank';
-			a.rel = 'noopener';
-			a.textContent = `${info.link.label} ↗`;
-			tip.append(a);
+			const foot = el('div', 'plan-ov-foot');
+			const a = el('a', undefined, `${info.link.label} ↗`);
+			a.setAttribute('href', info.link.href);
+			a.setAttribute('target', '_blank');
+			a.setAttribute('rel', 'noopener');
+			foot.append(a);
+			tip.append(foot);
 		}
 		tip.addEventListener('mouseenter', () => window.clearTimeout(hideTimer));
 		tip.addEventListener('mouseleave', hideTip);
-		doc.body.append(tip);
-		const r = el.getBoundingClientRect();
+
+		const r = target.getBoundingClientRect();
+		ring = el('div', 'plan-ov-hl');
+		ring.style.cssText = `left:${r.left - 3}px;top:${r.top - 3}px;width:${r.width + 6}px;height:${r.height + 6}px;`;
+		ring.append(el('span', 'plan-ov-tag', info.title));
+		doc.body.append(ring, tip);
+		const below = r.bottom + 10;
 		const top =
-			r.bottom + 6 + tip.offsetHeight > window.innerHeight
-				? r.top - tip.offsetHeight - 6
-				: r.bottom + 6;
-		tip.style.top = `${Math.max(4, top)}px`;
-		tip.style.left = `${Math.min(Math.max(4, r.left), window.innerWidth - tip.offsetWidth - 4)}px`;
-		el.classList.add('plan-ov-hl');
-		tipFor = el;
+			below + tip.offsetHeight > window.innerHeight ? r.top - tip.offsetHeight - 30 : below;
+		tip.style.top = `${Math.max(6, top)}px`;
+		tip.style.left = `${Math.min(Math.max(6, r.left), window.innerWidth - tip.offsetWidth - 6)}px`;
+		tipFor = target;
 	}
 
 	doc.addEventListener('mouseover', (event) => {
 		const target = event.target instanceof Element ? event.target : null;
 		if (!target || tip?.contains(target)) return;
-		const el = target.closest('[data-plan-id]');
-		const comp = el ? byId[el.getAttribute('data-plan-id') ?? ''] : undefined;
-		if (el && comp) {
+		const node = target.closest('[data-plan-id]');
+		const id = node?.getAttribute('data-plan-id');
+		if (node && id && (byId[id] || id === 'shell') && !(id === 'shell' && tipFor)) {
 			window.clearTimeout(hideTimer);
-			showTip(el, comp);
+			if (id !== 'shell') showTip(node, id);
 		} else if (tip) {
 			window.clearTimeout(hideTimer);
-			hideTimer = window.setTimeout(hideTip, 250);
+			hideTimer = window.setTimeout(hideTip, 200);
 		}
 	});
+	window.addEventListener('scroll', hideTip, true);
 
 	// Screen switching for wireframe navs (built navs bring their own routing).
 	doc.addEventListener('click', (event) => {
@@ -409,40 +596,38 @@ export function planOverlayMain(
 		});
 	});
 
-	// Selection for comments: the parent turns it on, a click on a block reports its plan id.
 	let selecting = false;
+	window.addEventListener('message', (event) => {
+		if (event.source !== window.parent) return;
+		const data: unknown = event.data;
+		if (typeof data !== 'object' || data === null || !('source' in data) || data.source !== source)
+			return;
+		const type = 'type' in data ? data.type : undefined;
+		if (type === 'building') {
+			const id = 'planId' in data && typeof data.planId === 'string' ? data.planId : null;
+			buildingId = id;
+			renderProgress();
+		} else if (config.selectable && (type === 'select:enable' || type === 'select:disable')) {
+			selecting = type === 'select:enable';
+			doc.documentElement.classList.toggle('plan-ov-selecting', selecting);
+		} else if (config.selectable && type === 'select:clear') {
+			doc
+				.querySelectorAll('.plan-ov-selected')
+				.forEach((n) => n.classList.remove('plan-ov-selected'));
+		}
+	});
 	if (config.selectable) {
-		const source = 'n8n-app-plan';
-		window.addEventListener('message', (event) => {
-			if (event.source !== window.parent) return;
-			const data: unknown = event.data;
-			if (
-				typeof data !== 'object' ||
-				data === null ||
-				!('source' in data) ||
-				data.source !== source
-			)
-				return;
-			const type = 'type' in data ? data.type : undefined;
-			if (type === 'select:enable' || type === 'select:disable') {
-				selecting = type === 'select:enable';
-				doc.documentElement.classList.toggle('plan-ov-selecting', selecting);
-			} else if (type === 'select:clear') {
-				doc
-					.querySelectorAll('.plan-ov-selected')
-					.forEach((el) => el.classList.remove('plan-ov-selected'));
-			}
-		});
 		doc.addEventListener(
 			'click',
 			(event) => {
 				if (!selecting) return;
-				const el = event.target instanceof Element ? event.target.closest('[data-plan-id]') : null;
-				const id = el?.getAttribute('data-plan-id');
-				if (!el || !id) return;
+				const node =
+					event.target instanceof Element ? event.target.closest('[data-plan-id]') : null;
+				const id = node?.getAttribute('data-plan-id');
+				if (!node || !id) return;
 				event.preventDefault();
 				event.stopPropagation();
-				el.classList.add('plan-ov-selected');
+				node.classList.add('plan-ov-selected');
 				selecting = false;
 				doc.documentElement.classList.remove('plan-ov-selecting');
 				window.parent.postMessage({ source, type: 'selected', planId: id }, '*');
@@ -453,36 +638,51 @@ export function planOverlayMain(
 
 	let bar: HTMLElement | null = null;
 	function renderProgress() {
-		if (!config.progress || !order.length) return;
-		const built = order.filter(isBuilt);
-		const next = order.find((id) => !isBuilt(id));
+		if (!order.length) return;
+		const built = order.filter(isBuilt).length;
+		const current = currentId();
+		const name = (id: string) => (id === 'shell' ? 'Layout and theme' : (byId[id]?.label ?? id));
+		doc
+			.querySelectorAll('.plan-ov-building')
+			.forEach((n) => n.classList.remove('plan-ov-building'));
+		if (current && current !== 'shell') {
+			doc.querySelector(`[data-plan-id="${current}"]`)?.classList.add('plan-ov-building');
+		}
+		if (config.progress === 'parent') {
+			window.parent.postMessage(
+				{
+					source,
+					type: 'progress',
+					built,
+					total: order.length,
+					...(current ? { current: name(current) } : {}),
+				},
+				'*',
+			);
+			return;
+		}
+		if (!config.progress) return;
 		if (!bar) {
-			bar = doc.createElement('div');
-			bar.className = 'plan-ov-bar';
+			bar = el('div', 'plan-ov-bar');
 			doc.body.append(bar);
 			doc.body.style.paddingTop = '28px';
 		}
-		const name = (id: string) => (id === 'shell' ? 'Layout and theme' : (byId[id]?.label ?? id));
-		bar.className = `plan-ov-bar${next ? '' : ' done'}`;
+		bar.className = `plan-ov-bar${current ? '' : ' done'}`;
 		bar.innerHTML = '';
-		const track = doc.createElement('span');
-		track.className = 'track';
-		const fill = doc.createElement('span');
-		fill.className = 'fill';
-		fill.style.display = 'block';
-		fill.style.width = `${Math.round((built.length / order.length) * 100)}%`;
+		const track = el('span', 'track');
+		const fill = el('span', 'fill');
+		fill.style.width = `${Math.round((built / order.length) * 100)}%`;
 		track.append(fill);
-		const text = doc.createElement('span');
-		text.textContent = next
-			? `${built.length} of ${order.length} built · Building: ${name(next)}`
-			: `All ${order.length} parts built`;
-		bar.append(track, text);
-		doc
-			.querySelectorAll('.plan-ov-building')
-			.forEach((el) => el.classList.remove('plan-ov-building'));
-		if (next && next !== 'shell') {
-			doc.querySelector(`[data-plan-id="${next}"]`)?.classList.add('plan-ov-building');
-		}
+		bar.append(
+			track,
+			el(
+				'span',
+				undefined,
+				current
+					? `${built} of ${order.length} built · Building: ${name(current)}`
+					: `All ${order.length} parts built`,
+			),
+		);
 	}
 
 	function start(plan: AppPlan) {

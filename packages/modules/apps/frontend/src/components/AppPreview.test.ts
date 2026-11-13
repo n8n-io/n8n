@@ -323,6 +323,52 @@ describe('AppPreview', () => {
 		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the preview');
 	});
 
+	describe('plan progress', () => {
+		const PREVIEW_ORIGIN = 'https://sales--preview.apps.example.com';
+		const progress = (built: number, total: number, current?: string) => ({
+			source: 'n8n-app-plan',
+			type: 'progress',
+			built,
+			total,
+			...(current ? { current } : {}),
+		});
+
+		async function renderWithFrame() {
+			vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+			const view = renderComponent({ props: { app: app() } });
+			const frame = (await view.findByTestId('app-preview-frame')) as HTMLIFrameElement;
+			const fromFrame = (data: unknown) =>
+				window.dispatchEvent(
+					new MessageEvent('message', {
+						data,
+						origin: PREVIEW_ORIGIN,
+						source: frame.contentWindow,
+					}),
+				);
+			return { ...view, fromFrame };
+		}
+
+		it('shows the build progress the preview reports in the toolbar', async () => {
+			const { fromFrame, findByTestId } = await renderWithFrame();
+
+			fromFrame(progress(3, 7, 'Drafts'));
+
+			expect(await findByTestId('app-preview-plan-progress')).toHaveTextContent(
+				'3 of 7 built · Drafts',
+			);
+		});
+
+		it('drops the progress once every part is built', async () => {
+			const { fromFrame, findByTestId, queryByTestId } = await renderWithFrame();
+			fromFrame(progress(6, 7, 'Send'));
+			await findByTestId('app-preview-plan-progress');
+
+			fromFrame(progress(7, 7));
+
+			await vi.waitFor(() => expect(queryByTestId('app-preview-plan-progress')).toBeNull());
+		});
+	});
+
 	describe('element selection', () => {
 		const PREVIEW_ORIGIN = 'https://sales--preview.apps.example.com';
 		const element: AppPreviewElement = { tagName: 'button', text: 'Save', route: '/' };

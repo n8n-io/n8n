@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	APP_INSPECTOR_MESSAGE_SOURCE,
+	PLAN_OVERLAY_MESSAGE_SOURCE,
 	appInspectorEventSchema,
 	type AppPreviewElement,
 	type AppResponse,
@@ -57,6 +58,8 @@ const props = defineProps<{
 	versions: AppVersions;
 	inspectable?: boolean;
 	elementSelected?: boolean;
+	/** The plan component the builder works on right now. */
+	buildingPlanId?: string | null;
 }>();
 
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
@@ -77,6 +80,8 @@ const screenSize = ref<ScreenSize>('desktop');
 const theme = ref<PreviewTheme>(editorTheme());
 const inspecting = ref(false);
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
+// Build progress of an app made from a plan, reported by the preview overlay.
+const planProgress = ref<{ built: number; total: number; current?: string } | null>(null);
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 const sizeOptions = computed(() =>
@@ -170,13 +175,35 @@ function setInspecting(value: boolean) {
 	postInspectCommand(value ? 'inspect:enable' : 'inspect:disable');
 }
 
+function postBuilding() {
+	if (!previewOrigin.value) return;
+	frame.value?.contentWindow?.postMessage(
+		{ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'building', planId: props.buildingPlanId ?? null },
+		previewOrigin.value,
+	);
+}
+
 function onFrameLoad() {
 	if (inspecting.value) postInspectCommand('inspect:enable');
+	if (props.buildingPlanId) postBuilding();
+}
+
+function readPlanProgress(data: unknown) {
+	if (typeof data !== 'object' || data === null) return false;
+	if (!('source' in data) || data.source !== PLAN_OVERLAY_MESSAGE_SOURCE) return false;
+	if (!('type' in data) || data.type !== 'progress') return true;
+	const built = 'built' in data && typeof data.built === 'number' ? data.built : 0;
+	const total = 'total' in data && typeof data.total === 'number' ? data.total : 0;
+	const current = 'current' in data && typeof data.current === 'string' ? data.current : undefined;
+	// A finished build needs no progress, so the header drops it.
+	planProgress.value = total > 0 && built < total ? { built, total, current } : null;
+	return true;
 }
 
 function onMessage(event: MessageEvent<unknown>) {
-	if (!inspecting.value) return;
 	if (event.source !== frame.value?.contentWindow || event.origin !== previewOrigin.value) return;
+	if (readPlanProgress(event.data)) return;
+	if (!inspecting.value) return;
 	const parsed = appInspectorEventSchema.safeParse(event.data);
 	if (!parsed.success) return;
 	inspecting.value = false;
@@ -186,6 +213,13 @@ function onMessage(event: MessageEvent<unknown>) {
 function onKeyDown(event: KeyboardEvent) {
 	if (event.key === 'Escape' && inspecting.value) setInspecting(false);
 }
+
+watch(() => props.buildingPlanId, postBuilding);
+// A new version may come without a plan, so wait for the overlay to report again.
+watch(
+	() => preview.value?.url,
+	() => (planProgress.value = null),
+);
 
 watch(
 	() => props.elementSelected,
@@ -234,6 +268,38 @@ onBeforeUnmount(() => {
 				<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
 					{{ i18n.baseText('apps.preview.buildFailed') }}
 				</N8nBadge>
+				<N8nTooltip
+					v-if="planProgress"
+					:content="
+						planProgress.current
+							? i18n.baseText('apps.preview.plan.building', {
+									interpolate: { part: planProgress.current },
+								})
+							: i18n.baseText('apps.preview.plan.done')
+					"
+				>
+					<div :class="$style.planProgress" data-test-id="app-preview-plan-progress">
+						<span :class="$style.planTrack">
+							<span
+								:class="[$style.planFill, !planProgress.current && $style.planDone]"
+								:style="{ width: `${(planProgress.built / planProgress.total) * 100}%` }"
+							/>
+						</span>
+						<N8nText size="small" color="text-light" :class="$style.planText">
+							{{
+								planProgress.current
+									? i18n.baseText('apps.preview.plan.progress', {
+											interpolate: {
+												built: String(planProgress.built),
+												total: String(planProgress.total),
+												part: planProgress.current,
+											},
+										})
+									: i18n.baseText('apps.preview.plan.done')
+							}}
+						</N8nText>
+					</div>
+				</N8nTooltip>
 			</div>
 			<N8nText
 				v-if="inspecting"
@@ -410,6 +476,40 @@ onBeforeUnmount(() => {
 
 .active {
 	background: var(--background--subtle);
+}
+
+.planProgress {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+}
+
+.planTrack {
+	flex: none;
+	width: 64px;
+	height: 4px;
+	border-radius: var(--radius--full);
+	background: var(--background--subtle);
+	overflow: hidden;
+}
+
+.planFill {
+	display: block;
+	height: 100%;
+	background: var(--color--primary);
+	transition: width var(--duration--snappy) var(--easing--ease-out);
+}
+
+.planDone {
+	background: var(--color--success);
+}
+
+.planText {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 220px;
 }
 
 .version {
