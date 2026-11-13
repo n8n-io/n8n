@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode, ResolvedFilePath } from 'n8n-workflow';
@@ -191,6 +192,23 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(false);
 	});
 
+	it('should reject a path over the filesystem path limit without a filesystem call', async () => {
+		const path = `/tmp/missing/${'a/'.repeat(2500)}x`;
+		(fsRealpath as Mock).mockClear();
+
+		await expect(resolvePath(path)).rejects.toMatchObject({ code: 'ENAMETOOLONG' });
+		expect(fsRealpath).not.toHaveBeenCalled();
+	});
+
+	it('should reject a multibyte path whose encoded size is over the limit', async () => {
+		// 3000 code units, 6000 encoded bytes
+		const path = `/tmp/missing/${'é/'.repeat(1500)}x`;
+		(fsRealpath as Mock).mockClear();
+
+		await expect(resolvePath(path)).rejects.toMatchObject({ code: 'ENAMETOOLONG' });
+		expect(fsRealpath).not.toHaveBeenCalled();
+	});
+
 	it('should handle non-existent file when it is not allowed', async () => {
 		const filePath = '/non/existent/file';
 		const allowedPath = '/some/allowed/path';
@@ -202,12 +220,18 @@ describe('isFilePathBlocked', () => {
 		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
 	});
 
-	it.each(['.git', '/.git', '/tmp/.git', '/tmp/.git/config'])(
+	it.each(['.git', '/.git', '/tmp/.git', '/tmp/.git/config', '/tmp/.GIT'])(
 		'should per default block access to %s',
 		async (path) => {
 			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
 		},
 	);
+
+	it('should block a multi-line path whose final line matches the default pattern', () => {
+		const path = '/tmp/x\n.git' as ResolvedFilePath;
+
+		expect(isFilePathBlocked(path)).toBe(true);
+	});
 
 	it.each(['/tmp/foo.git', '/tmp/.github', '/tmp/.git-credentials', '/tmp/a.git/b'])(
 		'should per default allow access to %s',
@@ -235,6 +259,43 @@ describe('isFilePathBlocked', () => {
 	it('should block all access when using invalid pattern', async () => {
 		securityConfig.blockFilePatterns = '(';
 		expect(isFilePathBlocked(await resolvePath('/tmp/xo'))).toBe(true);
+	});
+
+	it('should block and log a warning when pattern evaluation exceeds the time limit', () => {
+		securityConfig.blockFilePatterns = '^(?:[^/]*/)*\\.git(?:/.*)?$';
+		const warnSpy = vi.spyOn(Container.get(Logger), 'warn');
+		const path = `/tmp/x${'\n'.repeat(200_000)}` as ResolvedFilePath;
+
+		const startedAt = Date.now();
+		const isBlocked = isFilePathBlocked(path);
+
+		expect(isBlocked).toBe(true);
+		expect(warnSpy).toHaveBeenCalledOnce();
+		expect(Date.now() - startedAt).toBeLessThan(2_000);
+	});
+
+	it.each(['\n', '\r', '\u2028'])(
+		'should quickly allow a long path padded with line terminators (%j)',
+		(terminator) => {
+			const path = `/tmp/x${terminator.repeat(200_000)}` as ResolvedFilePath;
+
+			const startedAt = Date.now();
+			const isBlocked = isFilePathBlocked(path);
+
+			expect(isBlocked).toBe(false);
+			expect(Date.now() - startedAt).toBeLessThan(100);
+		},
+	);
+
+	it('should stay fast across repeated long multi-line paths', () => {
+		const path = `/tmp/x${'\n'.repeat(200_000)}` as ResolvedFilePath;
+
+		const startedAt = Date.now();
+		for (let i = 0; i < 20; i++) {
+			expect(isFilePathBlocked(path)).toBe(false);
+		}
+
+		expect(Date.now() - startedAt).toBeLessThan(250);
 	});
 
 	describe('cross-platform path handling', () => {

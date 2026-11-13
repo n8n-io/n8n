@@ -183,6 +183,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
+			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
@@ -804,7 +805,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				credentialType,
 				credentialId,
-				publicApi,
+				publicApi: publicApi !== false,
 				projectId,
 				projectType,
 				isDynamic,
@@ -837,7 +838,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.data.read',
-			payload: { ...user, credentialType, credentialId, publicApi },
+			payload: { ...user, credentialType, credentialId, publicApi: publicApi !== false },
 		});
 	}
 
@@ -852,7 +853,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-list-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.list.data.read',
-			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
+			payload: {
+				...user,
+				credentialIds,
+				credentialCount,
+				chunk,
+				chunkCount,
+				publicApi: publicApi !== false,
+			},
 		});
 	}
 
@@ -1494,6 +1502,18 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['redaction-enforcement-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.redaction-enforcement.updated',
+			payload: { ...user, before, after },
+		});
+	}
+
+	@Redactable()
+	private publicApiRateLimitUpdated({
+		user,
+		before,
+		after,
+	}: RelayEventMap['public-api-rate-limit-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.public-api-rate-limit.updated',
 			payload: { ...user, before, after },
 		});
 	}

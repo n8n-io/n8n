@@ -176,6 +176,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/page-hide-telemetry.controller.js');
 			await import('@/controllers/posthog.controller.js');
 		}
 

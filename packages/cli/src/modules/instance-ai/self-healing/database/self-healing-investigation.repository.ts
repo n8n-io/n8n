@@ -63,12 +63,14 @@ export class SelfHealingInvestigationRepository extends BaseRepository<SelfHeali
 		);
 	}
 
+	/** Returns false when the investigation was already finished. */
 	async finishWithoutResult(id: string, ctx: OperationContext = {}) {
-		await this.managerFor(ctx).update(
+		const updated = await this.managerFor(ctx).update(
 			SelfHealingInvestigation,
 			{ id, finishedAt: IsNull() },
 			{ finishedAt: new Date() },
 		);
+		return updated.affected === 1;
 	}
 
 	async completeWithResult(id: string, resultId: string, ctx: OperationContext) {

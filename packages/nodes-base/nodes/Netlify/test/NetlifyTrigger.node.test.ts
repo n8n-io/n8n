@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { netlifyApiRequest } from '../GenericFunctions';
 import { NetlifyTrigger } from '../NetlifyTrigger.node';
@@ -79,7 +80,7 @@ describe('NetlifyTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(randomBytes).toHaveBeenCalledWith(32);
-			expect(netlifyApiRequest).toHaveBeenCalledWith('POST', '/hooks', {
+			expect(netlifyApiRequest).toHaveBeenCalledWith('POST', requestPath`/hooks`, {
 				event: 'deploy_created',
 				data: {
 					url: webhookUrl,
@@ -115,7 +116,7 @@ describe('NetlifyTrigger', () => {
 				mockHookFunctions as unknown as IHookFunctions,
 			);
 
-			expect(netlifyApiRequest).toHaveBeenCalledWith('POST', '/hooks', {
+			expect(netlifyApiRequest).toHaveBeenCalledWith('POST', requestPath`/hooks`, {
 				event: 'submission_created',
 				data: {
 					url: webhookUrl,
@@ -143,7 +144,7 @@ describe('NetlifyTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(netlifyApiRequest).toHaveBeenCalledWith('DELETE', `/hooks/${webhookId}`);
+			expect(netlifyApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/hooks/${webhookId}`);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});

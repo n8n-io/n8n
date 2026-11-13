@@ -4,8 +4,9 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { AuthContext, GraphListResponse } from './interfaces';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
@@ -48,9 +49,9 @@ export function validatePathSegment(node: INode, label: string, value: string): 
 export async function resolveWorkbookRoot(
 	this: AuthContext,
 	itemIndex = 0,
-	workbookRootCache: Map<string, string> = new Map(),
+	workbookRootCache: Map<string, RequestPath> = new Map(),
 	siteIdCache: Map<string, string> = new Map(),
-): Promise<string> {
+): Promise<RequestPath> {
 	const workbook = this.getNodeParameter('workbook', itemIndex) as INodeParameterResourceLocator;
 	const workbookValue = String(workbook.value ?? '').trim();
 
@@ -75,7 +76,7 @@ export async function resolveWorkbookRoot(
 		const driveItem = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/shares/${shareId}/driveItem`,
+			requestPath`/v1.0/shares/${shareId}/driveItem`,
 			{},
 			{ $select: 'id,parentReference' },
 		);
@@ -87,7 +88,7 @@ export async function resolveWorkbookRoot(
 			});
 		}
 
-		const root = `/v1.0/sites/${encodeURIComponent(parent.siteId)}/drives/${encodeURIComponent(parent.driveId)}/items/${encodeURIComponent(itemId)}`;
+		const root = requestPath`/v1.0/sites/${parent.siteId}/drives/${parent.driveId}/items/${itemId}`;
 		workbookRootCache.set(workbookValue, root);
 		return root;
 	}
@@ -103,7 +104,7 @@ export async function resolveWorkbookRoot(
 	);
 	const itemId = validatePathSegment(node, 'Workbook', workbookValue);
 
-	return `/v1.0/sites/${encodeURIComponent(siteId)}/drives/${encodeURIComponent(driveId)}/items/${encodeURIComponent(itemId)}`;
+	return requestPath`/v1.0/sites/${siteId}/drives/${driveId}/items/${itemId}`;
 }
 
 /**
@@ -141,11 +142,26 @@ export async function resolveSiteId(
 			description: 'Paste the full site address, e.g. https://contoso.sharepoint.com/sites/mysite.',
 		});
 	}
-	const path = parsed.pathname.replace(/\/+$/, '');
+	const segments = parsed.pathname
+		.split('/')
+		.filter(Boolean)
+		.map((segment) => {
+			try {
+				return decodeURIComponent(segment);
+			} catch {
+				return segment;
+			}
+		});
 	const endpoint =
-		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
+		segments.length === 0
+			? requestPath`/v1.0/sites/${parsed.hostname}`
+			: segments.reduce(
+					(path, segment) => requestPath`${path}/${segment}`,
+					requestPath`/v1.0/sites/${parsed.hostname}:`,
+				);
+	const cacheKey = endpoint.toString();
 
-	const cached = cache.get(endpoint);
+	const cached = cache.get(cacheKey);
 	if (cached !== undefined) {
 		return cached;
 	}
@@ -166,7 +182,7 @@ export async function resolveSiteId(
 	}
 
 	const siteId = validatePathSegment(this.getNode(), 'Site', String(response.id ?? ''));
-	cache.set(endpoint, siteId);
+	cache.set(cacheKey, siteId);
 	return siteId;
 }
 
@@ -199,7 +215,7 @@ export async function runPerItem(
 export async function fetchCollection<T extends IDataObject = IDataObject>(
 	this: IExecuteFunctions,
 	itemIndex: number,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	filterPage?: (items: T[]) => T[],
 ): Promise<T[]> {
@@ -215,7 +231,7 @@ export async function fetchCollection<T extends IDataObject = IDataObject>(
 	let uri: string | undefined;
 	do {
 		const response = uri
-			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, uri)
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', endpoint, {}, {}, uri)
 			: await (microsoftApiRequest<GraphListResponse<T>>).call(
 					this,
 					'GET',

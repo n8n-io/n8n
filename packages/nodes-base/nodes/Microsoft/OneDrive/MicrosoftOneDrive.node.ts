@@ -6,8 +6,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 
@@ -140,7 +141,7 @@ export class MicrosoftOneDrive implements INodeType {
 		const resolveDestinationDriveId = async (
 			providedDriveId: string,
 			itemIndex: number,
-			driveScopeRoot: string | undefined,
+			driveScopeRoot: RequestPath | undefined,
 		): Promise<string | undefined> => {
 			// Explicit destination drive (any auth) wins — supports cross-drive moves.
 			if (providedDriveId) return providedDriveId;
@@ -155,12 +156,12 @@ export class MicrosoftOneDrive implements INodeType {
 				}) as string;
 			}
 			// SP + user: resolve the default drive once per distinct scope root.
-			let resolvedDriveId = resolvedDestinationDriveIds.get(driveScopeRoot);
+			let resolvedDriveId = resolvedDestinationDriveIds.get(driveScopeRoot.value);
 			if (resolvedDriveId === undefined) {
 				const drive = (await microsoftApiRequest.call(
 					this,
 					'GET',
-					'/drive',
+					requestPath``,
 					{},
 					{ $select: 'id' },
 					undefined,
@@ -180,7 +181,7 @@ export class MicrosoftOneDrive implements INodeType {
 						},
 					);
 				}
-				resolvedDestinationDriveIds.set(driveScopeRoot, driveId);
+				resolvedDestinationDriveIds.set(driveScopeRoot.value, driveId);
 				resolvedDriveId = driveId;
 			}
 			return resolvedDriveId;
@@ -222,12 +223,10 @@ export class MicrosoftOneDrive implements INodeType {
 								};
 							}
 						}
-						// Encode the path-interpolated item id (same as upload/move): it keeps
-						// any `/ : ? #` in the id from changing which item the URL addresses.
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/drive/items/${encodeURIComponent(fileId)}/copy`,
+							requestPath`/items/${fileId}/copy`,
 							body,
 							{},
 							undefined,
@@ -239,11 +238,11 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_delete?view=odsp-graph-online
 					if (operation === 'delete') {
-						const fileId = encodeURIComponent(this.getNodeParameter('fileId', i) as string);
+						const fileId = this.getNodeParameter('fileId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
-							`/drive/items/${fileId}`,
+							requestPath`/items/${fileId}`,
 							{},
 							{},
 							undefined,
@@ -255,12 +254,12 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 					if (operation === 'download') {
-						const fileId = encodeURIComponent(this.getNodeParameter('fileId', i) as string);
+						const fileId = this.getNodeParameter('fileId', i) as string;
 						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
-							`/drive/items/${fileId}`,
+							requestPath`/items/${fileId}`,
 							{},
 							{},
 							undefined,
@@ -287,7 +286,7 @@ export class MicrosoftOneDrive implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/drive/items/${fileId}/content`,
+								requestPath`/items/${fileId}/content`,
 								{},
 								{},
 								undefined,
@@ -343,11 +342,11 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_get?view=odsp-graph-online
 					if (operation === 'get') {
-						const fileId = encodeURIComponent(this.getNodeParameter('fileId', i) as string);
+						const fileId = this.getNodeParameter('fileId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
-							`/drive/items/${fileId}`,
+							requestPath`/items/${fileId}`,
 							{},
 							{},
 							undefined,
@@ -369,18 +368,18 @@ export class MicrosoftOneDrive implements INodeType {
 								},
 							);
 						}
-						const query = encodeURIComponent(escapeODataValue(this.getNodeParameter('query', i)));
+						const query = escapeODataValue(this.getNodeParameter('query', i));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
 							'GET',
-							`/drive/root/search(q='${query}')`,
+							requestPath`/root/search(q='${query}')`,
 						);
 						responseData = responseData.filter((item: IDataObject) => item.file);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_createlink?view=odsp-graph-online
 					if (operation === 'share') {
-						const fileId = encodeURIComponent(this.getNodeParameter('fileId', i) as string);
+						const fileId = this.getNodeParameter('fileId', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
 						const scope = this.getNodeParameter('scope', i) as string;
 						const body: IDataObject = {
@@ -390,7 +389,7 @@ export class MicrosoftOneDrive implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/drive/items/${fileId}/createLink`,
+							requestPath`/items/${fileId}/createLink`,
 							body,
 							{},
 							undefined,
@@ -402,10 +401,6 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_put_content?view=odsp-graph-online#example-upload-a-new-file
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						// Encode the parent ID before interpolating it into the Graph `:/path:/`
-						// URL — like the file name, an unescaped `/ : ? #` here would retarget
-						// the request to a different item/endpoint.
-						const encodedParentId = encodeURIComponent(parentId);
 						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
@@ -436,12 +431,10 @@ export class MicrosoftOneDrive implements INodeType {
 							validateOneDriveFileName(this.getNode(), resolvedFileName, i);
 
 							const body = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-							const encodedFilename = encodeURIComponent(resolvedFileName);
-
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
+								requestPath`/items/${parentId}:/${resolvedFileName}:/content`,
 								body,
 								{},
 								undefined,
@@ -454,11 +447,10 @@ export class MicrosoftOneDrive implements INodeType {
 						} else {
 							const body = this.getNodeParameter('fileContent', i) as string;
 							validateOneDriveFileName(this.getNode(), fileName, i);
-							const encodedFilename = encodeURIComponent(fileName);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'PUT',
-								`/drive/items/${encodedParentId}:/${encodedFilename}:/content`,
+								requestPath`/items/${parentId}:/${fileName}:/content`,
 								body,
 								{},
 								undefined,
@@ -482,9 +474,9 @@ export class MicrosoftOneDrive implements INodeType {
 								name,
 								folder: {},
 							};
-							let endpoint = '/drive/root/children';
+							let endpoint = requestPath`/root/children`;
 							if (parentFolderId) {
-								endpoint = `/drive/items/${encodeURIComponent(parentFolderId as string)}/children`;
+								endpoint = requestPath`/items/${parentFolderId}/children`;
 							}
 							responseData = await microsoftApiRequest.call(
 								this,
@@ -505,11 +497,11 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_delete?view=odsp-graph-online
 					if (operation === 'delete') {
-						const folderId = encodeURIComponent(this.getNodeParameter('folderId', i) as string);
+						const folderId = this.getNodeParameter('folderId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
-							`/drive/items/${folderId}`,
+							requestPath`/items/${folderId}`,
 							{},
 							{},
 							undefined,
@@ -521,12 +513,12 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
 					if (operation === 'getChildren') {
-						const folderId = encodeURIComponent(this.getNodeParameter('folderId', i) as string);
+						const folderId = this.getNodeParameter('folderId', i) as string;
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
 							'GET',
-							`/drive/items/${folderId}/children`,
+							requestPath`/items/${folderId}/children`,
 							{},
 							{},
 							driveScopeRoot,
@@ -545,18 +537,18 @@ export class MicrosoftOneDrive implements INodeType {
 								},
 							);
 						}
-						const query = encodeURIComponent(escapeODataValue(this.getNodeParameter('query', i)));
+						const query = escapeODataValue(this.getNodeParameter('query', i));
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
 							'GET',
-							`/drive/root/search(q='${query}')`,
+							requestPath`/root/search(q='${query}')`,
 						);
 						responseData = responseData.filter((item: IDataObject) => item.folder);
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_createlink?view=odsp-graph-online
 					if (operation === 'share') {
-						const folderId = encodeURIComponent(this.getNodeParameter('folderId', i) as string);
+						const folderId = this.getNodeParameter('folderId', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
 						const scope = this.getNodeParameter('scope', i) as string;
 						const body: IDataObject = {
@@ -566,7 +558,7 @@ export class MicrosoftOneDrive implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/drive/items/${folderId}/createLink`,
+							requestPath`/items/${folderId}/createLink`,
 							body,
 							{},
 							undefined,
@@ -578,13 +570,13 @@ export class MicrosoftOneDrive implements INodeType {
 				}
 				if (resource === 'file' || resource === 'folder') {
 					if (operation === 'rename') {
-						const itemId = encodeURIComponent(this.getNodeParameter('itemId', i) as string);
+						const itemId = this.getNodeParameter('itemId', i) as string;
 						const newName = this.getNodeParameter('newName', i) as string;
 						const body = { name: newName };
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/items/${itemId}`,
+							requestPath`/items/${itemId}`,
 							body,
 							{},
 							undefined,
@@ -640,12 +632,10 @@ export class MicrosoftOneDrive implements INodeType {
 							body.name = renameName;
 						}
 
-						// Encode the path-interpolated item id (same as upload/copy): it keeps
-						// any `/ : ? #` in the id from changing which item the URL addresses.
 						responseData = await microsoftApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/items/${encodeURIComponent(itemId)}`,
+							requestPath`/items/${itemId}`,
 							body,
 							{},
 							undefined,

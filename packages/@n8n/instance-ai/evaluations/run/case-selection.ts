@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Case selection — narrows the loaded cases to what this run can actually
-// execute (TRUST-261): prebuilt-manifest coverage and the `claude` MCP build
-// path's setup-field limitations. Loading itself lives in data/source.ts.
+// execute (TRUST-261): prebuilt-manifest coverage, the `claude` MCP build
+// path's setup-field limitations and the cases that the Assistant agent cannot
+// run. Loading itself lives in data/source.ts.
 // ---------------------------------------------------------------------------
 
 import type { CliArgs } from '../cli/args';
@@ -85,6 +86,27 @@ export function selectCases(
 		if (testCasesWithFiles.length === 0) {
 			throw new Error(
 				'--build-via-mcp supports none of the selected test cases (all declare orchestrator-only setup fields) — nothing to run.',
+			);
+		}
+	}
+	// The Assistant agent has no observer threshold override, so a compaction
+	// case cannot compact its short thread there. Skip it rather than report it
+	// as not judged.
+	if (args.assistantRuntime === 'agents') {
+		const skippedCompaction: string[] = [];
+		testCasesWithFiles = testCasesWithFiles.filter(({ testCase, fileSlug }) => {
+			if (!testCase.requiresMemoryCompaction) return true;
+			skippedCompaction.push(fileSlug);
+			return false;
+		});
+		if (skippedCompaction.length > 0) {
+			logger.warn(
+				`Assistant agent: skipping ${String(skippedCompaction.length)} selected case(s) that need memory compaction (the Assistant agent has no observer threshold override, so the case cannot compact its short thread): ${skippedCompaction.join(', ')}`,
+			);
+		}
+		if (testCasesWithFiles.length === 0) {
+			throw new Error(
+				'--assistant-runtime agents supports none of the selected test cases (all need memory compaction) — nothing to run.',
 			);
 		}
 	}

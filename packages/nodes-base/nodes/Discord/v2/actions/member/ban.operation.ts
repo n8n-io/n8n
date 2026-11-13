@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { getAuditLogReasonHeaders, parseDiscordError, prepareErrorData } from '../../helpers/utils';
@@ -47,7 +48,7 @@ export async function execute(
 			await discordApiRequest.call(
 				this,
 				'PUT',
-				`/guilds/${guildId}/bans/${userId}`,
+				requestPath`/guilds/${guildId}/bans/${userId}`,
 				{ delete_message_seconds: deleteMessageSeconds },
 				undefined,
 				getAuditLogReasonHeaders.call(this, i),

@@ -474,7 +474,7 @@ describe('ActivityEventRelay', () => {
 				credentialId: 'credential1',
 				credentialName: 'Team Slack',
 				credentialDescriptionLength: 0,
-				publicApi: true,
+				publicApi: 'other',
 				projectId: undefined,
 			});
 			await flushPromises();

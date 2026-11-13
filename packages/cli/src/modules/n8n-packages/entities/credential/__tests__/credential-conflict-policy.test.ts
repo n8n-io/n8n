@@ -239,6 +239,15 @@ describe('divergentCredentials', () => {
 		]);
 	});
 
+	it('reports a description difference', () => {
+		expect(
+			divergentCredentials([
+				candidate({ description: 'One' }),
+				candidate({ sourceId: 'source-2', description: 'Two' }),
+			]),
+		).toHaveLength(1);
+	});
+
 	it('reports a name difference', () => {
 		expect(
 			divergentCredentials([candidate(), candidate({ sourceId: 'source-2', name: 'Other' })]),
@@ -393,5 +402,27 @@ describe('plannedCredentialUpdates', () => {
 
 	it.each(['keep-existing', 'fail'] as const)('plans no update under %s', (policy) => {
 		expect(plannedCredentialUpdates(policy, plans)).toEqual(new Map());
+	});
+
+	describe('description', () => {
+		const stored = { name: 'Same', data: {}, description: 'Old' };
+
+		it('detects a changed description when descriptions are on', () => {
+			expect(credentialDiffers(stored, { name: 'Same', description: 'New' })).toBe(true);
+		});
+
+		it('detects a description that the package clears', () => {
+			expect(credentialDiffers(stored, { name: 'Same', description: null })).toBe(true);
+		});
+
+		it('treats a missing stored description as null', () => {
+			expect(
+				credentialDiffers({ name: 'Same', data: {} }, { name: 'Same', description: null }),
+			).toBe(false);
+		});
+
+		it('ignores the description when the package does not decide it', () => {
+			expect(credentialDiffers(stored, { name: 'Same' })).toBe(false);
+		});
 	});
 });

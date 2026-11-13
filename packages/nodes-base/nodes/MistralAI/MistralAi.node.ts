@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { document } from './descriptions';
 import { encodeBinaryData, mistralApiRequest, processResponseData } from './GenericFunctions';
@@ -112,7 +112,7 @@ export class MistralAi implements INodeType {
 							const fileResponse = await mistralApiRequest.call(
 								this,
 								'POST',
-								'/v1/files',
+								requestPath`/v1/files`,
 								formData,
 							);
 							fileIds.push(fileResponse.id);
@@ -126,7 +126,9 @@ export class MistralAi implements INodeType {
 								endpoint: '/v1/ocr',
 							};
 
-							jobIds.push((await mistralApiRequest.call(this, 'POST', '/v1/batch/jobs', body)).id);
+							jobIds.push(
+								(await mistralApiRequest.call(this, 'POST', requestPath`/v1/batch/jobs`, body)).id,
+							);
 						}
 
 						const jobResults: BatchJob[] = [];
@@ -134,14 +136,14 @@ export class MistralAi implements INodeType {
 							let job = (await mistralApiRequest.call(
 								this,
 								'GET',
-								`/v1/batch/jobs/${jobId}`,
+								requestPath`/v1/batch/jobs/${jobId}`,
 							)) as BatchJob;
 							while (job.status === 'QUEUED' || job.status === 'RUNNING') {
 								await new Promise((resolve) => setTimeout(resolve, 2000));
 								job = (await mistralApiRequest.call(
 									this,
 									'GET',
-									`/v1/batch/jobs/${jobId}`,
+									requestPath`/v1/batch/jobs/${jobId}`,
 								)) as BatchJob;
 							}
 							jobResults.push(job);
@@ -150,7 +152,7 @@ export class MistralAi implements INodeType {
 						if (deleteFiles) {
 							for (const fileId of fileIds) {
 								try {
-									await mistralApiRequest.call(this, 'DELETE', `/v1/files/${fileId}`);
+									await mistralApiRequest.call(this, 'DELETE', requestPath`/v1/files/${fileId}`);
 								} catch {}
 							}
 						}
@@ -180,14 +182,14 @@ export class MistralAi implements INodeType {
 								const fileResponse = (await mistralApiRequest.call(
 									this,
 									'GET',
-									`/v1/files/${jobResult.output_file}/content`,
+									requestPath`/v1/files/${jobResult.output_file}/content`,
 								)) as string | BatchItemResult;
 								if (deleteFiles) {
 									try {
 										await mistralApiRequest.call(
 											this,
 											'DELETE',
-											`/v1/files/${jobResult.output_file}`,
+											requestPath`/v1/files/${jobResult.output_file}`,
 										);
 									} catch {}
 								}
@@ -262,7 +264,7 @@ export class MistralAi implements INodeType {
 								responseData = (await mistralApiRequest.call(
 									this,
 									'POST',
-									'/v1/ocr',
+									requestPath`/v1/ocr`,
 									body,
 								)) as IDataObject;
 
@@ -281,7 +283,7 @@ export class MistralAi implements INodeType {
 								responseData = (await mistralApiRequest.call(
 									this,
 									'POST',
-									'/v1/ocr',
+									requestPath`/v1/ocr`,
 									body,
 								)) as IDataObject;
 

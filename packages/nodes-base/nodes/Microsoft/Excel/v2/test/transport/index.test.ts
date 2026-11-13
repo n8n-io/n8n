@@ -1,14 +1,16 @@
 import {
 	NodeApiError,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INode,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import * as deleteWorkbook from '../../actions/workbook/deleteWorkbook.operation';
 import * as readRows from '../../actions/worksheet/readRows.operation';
 import { searchWorkbooks } from '../../methods/listSearch';
 import {
@@ -18,6 +20,7 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItemsSkip,
 	resolveScopeRoot,
+	toWorkbookId,
 	validateResourceTargetId,
 } from '../../transport/index';
 
@@ -63,7 +66,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -75,7 +78,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.us/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -94,7 +97,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -106,7 +109,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -124,7 +127,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -136,7 +139,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -155,7 +158,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -167,7 +170,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -186,7 +189,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -198,7 +201,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -217,7 +220,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -229,7 +232,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.us/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -248,7 +251,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -260,7 +263,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://dod-graph.microsoft.us/v1.0/me/workbooks',
+						uri: requestUrl`https://dod-graph.microsoft.us/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -279,7 +282,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -291,7 +294,7 @@ describe('Microsoft Excel Transport', () => {
 					'microsoftExcelOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/workbooks',
+						uri: requestUrl`https://microsoftgraph.chinacloudapi.cn/v1.0/me/drive/workbooks`,
 						json: true,
 					}),
 				);
@@ -312,7 +315,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -333,7 +336,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -354,7 +357,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -372,7 +375,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -389,7 +392,7 @@ describe('Microsoft Excel Transport', () => {
 				await microsoftApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/workbooks',
+					requestPath`/workbooks`,
 					undefined,
 					undefined,
 					undefined,
@@ -401,7 +404,7 @@ describe('Microsoft Excel Transport', () => {
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOAuth2Api',
 					expect.objectContaining({
-						uri: 'https://graph.microsoft.us/v1.0/me/workbooks',
+						uri: requestUrl`https://graph.microsoft.us/v1.0/me/drive/workbooks`,
 					}),
 				);
 			});
@@ -463,6 +466,31 @@ describe('Microsoft Excel Transport', () => {
 			);
 		});
 
+		it.each(['https://other.example/v1.0/me/drive/root/search', 'not a url'])(
+			'should not send a request for the pagination token %s',
+			async (token) => {
+				mockLoadOptions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+				mockLoadOptions.getNode.mockReturnValue(mockNode);
+
+				await expect(searchWorkbooks.call(mockLoadOptions, undefined, token)).rejects.toThrow(
+					'Refusing to send credentials to an unexpected host',
+				);
+				expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should follow a pagination token on the credential base URL', async () => {
+			mockLoadOptions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
+			const token = 'https://graph.microsoft.com/v1.0/me/drive/root/search?$skiptoken=abc';
+
+			await searchWorkbooks.call(mockLoadOptions, undefined, token);
+
+			expect(loadOptionsRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOAuth2Api',
+				expect.objectContaining({ uri: token }),
+			);
+		});
+
 		it('blocks the Service Principal list-search (drive search is unsupported app-only)', async () => {
 			// "From List" must throw under SP (app-only can't search a drive), not issue a request.
 			const loadOptionsRequestWithAuth = vi.fn().mockResolvedValue({ value: [] });
@@ -480,7 +508,7 @@ describe('Microsoft Excel Transport', () => {
 
 	describe('Service Principal (app-only) routing', () => {
 		const baseUrl = 'https://graph.microsoft.com';
-		const SCOPED_RESOURCE = '/drive/items/WB/workbook/worksheets/WS/usedRange';
+		const SCOPED_RESOURCE = requestPath`/items/WB/workbook/worksheets/WS/usedRange`;
 		let mockRequestWithAuthentication: Mock;
 
 		const setSpParams = (overrides: Record<string, unknown> = {}) => {
@@ -541,7 +569,7 @@ describe('Microsoft Excel Transport', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+					uri: requestUrl`${baseUrl}/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
@@ -572,7 +600,7 @@ describe('Microsoft Excel Transport', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+					uri: requestUrl`${baseUrl}/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
@@ -594,7 +622,7 @@ describe('Microsoft Excel Transport', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/drives/b!abc-123_XYZ/items/WB/workbook/worksheets/WS/usedRange`,
+					uri: requestUrl`${baseUrl}/v1.0/drives/b!abc-123_XYZ/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
@@ -618,19 +646,19 @@ describe('Microsoft Excel Transport', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.us/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange',
+					uri: requestUrl`https://graph.microsoft.us/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
 
 		it('uses an absolute @odata.nextLink uri verbatim (pagination bypasses scoping)', async () => {
 			const nextLink =
-				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/children?$skiptoken=abc';
+				'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/children?$skiptoken=abc';
 
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/drive/root/children',
+				requestPath`/root/children`,
 				{},
 				{},
 				nextLink,
@@ -684,14 +712,14 @@ describe('Microsoft Excel Transport', () => {
 				1,
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+					uri: requestUrl`${baseUrl}/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
 				2,
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: `${baseUrl}/v1.0/users/john%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
+					uri: requestUrl`${baseUrl}/v1.0/users/john@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`,
 				}),
 			);
 		});
@@ -712,7 +740,7 @@ describe('Microsoft Excel Transport', () => {
 				1,
 			);
 
-			const johnUri = `${baseUrl}/v1.0/users/john%40contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`;
+			const johnUri = requestUrl`${baseUrl}/v1.0/users/john@contoso.com/drive/items/WB/workbook/worksheets/WS/usedRange`;
 			expect(mockRequestWithAuthentication).toHaveBeenNthCalledWith(
 				1,
 				'microsoftEntraServicePrincipalApi',
@@ -723,22 +751,6 @@ describe('Microsoft Excel Transport', () => {
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({ uri: johnUri }),
 			);
-		});
-
-		it('throws OperationalError when a scoped resource does not start with /drive', async () => {
-			await expect(
-				microsoftApiRequest.call(
-					mockExecuteFunctions,
-					'GET',
-					'/workbooks',
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					0,
-				),
-			).rejects.toThrow(OperationalError);
-			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('wraps a transport failure as NodeApiError', async () => {
@@ -764,7 +776,7 @@ describe('Microsoft Excel Transport', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'PATCH',
-				"/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')",
+				requestPath`/items/WB/workbook/worksheets/WS/range(address='A1:A1')`,
 				body,
 				undefined,
 				undefined,
@@ -777,7 +789,7 @@ describe('Microsoft Excel Transport', () => {
 				expect.objectContaining({
 					method: 'PATCH',
 					body,
-					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')`,
+					uri: requestUrl`${baseUrl}/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/WS/range(address='A1:A1')`,
 				}),
 			);
 		});
@@ -788,7 +800,7 @@ describe('Microsoft Excel Transport', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/drive/items/WB/workbook/worksheets/add',
+				requestPath`/items/WB/workbook/worksheets/add`,
 				body,
 				undefined,
 				undefined,
@@ -801,7 +813,7 @@ describe('Microsoft Excel Transport', () => {
 				expect.objectContaining({
 					method: 'POST',
 					body,
-					uri: `${baseUrl}/v1.0/users/jane%40contoso.com/drive/items/WB/workbook/worksheets/add`,
+					uri: requestUrl`${baseUrl}/v1.0/users/jane@contoso.com/drive/items/WB/workbook/worksheets/add`,
 				}),
 			);
 		});
@@ -809,13 +821,13 @@ describe('Microsoft Excel Transport', () => {
 
 	describe('getServicePrincipalResourceRoot / validateResourceTargetId', () => {
 		it('builds the user root with an encoded UPN', () => {
-			expect(getServicePrincipalResourceRoot('user', 'jane@contoso.com', mockNode)).toBe(
-				'/users/jane%40contoso.com',
+			expect(getServicePrincipalResourceRoot('user', 'jane@contoso.com', mockNode).value).toBe(
+				'/users/jane@contoso.com',
 			);
 		});
 
 		it('builds the drive root', () => {
-			expect(getServicePrincipalResourceRoot('drive', 'b!abc-123_XYZ', mockNode)).toBe(
+			expect(getServicePrincipalResourceRoot('drive', 'b!abc-123_XYZ', mockNode).value).toBe(
 				'/drives/b!abc-123_XYZ',
 			);
 		});
@@ -849,11 +861,13 @@ describe('Microsoft Excel Transport', () => {
 
 	describe('driveEndpoint', () => {
 		it('appends /drive to a user root', () => {
-			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
+			expect(driveEndpoint(requestPath`/users/jane@contoso.com`).value).toBe(
+				'/users/jane@contoso.com/drive',
+			);
 		});
 
 		it('uses a /drives/{id} root as-is', () => {
-			expect(driveEndpoint('/drives/b!abc')).toBe('/drives/b!abc');
+			expect(driveEndpoint(requestPath`/drives/b!abc`).value).toBe('/drives/b!abc');
 		});
 	});
 
@@ -874,7 +888,7 @@ describe('Microsoft Excel Transport', () => {
 				(name) => params[name as string] as never,
 			);
 
-			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)?.value).toBe('/users/jane@contoso.com');
 		});
 
 		it('falls back to the user target when resourceTarget is unpersisted', () => {
@@ -888,7 +902,61 @@ describe('Microsoft Excel Transport', () => {
 					(name in params ? params[name as string] : fallback) as never,
 			);
 
-			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)).toBe('/users/jane%40contoso.com');
+			expect(resolveScopeRoot.call(mockExecuteFunctions, 0)?.value).toBe('/users/jane@contoso.com');
+		});
+	});
+
+	describe('request URL encoding', () => {
+		it('should encode a workbook ID with a slash as one path segment', async () => {
+			mockRequestOAuth2.mockResolvedValue({});
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockReturnValue([]);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name) =>
+				name === 'workbook' ? ('01ABC/children' as never) : ('microsoftExcelOAuth2Api' as never),
+			);
+
+			await deleteWorkbook.execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftExcelOAuth2Api',
+				expect.objectContaining({
+					method: 'DELETE',
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/items/01ABC%2Fchildren`,
+				}),
+			);
+		});
+	});
+
+	describe('toWorkbookId', () => {
+		it.each([
+			[2.2, 'A1B2C3%21s0123', 'A1B2C3!s0123'],
+			[2.3, 'A1B2C3%21s0123', 'A1B2C3!s0123'],
+			[2.3, 'A1B2C3!s0123', 'A1B2C3!s0123'],
+			[2.3, 'A%252Fb', 'A%252Fb'],
+			[2.3, 'A%2Fb', 'A%2Fb'],
+		])('should convert a workbook ID for version %s', (typeVersion, input, expected) => {
+			mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion });
+
+			expect(toWorkbookId.call(mockExecuteFunctions, input)).toBe(expected);
+		});
+
+		it('should map the personal drive separator in a workbook ID from version 2.3', async () => {
+			mockRequestOAuth2.mockResolvedValue({});
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockReturnValue([]);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({ graphApiBaseUrl: '' });
+			mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion: 2.3 });
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name) =>
+				name === 'workbook' ? ('A1B2C3%21s0123' as never) : ('microsoftExcelOAuth2Api' as never),
+			);
+
+			await deleteWorkbook.execute.call(mockExecuteFunctions, [{ json: {} }]);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftExcelOAuth2Api',
+				expect.objectContaining({
+					uri: requestUrl`https://graph.microsoft.com/v1.0/me/drive/items/A1B2C3!s0123`,
+				}),
+			);
 		});
 	});
 

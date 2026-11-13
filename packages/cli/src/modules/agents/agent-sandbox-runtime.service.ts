@@ -13,13 +13,13 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
 import { v5 as uuidv5 } from 'uuid';
 
 import { assertKnowledgePathSegment } from '@/modules/knowledge/files/storage-naming';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
+import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
 
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';
@@ -29,7 +29,6 @@ const WORKSPACE_SANDBOX_NAMESPACE = '38348f53-e947-42c7-8c04-83aa154be385';
 const KNOWLEDGE_SANDBOX_NAMESPACE = '51989c13-3ae7-4167-8e64-d874dd068795';
 const WORKSPACE_SANDBOX_NAME_PREFIX = 'agent-ws-';
 const KNOWLEDGE_SANDBOX_NAME_PREFIX = 'agent-kb-';
-const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
@@ -108,16 +107,6 @@ function buildKnowledgeLabels(projectId: string, agentId: string): Record<string
 		[LABEL_AGENT_ID]: agentId,
 		[LABEL_SANDBOX_KIND]: 'knowledge',
 	};
-}
-
-function truncateSandboxErrorDetail(value: string): string {
-	if (value.length <= MAX_SANDBOX_ERROR_DETAIL_CHARS) return value;
-	return `${value.slice(0, MAX_SANDBOX_ERROR_DETAIL_CHARS)}...[truncated]`;
-}
-
-/** Redact secrets before truncating so a match cut in half cannot leak. */
-export function sanitizeSandboxErrorDetail(value: string): string {
-	return truncateSandboxErrorDetail(redactText(value).text.trimEnd());
 }
 
 @Service()

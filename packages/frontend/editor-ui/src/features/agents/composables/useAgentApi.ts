@@ -20,7 +20,6 @@ import type {
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
-	AgentFileDto,
 	AgentMemoryEntriesPageDto,
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
@@ -125,8 +124,8 @@ export type ListAgentsSortBy =
 	| 'updatedAt:desc';
 
 export type ListAgentsOptions = {
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
@@ -175,8 +174,8 @@ export type N8nChatAgentsSortBy = 'usage:desc';
 
 export type ListN8nChatAgentsOptions = {
 	query?: string;
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: N8nChatAgentsSortBy;
 };
 
@@ -189,12 +188,12 @@ export const listN8nChatAgents = async (
 	context: IRestApiContext,
 	options: ListN8nChatAgentsOptions,
 ): Promise<AgentChatListResponse> => {
-	const { query, skip, take, sortBy } = options;
+	const { query, offset, limit, sortBy } = options;
 	const trimmedQuery = query?.trim();
 	return await getFullApiResponse<AgentChatListItem[]>(context, 'GET', '/agents/v2', {
 		filter: { availableInChat: true, ...(trimmedQuery ? { query: trimmedQuery } : {}) },
-		skip,
-		take,
+		offset,
+		limit,
 		sortBy,
 	});
 };
@@ -281,8 +280,8 @@ export const listAgents = async (
 
 	do {
 		const { count, data } = await listAgentsPage(context, projectId, {
-			skip: agents.length,
-			take: AGENTS_LIST_PAGE_SIZE,
+			offset: agents.length,
+			limit: AGENTS_LIST_PAGE_SIZE,
 		});
 		agents.push(...data);
 		total = count;
@@ -370,50 +369,6 @@ export const deleteAgent = async (
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
 };
 
-export const listAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentFileDto[]> => {
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-	);
-};
-
-export const uploadAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	files: File[],
-): Promise<AgentFileDto[]> => {
-	const formData = new FormData();
-	for (const file of files) {
-		formData.append('files', file);
-	}
-
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-		formData,
-	);
-};
-
-export const deleteAgentFile = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	fileId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
-	);
-};
-
 export type AgentMemorySourceSelection = Pick<
 	ListAgentMemoryEntriesQueryDto,
 	'source' | 'sourceFacet' | 'sourceFacetId'
@@ -468,18 +423,6 @@ export const deleteAgentMemoryCapture = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/memory-captures/${captureId}`,
-	);
-};
-
-export const warmAgentKnowledgeSandbox = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<{ accepted: true }> => {
-	return await makeRestApiRequest<{ accepted: true }>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
 	);
 };
 

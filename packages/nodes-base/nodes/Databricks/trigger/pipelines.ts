@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import {
@@ -45,9 +45,8 @@ async function fetchPipelinesPage(
 	if (pageToken) qs.page_token = pageToken;
 	const response: unknown = await withLegibleErrors(
 		async () =>
-			await databricksApiRequest(context, credentialType, {
+			await databricksApiRequest(context, credentialType, requestUrl`${host}/api/2.0/pipelines`, {
 				method: 'GET',
-				url: `${host}/api/2.0/pipelines`,
 				qs,
 				headers: { Accept: 'application/json' },
 				json: true,

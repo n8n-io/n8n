@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -244,7 +245,14 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		);
 	}
 
-	const responseData = await microsoftApiRequest.call(this, 'POST', '/messages', index, body, {});
+	const responseData = await microsoftApiRequest.call(
+		this,
+		'POST',
+		requestPath`/messages`,
+		index,
+		body,
+		{},
+	);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

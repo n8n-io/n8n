@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { generatePairedItemData, processJsonInput } from '@utils/utilities';
 
@@ -49,7 +49,7 @@ export async function executeMatchUpdate(
 			'Sheet',
 			this.getNodeParameter('worksheet', 0, '', { extractValue: true }) as string,
 		);
-		const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(worksheetId)}`;
+		const sheetPath = requestPath`${workbookRoot}/workbook/worksheets/${worksheetId}`;
 
 		let range = (this.getNodeParameter('range', 0, '') as string).trim();
 		checkRange(this.getNode(), range);
@@ -61,7 +61,7 @@ export async function executeMatchUpdate(
 			worksheetData = await microsoftApiRequest.call(
 				this,
 				'GET',
-				`${sheetPath}/range(address='${range}')`,
+				requestPath`${sheetPath}/range(address='${range}')`,
 			);
 		}
 		if (range === '') {
@@ -69,7 +69,13 @@ export async function executeMatchUpdate(
 			if (dataMode === 'raw') {
 				qs.$select = 'address';
 			}
-			worksheetData = await microsoftApiRequest.call(this, 'GET', `${sheetPath}/usedRange`, {}, qs);
+			worksheetData = await microsoftApiRequest.call(
+				this,
+				'GET',
+				requestPath`${sheetPath}/usedRange`,
+				{},
+				qs,
+			);
 			range = String(worksheetData.address).split('!')[1];
 		}
 
@@ -82,7 +88,7 @@ export async function executeMatchUpdate(
 			const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 				this,
 				'PATCH',
-				`${sheetPath}/range(address='${range}')`,
+				requestPath`${sheetPath}/range(address='${range}')`,
 				{ values: rawRows },
 				rawQs,
 			);
@@ -150,7 +156,7 @@ export async function executeMatchUpdate(
 				const usedRange = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`${sheetPath}/usedRange`,
+					requestPath`${sheetPath}/usedRange`,
 					{},
 					{
 						$select: 'address',
@@ -170,7 +176,7 @@ export async function executeMatchUpdate(
 		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 			this,
 			'PATCH',
-			`${sheetPath}/range(address='${range}')`,
+			requestPath`${sheetPath}/range(address='${range}')`,
 			{ values: updateSummary.updatedData },
 			patchQs,
 		);
