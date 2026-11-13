@@ -1,3 +1,4 @@
+import type { WorkflowsConfig } from '@n8n/config';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -73,6 +74,8 @@ describe('EnterpriseWorkflowService', () => {
 			nodeTypes,
 			credentialsPermissionChecker,
 			workflowHistoryRepository,
+			mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			mock(), // workflowService
 		);
 	});
 

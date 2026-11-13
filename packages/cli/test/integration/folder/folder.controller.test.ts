@@ -11,6 +11,7 @@ import {
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
 import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
@@ -2597,78 +2598,6 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		);
 	});
 
-	test('moves the folder and reports a workflow whose republish fails for an unknown reason', async () => {
-		//
-		// ARRANGE
-		//
-
-		const sourceProject = await createTeamProject('source project', member);
-		const destinationProject = await createTeamProject('Team Project', member);
-
-		const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
-		const sourceFolder2 = await createFolder(sourceProject, {
-			name: 'Source Folder 2',
-			parentFolder: sourceFolder1,
-		});
-
-		const activeWorkflow = await createActiveWorkflow(
-			{ parentFolder: sourceFolder1 },
-			sourceProject,
-		);
-		const republishedWorkflow = await createActiveWorkflow(
-			{ parentFolder: sourceFolder2 },
-			sourceProject,
-		);
-		const inactiveWorkflow = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
-
-		activeWorkflowManager.add.mockImplementation(async (workflowId) => {
-			if (workflowId === activeWorkflow.id) throw new UnexpectedError('Oh no!');
-			return { webhooks: true, triggersAndPollers: true };
-		});
-
-		//
-		// ACT
-		//
-		const response = await testServer
-			.authAgentFor(member)
-			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
-			.send({
-				destinationProjectId: destinationProject.id,
-				destinationParentFolderId: '0',
-			})
-			.expect(200);
-
-		//
-		// ASSERT
-		//
-		expect(response.body.data).toEqual({
-			unpublishedWorkflows: [
-				{
-					id: activeWorkflow.id,
-					name: activeWorkflow.name,
-					error: { name: 'UnexpectedError', message: 'Oh no!' },
-				},
-			],
-		});
-		const workflowInDb = await workflowRepository.findOneByOrFail({ id: activeWorkflow.id });
-		expect(workflowInDb.activeVersionId).toBeNull();
-
-		// One failure must not stop the loop before the other workflows.
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(
-			republishedWorkflow.id,
-			'update',
-			undefined,
-			expect.anything(),
-		);
-		const republishedInDb = await workflowRepository.findOneByOrFail({
-			id: republishedWorkflow.id,
-		});
-		expect(republishedInDb.activeVersionId).not.toBeNull();
-
-		const [inactiveSharing] = await getWorkflowSharing(inactiveWorkflow);
-		expect(inactiveSharing.projectId).toBe(destinationProject.id);
-	});
-
 	test('should update workflow project cache entries when transferring folder', async () => {
 		// ARRANGE
 		const sourceProject = await createTeamProject('source project', member);
@@ -2706,5 +2635,90 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		const cachedProject2After = await ownershipService.getWorkflowProjectCached(workflow2.id);
 		expect(cachedProject1After.id).toBe(destinationProject.id);
 		expect(cachedProject2After.id).toBe(destinationProject.id);
+	});
+
+	describe('with the workflow publication service off', () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const original = globalConfig.workflows.useWorkflowPublicationService;
+
+		beforeAll(() => {
+			globalConfig.workflows.useWorkflowPublicationService = false;
+		});
+
+		afterAll(() => {
+			globalConfig.workflows.useWorkflowPublicationService = original;
+		});
+
+		test('moves the folder and reports a workflow whose republish fails for an unknown reason', async () => {
+			//
+			// ARRANGE
+			//
+
+			const sourceProject = await createTeamProject('source project', member);
+			const destinationProject = await createTeamProject('Team Project', member);
+
+			const sourceFolder1 = await createFolder(sourceProject, { name: 'Source Folder 1' });
+			const sourceFolder2 = await createFolder(sourceProject, {
+				name: 'Source Folder 2',
+				parentFolder: sourceFolder1,
+			});
+
+			const activeWorkflow = await createActiveWorkflow(
+				{ parentFolder: sourceFolder1 },
+				sourceProject,
+			);
+			const republishedWorkflow = await createActiveWorkflow(
+				{ parentFolder: sourceFolder2 },
+				sourceProject,
+			);
+			const inactiveWorkflow = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+
+			activeWorkflowManager.add.mockImplementation(async (workflowId) => {
+				if (workflowId === activeWorkflow.id) throw new UnexpectedError('Oh no!');
+				return { webhooks: true, triggersAndPollers: true };
+			});
+
+			//
+			// ACT
+			//
+			const response = await testServer
+				.authAgentFor(member)
+				.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
+				.send({
+					destinationProjectId: destinationProject.id,
+					destinationParentFolderId: '0',
+				})
+				.expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body.data).toEqual({
+				unpublishedWorkflows: [
+					{
+						id: activeWorkflow.id,
+						name: activeWorkflow.name,
+						error: { name: 'UnexpectedError', message: 'Oh no!' },
+					},
+				],
+			});
+			const workflowInDb = await workflowRepository.findOneByOrFail({ id: activeWorkflow.id });
+			expect(workflowInDb.activeVersionId).toBeNull();
+
+			// One failure must not stop the loop before the other workflows.
+			expect(activeWorkflowManager.add).toHaveBeenCalledWith(
+				republishedWorkflow.id,
+				'update',
+				undefined,
+				expect.anything(),
+			);
+			const republishedInDb = await workflowRepository.findOneByOrFail({
+				id: republishedWorkflow.id,
+			});
+			expect(republishedInDb.activeVersionId).not.toBeNull();
+
+			const [inactiveSharing] = await getWorkflowSharing(inactiveWorkflow);
+			expect(inactiveSharing.projectId).toBe(destinationProject.id);
+		});
 	});
 });

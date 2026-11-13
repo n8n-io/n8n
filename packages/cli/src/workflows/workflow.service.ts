@@ -4,6 +4,7 @@ import type {
 	ListCallableSubworkflowsQueryDto,
 	WorkflowExecutionBlockCause,
 	WorkflowListPublicationStatus,
+	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -94,6 +95,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { findPolicyViolations } from '@/policy/policy-violation.error';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -115,6 +117,14 @@ class SystemPublishSupersededError extends Error {}
 
 /** The API-key scope a caller needs to put a version live, whether directly or by saving. */
 const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
+
+type PublishedWorkflow = WorkflowEntity & { activeVersion: WorkflowHistory };
+
+function toTransferResult(error: unknown): WorkflowTransferResult {
+	const unpublishReasons = findPolicyViolations(error);
+	const { name, message } = ensureError(error);
+	return unpublishReasons ? { unpublishReasons } : { error: { name, message } };
+}
 
 /** What `getMany` should enrich or scope beyond the plain list query. */
 export type GetManyOptions = {
@@ -1568,6 +1578,168 @@ export class WorkflowService {
 			deactivatedVersionId,
 			reason,
 		});
+	}
+
+	/** Returns only the workflows that the transfer could not republish in the destination. */
+	async republishAroundTransfer(
+		user: User,
+		workflowIds: string[],
+		destinationProjectId: string,
+		transfer: () => Promise<void>,
+		{ publicApi }: { publicApi: boolean },
+	): Promise<Map<string, WorkflowTransferResult>> {
+		const workflows = (
+			await this.workflowRepository.findWithActiveVersionByIds(workflowIds)
+		).filter((workflow): workflow is PublishedWorkflow => workflow.activeVersion !== null);
+
+		const refusals = new Map<string, unknown>();
+		for (const workflow of workflows) {
+			try {
+				await this._enforcePublishInProject(workflow, destinationProjectId, user);
+			} catch (error) {
+				refusals.set(workflow.id, error);
+			}
+		}
+
+		await Promise.all(
+			[...refusals.keys()].map(
+				async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			),
+		);
+
+		let results = new Map<string, WorkflowTransferResult>();
+		let transferred = false;
+		try {
+			await transfer();
+			transferred = true;
+		} finally {
+			const transferredWorkflows = transferred
+				? workflows
+				: await this._ownedByProject(workflows, destinationProjectId);
+			results = await this._finishTransfer(user, transferredWorkflows, refusals, publicApi);
+		}
+
+		return results;
+	}
+
+	private async _enforcePublishInProject(
+		workflow: PublishedWorkflow,
+		projectId: string,
+		user: User,
+	): Promise<void> {
+		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
+			try {
+				await this.policyEnforcementService.enforceWorkflowPublish(
+					{
+						workflow: { id: workflow.id, name: workflow.name, nodes: workflow.activeVersion.nodes },
+						projectId,
+					},
+					{ kind: 'user', user },
+				);
+			} catch (error) {
+				if (!findPolicyViolations(error)) {
+					this.logger.error(`Failed to check the publish policy for workflow "${workflow.id}"`, {
+						workflowId: workflow.id,
+						error,
+					});
+				}
+				throw error;
+			}
+		}
+	}
+
+	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	private async _ownedByProject(
+		workflows: PublishedWorkflow[],
+		projectId: string,
+	): Promise<PublishedWorkflow[]> {
+		let owned: PublishedWorkflow[] = [];
+		try {
+			const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+				workflows.map((workflow) => workflow.id),
+			);
+			owned = workflows.filter((workflow) => owners.get(workflow.id)?.id === projectId);
+		} catch (error) {
+			this.logger.error('Failed to read which workflows a failed transfer moved', {
+				workflowIds: workflows.map((workflow) => workflow.id),
+				error,
+			});
+		}
+		return owned;
+	}
+
+	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	private async _finishTransfer(
+		user: User,
+		workflows: PublishedWorkflow[],
+		refusals: Map<string, unknown>,
+		publicApi: boolean,
+	): Promise<Map<string, WorkflowTransferResult>> {
+		const failures = new Map<string, unknown>();
+		const allowedIds: string[] = [];
+		for (const workflow of workflows) {
+			if (refusals.has(workflow.id)) {
+				failures.set(workflow.id, refusals.get(workflow.id));
+			} else {
+				allowedIds.push(workflow.id);
+			}
+		}
+
+		if (allowedIds.length > 0) {
+			try {
+				await this.outboxRepository.enqueueByWorkflowIds(
+					allowedIds,
+					WorkflowPublicationReason.Transfer,
+				);
+				this.workflowPublicationNotifier.requestDrain();
+			} catch (error) {
+				this.logger.error('Failed to republish the transferred workflows', {
+					workflowIds: allowedIds,
+					error,
+				});
+				for (const workflowId of allowedIds) failures.set(workflowId, error);
+			}
+		}
+
+		const results = new Map<string, WorkflowTransferResult>();
+		for (const workflow of workflows) {
+			if (failures.has(workflow.id)) {
+				await this._unpublishAfterTransfer(user, workflow, publicApi);
+				results.set(workflow.id, toTransferResult(failures.get(workflow.id)));
+			}
+		}
+
+		return results;
+	}
+
+	private async _unpublishAfterTransfer(
+		user: User,
+		workflow: PublishedWorkflow,
+		publicApi: boolean,
+	): Promise<void> {
+		const deactivatedVersionId = workflow.activeVersion.versionId;
+		try {
+			await this._forceUnpublish(workflow, deactivatedVersionId, user);
+
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId: workflow.id,
+				workflow: this.workflowRepository.create({
+					...workflow,
+					active: false,
+					activeVersionId: null,
+					activeVersion: null,
+				}),
+				publicApi,
+				deactivatedVersionId,
+				source: 'transfer',
+			});
+		} catch (error) {
+			this.logger.error(`Failed to unpublish workflow "${workflow.id}" after a transfer`, {
+				workflowId: workflow.id,
+				error,
+			});
+		}
 	}
 
 	/** Unpublishes in a way the `workflow.deactivate` hook cannot block: a hook failure is a warning. */

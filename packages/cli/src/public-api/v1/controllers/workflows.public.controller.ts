@@ -553,6 +553,9 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			body.destinationProjectId,
+			[],
+			undefined,
+			{ publicApi: true },
 		);
 	}
 
