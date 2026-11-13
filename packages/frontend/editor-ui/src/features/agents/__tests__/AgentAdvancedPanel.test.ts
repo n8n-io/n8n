@@ -547,7 +547,18 @@ describe('AgentAdvancedPanel', () => {
 		expect(last.config).toEqual({ serviceTier: 'flex', flexMaxRetries: 4 });
 	});
 
-	it('removes the Flex retries from the config when the field is cleared', async () => {
+	it('saves 0 so the Flex retry can be switched off', async () => {
+		const config = makeConfig({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-flex-max-retries-input"]').setValue('0');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config).toEqual({ serviceTier: 'flex', flexMaxRetries: 0 });
+	});
+
+	it('removes the Flex retries from the config when the input is not a number', async () => {
 		const config = makeConfig({
 			model: 'openai/gpt-6.1-sol',
 			config: { serviceTier: 'flex', flexMaxRetries: 4 },

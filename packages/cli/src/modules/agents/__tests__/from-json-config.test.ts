@@ -1291,6 +1291,15 @@ describe('buildFromJson()', () => {
 			expect(getDefaultExecutionOptions(agent)).toMatchObject({ flexUnavailableRetries: 3 });
 		});
 
+		it('passes 0 so the retry can be switched off', async () => {
+			const agent = await build({
+				model: 'openai/gpt-6.1-sol',
+				config: { serviceTier: 'flex', flexMaxRetries: 0 },
+			});
+
+			expect(getDefaultExecutionOptions(agent)).toMatchObject({ flexUnavailableRetries: 0 });
+		});
+
 		it('ignores flexMaxRetries for other providers', async () => {
 			const agent = await build({
 				model: 'anthropic/claude-sonnet-4-5',
