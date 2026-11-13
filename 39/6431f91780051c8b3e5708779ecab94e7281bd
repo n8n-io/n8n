@@ -1,0 +1,1985 @@
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_b7e23f6534e799::t_de8011567667eb 143-153,256-262,273-278
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/model.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,324,330,373,454
+packages/@n8n/instance-ai/src/tools/shared/trigger-input-descriptions.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-3
+packages/@n8n/db/src/migrations/common/1794310439584-AddWakeAttemptToAgentBackgroundJob.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-20
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/createVectorStoreNode.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-8
+docker/images/n8n/README.md
+  s_b7e23f6534e799::t_de8011567667eb 153-184
+packages/@n8n/node-cli/src/template/templates/shared/default/.agents/nodes-declarative.md
+  s_b7e23f6534e799::t_de8011567667eb 53,99-101
+packages/@n8n/agents/src/types/sdk/agent-builder.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-6,12,15,30-34,37-41
+packages/@n8n/nodes-langchain/nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,298
+packages/@n8n/agents/src/runtime/memory/observation-resume-columns.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-41
+packages/@n8n/blob-storage/src/skipped-entry-deletion.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/context-cues/__tests__/provider.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-357
+packages/@n8n/instance-ai/docs/tools.md
+  s_b7e23f6534e799::t_de8011567667eb 1240,1242-1251,1255-1256,1321-1322,1592-1594,1628
+packages/@n8n/decorators/src/errors.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/expression-runtime/src/evaluator/error-classification.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-8,10-17,24-25
+packages/@n8n/db/src/entities/agent-tag-mapping.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-22
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 101-102,106,212
+.github/workflows/security-trivy-scan-callable.yml
+  s_b7e23f6534e799::t_de8011567667eb 42,46
+packages/@n8n/decorators/src/pubsub/pubsub.event-map.ts
+  s_b7e23f6534e799::t_de8011567667eb 144-145,451-465
+.github/scripts/db-test-matrix.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 157-169,258-267
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_b7e23f6534e799::t_de8011567667eb 26-44,224-230,417-419,423,456-461,466
+packages/@n8n/backend-common/src/modules/errors/module-confusion.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/approval-review/thread-approval-context.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-26
+packages/@n8n/ai-utilities/src/guardrails/llm.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-145
+packages/@n8n/agents/src/workspace/sandbox/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 11
+packages/@n8n/engine/src/graph/loops.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,120-121,135
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-history.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 94-96,101-102,105-123,141-147,164-213,320-326,330,354-433
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,103-104,257,259-260
+packages/@n8n/engine/src/graph/workflow-graph-queries.ts
+  s_b7e23f6534e799::t_de8011567667eb 9-17
+packages/@n8n/agents/src/runtime/__tests__/message-list.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 176,178
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/ToolExecutor.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,103,160-165
+packages/@n8n/backend-services/src/services/__tests__/role.service.assignments.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 176,184
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/resolve-credentials.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 553-614,2038-2049
+packages/@n8n/instance-ai/src/errors/outside-thread-project.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 167,610-622
+packages/@n8n/instance-ai/src/tools/workflows/setup-panel-state.ts
+  s_b7e23f6534e799::t_de8011567667eb 281
+packages/@n8n/db/src/repositories/workflow-statistics.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/instance-ai/docs/configuration.md
+  s_b7e23f6534e799::t_de8011567667eb 120-128
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+.github/workflows/release-publish.yml
+  s_b7e23f6534e799::t_de8011567667eb 57-65,68,70-75
+packages/@n8n/expression-runtime/src/runtime/__tests__/context.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,62-214
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 305-313
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/Weaviate.utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/__tests__/workspace/sandbox/daytona-sandbox.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 45-46,54-56,137-139,163-165,173-174,849-896,996-1102
+packages/@n8n/backend-common/src/n8n-version.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-17
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-helpers.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,57-80
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection-continue.ts
+  s_b7e23f6534e799::t_de8011567667eb 4-8,13,27-30,33,46,50,53,55
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_b7e23f6534e799::t_de8011567667eb 26
+packages/@n8n/api-types/src/builder-tool-names.ts
+  s_b7e23f6534e799::t_de8011567667eb 279,290,293,297,302,313,401,418-439
+packages/@n8n/eslint-plugin-community-nodes/src/rules/resource-operation-pattern.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 138-177
+packages/@n8n/cli/src/commands/promotion-environment/apply-selection.ts
+  s_b7e23f6534e799::t_de8011567667eb 4-8,13,17-18,30-33,36,41,45,47,49
+packages/@n8n/instance-ai/docs/architecture.md
+  s_b7e23f6534e799::t_de8011567667eb 335-346,350-351,353
+packages/@n8n/agents/src/runtime/skills/active-skills.ts
+  s_b7e23f6534e799::t_de8011567667eb 60-63
+packages/@n8n/nodes-langchain/eslint.config.mjs
+  s_b7e23f6534e799::t_de8011567667eb 5-54,56,58-89,91
+packages/@n8n/agents/src/runtime/__tests__/skill-dependency-tools.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 50-58
+packages/@n8n/instance-ai/evaluations/README.md
+  s_b7e23f6534e799::t_de8011567667eb 972
+packages/@n8n/expression-runtime/src/runtime/__tests__/guest-to-ascii.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-9
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,90,101-104
+packages/@n8n/instance-ai/src/mcp/mcp-client-manager.ts
+  s_b7e23f6534e799::t_de8011567667eb 15
+packages/@n8n/instance-ai/src/tools/activity.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 92-93
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 5,68
+packages/@n8n/agents/src/__tests__/integration/cassettes/usage/returns-token-usage-and-cost-on-generate-result.json
+  s_b7e23f6534e799::t_de8011567667eb 8,26
+packages/@n8n/ai-utilities/src/utils/follow-redirects.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/db/src/services/transaction.ts
+  s_b7e23f6534e799::t_de8011567667eb 9
+packages/@n8n/ai-utilities/AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 11
+packages/@n8n/instance-ai/src/workflow-loop/guidance.ts
+  s_b7e23f6534e799::t_de8011567667eb 69,72,99,108,127,129,133,135
+packages/@n8n/agents/src/workspace/sandbox/workspace-root.ts
+  s_b7e23f6534e799::t_de8011567667eb 9-30,95-96,98-104
+packages/@n8n/ai-utilities/src/gen-ai/attributes.ts
+  s_b7e23f6534e799::t_de8011567667eb 18
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 12-16,44,168,173,178,243,250,276,283,297,305,315,321,375,401,418-419,428,442,454,473,476,535,537,603,619,641
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-generate-mode.json
+  s_b7e23f6534e799::t_de8011567667eb 12,21,25,32-33,37-47,50-54,62-63,67,70-75,78,89,92-93,96,99,101-102,104,108-109,111,113,129,138,141-142,151,155-156,158,171-172,179-180,184-194,197-201,209-210,214,217,219-222,225,236,240,243,246,249,251,255-256,258,260,276,285,288-289,298,302-303,305,318-319,328,332-333,335-339,352,360-361,365-375,378-382,390-391,395,398,400-403,406,417,421,424,427,430,432,436-437,439,441
+packages/@n8n/backend-services/README.md
+  s_b7e23f6534e799::t_de8011567667eb 34-44
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_b7e23f6534e799::t_de8011567667eb 81-91
+.github/scripts/db-test-matrix.mjs
+  s_b7e23f6534e799::t_de8011567667eb 40,44-45,47-48,51,55,95,137
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-a-reasoning-model-when-reasoning-is-enabled.json
+  s_b7e23f6534e799::t_de8011567667eb 8-9,32
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-web-search-provider-tool-can-be-attached-without-suspending.json
+  s_b7e23f6534e799::t_de8011567667eb 8,34
+packages/@n8n/agents/src/runtime/model/native-tool-deferral.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,78-89,110-112
+packages/@n8n/engine/src/execution/start-execution.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,208,217,223,228
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,10,54-74,100,206-207,218-219
+packages/@n8n/inbound-auth/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,26
+packages/@n8n/engine/src/graph/validate-executable-graph.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,28-29,35,46,51,65
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,19,216,226,292
+packages/@n8n/db/src/execution-ledger/execution-ledger-row.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-49
+packages/@n8n/agents/src/types/sdk/observation.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-34
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-7,176-178,279,364
+packages/@n8n/agents/src/runtime/memory/observation-policy.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-193
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/error-handling.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+.github/workflows/util-probe-npm-oidc-exchange.yml
+  s_b7e23f6534e799::t_de8011567667eb 46
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,122-125
+packages/@n8n/agents/src/runtime/tools/tool-catalog.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,5,8,10-11,13-14,16-50,53-60,63-77,80-88,92-96,99-112,118,122-124,126,128-130,132,135,138-143,145,147-148,154,158,160-163,167,171,174,176,179,181,184-199,202-208,211,213-224,228,230,232-254,256-257,262-266,268-269,273-282,284-286,290-299,301-307,309-315,317-319,323-326,328-329,333-341,344-354
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 241-259
+packages/@n8n/cli/src/commands/promotion-environment/apply-command.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,43,54-64,132-135,138,143
+packages/@n8n/db/src/repositories/tag.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,34-42,44-46,58-59,63-70,113,128
+packages/@n8n/blob-storage/src/stream-utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_b7e23f6534e799::t_de8011567667eb 640-643
+docker/images/runners/Dockerfile.distroless
+  s_b7e23f6534e799::t_de8011567667eb 1,10-11,17-24,31,76,129,146,151,160-161,164-166,211
+packages/@n8n/api-types/src/agents/dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-22,34-35,39,70,87,97-98,101,226-227,251-252,272-276,279-442,560-571,574-599,621-639,653-657,677,682-691,699-701,773-779
+packages/@n8n/db/src/migrations/common/1794419301361-AddIsArchivedToAgents.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-19
+packages/@n8n/backend-services/src/oauth/oauth-jwe-service.proxy.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/ai-workflow-builder.ee/evaluations/evaluators/llm-judge/evaluators/base.ts
+  s_b7e23f6534e799::t_de8011567667eb 6
+packages/@n8n/agents/src/runtime/memory/tool-result-memory.ts
+  s_b7e23f6534e799::t_de8011567667eb 9-11,13-15,18,20-30,39-40,43,45,63,68-70,74-76,86-87
+packages/@n8n/nodes-langchain/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 21,752
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 101-102,514-515,517
+CONTRIBUTING.md
+  s_b7e23f6534e799::t_de8011567667eb 584,602
+packages/@n8n/agents/src/sdk/memory.ts
+  s_b7e23f6534e799::t_de8011567667eb 18-19,45-51,55-61,68-77,121,152,260
+packages/@n8n/api-types/src/schemas/dependency.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-14,22-28
+packages/@n8n/cli/docs/commands/promotions.md
+  s_b7e23f6534e799::t_de8011567667eb 311-312,316,319-320,322-357,361-363,368-369,374-375,378-384,417,473,488-491,496-499,504-505,509-516,521-522,525,527,544-550
+packages/@n8n/decorators/src/shutdown/on-shutdown.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-74
+packages/@n8n/cli/src/__tests__/promotion-environment-operations.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 417-421,451,494-499,502-503,508,513-518,543-548,552-557,559,592,595,625,628
+packages/@n8n/codemirror-lang-html/package.json
+  s_b7e23f6534e799::t_de8011567667eb 53
+docker/images/node-pc/check-v8-patches.js
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-choices.md
+  s_b7e23f6534e799::t_de8011567667eb 1-86
+packages/@n8n/eslint-config/src/rules/require-encoded-path-segments.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-540
+packages/@n8n/db/src/repositories/auth-identity.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 24-25
+docker/images/runners/Dockerfile.debian
+  s_b7e23f6534e799::t_de8011567667eb 1-175
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/methods/searchModels.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,37
+packages/@n8n/inbound-auth/src/__tests__/fixtures/trusted-source-config.v2.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-31
+packages/@n8n/backend-services/src/oauth/__tests__/oauth-jwe-service.proxy.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 44,79
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,5,17,33-69,311-312
+packages/@n8n/api-types/src/dto/packages/import-package-request.openapi.ts
+  s_b7e23f6534e799::t_de8011567667eb 118-120,134-141
+packages/@n8n/expression-runtime/src/__tests__/typed-rpc.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 109-114,116-117,122-152
+packages/@n8n/create-node/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/db/src/utils/dialect-sql.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-31
+packages/@n8n/nodes-langchain/nodes/memory/MemoryXata/MemoryXata.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,122,142
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 71-89,94-101,122
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,50,60-61,63-67,70,73,87,109-111,139-142
+docker/AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 1-59
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-49
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 46,130,490,498,500-502,628,631-632,640-647,671-672
+packages/@n8n/eslint-plugin-community-nodes/package.json
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/nodes-langchain/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,282,360
+packages/@n8n/decorators/src/shutdown/shutdown-metadata.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/EmbeddingsAwsBedrock.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,6-7,121-137,424-426
+packages/@n8n/agents/src/skills/prompt.ts
+  s_b7e23f6534e799::t_de8011567667eb 49-50
+packages/@n8n/agents/src/context-cues/provider.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-413
+packages/@n8n/db/src/migrations/dsl/indices.ts
+  s_b7e23f6534e799::t_de8011567667eb 23-24
+packages/@n8n/decorators/src/replayable-registry.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/ai-utilities/src/guardrails/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-23
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  s_b7e23f6534e799::t_de8011567667eb 259-260,262-270,276-277,606
+packages/@n8n/agents/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 104-105,109-110,112-115,225-227,325,327-342,417,471,473-477
+docker/images/n8n/Dockerfile.debian
+  s_b7e23f6534e799::t_de8011567667eb 1-126
+packages/@n8n/api-types/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/image/analyze.operation.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,201
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/LmChatMistralCloud.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 18,207
+packages/@n8n/module-cli/src/frontend.mjs
+  s_b7e23f6534e799::t_de8011567667eb 45-46
+packages/@n8n/instance-ai/src/storage/workflow-loop-storage.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/db/src/connection/db-connection-options.ts
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsNvidia/helpers.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 208-209,212,216,223,229
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/ToolsAgentV2.customModels.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-482
+packages/@n8n/instance-ai/src/workspace/workspace-paths.ts
+  s_b7e23f6534e799::t_de8011567667eb 10-11,29-30
+packages/@n8n/nodes-langchain/nodes/Guardrails/test/helpers/model.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 151-170
+packages/@n8n/instance-ai/src/utils/__tests__/stream-helpers.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 118-131
+.github/workflows/build-v3-nightly.yml
+  s_b7e23f6534e799::t_de8011567667eb 152-153,158-159,205,208
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/McpClientTool.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 181-186,203-209
+packages/@n8n/instance-ai/src/tools/shared/ask-user.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/agents/src/runtime/__tests__/history-recall-tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-159
+packages/@n8n/backend-common/src/__tests__/license-state.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-19
+packages/@n8n/nodes-langchain/nodes/mcp/McpClient/__test__/McpClient.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,48-96,386,390-399,402-404,406-436,439-493,511-514
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 356
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/test/LmChatAwsBedrock.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,7-8,641-677,735-737,785-787
+packages/@n8n/agents/src/runtime/model/__tests__/encrypted-reasoning.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-37
+packages/@n8n/instance-ai/skills/suggest-automations/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 11-12
+packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,164,221,253
+packages/@n8n/agents/src/runtime/model/encrypted-reasoning.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-76
+.github/scripts/docker/edit-image-native-smoke-check.mjs
+  s_b7e23f6534e799::t_de8011567667eb 3-4,16,27-41
+packages/@n8n/instance-ai/src/tools/nodes.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 51,561-592,594-595,598-621,623-657,659,661,669-671,837
+packages/@n8n/engine/src/graph/__tests__/validate-executable-graph.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 49,85,96,137-139
+packages/@n8n/agents/src/runtime/tools/fix-tool-call.ts
+  s_b7e23f6534e799::t_de8011567667eb 5-9,51,53-71
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,330-368
+packages/@n8n/instance-ai/src/stream/__tests__/map-chunk.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 89-116,678-704
+packages/@n8n/node-cli/src/template/templates/programmatic/example/template/nodes/Example/Example.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,68
+packages/@n8n/agents/src/runtime/memory/history-recall-tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-171
+packages/@n8n/engine/src/database/entities/workflow-execution.entity.ts
+  s_b7e23f6534e799::t_de8011567667eb 22-23
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getIssues.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,36
+packages/@n8n/api-types/src/schemas/assistant-agent-targets.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-34
+packages/@n8n/nodes-langchain/nodes/Guardrails/test/helpers/common.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/nodes-langchain/nodes/ToolExecutor/test/ToolExecutor.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-8,288-300,326,372-455
+AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 144-149,292-294
+packages/@n8n/api-types/src/dto/roles/__tests__/role-project-members-response.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-47
+packages/@n8n/api-types/src/dto/promotions/promotion-common.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4,27-33
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,98-106
+packages/@n8n/db/src/repositories/base-repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,9-10,39
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 60-69,93-95
+packages/@n8n/backend-common/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/agents/src/sdk/tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 24-25,170-174
+packages/@n8n/backend-services/src/services/node-types-proxy.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-39
+packages/@n8n/engine/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-8,60-61,71-75,78,84
+packages/@n8n/backend-services/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 29-33,59,111-112,128-131
+packages/@n8n/instance-ai/src/workflow-loop/__tests__/guidance.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 161,175,197,238,252,274,315,356,358,554
+packages/@n8n/instance-ai/src/tools/__tests__/research.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,54-75
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/apply-workflow-credentials.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 53-56,229-274
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 161-163
+docs/inflight-removal.md
+  s_b7e23f6534e799::t_de8011567667eb 1-25
+.github/scripts/check-inflight.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-73
+packages/@n8n/instance-ai/src/tools/workflows/chat-model-validation.ts
+  s_b7e23f6534e799::t_de8011567667eb 95,99,278
+packages/@n8n/nodes-langchain/nodes/Guardrails/description.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-10
+packages/@n8n/backend-services/src/services/ai-preference.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 19,560,563
+packages/@n8n/db/src/migrations/sqlite/1794238837510-AddWaitingStatusToAgentExecution.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-9
+packages/@n8n/agents/src/workspace/sandbox/daytona-sandbox.ts
+  s_b7e23f6534e799::t_de8011567667eb 58-59,61,146-153,207-216,273-277,290,672,698,764-806,814-860
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 18,26-31,252-280,293-296,306,315,358
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 21-50
+packages/@n8n/eslint-config/src/rules/no-unneeded-backticks.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-21
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/eslint-config/src/rules/require-disable-reason.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-107
+.github/actions/setup-nodejs/action.yml
+  s_b7e23f6534e799::t_de8011567667eb 10,12
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/DatabricksVectorStore.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/agents/docs/prompt-caching.md
+  s_b7e23f6534e799::t_de8011567667eb 27,34-46,48-49,53-55,103-106,134-140,246-249,252-253,349
+packages/@n8n/db/src/migrations/common/1794320826000-IndexSelfHealingInvestigationActivity.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-13
+packages/@n8n/instance-ai/src/agent/__tests__/self-healing-agent.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 105,125-128,232,247,249,434-435,441-442
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/integration/agent-v3.workflow.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-4,7-22,127-248
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 22,31-33,38,61,70-72,77
+packages/@n8n/module-cli/src/frontend.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 110-111,148-162
+packages/@n8n/db/src/services/db-lock-unavailable.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-8
+packages/@n8n/backend-services/src/services/__tests__/url.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 71-101
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/McpServer.ts
+  s_b7e23f6534e799::t_de8011567667eb 17-18
+packages/@n8n/decorators/src/__tests__/redactable.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/single-credential-per-node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-285
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1293-1357
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,10,102-113,115-120,142,147,150,382,389-396,422,425
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/agent-target-binding.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,524-550
+packages/@n8n/api-types/src/dto/dependencies/dependency-public.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,20-29
+packages/@n8n/db/src/execution-ledger/fold-transaction-lost.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-19
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 11-12,42
+packages/@n8n/api-types/src/__tests__/self-healing-configurations.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 11,31-35,50-57
+packages/@n8n/config/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/db/src/migrations/sqlite/1794419301361-AddIsArchivedToAgents.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-9
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7,31
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-20,36-37,47,53,293-298,304-310,333-358,372,401
+packages/@n8n/expression-runtime/esbuild.config.js
+  s_b7e23f6534e799::t_de8011567667eb 8-31,42
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 6
+packages/@n8n/engine/src/response-channel/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-11
+.github/scripts/attest-image-sbom.mjs
+  s_b7e23f6534e799::t_de8011567667eb 32,35
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_b7e23f6534e799::t_de8011567667eb 422-425,444-507
+packages/@n8n/agents/src/runtime/__tests__/request-size-tracker.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-73
+packages/@n8n/eslint-config/src/rules/require-disable-reason.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-102
+.github/workflows/test-link-check-weekly.yml
+  s_b7e23f6534e799::t_de8011567667eb 1,3-86
+packages/@n8n/instance-ai/prompts/self-healing/self-healing.md
+  s_b7e23f6534e799::t_de8011567667eb 3-6,17,19-26,32-33,61-92,107-109
+packages/@n8n/instance-ai/src/skills/context-cues/workflow-builder.cues.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-295
+packages/@n8n/cli/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/module-cli/src/templates/frontend/vize-lint.config.mjs.template
+  s_b7e23f6534e799::t_de8011567667eb 1-3
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getRepositories.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,34
+packages/@n8n/ai-utilities/src/guardrails/checks/topical-alignment.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,11
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/common.ts
+  s_b7e23f6534e799::t_de8011567667eb 127-138,204-209,251-258,286,379-380,384,395
+packages/@n8n/db/src/repositories/project-relation.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 95-103
+packages/@n8n/engine/src/response-channel/execution-channel.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-49
+packages/@n8n/db/src/migrations/common/1793280161358-CreateExecutionLedgerTable.ts
+  s_b7e23f6534e799::t_de8011567667eb 109-130
+.github/scripts/docker/base-debian-smoke-check.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-76
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 231,595,724-725,761,763,765,767,2389
+packages/@n8n/expression-runtime/src/runtime/transfer.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-24,84,116,151,165,178,188,213,231
+packages/@n8n/instance-ai/skills/instance-awareness/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 8-11
+packages/@n8n/ai-utilities/src/guardrails/checks/urls.ts
+  s_b7e23f6534e799::t_de8011567667eb 34-39,219,258
+packages/@n8n/backend-network/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,73
+packages/@n8n/eslint-config/src/rules/require-request-target.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-337
+packages/@n8n/expression-runtime/src/types/evaluator.ts
+  s_b7e23f6534e799::t_de8011567667eb 378-391
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-61
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_b7e23f6534e799::t_de8011567667eb 24,406-450,472,546-549,557
+packages/@n8n/backend-services/src/jwks/jwks.registry.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1414-1415
+.agents/skills/community-pr-readiness-check/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 108
+packages/@n8n/agents/src/runtime/__tests__/openai-api-style.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1509-1656
+packages/@n8n/expression-runtime/src/extensions/function-extensions.ts
+  s_b7e23f6534e799::t_de8011567667eb 46-47,54
+packages/@n8n/backend-services/src/services/posthog-client.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,16,32-36,198,213-215
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,283
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-true.json
+  s_b7e23f6534e799::t_de8011567667eb 48,69,95,185,206,232,336,357,383,507,528,554
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/listSearch/getUsers.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,33
+packages/@n8n/engine/src/server/routes/resume-requests.ts
+  s_b7e23f6534e799::t_de8011567667eb 77-94
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 476-477,484-488
+packages/@n8n/backend-services/src/pubsub/pubsub.constants.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-74
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDeepSeek/LmChatDeepSeek.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,256
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_b7e23f6534e799::t_de8011567667eb 89-96
+packages/@n8n/agents/src/runtime/loop/__tests__/tool-catalog-context.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-93
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_b7e23f6534e799::t_de8011567667eb 257-308
+packages/@n8n/cli/src/commands/promotion-environment/promote-selection.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,11-12,25-28,41
+.github/workflows/test-evals-instance-ai.yml
+  s_b7e23f6534e799::t_de8011567667eb 512,515-516
+packages/@n8n/instance-ai/src/tools/workflows/sample-files.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-251
+packages/@n8n/backend-services/src/executions/execution-ledger.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-100
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_b7e23f6534e799::t_de8011567667eb 54,63-66,79-80,82-87,97-99,106-114,118,141,146-154,222,236-237,250-277,279,497,601-602,608,722-723,1095-1096,1143,1222-1246,1311,1360-1407
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.sandbox-workspace.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-17
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/Qdrant.utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+.github/workflows/ci-pr-policy-reusable.yml
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/agents/src/runtime/__tests__/tool-result-guard.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4-5,8-99,107-110,117,125-162,166,176-178
+packages/@n8n/db/src/migrations/postgresdb/1794238837509-WidenExecutionLedgerRuntimeMs.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-25
+codecov.yml
+  s_b7e23f6534e799::t_de8011567667eb 81
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-mid-run.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 23-30,60-66,149,192,239-240,269-318,351,377-380,419,541,545-546,585,609,611-615,620,623,628,630-631,638,644-697,785,812,848
+packages/@n8n/agents/src/types/runtime/agent-runtime.ts
+  s_b7e23f6534e799::t_de8011567667eb 13,33,40-70,98-104,149-150
+packages/@n8n/api-types/src/schemas/execution-limit-settings.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-22
+packages/@n8n/db/src/services/__tests__/db-lock.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,7,224,230,276-305,474-476
+packages/@n8n/ai-utilities/src/types/openai.ts
+  s_b7e23f6534e799::t_de8011567667eb 59,74,112
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/methods/imageUtils.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-7
+packages/@n8n/code-runtime-js/tsconfig.json
+  s_b7e23f6534e799::t_de8011567667eb 1-10
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 856-878
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 885-890,1027-1029,1702-1729,1734,1828,1844,1851,1890-1891,1914,1984-1985,1997,1999-2000,2297-2298
+packages/@n8n/ai-workflow-builder.ee/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,71
+packages/@n8n/expression-runtime/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,38,49
+packages/@n8n/nodes-langchain/nodes/output_parser/OutputParserItemList/test/OutputParserItemList.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-facets.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,26,31-35,37-39,59,113,123
+packages/@n8n/nodes-langchain/nodes/llms/LmChatDatabricks/test/LmChatDatabricks.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 436-438,562
+CHANGELOG.md
+  s_b7e23f6534e799::t_de8011567667eb 1-54
+packages/@n8n/nodes-langchain/nodes/agents/Agent/test/ToolsAgent/commons.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-7,31,219,224,226-240,263,285,339,351,379,384,412-413,418,847,924-990,1299-1317,1334,1416
+packages/@n8n/eslint-config/request-target.config.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-14
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,21-23,134-136,138-188,225-230,233
+packages/@n8n/code-runtime-js/oxlint.config.mts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,4-6
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 13
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-8,13-16,24-78
+packages/@n8n/agents/src/runtime/memory/resume-state.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-104
+packages/@n8n/db/src/migrations/common/1675940580449-PurgeInvalidWorkflowConnections.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsCohere/EmbeddingsCohere.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-13,108
+packages/@n8n/instance-ai/skills/workflow-builder/references/publishing.md
+  s_b7e23f6534e799::t_de8011567667eb 7-9,34-36,44
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V2/execute.ts
+  s_b7e23f6534e799::t_de8011567667eb 34,291,293-295
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 53,56
+packages/@n8n/instance-ai/src/tools/workflows/summarize-workflow.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,11,13
+.agents/skills/prototype-design/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 1-125
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-6,9-16,20-22,25-31,40,45,53,58,68-72,91,94,123-126,201-514
+packages/@n8n/backend-network/src/http/outbound-http.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+.github/workflows/util-update-boundaries-baseline.yml
+  s_b7e23f6534e799::t_de8011567667eb 49
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_b7e23f6534e799::t_de8011567667eb 471
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/build-workflow.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,26-30,1597-1690,2893-2911,3002,3346-3364
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+.github/workflows/release-push-to-channel.yml
+  s_b7e23f6534e799::t_de8011567667eb 79
+packages/@n8n/db/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,40
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4,471-619,714-741,791-793,870-910
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/executeBatch.ts
+  s_b7e23f6534e799::t_de8011567667eb 60
+packages/@n8n/instance-ai/src/tools/__tests__/conversation-history.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/backend-services/src/services/__tests__/posthog-client.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,7,17,41,241,254,258,262,301,322,350,356,514,535,572,600,633,650,679,712,733
+packages/@n8n/backend-network/src/http/__tests__/binary-buffer.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/eslint-config/src/rules/require-request-target.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-311
+.github/scripts/docker/native-addons-smoke-check.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-41
+packages/@n8n/decorators/src/pubsub/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-6
+packages/@n8n/instance-ai/src/tools/data-tables.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 572,948-949
+packages/@n8n/ai-utilities/src/guardrails/checks/__tests__/secret-keys.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/tools/tool-search.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-122
+packages/@n8n/agents/src/skills/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 41-42,219
+packages/@n8n/db/src/entities/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,141,241
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/Weaviate.utils.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 5-12,177-312
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_b7e23f6534e799::t_de8011567667eb 276-295
+packages/@n8n/instance-ai/skills/n8n-docs-assistant/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 8-10
+packages/@n8n/backend-network/src/http/connection-guards.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/backend-services/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,50,55,57-58
+packages/@n8n/decorators/src/policy-check/__tests__/policy-mint.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 6
+packages/@n8n/db/src/repositories/execution-data.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,4,6,8-12,15-29,32-39,42-54,56-64
+packages/@n8n/instance-ai/src/tools/__tests__/save-user-preference.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/classify-node-destructiveness.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 359,365-380
+packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 45
+packages/@n8n/instance-ai/src/tools/workspace.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,451
+packages/@n8n/db/src/execution-ledger/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-5
+packages/@n8n/engine/src/serve.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,27-30,46-47,55
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/tests/resolveSubAgentRequest.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3
+packages/@n8n/inbound-auth/src/trusted-source-facets.ts
+  s_b7e23f6534e799::t_de8011567667eb 13,23-24,37-39,53
+packages/@n8n/engine/src/graph/__tests__/loops.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 252-254
+packages/@n8n/agents/src/skills/registry.ts
+  s_b7e23f6534e799::t_de8011567667eb 463,492
+packages/@n8n/ai-utilities/src/guardrails/checks/pii.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,151,157,258
+packages/@n8n/code-runtime-js/tsconfig.build.json
+  s_b7e23f6534e799::t_de8011567667eb 1-6,8-10
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 467,512
+packages/@n8n/instance-ai/src/skills/context-cues/intent-recognition.cues.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-122
+packages/@n8n/backend-services/src/pubsub/publisher.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-15,17
+packages/@n8n/engine/src/tls/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 4-13,23-68,70-72,74-144,148,150-154,158-166,168-173,175-181,183,202,207-208,211,213,215-220,224-225,227-230
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 19,180-199
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/custom-endpoint-chat-openai.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-33
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,7-10,83-87,99-103,105,108-109,112-151
+packages/@n8n/db/src/migrations/common/1794480123907-CreateAgentTagMappingTable.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-30
+packages/@n8n/expression-runtime/src/runtime/serialize.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,80,96
+.github/workflows/release-publish-new-package.yml
+  s_b7e23f6534e799::t_de8011567667eb 1-2,5-13,22,25-27,38-41,49-51,54-56,59,66-119
+packages/@n8n/api-types/src/agents/agent-chat-attachments.constants.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/instance-ai/src/errors/workflow-save-conflict.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/self-healing.ts
+  s_b7e23f6534e799::t_de8011567667eb 27-31,35,38-39,43,46-47,74
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 18,369,375
+packages/@n8n/engine/src/graph/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 12
+packages/@n8n/agents/src/runtime/__tests__/prompt-cache-custom-endpoint.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-100
+packages/@n8n/nodes-langchain/nodes/mcp/shared/descriptions.ts
+  s_b7e23f6534e799::t_de8011567667eb 57-64
+packages/@n8n/agents/src/skills/validator.ts
+  s_b7e23f6534e799::t_de8011567667eb 21-23,86-90,117
+packages/@n8n/blob-storage/src/json-store.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3
+packages/@n8n/db/src/migrations/migration-helpers.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-9
+packages/@n8n/engine/src/tls/__tests__/engine-tls.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-242
+packages/@n8n/mcp-apps/src/apps/workflow-preview/App.vue
+  s_b7e23f6534e799::t_de8011567667eb 123
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 947-1042
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 23,228,232,243
+.github/pull_request_template.md
+  s_b7e23f6534e799::t_de8011567667eb 2-6,9,12-20,26,28-30,41
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_b7e23f6534e799::t_de8011567667eb 50,57,59,61,63-67,93,98-99,101,139,142-151,153,250,252,277,310
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 326-328
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,7-10,13
+packages/@n8n/expression-runtime/vitest.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 18-19
+.github/workflows/release-create-pr.yml
+  s_b7e23f6534e799::t_de8011567667eb 55-74,76,120,122,124-125,153,155,205,208,214-216
+packages/@n8n/expression-runtime/src/runtime/intrinsics.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_b7e23f6534e799::t_de8011567667eb 238-239
+packages/@n8n/db/src/subscribers/user-subscriber.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,8,31-32,34,36-40
+packages/@n8n/backend-test-utils/src/db/workflows.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-5,284-292,299
+.github/scripts/link-check/extract.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-50
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-348
+.agents/skills/prototype-design/template.html
+  s_b7e23f6534e799::t_de8011567667eb 1-238
+packages/@n8n/nodes-langchain/nodes/llms/LmChatCohere/cohereV2Client.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,26,28,35-40,50,52,59-64,75-108,111-112,116,120,124,127-132,136-137,139,143,145,150,239,241-242,246,249,262,265-266
+packages/@n8n/decorators/src/policy-check/policy-check-metadata.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 9
+.agents/skills/create-pr/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 9-10,47,52-55,79-81,83-87,92,95-102,113-143,146-194,197-208,215-216,218-220,222,261-263,269
+.github/workflows/ci-pr-quality.yml
+  s_b7e23f6534e799::t_de8011567667eb 17-19,82,84-88,140-143,166-168,187,192-194,199,204-206
+packages/@n8n/instance-ai/skills/data-table-manager/references/data-table-playbook.md
+  s_b7e23f6534e799::t_de8011567667eb 151
+packages/@n8n/db/src/entities/tag-entity.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,26-28
+packages/@n8n/nodes-langchain/nodes/tools/ToolWorkflow/v2/ToolWorkflowV2.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4
+packages/@n8n/ai-utilities/src/model-discovery/providers/google.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-15,26
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_b7e23f6534e799::t_de8011567667eb 282-285,295,297,299
+packages/@n8n/imap/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/agents/src/runtime/__tests__/tool-call-runner.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,11,16-155
+packages/@n8n/db/src/entities/service-account.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3,24-32
+packages/@n8n/engine/src/auth/resume-token.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,96-98,100
+packages/@n8n/backend-network/src/http/response-size-limit.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/api-types/src/self-healing-results.ts
+  s_b7e23f6534e799::t_de8011567667eb 43,45-58,69-78,83-85,87-92
+packages/@n8n/api-types/src/dto/workflows/base-workflow-public.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 24-26
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_b7e23f6534e799::t_de8011567667eb 12,64-91,99,101-106,109-112,114,118-119,121,123,139,157,174,218-245,253,255-260,263-266,268,272-273,275,277,298,301-302,314,333,336-337,349,368,371-372,384,398,450-477,485,487-492,495-498,500,504-505,507,509,530,533-534,546,560,578,594,638-665,673,675-680,683-686,688,692-693,695,697
+.github/workflows/build-node-pc-image.yml
+  s_b7e23f6534e799::t_de8011567667eb 13-14,18-20,31-70,72-73,108,113-116,128,133-136,139,154-155,162-163,165-166
+packages/@n8n/eslint-config/src/rules/require-macro-variable-name.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-93
+packages/@n8n/config/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 297-306
+packages/@n8n/config/src/configs/security.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 64
+.github/scripts/link-check/extract.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-127
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_b7e23f6534e799::t_de8011567667eb 57,76,235,254,431,450,675,694
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,7,27,199,224,230-245,303,314
+packages/@n8n/api-types/src/agents/__tests__/skills.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,13-23
+packages/@n8n/instance-ai/src/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 13,47,186-190,863-870,1703-1716,1891,1895-1900,1911-1915,2013-2014,2017-2026
+.github/workflows/build-base-image.yml
+  s_b7e23f6534e799::t_de8011567667eb 9,11-12,16,18-20,33-34,38-39,41-47,49-55,58-70,72,76,79-100,102,111,119-137,139,143-145,150-153
+packages/@n8n/backend-services/src/services/cache/redis.cache-manager.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-9
+packages/@n8n/engine/src/execution/resume-request.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 53-55,97,111-113,159-161,194
+packages/@n8n/instance-ai/src/__tests__/self-healing.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-16,23-26,34,47
+packages/@n8n/backend-services/src/services/__tests__/project-scope.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 25-69
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/util.ts
+  s_b7e23f6534e799::t_de8011567667eb 11
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1196-1213,1475-1513
+packages/@n8n/decorators/src/redactable.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/evaluations/outcome/foreign-reads.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,24-26,29,32,34-36,38
+packages/@n8n/instance-ai/skills/workflow-builder/references/one-off-operations.md
+  s_b7e23f6534e799::t_de8011567667eb 12-15,61,108,113
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/DatabricksVectorStore.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-8
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file-registration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 13-14,22-24,27,29,35,37,43,45,52,54,65,67,89-90
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17-18,160
+packages/@n8n/instance-ai/src/context-budget/__tests__/orchestrator-context-budget.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 19
+packages/@n8n/backend-common/src/modules/errors/unknown-module.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/ai-workflow-builder.ee/src/errors/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+packages/@n8n/module-cli/src/templates/frontend/oxlint.config.mts.template
+  s_b7e23f6534e799::t_de8011567667eb 1-4
+.github/scripts/docker/bake-inputs-changed.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-74
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-undefined.json
+  s_b7e23f6534e799::t_de8011567667eb 57,76,241,260,443,462,693,712
+packages/@n8n/agents/src/context-cues/bm25.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-105
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-resume.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-199
+packages/@n8n/backend-network/src/http/binary-buffer.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/config/test/config.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,91,313,378,412-417,567,773-777,779,1286-1296
+packages/@n8n/engine/src/execution/__tests__/completion-race.integration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-367
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,173-174,177-183,185,199,201,203,250,252,257-261
+packages/@n8n/instance-ai/src/skills/context-cues/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-113
+packages/@n8n/instance-ai/evaluations/ab-bench/cases/agent-workflow-tables/turns.json
+  s_b7e23f6534e799::t_de8011567667eb 1-6
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,151,255-263
+packages/@n8n/instance-ai/evaluations/harness/artifacts/agent-artifact.ts
+  s_b7e23f6534e799::t_de8011567667eb 9
+.github/backport_conventions.md
+  s_b7e23f6534e799::t_de8011567667eb 1-36
+packages/@n8n/agents/src/runtime/memory/request-size-tracker.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-90
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 21-22,538,542,544,590-657,822,861,901,927,1061,1089,1092,1099,1129,1134,1137,1221-1276,1306-1321
+packages/@n8n/engine/AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 108-114
+.agents/review-rules/security/node-input-safety.md
+  s_b7e23f6534e799::t_de8011567667eb 35-46
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,8,59-62,88,96,104-109,111,126-127,152-153,155,189-192,194-197,199-203,225-226,302,308-320,329,331-332,439,445-450,519,526,531
+packages/@n8n/backend-test-utils/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,30
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,9,12,15,21,44,66-73,81,84,144-156,160,172,203,217,240,352-353,355-356,358,361-417,421-422,431-432,435-443
+packages/@n8n/cli/src/commands/package/export.ts
+  s_b7e23f6534e799::t_de8011567667eb 103,106,108,111,126,151,162
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 35,400,435,458,463-465,473,495-501,829,853-871,888-892,895-902
+.github/scripts/owners/required-reviews.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 61,443-476
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/backend-common/src/utils/path-util.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/loop/__tests__/dynamic-skill-catalog.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 318-319
+.github/workflows/ci-owners-validation.yml
+  s_b7e23f6534e799::t_de8011567667eb 31-36
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/generate-preserves-discovery-approval-history-and-cache-store-false.json
+  s_b7e23f6534e799::t_de8011567667eb 49,70,96,160,220,241,267,331,405,426,452,516,583,643,664,690
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,35,43,61,112,205-223,277-278,326,351,355-364,366-370,372-373,435-448,475-479,485-489,491-492,496-497,509-510,512,528-530
+packages/@n8n/backend-services/src/pubsub/pubsub.eventbus.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/agents/src/__tests__/integration/tool-legacy-name-call.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 84-129
+packages/@n8n/ai-utilities/src/guardrails/checks/__tests__/keywords.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/node-engine-compatibility/src/__tests__/acceptance-fixtures.ts
+  s_b7e23f6534e799::t_de8011567667eb 36,322
+packages/@n8n/agents/src/context-cues/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-16
+packages/@n8n/cli/src/commands/promotion-environment/expected-source.ts
+  s_b7e23f6534e799::t_de8011567667eb 58-74
+packages/@n8n/instance-ai/evaluations/data/discovery/folder-scoped-workflow-list.json
+  s_b7e23f6534e799::t_de8011567667eb 12
+packages/@n8n/node-cli/src/template/templates.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-25
+packages/@n8n/instance-ai/src/tools/agent-credential-setup.ts
+  s_b7e23f6534e799::t_de8011567667eb 70-71
+packages/@n8n/nodes-langchain/nodes/llms/LMCohere/LmCohere.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-17,103
+packages/@n8n/expression-runtime/src/runtime/utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,18
+packages/@n8n/config/src/configs/engine.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 108-143
+packages/@n8n/ai-utilities/src/model-discovery/request.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/db/src/services/typeorm-transaction.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,12,27-35
+packages/@n8n/expression-runtime/vitest.stryker.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-16
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-7,21,33,38,117,144,508,560,565,567,575,600-723,946,972-980
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/blob-storage/src/__tests__/fs-byte-store.integration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/__tests__/model-factory-reasoning.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-67
+packages/@n8n/blob-storage/src/azure-blob/azure-blob.service.ee.ts
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/api-types/src/agents/agent-config-validation.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 20
+packages/@n8n/instance-ai/skills/workflow-builder/references/config-evals.md
+  s_b7e23f6534e799::t_de8011567667eb 9-11,35,50-52,110
+packages/@n8n/decorators/src/policy-check/__tests__/assert-cleared-for.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/resources/issueComment/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 27
+packages/@n8n/instance-ai/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 274,283-287,294,301-304,315,826-827
+packages/@n8n/db/src/repositories/__tests__/tag.repository.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,12,48-52,75-85,95-121
+packages/@n8n/agents/src/runtime/memory/message-text.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-41
+packages/@n8n/engine/src/lifecycle-events/__tests__/lifecycle-event.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 31,33,50-52,102,104
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-openai-compatible/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7
+.github/scripts/detect-new-packages.mjs
+  s_b7e23f6534e799::t_de8011567667eb 8-9,12,16-17,21-23,27,29,40,43,45,49-50,54-65,77,81,83,88-89,93
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-17,1019-1048,1054,1091,1356,1378
+.code-health-baseline.json
+  s_b7e23f6534e799::t_de8011567667eb 1917-1945
+packages/@n8n/instance-ai/evaluations/__tests__/foreign-workflow-reads.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 84-117
+packages/@n8n/backend-services/src/executions/execution-redaction.ts
+  s_b7e23f6534e799::t_de8011567667eb 11-12,40-43
+packages/@n8n/engine/src/graph/__tests__/workflow-graph-queries.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,27-35
+packages/@n8n/nodes-langchain/nodes/llms/LmChatOpenRouter/LmChatOpenRouter.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 18,498
+packages/@n8n/instance-ai/docs/memory.md
+  s_b7e23f6534e799::t_de8011567667eb 84-92
+packages/@n8n/instance-ai/skills/workflow-builder/references/credential-recipe-research.md
+  s_b7e23f6534e799::t_de8011567667eb 10-11
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 10-12,22-23,91,101,213
+.agents/skills/migrate-module/reference.md
+  s_b7e23f6534e799::t_de8011567667eb 1-30
+packages/@n8n/backend-services/src/services/project-scope.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,8-10,19-29
+packages/@n8n/instance-ai/src/errors/workflow-snapshot-changed.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,10
+packages/@n8n/instance-ai/src/utils/stream-helpers.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,14-15,35-37,40-47
+packages/@n8n/eslint-config/src/rules/require-encoded-path-segments.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-975
+packages/@n8n/api-types/src/skills/skill-sources.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,85,98,112-123,133-134,140-150,162-165,218-219,232-245,266-320
+packages/@n8n/agents/src/runtime/memory/observation-log-store.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,36-60
+packages/@n8n/eslint-config/src/rules/no-base-error-import-from-workflow.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-82
+packages/@n8n/agents/src/sdk/agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-17,21,29,36,82,126-129,163,203-208,260-261,339-356,376,382-392,399-402,663-667,822,1135-1136,1157-1174,1273-1275,1286-1288,1430-1432
+packages/@n8n/api-types/src/agents/__tests__/update-agent.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-106
+packages/@n8n/api-types/src/agents/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 11-17,218-222,530-542,782-786
+packages/@n8n/instance-ai/src/agent/__tests__/instance-agent.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,11,39,41,52-55,95,195-196,255,258,261,264,267,299-300,303,330-334,706-721,901
+packages/@n8n/api-types/src/__tests__/agent-sse.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-17
+.github/workflows/ci-master.yml
+  s_b7e23f6534e799::t_de8011567667eb 43,47
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 39-44
+packages/@n8n/decorators/src/system-task/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 19-24
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/shared/transport.ts
+  s_b7e23f6534e799::t_de8011567667eb 9-10,12,17,23,27
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsAzureOpenAi.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 366-367,381
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 209-220
+packages/@n8n/instance-ai/src/workspace/snapshot-manager.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,18,51-55,205-207,209,215,221,226,750
+packages/@n8n/db/src/migrations/common/1700571993961-AddGlobalAdminRole.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,83
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_b7e23f6534e799::t_de8011567667eb 35,115-116,193,490-499
+.github/scripts/link-check/check-report.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-96
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 53
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/pinecone.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-335
+packages/@n8n/instance-ai/src/errors/workflow-not-found.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/backend-services/src/services/__tests__/auth-strategy.registry.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 9
+.github/scripts/link-check/check-report.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-236
+packages/@n8n/agents/src/runtime/loop/__tests__/runtime-context.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,4,57-100
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 39-40,295-341,381,391,404,416,431,444
+packages/@n8n/backend-services/src/executions/__tests__/counting-rules.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 108,177-184
+packages/@n8n/db/src/utils/__tests__/dialect-sql.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-52
+packages/@n8n/api-types/src/dto/scim/__tests__/scim-patch-request.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-paths.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 71-96
+packages/@n8n/cli/src/__tests__/promotion-environment-list-changes.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,21,24-36,38-43,45-62,66-89,92,103,105,113-114,118-119,122,127-128,131-140,144
+packages/@n8n/instance-ai/src/tracing/__tests__/langsmith-tracing.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1662
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/sample-files.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-199
+packages/@n8n/instance-ai/src/tools/workflows/workflow-node-diff.ts
+  s_b7e23f6534e799::t_de8011567667eb 131-143,274-278
+packages/@n8n/backend-services/src/executions/__tests__/execution-ledger.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-151
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,11,228-264,387,390-404,407-421,476,478,489,491-492,497-518,565-567,618,622,642-645,1479-1512
+packages/@n8n/api-types/src/dto/ai/ai-gateway-config-response.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 17-26,34-45
+packages/@n8n/nodes-langchain/nodes/mcp/McpClient/McpClient.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 66-70,98-104,283-291,343,354-355
+packages/@n8n/db/src/migrations/common/1794216623022-AddContentHashToAgentChatAttachments.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-34
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_b7e23f6534e799::t_de8011567667eb 21,90-95,105,116-118,122-123,160-166,212,227-233,247,362,366-370,450-451,461-462,495,507,522,532,593-594,597,632
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.discovery.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 125
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/SqlAgent/other/handlers/sqlite.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-76
+packages/@n8n/code-runtime-js/package.json
+  s_b7e23f6534e799::t_de8011567667eb 1-38
+packages/@n8n/db/src/migrations/common/1794487608531-CreateProjectExecutionLimitTable.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-27
+packages/@n8n/expression-runtime/src/runtime/error-transfer.ts
+  s_b7e23f6534e799::t_de8011567667eb 10-18,59,62,79,81,92,98-99,134-136,139,148,157
+packages/@n8n/db/src/entities/__tests__/user.entity.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,5-7,10,12-17,28-30,34-36,40-42,46-48,52-54,58-60,64-66,70-73,79,85,102-104,112-113,115-116,120-121,123-124,128-129,131-132,146-147,149-150,179-180,182-183,190-257
+packages/@n8n/instance-ai/skills/workflow-builder/references/post-build-flow.md
+  s_b7e23f6534e799::t_de8011567667eb 4-9,20,23,25,27-35,37,39-41,43,45-89,93,95,97-101,103,105-108,110,112-129,131-132,136-138,140,144-147,151-152,154-158,160-162,166-167,170-181
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  s_b7e23f6534e799::t_de8011567667eb 49,70,97,162,222,243,270,335,409,430,457,522,589,649,670,697
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/azure.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/__tests__/observation-policy.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-218
+packages/@n8n/nodes-langchain/nodes/tools/ToolSearXng/ToolSearXng.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,83
+docker/images/node-pc/Dockerfile
+  s_b7e23f6534e799::t_de8011567667eb 1,9-13,19-24,29,33,43,78-83,90,96,98-99,108-110,114,116-117
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7,31
+packages/@n8n/db/src/migrations/dsl/__tests__/indices.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-34
+packages/@n8n/eslint-config/src/plugin.ts
+  s_b7e23f6534e799::t_de8011567667eb 34
+packages/@n8n/expression-runtime/src/extensions/string-extensions.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,303
+packages/@n8n/expression-runtime/stryker.config.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-25
+packages/@n8n/instance-ai/src/errors/folder-resolution.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 126-127,133-134,141-145,153-158,176-178,181,521,524-525,530
+packages/@n8n/backend-common/src/locking/__tests__/in-process-lock.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/workflow-loop/workflow-task-service.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,51-58,125-129,133,138-139,145,150,154,162-228
+packages/@n8n/db/src/services/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,71-76
+packages/@n8n/api-types/src/dto/packages/credential.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-7,10,16-17
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/test/LmChatGoogleGemini.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,169-227
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGroq/test/LmChatGroq.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 86-97
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,13,233,235-252,266-281,283,285,290,322-340
+packages/@n8n/expression-runtime/src/runtime/to-ascii.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-36
+packages/@n8n/nodes-langchain/nodes/llms/LmChatCohere/cohereV2Client.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,3,5-8,10-17,19-39,42-57,59-110,112-119,121-138,141-199,202-222,224-225
+.github/scripts/check-inflight.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-42
+packages/@n8n/api-types/src/schemas/__tests__/execution-limit-settings.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-54
+packages/@n8n/api-types/src/agents/__tests__/system-agent-chat-message.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-43
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 136-147
+packages/@n8n/db/src/migrations/common/1794320825000-LinkWorkflowSuggestionsToSelfHealingResult.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-95
+packages/@n8n/instance-ai/src/errors/app-namespace-taken.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-8
+packages/@n8n/backend-services/src/services/oauth-discovery-client.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,65,77
+packages/@n8n/nodes-langchain/nodes/text_splitters/TextSplitterTokenSplitter/tests/TokenTextSplitter.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/blob-storage/src/__tests__/stream-utils.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,356-360,367,376,388,390
+.github/scripts/link-check/lychee.toml
+  s_b7e23f6534e799::t_de8011567667eb 1-79
+packages/@n8n/backend-network/src/http/node-agents.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/eslint-plugin-community-nodes/src/rules/single-credential-per-node.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-221
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/methods/promptUtils.ts
+  s_b7e23f6534e799::t_de8011567667eb 12
+packages/@n8n/api-types/src/agents/__tests__/list-agents-query.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-20,29-36
+.agents/review-rules/backend/error-classes.md
+  s_b7e23f6534e799::t_de8011567667eb 15-17
+packages/@n8n/backend-services/src/executions/__tests__/execution-redaction-proxy.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 39-51,82-124
+packages/@n8n/code-runtime-js/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+packages/@n8n/blob-storage/src/byte-store-registry.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/engine/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,17
+packages/@n8n/db/src/migrations/common/1794346847057-AddObservationResumeState.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-45
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_b7e23f6534e799::t_de8011567667eb 15,53-97,134-167,186,200,216-222,228,261-262,283-288
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_b7e23f6534e799::t_de8011567667eb 98,102,105,107
+packages/@n8n/instance-ai/src/tools/workflows/workflow-build-remediation.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-13,61,141,165-166
+packages/@n8n/decorators/src/system-task/__tests__/system-task-metadata.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+.github/scripts/docker/bake-inputs-changed.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-151
+docker/images/engine/Dockerfile
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/db/src/repositories/service-account.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,4,7-13,67-90
+.github/workflows/sbom-validation-callable.yml
+  s_b7e23f6534e799::t_de8011567667eb 26-27,35-41
+packages/@n8n/instance-ai/src/tools/orchestration/agent-test-session-binding.ts
+  s_b7e23f6534e799::t_de8011567667eb 22,33
+packages/@n8n/instance-ai/src/tools/__tests__/skills.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 27
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 40-41
+packages/@n8n/instance-ai/src/tools/workflows/setup-items.ts
+  s_b7e23f6534e799::t_de8011567667eb 13
+.github/scripts/owners/required-reviews.mjs
+  s_b7e23f6534e799::t_de8011567667eb 37,240-245
+packages/@n8n/instance-ai/evaluations/data/workflows/image-workflow-no-handwritten-file-bytes.json
+  s_b7e23f6534e799::t_de8011567667eb 1-43
+packages/@n8n/agents/src/runtime/__tests__/tool-catalog.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-212
+packages/@n8n/eslint-config/src/rules/no-base-error-import-from-workflow.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-91
+packages/@n8n/db/src/repositories/person.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,3-4,6,9-15,37-41,45-60,78-147
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsGoogleGemini/EmbeddingsGoogleGemini.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-13,129
+packages/@n8n/agents/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/engine/src/database/__tests__/execution-listing-indexes.integration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-127
+.github/scripts/docker/get-manifest-digests.mjs
+  s_b7e23f6534e799::t_de8011567667eb 11,14,43,46,51,54,61-62,67-68,73,76,81,84
+packages/@n8n/backend-network/src/http/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,21
+.agents/skills/migrate-module/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 1-150
+packages/@n8n/nodes-langchain/nodes/chains/ChainRetrievalQA/test/ChainRetrievalQa.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-8
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7,31
+packages/@n8n/blob-storage/src/object-store/object-store.service.ee.ts
+  s_b7e23f6534e799::t_de8011567667eb 22
+packages/@n8n/decorators/src/policy-check/policy-cleared.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsNvidia.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 182-185
+.github/workflows/docker-build-smoke.yml
+  s_b7e23f6534e799::t_de8011567667eb 17-18,36,57-62,113-121,125,147-152
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/EmbeddingsAwsBedrock.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,141,147
+packages/@n8n/agents/src/context-cues/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-93
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer-retry.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 60-61
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 252-253,256-261,266
+packages/@n8n/db/src/execution-ledger/__tests__/fold-step.registry.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-33
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/BedrockInvokeModelEmbeddings.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4
+packages/@n8n/nodes-langchain/nodes/tools/ToolWikipedia/ToolWikipedia.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 13
+.github/workflows/release-standalone-package.yml
+  s_b7e23f6534e799::t_de8011567667eb 70
+packages/@n8n/db/src/execution-ledger/__tests__/with-savepoint.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-134
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 13
+packages/@n8n/nodes-langchain/nodes/Guardrails/test/process.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,12-28,30-39,255,261,267
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_b7e23f6534e799::t_de8011567667eb 38,42-51,55,62-66,140-150,157-158
+packages/@n8n/cli/src/commands/promotion-environment/list-changes.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,5,7-8,12,16,31,36-37,39-46,50-82
+packages/@n8n/instance-ai/src/tools/workflows/workflow-validation-warnings.ts
+  s_b7e23f6534e799::t_de8011567667eb 144
+packages/@n8n/api-types/src/dto/folders/folder-public.openapi.ts
+  s_b7e23f6534e799::t_de8011567667eb 84
+packages/@n8n/nodes-langchain/nodes/tools/ToolSearXng/ToolSearXng.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 73,84,131
+packages/@n8n/db/src/migrations/common/1794508199000-AddSettingsToWorkflowHistory.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-35
+packages/@n8n/instance-ai/skills/workflow-builder/references/error-workflows.md
+  s_b7e23f6534e799::t_de8011567667eb 35,83
+packages/@n8n/instance-ai/src/tools/attachments/parse-file.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-3,5-19,37,107-108,172-290,294,298,301-305,307-312,314-317,319-327,329-342,344-348,350-361
+packages/@n8n/instance-ai/src/tools/mcp-servers.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 507
+packages/@n8n/chat-hub/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-true.json
+  s_b7e23f6534e799::t_de8011567667eb 48,69,96,187,208,235,340,361,388,513,534,561
+packages/@n8n/nodes-langchain/nodes/llms/LmChatVercelAiGateway/LmChatVercelAiGateway.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,254
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_b7e23f6534e799::t_de8011567667eb 20,71-76,88
+packages/@n8n/engine/src/auth/__tests__/action-token.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 32,44,53-56,58-60,76,85,87,93,101,113,121,129,136,145,156
+packages/@n8n/api-types/src/agents/__tests__/agent-version-metadata.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 19-33
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_b7e23f6534e799::t_de8011567667eb 4-5
+packages/@n8n/api-types/src/dto/assistant/assistant-agent-target-request.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-8
+packages/@n8n/api-types/src/agents/__tests__/agent-connect-integration.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,20-40,42,44
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,244,253
+packages/@n8n/backend-services/src/services/__tests__/oauth-discovery-client.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/node-engine-compatibility/src/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 116-128,131-135,151
+packages/@n8n/code-runtime-js/vite.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-3
+packages/@n8n/eslint-config/src/rules/no-unneeded-backticks.ts
+  s_b7e23f6534e799::t_de8011567667eb 20
+packages/@n8n/instance-ai/src/agent/sanitize-mcp-schemas.ts
+  s_b7e23f6534e799::t_de8011567667eb 379-397,423-428,466-504,513-516,537-541,545-554,617-660,915-916
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,14-16,62-69,101,132,137,168,357-358,360-362,365-369,372-373,375-419,425
+packages/@n8n/instance-ai/src/stream/map-chunk.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,17,219-232,287,322,358-361,364,384-385,411,423
+packages/@n8n/db/src/utils/principal-from-user.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,7-9,12
+packages/@n8n/backend-services/src/credentials/__tests__/credentials-finder.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 496-512,563-570
+packages/@n8n/instance-ai/skills/workflow-builder/references/model-selection.md
+  s_b7e23f6534e799::t_de8011567667eb 19-21,51
+packages/@n8n/db/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-21,31-36,41-47,73-75
+packages/@n8n/ai-utilities/src/guardrails/checks/__tests__/pii.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,38-49
+packages/@n8n/db/src/migrations/postgresdb/1740445074052-UpdateParentFolderIdColumn.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/skills/__tests__/runtime-skills.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 33-48,53-54,93,569,580
+packages/@n8n/client-oauth2/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/instance-ai/src/tools/attachments/__tests__/parse-file.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-7,272-356
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_b7e23f6534e799::t_de8011567667eb 11,16,77-96
+packages/@n8n/engine/src/lifecycle-events/lifecycle-event.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 50-53,55,58-59
+docker/images/n8n/Dockerfile
+  s_b7e23f6534e799::t_de8011567667eb 1,4-7,49
+packages/@n8n/node-cli/src/template/templates/programmatic/example/template/README.md
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/instance-ai/src/agent/self-healing-agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 42-43,45,113
+packages/@n8n/api-types/src/dto/scim/scim-patch-request.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-13
+.github/workflows/test-workflow-scripts-reusable.yml
+  s_b7e23f6534e799::t_de8011567667eb 15
+packages/@n8n/instance-ai/src/tools/__tests__/workspace-tools-test-utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,24-25
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/video/generate.t2v.operation.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,238
+packages/@n8n/instance-ai/src/errors/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/backend-common/src/modules/errors/missing-module.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+docker/images/runners/README.md
+  s_b7e23f6534e799::t_de8011567667eb 16-39,52-53,55
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 148
+packages/@n8n/db/src/execution-ledger/fold-step.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-34
+packages/@n8n/db/src/repositories/__tests__/scheduled-job.repository.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/instance-ai/evaluations/__tests__/build-workflow-conversation-seed.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,50-54,581-612
+packages/@n8n/ai-utilities/src/__tests__/utils/failed-attempt-handler/n8nLlmFailedAttemptHandler.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4
+packages/@n8n/api-types/src/agents/__tests__/sanitize-agent-json-config.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 643-696
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatCohere.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-4,8,10,93-231
+packages/@n8n/ai-utilities/src/guardrails/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-56
+packages/@n8n/instance-ai/skills/workflow-builder/references/service-selection.md
+  s_b7e23f6534e799::t_de8011567667eb 9-11,33,44-45
+packages/@n8n/instance-ai/src/tools/orchestration/verify-built-workflow.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 199
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/nodes/Example/resources/user/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 39
+packages/@n8n/api-types/src/dto/app/publish-app.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,17
+packages/@n8n/constants/src/csp.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-20
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/resolveSubAgentRequest.ts
+  s_b7e23f6534e799::t_de8011567667eb 11
+packages/@n8n/module-cli/src/templates/frontend/package.json.template
+  s_b7e23f6534e799::t_de8011567667eb 15-16,38,48-49,56
+packages/@n8n/api-types/src/schemas/json-value.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-21
+OWNERS
+  s_b7e23f6534e799::t_de8011567667eb 32,135-136,152,423
+packages/@n8n/db/src/migrations/common/1792764566513-MigrateAgentSkillsToHub.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/nodes-langchain/nodes/chains/ChainLLM/test/promptUtils.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6
+packages/@n8n/nodes-langchain/nodes/llms/test/LmChatOpenAi.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 14,18-19,131-171
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 10-11,42-46,57-76,91,95-99,112,116-120,131,143,158,173,191-193,203,212,224,232-234,246,254-256,266
+packages/@n8n/db/src/entities/workflow-history.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,38-39
+packages/@n8n/instance-ai/src/tools/__tests__/provider-schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,61,64-68,79,86-91
+packages/@n8n/api-types/src/self-healing-configurations.ts
+  s_b7e23f6534e799::t_de8011567667eb 11
+packages/@n8n/db/src/entities/auth-identity.ts
+  s_b7e23f6534e799::t_de8011567667eb 13-14
+packages/@n8n/engine/src/tls/__tests__/engine-tls-reload.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-236
+packages/@n8n/backend-services/src/executions/counting-rules.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-5,13-14,16,158
+packages/@n8n/instance-ai/src/mcp/__tests__/mcp-client-manager.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 20
+packages/@n8n/cli/docs/commands/package.md
+  s_b7e23f6534e799::t_de8011567667eb 34,37,47-51,98,116-118,125-126,277-278,281
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 207-235,245,301-311,318,323
+packages/@n8n/instance-ai/src/agent/__tests__/sanitize-mcp-schemas.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,56-62,551,615,631,644,666,669,671,685,688,703,705,715,717,723,726,743,761,768-897
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,8-9,28-30,34-35,45,57-73,130,169,187-196,225,235,269,307,383,404,430,449,461,473-474,476,480,482-489,493,495,502,505,546-549,552,555,558,572-575,592-594,624
+packages/@n8n/instance-ai/src/tools/__tests__/nodes.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/engine/src/server/__tests__/resume-requests.integration.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 119-120,126,139,143,149,155,158,161,164,168,172,178-186,191,201,203
+packages/@n8n/db/AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 26-56
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/tests/runAgent.memory.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-271
+packages/@n8n/expression-runtime/src/bridge/bridge-messages.ts
+  s_b7e23f6534e799::t_de8011567667eb 179-189,276
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,22,440-441,443,498-502,504
+packages/@n8n/nodes-langchain/nodes/rerankers/RerankerCohere/RerankerCohere.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 12-13,92
+packages/@n8n/nodes-langchain/nodes/llms/LmChatCohere/LmChatCohere.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 15,178-180
+packages/@n8n/db/src/utils/__tests__/account-display-name.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,3-4,29-77
+packages/@n8n/decorators/src/shutdown/constants.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,4
+packages/@n8n/instance-ai/skills/v3-migration/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 1-151
+packages/@n8n/instance-ai/src/tools/workflows/prepare-workflow-setup.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,64,172
+packages/@n8n/instance-ai/src/prompts/prompt-profiles.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_b7e23f6534e799::t_de8011567667eb 12,64-91,99,101-106,109-112,114,118-119,121,123,139,157,169,181,198,203,208,252-279,287,289-294,297-300,302,306-307,309,311,336,339-340,352,366,418-445,453,455-460,463-466,468,472-473,475,477,493,511,515,527,539,542,556,561,566,610-637,645,647-652,655-658,660,664-665,667,669,684,689,694,697-698,707,710,782,789,791-796,799-802,804,808-809,811,813,834,837-838,850,869,872-873,885,899,951-978,986,988-993,996-999,1001,1005-1006,1008,1010,1033,1036-1037,1049,1063,1081,1097-1098,1141-1168,1176,1178-1183,1186-1189,1191,1195-1196,1198,1200
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMoonshot/LmChatMoonshot.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,311
+packages/@n8n/instance-ai/skills/progressive-building/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 72
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/ToolsAgent/V3/helpers/runAgent.ts
+  s_b7e23f6534e799::t_de8011567667eb 142,174
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_b7e23f6534e799::t_de8011567667eb 12,25-58,61,65,68,71,74,76,80-81,83,85,110,117,121,124,127,130,132,136-137,139,141
+packages/@n8n/instance-ai/skills/workflow-builder/references/trigger-url-sharing.md
+  s_b7e23f6534e799::t_de8011567667eb 1-42
+packages/@n8n/backend-common/src/license-state.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,73-74
+packages/@n8n/db/src/migrations/common/1794320824000-AddIncludeSubWorkflowsToSelfHealingConfiguration.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-19
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/google.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 66-70
+packages/@n8n/nodes-langchain/nodes/Guardrails/actions/process.ts
+  s_b7e23f6534e799::t_de8011567667eb 5-18,22,147,160,173
+packages/@n8n/mcp-apps/src/components/mcp-fallback-card.vue
+  s_b7e23f6534e799::t_de8011567667eb 14
+packages/@n8n/db/src/utils/__tests__/principal-from-user.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,10-11,59-66
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,10,63-66,89,91,109-113,129-130,237,257,259,262-263,276,282-283,307-319
+packages/@n8n/api-types/src/dto/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 27,50,259,268
+packages/@n8n/blob-storage/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,48
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/descriptions.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-31
+packages/@n8n/api-types/src/agents/__tests__/agent-integration-predicates.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-132
+packages/@n8n/api-types/src/agents/__tests__/agent-json-config.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,889-1059
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,424-535,1517-1554,2477-2538,4341-4356,4361,4368-4373,4384,4387,4390-4421,4427,4431,4439,4447-4448,4456-4458,4471-4474,4476-4477,4480-4481,4484,4486-4489,4492,4509,4514,4516-4518,4522,4547-4549,4557-4558,4589-4657,8314,8328,8335-8337,8343,8345-8349,8484,8498,8506-8509,8999,9068-9069,9071-9072,9243-9244,9267-9269,9389-9390,9452,9663-9665,9697-9698,10165-10207,12264-12328,12430-12519
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_b7e23f6534e799::t_de8011567667eb 15,19-20,232-234,285-289,291-298,413-414,429
+packages/@n8n/db/src/entities/user.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,23-24,35-36,44,73-75,77-83,85-86,89,91-93,95-98,102,104-111,114-117,119-121
+packages/@n8n/nodes-langchain/nodes/llms/test/LmOpenAi.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,207
+packages/@n8n/node-cli/src/template/templates/shared/default/.agents/nodes.md
+  s_b7e23f6534e799::t_de8011567667eb 84-101
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-hostname.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_b7e23f6534e799::t_de8011567667eb 49,104
+packages/@n8n/cli/src/client.ts
+  s_b7e23f6534e799::t_de8011567667eb 9,123-131,161-162,164,478-479,484-488,490,498,500,503,506,512,515,518,521,789
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/agents/src/runtime/memory/strip-orphaned-tool-messages.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,42-71
+packages/@n8n/db/src/execution-ledger/fold-step.registry.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-25
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,63-64,80-81,86-94,96,99-103,179-185,209-222
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 52-54,100-106,108,110-113,115-121,123-126,128-133,135,143-149,151,153-155,157-163,165,167-169,173-182,184,186-193,195-208,210,212-216,218-231,233,235-239,241-252,254,256-262,264-275,277,279-282,284-300,302,304-307,329-342,344,346-349,351-365,367,369-372,476,1348-1429
+packages/@n8n/config/src/configs/endpoints.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 190-193
+.github/test-metrics/e2e-impact-map.json
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/sdk/__tests__/tool-deferral.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-64
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,7,12,14-17,54-94,102-105,118-121,124-127,134-137,142-143,150-158,179-204,215-216
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,7
+packages/@n8n/backend-services/src/executions/execution-redaction-proxy.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 9-16,29,40
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1134,1671-1692
+packages/@n8n/nodes-langchain/nodes/tools/ToolSerpApi/ToolSerpApi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 15-16,22
+packages/@n8n/db/src/migrations/postgresdb/1790605116208-AddAgentQueueMessageReferences.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/skills/__tests__/skill-variants.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 54,61,67
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/analyze-result.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 708-765
+packages/@n8n/nodes-langchain/nodes/output_parser/OutputParserAutofixing/test/OutputParserAutofixing.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 11-12
+packages/@n8n/api-types/src/dto/workflows/__tests__/create-workflow-public.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,105-119
+packages/@n8n/backend-services/src/services/cache/cache.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-8
+packages/@n8n/node-engine-compatibility/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,15,27
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 293-305
+packages/@n8n/backend-network/src/http/axios/redirect.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMinimax/LmChatMinimax.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 17,234
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAlibabaCloud/LmChatAlibabaCloud.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 22,339
+packages/@n8n/backend-services/src/credentials/credentials-finder.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 289-290,372-387
+.boundaries-baseline.json
+  s_b7e23f6534e799::t_de8011567667eb 2-90
+packages/@n8n/ai-utilities/src/guardrails/__tests__/llm.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,3-7,9-10,12-15,24-28,33,42-45,54-59,63,71-74,80,82,84-87,96-99,107-110,117-135
+packages/@n8n/agents/src/__tests__/workspace/sandbox/workspace-root.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,77-129,138,140-165
+packages/@n8n/db/src/constants.ts
+  s_b7e23f6534e799::t_de8011567667eb 56,69
+packages/@n8n/db/src/execution-ledger/with-savepoint.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-42
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge-load-wasm.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-8,10-13,19,24
+.agents/review-rules/qa-dx/docker-image-pinning.md
+  s_b7e23f6534e799::t_de8011567667eb 3,7-13,19,21-27
+packages/@n8n/db/src/repositories/role.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,6,8,154,162,165-170,172-182
+packages/@n8n/eslint-config/src/plugin.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 13-20
+packages/@n8n/instance-ai/src/tools/models/model-catalog.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 14
+packages/@n8n/mcp-apps/src/components/workflow-preview/workflow-preview-card.vue
+  s_b7e23f6534e799::t_de8011567667eb 141
+packages/@n8n/node-engine-compatibility/src/sub-workflow-calls.ts
+  s_b7e23f6534e799::t_de8011567667eb 39
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/methods/listSearch.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4,42
+packages/@n8n/api-types/src/agent-sse.ts
+  s_b7e23f6534e799::t_de8011567667eb 229-233,242-247
+packages/@n8n/db/src/repositories/__tests__/project-relation.repository.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 174-202
+packages/@n8n/api-types/src/dto/packages/import-result.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 187-188
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,15,21-30,34
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache-params-error.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-112
+packages/@n8n/mcp-apps/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/db/src/entities/person.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,4-7,9-11,13-18,20-100
+packages/@n8n/instance-ai/src/skills/context-cues/post-build-flow.cues.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-178
+packages/@n8n/nodes-langchain/nodes/Guardrails/helpers/model.ts
+  s_b7e23f6534e799::t_de8011567667eb 4-8,12,14,24-36,38-39,41-48,51-52,54-55,61,63-66,69-70
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_b7e23f6534e799::t_de8011567667eb 170,172
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 243-244,259-276,344-347
+packages/@n8n/code-runtime-js/README.md
+  s_b7e23f6534e799::t_de8011567667eb 1-12
+packages/@n8n/db/src/subscribers/workflow-entity-subscriber.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_b7e23f6534e799::t_de8011567667eb 32-33
+packages/@n8n/backend-common/src/modules/errors/module-load.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/__tests__/integration/cassettes/provider-tools/openai-image-generation-provider-tool-can-be-attached-and-does-not-use-hitl-suspension.json
+  s_b7e23f6534e799::t_de8011567667eb 8-9,33
+packages/@n8n/backend-services/src/services/__tests__/ai-preference.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 12,50-52,127,137,151,162,173,181,190,203,223,228,254,259-261,266,273,289,297,305,312,326,406-407,428,494,505,682,735,778,818,846,875
+packages/@n8n/node-cli/src/template/templates/shared/default/AGENTS.md
+  s_b7e23f6534e799::t_de8011567667eb 32-33
+packages/@n8n/api-types/src/dto/ai/__tests__/ai-gateway-config-response.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-59
+packages/@n8n/backend-network/src/http/binary-string.ts
+  s_b7e23f6534e799::t_de8011567667eb 20-34
+packages/@n8n/node-cli/src/template/templates/templates-lint.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-114
+packages/@n8n/agents/src/sdk/catalog.ts
+  s_b7e23f6534e799::t_de8011567667eb 319-334
+packages/@n8n/instance-ai/src/tools/shared/safe-error-message.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/ExampleChatModel.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,73,88
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/db/src/migrations/dsl/table.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsMistralCloud/EmbeddingsMistralCloud.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-15,154
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ChatHubVectorStorePinecone.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-58
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,10,30-41,65,86-88,95,99-108,133-136
+packages/@n8n/ai-utilities/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,46-48,123-127,178
+.github/DEVELOPING_V3.md
+  s_b7e23f6534e799::t_de8011567667eb 85
+packages/@n8n/ai-node-sdk/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/backend-common/src/locking/lock-service.interface.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/instance-ai/src/tools/credential-verification.ts
+  s_b7e23f6534e799::t_de8011567667eb 105
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/helpers/wanImage.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-6,12
+packages/@n8n/agents/src/workspace/sandbox/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 88-89
+packages/@n8n/instance-ai/skills/app-builder/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 7-8,10,25-27,39,62-65,85-95,98-99,106-126
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,19,280,315-327
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-node-diff.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 547-645
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 321-327,339-353,572-577
+packages/@n8n/ai-utilities/src/model-discovery/providers/azure.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_b7e23f6534e799::t_de8011567667eb 4
+packages/@n8n/eslint-config/request-target.formatter.mjs
+  s_b7e23f6534e799::t_de8011567667eb 1-21
+knip.ts
+  s_b7e23f6534e799::t_de8011567667eb 74-77
+packages/@n8n/api-types/src/dto/packages/export-package-request.openapi.ts
+  s_b7e23f6534e799::t_de8011567667eb 42,45,47
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-107
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 11,166-176,180,189
+packages/@n8n/instance-ai/src/skills/skill-variants.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,84,88,90
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAwsBedrock/test/BedrockInvokeModelEmbeddings.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/ai-utilities/src/guardrails/checks/nsfw.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,26
+packages/@n8n/backend-services/src/pubsub/__tests__/subscriber.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,391,396
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_b7e23f6534e799::t_de8011567667eb 451-565,600-601,648-689,747
+packages/@n8n/instance-ai/src/tools/n8n-docs.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 229
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_b7e23f6534e799::t_de8011567667eb 90
+packages/@n8n/nodes-langchain/nodes/agents/Agent/agents/SqlAgent/other/handlers/sqlite.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,31-33
+packages/@n8n/agents/src/sdk/message.ts
+  s_b7e23f6534e799::t_de8011567667eb 33-35,54-73,96-113
+packages/@n8n/db/src/migrations/common/1794238837510-AddWaitingStatusToAgentExecution.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-29
+packages/@n8n/db/src/repositories/__tests__/person.repository.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6,103-116
+packages/@n8n/db/src/utils/account-display-name.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,4,16-22,26-27,33-59
+packages/@n8n/engine/src/tls/engine-tls.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-255
+packages/@n8n/ai-utilities/src/guardrails/checks/secret-keys.ts
+  s_b7e23f6534e799::t_de8011567667eb 153
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGroq/LmChatGroq.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 16,142,152
+docker/images/node-pc/patches/0001-v8-normalize-one-byte-ast-strings.patch
+  s_b7e23f6534e799::t_de8011567667eb 1-167
+packages/@n8n/api-types/src/dto/promotions/promotion-apply-check.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 7-10,43-46,49,54-56,62,65,69,74-75,234-235,243-244,274-293
+packages/@n8n/expression-runtime/src/__tests__/to-ascii.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-116
+packages/@n8n/agents/src/types/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 68-69,83,130-133,149-153
+packages/@n8n/backend-services/src/services/__tests__/node-types-proxy.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-60
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 5-9,11-12,65-67,73,79,104-112,383-403,430-432
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_b7e23f6534e799::t_de8011567667eb 108-109,257-259,435-436,443-444,667-668,671,673-678,680-681,683,751
+packages/@n8n/agents/src/runtime/skills/skill-dependency-tools.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-10,13
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 156-183
+packages/@n8n/api-types/src/agents/__tests__/provider-capabilities.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 22,24-25,34,36,45
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 241-258
+.github/WORKFLOWS.md
+  s_b7e23f6534e799::t_de8011567667eb 28-29,85-88,182-183,433,438-441,449-450,458-460,501,527-540,608,635-636,665,718,801,814-815,832,841-842,845-846,853,987-989
+packages/@n8n/expression-runtime/src/bridge/__tests__/host-functions.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,89-127
+packages/@n8n/backend-services/src/pubsub/pubsub.types.ts
+  s_b7e23f6534e799::t_de8011567667eb 1,3-6,102,162-163
+packages/@n8n/decorators/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,53
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 22-23,258,345-347
+.agents/skills/public-api/SKILL.md
+  s_b7e23f6534e799::t_de8011567667eb 174-177
+packages/@n8n/instance-ai/src/tools/orchestration/verification/scripted-gate-run.ts
+  s_b7e23f6534e799::t_de8011567667eb 11,13,204-210
+packages/@n8n/backend-services/src/services/role.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 37
+packages/@n8n/backend-services/src/services/ai-preference.md
+  s_b7e23f6534e799::t_de8011567667eb 75,224-227
+packages/@n8n/instance-ai/src/tools/orchestration/verification/__tests__/scripted-gate-run.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 236-274
+packages/@n8n/nodes-langchain/nodes/Guardrails/actions/types.ts
+  s_b7e23f6534e799::t_de8011567667eb 2-7,9-15
+packages/@n8n/expression-runtime/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 8,36-37
+packages/@n8n/api-types/src/schemas/app-binding.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 122-135
+packages/@n8n/backend-common/src/__tests__/n8n-version.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-14
+packages/@n8n/instance-ai/src/workspace/__tests__/snapshot-manager.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 148,151-153
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/text/message.operation.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-13,354-355
+packages/@n8n/backend-common/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3,30
+docker/images/n8n-base/Dockerfile.debian
+  s_b7e23f6534e799::t_de8011567667eb 1-57
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-19,25-36,54,56,58,60,62,72,81-87,89,92-110,128-147,163-166,170-172,180-192,194-200,216-217,228,236-244,251-253,307-310,315-319,321-322,328-490,517-547,551-554,556,558,561-562,567-570,572,592-655,746-747,793,805-808,813-815,829,839-853,857,859,861-873,895-898,910,912-913,919-920,923,931,934,941,947,960,971-972,974-985,988-992,1001,1003-1005,1009-1011,1025-1038,1042-1045,1052,1055,1061-1070,1075-1100,1103,1108-1132,1147,1159-1164,1172-1187,1191,1193-1214,1216-1234,1238-1241,1243-1258
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 26-29,92,97,99,103,132,155,176
+packages/@n8n/db/src/migrations/common/1714133768519-CreateProject.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,181
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreDatabricks/VectorStoreDatabricks.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 430-431,458-465
+.github/workflows/docker-build-push.yml
+  s_b7e23f6534e799::t_de8011567667eb 7,63-68,81-86,104-108,166-174,178,211-213,222-224,288,291,298-300,332-333,338-339,364-366,373-375,412-413,418-421,439,442,447,459-460,475-480,487,494-495,510-511,546,549,625-646,688-709,719,722,730-731,778-788,797-807,831,834,842-843,895-896,901-902,932-961,986,988
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/single-credential-per-node.md
+  s_b7e23f6534e799::t_de8011567667eb 1-53
+packages/@n8n/expression-runtime/src/extensions/__tests__/function-extensions.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 34-44
+packages/@n8n/backend-network/src/http/__tests__/binary-string.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,118-172
+.github/workflows/release-setup-trusted-publishing.yml
+  s_b7e23f6534e799::t_de8011567667eb 1,4-27,31,33-34,36-39,41,45,52,54-55,57-58,60-66,68-80
+docker/images/n8n-base/Dockerfile
+  s_b7e23f6534e799::t_de8011567667eb 1-4
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/resources/issue/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 29,41,53
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/nodes-langchain/nodes/vendors/AlibabaCloud/actions/video/generate.i2v.operation.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,300
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,7,9-12,14-18
+.github/scripts/workflow-validation.test.mjs
+  s_b7e23f6534e799::t_de8011567667eb 2-5,143-214,274-372,437-505
+docker/docker-bake.hcl
+  s_b7e23f6534e799::t_de8011567667eb 3-6,8,10-23,25-38,40,42,45,48-61,64-70,73,76,78,87-98,119-122,135-144,149-153,156-170,175-181,188-223,229
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_b7e23f6534e799::t_de8011567667eb 6
+.github/workflows/test-unit-reusable.yml
+  s_b7e23f6534e799::t_de8011567667eb 15
+packages/@n8n/api-types/src/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 205-206,219,230,366,371-372,374,458,615,733-734,780-790,1083-1089
+packages/@n8n/backend-services/src/executions/execution-ledger-writer.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-43
+packages/@n8n/backend-network/src/ssrf/ssrf-blocked-ip.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/config/src/configs/logging.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 26
+packages/@n8n/ai-utilities/src/guardrails/checks/jailbreak.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,26
+packages/@n8n/backend-network/src/http/reloading-http-request-client.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-90
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-observational.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 73-74,109-118,209-217
+packages/@n8n/expression-runtime/src/extensions/to-ascii-options.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+packages/@n8n/agents/src/runtime/model/__tests__/openai-stateless-responses.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-74
+packages/@n8n/instance-ai/src/tools/orchestration/verification/analyze-result.ts
+  s_b7e23f6534e799::t_de8011567667eb 336,359-360,431-448,682-685
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_b7e23f6534e799::t_de8011567667eb 12,64-91,99,101-106,109-112,114,118-119,121,123,139,157,174,218-245,253,255-260,263-266,268,272-273,275,277,295,300,303-304,316,330,335,338-339,351,365,417-444,452,454-459,462-465,467,471-472,474,476,497,500-501,513,527,545,561,605-632,640,642-647,650-653,655,659-660,662,664
+packages/@n8n/engine/src/execution/__tests__/resume-request.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 96,100-102,109,120-122,134,142-144,150-153,159-162,172-175,185-188,199-201,207-209,216-219,225,231
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_b7e23f6534e799::t_de8011567667eb 28,392-394,399-401,409-410,412
+packages/@n8n/backend-network/src/http/__tests__/reloading-http-request-client.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-108
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/resumes-a-suspended-deferred-tool-after-loading-it.json
+  s_b7e23f6534e799::t_de8011567667eb 12,21,25,32-33,37-47,50-54,62-63,67,70-75,78,89,92-93,96,99,101-102,104,108-109,111,113,129,138,141-142,151,155-156,158,171-172,179-180,184-194,197-199,201,209-210,214,216-222,225,236,240,243,246,249,251,255-256,258,260,276,285,288-289,298,302-303,305,318-319,328,332-333,335-338,351,359-360,364-374,377-379,381,389-390,394,396-402,405,416,420,423,426,429,431,435-436,438,440
+packages/@n8n/db/src/repositories/__tests__/role.repository.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-86
+packages/@n8n/ai-workflow-builder.ee/src/workflow-builder-agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 11-16,18
+packages/@n8n/instance-ai/src/tools/search-models.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 18-19
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,181,263,656,660,736,948,981,1168,1189,1316,1389,1699-1709
+packages/@n8n/expression-runtime/src/runtime/host-function-names.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+docker/images/runners/Dockerfile
+  s_b7e23f6534e799::t_de8011567667eb 1,4-9
+packages/@n8n/db/src/connection/db-connection-monitor.ts
+  s_b7e23f6534e799::t_de8011567667eb 8
+packages/@n8n/agents/src/runtime/model/prompt-cache-params-error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-68
+packages/@n8n/ai-workflow-builder.ee/src/test/workflow-builder-agent.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_b7e23f6534e799::t_de8011567667eb 12,64-91,99,101-106,109-112,114,118-119,121,123,139,157,174,218-245,253,255-260,263-266,268,272-273,275,277,298,301-302,314,328,380-407,415,417-422,425-428,430,434-435,437,439,455,473,476,490,534-561,569,571-576,579-582,584,588-589,591,593,606,611,616,619-620,629,632,704,711,713-718,721-724,726,730-731,733,735,748,753,758,761-762,774,788,840-867,875,877-882,885-888,890,894-895,897,899,920,923-924,936,950,968,984-985,1028-1055,1063,1065-1070,1073-1076,1078,1082-1083,1085,1087
+packages/@n8n/decorators/src/policy-check/policy-mint.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+packages/@n8n/agents/src/runtime/model/__tests__/native-tool-deferral.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 381-397
+packages/@n8n/agents/src/workspace/sandbox/create-workspace.ts
+  s_b7e23f6534e799::t_de8011567667eb 55
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/error-handling.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+.github/workflows/test-linting-reusable.yml
+  s_b7e23f6534e799::t_de8011567667eb 15
+packages/@n8n/api-types/src/dto/user/__tests__/role-change-request.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 14-19,21,23-27
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_b7e23f6534e799::t_de8011567667eb 10,14,49,52
+packages/@n8n/backend-services/src/pubsub/subscriber.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 16-19
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_b7e23f6534e799::t_de8011567667eb 33
+packages/@n8n/expression-runtime/src/extensions/to-ascii.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-18
+packages/@n8n/eslint-config/src/rules/no-application-error.ts
+  s_b7e23f6534e799::t_de8011567667eb 30
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  s_b7e23f6534e799::t_de8011567667eb 5-6,52-66
+.github/workflows/test-bench-reusable.yml
+  s_b7e23f6534e799::t_de8011567667eb 37
+packages/@n8n/backend-services/src/services/url.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 23-31
+packages/@n8n/backend-test-utils/src/migration-test-helpers.ts
+  s_b7e23f6534e799::t_de8011567667eb 5
+packages/@n8n/blob-storage/src/fs-byte-store.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/test/LmOpenAi.node.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-46
+packages/@n8n/expression-runtime/src/__tests__/replaced-builtins.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-138
+packages/@n8n/instance-ai/src/approval-review/__tests__/thread-approval-context.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-73
+packages/@n8n/backend-services/src/pubsub/__tests__/publisher.service.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 7,182
+packages/@n8n/instance-ai/src/errors/workflow-editor-locked.error.ts
+  s_b7e23f6534e799::t_de8011567667eb 1
+.github/workflows/docker-sbom-probe.yml
+  s_b7e23f6534e799::t_de8011567667eb 52-60,64
+packages/@n8n/api-types/src/dto/packages/import-blocking-issue.schema.ts
+  s_b7e23f6534e799::t_de8011567667eb 272-281,285,328-335,339
+packages/@n8n/agents/src/__tests__/integration/deferred-tools.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 31,33,37,41,43,57,59,63,70,72,99,101,106,125
+packages/@n8n/expression-runtime/src/types/index.ts
+  s_b7e23f6534e799::t_de8011567667eb 33-34
+packages/@n8n/node-cli/package.json
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/nodes/ExampleChatModel/model.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,28,34,71,110-114
+.github/workflows/ci-pull-requests.yml
+  s_b7e23f6534e799::t_de8011567667eb 12-14,17-18,48,67-71,157,276,283-284,306-307,326-328,332,345,357-359,365-374,380,389,446-449,452,454-458,474,632,652-654,659,664-666
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_b7e23f6534e799::t_de8011567667eb 107-109,209-214,221,230,234-284,286-293,307-339,346-366,375-376,483,489-490,493-494,500-501
+packages/@n8n/agents/src/runtime/__tests__/fix-tool-call.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 6-7,228-285
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,6,16,30,44-75,586-593,595-599,601-602,734,847,869-871
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 103-105
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-10,12
+packages/@n8n/agents/src/__tests__/integration/cassettes/deferred-tools/searches-loads-and-uses-a-deferred-tool-in-stream-mode.json
+  s_b7e23f6534e799::t_de8011567667eb 12,21,25,32-33,37-47,50-54,62-63,67,70-75,78,91,96,99,102,105,108,113-114,116,118,135,144,147-148,157,161-162,164,177-178,185-186,190-200,203-205,207,215-216,220,222-228,231,244,249,252,255,258,261,266-267,269,271,288,297,300-301,310,314-315,317,330-331,340,344-345,347-350,363,371-372,376-386,389-391,393,401-402,406,408-414,417,430,435,438,441,444,447,452-453,455,457
+packages/@n8n/node-engine-compatibility/src/sub-execution-result.ts
+  s_b7e23f6534e799::t_de8011567667eb 41-44
+packages/@n8n/agents/src/runtime/__tests__/tool-legacy-names.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 4,7,55,57,59,65,67,71-74,76,110,119
+.github/scripts/package.json
+  s_b7e23f6534e799::t_de8011567667eb 9,22
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  s_b7e23f6534e799::t_de8011567667eb 2,135,142-144,152,156-161,180,183-184,198,205,279-280,282-306,308,312,316,325,329-331,333,335,337,339
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 8-9,105-108,136-139
+packages/@n8n/config/src/configs/agents.config.ts
+  s_b7e23f6534e799::t_de8011567667eb 5,109-144,154-160
+packages/@n8n/backend-services/src/services/oauth2-flow-proxy.service.ts
+  s_b7e23f6534e799::t_de8011567667eb 3-4
+packages/@n8n/instance-ai/src/tools/save-user-preference.tool.ts
+  s_b7e23f6534e799::t_de8011567667eb 3
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/api-key.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2
+.github/scripts/docker/docker-tags.mjs
+  s_b7e23f6534e799::t_de8011567667eb 26-35,100
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/utils.ts
+  s_b7e23f6534e799::t_de8011567667eb 74-84
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/GenericFunctions.ts
+  s_b7e23f6534e799::t_de8011567667eb 2
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ChatHubVectorStorePinecone.node.ts
+  s_b7e23f6534e799::t_de8011567667eb 1-2,15,109,137-138,145-157,159-162,166-170,194-201
+packages/@n8n/instance-ai/src/tools/workflows/workflow-file-bindings.ts
+  s_b7e23f6534e799::t_de8011567667eb 3,50,55
+packages/@n8n/api-types/src/dto/packages/__tests__/credential.schema.test.ts
+  s_b7e23f6534e799::t_de8011567667eb 25-26,29-47,53,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "396431f91780051c8b3e5708779ecab94e7281bd",
+  "prompts": {},
+  "sessions": {
+    "s_b7e23f6534e799": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f9f5d35-5f3e-45ac-973b-669490e0d1e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
