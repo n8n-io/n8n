@@ -1,0 +1,23 @@
+.claude/plugins/n8n/agents/autodev-architecture-reviewer.md
+  s_2f7d745c1f33d3::t_d1b6551fc58626 31
+.claude/plugins/n8n/skills/autodev-review-contract/SKILL.md
+  s_2f7d745c1f33d3::t_803a89ed47b4b6 9-11
+.claude/plugins/n8n/skills/dev-flow/SKILL.md
+  s_2f7d745c1f33d3::t_f208240f9f8b40 140-151,278-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92f5eb3cc056b7ada8a9f0b37355f8a60527daba",
+  "prompts": {},
+  "sessions": {
+    "s_2f7d745c1f33d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383bb0e3-c6b8-41c7-b230-9a9301010b08",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
