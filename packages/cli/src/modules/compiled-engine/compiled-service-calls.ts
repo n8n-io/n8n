@@ -5,8 +5,10 @@ import { DeduplicationHelper } from '@/deduplication/deduplication-helper';
 
 import { dataTableCallSchema } from '../engine-v2/engine-data-tables.contract';
 import { EngineDataTablesService } from '../engine-v2/engine-data-tables.service';
+import { CompiledEngineCredentials } from './compiled-engine-credentials';
+import { CompiledEngineSync } from './compiled-engine-sync.service';
 import type { WfrtServiceEvent } from './compiled-engine.types';
-import { MANUAL_WORKFLOW_SUFFIX } from './compiled-engine.types';
+import { isDataObject, MANUAL_WORKFLOW_SUFFIX } from './compiled-engine.types';
 import { loadWorkflowLang } from './workflow-lang';
 import { WfrtAdminClient } from './wfrt-admin.client';
 
@@ -36,6 +38,8 @@ export class CompiledServiceCalls {
 	constructor(
 		private readonly client: WfrtAdminClient,
 		private readonly logger: Logger,
+		private readonly sync: CompiledEngineSync,
+		private readonly credentials: CompiledEngineCredentials,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
 	}
@@ -77,6 +81,9 @@ export class CompiledServiceCalls {
 				workflowId,
 			);
 		}
+		if (event.service === 'credentials') {
+			return await this.runCredentialCall(event, args, workflowId);
+		}
 		if (event.service !== 'dataTable') {
 			return { ok: false, error: { message: `Unknown service "${event.service}"` } };
 		}
@@ -95,6 +102,52 @@ export class CompiledServiceCalls {
 				return { ok: false, error: description ? { message, description } : { message } };
 			}
 			return { ok: true, result: outcome.data };
+		} catch (error) {
+			return {
+				ok: false,
+				error: { message: error instanceof Error ? error.message : String(error) },
+			};
+		}
+	}
+
+	/**
+	 * Saves a token that a fallback-host node refreshed, or refreshes one for a
+	 * native request. Only a credential of the workflow that runs may change.
+	 */
+	private async runCredentialCall(
+		event: WfrtServiceEvent,
+		args: Record<string, unknown>,
+		workflowId: string,
+	): Promise<ServiceAnswer> {
+		const loaded = this.sync.findLoaded(event.workflowId);
+		const requested = typeof args.credentialId === 'string' ? args.credentialId : '';
+		const binding = loaded?.artifact.slots.find(
+			(slot) => slot.credentialId === requested || slot.slot === requested,
+		);
+		if (!binding?.credentialId) {
+			return {
+				ok: false,
+				error: { message: 'The workflow does not use this credential' },
+			};
+		}
+		try {
+			if (event.op === 'updateOauthTokenData') {
+				if (!isDataObject(args.oauthTokenData)) {
+					return {
+						ok: false,
+						error: { message: 'Invalid credentials call "updateOauthTokenData"' },
+					};
+				}
+				await this.credentials.updateOAuthTokenData(binding, args.oauthTokenData, workflowId);
+				await this.sync.onCredentialChanged(binding.credentialId);
+				return { ok: true, result: true };
+			}
+			if (event.op === 'refreshOAuth2') {
+				await this.credentials.refreshOAuth2(binding, workflowId);
+				await this.sync.onCredentialChanged(binding.credentialId);
+				return { ok: true, result: { ok: true } };
+			}
+			return { ok: false, error: { message: `Invalid credentials call "${event.op}"` } };
 		} catch (error) {
 			return {
 				ok: false,

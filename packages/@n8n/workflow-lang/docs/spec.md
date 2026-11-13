@@ -737,8 +737,8 @@ file at start (`wfrt serve --credentials <file>`,
   secret.
 * An effect that names a slot that is not in the file fails with
   `credential "<slot>" is not configured`.
-* Limits of the PoC: the file is plain text on disk. OAuth2 uses the stored
-  access token and does not refresh it.
+* Limits of the PoC: the file is plain text on disk. A library request that
+  gets 401 refreshes an expired OAuth2 token through n8n (section 9.9).
 
 ### 7.1 The `http` effect in the runtime
 
@@ -1523,8 +1523,20 @@ await ctx.service({ name, service: 'dataTable', op: 'getManyRowsAndCount', args:
     execution, never for a workflow that the args name. The backends:
     n8n's `DeduplicationHelper` on `processed_data`, and the fallback
     host's file store in the test bed (`runDeduplicationCall`).
-* **No secrets.** Arguments and results are workflow data. `wfrt` adds no
-  credentials.
+  * `credentials`: the OAuth2 token that n8n owns.
+    `updateOauthTokenData` (`credentialId`, `oauthTokenData`) saves the token
+    data that a v1 node in the fallback host refreshed. `refreshOAuth2`
+    (`credentialId`) refreshes the token with n8n-core's OAuth2 code and saves
+    it. Both send the new credential document to `wfrt` before they answer.
+    n8n answers only for a credential that the workflow of the execution
+    uses; else the answer is `ok: false` with
+    `The workflow does not use this credential`. These calls need the service
+    channel of protocol version 2, as the deduplication calls from the host.
+* **No secrets.** Data-table and deduplication arguments and results are
+  workflow data. `wfrt` adds no credentials. `updateOauthTokenData` carries
+  token data from a fallback-host step; the host's calls are not logged. A
+  native `refreshOAuth2` call sends only the credential id, and n8n never
+  sends the token back.
 
 **Wire format.**
 
@@ -1609,6 +1621,10 @@ is `file` (the test bed's file store).
   { executionId, workflowId }, consumer: { nodeType: 'n8n-nodes-base.dataTable' },
   call: { kind: op, ...args } })` (`compiled-service-calls.ts`). The service
   resolves the project of the workflow and checks access, as for engine v2.
+  A `credentials` call runs `CompiledEngineCredentials`: it reads the slot
+  bindings of the loaded workflow, refuses a credential that the workflow
+  does not use, saves through n8n's `CredentialsHelper`, and reloads the
+  workflow in `wfrt` (`onCredentialChanged`).
 * Test bed: the engine-test adapter answers with `runDataTableCall`
   (`src/services/data-table.ts`) over the fallback host's file store
   (`WF_FALLBACK_DATA_TABLES_DIR`).

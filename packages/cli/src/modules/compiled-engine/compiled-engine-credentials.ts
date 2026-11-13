@@ -1,9 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { IExecuteData } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import { ExecuteContext } from 'n8n-core';
+import type { IDataObject, IExecuteData, INode } from 'n8n-workflow';
+import { createRunExecutionData, Workflow } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
+import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type { CredentialSlotBinding } from './compiled-engine.types';
@@ -28,6 +32,7 @@ export class CompiledEngineCredentials {
 	constructor(
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('compiled-engine');
@@ -81,5 +86,77 @@ export class CompiledEngineCredentials {
 			}
 		}
 		return document;
+	}
+
+	/** Saves the OAuth token data that a v1 node refreshed, as `CredentialsHelper` does. */
+	async updateOAuthTokenData(
+		binding: CredentialSlotBinding,
+		oauthTokenData: IDataObject,
+		workflowId: string,
+	): Promise<void> {
+		if (!binding.credentialId) {
+			throw new UserError(`The credential slot "${binding.slot}" has no credential`);
+		}
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId });
+		await this.credentialsHelper.updateCredentialsOauthTokenData(
+			{ id: binding.credentialId, name: binding.credentialName },
+			binding.type,
+			{ oauthTokenData },
+			additionalData,
+		);
+	}
+
+	/**
+	 * Refreshes the access token with n8n-core's OAuth2 code, which also saves
+	 * it through `CredentialsHelper.updateCredentialsOauthTokenData`.
+	 */
+	async refreshOAuth2(binding: CredentialSlotBinding, workflowId: string): Promise<void> {
+		if (!binding.credentialId) {
+			throw new UserError(`The credential slot "${binding.slot}" has no credential`);
+		}
+		const context = await this.refreshContext(binding, workflowId);
+		await context.helpers.refreshOAuth2Token.call(context, binding.type);
+	}
+
+	/**
+	 * A context that only refreshes the token. HTTP Request has full access to
+	 * credentials, so the context does not need the node type of the caller.
+	 */
+	private async refreshContext(
+		binding: CredentialSlotBinding,
+		workflowId: string,
+	): Promise<ExecuteContext> {
+		const node: INode = {
+			id: 'compiled-engine-credential-refresh',
+			name: 'Compiled engine credential refresh',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 4.2,
+			position: [0, 0],
+			parameters: {},
+			credentials: {
+				[binding.type]: { id: binding.credentialId, name: binding.credentialName },
+			},
+		};
+		const workflow = new Workflow({
+			id: workflowId,
+			name: workflowId,
+			nodes: [node],
+			connections: {},
+			nodeTypes: this.nodeTypes,
+			active: false,
+		});
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId });
+		return new ExecuteContext(
+			workflow,
+			node,
+			additionalData,
+			'internal',
+			createRunExecutionData(),
+			0,
+			[],
+			{},
+			{ node, data: {}, source: null },
+			[],
+		);
 	}
 }

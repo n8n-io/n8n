@@ -40,6 +40,10 @@ interface HttpRequestParameters {
 	multipart?: FormRow[];
 	/** Before version 4.2, a repeated name replaces the earlier value (one object). */
 	multipartAssign?: boolean;
+	/** The n8n credential behind `credential`, so n8n can refresh its token. */
+	credentialId?: string;
+	/** The n8n credential type behind `credential`. */
+	credentialType?: string;
 	/**
 	 * Pagination: the request parameters of one page, merged into the request
 	 * as v1 does (lodash `merge`). The node then never fails on the status and
@@ -165,6 +169,16 @@ interface PageRequest {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Whether n8n refreshes the credential with its OAuth2 code. n8n names OAuth2
+ * credential types `...OAuth2Api`; `hubspotDeveloperApi` is the exception.
+ */
+function isOAuth2CredentialType(type: unknown): boolean {
+	if (typeof type !== 'string') return false;
+	const name = type.toLowerCase();
+	return name === 'hubspotdeveloperapi' || name.includes('oauth2');
 }
 
 /** lodash `merge` for request parts: objects merge deeply, undefined keeps the target. */
@@ -461,6 +475,9 @@ export default defineNode<HttpRequestParameters>({
 		// v1's node catches a failed request for each item (`this.continueOnFail()`), so it
 		// gives the reason object as the item instead of failing the node.
 		const continues = parameters.errorItems === true;
+		const credentialId = parameters.credentialId;
+		const retriesOAuth2 =
+			credentialId !== undefined && isOAuth2CredentialType(parameters.credentialType);
 		if (parameters.page !== undefined) {
 			// applyPaginationRequestData of n8n-core.
 			const page = parameters.page;
@@ -478,7 +495,7 @@ export default defineNode<HttpRequestParameters>({
 			for (const key of Object.keys(query)) if (query[key] === null) delete query[key];
 			const headers = mergeValue(parameters.headers ?? {}, page.headers);
 			const body = parameters.sendBody ? mergeValue(parameters.body, page.body) : undefined;
-			const pageResponse = await ctx.http<unknown>({
+			let pageResponse = await ctx.http<unknown>({
 				method,
 				url,
 				headers: textValues(headers),
@@ -486,6 +503,21 @@ export default defineNode<HttpRequestParameters>({
 				body,
 				credential,
 			});
+			if (retriesOAuth2 && pageResponse.status === 401) {
+				await ctx.service<unknown>({
+					service: 'credentials',
+					op: 'refreshOAuth2',
+					args: { credentialId },
+				});
+				pageResponse = await ctx.http<unknown>({
+					method,
+					url,
+					headers: textValues(headers),
+					qs: query,
+					body,
+					credential,
+				});
+			}
 			const items = responseItems(
 				pageResponse.body,
 				pageResponse.headers,
@@ -524,6 +556,22 @@ export default defineNode<HttpRequestParameters>({
 				multipart: sent.multipart,
 				credential,
 			});
+			if (retriesOAuth2 && response.status === 401) {
+				await ctx.service<unknown>({
+					service: 'credentials',
+					op: 'refreshOAuth2',
+					args: { credentialId },
+				});
+				response = await ctx.http<unknown>({
+					method,
+					url: parameters.url,
+					headers: sent.headers,
+					qs: parameters.qs ?? {},
+					body: sent.body,
+					multipart: sent.multipart,
+					credential,
+				});
+			}
 		} catch (error) {
 			if (!continues) throw error;
 			return [failedRequestItem(error, version)];
@@ -549,6 +597,22 @@ export default defineNode<HttpRequestParameters>({
 					multipart: keep ? sent.multipart : undefined,
 					credential,
 				});
+				if (retriesOAuth2 && response.status === 401) {
+					await ctx.service<unknown>({
+						service: 'credentials',
+						op: 'refreshOAuth2',
+						args: { credentialId },
+					});
+					response = await ctx.http<unknown>({
+						method: current,
+						url,
+						headers: sent.headers,
+						qs: {},
+						body: keep ? sent.body : undefined,
+						multipart: keep ? sent.multipart : undefined,
+						credential,
+					});
+				}
 			} catch (error) {
 				if (!continues) throw error;
 				return [failedRequestItem(error, version)];
