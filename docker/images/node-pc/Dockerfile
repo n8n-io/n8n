@@ -105,11 +105,9 @@ ENV npm_config_nodedir=/usr/local
 
 # ---------------------------------------------------------------------------
 
-# `n8nio/base:26.x` with one change, namely the stock Node files (node, npm,
-# npx) are swapped for the pointer-compressed build's files.
-# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the tag and digest together when updating.
-FROM n8nio/base:26.13.0@sha256:f4db5ffdbde188b568911640907797830033f2af2eb06b700a2c252bde960695 AS runtime
+# RUNTIME_IMAGE (`n8nio/base`), with the pointer-compressed Node in place of
+# the stock node, npm and npx.
+FROM ${RUNTIME_IMAGE} AS runtime
 
 RUN rm -f /usr/bin/node /usr/bin/nodejs /usr/bin/npm /usr/bin/npx /usr/local/bin/node
 COPY --from=builder /node-install/usr/local /usr/local

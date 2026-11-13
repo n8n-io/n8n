@@ -55,8 +55,14 @@ test.describe(
 		let repoUrl: string;
 		let repoName: string;
 
-		test.beforeEach(async ({ n8n, api, services }) => {
-			await api.enableFeature('sourceControl');
+		test.beforeEach(async ({ n8n, api, services, createApiForMain, mainUrls }) => {
+			// E2E license overrides are process-local, so enable the feature on every main.
+			const mainApis = mainUrls.length
+				? await Promise.all(mainUrls.map(async (_, index) => await createApiForMain(index)))
+				: [api];
+			await Promise.all(
+				mainApis.map(async (mainApi) => await mainApi.enableFeature('sourceControl')),
+			);
 			const gitea = services.gitea;
 			await initSourceControl({ n8n, api, gitea });
 
