@@ -2773,6 +2773,34 @@ describe('InstanceAiThreadView', () => {
 			expect(preview).toHaveAttribute('data-status-text', 'Waiting on your answer');
 		});
 
+		it('shows the step of the agent over the saved workflow that the build edits', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.isStreaming = true;
+			stageNewWorkflow();
+			const run = thread.messages[1];
+			run.agentTree!.toolCalls.splice(1, 0, {
+				toolCallId: 'tc-read',
+				toolName: 'get_workflow_as_code',
+				args: { workflowId: 'wf-1' },
+				isLoading: false,
+			});
+			thread.messages = [...thread.messages];
+
+			await findByTestId('instance-ai-workflow-preview-stub');
+			const status = await findByTestId('instance-ai-canvas-run-status');
+			await vi.waitFor(() => expect(status).toHaveTextContent('Searching for gmail, slack'), {
+				timeout: 3000,
+			});
+			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
+		});
+
 		it('shows no staging canvas in the control arm', async () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
 				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,

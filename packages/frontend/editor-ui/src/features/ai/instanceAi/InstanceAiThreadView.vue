@@ -62,6 +62,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
+import InstanceAiCanvasRunStatus from './components/InstanceAiCanvasRunStatus.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
@@ -287,6 +288,7 @@ const preview = useCanvasPreview({
 	},
 	workflowDrafts: () => thread.workflowDrafts,
 	stagingDraft: () => workflowStaging.stagingDraft.value,
+	buildTarget: () => workflowStaging.buildTarget.value,
 	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
@@ -300,6 +302,15 @@ watch(
 
 /** What the agent does now, on the draft canvas. It changes with the chat status bar. */
 const draftRunActivity = useCanvasRunActivity(() => thread.messages);
+// A build on a saved workflow shows its progress over the saved canvas, until a draft covers it.
+const isSavedCanvasBuilding = computed(
+	() =>
+		isAgentWorking.value &&
+		preview.isPreviewVisible.value &&
+		!preview.activeWorkflowDraft.value &&
+		preview.activeWorkflowId.value !== null &&
+		preview.activeWorkflowId.value === workflowStaging.buildTarget.value?.workflowId,
+);
 
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
@@ -1070,6 +1081,11 @@ function handleNewThreadClick() {
 								@initial-node-id-consumed="consumeAgentReturnNodeId"
 								@workflow-failures="handleWorkflowFailures"
 								@workflow-loaded="handleSavedWorkflowLoaded"
+							/>
+							<InstanceAiCanvasRunStatus
+								v-if="isSavedCanvasBuilding"
+								:status-text="draftRunActivity?.text"
+								:waiting="draftRunActivity?.waiting === true"
 							/>
 							<InstanceAiWorkflowDraftPreview
 								v-if="preview.isPreviewVisible.value && preview.activeWorkflowDraft.value"

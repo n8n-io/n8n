@@ -75,11 +75,19 @@ function isEditCall(toolCall: InstanceAiToolCallState): boolean {
 	);
 }
 
-/** A build that saved a workflow. From then on the saved canvas owns the tab. */
-function isSavedBuild(toolCall: InstanceAiToolCallState): boolean {
-	if (toolName(toolCall) !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW) return false;
+/** The workflow that a build saved. From then on the saved canvas owns the tab. */
+function savedWorkflowId(toolCall: InstanceAiToolCallState): string | undefined {
+	if (toolName(toolCall) !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW) return undefined;
 	const { result } = toolCall;
-	return isRecord(result) && result.success === true && typeof result.workflowId === 'string';
+	if (!isRecord(result) || result.success !== true) return undefined;
+	return typeof result.workflowId === 'string' ? result.workflowId : undefined;
+}
+
+/** The saved workflow of a call: the one it reads or builds on, or the one its build saved. */
+function workflowOfCall(toolCall: InstanceAiToolCallState): string | undefined {
+	const saved = savedWorkflowId(toolCall);
+	if (saved) return saved;
+	return isEditCall(toolCall) ? stringArg(toolCall.args, 'workflowId') : undefined;
 }
 
 function toVersion(value: unknown): number | undefined {
@@ -129,7 +137,7 @@ export function getWorkflowStaging(
 	if (!toolCalls.some(isWorkflowBuilderLoad)) return undefined;
 	if (toolCalls.some(isEditCall)) return undefined;
 	// The run's drafts go away once the saved canvas loads, so the save itself ends staging.
-	if (toolCalls.some(isSavedBuild)) return undefined;
+	if (toolCalls.some((toolCall) => savedWorkflowId(toolCall) !== undefined)) return undefined;
 
 	const nodes = new Map<string, WorkflowStagingNode>();
 	for (const node of toolCalls.flatMap(requestedNodes)) {
@@ -138,9 +146,15 @@ export function getWorkflowStaging(
 	return { runId: tree.runId ?? tree.agentId, nodes: [...nodes.values()] };
 }
 
-/** The run read or saved a workflow, so later turns of the thread work on it. */
-export function worksOnSavedWorkflow(tree: InstanceAiAgentNode): boolean {
-	return collectToolCalls(tree).some((toolCall) => isEditCall(toolCall) || isSavedBuild(toolCall));
+export function loadsWorkflowBuilder(tree: InstanceAiAgentNode): boolean {
+	return collectToolCalls(tree).some(isWorkflowBuilderLoad);
+}
+
+/** The newest saved workflow that the run reads, builds on or saves. */
+export function workflowOfRun(tree: InstanceAiAgentNode): string | undefined {
+	return collectToolCalls(tree)
+		.flatMap((toolCall) => workflowOfCall(toolCall) ?? [])
+		.at(-1);
 }
 
 type StagingDraftNode = WorkflowDraft['workflow']['nodes'][number];

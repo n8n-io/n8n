@@ -180,6 +180,132 @@ describe('useWorkflowStaging', () => {
 		expect(stagingDraft.value).toBeDefined();
 	});
 
+	describe('build target', () => {
+		const readWorkflow = call('get_workflow_as_code', { workflowId: 'wf-1' });
+		const savedBuild = (workflowId: string): InstanceAiToolCallState => ({
+			...call('workflow_builder_build_workflow', { filePath: 'a.ts' }),
+			result: { success: true, filePath: 'a.ts', workflowId },
+		});
+		const earlierTurn = (toolCalls: InstanceAiToolCallState[], id: string) => ({
+			...assistantMessage(toolCalls, false),
+			id,
+			runId: `run-${id}`,
+		});
+
+		it('is the saved workflow that the run reads, and stages nothing', () => {
+			const { buildTarget, stagingDraft } = setup([
+				userMessage(),
+				assistantMessage([loadBuilder, readWorkflow, readSlack]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-1', source: 'run' });
+			expect(stagingDraft.value).toBeUndefined();
+		});
+
+		it('is the saved workflow that the run builds on', () => {
+			const { buildTarget } = setup([
+				userMessage(),
+				assistantMessage([
+					loadBuilder,
+					call('workflow_builder_build_workflow', { filePath: 'a.ts', workflowId: 'wf-2' }),
+				]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-2', source: 'run' });
+		});
+
+		it('is the workflow that a build of the run saved', () => {
+			const { buildTarget } = setup([
+				userMessage(),
+				assistantMessage([loadBuilder, readSlack, savedBuild('wf-new')]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-new', source: 'run' });
+		});
+
+		it.each<[string, Partial<InstanceAiMessage>]>([
+			['attaches', { attachments: [{ type: 'workflow', id: 'wf-1', name: 'Saved' }] }],
+			[
+				'attaches nodes of',
+				{
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Saved',
+							sets: [{ nodes: [{ id: 'n-1', name: 'Slack' }] }],
+						},
+					],
+				},
+			],
+			['hands off', { context: { source: 'setup-panel-execute', workflowId: 'wf-1' } }],
+		])('is the workflow that the user message %s', (_, request) => {
+			const { buildTarget } = setup([
+				{ ...userMessage(), ...request },
+				assistantMessage([loadBuilder]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-1', source: 'request' });
+		});
+
+		it('prefers the workflow that the run reads over the one that the user attaches', () => {
+			const { buildTarget } = setup([
+				userMessage([{ type: 'workflow', id: 'wf-0', name: 'Other' }]),
+				assistantMessage([loadBuilder, readWorkflow]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-1', source: 'run' });
+		});
+
+		it('is the newest workflow of the earlier turns', () => {
+			const { buildTarget, stagingDraft } = setup([
+				userMessage(),
+				earlierTurn([readWorkflow], 'a'),
+				userMessage(),
+				earlierTurn([savedBuild('wf-3')], 'b'),
+				userMessage(),
+				assistantMessage([loadBuilder, readSlack]),
+			]);
+
+			expect(buildTarget.value).toEqual({ workflowId: 'wf-3', source: 'thread' });
+			expect(stagingDraft.value).toBeUndefined();
+		});
+
+		it('is undefined for a new workflow, which gets the staging canvas', () => {
+			const { buildTarget, stagingDraft } = setup([
+				userMessage(),
+				assistantMessage([loadBuilder, readSlack]),
+			]);
+
+			expect(buildTarget.value).toBeUndefined();
+			expect(stagingDraft.value).toBeDefined();
+		});
+
+		it('is undefined before the workflow builder skill loads', () => {
+			const { buildTarget } = setup([userMessage(), assistantMessage([readWorkflow])]);
+
+			expect(buildTarget.value).toBeUndefined();
+		});
+
+		it('is undefined when the experiment is off', () => {
+			const { buildTarget } = setup(
+				[userMessage(), assistantMessage([loadBuilder, readWorkflow])],
+				{ enabled: false },
+			);
+
+			expect(buildTarget.value).toBeUndefined();
+		});
+
+		it('is undefined once the run ends', () => {
+			const { buildTarget } = setup([
+				userMessage(),
+				assistantMessage([loadBuilder, readWorkflow], false),
+			]);
+
+			expect(buildTarget.value).toBeUndefined();
+		});
+	});
+
 	it('ends when the run has its first draft', async () => {
 		const { stagingDraft, drafts } = setup([userMessage(), assistantMessage([loadBuilder])]);
 

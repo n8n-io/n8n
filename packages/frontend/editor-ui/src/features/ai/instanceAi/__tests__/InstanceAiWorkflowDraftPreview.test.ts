@@ -108,9 +108,7 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 			props: { draft: draft(['Start']), building: true, statusText: 'Searching for gmail' },
 		});
 
-		expect(getByTestId('instance-ai-workflow-draft-status')).toHaveTextContent(
-			'Searching for gmail',
-		);
+		expect(getByTestId('instance-ai-canvas-run-status')).toHaveTextContent('Searching for gmail');
 	});
 
 	it('marks the nodes of the draft issues', () => {
@@ -161,10 +159,10 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 			},
 		});
 
-		const status = getByTestId('instance-ai-workflow-draft-status');
+		const status = getByTestId('instance-ai-canvas-run-status');
 		expect(status).toHaveAttribute('data-waiting', 'true');
 		expect(status).toHaveTextContent('Waiting on your answer');
-		expect(getByTestId('instance-ai-workflow-draft-waiting-arrow')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-canvas-run-status-waiting-arrow')).toBeInTheDocument();
 	});
 
 	it('labels the draft as building while the agent works', () => {
@@ -173,7 +171,7 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 			props: { draft: draft(['Start']), building: true },
 		});
 
-		expect(getByTestId('instance-ai-workflow-draft-status')).toHaveTextContent(/building/i);
+		expect(getByTestId('instance-ai-canvas-run-status')).toHaveTextContent(/building/i);
 		expect(queryByTestId('instance-ai-workflow-draft-badge')).toBeNull();
 	});
 
@@ -185,7 +183,7 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 
 		expect(getByTestId('instance-ai-workflow-draft-badge')).toHaveTextContent(/not saved/i);
 		// The status covers the canvas, so it goes when the agent stops.
-		expect(queryByTestId('instance-ai-workflow-draft-status')).toBeNull();
+		expect(queryByTestId('instance-ai-canvas-run-status')).toBeNull();
 	});
 
 	it('fits the view when a new revision adds nodes', async () => {

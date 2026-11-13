@@ -5,20 +5,37 @@ import { computed } from 'vue';
 import type { WorkflowDraft, WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 import {
 	getWorkflowStaging,
+	loadsWorkflowBuilder,
 	stagingFilePath,
 	toStagingWorkflowNodes,
-	worksOnSavedWorkflow,
+	workflowOfRun,
 	type StagingNodeTypeInfo,
 } from '../instanceAi.workflowStaging';
 
-function attachesWorkflow(attachment: InstanceAiAttachment): boolean {
-	return attachment.type === 'workflow' || attachment.type === 'nodes';
+/**
+ * The saved workflow that a running build works on, and how it is known:
+ * - `run`: the run reads, builds on or saved it.
+ * - `request`: the user message attaches it, or hands it off.
+ * - `thread`: an earlier turn worked on it. This is a guess, so its tab does not open.
+ */
+export interface BuildTarget {
+	workflowId: string;
+	source: 'run' | 'request' | 'thread';
 }
 
-/** The user message names a saved workflow: an attachment, or a handoff from the setup panel or a migration report. */
-function namesSavedWorkflow(request: InstanceAiMessage): boolean {
-	if (request.attachments?.some(attachesWorkflow)) return true;
-	return request.context !== undefined && 'workflowId' in request.context;
+function attachedWorkflowId(attachment: InstanceAiAttachment): string | undefined {
+	if (attachment.type === 'workflow') return attachment.id;
+	if (attachment.type === 'nodes') return attachment.workflowId;
+	return undefined;
+}
+
+/** The saved workflow that the user message names: an attachment, or a handoff from the setup panel or a migration report. */
+function requestWorkflowId(request: InstanceAiMessage): string | undefined {
+	const attached = request.attachments?.flatMap((a) => attachedWorkflowId(a) ?? []).at(0);
+	if (attached) return attached;
+	return request.context && 'workflowId' in request.context
+		? request.context.workflowId
+		: undefined;
 }
 
 /** The running assistant message and the user message that started it. */
@@ -28,19 +45,21 @@ function findRunningTurn(messages: InstanceAiMessage[]) {
 	if (message?.role !== 'assistant' || !message.isStreaming || !message.agentTree) return undefined;
 	const request = messages[index - 1];
 	// A follow-up can edit the workflow of an earlier turn without reading it again.
-	const continuesSavedWorkflow = messages
+	const earlierWorkflowId = messages
 		.slice(0, index)
-		.some((earlier) => earlier.agentTree !== undefined && worksOnSavedWorkflow(earlier.agentTree));
+		.flatMap((earlier) => (earlier.agentTree ? (workflowOfRun(earlier.agentTree) ?? []) : []))
+		.at(-1);
 	return {
 		tree: message.agentTree,
 		request: request?.role === 'user' ? request : undefined,
-		continuesSavedWorkflow,
+		earlierWorkflowId,
 	};
 }
 
 /**
- * The canvas of a new workflow from the moment the agent loads the workflow
- * builder skill until the first draft of the run.
+ * The canvas of a running build. A build on a saved workflow has a target; a
+ * new workflow has the staging canvas from the moment the agent loads the
+ * workflow builder skill until the first draft of the run.
  */
 export function useWorkflowStaging(options: {
 	messages: () => InstanceAiMessage[];
@@ -49,13 +68,24 @@ export function useWorkflowStaging(options: {
 	describeType: (nodeType: string) => StagingNodeTypeInfo | undefined;
 }) {
 	const i18n = useI18n();
-	const runningTurn = computed(() => findRunningTurn(options.messages()));
+	const runningTurn = computed(() =>
+		options.enabled() ? findRunningTurn(options.messages()) : undefined,
+	);
+
+	const buildTarget = computed((): BuildTarget | undefined => {
+		const turn = runningTurn.value;
+		if (!turn || !loadsWorkflowBuilder(turn.tree)) return undefined;
+		const fromRun = workflowOfRun(turn.tree);
+		if (fromRun) return { workflowId: fromRun, source: 'run' };
+		const fromRequest = turn.request ? requestWorkflowId(turn.request) : undefined;
+		if (fromRequest) return { workflowId: fromRequest, source: 'request' };
+		if (turn.earlierWorkflowId) return { workflowId: turn.earlierWorkflowId, source: 'thread' };
+		return undefined;
+	});
 
 	const stagingDraft = computed((): WorkflowDraft | undefined => {
 		const turn = runningTurn.value;
-		if (!options.enabled() || !turn) return undefined;
-		if (turn.continuesSavedWorkflow) return undefined;
-		if (turn.request && namesSavedWorkflow(turn.request)) return undefined;
+		if (!turn || buildTarget.value) return undefined;
 		const staging = getWorkflowStaging(turn.tree, {
 			hasNodeType: (nodeType) => options.describeType(nodeType) !== undefined,
 		});
@@ -74,5 +104,5 @@ export function useWorkflowStaging(options: {
 		};
 	});
 
-	return { stagingDraft };
+	return { stagingDraft, buildTarget };
 }
