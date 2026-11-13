@@ -1,5 +1,11 @@
+import type {
+	DataObject,
+	FilterValue,
+	GeoRangeFilter,
+	TimeoutParams,
+	WeaviateClient,
+} from 'weaviate-client';
 import { OperationalError, UserError } from '@n8n/errors';
-import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
 
 export type WeaviateCredential = {
@@ -72,6 +78,41 @@ export async function createWeaviateClient(
 		return weaviateClient;
 	}
 }
+/** Weaviate added server-side batching in v1.36.0 */
+export async function supportsServerSideBatching(client: WeaviateClient): Promise<boolean> {
+	try {
+		return (await client.getWeaviateVersion()).isAtLeast(1, 36, 0);
+	} catch {
+		return false;
+	}
+}
+
+export type WeaviateInsertObject = DataObject<undefined> & { id: string };
+
+/**
+ * Inserts the objects through server-side batching. Weaviate controls the batch
+ * size, so the client sends at the rate that the server can accept.
+ * Returns the IDs of the objects in the input order.
+ */
+export async function insertWithServerSideBatching(
+	client: WeaviateClient,
+	collectionName: string,
+	tenant: string | undefined,
+	objects: WeaviateInsertObject[],
+): Promise<string[]> {
+	const collection = client.collections.get(collectionName);
+	const data = tenant ? collection.withTenant(tenant).data : collection.data;
+	const result = await data.ingest(objects);
+
+	const errors = Object.values(result.errors);
+	if (errors.length > 0) {
+		throw new UserError(
+			`Weaviate did not insert ${errors.length} of ${objects.length} objects: ${errors[0].message}`,
+		);
+	}
+	return objects.map(({ id }) => id);
+}
+
 type WeaviateFilterUnit = {
 	path: string[];
 	operator: string;

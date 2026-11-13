@@ -1,18 +1,24 @@
 import { Document } from '@langchain/core/documents';
-import type { Embeddings } from '@langchain/core/embeddings';
+import type { Embeddings, EmbeddingsInterface } from '@langchain/core/embeddings';
 import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
-import { WeaviateStore } from '@langchain/weaviate';
-import type {
-	IDataObject,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-} from 'n8n-workflow';
-import { type MetadataKeys, type TimeoutParams, type WeaviateClient } from 'weaviate-client';
-import { UnexpectedError } from '@n8n/errors';
+import { flattenObjectForWeaviate, WeaviateStore } from '@langchain/weaviate';
+import { randomUUID } from 'node:crypto';
+import type { IDataObject, INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
+import {
+	type MetadataKeys,
+	type TimeoutParams,
+	type WeaviateClient,
+	type WeaviateField,
+} from 'weaviate-client';
 
 import type { WeaviateCompositeFilter, WeaviateCredential } from './Weaviate.utils';
-import { createWeaviateClient, parseCompositeFilter } from './Weaviate.utils';
+import {
+	createWeaviateClient,
+	insertWithServerSideBatching,
+	parseCompositeFilter,
+	supportsServerSideBatching,
+} from './Weaviate.utils';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
 import { weaviateCollectionsSearch } from '../shared/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
@@ -25,11 +31,69 @@ type WeaviateLibArgs = OriginalWeaviateLibArgs & {
 	maxVectorDistance?: number;
 	fusionType?: 'Ranked' | 'RelativeScore';
 	hybridExplainScore?: boolean;
+	batchMode?: BatchMode;
 };
+
+type BatchMode = 'auto' | 'serverSide' | 'default';
 
 class ExtendedWeaviateVectorStore extends WeaviateStore {
 	private defaultFilter?: WeaviateCompositeFilter;
-	private args!: WeaviateLibArgs;
+	private args: WeaviateLibArgs;
+
+	constructor(embeddings: EmbeddingsInterface, args: WeaviateLibArgs) {
+		super(embeddings, args);
+		this.args = args;
+	}
+
+	/**
+	 * Writes the documents with the batch mode of the node. The IDs are made
+	 * before the first try. Weaviate writes are upserts, so when "auto" falls
+	 * back to the default mode after a failed stream, it makes no duplicates.
+	 */
+	async addVectors(
+		vectors: number[][],
+		documents: Document[],
+		options?: { ids?: string[] },
+	): Promise<string[]> {
+		const { client, indexName, tenant, textKey, batchMode = 'default' } = this.args;
+		if (batchMode === 'default' || !indexName) {
+			return await super.addVectors(vectors, documents, options);
+		}
+
+		const ids = options?.ids ?? documents.map(() => randomUUID());
+		if (!(await supportsServerSideBatching(client))) {
+			// On older servers the stream can end without an error and insert nothing
+			if (batchMode === 'serverSide') {
+				throw new UserError('Server-side batching needs Weaviate 1.36 or later', {
+					description: 'Set "Batch Mode" to "Auto" or "Default", or update Weaviate.',
+				});
+			}
+			return await super.addVectors(vectors, documents, { ...options, ids });
+		}
+
+		const objects = documents.map((document, index) => {
+			if (Object.hasOwn(document.metadata, 'id')) {
+				throw new UserError('A document inserted into Weaviate must not have "id" in its metadata');
+			}
+			return {
+				id: ids[index],
+				vectors: vectors[index],
+				properties: {
+					[textKey ?? 'text']: document.pageContent,
+					// The same flattened shape that LangChain sends in the default mode
+					...(flattenObjectForWeaviate(document.metadata) as Record<string, WeaviateField>),
+				},
+			};
+		});
+
+		try {
+			return await insertWithServerSideBatching(client, indexName, tenant, objects);
+		} catch (error) {
+			// Errors on single objects come from the data, so a retry does not help
+			if (batchMode === 'serverSide' || error instanceof UserError) throw error;
+			return await super.addVectors(vectors, documents, { ...options, ids });
+		}
+	}
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
@@ -188,6 +252,32 @@ const insertFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to clear the Collection/Tenant before inserting new data',
+			},
+			{
+				displayName: 'Batch Mode',
+				name: 'batchMode',
+				type: 'options',
+				default: 'auto',
+				description: 'How the node sends the documents to Weaviate',
+				options: [
+					{
+						name: 'Auto',
+						value: 'auto',
+						description:
+							'Use server-side batching when Weaviate supports it (v1.36 or later), else use the default mode',
+					},
+					{
+						name: 'Server-Side Batching',
+						value: 'serverSide',
+						description:
+							'Stream the documents, and let Weaviate control the batch size. Needs Weaviate v1.36 or later.',
+					},
+					{
+						name: 'Default',
+						value: 'default',
+						description: 'Send each batch of documents in one request',
+					},
+				],
 			},
 		],
 	},
@@ -410,6 +500,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			tenant?: string;
 			textKey?: string;
 			clearStore?: boolean;
+			batchMode?: BatchMode;
 			metadataKeys?: string;
 		};
 
@@ -425,6 +516,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			tenant: options.tenant ?? undefined,
 			textKey: options.textKey ? options.textKey : 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
+			batchMode: options.batchMode ?? 'auto',
 		};
 
 		// From version 1.1, beforeInsert clears the store once before the batches
@@ -432,6 +524,6 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			await clearCollection(client, collectionName, options.tenant);
 		}
 
-		await WeaviateStore.fromDocuments(documents, embeddings, config);
+		await ExtendedWeaviateVectorStore.fromDocuments(documents, embeddings, config);
 	},
 }) {}

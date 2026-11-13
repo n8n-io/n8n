@@ -12,16 +12,33 @@ const store = vi.hoisted(() => ({
 	fromExistingIndex: vi.fn(),
 	similaritySearchVectorWithScore: vi.fn(),
 	hybridSearch: vi.fn(),
+	addVectors: vi.fn(),
 	returnForeignInstance: false,
 }));
 
-vi.mock('@langchain/weaviate', () => {
+vi.mock('@langchain/weaviate', async () => {
+	const actual = await vi.importActual<typeof import('@langchain/weaviate')>('@langchain/weaviate');
 	class WeaviateStore {
 		static async fromExistingIndex(...args: unknown[]) {
 			store.fromExistingIndex(...args);
 			return store.returnForeignInstance ? new WeaviateStore() : new this();
 		}
-		static fromDocuments = vi.fn();
+		// Like LangChain: create an instance of the called class, then add the documents
+		static fromDocuments = vi.fn(async function (
+			this: new (
+				...args: unknown[]
+			) => { addVectors: (...args: unknown[]) => Promise<string[]> },
+			documents: unknown[],
+			embeddings: unknown,
+			args: unknown,
+		) {
+			const instance = new this(embeddings, args);
+			await instance.addVectors(
+				documents.map(() => [0.5]),
+				documents,
+			);
+			return instance;
+		});
 		// Prototype methods, so the subclass overrides still call them through `super`.
 		async similaritySearchVectorWithScore(...args: unknown[]) {
 			return await store.similaritySearchVectorWithScore(...args);
@@ -29,8 +46,11 @@ vi.mock('@langchain/weaviate', () => {
 		async hybridSearch(...args: unknown[]) {
 			return await store.hybridSearch(...args);
 		}
+		async addVectors(...args: unknown[]) {
+			return await store.addVectors(...args);
+		}
 	}
-	return { WeaviateStore };
+	return { WeaviateStore, flattenObjectForWeaviate: actual.flattenObjectForWeaviate };
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -447,6 +467,7 @@ describe('VectorStoreWeaviate.node', () => {
 				tenant: 'tenantA',
 				textKey: 'content',
 				metadataKeys: ['source', 'page'],
+				batchMode: 'auto',
 			});
 			expect(deleteCollection).not.toHaveBeenCalled();
 		});
@@ -511,6 +532,130 @@ describe('VectorStoreWeaviate.node', () => {
 				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
 				expect(closeClient).toHaveBeenCalledTimes(1);
 			});
+		});
+	});
+
+	describe('batch mode', () => {
+		const ingest = vi.fn();
+		const withTenant = vi.fn();
+		const isAtLeast = vi.fn();
+		const client = mock<WeaviateClient>({
+			getWeaviateVersion: vi.fn().mockResolvedValue({ isAtLeast }),
+			collections: mock<WeaviateClient['collections']>({
+				get: vi.fn().mockReturnValue({ data: { ingest }, withTenant }),
+			}),
+		});
+		const documents = [
+			new LcDocument({ pageContent: 'A cat', metadata: { source: 'a.pdf', loc: { page: 1 } } }),
+			new LcDocument({ pageContent: 'A dog', metadata: { source: 'b.pdf' } }),
+		];
+
+		const insert = async (options: Record<string, unknown>) =>
+			await node.populateVectorStore(createContext(options), mock<Embeddings>(), documents, 0);
+
+		const ingestedIds = () =>
+			(ingest.mock.calls[0][0] as Array<{ id: string }>).map(({ id }) => id);
+
+		beforeEach(() => {
+			connectSpy.mockResolvedValue(client);
+			isAtLeast.mockReset().mockReturnValue(true);
+			ingest.mockReset().mockResolvedValue({ errors: {} });
+			withTenant.mockReset().mockReturnValue({ data: { ingest } });
+			store.addVectors.mockReset().mockResolvedValue([]);
+		});
+
+		it('should use the default insert in the default mode', async () => {
+			await insert({ batchMode: 'default' });
+
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, undefined);
+			expect(ingest).not.toHaveBeenCalled();
+		});
+
+		it('should stream the documents when Weaviate supports server-side batching', async () => {
+			await insert({});
+
+			expect(isAtLeast).toHaveBeenCalledWith(1, 36, 0);
+			expect(ingest).toHaveBeenCalledWith([
+				{
+					id: expect.any(String),
+					vectors: [0.5],
+					properties: { text: 'A cat', source: 'a.pdf', loc_page: 1 },
+				},
+				{ id: expect.any(String), vectors: [0.5], properties: { text: 'A dog', source: 'b.pdf' } },
+			]);
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should use the text key and the tenant of the node', async () => {
+			await insert({ batchMode: 'serverSide', textKey: 'content', tenant: 'tenantA' });
+
+			expect(withTenant).toHaveBeenCalledWith('tenantA');
+			expect(ingest).toHaveBeenCalledWith(
+				expect.arrayContaining([
+					expect.objectContaining({ properties: expect.objectContaining({ content: 'A cat' }) }),
+				]),
+			);
+		});
+
+		it('should use the default insert with new IDs when Weaviate is older than v1.36', async () => {
+			isAtLeast.mockReturnValue(false);
+
+			await insert({ batchMode: 'auto' });
+
+			expect(ingest).not.toHaveBeenCalled();
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, {
+				ids: [expect.any(String), expect.any(String)],
+			});
+		});
+
+		it('should retry with the same IDs in the default insert when the stream fails', async () => {
+			ingest.mockRejectedValue(new Error('stream closed'));
+
+			await insert({ batchMode: 'auto' });
+
+			expect(store.addVectors).toHaveBeenCalledWith([[0.5], [0.5]], documents, {
+				ids: ingestedIds(),
+			});
+		});
+
+		it('should not retry when Weaviate rejects objects', async () => {
+			ingest.mockResolvedValue({ errors: { 0: { message: 'invalid property' } } });
+
+			await expect(insert({ batchMode: 'auto' })).rejects.toThrow(
+				'Weaviate did not insert 1 of 2 objects: invalid property',
+			);
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should throw and not insert when Weaviate is older than v1.36 in the server-side mode', async () => {
+			isAtLeast.mockReturnValue(false);
+
+			await expect(insert({ batchMode: 'serverSide' })).rejects.toThrow(
+				'Server-side batching needs Weaviate 1.36 or later',
+			);
+			expect(ingest).not.toHaveBeenCalled();
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should throw and not retry when the stream fails in the server-side mode', async () => {
+			ingest.mockRejectedValue(new Error('stream closed'));
+
+			await expect(insert({ batchMode: 'serverSide' })).rejects.toThrow('stream closed');
+			expect(store.addVectors).not.toHaveBeenCalled();
+		});
+
+		it('should throw when a document has an id in its metadata', async () => {
+			const withId = [new LcDocument({ pageContent: 'A cat', metadata: { id: 'x' } })];
+
+			await expect(
+				node.populateVectorStore(
+					createContext({ batchMode: 'serverSide' }),
+					mock<Embeddings>(),
+					withId,
+					0,
+				),
+			).rejects.toThrow('must not have "id" in its metadata');
+			expect(ingest).not.toHaveBeenCalled();
 		});
 	});
 });
