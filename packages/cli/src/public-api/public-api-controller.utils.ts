@@ -64,5 +64,6 @@ export function toPublicApiResult(statusCode: number): PublicApiResult {
 	if (statusCode >= 400) {
 		return '4xx';
 	}
+	// For now, we do not distinguish between 2xx and 3xx, but we may want to in the future.
 	return '2xx';
 }
