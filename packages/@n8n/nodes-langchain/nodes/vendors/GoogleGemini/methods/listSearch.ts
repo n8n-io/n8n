@@ -4,6 +4,7 @@ import {
 	pinPrioritizedModels,
 } from '@n8n/ai-utilities/model-discovery';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -17,7 +18,7 @@ async function baseModelSearch(
 	modelFilter: (model: string) => boolean,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response: unknown = await apiRequest.call(this, 'GET', '/v1beta/models', {
+	const response: unknown = await apiRequest.call(this, 'GET', requestPath`/v1beta/models`, {
 		qs: {
 			pageSize: 1000,
 		},

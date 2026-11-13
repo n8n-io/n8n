@@ -604,7 +604,7 @@ describe('--activeState flag', () => {
 
 	describe('fromJson', () => {
 		it('should activate a workflow that is marked as active in the imported json', async () => {
-			await createOwner();
+			const owner = await createOwner();
 
 			await command.run([
 				'--separate',
@@ -624,6 +624,7 @@ describe('--activeState flag', () => {
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith('998', 'activate', undefined, {
 				actor: expect.objectContaining({ kind: 'user' }),
+				publisherId: owner.id,
 			});
 			expect(activeWorkflowManager.add).not.toHaveBeenCalledWith('999', expect.anything());
 		});
@@ -659,6 +660,7 @@ describe('--activeState flag', () => {
 			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('998');
 			expect(activeWorkflowManager.add).toHaveBeenLastCalledWith('998', 'activate', undefined, {
 				actor: expect.objectContaining({ kind: 'user' }),
+				publisherId: owner.id,
 			});
 
 			const publishHistoryRepo = Container.get(WorkflowPublishHistoryRepository);

@@ -1,0 +1,90 @@
+{
+	"name": "MessageBird Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"originator": "Acme",
+				"recipients": "31612345678",
+				"message": "Hello"
+			},
+			"id": "messagebird-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.messageBird",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"messageBirdApi": {
+					"id": "1",
+					"name": "MessageBird account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "balance",
+				"operation": "get"
+			},
+			"id": "messagebird-1",
+			"name": "Balance Get",
+			"type": "n8n-nodes-base.messageBird",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"messageBirdApi": {
+					"id": "1",
+					"name": "MessageBird account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"id": "e8077d803532c0b5937c639b60216938"
+				}
+			}
+		],
+		"Balance Get": [
+			{
+				"json": {
+					"payment": "prepaid",
+					"type": "credits",
+					"amount": 10
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Balance Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

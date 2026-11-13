@@ -6,27 +6,27 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function flowApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('flowApi');
 
-	let options: IRequestOptions = {
+	let options: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 		headers: { Authorization: `Bearer ${credentials.accessToken}` },
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.getflow.com/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -35,7 +35,11 @@ export async function flowApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.request(
+			uri
+				? { ...options, uri }
+				: { ...options, uri: requestUrl`https://api.getflow.com/v2${resource}` },
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -49,7 +53,7 @@ export async function FlowApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

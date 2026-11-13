@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { isObjectEmpty, updateDisplayOptions } from 'n8n-workflow';
+import { isObjectEmpty, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { parseJsonParameter } from '@utils/helpers';
 
@@ -99,7 +99,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		}
 	}
 
-	const response = await apiRequest.call(this, 'POST', '/conversations', { body });
+	const response = await apiRequest.call(this, 'POST', requestPath`/conversations`, { body });
 
 	return [
 		{

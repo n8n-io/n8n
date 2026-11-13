@@ -98,6 +98,33 @@ export function injectDomainRestrictionFields(credentialType: ICredentialType): 
 	return [...properties, ...DOMAIN_RESTRICTION_FIELDS];
 }
 
+/**
+ * Rewrites a configured domain into the ASCII form `URL#hostname` reports, so an
+ * allowlist entry written in its unicode form (`münchen.de`) still matches the
+ * punycode hostname the URL parser produces (`xn--mnchen-3ya.de`).
+ *
+ * Entries that are not a plain hostname (`example.com:8080`, `foo bar`) are kept
+ * verbatim, so they keep behaving as before and never match by accident. That
+ * includes a backslash or a percent sign: `URL` treats `\` as a separator, so
+ * `example.com\evil.com` would otherwise collapse to `example.com` and match a
+ * domain the customer never configured.
+ */
+function normalizeAllowedDomain(domain: string): string {
+	const isWildcard = domain.startsWith('*.');
+	const host = isWildcard ? domain.slice(2) : domain;
+	if (host === '' || /[\s\\/:?#@%]/.test(host)) return domain;
+
+	let asciiHost: string;
+	try {
+		asciiHost = new URL(`https://${host}`).hostname;
+	} catch {
+		return domain;
+	}
+	if (asciiHost === '') return domain;
+
+	return isWildcard ? `*.${asciiHost}` : asciiHost;
+}
+
 /** `*.example.com` matches subdomains only, never the bare domain. */
 export function isDomainAllowed(options: { url: string; allowedDomains: string }): boolean {
 	const { url: urlString, allowedDomains } = options;
@@ -110,7 +137,7 @@ export function isDomainAllowed(options: { url: string; allowedDomains: string }
 
 	const allowedDomainsList = allowedDomains
 		.split(',')
-		.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
+		.map((domain) => normalizeAllowedDomain(domain.trim().toLowerCase().replace(/\.$/, '')))
 		.filter(Boolean);
 
 	for (const allowedDomain of allowedDomainsList) {

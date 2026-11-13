@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -37,13 +38,13 @@ export async function execute(this: IExecuteFunctions, index: number) {
 			.filter((email) => email);
 
 		if (recipients.length !== 0) {
-			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, index, {
+			await microsoftApiRequest.call(this, 'PATCH', requestPath`/messages/${draftId}`, index, {
 				toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),
 			});
 		}
 	}
 
-	await microsoftApiRequest.call(this, 'POST', `/messages/${draftId}/send`, index);
+	await microsoftApiRequest.call(this, 'POST', requestPath`/messages/${draftId}/send`, index);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

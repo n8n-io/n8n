@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -48,7 +49,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/contacts',
+				requestPath`/contacts`,
 				0,
 				undefined,
 				{
@@ -76,7 +77,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/contacts',
+				requestPath`/contacts`,
 				0,
 				undefined,
 				{
@@ -99,7 +100,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/contacts',
+				requestPath`/contacts`,
 				0,
 				undefined,
 				expect.objectContaining({
@@ -120,7 +121,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'',
+				requestPath``,
 				0,
 				undefined,
 				undefined,
@@ -144,7 +145,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/calendars',
+				requestPath`/calendars`,
 				0,
 				undefined,
 				{
@@ -181,7 +182,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				undefined,
 				{
@@ -220,7 +221,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				undefined,
 				{
@@ -270,7 +271,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				undefined,
 				{
@@ -308,7 +309,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				undefined,
 				{
@@ -351,7 +352,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			);
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				`/calendars/${calendarId}/events`,
+				requestPath`/calendars/${calendarId}/events`,
 				0,
 				undefined,
 				{
@@ -390,7 +391,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				`/calendars/${calendarId}/events`,
+				requestPath`/calendars/${calendarId}/events`,
 				0,
 				undefined,
 				{
@@ -427,7 +428,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/mailFolders',
+				requestPath`/mailFolders`,
 				0,
 				undefined,
 				{
@@ -533,7 +534,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 			);
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				`/messages/${messageId}/attachments`,
+				requestPath`/messages/${messageId}/attachments`,
 				0,
 				undefined,
 				{
@@ -565,7 +566,7 @@ describe('MicrosoftOutlookV2 - listSearch methods', () => {
 
 			expect(mockTransport.microsoftApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'',
+				requestPath``,
 				0,
 				undefined,
 				undefined,

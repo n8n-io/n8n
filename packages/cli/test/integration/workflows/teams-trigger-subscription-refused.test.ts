@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
+	getPersonalProject,
 	mockInstance,
 	setActiveVersion,
 	testDb,
@@ -59,7 +60,7 @@ const push = mockInstance(Push);
 mockInstance(ExternalSecretsProxy);
 mockInstance(ExecutionService);
 mockInstance(WorkflowService);
-mockInstance(OwnershipService);
+const ownershipService = mockInstance(OwnershipService);
 mockInstance(ExternalHooks);
 mockInstance(Telemetry);
 
@@ -174,6 +175,9 @@ async function createTeamsTriggerWorkflow() {
 
 	const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 	await setActiveVersion(workflow.id, workflow.versionId);
+	// Registration checks the trigger's credential against the owning project.
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(await getPersonalProject(owner));
+	ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(owner);
 	return { workflow, trigger, owner };
 }
 

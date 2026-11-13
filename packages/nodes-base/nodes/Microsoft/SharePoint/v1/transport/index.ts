@@ -3,14 +3,15 @@ import type {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHttpRequestMethods,
-	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	RequestPath,
 } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 export async function microsoftSharePointApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | Buffer = {},
 	qs?: IDataObject,
 	headers?: IDataObject,
@@ -20,11 +21,26 @@ export async function microsoftSharePointApiRequest(
 	const credentials: { subdomain?: string } = await this.getCredentials(
 		'microsoftSharePointOAuth2Api',
 	);
+	const subdomain = (credentials.subdomain ?? '').trim();
+	if (!url && subdomain === '') {
+		throw new NodeOperationError(this.getNode(), 'The SharePoint subdomain is not set', {
+			description: 'Set the subdomain in the Microsoft SharePoint credential and try again.',
+		});
+	}
 
-	const options: IHttpRequestOptions = {
+	if (
+		url &&
+		(!URL.canParse(url) ||
+			new URL(url).origin !== new URL(`https://${subdomain}.sharepoint.com`).origin)
+	) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
+
+	const options = {
 		method,
-		url:
-			url ?? `https://${(credentials.subdomain ?? '').trim()}.sharepoint.com/_api/v2.0${endpoint}`,
 		json: true,
 		headers,
 		body,
@@ -34,6 +50,8 @@ export async function microsoftSharePointApiRequest(
 	return await this.helpers.httpRequestWithAuthentication.call(
 		this,
 		'microsoftSharePointOAuth2Api',
-		options,
+		url
+			? { ...options, url }
+			: { ...options, url: requestUrl`https://${subdomain}.sharepoint.com/_api/v2.0${endpoint}` },
 	);
 }

@@ -1,0 +1,200 @@
+{
+	"name": "Microsoft Excel v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 400]
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "addRow",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"worksheet": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+				"table": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}",
+				"additionalFields": {}
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a02",
+			"name": "Add Row",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getColumns",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"worksheet": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+				"table": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}",
+				"returnAll": false,
+				"limit": 2,
+				"rawData": false
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a03",
+			"name": "Get Columns",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 100],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getRows",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"worksheet": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+				"table": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}",
+				"returnAll": false,
+				"limit": 2,
+				"rawData": false
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a04",
+			"name": "Get Rows",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "lookup",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"worksheet": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+				"table": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}",
+				"lookupColumn": "name",
+				"lookupValue": "Jon",
+				"options": {}
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a05",
+			"name": "Lookup",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workbook",
+				"operation": "addWorksheet",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"additionalFields": { "name": "Sheet5" }
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a06",
+			"name": "Add Sheet",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "workbook",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a07",
+			"name": "Get Workbooks",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 500],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "getAll",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a08",
+			"name": "Get Sheets",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worksheet",
+				"operation": "getContent",
+				"workbook": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+				"worksheet": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+				"range": "A1:B3",
+				"rawData": false,
+				"keyRow": 0,
+				"dataStartRow": 1
+			},
+			"id": "4f1c2a8e-6b3d-4e1f-9a2b-1c3d4e5f6a09",
+			"name": "Get Content",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 1,
+			"position": [300, 700],
+			"credentials": {
+				"microsoftExcelOAuth2Api": { "id": "70", "name": "Microsoft Excel account" }
+			}
+		}
+	],
+	"pinData": {
+		"Add Row": [{ "json": { "index": 3, "values": [[null, null]] } }],
+		"Get Columns": [{ "json": { "name": "id" } }, { "json": { "name": "name" } }],
+		"Get Rows": [{ "json": { "id": 1, "name": "Sam" } }],
+		"Lookup": [{ "json": { "id": 2, "name": "Jon" } }],
+		"Add Sheet": [
+			{
+				"json": {
+					"id": "{B1A2C3D4-0000-4E5F-8A9B-0C1D2E3F4A5B}",
+					"name": "Sheet5",
+					"position": 4,
+					"visibility": "Visible"
+				}
+			}
+		],
+		"Get Workbooks": [
+			{ "json": { "id": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I", "name": "Budget.xlsx" } }
+		],
+		"Get Content": [{ "json": { "id": 1, "name": "Sam" } }, { "json": { "id": 2, "name": "Jon" } }]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{ "node": "Add Row", "type": "main", "index": 0 },
+					{ "node": "Get Columns", "type": "main", "index": 0 },
+					{ "node": "Get Rows", "type": "main", "index": 0 },
+					{ "node": "Lookup", "type": "main", "index": 0 },
+					{ "node": "Add Sheet", "type": "main", "index": 0 },
+					{ "node": "Get Workbooks", "type": "main", "index": 0 },
+					{ "node": "Get Sheets", "type": "main", "index": 0 },
+					{ "node": "Get Content", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

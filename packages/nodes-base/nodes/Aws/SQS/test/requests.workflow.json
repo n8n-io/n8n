@@ -1,0 +1,60 @@
+{
+	"name": "AWS SQS requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4f0c2a8e-6a3e-4c55-9d38-5ad1c1a0e101",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"queue": "https://sqs.eu-central-1.amazonaws.com/123456789012/orders",
+				"sendInputData": false,
+				"message": "Order 42 is ready",
+				"options": {
+					"delaySeconds": 10
+				}
+			},
+			"id": "4f0c2a8e-6a3e-4c55-9d38-5ad1c1a0e102",
+			"name": "Send Delayed",
+			"type": "n8n-nodes-base.awsSqs",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"queue": "https://sqs.eu-central-1.amazonaws.com/123456789012/orders.fifo",
+				"queueType": "fifo",
+				"sendInputData": false,
+				"message": "Order 43 is ready",
+				"messageGroupId": "orders"
+			},
+			"id": "4f0c2a8e-6a3e-4c55-9d38-5ad1c1a0e103",
+			"name": "Send FIFO",
+			"type": "n8n-nodes-base.awsSqs",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		}
+	],
+	"pinData": {
+		"Send Delayed": [{ "json": { "MessageId": "msg-delayed" } }],
+		"Send FIFO": [{ "json": { "MessageId": "msg-fifo" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Send Delayed", "type": "main", "index": 0 },
+					{ "node": "Send FIFO", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" }
+}

@@ -37,5 +37,7 @@ export class EngineV2PushSession {
 		 * Cleared once emitted — pinned data can be large.
 		 */
 		public trigger?: { nodeName: string; outputs: INodeExecutionData[][] },
+		/** The user who owns `pushRef`. */
+		readonly userId?: string,
 	) {}
 }

@@ -538,6 +538,39 @@ describe('Test Mailgun node', () => {
 		});
 	});
 
+	describe('request URL', () => {
+		const sendWithCredentials = async (credentials: { apiDomain: string; emailDomain: string }) => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.getCredentials.mockResolvedValue(credentials);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) =>
+				name === 'customHeaders' ? {} : '',
+			);
+			mockRequestWithAuthentication.mockResolvedValue({ id: 'test-message-id' });
+			mockReturnJsonArray.mockImplementation((data: unknown) => [{ json: data }]);
+			mockConstructExecutionMetaData.mockImplementation((data: unknown) => data);
+
+			await mailgunNode.execute.call(mockExecuteFunctions);
+		};
+
+		it('should encode the email domain as one path segment', async () => {
+			await sendWithCredentials({
+				apiDomain: 'api.mailgun.net',
+				emailDomain: 'mg.example.com/x?y',
+			});
+
+			expect(String(mockRequestWithAuthentication.mock.calls[0][1].uri)).toBe(
+				'https://api.mailgun.net/v3/mg.example.com%2Fx%3Fy/messages',
+			);
+		});
+
+		it('should reject an API domain that is not a host name', async () => {
+			await expect(
+				sendWithCredentials({ apiDomain: 'api.mailgun.net/x', emailDomain: 'mg.example.com' }),
+			).rejects.toThrow('Invalid host');
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Reply-To, custom headers, and tags', () => {
 		it('should send Reply-To, custom headers (h:), and tags (o:tag) in formData', async () => {
 			const items = [{ json: { data: 'test' } }];

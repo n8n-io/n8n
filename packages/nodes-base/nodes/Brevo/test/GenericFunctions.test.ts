@@ -1,6 +1,11 @@
-import type { IBinaryData, IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
+import type {
+	IBinaryData,
+	IExecuteSingleFunctions,
+	IHookFunctions,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
 
-import { BrevoNode } from '../GenericFunctions';
+import { BrevoNode, BrevoWebhookApi } from '../GenericFunctions';
 
 const { mailComposerOptions } = vi.hoisted(() => ({
 	mailComposerOptions: vi.fn(),
@@ -346,5 +351,28 @@ describe('Brevo - validateAndCompileAttachmentsData', () => {
 			{ content: bufferA.toString('base64'), name: 'a.txt' },
 			{ content: bufferB.toString('base64'), name: 'b.txt' },
 		]);
+	});
+});
+
+describe('BrevoWebhookApi.deleteWebhook', () => {
+	it('should encode the webhook ID as one path segment', async () => {
+		const requestWithAuthentication = vi.fn().mockResolvedValue('');
+		const hookFunctions = { helpers: { requestWithAuthentication } } as unknown as IHookFunctions;
+
+		await BrevoWebhookApi.deleteWebhook(hookFunctions, '42/senders');
+
+		expect(String(requestWithAuthentication.mock.calls[0][1].uri)).toBe(
+			'https://api.brevo.com/v3/webhooks/42%2Fsenders',
+		);
+	});
+
+	it('should reject a webhook ID with a dot segment', async () => {
+		const requestWithAuthentication = vi.fn().mockResolvedValue('');
+		const hookFunctions = { helpers: { requestWithAuthentication } } as unknown as IHookFunctions;
+
+		await expect(BrevoWebhookApi.deleteWebhook(hookFunctions, '42/../senders')).rejects.toThrow(
+			'Invalid identifier',
+		);
+		expect(requestWithAuthentication).not.toHaveBeenCalled();
 	});
 });

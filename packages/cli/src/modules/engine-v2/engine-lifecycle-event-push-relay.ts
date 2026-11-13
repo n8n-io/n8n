@@ -192,6 +192,7 @@ export class EngineLifecycleEventPushRelay {
 		this.push.send(
 			{ type: 'executionFinished', data: { executionId, workflowId, status } },
 			session.pushRef,
+			session.userId,
 		);
 
 		// Releasing here makes a redelivered terminal event a no-op.
@@ -216,6 +217,7 @@ export class EngineLifecycleEventPushRelay {
 				},
 			},
 			session.pushRef,
+			session.userId,
 		);
 	}
 
@@ -268,6 +270,7 @@ export class EngineLifecycleEventPushRelay {
 				},
 			},
 			session.pushRef,
+			session.userId,
 		);
 
 		// No data, no second message: the step failed, waits, or its outputs were withheld.
@@ -284,6 +287,7 @@ export class EngineLifecycleEventPushRelay {
 				data: { executionId, nodeName, data: taskData, itemCountByConnectionType },
 			},
 			session.pushRef,
+			session.userId,
 			asBinary,
 		);
 	}

@@ -164,7 +164,6 @@ export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLA
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup
-
 export const ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT = createExperiment(
 	'139_enable_posthog_autocapture',
 );
@@ -277,7 +276,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,

@@ -16,7 +16,7 @@ describe('Microsoft Excel (SharePoint), Service Principal table => create smoke'
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.post(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/tables/add',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/tables/add',
 			{ address: 'A1:B2', hasHeaders: true },
 		)
 		.reply(201, { id: '{T9}', name: 'Table9' });

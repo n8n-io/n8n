@@ -7,22 +7,24 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 import qs from 'qs';
 
 export async function unleashedApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 	pageNumber?: number,
 	headers?: object,
 ) {
-	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
+	const paginatedPath = pageNumber ? requestPath`/${path}/${pageNumber}` : requestPath`/${path}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -30,7 +32,7 @@ export async function unleashedApiRequest(
 		method,
 		qs: query,
 		body,
-		url: `https://api.unleashedsoftware.com/${paginatedPath}`,
+		url: requestUrl`https://api.unleashedsoftware.com/${paginatedPath}`,
 		json: true,
 	};
 
@@ -60,7 +62,7 @@ export async function unleashedApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

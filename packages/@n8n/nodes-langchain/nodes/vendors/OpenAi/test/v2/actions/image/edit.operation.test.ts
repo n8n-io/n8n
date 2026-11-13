@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -120,7 +121,7 @@ describe('Image Edit Operation', () => {
 			expect(mockFormDataAppend).toHaveBeenCalledWith('size', '1024x1024');
 			expect(mockFormDataAppend).toHaveBeenCalledWith('response_format', 'url');
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/edits`, {
 				option: { formData: mockFormDataInstance },
 				headers: { 'content-type': 'multipart/form-data' },
 			});
@@ -679,7 +680,7 @@ describe('Image Edit Operation', () => {
 			mockFormDataInstance = lastFormDataInstance.current as Mocked<FormData>;
 
 			expect(mockFormDataGetHeaders).toHaveBeenCalled();
-			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
+			expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/images/edits`, {
 				option: { formData: mockFormDataInstance },
 				headers: { 'content-type': 'multipart/form-data' },
 			});

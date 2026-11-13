@@ -3,7 +3,9 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	RequestPath,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { searchAtlassianSites } from '@utils/atlassian';
 
@@ -31,7 +33,7 @@ const TEXT_SEARCH_OPERATORS = new Set(['AND', 'OR', 'NOT']);
  */
 async function searchByName(
 	this: ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	baseQs: IDataObject,
 	toDisplayName: (name: string, entry: IDataObject) => string,
 	filter?: string,
@@ -83,7 +85,7 @@ export async function searchSpaces(
 ): Promise<INodeListSearchResult> {
 	return await searchByName.call(
 		this,
-		'/wiki/api/v2/spaces',
+		requestPath`/wiki/api/v2/spaces`,
 		{ sort: 'name', status: 'current' },
 		(name, space) => {
 			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
@@ -101,7 +103,7 @@ export async function getLabels(
 ): Promise<INodeListSearchResult> {
 	return await searchByName.call(
 		this,
-		'/wiki/api/v2/labels',
+		requestPath`/wiki/api/v2/labels`,
 		{ sort: 'name' },
 		(name, label) => {
 			// Non-global labels (my/team/system) share names with global ones; the prefix disambiguates
@@ -136,7 +138,13 @@ async function fetchSearchPage(
 	const qs: IDataObject = { cql, limit: SEARCH_PAGE_SIZE };
 	if (start !== undefined) qs.start = start;
 
-	const response = await confluenceApiRequest.call(this, 'GET', '/wiki/rest/api/search', {}, qs);
+	const response = await confluenceApiRequest.call(
+		this,
+		'GET',
+		requestPath`/wiki/rest/api/search`,
+		{},
+		qs,
+	);
 	const links = response._links as IDataObject | undefined;
 	return {
 		entries: Array.isArray(response.results) ? (response.results as IDataObject[]) : [],

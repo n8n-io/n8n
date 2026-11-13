@@ -1,0 +1,121 @@
+{
+	"name": "Segment Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "4b9c0fce-4244-56e8-a041-bf18506eb807",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "add",
+				"userId": "user-1042",
+				"groupId": "group-7"
+			},
+			"type": "n8n-nodes-base.segment",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "aaf40fd5-e08f-5bb2-a1dc-238a3df537c6",
+			"name": "Group > Add",
+			"credentials": {
+				"segmentApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "identify",
+				"operation": "create",
+				"userId": "user-1042"
+			},
+			"type": "n8n-nodes-base.segment",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "14192146-5df7-5f09-8140-3e9829761b91",
+			"name": "Identify > Create",
+			"credentials": {
+				"segmentApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "track",
+				"operation": "event",
+				"userId": "user-1042",
+				"event": "Order Completed"
+			},
+			"type": "n8n-nodes-base.segment",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "641ac2d3-c1fb-560d-8b57-2a1b7afa5d39",
+			"name": "Track > Event",
+			"credentials": {
+				"segmentApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "track",
+				"operation": "page",
+				"userId": "user-1042",
+				"name": "Pricing"
+			},
+			"type": "n8n-nodes-base.segment",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "058e2ddd-1e06-58ed-92f2-e00941cec0bd",
+			"name": "Track > Page",
+			"credentials": {
+				"segmentApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Group > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Identify > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track > Event",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track > Page",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}
