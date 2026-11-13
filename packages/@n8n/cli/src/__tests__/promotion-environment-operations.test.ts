@@ -33,6 +33,8 @@ const PROMOTE_RESULT = {
 	git: { commitSha: 'abc1234', branchName: 'main' },
 };
 
+const PROMOTE_SELECTION_RESULT = { status: 'promoted', ...PROMOTE_RESULT };
+
 const SHA = 'd'.repeat(40);
 const IDENTITY = {
 	environmentId: 'env-1',
@@ -401,7 +403,7 @@ describe('promotion-environment promote-selection command', () => {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
 
-		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
 			flags: { workflow: ['wf-1', 'wf-2'] },
@@ -418,13 +420,14 @@ describe('promotion-environment promote-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1', 'wf-2'] },
 			undefined,
+			undefined,
 		);
 		// A selection can be deletions only, so the summary names the branch and
 		// commit instead of a workflow count that would read "0" for that case.
 		expect(succeed).toHaveBeenCalledWith(
 			'Promoted selection to main as commit abc1234.',
 			expect.anything(),
-			PROMOTE_RESULT,
+			PROMOTE_SELECTION_RESULT,
 		);
 	});
 
@@ -434,7 +437,7 @@ describe('promotion-environment promote-selection command', () => {
 			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
 		};
 
-		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_RESULT);
+		const promoteProjectSelection = vi.fn().mockResolvedValue(PROMOTE_SELECTION_RESULT);
 		vi.spyOn(internals, 'parse').mockResolvedValue({
 			args: { projectId: 'proj-1' },
 			flags: { workflow: ['wf-1'], message: 'Promote checkout flow' },
@@ -450,7 +453,46 @@ describe('promotion-environment promote-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1'] },
 			'Promote checkout flow',
+			undefined,
 		);
+	});
+
+	it('sends the reviewed revision, and exits 3 without a success message when the preview changed', async () => {
+		const command = new PromotionEnvironmentPromoteSelection([], {} as Config);
+		const internals = command as unknown as ApplyInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+		const revision = 'f'.repeat(64);
+
+		const promoteProjectSelection = vi
+			.fn()
+			.mockResolvedValue({ status: 'preview-changed', environmentId: 'env-1' });
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { format: 'table', workflow: ['wf-1'], expectedPreviewRevision: revision },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			promoteProjectSelection,
+		} as unknown as N8nClient);
+		const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+		const exit = vi.spyOn(internals, 'exit').mockImplementation(() => undefined as never);
+
+		await command.run();
+
+		expect(promoteProjectSelection).toHaveBeenCalledWith(
+			'proj-1',
+			{ workflowIds: ['wf-1'] },
+			undefined,
+			revision,
+		);
+		expect(logToStderr).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'The Promote preview changed since you reviewed it. Nothing was pushed.',
+			),
+		);
+		expect(exit).toHaveBeenCalledWith(3);
+		expect(succeed).not.toHaveBeenCalled();
 	});
 });
 

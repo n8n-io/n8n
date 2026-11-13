@@ -265,6 +265,12 @@ Promote or apply a selection of a project:
 n8n-cli promotion-environment list-changes <projectId> promote
 n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> --folder <folderId>
 
+# Promote only the reviewed selection. Take the revision from the preview.
+n8n-cli promotion-environment list-changes <projectId> promote --json > preview.json
+n8n-cli promotion-environment promote-selection <projectId> -w <workflowId> \
+  --expected-preview-revision="$(jq -r .revision preview.json)"
+# Exit 3: the project or its branch changed since the review. Review again.
+
 # Apply only the reviewed selection. Take the source and the revision from the same preview.
 n8n-cli promotion-environment list-changes <projectId> apply --json > preview.json
 jq '{commitSha, source, revision}' preview.json
@@ -344,7 +350,7 @@ Key points:
 - The `--expected-environment-id`, `--expected-branch`, and
   `--expected-commit-sha` flags go together: pass all three or none. The commit
   SHA must be the full SHA. `--expected-preview-revision` is separate and works
-  only with `apply-selection` and `apply-selection-continue`.
+  only with `promote-selection`, `apply-selection` and `apply-selection-continue`.
 - API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 

@@ -56,6 +56,12 @@ The CLI `promotion-environment list-changes` command shows the changed resources
 It no longer accepts `--search`, `--sort` and `--order`.
 It needs an n8n instance with this change.
 
+The selective promote endpoint `POST /api/v1/promotions/projects/{projectId}/promote` now returns a `status`.
+`promoted` means that the push succeeded. Only this status has `counts` and `git`.
+`preview-changed` means that nothing was pushed. It occurs only when the request sends `expectedPreviewRevision`.
+Read `status` before you read `counts` and `git`.
+The change preview now always returns `revision`, also for `promote`.
+
 # 2.0.0
 
 ### What changed?

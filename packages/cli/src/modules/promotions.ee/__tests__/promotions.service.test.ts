@@ -64,6 +64,7 @@ import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+import { expectPushed } from './utils/promotion-fixtures';
 
 // These dependencies are injected as mocks. Do not load their implementation graphs.
 vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
@@ -247,6 +248,7 @@ describe('PromotionsService', () => {
 			folderService,
 			n8nPackagesService,
 			applyPreviewService,
+			mock(),
 			inventoryReader,
 			packageImportConfig,
 			runRepository,
@@ -1473,6 +1475,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			const targetBranchName = result.git.branchName;
 			expect(targetBranchName).toMatch(
@@ -1532,6 +1535,7 @@ describe('PromotionsService', () => {
 				commitMessage: 'm',
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,
@@ -1576,6 +1580,7 @@ describe('PromotionsService', () => {
 				workflowIds: ['w1'],
 				canExportVariableValues: true,
 			});
+			expectPushed(result);
 
 			expect(reviewsService.openMergeRequest).toHaveBeenCalledWith(
 				input,

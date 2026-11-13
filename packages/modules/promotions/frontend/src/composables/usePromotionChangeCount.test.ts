@@ -28,6 +28,7 @@ const preview = (count: number): PromotionPreview => ({
 		}),
 	),
 	dependencies: [],
+	revision: 'b'.repeat(64),
 });
 
 describe('usePromotionChangeCount blocker', () => {

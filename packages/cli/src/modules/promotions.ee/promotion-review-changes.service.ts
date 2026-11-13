@@ -27,8 +27,13 @@ import {
 	parseGitLabReviewId,
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
-import { parsePackageManifest, toDetail, type DetailSide } from './promotion-change.service';
-import { buildPreview, indexProjects, type PreviewSide } from './promotion-preview';
+import { toDetail, type DetailSide } from './promotion-change.service';
+import {
+	buildPreview,
+	indexProjects,
+	parsePackageManifest,
+	type PreviewSide,
+} from './promotion-preview';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { PromotionReviewInboxService } from './promotion-review-inbox.service';

@@ -57,7 +57,7 @@ requestBody:
           expectedPreviewRevision:
             type: string
             pattern: ^[0-9a-f]{64}$
-            description: The `revision` of the reviewed Apply preview. Apply builds the preview again and returns status `preview-changed` without writing when it differs, for example after a local edit.
+            description: The `revision` of the reviewed preview. The operation builds the preview again. When it differs, the operation returns status `preview-changed` and changes nothing.
         additionalProperties: false
 responses:
   '200':
