@@ -1,4 +1,9 @@
-import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
+import {
+	CliWorkflowOperationError,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	isHitlToolType,
+	SubworkflowOperationError,
+} from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -29,17 +34,26 @@ export function satisfiesToolCapability(syntheticToolName: string, nodeType: INo
 	return isHitlToolType(syntheticToolName) || !!nodeType.description.usableAsTool;
 }
 
+/**
+ * The node a sub-workflow execution starts from, or `undefined` when there is
+ * none. Non-throwing counterpart to `findSubworkflowStart`, for callers that
+ * only want to inspect the entry point.
+ */
+export function findSubworkflowStartOrUndefined(
+	nodes: INode[],
+	executionMode: 'integrated' | 'cli' = 'integrated',
+): INode | undefined {
+	const eligibleNodes =
+		executionMode === 'cli' ? nodes.filter((node) => node.disabled !== true) : nodes;
+	return (
+		eligibleNodes.find((node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE) ??
+		eligibleNodes.find((node) => STARTING_NODES.includes(node.type))
+	);
+}
+
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
-		const eligibleNodes =
-			executionMode === 'cli' ? nodes.filter((node) => node.disabled !== true) : nodes;
-		const executeWorkflowTriggerNode = eligibleNodes.find(
-			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
-		);
-
-		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;
-
-		const startNode = eligibleNodes.find((node) => STARTING_NODES.includes(node.type));
+		const startNode = findSubworkflowStartOrUndefined(nodes, executionMode);
 
 		if (startNode) return startNode;
 

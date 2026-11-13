@@ -725,6 +725,7 @@ export class WorkflowRunner {
 				pushRef: data.pushRef,
 				userId: getPushRefUserId(data),
 			});
+			additionalData.pushRef = data.pushRef;
 
 			if (data.configureAdditionalData) {
 				await data.configureAdditionalData(additionalData);

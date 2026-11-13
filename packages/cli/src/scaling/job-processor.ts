@@ -254,6 +254,7 @@ export class JobProcessor {
 				pushRef,
 				userId: getPushRefUserId(hooksData),
 			});
+			additionalData.pushRef = pushRef;
 		}
 
 		// An older main sends no value. Assume the strictest, so nothing is parked
