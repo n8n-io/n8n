@@ -19,7 +19,6 @@ import {
 	toProviderMetadata,
 } from '../converters/ai-sdk-message';
 import type { ChatModel } from '../types/chat-model';
-import type { StreamChunk } from '../types/output';
 
 /**
  * Runs an AI Node SDK `ChatModel` as a Vercel AI SDK language model.
@@ -71,8 +70,8 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 			? AbortSignal.any([options.abortSignal, cancellation.signal])
 			: cancellation.signal;
 		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
-		const converter = new AiSdkStreamConverter(this.provider);
 		const modelId = this.modelId;
+		const converter = new AiSdkStreamConverter(this.provider, modelId);
 
 		const stream = new ReadableStream<LanguageModelV4StreamPart>({
 			start(controller) {
@@ -83,22 +82,23 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				// A pull that enqueues nothing is not called again, so read on until
 				// a chunk gives parts or the chat model stream ends.
 				while (true) {
-					let next: IteratorResult<StreamChunk>;
+					let parts: LanguageModelV4StreamPart[];
 					try {
-						next = await iterator.next();
+						const next = await iterator.next();
+						if (next.done) {
+							for (const part of converter.end()) controller.enqueue(part);
+							controller.close();
+							return;
+						}
+						parts = converter.convert(next.value);
 					} catch (error) {
+						// A chunk that breaks the contract also stops the request it came from.
+						cancellation.abort();
 						controller.enqueue({ type: 'error', error });
 						controller.close();
 						return;
 					}
 
-					if (next.done) {
-						for (const part of converter.end()) controller.enqueue(part);
-						controller.close();
-						return;
-					}
-
-					const parts = converter.convert(next.value);
 					for (const part of parts) controller.enqueue(part);
 					if (parts.length > 0) return;
 				}
