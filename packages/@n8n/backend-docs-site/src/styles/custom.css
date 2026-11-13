@@ -1067,7 +1067,7 @@ mobile-starlight-toc nav {
 	z-index: 100;
 	padding: 0.375rem 0.75rem;
 	border-radius: 999px;
-	background: var(--sl-color-accent);
+	background: var(--sl-color-accent-high);
 	color: var(--sl-color-black);
 	font-size: var(--sl-text-xs);
 	font-weight: 600;
@@ -1075,6 +1075,6 @@ mobile-starlight-toc nav {
 	box-shadow: var(--sl-shadow-sm);
 }
 .preview-label:hover {
-	background: var(--sl-color-accent-high);
 	color: var(--sl-color-black);
+	text-decoration: underline;
 }
