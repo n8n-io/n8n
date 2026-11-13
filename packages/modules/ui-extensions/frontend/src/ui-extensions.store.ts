@@ -2,6 +2,7 @@ import type { UiExtensionView } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -27,6 +28,7 @@ const clampWidth = (width: number) =>
 export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 	const i18n = useI18n();
 	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
 
 	const userViews = ref<UiExtensionView[]>([]);
 	const hasFetched = ref(false);
@@ -80,6 +82,9 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 	}
 
 	let latestRequest = 0;
+	let latestApplied = 0;
+	/** The user whose views the store holds. */
+	let viewsUserId: string | null = null;
 
 	/**
 	 * Loads the views of the user. After the first load, a view that is new or
@@ -87,6 +92,15 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 	 * client just made shows at once.
 	 */
 	async function fetchViews() {
+		// Another user signed in without a page reload. Their views are not a change.
+		const userId = usersStore.currentUserId;
+		if (userId !== viewsUserId) {
+			viewsUserId = userId;
+			userViews.value = [];
+			hasFetched.value = false;
+			latestApplied = latestRequest;
+		}
+
 		const request = ++latestRequest;
 
 		let fetched: UiExtensionView[];
@@ -98,8 +112,10 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 			else return;
 		}
 
-		// A later request already started. Its result is newer.
-		if (request !== latestRequest) return;
+		// A later response is already in. A failed request changes nothing, so it
+		// cannot hide a good response that is still on its way.
+		if (request <= latestApplied || viewsUserId !== userId) return;
+		latestApplied = request;
 
 		const previous = new Map(userViews.value.map((view) => [view.id, view.updatedAt]));
 		const changed = fetched.filter((view) => previous.get(view.id) !== view.updatedAt);

@@ -20,6 +20,11 @@ const mcpView: SidePanelView = {
 };
 
 const runtime = { js: 'void 0', css: '' };
+const envelope = { source: 'n8n-ui-extension', version: 1 };
+const ready = { ...envelope, type: 'ready' };
+
+/** Lets the message ports deliver what is in flight. */
+const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
 function renderFrame(props: Partial<InstanceType<typeof ViewFrame>['$props']> = {}) {
 	const result = render(ViewFrame, {
@@ -33,13 +38,25 @@ function renderFrame(props: Partial<InstanceType<typeof ViewFrame>['$props']> = 
 	});
 	const iframe = result.getByTestId('ui-extensions-view-frame') as HTMLIFrameElement;
 	const frameWindow = iframe.contentWindow!;
-	const postMessage = vi.spyOn(frameWindow, 'postMessage').mockImplementation(() => {});
+
+	// The runtime's side of the port: what the frame receives over it.
+	const received: unknown[] = [];
+	let framePort: MessagePort | undefined;
+	const postMessage = vi
+		.spyOn(frameWindow, 'postMessage')
+		.mockImplementation((_message: unknown, _origin: unknown, transfer?: unknown) => {
+			const [port] = (transfer as MessagePort[] | undefined) ?? [];
+			if (!port) return;
+			framePort = port;
+			port.onmessage = (event) => received.push(event.data);
+		});
+
 	const fromFrame = (data: unknown, source: unknown = frameWindow) =>
 		window.dispatchEvent(new MessageEvent('message', { data, source: source as Window }));
-	return { ...result, iframe, postMessage, fromFrame };
-}
+	const fromFramePort = (data: unknown) => framePort?.postMessage(data);
 
-const ready = { source: 'n8n-ui-extension', version: 1, type: 'ready' };
+	return { ...result, iframe, postMessage, received, fromFrame, fromFramePort };
+}
 
 describe('ViewFrame', () => {
 	it('sandboxes the frame to scripts only, with a policy that blocks network access', () => {
@@ -49,48 +66,58 @@ describe('ViewFrame', () => {
 		expect(iframe.getAttribute('srcdoc')).toContain("connect-src 'none'");
 	});
 
-	it('sends the context after the frame is ready, and not before', async () => {
-		const { postMessage, fromFrame } = renderFrame();
+	it('answers ready with a port, and sends the context over that port only', async () => {
+		const { postMessage, received, fromFrame } = renderFrame();
 
 		expect(postMessage).not.toHaveBeenCalled();
 		fromFrame(ready);
+		await flush();
 
-		expect(postMessage).toHaveBeenCalledWith(
-			{
-				source: 'n8n-ui-extension',
-				version: 1,
-				type: 'context',
-				context: workflowContext,
-				strings: {},
+		expect(postMessage).toHaveBeenCalledOnce();
+		expect(postMessage).toHaveBeenCalledWith({ ...envelope, type: 'connect' }, '*', [
+			expect.any(MessagePort),
+		]);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+		expect(received).toEqual([
+			{ ...envelope, type: 'context', context: workflowContext, strings: {} },
+		]);
+	});
+
+	it('connects only once', async () => {
+		const { postMessage, fromFrame } = renderFrame();
+
+		fromFrame(ready);
+		fromFrame(ready);
+		await flush();
+
+		expect(postMessage).toHaveBeenCalledOnce();
+	});
+
+	it('sends the redacted context to an MCP view', async () => {
+		const { received, fromFrame } = renderFrame({ workflowAvailableInMcp: false });
+
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		expect(received[0]).toMatchObject({ context: { page: 'workflow', workflow: null } });
+	});
+
+	it('sends the strings of the built-in view, with their placeholders', async () => {
+		const { received, fromFrame } = renderFrame({ view: { ...mcpView, builtin: true } });
+
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		expect(received[0]).toMatchObject({
+			strings: {
+				'uiExtensions.pageSummary.workflows.heading': 'Workflows',
+				'uiExtensions.pageSummary.workflow.nodeCount': 'Nodes: {count}',
 			},
-			'*',
-		);
-	});
-
-	it('sends the redacted context to an MCP view', () => {
-		const { postMessage, fromFrame } = renderFrame({ workflowAvailableInMcp: false });
-
-		fromFrame(ready);
-
-		expect(postMessage.mock.calls[0][0]).toMatchObject({
-			context: { page: 'workflow', workflow: null },
-		});
-	});
-
-	it('sends the strings of the built-in view', () => {
-		const { postMessage, fromFrame } = renderFrame({
-			view: { ...mcpView, builtin: true },
-		});
-
-		fromFrame(ready);
-
-		expect(postMessage.mock.calls[0][0]).toMatchObject({
-			strings: { 'uiExtensions.pageSummary.workflows.heading': 'Workflows' },
 		});
 	});
 
 	it('sends the context again when it changes', async () => {
-		const { postMessage, fromFrame, rerender } = renderFrame();
+		const { received, fromFrame, rerender } = renderFrame();
 		fromFrame(ready);
 
 		await rerender({
@@ -102,18 +129,16 @@ describe('ViewFrame', () => {
 			},
 		});
 		await nextTick();
+		await vi.waitFor(() => expect(received).toHaveLength(2));
 
-		expect(postMessage).toHaveBeenLastCalledWith(
-			expect.objectContaining({
-				context: {
-					page: 'workflows',
-					routeName: 'WorkflowsView',
-					projectId: null,
-					totalWorkflows: null,
-				},
-			}),
-			'*',
-		);
+		expect(received.at(-1)).toMatchObject({
+			context: {
+				page: 'workflows',
+				routeName: 'WorkflowsView',
+				projectId: null,
+				totalWorkflows: null,
+			},
+		});
 	});
 
 	it('ignores messages from another window', () => {
@@ -133,10 +158,11 @@ describe('ViewFrame', () => {
 		expect(postMessage).not.toHaveBeenCalled();
 	});
 
-	it('shows the error that the view reports', async () => {
-		const { fromFrame, findByTestId } = renderFrame();
+	it('shows the error that the view reports over the port', async () => {
+		const { fromFrame, fromFramePort, findByTestId } = renderFrame();
+		fromFrame(ready);
 
-		fromFrame({ source: 'n8n-ui-extension', version: 1, type: 'error', message: 'boom' });
+		fromFramePort({ ...envelope, type: 'error', message: 'boom' });
 
 		expect((await findByTestId('ui-extensions-view-error')).textContent).toContain('boom');
 	});
@@ -156,9 +182,8 @@ describe('ViewFrame', () => {
 	});
 
 	it('removes the frame when the view loads another page', async () => {
-		const { iframe, postMessage, fromFrame, findByTestId, queryByTestId } = renderFrame();
+		const { iframe, fromFrame, findByTestId, queryByTestId } = renderFrame();
 		fromFrame(ready);
-		postMessage.mockClear();
 
 		await fireEvent.load(iframe);
 		expect(queryByTestId('ui-extensions-view-left')).toBeNull();

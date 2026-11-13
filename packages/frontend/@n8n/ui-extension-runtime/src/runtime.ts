@@ -3,16 +3,20 @@ import {
 	UI_EXTENSION_MESSAGE_SOURCE,
 	UI_EXTENSION_PROTOCOL_VERSION,
 	UI_EXTENSION_VIEW_FACTORY_GLOBAL,
+	uiExtensionConnectMessageSchema,
 	uiExtensionHostMessageSchema,
 	type UiExtensionPageContext,
 } from '@n8n/api-types';
 import * as Vue from 'vue';
 import type { Component, ComputedRef } from 'vue';
 
+/** Values for the `{name}` placeholders of a translated string. */
+export type TranslationParams = Record<string, string | number>;
+
 /** The `n8n` global of a view. */
 export type ViewApi = {
 	useContext: () => ComputedRef<UiExtensionPageContext>;
-	t: (key: string) => string;
+	t: (key: string, params?: TranslationParams) => string;
 };
 
 /** The part of the frame window that the runtime uses. */
@@ -27,17 +31,33 @@ export function errorMessage(error: unknown): string {
 	return message.slice(0, UI_EXTENSION_ERROR_MESSAGE_MAX_LENGTH);
 }
 
+/** Replaces each `{name}` in `text` with its value. Unknown names stay as they are. */
+export function interpolate(text: string, params: TranslationParams = {}): string {
+	return text.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+		Object.hasOwn(params, name) ? String(params[name]) : placeholder,
+	);
+}
+
 /**
- * Connects the frame to the editor. The context and the strings come only from
- * the parent window, and only in a valid `context` message.
+ * Connects the frame to the editor. The frame posts `ready` to its parent once.
+ * The parent answers with a `connect` message that holds a port, and the context
+ * then comes only over that port.
  */
 export function createViewBridge(target: RuntimeWindow) {
 	const context = Vue.shallowRef<UiExtensionPageContext | null>(null);
 	const strings = Vue.shallowRef<Record<string, string>>({});
 	const contextListeners: Array<() => void> = [];
+	let port: MessagePort | null = null;
 
-	function onMessage(event: MessageEvent) {
-		if (event.source !== target.parent) return;
+	function envelope(message: FrameMessage) {
+		return {
+			source: UI_EXTENSION_MESSAGE_SOURCE,
+			version: UI_EXTENSION_PROTOCOL_VERSION,
+			...message,
+		};
+	}
+
+	function onPortMessage(event: MessageEvent) {
 		const parsed = uiExtensionHostMessageSchema.safeParse(event.data);
 		if (!parsed.success) return;
 
@@ -47,21 +67,34 @@ export function createViewBridge(target: RuntimeWindow) {
 		if (isFirst) for (const listener of contextListeners.splice(0)) listener();
 	}
 
-	target.addEventListener('message', onMessage);
+	function onWindowMessage(event: MessageEvent) {
+		if (port || event.source !== target.parent) return;
+		if (!uiExtensionConnectMessageSchema.safeParse(event.data).success) return;
+		const [connectPort] = event.ports;
+		if (!connectPort) return;
+
+		port = connectPort;
+		port.onmessage = onPortMessage;
+		target.removeEventListener('message', onWindowMessage);
+	}
+
+	target.addEventListener('message', onWindowMessage);
 
 	function post(message: FrameMessage) {
-		// The frame has an opaque origin and cannot name the origin of the editor.
-		// The messages carry no data that the editor did not send.
-		target.parent.postMessage(
-			{ source: UI_EXTENSION_MESSAGE_SOURCE, version: UI_EXTENSION_PROTOCOL_VERSION, ...message },
-			'*',
-		);
+		if (port) {
+			port.postMessage(envelope(message));
+			return;
+		}
+		// Before the port exists. The frame has an opaque origin and cannot name the
+		// origin of the editor. The messages carry no data that the editor sent.
+		target.parent.postMessage(envelope(message), '*');
 	}
 
 	const fallbackContext: UiExtensionPageContext = { page: 'other', routeName: null };
 	const api: ViewApi = {
 		useContext: () => Vue.computed(() => context.value ?? fallbackContext),
-		t: (key) => (Object.hasOwn(strings.value, key) ? strings.value[key] : key),
+		t: (key, params) =>
+			Object.hasOwn(strings.value, key) ? interpolate(strings.value[key], params) : key,
 	};
 
 	return {
@@ -73,7 +106,10 @@ export function createViewBridge(target: RuntimeWindow) {
 			if (context.value !== null) listener();
 			else contextListeners.push(listener);
 		},
-		dispose: () => target.removeEventListener('message', onMessage),
+		dispose: () => {
+			target.removeEventListener('message', onWindowMessage);
+			port?.close();
+		},
 	};
 }
 

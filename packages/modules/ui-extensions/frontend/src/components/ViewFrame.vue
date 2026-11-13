@@ -2,6 +2,7 @@
 import {
 	UI_EXTENSION_MESSAGE_SOURCE,
 	UI_EXTENSION_PROTOCOL_VERSION,
+	type UiExtensionConnectMessage,
 	type UiExtensionHostMessage,
 	type UiExtensionPageContext,
 	uiExtensionFrameMessageSchema,
@@ -27,7 +28,6 @@ const i18n = useI18n();
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
 
 const viewError = ref<string | null>(null);
-const isReady = ref(false);
 const hasLeftFrame = ref(false);
 
 const theme = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
@@ -44,15 +44,23 @@ const context = computed(() =>
 	contextForView(props.view, props.pageContext, props.workflowAvailableInMcp),
 );
 
+// The view fills the `{count}` placeholder itself, with `n8n.t(key, { count })`.
 const strings = computed<Record<string, string>>(() =>
 	props.view.builtin
-		? Object.fromEntries(PAGE_SUMMARY_STRING_KEYS.map((key) => [key, i18n.baseText(key)]))
+		? Object.fromEntries(
+				PAGE_SUMMARY_STRING_KEYS.map((key) => [
+					key,
+					i18n.baseText(key, { interpolate: { count: '{count}' } }),
+				]),
+			)
 		: {},
 );
 
+/** The channel to the runtime document that sent the first `ready`. */
+let channel: MessageChannel | null = null;
+
 function sendContext() {
-	const target = frame.value?.contentWindow;
-	if (!target || !isReady.value || hasLeftFrame.value) return;
+	if (!channel || hasLeftFrame.value) return;
 
 	const message: UiExtensionHostMessage = {
 		source: UI_EXTENSION_MESSAGE_SOURCE,
@@ -61,28 +69,47 @@ function sendContext() {
 		context: context.value,
 		strings: { ...strings.value },
 	};
-	// The frame has an opaque origin, so no other target origin matches it.
-	target.postMessage(message, '*');
+	channel.port1.postMessage(message);
 }
 
-function onMessage(event: MessageEvent) {
-	if (!frame.value || event.source !== frame.value.contentWindow) return;
+function onFrameMessage(data: unknown) {
+	const parsed = uiExtensionFrameMessageSchema.safeParse(data);
+	if (parsed.success && parsed.data.type === 'error') viewError.value = parsed.data.message;
+}
+
+/**
+ * The runtime posts `ready` once, before any view code runs. The answer hands
+ * it a port, and the context goes only over that port. A page that the view
+ * opens later is a new document, so it cannot hold the port or get the context.
+ */
+function onWindowMessage(event: MessageEvent) {
+	const target = frame.value?.contentWindow;
+	if (channel || !target || event.source !== target) return;
 	const parsed = uiExtensionFrameMessageSchema.safeParse(event.data);
 	if (!parsed.success) return;
-
-	if (parsed.data.type === 'ready') {
-		isReady.value = true;
-		sendContext();
-	} else {
+	if (parsed.data.type === 'error') {
 		viewError.value = parsed.data.message;
+		return;
 	}
+
+	channel = new MessageChannel();
+	channel.port1.onmessage = (portEvent) => onFrameMessage(portEvent.data);
+	// The frame has an opaque origin, so no other target origin matches it.
+	const connect: UiExtensionConnectMessage = {
+		source: UI_EXTENSION_MESSAGE_SOURCE,
+		version: UI_EXTENSION_PROTOCOL_VERSION,
+		type: 'connect',
+	};
+	target.postMessage(connect, '*', [channel.port2]);
+	window.removeEventListener('message', onWindowMessage);
+	sendContext();
 }
 
 let loadCount = 0;
 
 /**
  * The first load is the `srcdoc` document. A later load is the view leaving its
- * document, so the frame is removed and gets no more context.
+ * document, so the frame is removed.
  */
 function onLoad() {
 	loadCount += 1;
@@ -91,8 +118,11 @@ function onLoad() {
 
 watch([context, strings], sendContext, { deep: true });
 
-onMounted(() => window.addEventListener('message', onMessage));
-onBeforeUnmount(() => window.removeEventListener('message', onMessage));
+onMounted(() => window.addEventListener('message', onWindowMessage));
+onBeforeUnmount(() => {
+	window.removeEventListener('message', onWindowMessage);
+	channel?.port1.close();
+});
 </script>
 
 <template>

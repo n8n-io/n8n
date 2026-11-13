@@ -23,7 +23,7 @@ export default {
 						</N8nBadge>
 					</div>
 					<N8nText tag="p" size="small" color="text-light" data-test-id="page-summary-node-count">
-						{{ t('uiExtensions.pageSummary.workflow.nodeCount') }}: {{ nodes.length }}
+						{{ t('uiExtensions.pageSummary.workflow.nodeCount', { count: nodes.length }) }}
 					</N8nText>
 					<N8nText v-if="nodes.length === 0" tag="p" size="small">{{ t('uiExtensions.pageSummary.workflow.noNodes') }}</N8nText>
 					<ul v-else style="display: flex; flex-direction: column; gap: var(--spacing--3xs); padding: 0; margin: 0; list-style: none">
@@ -38,7 +38,7 @@ export default {
 			<template v-else-if="context.page === 'workflows'">
 				<N8nHeading tag="h2" size="medium" bold data-test-id="page-summary-workflows-heading">{{ t('uiExtensions.pageSummary.workflows.heading') }}</N8nHeading>
 				<N8nText tag="p" size="small" data-test-id="page-summary-workflow-count">
-					{{ t('uiExtensions.pageSummary.workflows.total') }}: {{ context.totalWorkflows ?? '-' }}
+					{{ t('uiExtensions.pageSummary.workflows.total', { count: context.totalWorkflows ?? '-' }) }}
 				</N8nText>
 				<N8nText tag="p" size="small" color="text-light">{{ t('uiExtensions.pageSummary.workflows.hint') }}</N8nText>
 			</template>

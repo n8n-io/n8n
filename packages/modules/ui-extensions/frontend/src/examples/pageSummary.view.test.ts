@@ -12,7 +12,8 @@ import source from './pageSummary.view.js?raw';
 function loadView(context: Vue.Ref<UiExtensionPageContext>) {
 	const n8n = {
 		useContext: () => Vue.computed(() => context.value),
-		t: (key: string) => `t:${key.split('.').at(-1)}`,
+		t: (key: string, params: Record<string, string | number> = {}) =>
+			`t:${key.split('.').at(-1)}${'count' in params ? `=${params.count}` : ''}`,
 	};
 	const window: Record<string, unknown> = {};
 	runInNewContext(viewSourceToScript(source), { window });
@@ -46,7 +47,7 @@ describe('Page summary view', () => {
 
 		expect(getByTestId('page-summary-workflow-name').textContent).toBe('Payroll');
 		expect(getByText('t:active')).toBeTruthy();
-		expect(getByTestId('page-summary-node-count').textContent).toContain('1');
+		expect(getByTestId('page-summary-node-count').textContent?.trim()).toBe('t:nodeCount=1');
 		expect(getByText('n8n-nodes-base.manualTrigger')).toBeTruthy();
 	});
 
@@ -69,7 +70,7 @@ describe('Page summary view', () => {
 			totalWorkflows: 7,
 		});
 
-		expect(getByTestId('page-summary-workflow-count').textContent).toContain('7');
+		expect(getByTestId('page-summary-workflow-count').textContent?.trim()).toBe('t:total=7');
 
 		context.value = { page: 'other', routeName: 'SettingsPersonalView' };
 		await Vue.nextTick();

@@ -84,7 +84,19 @@ const envelope = {
 	version: z.literal(UI_EXTENSION_PROTOCOL_VERSION),
 };
 
-/** A message from the editor to a view frame. */
+/**
+ * The editor's answer to the first `ready`. It carries a `MessagePort`, and all
+ * later messages in both directions go over that port. The port belongs to the
+ * document that sent `ready`, so a page that the view opens later gets nothing.
+ */
+export const uiExtensionConnectMessageSchema = z.object({
+	...envelope,
+	type: z.literal('connect'),
+});
+
+export type UiExtensionConnectMessage = z.infer<typeof uiExtensionConnectMessageSchema>;
+
+/** A message from the editor to a view frame, over the port. */
 export const uiExtensionHostMessageSchema = z.object({
 	...envelope,
 	type: z.literal('context'),

@@ -3,9 +3,13 @@ import { UI_EXTENSION_VIEW_FACTORY_GLOBAL } from '@n8n/api-types';
 import type { ViewRuntimeAssets } from './ui-extensions.types';
 
 /**
- * The policy of the view frame. The frame cannot fetch, open sockets or load
- * images from the network. Its scripts load from `data:` URLs, and
+ * The policy of the view frame. It blocks `fetch`, XHR, WebSocket, and images
+ * and fonts from the network. Its scripts load from `data:` URLs, and
  * `unsafe-eval` lets Vue compile the `template` of a view.
+ *
+ * A CSP cannot block every way out: a view can still navigate its own frame or
+ * open a WebRTC connection. So a view must only see what its MCP client can
+ * already read (`ui-extensions.context.ts`).
  */
 export const VIEW_FRAME_CONTENT_SECURITY_POLICY = [
 	"default-src 'none'",
@@ -57,7 +61,9 @@ function runtimeUrl(runtime: ViewRuntimeAssets): string {
  * Throws an error that names the problem when the source is not a view.
  */
 export function viewSourceToScript(source: string): string {
-	if (/^\s*import[\s{*]/m.test(source)) {
+	// `[ \t]*`, not `\s*`: with `m`, `\s*` crosses lines and backtracks on a source
+	// of many blank lines, which freezes the editor.
+	if (/^[ \t]*import[\s{*]/m.test(source)) {
 		throw new Error('A view cannot use import statements. Use the Vue and n8n globals.');
 	}
 	const exports = source.match(/\bexport\s+default\b/g) ?? [];

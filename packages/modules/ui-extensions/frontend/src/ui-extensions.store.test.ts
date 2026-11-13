@@ -3,6 +3,8 @@ import { ResponseError } from '@n8n/rest-api-client';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { nextTick } from 'vue';
 
+import { useUsersStore } from '@n8n/stores/users.store';
+
 import * as api from './ui-extensions.api';
 import { BUILTIN_PAGE_SUMMARY_VIEW_ID } from './ui-extensions.constants';
 import { useSidePanelStore } from './ui-extensions.store';
@@ -137,6 +139,55 @@ describe('useSidePanelStore', () => {
 		await first;
 
 		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'new']);
+	});
+
+	it('keeps a good response that arrives after a newer request failed', async () => {
+		const store = useSidePanelStore();
+		respond([]);
+		await store.fetchViews();
+		const slow = createDeferredPromise<UiExtensionView[]>();
+		vi.mocked(api.fetchUiExtensionViews).mockReturnValueOnce(slow.promise);
+		vi.mocked(api.fetchUiExtensionViews).mockRejectedValueOnce(new Error('offline'));
+
+		const first = store.fetchViews();
+		await store.fetchViews();
+		slow.resolve([view('new')]);
+		await first;
+
+		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'new']);
+		expect(store.activeViewId).toBe('new');
+	});
+
+	it('starts over when another user signs in, without opening their views', async () => {
+		const store = useSidePanelStore();
+		const usersStore = useUsersStore();
+		usersStore.currentUserId = 'user-1';
+		respond([view('a')]);
+		await store.fetchViews();
+
+		usersStore.currentUserId = 'user-2';
+		respond([view('b')]);
+		await store.fetchViews();
+
+		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'b']);
+		expect(store.isOpen).toBe(false);
+	});
+
+	it('drops a response for a user who is no longer signed in', async () => {
+		const store = useSidePanelStore();
+		const usersStore = useUsersStore();
+		usersStore.currentUserId = 'user-1';
+		const slow = createDeferredPromise<UiExtensionView[]>();
+		vi.mocked(api.fetchUiExtensionViews).mockReturnValueOnce(slow.promise);
+
+		const first = store.fetchViews();
+		usersStore.currentUserId = 'user-2';
+		respond([view('b')]);
+		await store.fetchViews();
+		slow.resolve([view('a')]);
+		await first;
+
+		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'b']);
 	});
 
 	it('keeps the panel state and the width in local storage, inside the limits', async () => {

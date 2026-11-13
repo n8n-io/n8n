@@ -36,7 +36,17 @@ describe('viewSourceToScript', () => {
 		expect(() => factory({}, {})).toThrow();
 	});
 
+	it('checks a source of many blank lines in linear time', () => {
+		const source = `${'\n'.repeat(99_000)}export default {};`;
+
+		const started = performance.now();
+		viewSourceToScript(source);
+
+		expect(performance.now() - started).toBeLessThan(500);
+	});
+
 	it.each([
+		['an indented import statement', "  import { ref } from 'vue';\nexport default {};", 'import'],
 		['an import statement', "import { ref } from 'vue';\nexport default {};", 'import'],
 		['no default export', 'const x = 1;', 'exactly one'],
 		['two default exports', 'export default {};\nexport default {};', 'exactly one'],

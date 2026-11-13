@@ -1,10 +1,10 @@
 import { UI_EXTENSION_VIEW_FACTORY_GLOBAL, type UiExtensionPageContext } from '@n8n/api-types';
-import { nextTick } from 'vue';
 import * as Vue from 'vue';
 
 import {
 	createViewBridge,
 	createViewComponent,
+	interpolate,
 	startViewRuntime,
 	type RuntimeWindow,
 	type ViewApi,
@@ -16,16 +16,22 @@ const workflowContext: UiExtensionPageContext = {
 	workflow: { id: 'wf-1', name: 'Payroll', active: false, nodes: [] },
 };
 
+const envelope = { source: 'n8n-ui-extension', version: 1 };
+
 const contextMessage = (overrides: Record<string, unknown> = {}) => ({
-	source: 'n8n-ui-extension',
-	version: 1,
+	...envelope,
 	type: 'context',
 	context: workflowContext,
-	strings: { 'greeting.hello': 'Hello' },
+	strings: { 'greeting.hello': 'Hello', 'greeting.count': 'Nodes: {count}' },
 	...overrides,
 });
 
-/** A frame window whose parent is the jsdom window, so `event.source` checks work. */
+/** Lets the message ports deliver what is in flight. A port delivers on a later turn. */
+const flush = async () => {
+	for (let turn = 0; turn < 5; turn++) await new Promise((resolve) => setTimeout(resolve, 0));
+};
+
+/** A frame window with a fake parent, so `event.source` checks work. */
 function createFrameWindow() {
 	const events = new EventTarget();
 	const parent = { postMessage: vi.fn() };
@@ -36,35 +42,76 @@ function createFrameWindow() {
 		parent,
 	} as unknown as RuntimeWindow &
 		EventTarget & { parent: { postMessage: ReturnType<typeof vi.fn> } };
-	const send = (data: unknown, source: unknown = parent) => {
+
+	/** Dispatches a window message to the frame. */
+	const sendWindowMessage = (
+		data: unknown,
+		source: unknown = parent,
+		ports: MessagePort[] = [],
+	) => {
 		const event = new MessageEvent('message', { data });
 		Object.defineProperty(event, 'source', { value: source });
+		Object.defineProperty(event, 'ports', { value: ports });
 		events.dispatchEvent(event);
 	};
-	return { target, parent, send };
+
+	/** Does the editor's side of the handshake and returns the editor's port. */
+	const connect = () => {
+		const channel = new MessageChannel();
+		const received: unknown[] = [];
+		channel.port1.onmessage = (event) => received.push(event.data);
+		sendWindowMessage({ ...envelope, type: 'connect' }, parent, [channel.port2]);
+		const sendContext = async (overrides: Record<string, unknown> = {}) => {
+			channel.port1.postMessage(contextMessage(overrides));
+			await flush();
+		};
+		return { port: channel.port1, received, sendContext };
+	};
+
+	return { target, parent, sendWindowMessage, connect };
 }
 
+describe('interpolate', () => {
+	it('fills the placeholders that have a value and keeps the others', () => {
+		expect(interpolate('Nodes: {count}, {missing}', { count: 3 })).toBe('Nodes: 3, {missing}');
+	});
+
+	it('does not read placeholders from the object prototype', () => {
+		expect(interpolate('{toString}', {})).toBe('{toString}');
+	});
+});
+
 describe('createViewBridge', () => {
-	it('updates the context and the strings on a valid context message', () => {
-		const { target, send } = createFrameWindow();
+	it('takes the context and the strings from the port only', async () => {
+		const { target, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
 		const context = bridge.api.useContext();
 
 		expect(context.value).toEqual({ page: 'other', routeName: null });
 		expect(bridge.api.t('greeting.hello')).toBe('greeting.hello');
 
-		send(contextMessage());
+		const { sendContext } = connect();
+		await sendContext();
 
 		expect(context.value).toEqual(workflowContext);
 		expect(bridge.api.t('greeting.hello')).toBe('Hello');
+		expect(bridge.api.t('greeting.count', { count: 4 })).toBe('Nodes: 4');
 		expect(bridge.api.t('missing.key')).toBe('missing.key');
 	});
 
-	it.each(['__proto__', 'constructor', 'toString'])('returns the key %s itself', (key) => {
-		const { target, send } = createFrameWindow();
+	it('ignores a context message on the window', () => {
+		const { target, sendWindowMessage } = createFrameWindow();
 		const bridge = createViewBridge(target);
 
-		send(contextMessage());
+		sendWindowMessage(contextMessage());
+
+		expect(bridge.api.useContext().value).toEqual({ page: 'other', routeName: null });
+	});
+
+	it.each(['__proto__', 'constructor', 'toString'])('returns the key %s itself', async (key) => {
+		const { target, connect } = createFrameWindow();
+		const bridge = createViewBridge(target);
+		await connect().sendContext();
 
 		expect(bridge.api.t(key)).toBe(key);
 	});
@@ -74,51 +121,60 @@ describe('createViewBridge', () => {
 		['a wrong version', { version: 2 }],
 		['a wrong type', { type: 'ready' }],
 		['a context that is not valid', { context: { page: 'admin' } }],
-	])('ignores a message with %s', (_case, overrides) => {
-		const { target, send } = createFrameWindow();
+	])('ignores a port message with %s', async (_case, overrides) => {
+		const { target, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
 
-		send(contextMessage(overrides));
+		await connect().sendContext(overrides);
 
 		expect(bridge.api.useContext().value).toEqual({ page: 'other', routeName: null });
 	});
 
-	it('ignores a message from a window that is not the parent', () => {
-		const { target, send } = createFrameWindow();
+	it('takes the port only from the parent window, and only once', async () => {
+		const { target, sendWindowMessage, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
+		const intruder = new MessageChannel();
 
-		send(contextMessage(), { postMessage: vi.fn() });
+		sendWindowMessage({ ...envelope, type: 'connect' }, { postMessage: vi.fn() }, [intruder.port2]);
+		const editor = connect();
+		sendWindowMessage({ ...envelope, type: 'connect' }, target.parent, [intruder.port2]);
 
-		expect(bridge.api.useContext().value).toEqual({ page: 'other', routeName: null });
+		intruder.port1.postMessage(contextMessage({ context: { page: 'other', routeName: 'x' } }));
+		await editor.sendContext();
+		await flush();
+
+		expect(bridge.api.useContext().value).toEqual(workflowContext);
 	});
 
-	it('posts messages to the parent in the protocol envelope', () => {
-		const { target, parent } = createFrameWindow();
+	it('posts ready to the parent, then errors over the port, in the protocol envelope', async () => {
+		const { target, parent, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
 
 		bridge.post({ type: 'ready' });
-		bridge.postError(new Error('x'.repeat(5000)));
+		expect(parent.postMessage).toHaveBeenCalledWith({ ...envelope, type: 'ready' }, '*');
 
-		expect(parent.postMessage).toHaveBeenNthCalledWith(
-			1,
-			{ source: 'n8n-ui-extension', version: 1, type: 'ready' },
-			'*',
-		);
-		const errorMessage = parent.postMessage.mock.calls[1][0] as { message: string };
-		expect(errorMessage).toMatchObject({ type: 'error' });
-		expect(errorMessage.message).toHaveLength(1000);
+		const { received } = connect();
+		bridge.postError(new Error('x'.repeat(5000)));
+		await flush();
+
+		expect(parent.postMessage).toHaveBeenCalledOnce();
+		expect(received).toHaveLength(1);
+		const message = received[0] as { type: string; message: string };
+		expect(message.type).toBe('error');
+		expect(message.message).toHaveLength(1000);
 	});
 
-	it('runs the context callbacks once, on the first context', () => {
-		const { target, send } = createFrameWindow();
+	it('runs the context listeners once, on the first context', async () => {
+		const { target, connect } = createFrameWindow();
 		const bridge = createViewBridge(target);
 		const listener = vi.fn();
 
 		bridge.whenContext(listener);
 		expect(listener).not.toHaveBeenCalled();
 
-		send(contextMessage());
-		send(contextMessage());
+		const { sendContext } = connect();
+		await sendContext();
+		await sendContext();
 		expect(listener).toHaveBeenCalledTimes(1);
 
 		const late = vi.fn();
@@ -165,21 +221,18 @@ describe('createViewComponent', () => {
 });
 
 describe('startViewRuntime', () => {
-	const setFactory = (target: object, factory: unknown) =>
-		Object.assign(target, { [UI_EXTENSION_VIEW_FACTORY_GLOBAL]: factory });
-
 	const start = (factory: unknown, components = {}, doc: Document = document) => {
 		document.body.innerHTML = '<div id="app"></div>';
 		const frame = createFrameWindow();
 		const target = Object.assign(frame.target, { document: doc });
 		startViewRuntime(target, components);
 		// The view script runs after the runtime script.
-		setFactory(target, factory);
+		Object.assign(target, { [UI_EXTENSION_VIEW_FACTORY_GLOBAL]: factory });
 		return { ...frame, target };
 	};
 
 	it('posts ready, then mounts the view with the context on the first context message', async () => {
-		const { parent, send } = start((vue: typeof Vue, n8n: ViewApi) => ({
+		const { parent, connect } = start((vue: typeof Vue, n8n: ViewApi) => ({
 			setup() {
 				const c = n8n.useContext();
 				const label = vue.computed(
@@ -197,65 +250,61 @@ describe('startViewRuntime', () => {
 		);
 		expect(document.getElementById('out')).toBeNull();
 
-		send(contextMessage());
-		await nextTick();
+		const { sendContext } = connect();
+		await sendContext();
+		await Vue.nextTick();
 		expect(document.getElementById('out')?.textContent).toBe('workflow:Payroll:Hello');
 
-		send(
-			contextMessage({
-				context: {
-					page: 'workflows',
-					routeName: 'Workflows',
-					projectId: null,
-					totalWorkflows: null,
-				},
-			}),
-		);
-		await nextTick();
+		await sendContext({
+			context: { page: 'workflows', routeName: 'Workflows', projectId: null, totalWorkflows: null },
+		});
+		await Vue.nextTick();
 		expect(document.getElementById('out')?.textContent).toBe('workflows::Hello');
 	});
 
 	it('registers the given components for the view', async () => {
 		const Shout = { template: '<strong id="shout"><slot /></strong>' };
-		const { send } = start(() => ({ template: '<Shout>hi</Shout>' }), { Shout });
+		const { connect } = start(() => ({ template: '<Shout>hi</Shout>' }), { Shout });
 
-		send(contextMessage());
-		await nextTick();
+		await connect().sendContext();
+		await Vue.nextTick();
 
 		expect(document.getElementById('shout')?.textContent).toBe('hi');
 	});
 
-	it('reports a script error of the view script', () => {
+	it('reports a script error of the view script over the port', async () => {
 		document.body.innerHTML = '<div id="app"></div>';
 		const frame = createFrameWindow();
 		const target = Object.assign(frame.target, { document });
 		startViewRuntime(target, {});
 
 		target.dispatchEvent(new ErrorEvent('error', { message: 'Unexpected token }' }));
-		frame.send(contextMessage());
+		const { received, sendContext } = frame.connect();
+		await sendContext();
+		await flush();
 
-		expect(frame.parent.postMessage).toHaveBeenLastCalledWith(
+		expect(received).toContainEqual(
 			expect.objectContaining({
 				type: 'error',
 				message: 'The view did not load: Unexpected token }',
 			}),
-			'*',
 		);
 	});
 
-	it('posts an error when the view throws while it renders', async () => {
-		const { parent, send } = start(() => ({
+	it('reports an error that the view throws while it renders', async () => {
+		const { connect } = start(() => ({
 			setup() {
 				throw new Error('render failed');
 			},
 		}));
 
-		send(contextMessage());
-		await nextTick();
+		const { received, sendContext } = connect();
+		await sendContext();
+		await Vue.nextTick();
+		await flush();
 
-		expect(parent.postMessage).toHaveBeenLastCalledWith(
+		expect(received).toContainEqual(
 			expect.objectContaining({ type: 'error', message: 'render failed' }),
-			'*',
 		);
 	});
 
@@ -265,14 +314,14 @@ describe('startViewRuntime', () => {
 			readyState: 'loading',
 			getElementById: (id: string) => document.getElementById(id),
 		}) as unknown as Document;
-		const { send } = start(() => ({ template: '<p id="late">ok</p>' }), {}, doc);
+		const { connect } = start(() => ({ template: '<p id="late">ok</p>' }), {}, doc);
 
-		send(contextMessage());
-		await nextTick();
+		await connect().sendContext();
+		await Vue.nextTick();
 		expect(document.getElementById('late')).toBeNull();
 
 		loading.dispatchEvent(new Event('DOMContentLoaded'));
-		await nextTick();
+		await Vue.nextTick();
 		expect(document.getElementById('late')?.textContent).toBe('ok');
 	});
 });
