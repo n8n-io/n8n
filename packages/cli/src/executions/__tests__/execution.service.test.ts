@@ -190,7 +190,11 @@ describe('ExecutionService', () => {
 
 			await executionService.findOne(req, ['workflow-1']);
 
-			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(V2_EXECUTION_ID, ['workflow-1']);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ maxDataSizeBytes: globalConfig.executions.maxDisplaySize },
+			);
 			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
 		});
 
@@ -212,6 +216,57 @@ describe('ExecutionService', () => {
 			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
 				execution,
 				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+	});
+
+	describe('findOneAcrossEngines', () => {
+		const options = { includeData: true, includeAnnotation: false };
+
+		it('should read a v1 id from the control plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: '123' });
+			executionPersistence.findOneInWorkflows.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines('123', ['workflow-1'], options);
+
+			expect(result).toBe(execution);
+			expect(executionPersistence.findOneInWorkflows).toHaveBeenCalledWith(
+				'123',
+				['workflow-1'],
+				options,
+			);
+			expect(engineV2ExecutionReader.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should read a v2 id from the data plane', async () => {
+			const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID });
+			engineV2ExecutionReader.findOne.mockResolvedValue(execution);
+
+			const result = await executionService.findOneAcrossEngines(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				options,
+			);
+			expect(executionPersistence.findOneInWorkflows).not.toHaveBeenCalled();
+		});
+
+		// The metadata-only read must stay cheap on both stores.
+		it('should pass includeData through to the data plane', async () => {
+			await executionService.findOneAcrossEngines(V2_EXECUTION_ID, ['workflow-1'], {
+				includeData: false,
+			});
+
+			expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(
+				V2_EXECUTION_ID,
+				['workflow-1'],
+				{ includeData: false },
 			);
 		});
 	});

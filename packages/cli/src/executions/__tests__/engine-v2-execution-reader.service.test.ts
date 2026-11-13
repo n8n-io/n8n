@@ -433,6 +433,48 @@ describe('EngineV2ExecutionReader', () => {
 			await expect(reader.findOne(EXECUTION_ID, [WORKFLOW_ID])).resolves.toBeUndefined();
 		});
 
+		describe('without the run data', () => {
+			it('should not ask the data plane for the steps', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, { includeSteps: false });
+				expect(result).toEqual({
+					id: EXECUTION_ID,
+					workflowId: WORKFLOW_ID,
+					mode: 'manual',
+					status: 'success',
+					finished: true,
+					createdAt: new Date('2026-08-25T10:00:00.000Z'),
+					startedAt: new Date('2026-08-25T10:00:00.000Z'),
+					stoppedAt: new Date('2026-08-25T10:00:05.000Z'),
+					storedAt: 'db',
+				});
+			});
+
+			// Absent data and empty data must stay tellable apart.
+			it('should report no data at all, rather than empty data', async () => {
+				const result = await reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false });
+
+				expect(result).not.toHaveProperty('data');
+			});
+
+			it('should return undefined when the stored workflow is unusable', async () => {
+				// The same reads as the data mode, so a status cannot appear in one
+				// mode and vanish in the other.
+				dataPlane.getExecution.mockResolvedValue(snapshot({ workflow: { nodes: 'Trigger' } }));
+
+				await expect(
+					reader.findOne(EXECUTION_ID, [WORKFLOW_ID], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
+
+			it('should return undefined when the workflow is not accessible to the caller', async () => {
+				await expect(
+					reader.findOne(EXECUTION_ID, ['other-wf'], { includeData: false }),
+				).resolves.toBeUndefined();
+			});
+		});
+
 		describe('reporting the workflow that ran', () => {
 			it('should report the node name from the run, not a later rename', async () => {
 				dataPlane.getExecution.mockResolvedValue(snapshot({ steps: [step()] }));

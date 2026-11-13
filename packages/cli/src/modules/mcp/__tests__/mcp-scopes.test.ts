@@ -18,7 +18,6 @@ import {
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
-	ExecutionRepository,
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
@@ -267,7 +266,6 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ProjectRepository),
 			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
-			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
 			mockInstance(ExecutionListService),
 			mockInstance(DataTableProxyService),

@@ -153,24 +153,17 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		// A v2 execution has no control-plane row.
-		if (isExecutionIdV2(executionId)) {
-			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
-		} else {
-			try {
-				execution = await this.executionPersistence.findOneInWorkflows(
-					executionId,
-					sharedWorkflowIds,
-					{ maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize },
+		try {
+			execution = await this.findOneAcrossEngines(executionId, sharedWorkflowIds, {
+				maxDataSizeBytes: this.globalConfig.executions.maxDisplaySize,
+			});
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
 				);
-			} catch (error) {
-				if (error instanceof MissingExecutionDataError) {
-					throw new NotFoundError(
-						'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
-					);
-				}
-				throw error;
 			}
+			throw error;
 		}
 
 		if (!execution) {
@@ -782,11 +775,37 @@ export class ExecutionService {
 	}
 
 	/**
+	 * Load one execution as a domain entity from whichever engine stored it. A v2
+	 * execution has no control-plane row, so the id shape picks the store.
+	 *
+	 * Annotations, retries and `waitTill` are control-plane only, so a v2
+	 * execution reports none of them.
+	 */
+	async findOneAcrossEngines(
+		executionId: string,
+		workflowIds: string[],
+		options: {
+			includeData?: boolean;
+			includeAnnotation?: boolean;
+			maxDataSizeBytes?: number;
+		} = {},
+	): Promise<IExecutionResponse | IExecutionBase | undefined> {
+		if (isExecutionIdV2(executionId)) {
+			// The data plane stores no annotation and caps no data size, so it
+			// reads only `includeData` off the options.
+			return await this.engineV2ExecutionReader.findOne(executionId, workflowIds, options);
+		}
+
+		return await this.executionPersistence.findOneInWorkflows(executionId, workflowIds, options);
+	}
+
+	/**
 	 * Load one execution scoped to `workflowIds` as a domain entity.
 	 * Options control data/annotation inclusion; no redaction or flatting.
 	 *
-	 * Prefer this for public API and service-to-service loads. For the editor
-	 * flatted response, use {@link findOne}.
+	 * Control-plane only. For an id that may come from either engine, use
+	 * {@link findOneAcrossEngines}. For the editor flatted response, use
+	 * {@link findOne}.
 	 */
 	async findOneInWorkflows(
 		executionId: string,
