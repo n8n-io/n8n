@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agent-threads.controller.test.ts
+  s_9416adef5f807e::t_8ad4e48a8c48e4 53,72,86
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9416adef5f807e::t_e278255e89671b 147-167
+packages/cli/src/modules/instance-ai/eval/mock-handler.ts
+  s_9416adef5f807e::t_569f14a76a1afb 164-168,355
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_9416adef5f807e::t_3f4cef69c974a4 146,914-921
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9416adef5f807e::t_b2d09c638570b5 18,66-71,78,80,85,95-96,146-156,164-182
+packages/cli/src/modules/agents/agent-threads.controller.ts
+  s_9416adef5f807e::t_4e08a66d67c1c8 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17f22557677e80175a299ed911752986d200e9b4",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
