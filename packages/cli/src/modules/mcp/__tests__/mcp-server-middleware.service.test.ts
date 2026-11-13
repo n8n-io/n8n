@@ -2,6 +2,7 @@ import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Person, Transaction, User, UserRepository } from '@n8n/db';
+import { SYSTEM_TRUSTED_SOURCE_ID } from '@n8n/inbound-auth';
 import type { Inbound, RefusalReason, Refused, ResourceAdmission } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import type { Response, NextFunction } from 'express';
@@ -59,6 +60,16 @@ const context: SecurityContext = {
 	subjectClaim: { sourceId: 'idp-1', issuer: 'https://idp.example', subject: 'idp-alice' },
 	clientId: 'client-abc',
 	tokenScopes: ['workflow:read'],
+};
+
+/** A context from n8n's own authorization server, which owns the local consents. */
+const localContext: SecurityContext = {
+	...context,
+	subjectClaim: {
+		sourceId: SYSTEM_TRUSTED_SOURCE_ID,
+		issuer: 'http://localhost:5678',
+		subject: 'user-123',
+	},
 };
 
 let mcpServerApiKeyService: Mocked<McpServerApiKeyService>;
@@ -270,9 +281,10 @@ describe('McpServerMiddlewareService', () => {
 				expect(logger.info).not.toHaveBeenCalled();
 			});
 
-			it('records the use of the OAuth client grant with the token id', async () => {
+			it('records the use of a local OAuth client grant with the token id', async () => {
+				admission.admit.mockResolvedValue({ ok: true, context: localContext });
 				const token = jwt.sign(
-					{ iss: 'https://idp.example', sub: 'idp-alice', jti: 'token-1' },
+					{ iss: 'http://localhost:5678', sub: 'user-123', jti: 'token-1' },
 					'any-secret',
 				);
 
@@ -281,10 +293,24 @@ describe('McpServerMiddlewareService', () => {
 				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', 'token-1');
 			});
 
-			it('records the use without a token id when the token has no jti', async () => {
-				await run(`Bearer ${signIssuerToken('https://idp.example')}`);
+			it('records the use of a local grant without a token id when the token has no jti', async () => {
+				admission.admit.mockResolvedValue({ ok: true, context: localContext });
+
+				await run(`Bearer ${signIssuerToken('http://localhost:5678')}`);
 
 				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', undefined);
+			});
+
+			it('does not record local grant use for a token from an external trusted source', async () => {
+				const token = jwt.sign(
+					{ iss: 'https://idp.example', sub: 'idp-alice', jti: 'token-1' },
+					'any-secret',
+				);
+
+				const { next } = await run(`Bearer ${token}`);
+
+				expect(next).toHaveBeenCalled();
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
 			});
 
 			it('keeps what earlier middleware put on the operation context', async () => {

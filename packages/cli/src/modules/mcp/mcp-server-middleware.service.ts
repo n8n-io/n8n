@@ -7,6 +7,7 @@ import {
 	inboundRequestOf,
 	isUrlIssuer,
 	ResourceAdmission,
+	SYSTEM_TRUSTED_SOURCE_ID,
 	type Inbound,
 	type Refusal,
 	type RefusalReason,
@@ -193,7 +194,11 @@ export class McpServerMiddlewareService {
 		mcpReq.mcpScopes = context.tokenScopes ?? [];
 		// Keep what earlier middleware put on the operation context.
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
-		this.clientUsage.recordUse(user.id, context.clientId, tokenId);
+		// Only n8n's own authorization server creates local consents. An external source can
+		// map its client ID to a local one, so its traffic must not set Last used.
+		if (context.subjectClaim?.sourceId === SYSTEM_TRUSTED_SOURCE_ID) {
+			this.clientUsage.recordUse(user.id, context.clientId, tokenId);
+		}
 		next();
 	}
 
