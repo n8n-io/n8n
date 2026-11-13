@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
+import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -35,8 +34,8 @@ import {
 	requestOAuth1,
 	requestOAuth2,
 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
-import { addTraceHeaders } from './trace-headers';
 
 /**
  * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
@@ -147,9 +146,8 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		addTraceHeaders(requestOptions, additionalData, node);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		return await sendHttpRequest(requestOptions, additionalData, node);
 	} catch (error) {
 		// Keep the policy reason visible instead of reporting it as a failed API call.
 		if (hasPolicyRefusalMarker(error)) throw error;
@@ -198,8 +196,7 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
-				addTraceHeaders(requestOptions, additionalData, node);
-				return await Container.get(OutboundHttp).requests().request(requestOptions);
+				return await sendHttpRequest(requestOptions, additionalData, node);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -296,7 +293,6 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		);
-		addTraceHeaders(requestOptions, additionalData, node);
 		requestSent = true;
 		// oxlint-disable-next-line typescript/no-deprecated
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
@@ -329,7 +325,6 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					);
-					addTraceHeaders(requestOptions, additionalData, node);
 					// oxlint-disable-next-line typescript/no-deprecated
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}

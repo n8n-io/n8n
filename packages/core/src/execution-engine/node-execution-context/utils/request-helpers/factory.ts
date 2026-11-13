@@ -24,9 +24,10 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
 import { requestWithAuthenticationPaginated } from './pagination';
 import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
-import { addTraceHeaders, getTraceHeaders } from './trace-headers';
+import { getTraceHeaders } from './trace-headers';
 
 export const getRequestHelperFunctions = (
 	workflow: Workflow,
@@ -84,8 +85,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			addTraceHeaders(requestOptions, additionalData, node);
-			return await Container.get(OutboundHttp).requests().request(requestOptions);
+			return await sendHttpRequest(requestOptions, additionalData, node);
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -147,7 +147,7 @@ export const getRequestHelperFunctions = (
 				typeof uriOrObjectWithTarget === 'string'
 					? uriOrObjectWithTarget
 					: toLegacyRequestOptions(uriOrObjectWithTarget);
-			let options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
+			const options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
 			if (evalLlmMock) {
 				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
@@ -158,11 +158,6 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
-			}
-			const traceHeaders = getTraceHeaders(additionalData, node);
-			if (Object.keys(traceHeaders).length) {
-				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				Object.assign((target.headers ??= {}), traceHeaders);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
