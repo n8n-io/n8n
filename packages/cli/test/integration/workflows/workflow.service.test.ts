@@ -1835,12 +1835,17 @@ describe('version-scoped settings on save', () => {
 		});
 
 	const expectRepublished = (owner: User, workflow: WorkflowEntity) =>
-		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(owner, workflow.id, {
-			versionId: workflow.activeVersionId,
-			source: 'ui',
-			publishHistory: 'none',
-			publicApi: false,
-		});
+		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: workflow.activeVersionId,
+				source: 'ui',
+				publishHistory: 'none',
+				publicApi: false,
+			},
+			expect.any(Object),
+		);
 
 	beforeEach(() => {
 		vi.spyOn(workflowService, 'activateWorkflow');
