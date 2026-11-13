@@ -1,5 +1,6 @@
 import type { CallbackManagerForLLMRun } from '@langchain/core/callbacks/manager';
 import { HumanMessage } from '@langchain/core/messages';
+import { UserError } from '@n8n/errors';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -261,6 +262,30 @@ describe('LangchainAdapter', () => {
 			expect(chunks[0].message.tool_call_chunks).toEqual([
 				{ type: 'tool_call_chunk', id: 'tc-1', name: 'search', args: '{"q":"x"}', index: 0 },
 			]);
+		});
+
+		it('rejects a tool-call-delta chunk without an id', async () => {
+			async function* stream() {
+				yield { type: 'tool-call-delta', name: 'search', argumentsDelta: '{"q":"x"}' };
+			}
+			const chatModel = createMockChatModel({
+				stream: vi.fn().mockImplementation(() => stream()),
+			});
+			const adapter = new LangchainChatModelAdapter(chatModel);
+
+			const drain = async () => {
+				for await (const _ of adapter._streamResponseChunks([new HumanMessage('hi')], {})) {
+					// drain
+				}
+			};
+
+			const error = await drain().catch((caught: unknown) => caught);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error).toMatchObject({
+				message: 'The chat model "test-provider/test-model" streamed a tool call without an id',
+				description: expect.stringContaining('@n8n/ai-node-sdk 1.0'),
+			});
 		});
 
 		it('yields ChatGenerationChunk for finish chunks with usage_metadata', async () => {

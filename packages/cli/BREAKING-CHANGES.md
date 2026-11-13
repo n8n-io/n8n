@@ -4,6 +4,17 @@ This list shows all the versions which include breaking changes and how to upgra
 
 # Unreleased
 
+## AI node SDK: tool call deltas need an id
+
+Every `tool-call-delta` chunk that a community chat model streams must now carry `id`, the id of its tool call.
+In `@n8n/ai-node-sdk` 1.0, `id` is a required field of this chunk.
+n8n stops the model call with an error when a chunk has no `id`.
+Before, n8n guessed which tool call the chunk belonged to, and parallel tool calls could merge.
+
+If you maintain a community chat model node, send the tool call id on every delta.
+For providers that send the id only on the first delta, keep the id of each call and add it to the later deltas.
+Then build the node with `@n8n/ai-node-sdk` 1.0 or later and publish a new version.
+
 ## n8n Packages (preview)
 
 Package manifest requirements now use `usedBy: [{ "kind": "workflow", "id": "workflow-id" }]`.
