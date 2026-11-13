@@ -80,6 +80,7 @@ const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessage
 
 const connectedCredentials = ref<Record<string, string>>({});
 const configured = ref<Record<string, boolean>>({});
+const integrationSettings = ref<Record<string, unknown>>({});
 const managedCredential = ref(false);
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -101,6 +102,7 @@ vi.mock('../composables/useAgentIntegrationStatus', function mockIntegrationStat
 		useAgentIntegrationStatus: function useAgentIntegrationStatus() {
 			return {
 				connectedCredentials,
+				integrationSettings,
 				fetchStatus: fetchStatusSpy,
 				disconnect: disconnectSpy,
 				loadingMap: ref({}),
@@ -637,6 +639,46 @@ describe('AgentTriggersSection', () => {
 					.attributes('data-saved-description'),
 			).toBe('Handles support tickets');
 		});
+	});
+
+	describe('API chip and authentication', () => {
+		function mountWebhook(settings?: { authentication: string }) {
+			catalogItems.value = [{ type: 'webhook', label: 'API', icon: 'webhook' }];
+			configured.value = { webhook: true };
+			connectedCredentials.value = {};
+			integrationSettings.value = { webhook: settings };
+			return mountSection(undefined, true, { connectedTriggers: ['webhook'] });
+		}
+
+		const chip = (wrapper: ReturnType<typeof mountSection>) =>
+			wrapper.findComponent({ name: 'AgentChipButton' });
+
+		afterEach(() => {
+			integrationSettings.value = {};
+		});
+
+		it('shows the amber warning when authentication is none', async () => {
+			const wrapper = mountWebhook({ authentication: 'none' });
+			await flushPromises();
+
+			expect(chip(wrapper).props('warning')).toBe(true);
+			expect(chip(wrapper).props('warningReasons')).toEqual([
+				'agents.channels.webhook.authentication.noneNotice',
+			]);
+			expect(chip(wrapper).props('invalid')).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(true);
+		});
+
+		it.each([{ authentication: 'headerAuth' }, { authentication: 'jwtAuth' }, undefined])(
+			'shows no warning for %j',
+			async (settings) => {
+				const wrapper = mountWebhook(settings);
+				await flushPromises();
+
+				expect(chip(wrapper).props('warning')).toBe(false);
+				expect(wrapper.find('[data-testid="agent-chip-warning-icon"]').exists()).toBe(false);
+			},
+		);
 	});
 
 	describe('WhatsApp chip and Meta review status', () => {

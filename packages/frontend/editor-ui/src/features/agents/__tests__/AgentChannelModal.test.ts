@@ -103,6 +103,7 @@ vi.mock('../channels/registry', async () => {
 				:data-setup-kind="runtime.setupKind?.value"
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
+				<button data-testid="clear-credential" @click="$emit('update:modelValue', '')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
 				<button data-testid="platform-done" @click="$emit('done')" />
 				<button data-testid="persist-channel" @click="$emit('persist')" />
@@ -796,6 +797,24 @@ describe('AgentChannelModal', () => {
 				false,
 			);
 			expect(mocks.connect).toHaveBeenCalledWith('example', '', { accessMode: 'all' }, {});
+		});
+
+		it('drops the saved credential when the selection is cleared', async () => {
+			statuses.value.example = 'connected';
+			connectedCredentials.value.example = 'credential-old';
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="clear-credential"]').trigger('click');
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.connect).toHaveBeenCalledWith(
+				'example',
+				'',
+				{ accessMode: 'all' },
+				{ replaces: { credentialId: 'credential-old' } },
+			);
 		});
 
 		it('replaces a saved entry without a credential when a credential is chosen', async () => {

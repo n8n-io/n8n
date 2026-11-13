@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nButton, N8nDialogDescription, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nDialogDescription, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentModal from '../components/modals/AgentModal.vue';
@@ -41,12 +41,9 @@ function onOpenChange(open: boolean) {
 		@update:open="onOpenChange"
 	>
 		<div :class="$style.content">
-			<div :class="$style.message">
-				<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
-				<N8nDialogDescription as-child>
-					<N8nText size="medium" :class="$style.description">{{ description }}</N8nText>
-				</N8nDialogDescription>
-			</div>
+			<N8nDialogDescription as-child>
+				<N8nText size="medium" :class="$style.description">{{ description }}</N8nText>
+			</N8nDialogDescription>
 			<slot />
 		</div>
 		<template #footerActions>
@@ -73,18 +70,8 @@ function onOpenChange(open: boolean) {
 	gap: var(--spacing--sm);
 }
 
-.message {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-}
-
-.icon {
-	flex-shrink: 0;
-}
-
-// The dialog description adds a bottom margin, which pulls the centered icon below the text.
-.message .description {
+// The dialog description adds a bottom margin that would add extra space above the content gap.
+.description {
 	margin: 0;
 }
 </style>
