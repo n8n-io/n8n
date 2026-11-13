@@ -1,0 +1,51 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_043f5ea13b0ca2::t_219d34a80e3523 503
+  s_043f5ea13b0ca2::t_c08afa2698f9d8 537-540,542,544-552
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_043f5ea13b0ca2::t_4c740872ac9f1c 63
+  s_043f5ea13b0ca2::t_c9f7734509e09f 183
+  s_043f5ea13b0ca2::t_c1d994df1d38fe 505-507
+  s_043f5ea13b0ca2::t_2d8a90d836ff45 71
+packages/@n8n/db/src/entities/workflow-publication-outbox.ts
+  s_043f5ea13b0ca2::t_87ce4ceb246e9b 38-39
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_043f5ea13b0ca2::t_f0f9bc91182b8a 22-24
+  s_043f5ea13b0ca2::t_c8bcfaa8e34681 217
+  s_043f5ea13b0ca2::t_ed822e25a2b6f2 202-206
+  s_043f5ea13b0ca2::t_7e0856dfd7cad5 174-179,186
+packages/cli/src/workflows/publication/trigger-diff.ts
+  s_043f5ea13b0ca2::t_986d70cc91c750 29-30
+  s_043f5ea13b0ca2::t_6cdf35220ae1ef 53
+  s_043f5ea13b0ca2::t_81e9661d71effa 73-76
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_043f5ea13b0ca2::t_627006a2a73d88 572-607
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_043f5ea13b0ca2::t_816a9f9c1d5dcd 222-239
+packages/cli/test/migration/1794495522674-add-transfer-reason-to-workflow-publication-outbox.test.ts
+  s_043f5ea13b0ca2::t_cae6ee8d1008bd 1-22,24-25,27-33,44-46,48-50,52-75
+  s_043f5ea13b0ca2::t_e4e5f3ec48cb6c 23,26,34-43,47,51
+packages/@n8n/db/src/migrations/common/1794495522674-AddTransferReasonToWorkflowPublicationOutbox.ts
+  s_043f5ea13b0ca2::t_8fdeba6f49c24c 1-2,18-19,35-36
+  s_043f5ea13b0ca2::t_14e887a3175443 3-17,25-34
+  s_043f5ea13b0ca2::t_4a7482d900571c 20-24
+docs/generated/postgres-schema/public.workflow_publication_outbox.md
+  s_043f5ea13b0ca2::t_ab295801ae7634 20
+docs/generated/sqlite-schema/workflow_publication_outbox.md
+  s_043f5ea13b0ca2::t_493ad901ed59fe 9,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "430aaf4eb1991ec85ff6f1c8c645e0ff9e653224",
+  "prompts": {},
+  "sessions": {
+    "s_043f5ea13b0ca2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80b31086-dd76-4604-92db-53cbedccf87b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
