@@ -75,13 +75,17 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 	const runCode = await loadCodeRunner();
 	const effects: Record<string, unknown[]> = {};
 	for (const [step, http] of Object.entries(spec.http ?? {})) {
+		// The runtime gives the response of any status; the node reads the status and the body, as
+		// v1's node does. `error` is a request that fails (a refused connection, for example).
 		effects[step] = http.responses.map((r) =>
-			(r.status ?? 200) >= 400
-				? { $error: `Request failed with status code ${r.status}` }
+			r.error !== undefined
+				? { $error: r.error }
 				: {
 						status: r.status ?? 200,
 						// The oracle's server answers JSON; the library node reads the content type.
-						headers: typeof r.body === 'string' ? {} : { 'content-type': 'application/json' },
+						headers:
+							r.headers ??
+							(typeof r.body === 'string' ? {} : { 'content-type': 'application/json' }),
 						body: r.body,
 					},
 		);
@@ -131,7 +135,12 @@ function requestsOf(effects: EffectRecord[]) {
 		.map((e) => {
 			const args = e.args as { method: string; url: string; body?: unknown };
 			const url = new URL(args.url);
-			return { path: `${url.pathname}${url.search}`, method: args.method, body: args.body };
+			return {
+				step: e.step,
+				path: `${url.pathname}${url.search}`,
+				method: args.method,
+				body: args.body,
+			};
 		});
 }
 
@@ -166,8 +175,14 @@ describe('converted workflows behave as in n8n', () => {
 				expect(result[leaf], `output of ${leaf}`).toEqual(expected.nodes[leaf]?.[0] ?? []);
 			}
 
-			// The same HTTP requests, in the same order.
-			const requests = requestsOf(out.effects);
+			// The same HTTP requests, in the same order. A request that fails (`error` in the
+			// case) never reaches the oracle's server, so it is not compared.
+			const refused = new Set(
+				Object.entries(spec.http ?? {})
+					.filter(([, h]) => h.responses.every((r) => r.error !== undefined))
+					.map(([step]) => step),
+			);
+			const requests = requestsOf(out.effects).filter((r) => !refused.has(r.step));
 			expect(requests.map((r) => `${r.method} ${r.path}`)).toEqual(
 				expected.requests.map((r) => `${r.method} ${r.path}`),
 			);
