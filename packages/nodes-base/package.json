@@ -548,6 +548,7 @@
       "dist/nodes/E2eTest/E2eTest.node.js",
       "dist/nodes/E2eTest/E2eTestPollingTrigger.node.js",
       "dist/nodes/E2eTest/E2eTestDeclarativePollingTrigger.node.js",
+      "dist/nodes/E2eTest/E2eTestDeclarativeWebhookTrigger.node.js",
       "dist/nodes/Egoi/Egoi.node.js",
       "dist/nodes/Elastic/Elasticsearch/Elasticsearch.node.js",
       "dist/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.js",

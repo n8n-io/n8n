@@ -138,6 +138,25 @@ describe('ExecuteNodeService', () => {
 			expect(result.status).toBe('success');
 		});
 
+		it('rejects a declarative webhook trigger with requestDefaults', async () => {
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mockNodeType({
+					execute: undefined,
+					description: {
+						...testNodeDescription,
+						requestDefaults: { baseURL: 'https://x' },
+						trigger: {
+							type: 'webhook',
+							lifecycle: { create: { routing: { request: { url: '/hooks' } } } },
+						},
+					},
+				}),
+			);
+
+			await expect(service.run(user, baseRequest())).rejects.toThrow(BadRequestError);
+			expect(workflowRepository.createWorkflowWithOwner).not.toHaveBeenCalled();
+		});
+
 		it('rejects a credential reference without id', async () => {
 			await expect(
 				service.run(

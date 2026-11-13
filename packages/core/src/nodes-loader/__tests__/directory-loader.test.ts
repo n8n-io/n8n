@@ -1156,3 +1156,112 @@ describe('DirectoryLoader declarative polling trigger', () => {
 		expect(v2.description.polling).toBe(true);
 	});
 });
+
+describe('DirectoryLoader declarative webhook trigger', () => {
+	const filePath = 'dist/Node1/Node1.node.js';
+
+	// A plain object, not a deep mock, so the loader sees missing members as undefined.
+	const makeWebhookTriggerNode = (overrides: Partial<INodeType> = {}): INodeType => ({
+		description: {
+			displayName: 'Node 1',
+			icon: 'fa:play',
+			name: 'node1',
+			group: ['trigger'],
+			version: 1,
+			description: '',
+			defaults: {},
+			inputs: [],
+			outputs: ['main'],
+			properties: [],
+			webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
+			trigger: {
+				type: 'webhook',
+				lifecycle: { create: { routing: { request: { method: 'POST', url: '/hooks' } } } },
+			},
+		},
+		...overrides,
+	});
+
+	const load = (nodeType: INodeType) => {
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeType);
+		const loader = new CustomDirectoryLoader('/not/a/real/path');
+		loader.loadNodeFromFile(filePath);
+		return loader.nodeTypes.node1.type as INodeType;
+	};
+
+	it('builds webhookMethods.default and webhook()', () => {
+		const nodeType = load(makeWebhookTriggerNode());
+
+		expect(nodeType.webhook).toBeInstanceOf(Function);
+		expect(nodeType.webhookMethods?.default).toEqual({
+			checkExists: expect.any(Function),
+			create: expect.any(Function),
+			delete: expect.any(Function),
+		});
+	});
+
+	it('keeps the methods that the class defines itself, one at a time', () => {
+		const ownWebhook = vi.fn();
+		const ownCreate = vi.fn();
+		const ownSetup = { checkExists: vi.fn(), create: vi.fn(), delete: vi.fn() };
+		const nodeType = load(
+			makeWebhookTriggerNode({
+				webhook: ownWebhook,
+				webhookMethods: {
+					default: { create: ownCreate } as unknown as Required<
+						NonNullable<INodeType['webhookMethods']>
+					>['default'],
+					setup: ownSetup,
+				},
+			}),
+		);
+
+		expect(nodeType.webhook).toBe(ownWebhook);
+		expect(nodeType.webhookMethods?.default?.create).toBe(ownCreate);
+		expect(nodeType.webhookMethods?.default?.checkExists).toBeInstanceOf(Function);
+		expect(nodeType.webhookMethods?.default?.delete).toBeInstanceOf(Function);
+		expect(nodeType.webhookMethods?.setup).toBe(ownSetup);
+	});
+
+	it('does not add webhook methods to a node without a trigger', () => {
+		const nodeType = makeWebhookTriggerNode();
+		delete nodeType.description.trigger;
+
+		const loaded = load(nodeType);
+
+		expect(loaded.webhook).toBeUndefined();
+		expect(loaded.webhookMethods).toBeUndefined();
+	});
+
+	it('adds webhookMethods.default when the class defines only other webhook methods', () => {
+		const ownSetup = { checkExists: vi.fn(), create: vi.fn(), delete: vi.fn() };
+		const nodeType = load(makeWebhookTriggerNode({ webhookMethods: { setup: ownSetup } }));
+
+		expect(nodeType.webhookMethods?.setup).toBe(ownSetup);
+		expect(nodeType.webhookMethods?.default).toEqual({
+			checkExists: expect.any(Function),
+			create: expect.any(Function),
+			delete: expect.any(Function),
+		});
+	});
+
+	it('builds webhook methods only for the versions of a versioned node that declare a trigger', () => {
+		const v1 = makeWebhookTriggerNode();
+		delete v1.description.trigger;
+		const v2 = makeWebhookTriggerNode();
+		v2.description.version = 2;
+		const versionedNode = mock<IVersionedNodeType>({
+			description: { name: 'node1', codex: {}, iconUrl: undefined, icon: undefined },
+			currentVersion: 2,
+			nodeVersions: { 1: v1, 2: v2 },
+		} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(versionedNode);
+
+		new CustomDirectoryLoader('/not/a/real/path').loadNodeFromFile(filePath);
+
+		// The loader reads `webhook` of each version through the deep mock, which then makes it a function.
+		expect(v1.webhookMethods).toBeUndefined();
+		expect(v2.webhook).toBeInstanceOf(Function);
+		expect(v2.webhookMethods?.default?.create).toBeInstanceOf(Function);
+	});
+});

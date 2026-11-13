@@ -1245,6 +1245,31 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(mockRoutingNodeInstance.runNode).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockData });
 		});
+
+		it('should pass through input data for a declarative webhook trigger with requestDefaults', async () => {
+			mockNodeType.webhook = vi.fn();
+			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.description.requestDefaults = {};
+			mockNodeType.description.trigger = {
+				type: 'webhook',
+				lifecycle: { create: { routing: { request: { method: 'POST', url: '/hooks' } } } },
+			};
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockRoutingNode).not.toHaveBeenCalled();
+			expect(result).toEqual({ data: mockExecutionData.data.main });
+		});
 	});
 
 	describe('fallback routing node handling', () => {

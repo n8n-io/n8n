@@ -264,6 +264,18 @@ describe('shouldAssignExecuteMethod', () => {
 		expect(shouldAssignExecuteMethod(nodeType)).toBe(true);
 	});
 
+	it('should return false for a declarative webhook trigger with requestDefaults', () => {
+		const nodeType = {
+			description: {
+				requestDefaults: {},
+				trigger: { type: 'webhook', lifecycle: {} },
+			},
+			webhook: vi.fn(),
+		} as unknown as INodeType;
+
+		expect(shouldAssignExecuteMethod(nodeType)).toBe(false);
+	});
+
 	it('should return false when node has methods and is not declarative', () => {
 		const nodeType = {
 			methods: {},
