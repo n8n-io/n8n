@@ -1,4 +1,5 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentSessionThread, AgentSessionTurn } from './agent-context.contracts';
 
@@ -8,13 +9,22 @@ type TimelineEvent = NonNullable<AgentSessionTurn['timeline']>[number];
 export const PREVIEW_CONTEXT_OPEN_TAG = '<preview_session_context>';
 export const PREVIEW_CONTEXT_CLOSE_TAG = '</preview_session_context>';
 
-const MAX_TEXT_CHARS = 4_000;
-const MAX_TOOL_VALUE_CHARS = 2_000;
+/** Maximum characters in one page of a full transcript. */
+export const FULL_TRANSCRIPT_PAGE_CHARS = 100_000;
+
 const MAX_BLOCK_CHARS = 100_000;
 const TRUNCATION_FOOTER = '… [truncated]';
 
-function truncate(value: string, max: number): string {
-	if (value.length <= max) return value;
+/** Per-value limits. `undefined` keeps every value complete. */
+interface ValueLimits {
+	text: number;
+	toolValue: number;
+}
+
+const COMPACT_LIMITS: ValueLimits = { text: 4_000, toolValue: 2_000 };
+
+function truncate(value: string, max: number | undefined): string {
+	if (max === undefined || value.length <= max) return value;
 	return value.slice(0, max) + TRUNCATION_FOOTER;
 }
 
@@ -24,7 +34,7 @@ function truncateBlockToFit(value: string, max: number): string | null {
 	return value.slice(0, max - TRUNCATION_FOOTER.length) + TRUNCATION_FOOTER;
 }
 
-function stringifyToolValue(value: unknown): string {
+function stringifyToolValue(value: unknown, limits: ValueLimits | undefined): string {
 	if (value === undefined) return '(none)';
 	let serialized: string;
 	try {
@@ -32,10 +42,10 @@ function stringifyToolValue(value: unknown): string {
 	} catch {
 		serialized = String(value);
 	}
-	return truncate(serialized, MAX_TOOL_VALUE_CHARS);
+	return truncate(serialized, limits?.toolValue);
 }
 
-function formatInput(message: AgentPersistedMessageDto): string {
+function formatInput(message: AgentPersistedMessageDto, limits: ValueLimits | undefined): string {
 	const text = message.content
 		.flatMap((part) => {
 			if (part.type === 'text') return [part.text];
@@ -43,34 +53,38 @@ function formatInput(message: AgentPersistedMessageDto): string {
 			return [];
 		})
 		.join('\n');
-	return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+	return `User: ${truncate(text, limits?.text)}`;
 }
 
-function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn): string {
+function formatTimelineEvent(
+	event: TimelineEvent,
+	execution: AgentSessionTurn,
+	limits: ValueLimits | undefined,
+): string {
 	if (event.type === 'input') {
 		const message = execution.inputMessages?.find(({ id }) => id === event.messageId);
-		return message ? formatInput(message) : '';
+		return message ? formatInput(message, limits) : '';
 	}
 	if (event.type === 'background-task-signal') {
-		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
+		return `Background task results received: ${stringifyToolValue(event.signal.tasks, limits)}`;
 	}
 	if (event.type === 'text') {
-		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+		return `Assistant: ${truncate(event.content, limits?.text)}`;
 	}
 	if (event.type === 'reasoning') {
-		return `Reasoning: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+		return `Reasoning: ${truncate(event.content, limits?.text)}`;
 	}
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
 	}
 	if (event.type === 'hitl-response') {
-		return `Human response: ${stringifyToolValue(event.response)}`;
+		return `Human response: ${stringifyToolValue(event.response, limits)}`;
 	}
 	if (event.type === 'guardrail') {
 		return `[stopped by guardrail ${event.code}]`;
 	}
 	if (event.type === 'host-event') {
-		return `Host event ${event.name}: ${stringifyToolValue(event.payload)}`;
+		return `Host event ${event.name}: ${stringifyToolValue(event.payload, limits)}`;
 	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [
@@ -83,12 +97,12 @@ function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn):
 	if (event.nodeDisplayName) headerParts.push(`node=${event.nodeDisplayName}`);
 	return [
 		headerParts.join(' | '),
-		`  Input: ${stringifyToolValue(event.input)}`,
-		`  Output: ${stringifyToolValue(event.output)}`,
+		`  Input: ${stringifyToolValue(event.input, limits)}`,
+		`  Output: ${stringifyToolValue(event.output, limits)}`,
 	].join('\n');
 }
 
-function formatExecution(execution: AgentSessionTurn): string {
+function formatExecution(execution: AgentSessionTurn, limits: ValueLimits | undefined): string {
 	const headerParts = [`status=${execution.status}`];
 	if (execution.model) headerParts.push(`model=${execution.model}`);
 	headerParts.push(`duration=${execution.duration}ms`);
@@ -101,13 +115,13 @@ function formatExecution(execution: AgentSessionTurn): string {
 			execution.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
 		);
 		for (const message of execution.inputMessages) {
-			if (!steeredIds.has(message.id)) lines.push(formatInput(message));
+			if (!steeredIds.has(message.id)) lines.push(formatInput(message, limits));
 		}
 	} else if (execution.userMessage !== null) {
-		lines.push(`User: ${truncate(execution.userMessage, MAX_TEXT_CHARS)}`);
+		lines.push(`User: ${truncate(execution.userMessage, limits?.text)}`);
 	}
 	for (const event of execution.timeline ?? []) {
-		const line = formatTimelineEvent(event, execution);
+		const line = formatTimelineEvent(event, execution, limits);
 		if (line) lines.push(line);
 	}
 	return lines.join('\n');
@@ -152,6 +166,32 @@ function continuesExecution(previous: AgentSessionTurn, current: AgentSessionTur
 	return current.userMessage === null;
 }
 
+function scopeExecutions(
+	executions: AgentSessionTurn[],
+	executionId: string | undefined,
+): AgentSessionTurn[] | null {
+	return executionId === undefined ? executions : selectTurnExecutions(executions, executionId);
+}
+
+function formatPrefix(
+	thread: AgentSessionThread,
+	scoped: AgentSessionTurn[],
+	executionId: string | undefined,
+): string {
+	const scopeLabel = executionId === undefined ? 'whole session' : 'single turn';
+	const header =
+		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
+		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${scoped.length}`;
+
+	return [
+		PREVIEW_CONTEXT_OPEN_TAG,
+		header,
+		'',
+		'The user shared this transcript of a real conversation with the target agent',
+		'so you can assess its behavior and improve its configuration.',
+	].join('\n');
+}
+
 /**
  * Format a preview chat session (or single turn) into a markdown
  * block for injection into a builder chat message. Returns `null` when
@@ -163,22 +203,10 @@ export function formatPreviewSessionContext(
 	executions: AgentSessionTurn[],
 	executionId?: string,
 ): string | null {
-	const scoped =
-		executionId === undefined ? executions : selectTurnExecutions(executions, executionId);
+	const scoped = scopeExecutions(executions, executionId);
 	if (scoped === null) return null;
 
-	const scopeLabel = executionId === undefined ? 'whole session' : 'single turn';
-	const header =
-		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
-		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${scoped.length}`;
-
-	const prefix = [
-		PREVIEW_CONTEXT_OPEN_TAG,
-		header,
-		'',
-		'The user shared this transcript of a real conversation with the target agent',
-		'so you can assess its behavior and improve its configuration.',
-	].join('\n');
+	const prefix = formatPrefix(thread, scoped, executionId);
 	const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
 	const includedNewestFirst: string[] = [];
 	let includedLength = 0;
@@ -186,7 +214,7 @@ export function formatPreviewSessionContext(
 	let omittedEarlierTurns = 0;
 
 	for (let i = scoped.length - 1; i >= 0; i--) {
-		const formatted = `\n${formatExecution(scoped[i])}`;
+		const formatted = `\n${formatExecution(scoped[i], COMPACT_LIMITS)}`;
 		const projectedLength = prefix.length + includedLength + formatted.length + closing.length;
 		if (projectedLength > MAX_BLOCK_CHARS) {
 			boundaryTurn = formatted;
@@ -238,4 +266,116 @@ export function formatPreviewSessionContext(
 	}
 
 	return prefix + includedTurns.join('') + footer + closing;
+}
+
+export type FullSessionContextPage =
+	| { ok: true; transcript: string; nextCursor: string | null }
+	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' };
+
+interface TranscriptCursor {
+	/** The `executionId` scope that the cursor belongs to. */
+	scope: string | null;
+	/** The segment to continue in: `header`, `footer`, or `turn:<executionId>`. */
+	segment: string;
+	/** The character offset in the segment. */
+	offset: number;
+}
+
+function encodeTranscriptCursor(cursor: TranscriptCursor): string {
+	return Buffer.from(JSON.stringify(cursor)).toString('base64url');
+}
+
+function decodeTranscriptCursor(cursor: string): TranscriptCursor | null {
+	try {
+		const parsed: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+		if (
+			isRecord(parsed) &&
+			(parsed.scope === null || typeof parsed.scope === 'string') &&
+			typeof parsed.segment === 'string' &&
+			typeof parsed.offset === 'number' &&
+			Number.isSafeInteger(parsed.offset) &&
+			parsed.offset >= 0
+		) {
+			return { scope: parsed.scope, segment: parsed.segment, offset: parsed.offset };
+		}
+	} catch {
+		// Reported below as an invalid cursor.
+	}
+	return null;
+}
+
+/** Moves a slice end back by one when it would split a UTF-16 surrogate pair. */
+function sliceEndOutsideSurrogatePair(value: string, end: number, start: number): number {
+	if (end <= start || end >= value.length) return end;
+	const code = value.charCodeAt(end - 1);
+	return code >= 0xd800 && code <= 0xdbff ? end - 1 : end;
+}
+
+/**
+ * Format one page of the complete preview session transcript. Values are not
+ * truncated and no turn is left out. The full transcript is split into pages
+ * of at most `maxChars` characters, so a single value can span many pages.
+ * Concatenate the `transcript` of each page in order to get the complete
+ * transcript. `nextCursor` is `null` on the last page.
+ *
+ * The cursor points at a turn by its execution ID, so turns that are added
+ * to the session between two calls do not move the position.
+ */
+export function formatFullSessionContextPage(
+	thread: AgentSessionThread,
+	executions: AgentSessionTurn[],
+	options: { executionId?: string; cursor?: string; maxChars?: number } = {},
+): FullSessionContextPage {
+	const { executionId, cursor, maxChars = FULL_TRANSCRIPT_PAGE_CHARS } = options;
+	const scoped = scopeExecutions(executions, executionId);
+	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
+
+	const segments = [
+		{ key: 'header', text: formatPrefix(thread, scoped, executionId) },
+		...scoped.map((execution) => ({
+			key: `turn:${execution.id}`,
+			text: `\n${formatExecution(execution, undefined)}`,
+		})),
+		{ key: 'footer', text: `\n${PREVIEW_CONTEXT_CLOSE_TAG}` },
+	];
+
+	let index = 0;
+	let offset = 0;
+	if (cursor !== undefined) {
+		const decoded = decodeTranscriptCursor(cursor);
+		if (decoded === null || decoded.scope !== (executionId ?? null)) {
+			return { ok: false, reason: 'invalid_cursor' };
+		}
+		index = segments.findIndex(({ key }) => key === decoded.segment);
+		if (index === -1) return { ok: false, reason: 'invalid_cursor' };
+		offset = decoded.offset;
+	}
+
+	let transcript = '';
+	while (index < segments.length) {
+		const { text } = segments[index];
+		const budget = maxChars - transcript.length;
+		if (text.length - offset <= budget) {
+			if (offset < text.length) transcript += text.slice(offset);
+			index++;
+			offset = 0;
+			continue;
+		}
+		let end = sliceEndOutsideSurrogatePair(text, offset + budget, offset);
+		// Always make progress on an empty page, even if that splits a surrogate pair.
+		if (end === offset && transcript.length === 0) end = offset + budget;
+		transcript += text.slice(offset, end);
+		offset = end;
+		break;
+	}
+
+	const nextCursor =
+		index < segments.length
+			? encodeTranscriptCursor({
+					scope: executionId ?? null,
+					segment: segments[index].key,
+					offset,
+				})
+			: null;
+	return { ok: true, transcript, nextCursor };
 }

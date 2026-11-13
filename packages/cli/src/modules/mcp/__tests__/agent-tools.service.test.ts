@@ -1909,6 +1909,119 @@ describe('McpAgentToolsService', () => {
 				message: 'Session "missing" not found',
 			});
 		});
+
+		describe('output=full', () => {
+			const longText = `${'t'.repeat(9_000)}-end`;
+			const longOutput = `${'o'.repeat(180_000)}-end`;
+			const longTurn = (id: string, userMessage: string | null) => ({
+				...turn(id),
+				userMessage,
+				timeline: [
+					{ ...turn(id).timeline![0], output: { longOutput } },
+					{ type: 'text' as const, content: `${longText} ${id}`, timestamp: 3 },
+				],
+			});
+			const longSession: AgentSessionDetail = {
+				...sessionDetail,
+				executions: [
+					longTurn('execution-1', 'First'),
+					longTurn('execution-2', 'Second'),
+					longTurn('execution-3', null),
+					longTurn('execution-4', 'Third'),
+				],
+			};
+
+			async function readAllPages(args: Record<string, unknown>) {
+				const pages: Array<{ transcript: string; nextCursor: string | null }> = [];
+				let cursor: string | undefined;
+				do {
+					const result = await callTool('get_agent_session', {
+						agentId: 'agent-1',
+						sessionId: 'session-1',
+						...args,
+						...(cursor ? { cursor } : {}),
+					});
+					expect(result.structuredContent.ok).toBe(true);
+					const page = result.structuredContent as {
+						transcript: string;
+						nextCursor: string | null;
+					};
+					pages.push(page);
+					cursor = page.nextCursor ?? undefined;
+				} while (cursor !== undefined && pages.length < 50);
+				return pages;
+			}
+
+			it('keeps compact output as the default', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+
+				const result = await callTool('get_agent_session', {
+					agentId: 'agent-1',
+					sessionId: 'session-1',
+				});
+
+				expect(result.structuredContent).not.toHaveProperty('nextCursor');
+				expect(result.structuredContent.transcript).toContain('… [truncated]');
+			});
+
+			it('returns the complete session over several pages', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+
+				const pages = await readAllPages({ output: 'full' });
+
+				expect(pages.length).toBeGreaterThan(1);
+				expect(pages.at(-1)!.nextCursor).toBeNull();
+				for (const page of pages) expect(page.transcript.length).toBeLessThanOrEqual(100_000);
+				const transcript = pages.map((page) => page.transcript).join('');
+				expect(transcript).toContain('scope: whole session, turns: 4');
+				expect(transcript.match(/## Turn/g)).toHaveLength(4);
+				expect(transcript.split(JSON.stringify({ longOutput })).length - 1).toBe(4);
+				expect(transcript).toContain(`Assistant: ${longText} execution-1`);
+				expect(transcript).not.toContain('… [truncated]');
+				expect(agentContextService.readSession).toHaveBeenCalledTimes(pages.length);
+			});
+
+			it('scopes full pages to the selected turn and its resumed parts', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+
+				const pages = await readAllPages({ output: 'full', executionId: 'execution-3' });
+				const transcript = pages.map((page) => page.transcript).join('');
+
+				expect(transcript).toContain('scope: single turn, turns: 2');
+				expect(transcript).toContain('User: Second');
+				expect(transcript).toContain(`Assistant: ${longText} execution-2`);
+				expect(transcript).toContain(`Assistant: ${longText} execution-3`);
+				expect(transcript).not.toContain('First');
+				expect(transcript).not.toContain('Third');
+			});
+
+			it('reports an unknown turn', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+
+				const result = await callTool('get_agent_session', {
+					agentId: 'agent-1',
+					sessionId: 'session-1',
+					executionId: 'execution-9',
+					output: 'full',
+				});
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+			});
+
+			it('reports an invalid cursor', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+
+				const result = await callTool('get_agent_session', {
+					agentId: 'agent-1',
+					sessionId: 'session-1',
+					cursor: 'not-a-cursor',
+				});
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+			});
+		});
 	});
 
 	describe('discover_agent_assets', () => {
