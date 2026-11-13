@@ -514,23 +514,18 @@ describe('OpenAIChatModel', () => {
 				expect(requests.httpRequest).toHaveBeenCalledTimes(1);
 			});
 
-			it('should fail an aborted request with the cancellation', async () => {
-				const cancellation = new Error('canceled');
-				const requests = {
-					...createRequests(),
-					// Like the n8n request helper, reject at once when the signal is aborted.
-					httpRequest: vi.fn<Requests['httpRequest']>(async (...args) => {
-						throw args[4]?.aborted ? cancellation : rejection;
-					}),
-				};
+			it('should not retry an aborted request', async () => {
+				const requests = createRequests();
 				const controller = new AbortController();
-				controller.abort();
+				const reason = new Error('Stopped by the caller');
+				controller.abort(reason);
 
 				const result = new OpenAIChatModel('gpt-4o', requests, { baseURL }).generate(history, {
 					abortSignal: controller.signal,
 				});
 
-				await expect(result).rejects.toBe(cancellation);
+				await expect(result).rejects.toBe(reason);
+				expect(requests.httpRequest).toHaveBeenCalledTimes(1);
 			});
 		});
 

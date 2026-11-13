@@ -481,6 +481,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 	private async sendWithReasoningFallback<T>(
 		body: OpenAIResponsesRequest,
+		abortSignal: ChatModelConfig['abortSignal'],
 		send: (body: OpenAIResponsesRequest) => Promise<T>,
 	): Promise<T> {
 		const input = typeof body.input === 'string' ? [] : body.input;
@@ -488,6 +489,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		try {
 			return await send(body);
 		} catch {
+			abortSignal?.throwIfAborted();
 			// OpenAI only decrypts reasoning for the organization that created it, so
 			// after an API key change it rejects every later turn. Send it once without.
 			return await send({ ...body, input: input.filter((item) => !isReasoningInput(item)) });
@@ -498,6 +500,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
 		const response = await this.sendWithReasoningFallback(
 			this.buildRequestBody(messages, merged, false),
+			merged.abortSignal,
 			async (body) =>
 				await this.requests.httpRequest(
 					'POST',
@@ -574,6 +577,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
 		const streamResponse = await this.sendWithReasoningFallback(
 			this.buildRequestBody(messages, merged, true),
+			merged.abortSignal,
 			async (body) =>
 				await this.requests.openStream(
 					'POST',
