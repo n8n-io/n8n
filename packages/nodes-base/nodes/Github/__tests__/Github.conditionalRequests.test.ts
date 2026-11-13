@@ -1,17 +1,24 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import jwt from 'jsonwebtoken';
+import { getRequestHelperFunctions } from 'n8n-core/dist/execution-engine/node-execution-context/utils/request-helper-functions';
 import type {
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeParameters,
+	IWorkflowExecuteAdditionalData,
 	JsonObject,
+	Workflow,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, ObservableObject } from 'n8n-workflow';
 import nock from 'nock';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { GithubAppApi } from '../../../credentials/GithubAppApi.credentials';
 import { Github } from '../Github.node';
+import { pullRequestCache } from '../pull-request-cache';
 
 const server = 'https://api.github.com';
 const endpoint = '/repos/test-owner/test-repo/pulls';
@@ -54,6 +61,13 @@ describe('GitHub conditional pull request reads', () => {
 			data.map((item) => ({ ...item, pairedItem: itemData })),
 		);
 		const client = Container.get(OutboundHttp).requests({ useDefaultSsrfPolicy: 'unsafe' });
+		context.helpers.httpRequestWithAuthentication.mockImplementation(async (_type, options) => {
+			try {
+				return await client.request({ ...options, url: String(options.url) });
+			} catch (error) {
+				throw new NodeApiError(context.getNode(), error as JsonObject);
+			}
+		});
 		context.helpers.requestWithAuthentication.mockImplementation(async (_type, options) => {
 			try {
 				return await client.requestLegacy({
@@ -73,14 +87,136 @@ describe('GitHub conditional pull request reads', () => {
 	}
 
 	beforeEach(() => {
+		pullRequestCache.clear();
 		staticData = {};
 	});
 
 	afterEach(() => {
 		const pending = nock.pendingMocks();
 		nock.cleanAll();
+		vi.restoreAllMocks();
 		expect(pending).toEqual([]);
 	});
+
+	function useGitHubAppAuthentication(context: ReturnType<typeof createContext>) {
+		const credentials: ICredentialDataDecryptedObject = {
+			server,
+			appId: '123',
+			installationId: '456',
+			privateKey: 'test-key',
+			accessToken: 'stored-token',
+		};
+		const node = context.getNode();
+		node.credentials = { githubAppApi: { id: 'app-credential', name: 'GitHub App' } };
+		const getNodeParameter = context.getNodeParameter.getMockImplementation()!;
+		context.getNodeParameter.mockImplementation((name, index, fallback) =>
+			name === 'authentication' ? 'githubAppApi' : getNodeParameter(name, index, fallback),
+		);
+		context.getCredentials.mockResolvedValue(credentials);
+		const additionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+		additionalData.evalLlmMockHandler = undefined;
+		additionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		const credentialWrites = vi.fn();
+		const app = new GithubAppApi();
+		additionalData.credentialsHelper.preAuthentication.mockImplementation(
+			async (requestContext, data, _type, _node, credentialsExpired) => {
+				if (data.accessToken && !credentialsExpired) return undefined;
+				const updated = await app.preAuthentication.call(requestContext, data);
+				credentialWrites(updated);
+				return updated;
+			},
+		);
+		additionalData.credentialsHelper.authenticate.mockImplementation(
+			async (data, _type, options) => ({
+				...options,
+				headers: { ...options.headers, Authorization: `Bearer ${data.accessToken}` },
+			}),
+		);
+		const helpers = getRequestHelperFunctions(mock<Workflow>(), node, additionalData);
+		context.helpers.httpRequest = helpers.httpRequest;
+		context.helpers.httpRequestWithAuthentication = helpers.httpRequestWithAuthentication;
+		context.helpers.requestWithAuthentication = helpers.requestWithAuthentication;
+		return {
+			credentialWrites,
+			preAuthentication: additionalData.credentialsHelper.preAuthentication,
+		};
+	}
+
+	it('revalidates a GitHub App read once without refreshing a stored token', async () => {
+		const context = createContext();
+		const { credentialWrites, preAuthentication } = useGitHubAppAuthentication(context);
+		nock(server)
+			.matchHeader('authorization', 'Bearer stored-token')
+			.get(`${endpoint}/42`)
+			.reply(200, pullRequest, { ETag: etag });
+		const firstOutput = await new Github().execute.call(context);
+		preAuthentication.mockClear();
+		nock(server)
+			.matchHeader('authorization', 'Bearer stored-token')
+			.matchHeader('if-none-match', etag)
+			.get(`${endpoint}/42`)
+			.reply(304);
+
+		expect(await new Github().execute.call(context)).toEqual(firstOutput);
+		expect(preAuthentication).toHaveBeenCalledTimes(1);
+		expect(preAuthentication).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.anything(),
+			'githubAppApi',
+			context.getNode(),
+			false,
+		);
+		expect(credentialWrites).not.toHaveBeenCalled();
+	});
+
+	it('refreshes a GitHub App token after a 401 and revalidates the cached body', async () => {
+		vi.spyOn(jwt, 'sign').mockImplementation(() => 'test-app-jwt');
+		const context = createContext();
+		const { credentialWrites } = useGitHubAppAuthentication(context);
+		nock(server).get(`${endpoint}/42`).reply(200, pullRequest, { ETag: etag });
+		const firstOutput = await new Github().execute.call(context);
+		nock(server)
+			.matchHeader('authorization', 'Bearer stored-token')
+			.matchHeader('if-none-match', etag)
+			.get(`${endpoint}/42`)
+			.reply(401, { message: 'Token expired' });
+		nock(server)
+			.matchHeader('authorization', 'Bearer test-app-jwt')
+			.post('/app/installations/456/access_tokens')
+			.reply(201, { token: 'refreshed-token' });
+		nock(server)
+			.matchHeader('authorization', 'Bearer refreshed-token')
+			.matchHeader('if-none-match', etag)
+			.get(`${endpoint}/42`)
+			.reply(304);
+
+		expect(await new Github().execute.call(context)).toEqual(firstOutput);
+		expect(credentialWrites).toHaveBeenCalledTimes(1);
+	});
+
+	it.each([true, false])(
+		'keeps a newer cursor when an older read finishes last (ETag: %s)',
+		async (hasEtag) => {
+			const stored = { global: { cursor: 'old' }, 'node:GitHub': {} };
+			const olderSnapshot = ObservableObject.create(jsonParse<IDataObject>(JSON.stringify(stored)));
+			const newerSnapshot = ObservableObject.create(jsonParse<IDataObject>(JSON.stringify(stored)));
+			const olderContext = createContext();
+			olderContext.getWorkflowStaticData.mockReturnValue(
+				olderSnapshot['node:GitHub'] as IDataObject,
+			);
+			nock(server)
+				.get(`${endpoint}/42`)
+				.reply(200, pullRequest, hasEtag ? { ETag: etag } : {});
+			const olderRead = new Github().execute.call(olderContext);
+			(newerSnapshot.global as IDataObject).cursor = 'new';
+			let persisted = newerSnapshot;
+			await olderRead;
+			if (olderSnapshot.__dataChanged) persisted = olderSnapshot;
+
+			expect(olderSnapshot.__dataChanged).toBe(false);
+			expect(persisted.global).toEqual({ cursor: 'new' });
+		},
+	);
 
 	it.each([
 		{ resource: 'pullRequest', operation: 'get', path: `${endpoint}/42`, body: pullRequest },
@@ -95,7 +231,7 @@ describe('GitHub conditional pull request reads', () => {
 		nock(server).get(path).query(true).reply(200, body, { ETag: etag });
 		const firstOutput = await execute({ resource, operation });
 		expect(firstOutput[0].map((item) => item.json)).toEqual([pullRequest]);
-		// Model the static data saved between scheduled executions.
+		// Each execution loads its own static-data snapshot.
 		staticData = jsonParse<IDataObject>(JSON.stringify(staticData));
 		nock(server).matchHeader('if-none-match', etag).get(path).query(true).reply(304);
 

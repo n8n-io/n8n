@@ -1,8 +1,9 @@
-import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { githubApiRequest } from '../GenericFunctions';
+import { pullRequestCache } from '../pull-request-cache';
 
 const pullRequest = { number: 42, title: 'Update documentation', state: 'open' };
 
@@ -22,7 +23,6 @@ describe.each([
 	},
 ])('githubApiRequest conditional requests ($operation)', ({ endpoint, query, body }) => {
 	const etag = 'W/"unchanged-pull-requests"';
-	let staticData: IDataObject;
 	let conditionalHeaders: unknown[];
 	let responseStatuses: number[];
 
@@ -37,8 +37,7 @@ describe.each([
 			}),
 		);
 		context.getCredentials.mockResolvedValue({ server: 'https://api.github.com' });
-		context.getWorkflowStaticData.mockReturnValue(staticData);
-		context.helpers.requestWithAuthentication.mockImplementation(
+		context.helpers.httpRequestWithAuthentication.mockImplementation(
 			async (_credentialType, options) => {
 				const conditionalHeader = Object.entries(options.headers ?? {}).find(
 					([name]) => name.toLowerCase() === 'if-none-match',
@@ -49,17 +48,17 @@ describe.each([
 				responseStatuses.push(statusCode);
 				const responseBody = statusCode === 304 ? '' : body;
 				const response = { statusCode, headers: { etag }, body: responseBody };
-				if (statusCode === 304 && options.simple !== false) {
+				if (statusCode === 304) {
 					throw Object.assign(new Error('Not Modified'), { statusCode, response });
 				}
-				return options.resolveWithFullResponse ? response : responseBody;
+				return options.returnFullResponse ? response : responseBody;
 			},
 		);
 		return context;
 	}
 
 	beforeEach(() => {
-		staticData = {};
+		pullRequestCache.clear();
 		conditionalHeaders = [];
 		responseStatuses = [];
 	});
@@ -72,11 +71,11 @@ describe.each([
 		expect(result).toEqual(body);
 		expect(conditionalHeaders).toEqual([undefined]);
 		expect(responseStatuses).toEqual([200]);
-		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'githubApi',
 			expect.objectContaining({
 				method: 'GET',
-				uri: expect.objectContaining({ value: `https://api.github.com${endpoint}` }),
+				url: expect.objectContaining({ value: `https://api.github.com${endpoint}` }),
 				qs: query,
 			}),
 		);
@@ -103,5 +102,36 @@ describe.each([
 		expect(conditionalHeaders).toEqual([undefined, etag]);
 		expect(responseStatuses).toEqual([200, 304]);
 		expect(nextResult).toEqual(body);
+	});
+
+	it('fetches an evicted response and still revalidates a recent response', async () => {
+		for (let page = 0; page <= 100; page++) {
+			await githubApiRequest.call(
+				createExecutionContext(),
+				'GET',
+				endpoint,
+				{},
+				{ ...query, page },
+			);
+		}
+		conditionalHeaders = [];
+		responseStatuses = [];
+
+		for (const page of [0, 100]) {
+			const result = await githubApiRequest.call(
+				createExecutionContext(),
+				'GET',
+				endpoint,
+				{},
+				{
+					...query,
+					page,
+				},
+			);
+			expect(result).toEqual(body);
+		}
+
+		expect(conditionalHeaders).toEqual([undefined, etag]);
+		expect(responseStatuses).toEqual([200, 304]);
 	});
 });
