@@ -1,7 +1,7 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -39,7 +39,7 @@ const config = {
 			name: 'Send Email',
 			node: { nodeType: 'n8n-nodes-base.emailSend', nodeTypeVersion: 2, nodeParameters: {} },
 		},
-		{ type: 'workflow', name: 'Create ticket', workflow: 'wf-1' },
+		{ type: 'workflow', name: 'Create ticket', workflow: 'Create ticket', workflowId: 'wf-1' },
 		{ type: 'custom', id: 'custom-1' },
 	],
 	mcpServers: [{ name: 'linear', url: 'https://mcp.linear.app/mcp', transport: 'sse' }],
@@ -55,10 +55,12 @@ function setup({
 	flagOn = true,
 	backend,
 	queueMode = false,
+	engineV2 = false,
 }: {
 	flagOn?: boolean;
 	backend?: SimulationBackend;
 	queueMode?: boolean;
+	engineV2?: boolean;
 } = {}) {
 	const flagGate = mock<SafeTestingFlagGate>();
 	flagGate.isEnabled.mockResolvedValue(flagOn);
@@ -74,6 +76,10 @@ function setup({
 	const skillRefs = mock<AgentSkillRefsService>();
 	skillRefs.refsForDraft.mockResolvedValue([] as never);
 	const executionRepository = mock<AgentExecutionRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	workflowRepository.find.mockResolvedValue([
+		{ id: 'wf-1', settings: engineV2 ? { engineType: 'v2' } : {} } as WorkflowEntity,
+	]);
 	const service = new SimulationSessionService(
 		mock<Logger>(),
 		flagGate,
@@ -82,6 +88,7 @@ function setup({
 		agentRepository,
 		skillRefs,
 		executionRepository,
+		workflowRepository,
 	);
 	return { service, executionRepository, flagGate };
 }
@@ -176,6 +183,36 @@ describe('SimulationSessionService', () => {
 		]);
 		expect(backend.describeTools).toHaveBeenCalledWith(
 			expect.objectContaining({ tools: [expect.objectContaining({ toolName: 'Send_Slack' })] }),
+		);
+	});
+
+	it('blocks a workflow tool whose workflow runs on Engine v2', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend, engineV2: true });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual({
+			toolName: 'create-ticket',
+			kind: 'workflow',
+			testability: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'Workflows that run on Engine v2 cannot run in a test run yet.',
+		});
+		expect(backend.describeTools).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tools: expect.not.arrayContaining([expect.objectContaining({ toolName: 'create-ticket' })]),
+			}),
+		);
+	});
+
+	it('lets the simulator describe a workflow tool that runs on the default engine', async () => {
+		const { service } = setup({ backend: llmBackend() });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual(
+			expect.objectContaining({ toolName: 'create-ticket', testability: 'simulated' }),
 		);
 	});
 

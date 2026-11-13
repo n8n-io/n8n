@@ -342,7 +342,11 @@ describe('SimulationSession', () => {
 
 	it('blocks a workflow tool whose run would leave this process or paused', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
-		const session = new SimulationSession({ testChatId: 't', world });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
+		});
 		const handler = vi.fn(async () => {
 			throw new InstrumentedRunUnsupportedError('This workflow runs on Engine v2.');
 		});
