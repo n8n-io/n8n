@@ -369,6 +369,10 @@ export default defineNode<DataTableParameters>({
 						return { columnName: name, condition: 'eq', value: f.condition === 'isTrue' };
 					}
 					let value = f.keyValue;
+					// v1 gives the service a Date object for a date column and the database compares the
+					// column as a time. A Date is a number in the compiled subset, and its JSON form is
+					// its ISO text (spec 4.5), which is what a Date expression gives here. The text of a
+					// date string becomes that same ISO text, so the service compares one form only.
 					if (type === 'date' && typeof value === 'string') {
 						const parsed = new Date(value);
 						if (isNaN(parsed.getTime())) {

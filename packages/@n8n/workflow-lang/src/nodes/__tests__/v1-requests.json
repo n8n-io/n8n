@@ -5427,6 +5427,316 @@
 			}
 		]
 	},
+	"dataTable row.get, gt on a date column": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "seen",
+									"condition": "gt",
+									"value": "2024-03-01T00:00:00.000Z"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 1,
+				"active": true,
+				"seen": "2024-01-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 2,
+				"active": true,
+				"seen": "2024-02-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 3,
+				"active": true,
+				"seen": "2024-04-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get, lt on a date column": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "seen",
+									"condition": "lt",
+									"value": "2024-03-01T00:00:00.000Z"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 1,
+				"active": true,
+				"seen": "2024-01-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 2,
+				"active": true,
+				"seen": "2024-02-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 3,
+				"active": true,
+				"seen": "2024-04-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get, gte on a date column": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "seen",
+									"condition": "gte",
+									"value": "2024-03-01T00:00:00.000Z"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 1,
+				"active": true,
+				"seen": "2024-01-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 2,
+				"active": true,
+				"seen": "2024-02-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 3,
+				"active": true,
+				"seen": "2024-04-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get, gt on a date column with ISO date-time text": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "seen",
+									"condition": "gt",
+									"value": "2024-03-01T00:00:00.000Z"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 1,
+				"active": true,
+				"seen": "2024-01-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 2,
+				"active": true,
+				"seen": "2024-02-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 3,
+				"active": true,
+				"seen": "2024-04-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
+	"dataTable row.get, gte on a string column": {
+		"requests": [],
+		"services": [
+			{
+				"service": "dataTable",
+				"op": "getColumns",
+				"args": {
+					"dataTableId": "tbl1"
+				}
+			},
+			{
+				"service": "dataTable",
+				"op": "getManyRowsAndCount",
+				"args": {
+					"dataTableId": "tbl1",
+					"options": {
+						"skip": 0,
+						"take": 1000,
+						"filter": {
+							"type": "or",
+							"filters": [
+								{
+									"columnName": "email",
+									"condition": "gte",
+									"value": "b@x.io"
+								}
+							]
+						}
+					}
+				}
+			}
+		],
+		"output": [
+			{
+				"id": 1,
+				"email": "a@x.io",
+				"score": 1,
+				"active": true,
+				"seen": "2024-01-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 2,
+				"email": "b@x.io",
+				"score": 2,
+				"active": true,
+				"seen": "2024-02-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			},
+			{
+				"id": 3,
+				"email": "c@x.io",
+				"score": 3,
+				"active": true,
+				"seen": "2024-04-15T00:00:00.000Z",
+				"createdAt": "2025-01-02T03:04:05.000Z",
+				"updatedAt": "2025-01-02T03:04:05.000Z"
+			}
+		]
+	},
 	"googleSheets sheet.appendOrUpdate updates a matching row": {
 		"requests": [
 			{

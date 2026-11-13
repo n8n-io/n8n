@@ -32,6 +32,46 @@ const schema = [
 	{ id: 'active', displayName: 'active', type: 'boolean', required: false, display: true },
 ];
 
+/** A row of the date cases: `seen` is the ISO text that the service gives for a date cell. */
+const datedRow = (id: number, email: string, seen: string) => ({
+	...row(id, email, id),
+	seen,
+});
+const datedRows = [
+	datedRow(1, 'a@x.io', '2024-01-15T00:00:00.000Z'),
+	datedRow(2, 'b@x.io', '2024-02-15T00:00:00.000Z'),
+	datedRow(3, 'c@x.io', '2024-04-15T00:00:00.000Z'),
+];
+
+/** A fixed instant, in the text that `Date.toJSON` gives. */
+const instant = '2024-03-01T00:00:00.000Z';
+
+/** `get` cases with one condition on `seen`, or on the string column `email`. */
+function dateFilterCases(): EquivalenceCase[] {
+	const get = (name: string, column: string, condition: string, keyValue: unknown) => ({
+		name,
+		type: TYPE,
+		typeVersion: 1.1,
+		parameters: {
+			resource: 'row',
+			operation: 'get',
+			dataTableId: byId,
+			filters: { conditions: [{ keyName: column, condition, keyValue }] },
+			returnAll: true,
+		},
+		responses: [],
+		serviceResults: [columns, { count: datedRows.length, data: datedRows }],
+	});
+	return [
+		get('dataTable row.get, gt on a date column', 'seen', 'gt', '2024-03-01'),
+		get('dataTable row.get, lt on a date column', 'seen', 'lt', '2024-03-01'),
+		get('dataTable row.get, gte on a date column', 'seen', 'gte', '2024-03-01'),
+		// The JSON form of a Date value (spec 4.5), as a Date expression gives it.
+		get('dataTable row.get, gt on a date column with ISO date-time text', 'seen', 'gt', instant),
+		get('dataTable row.get, gte on a string column', 'email', 'gte', 'b@x.io'),
+	];
+}
+
 export const DATA_TABLE_CASES: EquivalenceCase[] = [
 	{
 		name: 'dataTable row.get by id',
@@ -245,4 +285,7 @@ export const DATA_TABLE_CASES: EquivalenceCase[] = [
 		responses: [],
 		serviceResults: [columns, { count: 0, data: [] }],
 	},
+	// Conditions on the date column `seen`. v1 gives the data-table service a Date object, so the
+	// service compares times; rows before and after the value must give different pages.
+	...dateFilterCases(),
 ];
