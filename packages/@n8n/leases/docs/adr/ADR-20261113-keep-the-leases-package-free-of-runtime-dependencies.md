@@ -53,4 +53,4 @@ RFC: https://app.notion.com/p/4055b6e0c94f81bd8f96c22c386c778c
 
 Documentation: https://app.notion.com/p/4165b6e0c94f81b1a074da1a750f16d3
 
-Related ADRs: ADR-20261113-use-a-dedicated-lease-backend-not-the-durable-scheduler
+Related ADRs: -
