@@ -1,8 +1,8 @@
+import { getN8nVersion } from '@n8n/backend-common';
 import { jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { N8N_VERSION } from '@/constants';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
@@ -112,7 +112,7 @@ export async function writeImportManifest(options: {
 
 	const written = {
 		packageFormatVersion: '1',
-		sourceN8nVersion: N8N_VERSION,
+		sourceN8nVersion: getN8nVersion(),
 		sourceId,
 		...collections,
 		...(variables.length > 0 ? { variables } : {}),

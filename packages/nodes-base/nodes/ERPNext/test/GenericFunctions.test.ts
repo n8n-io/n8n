@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { erpNextApiRequestAllItems } from '../GenericFunctions';
@@ -37,7 +38,7 @@ describe('ERPNext > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'data',
 				'GET',
-				'/api/resource/Customer',
+				requestPath`/api/resource/Customer`,
 				{},
 			)) as IDataObject[];
 

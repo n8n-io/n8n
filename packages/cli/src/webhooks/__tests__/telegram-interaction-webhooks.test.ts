@@ -77,7 +77,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 404 and does not resume when the HMAC does not verify against this instance secret', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', 'a-different-secret');
+		const reference = buildHitlCallbackReference('1', 'a', 'a-different-secret');
 		const res = makeRes();
 
 		const result = await svc.executeWebhook(makeReq(reference), res);
@@ -89,7 +89,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 404 and does not resume when the execution does not exist', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const res = makeRes();
 		executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
@@ -101,7 +101,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 409 and does not resume when the execution is already finished', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const res = makeRes();
 		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({
@@ -119,7 +119,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 409 and does not resume when the execution is running', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const res = makeRes();
 		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({
@@ -137,7 +137,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('resolves the node id from lastNodeExecuted and routes into the shared resume', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
 		const res = makeRes();
 
@@ -171,7 +171,7 @@ describe('TelegramInteractionWebhooks', () => {
 
 		expect(getWebhookExecutionData).toHaveBeenCalledWith(
 			expect.objectContaining({
-				executionId: 'e1',
+				executionId: '1',
 				suffix: 'node-1',
 				lastNodeExecuted: 'Telegram',
 			}),
@@ -179,7 +179,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('flags the request as arriving on this route before routing into the shared resume', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
 		const res = makeRes();
 
@@ -220,7 +220,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('does not flag a request that never reaches the resume step', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', 'a-different-secret');
+		const reference = buildHitlCallbackReference('1', 'a', 'a-different-secret');
 		const req = makeReq(reference);
 
 		await svc.executeWebhook(req, makeRes());
@@ -229,7 +229,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 404 and does not resume when lastNodeExecuted cannot be found in the workflow', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
 		const res = makeRes();
 
@@ -258,7 +258,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 404 and does not resume when the resumed node has no id', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
 		const res = makeRes();
 
@@ -296,7 +296,7 @@ describe('TelegramInteractionWebhooks', () => {
 	});
 
 	it('responds 404 and does not resume when the resumed node is not a Telegram node', async () => {
-		const reference = buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = makeReq(reference);
 		const res = makeRes();
 
@@ -455,7 +455,7 @@ describe('TelegramInteractionWebhooks', () => {
 			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 			await svc.executeWebhook(
-				makeReq(buildHitlCallbackReference('e1', 'a', TEST_HMAC_SECRET)),
+				makeReq(buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET)),
 				makeRes(),
 			);
 

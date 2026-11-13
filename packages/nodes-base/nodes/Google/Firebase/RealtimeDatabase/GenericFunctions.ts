@@ -5,8 +5,23 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestPath, requestUrl } from 'n8n-workflow';
+
+function objectPath(resource: string, decode: boolean): RequestPath {
+	return resource
+		.split('/')
+		.reduce(
+			(path, part) =>
+				part
+					? requestPath`${path}/${decode ? decodePathValue(part) : part}`
+					: requestPath`${path}/`,
+			requestPath``,
+		);
+}
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -17,18 +32,19 @@ export async function googleApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	headers: IDataObject = {},
-	uri: string | null = null,
+	uri: RequestUrl | null = null,
 ): Promise<any> {
 	const { region } = await this.getCredentials('googleFirebaseRealtimeDatabaseOAuth2Api');
+	const decode = this.getNode().typeVersion < 1.1;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		url: uri || `https://${projectId}.${region}/${resource}.json`,
+		url: uri ?? requestUrl`https://${projectId}.${region}${objectPath(resource, decode)}.json`,
 		json: true,
 	};
 
@@ -59,7 +75,7 @@ export async function googleApiRequestAllItems(
 	body: any = {},
 	qs: IDataObject = {},
 	_headers: IDataObject = {},
-	uri: string | null = null,
+	uri: RequestUrl | null = null,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

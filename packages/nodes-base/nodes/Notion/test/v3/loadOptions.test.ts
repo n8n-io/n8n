@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import {
@@ -111,7 +112,7 @@ describe('Notion V3 load options', () => {
 		const result = await getDataSourcePropertiesFromPage.call(context);
 
 		expect(result).toEqual([]);
-		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', '/pages/page-id');
+		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', requestPath`/pages/page-id`);
 		expect(mockGetDataSourceProperties).not.toHaveBeenCalled();
 	});
 });

@@ -1,16 +1,11 @@
-import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
-	type AgentFileDto,
-} from '@n8n/api-types';
+import type { AgentFileDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { isUniqueConstraintError, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { formatMbOrGb } from '@n8n/utils/number/bytes';
 import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -18,6 +13,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
 import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
@@ -64,6 +60,7 @@ export class KnowledgeFileService {
 		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly config: KnowledgeConfig,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('knowledge');
@@ -247,9 +244,9 @@ export class KnowledgeFileService {
 		if (extension === '.pdf') {
 			const extractedText = Buffer.from(await extractPdfText(file.path), 'utf-8');
 			// Extracted text can be larger than the compressed PDF, and the sandbox rejects files above the limit.
-			if (extractedText.byteLength > MAX_AGENT_FILE_SIZE_BYTES) {
+			if (extractedText.byteLength > this.config.maxFileSizeBytes) {
 				throw new KnowledgeUploadError(
-					`The text in "${file.originalname}" is larger than ${MAX_AGENT_FILE_SIZE_MB} MB`,
+					`The text in "${file.originalname}" is larger than ${this.config.maxFileSizeMb} MB`,
 					'file_size',
 				);
 			}
@@ -283,9 +280,9 @@ export class KnowledgeFileService {
 			0,
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
-		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > this.config.maxTotalSizeBytes) {
 			throw new KnowledgeUploadError(
-				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				`Knowledge base limit reached. The total size can't be larger than ${formatMbOrGb(this.config.maxTotalSizeBytes)}.`,
 				'total_limit',
 			);
 		}

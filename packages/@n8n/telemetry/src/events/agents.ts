@@ -677,6 +677,24 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			event_version: z.literal('1'),
 		}),
 	},
+	USER_ARCHIVED_AGENT: {
+		name: 'User archived agent',
+		description:
+			'A user archived an agent. The archive first unpublishes a published agent, which also emits "User unpublished agent". Emitted from `AgentPublishService.archiveAgent`.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
+	USER_UNARCHIVED_AGENT: {
+		name: 'User unarchived agent',
+		description:
+			'A user restored an archived agent. The agent stays unpublished. Emitted from `AgentPublishService.unarchiveAgent`.',
+		properties: z.object({
+			...agentActorIdentity,
+			event_version: z.literal('1'),
+		}),
+	},
 	USER_DISMISSED_AGENT_PUBLISHED_MODAL: {
 		name: 'User dismissed agent published modal',
 		description:

@@ -45,6 +45,55 @@ describe('McpClient', () => {
 		});
 	});
 
+	it('should describe the generic OAuth2 option and credential picker', () => {
+		const { properties, credentials } = new McpClient().description;
+		const authentication = properties.find((property) => property.name === 'authentication');
+
+		expect({
+			authenticationOption: authentication?.options?.find(
+				(option) => 'value' in option && option.value === 'oAuth2Api',
+			),
+			credential: credentials?.find((credential) => credential.name === 'oAuth2Api'),
+			credentialPicker: properties.find((property) => property.name === 'credentials'),
+		}).toMatchInlineSnapshot(`
+			{
+			  "authenticationOption": {
+			    "description": "Use a generic OAuth2 API credential. It has no Resource URL field. If your server needs one, use MCP OAuth2.",
+			    "name": "Generic OAuth2 API",
+			    "value": "oAuth2Api",
+			  },
+			  "credential": {
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "oAuth2Api",
+			        ],
+			      },
+			    },
+			    "name": "oAuth2Api",
+			    "required": true,
+			  },
+			  "credentialPicker": {
+			    "default": "",
+			    "displayName": "Credentials",
+			    "displayOptions": {
+			      "show": {
+			        "authentication": [
+			          "headerAuth",
+			          "bearerAuth",
+			          "mcpOAuth2Api",
+			          "oAuth2Api",
+			          "multipleHeadersAuth",
+			        ],
+			      },
+			    },
+			    "name": "credentials",
+			    "type": "credentials",
+			  },
+			}
+		`);
+	});
+
 	it('should pass the execution cancel signal to connectMcpClientForCredential', async () => {
 		const abort = new AbortController();
 		executeFunctions.getExecutionCancelSignal.mockReturnValue(abort.signal);

@@ -6,11 +6,13 @@
  * changes there do not touch their image, and a rebuild moves the image's tag
  * to a new digest. The image changed when, between two commits, a target's
  * resolved Dockerfile, stage, build args or tags changed, or its Dockerfile
- * content changed. On a PR, a change to a --pr-paths file also counts, so that
- * the PR runs the changed build steps. A dispatch always builds.
+ * content changed. A --paths file or directory that the Dockerfile copies in
+ * (patches, check scripts) counts the same way. On a PR, a change to a
+ * --pr-paths file also counts, so that the PR runs the changed build steps. A
+ * dispatch always builds.
  *
  * Usage: node bake-inputs-changed.mjs --event <github event> --base <commit>
- *   --targets a,b [--pr-paths p,q]
+ *   --targets a,b [--paths p,q] [--pr-paths p,q]
  * Writes changed=true|false to $GITHUB_OUTPUT.
  */
 
@@ -84,7 +86,7 @@ function filesChanged(base, files) {
 	}
 }
 
-function decide({ event, base, targets, prPaths }) {
+function decide({ event, base, targets, paths, prPaths }) {
 	if (event === 'workflow_dispatch') return 'a dispatch always builds';
 	if (!base || /^0+$/.test(base)) return 'no base commit to compare with';
 
@@ -114,6 +116,7 @@ function decide({ event, base, targets, prPaths }) {
 
 	const dockerfiles = [...new Set(Object.values(after).map((input) => input.dockerfile))];
 	if (filesChanged(base, dockerfiles)) return `${dockerfiles.join(', ')} changed`;
+	if (filesChanged(base, paths)) return `${paths.join(', ')} changed`;
 	if (event === 'pull_request' && filesChanged(base, prPaths))
 		return `${prPaths.join(', ')} changed`;
 	return null;
@@ -125,6 +128,7 @@ function main() {
 			event: { type: 'string' },
 			base: { type: 'string' },
 			targets: { type: 'string' },
+			paths: { type: 'string' },
 			'pr-paths': { type: 'string' },
 		},
 	});
@@ -136,6 +140,7 @@ function main() {
 		event: values.event,
 		base: values.base,
 		targets,
+		paths: list(values.paths),
 		prPaths: list(values['pr-paths']),
 	});
 	console.log(reason ? `Build: ${reason}.` : 'Skip: no input of these images changed.');

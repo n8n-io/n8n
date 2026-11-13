@@ -132,6 +132,7 @@ describe('AgentContextService', () => {
 		agentsService.findByProjectId.mockResolvedValue([
 			agent,
 			{ ...agent, id: 'agent-2', name: 'Research Agent', activeVersionId: null },
+			{ ...agent, id: 'agent-3', name: 'Archived Agent', isArchived: true },
 		]);
 
 		const result = await service.createReader(user, 'project-1').lookup({ type: 'agents' });

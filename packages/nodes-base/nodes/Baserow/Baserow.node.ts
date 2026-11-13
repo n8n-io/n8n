@@ -6,6 +6,8 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	type RequestPath,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -166,7 +168,7 @@ export class Baserow implements INodeType {
 				const credentialType = getCredentialType(
 					this.getNodeParameter('authentication', 0) as string,
 				);
-				const endpoint = '/api/applications/';
+				const endpoint = requestPath`/api/applications/`;
 				const databases = (await baserowApiRequest.call(
 					this,
 					'GET',
@@ -180,12 +182,12 @@ export class Baserow implements INodeType {
 				const authentication = this.getNodeParameter('authentication', 0) as string;
 				const credentialType = getCredentialType(authentication);
 
-				let endpoint: string;
+				let endpoint: RequestPath;
 				if (authentication === 'databaseToken') {
-					endpoint = '/api/database/tables/all-tables/';
+					endpoint = requestPath`/api/database/tables/all-tables/`;
 				} else {
 					const databaseId = this.getNodeParameter('databaseId', 0) as string;
-					endpoint = `/api/database/tables/database/${databaseId}/`;
+					endpoint = requestPath`/api/database/tables/database/${databaseId}/`;
 				}
 				const tables = (await baserowApiRequest.call(
 					this,
@@ -201,7 +203,7 @@ export class Baserow implements INodeType {
 					this.getNodeParameter('authentication', 0) as string,
 				);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const endpoint = `/api/database/fields/table/${tableId}/`;
+				const endpoint = requestPath`/api/database/fields/table/${tableId}/`;
 				const fields = (await baserowApiRequest.call(
 					this,
 					'GET',
@@ -263,7 +265,7 @@ export class Baserow implements INodeType {
 				}
 			}
 
-			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
+			const endpoint = requestPath`/api/database/rows/table/${tableId}/batch/`;
 			const response = await baserowApiRequest.call(this, 'POST', endpoint, credentialType, {
 				items: itemsPayload,
 			});
@@ -319,7 +321,7 @@ export class Baserow implements INodeType {
 				}
 			}
 
-			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
+			const endpoint = requestPath`/api/database/rows/table/${tableId}/batch/`;
 			const response = await baserowApiRequest.call(this, 'PATCH', endpoint, credentialType, {
 				items: itemsPayload,
 			});
@@ -354,7 +356,7 @@ export class Baserow implements INodeType {
 				ids = this.getNodeParameter('rowIds', 0) as string[];
 			}
 
-			const endpoint = `/api/database/rows/table/${tableId}/batch-delete/`;
+			const endpoint = requestPath`/api/database/rows/table/${tableId}/batch-delete/`;
 			await baserowApiRequest.call(this, 'POST', endpoint, credentialType, { items: ids });
 
 			const executionData = this.helpers.constructExecutionMetaData(
@@ -406,7 +408,7 @@ export class Baserow implements INodeType {
 						qs.search = search;
 					}
 
-					const endpoint = `/api/database/rows/table/${tableId}/`;
+					const endpoint = requestPath`/api/database/rows/table/${tableId}/`;
 					const rows = (await baserowApiRequestAllItems.call(
 						this,
 						'GET',
@@ -430,7 +432,7 @@ export class Baserow implements INodeType {
 					// https://api.baserow.io/api/redoc/#operation/get_database_table_row
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					const endpoint = requestPath`/api/database/rows/table/${tableId}/${rowId}/`;
 					const row = await baserowApiRequest.call(this, 'GET', endpoint, credentialType);
 
 					mapper.idsToNames(row as Row);
@@ -469,7 +471,7 @@ export class Baserow implements INodeType {
 						}
 					}
 
-					const endpoint = `/api/database/rows/table/${tableId}/`;
+					const endpoint = requestPath`/api/database/rows/table/${tableId}/`;
 					const createdRow = await baserowApiRequest.call(
 						this,
 						'POST',
@@ -516,7 +518,7 @@ export class Baserow implements INodeType {
 						}
 					}
 
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					const endpoint = requestPath`/api/database/rows/table/${tableId}/${rowId}/`;
 					const updatedRow = await baserowApiRequest.call(
 						this,
 						'PATCH',
@@ -540,7 +542,7 @@ export class Baserow implements INodeType {
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
 
-					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
+					const endpoint = requestPath`/api/database/rows/table/${tableId}/${rowId}/`;
 					await baserowApiRequest.call(this, 'DELETE', endpoint, credentialType);
 
 					const executionData = this.helpers.constructExecutionMetaData(

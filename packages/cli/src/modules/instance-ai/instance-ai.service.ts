@@ -28,7 +28,7 @@ import {
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -98,7 +98,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -120,7 +120,10 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
-import { InstanceAiCreditService } from './instance-ai-credit.service';
+import {
+	InstanceAiCreditService,
+	SELF_HEALING_BILLING_USER_ID,
+} from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -1088,7 +1091,8 @@ export class InstanceAiService {
 				signal: abortController.signal,
 				sandbox: this.sandboxService,
 				tracing: this.tracing,
-				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				createProxyRunConfig: async () =>
+					await this.createProxyRunConfig({ id: SELF_HEALING_BILLING_USER_ID }),
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
 				onFinalizing: () => {
@@ -2571,7 +2575,7 @@ export class InstanceAiService {
 					input: traceInput,
 					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
-					n8nVersion: N8N_VERSION,
+					n8nVersion: getN8nVersion(),
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
 					browserExtension,
 				});
@@ -5120,7 +5124,7 @@ export class InstanceAiService {
 				},
 				proxyConfig: baseTracing?.proxyConfig,
 				metadata: {
-					n8n_version: N8N_VERSION || undefined,
+					n8n_version: getN8nVersion() || undefined,
 					operation_name: 'thread_title',
 					trigger: 'run_completed',
 				},

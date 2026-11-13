@@ -1,9 +1,9 @@
+import { setN8nVersion } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants';
 import { NotFoundError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 
@@ -205,6 +205,7 @@ describe('AgentSessionLangSmithExportService', () => {
 
 	beforeEach(() => {
 		batchIngestRunsMock.mockReset();
+		setN8nVersion('1.2.3');
 	});
 
 	it('exports a background signal as a chain event', async () => {
@@ -348,7 +349,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(JSON.stringify(firstRuns)).not.toContain('third-value');
 		expect(JSON.stringify(firstRuns)).not.toContain('deep-boundary-secret');
 		expect(JSON.stringify(firstRuns)).toContain('[REDACTED]');
-		expect(firstRuns[0].extra.metadata.n8nVersion).toBe(N8N_VERSION);
+		expect(firstRuns[0].extra.metadata.n8nVersion).toBe('1.2.3');
 		expect(firstRuns[1].inputs.attachments).toEqual([
 			{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 42 },
 		]);

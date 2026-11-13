@@ -2386,7 +2386,7 @@ async function runWorkflowAction(
 		case 'get-as-code': {
 			const result = await handleGetAsCode(context, workflowInput);
 
-			if (!options.sourceGuidance) return result;
+			if (!options.sourceGuidance || !('filePath' in result)) return result;
 
 			const conflictNote =
 				'status' in result && result.status === 'conflict'

@@ -101,7 +101,7 @@ const firstFile = (runData: IRunData, nodeName: string) =>
 test.describe(
 	'Manual run to a node',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should reuse the results before the destination and run nothing after it @engine:v2', async ({

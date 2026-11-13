@@ -14,7 +14,8 @@ import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
-import { jsonParse, OperationalError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';

@@ -1,9 +1,7 @@
 import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule, LOWEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-
-import { LOWEST_SHUTDOWN_PRIORITY } from '@/constants';
 
 @BackendModule({
 	name: 'otel',

@@ -1,4 +1,5 @@
 import type { INode, IPinData } from 'n8n-workflow';
+import { createSampleFile } from '@n8n/instance-ai';
 import { FORM_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import {
@@ -27,6 +28,20 @@ describe('Instance AI run pin-data planning', () => {
 		).toEqual({
 			'HTTP Request': [{ json: { ok: true } }, { json: { id: 'second' } }],
 		});
+	});
+
+	it('resolves sample-file markers into base64 JSON values and binary properties', () => {
+		const runtime = sdkPinDataToRuntime({
+			'Generate Image': [{ result: { image: { $sampleFile: 'image/jpeg' } } }],
+			'Download File': [{ id: 'file-1', $binary: { data: 'application/pdf' } }],
+		});
+
+		expect(runtime['Generate Image']).toEqual([
+			{ json: { result: { image: createSampleFile('image/jpeg')?.data } } },
+		]);
+		expect(runtime['Download File']).toEqual([
+			{ json: { id: 'file-1' }, binary: { data: createSampleFile('application/pdf') } },
+		]);
 	});
 
 	it('merges workflow pins, verification pins, and trigger input into one run plan', () => {

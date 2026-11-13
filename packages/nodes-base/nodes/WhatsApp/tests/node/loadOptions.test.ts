@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { WHATSAPP_BASE_URL } from '../../GenericFunctions';
@@ -32,7 +33,7 @@ describe('WhatsApp Business Cloud load options', () => {
 			'whatsAppApi',
 			{
 				baseURL: WHATSAPP_BASE_URL,
-				url: 'business-account-id/message_templates',
+				url: requestPath`business-account-id/message_templates`,
 				method: 'GET',
 				qs: { fields: 'name,language' },
 			},
@@ -42,7 +43,7 @@ describe('WhatsApp Business Cloud load options', () => {
 			'whatsAppApi',
 			{
 				baseURL: WHATSAPP_BASE_URL,
-				url: 'business-account-id/message_templates',
+				url: requestPath`business-account-id/message_templates`,
 				method: 'GET',
 				qs: { fields: 'name,language', after: 'next-page' },
 			},

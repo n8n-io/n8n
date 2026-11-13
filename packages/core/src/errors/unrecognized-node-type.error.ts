@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export class UnrecognizedNodeTypeError extends UserError {
 	constructor(packageName: string, nodeType: string) {

@@ -16,6 +16,10 @@
       "types": "./dist/configs/frontend.d.ts",
       "default": "./dist/configs/frontend.js"
     },
+    "./vize": {
+      "types": "./dist/configs/vize.d.ts",
+      "default": "./dist/configs/vize.js"
+    },
     "./nodes": {
       "types": "./dist/configs/nodes.d.ts",
       "default": "./dist/configs/nodes.js"

@@ -109,6 +109,8 @@ export const RESOURCES = {
 		'listProject',
 	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
+	executionLimit: ['read', 'update'] as const,
+	projectExecutionLimit: ['read', 'update'] as const,
 	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage', 'read', 'manageProject', 'list'] as const,
@@ -128,7 +130,16 @@ export const RESOURCES = {
 } as const;
 
 export const API_KEY_RESOURCES = {
-	agent: ['export', 'import', 'read', 'create', 'update', 'publish', 'unpublish'] as const,
+	agent: [
+		'export',
+		'import',
+		'read',
+		'create',
+		'update',
+		'publish',
+		'unpublish',
+		'delete',
+	] as const,
 	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,

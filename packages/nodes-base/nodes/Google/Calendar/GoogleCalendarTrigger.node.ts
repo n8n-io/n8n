@@ -6,14 +6,15 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
 import {
-	encodeURIComponentOnce,
-	getCalendars,
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+	NodeConnectionTypes,
+	NodeApiError,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+} from 'n8n-workflow';
+
+import { getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 type GoogleCalendarEventDate = {
 	dateTime?: string;
@@ -35,7 +36,8 @@ export class GoogleCalendarTrigger implements INodeType {
 		name: 'googleCalendarTrigger',
 		icon: 'file:googleCalendar.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["triggerOn"]}}',
 		description: 'Starts the workflow when Google Calendar events occur',
 		defaults: {
@@ -150,9 +152,11 @@ export class GoogleCalendarTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const poolTimes = this.getNodeParameter('pollTimes.item', []) as IDataObject[];
 		const triggerOn = this.getNodeParameter('triggerOn', '') as string;
-		const calendarId = encodeURIComponentOnce(
-			this.getNodeParameter('calendarId', '', { extractValue: true }) as string,
-		);
+		const calendarIdParam = this.getNodeParameter('calendarId', '', {
+			extractValue: true,
+		}) as string;
+		const calendarId =
+			this.getNode().typeVersion < 1.1 ? decodePathValue(calendarIdParam) : calendarIdParam;
 		const webhookData = this.getWorkflowStaticData('node');
 		const matchTerm = this.getNodeParameter('options.matchTerm', '') as string;
 
@@ -212,7 +216,7 @@ export class GoogleCalendarTrigger implements INodeType {
 			events = await googleApiRequest.call(
 				this,
 				'GET',
-				`/calendar/v3/calendars/${calendarId}/events`,
+				requestPath`/calendar/v3/calendars/${calendarId}/events`,
 				{},
 				qs,
 			);
@@ -222,7 +226,7 @@ export class GoogleCalendarTrigger implements INodeType {
 				this,
 				'items',
 				'GET',
-				`/calendar/v3/calendars/${calendarId}/events`,
+				requestPath`/calendar/v3/calendars/${calendarId}/events`,
 				{},
 				qs,
 			);
@@ -245,7 +249,7 @@ export class GoogleCalendarTrigger implements INodeType {
 						const calendar = (await googleApiRequest.call(
 							this,
 							'GET',
-							`/calendar/v3/calendars/${calendarId}`,
+							requestPath`/calendar/v3/calendars/${calendarId}`,
 						)) as { timeZone: string };
 						calendarTimeZone = calendar.timeZone;
 						webhookData.calendarTimeZoneId = calendarId;

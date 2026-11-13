@@ -4,6 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { COUNTRIES } from '../../countries';
 import {
@@ -197,7 +198,7 @@ export async function execute(
 		await apiRequest.call(
 			this,
 			'PUT',
-			`/sessions/${sessionId}/save-profile-on-termination/${profileName}`,
+			requestPath`/sessions/${sessionId}/save-profile-on-termination/${profileName}`,
 		);
 	}
 

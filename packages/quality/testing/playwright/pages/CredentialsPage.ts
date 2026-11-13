@@ -57,6 +57,21 @@ export class CredentialsPage extends BasePage {
 		await this.page.getByText('Name (A-Z)').click();
 	}
 
+	/** Types the search into the new-credential type list, which keeps the list open. */
+	async searchCredentialTypes(query: string): Promise<void> {
+		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(query);
+	}
+
+	/** The visible options of the new-credential type list. A search hides the options it does not match. */
+	getCredentialTypeOptions() {
+		return this.page.getByTestId('new-credential-type-select-option').filter({ visible: true });
+	}
+
+	/** The popover that explains a restricted type. It is teleported out of the dialog. */
+	getRestrictedTypePopover() {
+		return this.page.getByTestId('node-restricted-popover').filter({ visible: true });
+	}
+
 	/**
 	 * Select credential type without auto-saving (for tests that need to handle save manually)
 	 */

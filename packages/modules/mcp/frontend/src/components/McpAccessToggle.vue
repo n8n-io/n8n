@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ElSwitch } from 'element-plus';
-import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nSwitch, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { computed } from 'vue';
@@ -48,12 +47,11 @@ const onUpdateMCPEnabled = () => {
 		</div>
 		<div :class="$style['main-toggle']" data-test-id="mcp-toggle-container">
 			<N8nTooltip :content="disabledTooltip" :disabled="!props.disabled" placement="top">
-				<ElSwitch
+				<N8nSwitch
 					size="large"
 					data-test-id="mcp-access-toggle"
 					:model-value="props.modelValue"
-					:disabled="props.disabled"
-					:loading="props.loading"
+					:disabled="props.disabled || props.loading"
 					@update:model-value="onUpdateMCPEnabled"
 				/>
 			</N8nTooltip>

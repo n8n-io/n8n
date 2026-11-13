@@ -1,0 +1,324 @@
+{
+	"name": "Spotify Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "artist",
+				"operation": "getAlbums",
+				"id": "spotify:artist:0OdUWJ0sBjDrqHygGUXeCF",
+				"limit": 2
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "node-0",
+			"name": "Artist Get Albums",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "artist",
+				"operation": "getRelatedArtists",
+				"id": "0OdUWJ0sBjDrqHygGUXeCF"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 200],
+			"id": "node-1",
+			"name": "Artist Get Related Artists",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "2",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "artist",
+				"operation": "getTopTracks",
+				"id": "0OdUWJ0sBjDrqHygGUXeCF",
+				"country": "US"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 400],
+			"id": "node-2",
+			"name": "Artist Get Top Tracks",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "3",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "playlist",
+				"operation": "delete",
+				"id": "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M",
+				"trackID": "spotify:track:11dFghVXANMlKmJXsNCbNl"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"id": "node-3",
+			"name": "Playlist Remove Item",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "4",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "playlist",
+				"operation": "get",
+				"id": "37i9dQZF1DXcBWIGoYBM5M"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 800],
+			"id": "node-4",
+			"name": "Playlist Get",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "playlist",
+				"operation": "getTracks",
+				"id": "37i9dQZF1DXcBWIGoYBM5M",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 1000],
+			"id": "node-5",
+			"name": "Playlist Get Tracks",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "6",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "playlist",
+				"operation": "add",
+				"id": "37i9dQZF1DXcBWIGoYBM5M",
+				"trackID": "spotify:track:11dFghVXANMlKmJXsNCbNl",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 1200],
+			"id": "node-6",
+			"name": "Playlist Add Item",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "7",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "track",
+				"operation": "getAudioFeatures",
+				"id": "spotify:track:11dFghVXANMlKmJXsNCbNl"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 1400],
+			"id": "node-7",
+			"name": "Track Get Audio Features",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "8",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "track",
+				"operation": "get",
+				"id": "11dFghVXANMlKmJXsNCbNl"
+			},
+			"type": "n8n-nodes-base.spotify",
+			"typeVersion": 1,
+			"position": [400, 1600],
+			"id": "node-8",
+			"name": "Track Get",
+			"credentials": {
+				"spotifyOAuth2Api": {
+					"id": "9",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Artist Get Albums": [
+			{
+				"json": {
+					"id": "1ATL5GLyefJaxhQzSPVrLX",
+					"name": "Evolve"
+				}
+			},
+			{
+				"json": {
+					"id": "6nxDQi0FeEwccEPJeNySoS",
+					"name": "Origins"
+				}
+			}
+		],
+		"Artist Get Related Artists": [
+			{
+				"json": {
+					"id": "53XhwfbYqKCa1cC15pYq2q",
+					"name": "Imagine Dragons"
+				}
+			}
+		],
+		"Artist Get Top Tracks": [
+			{
+				"json": {
+					"id": "0pqnGHJpmpxLKifKRmU6WP",
+					"name": "Believer"
+				}
+			}
+		],
+		"Playlist Remove Item": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Playlist Get": [
+			{
+				"json": {
+					"id": "37i9dQZF1DXcBWIGoYBM5M",
+					"name": "Today’s Top Hits"
+				}
+			}
+		],
+		"Playlist Get Tracks": [
+			{
+				"json": {
+					"track": {
+						"id": "11dFghVXANMlKmJXsNCbNl"
+					}
+				}
+			},
+			{
+				"json": {
+					"track": {
+						"id": "0pqnGHJpmpxLKifKRmU6WP"
+					}
+				}
+			}
+		],
+		"Playlist Add Item": [
+			{
+				"json": {
+					"snapshot_id": "AAAAB8C+GgDrvyxTxKr8M9W3jI2J"
+				}
+			}
+		],
+		"Track Get Audio Features": [
+			{
+				"json": {
+					"id": "11dFghVXANMlKmJXsNCbNl",
+					"tempo": 118.211
+				}
+			}
+		],
+		"Track Get": [
+			{
+				"json": {
+					"id": "11dFghVXANMlKmJXsNCbNl",
+					"name": "Cut To The Feeling"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Artist Get Albums",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Artist Get Related Artists",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Artist Get Top Tracks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Playlist Remove Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Playlist Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Playlist Get Tracks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Playlist Add Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track Get Audio Features",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Track Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

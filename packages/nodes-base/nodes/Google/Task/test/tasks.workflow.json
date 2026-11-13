@@ -1,0 +1,169 @@
+{
+	"name": "Google Tasks request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"task": "MTY1NjQ1NTg4NjY5NTE5ODU3NjI6MDow",
+				"title": "Prepare quarterly report",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleTasks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c02",
+			"name": "Create Task",
+			"credentials": {
+				"googleTasksOAuth2Api": {
+					"id": "gtasks-cred-1",
+					"name": "Google Tasks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"task": "MTY1NjQ1NTg4NjY5NTE5ODU3NjI6MDow",
+				"taskId": "Nk1aTV9WUjE4c2t0YjlYdA"
+			},
+			"type": "n8n-nodes-base.googleTasks",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c03",
+			"name": "Get Task",
+			"credentials": {
+				"googleTasksOAuth2Api": {
+					"id": "gtasks-cred-1",
+					"name": "Google Tasks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"task": "MTY1NjQ1NTg4NjY5NTE5ODU3NjI6MDow",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.googleTasks",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c04",
+			"name": "Get Many Tasks",
+			"credentials": {
+				"googleTasksOAuth2Api": {
+					"id": "gtasks-cred-1",
+					"name": "Google Tasks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"task": "MTY1NjQ1NTg4NjY5NTE5ODU3NjI6MDow",
+				"taskId": "Nk1aTV9WUjE4c2t0YjlYdA",
+				"updateFields": {
+					"status": "completed"
+				}
+			},
+			"type": "n8n-nodes-base.googleTasks",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c05",
+			"name": "Update Task",
+			"credentials": {
+				"googleTasksOAuth2Api": {
+					"id": "gtasks-cred-1",
+					"name": "Google Tasks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"task": "MTY1NjQ1NTg4NjY5NTE5ODU3NjI6MDow",
+				"taskId": "Nk1aTV9WUjE4c2t0YjlYdA"
+			},
+			"type": "n8n-nodes-base.googleTasks",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"id": "7a3e1c52-0d4b-4f1a-8e2c-5b9d6f1a2c06",
+			"name": "Delete Task",
+			"credentials": {
+				"googleTasksOAuth2Api": {
+					"id": "gtasks-cred-1",
+					"name": "Google Tasks account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Create Task", "type": "main", "index": 0 }]]
+		},
+		"Create Task": {
+			"main": [[{ "node": "Get Task", "type": "main", "index": 0 }]]
+		},
+		"Get Task": {
+			"main": [[{ "node": "Get Many Tasks", "type": "main", "index": 0 }]]
+		},
+		"Get Many Tasks": {
+			"main": [[{ "node": "Update Task", "type": "main", "index": 0 }]]
+		},
+		"Update Task": {
+			"main": [[{ "node": "Delete Task", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Create Task": [
+			{
+				"json": {
+					"id": "Nk1aTV9WUjE4c2t0YjlYdA",
+					"title": "Prepare quarterly report",
+					"status": "needsAction"
+				}
+			}
+		],
+		"Get Task": [
+			{
+				"json": {
+					"id": "Nk1aTV9WUjE4c2t0YjlYdA",
+					"title": "Prepare quarterly report",
+					"status": "needsAction"
+				}
+			}
+		],
+		"Get Many Tasks": [
+			{
+				"json": {
+					"id": "Nk1aTV9WUjE4c2t0YjlYdA",
+					"title": "Prepare quarterly report",
+					"status": "needsAction"
+				}
+			}
+		],
+		"Update Task": [
+			{
+				"json": {
+					"id": "Nk1aTV9WUjE4c2t0YjlYdA",
+					"title": "Prepare quarterly report",
+					"status": "completed"
+				}
+			}
+		],
+		"Delete Task": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	}
+}

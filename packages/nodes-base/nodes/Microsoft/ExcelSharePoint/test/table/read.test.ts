@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const TABLE_ENDPOINT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123/workbook/tables/%7BT1%7D`;
+const TABLE_ENDPOINT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123/workbook/tables/%7BT1%7D`;
 const ROWS = [
 	{ index: 0, values: [['Frank', 'frank@example.com']] },
 	{ index: 1, values: [['Dana', 'dana@example.com']] },
@@ -52,8 +53,8 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 
 	const mockRowsAndColumns = (rows: unknown[] = ROWS) => {
 		apiRequest.mockResolvedValue({ value: rows });
-		apiRequestAllItems.mockImplementation(async (endpoint: string) =>
-			endpoint.endsWith('/columns') ? COLUMNS : rows,
+		apiRequestAllItems.mockImplementation(async (endpoint: RequestPath) =>
+			endpoint.value.endsWith('/columns') ? COLUMNS : rows,
 		);
 	};
 
@@ -79,8 +80,13 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 
 			const result = await node.execute.call(ctx);
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', `${TABLE_ENDPOINT}/rows`, {}, { $top: 50 });
-			expect(apiRequestAllItems).toHaveBeenCalledWith(`${TABLE_ENDPOINT}/columns`, {
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`${TABLE_ENDPOINT}/rows`,
+				{},
+				{ $top: 50 },
+			);
+			expect(apiRequestAllItems).toHaveBeenCalledWith(requestPath`${TABLE_ENDPOINT}/columns`, {
 				$select: 'name',
 			});
 			expect(result[0].map((item) => item.json)).toEqual(ROW_OBJECTS);
@@ -93,7 +99,7 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 			const result = await node.execute.call(ctx);
 
 			expect(apiRequest).not.toHaveBeenCalled();
-			expect(apiRequestAllItems).toHaveBeenCalledWith(`${TABLE_ENDPOINT}/rows`, {});
+			expect(apiRequestAllItems).toHaveBeenCalledWith(requestPath`${TABLE_ENDPOINT}/rows`, {});
 			expect(result[0].map((item) => item.json)).toEqual(ROW_OBJECTS);
 		});
 
@@ -113,7 +119,7 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				`${TABLE_ENDPOINT}/rows`,
+				requestPath`${TABLE_ENDPOINT}/rows`,
 				{},
 				{ $select: 'index,values', $top: 100 },
 			);
@@ -140,7 +146,12 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 
 			const result = await node.execute.call(ctx);
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', `${TABLE_ENDPOINT}/columns`, {}, { $top: 50 });
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`${TABLE_ENDPOINT}/columns`,
+				{},
+				{ $top: 50 },
+			);
 			expect(result[0].map((item) => item.json)).toEqual([{ name: 'Name' }, { name: 'Email' }]);
 		});
 
@@ -156,7 +167,7 @@ describe('Microsoft Excel (SharePoint) — Table: Get Rows, Get Columns, Lookup'
 
 			const result = await node.execute.call(ctx);
 
-			expect(apiRequestAllItems).toHaveBeenCalledWith(`${TABLE_ENDPOINT}/columns`, {});
+			expect(apiRequestAllItems).toHaveBeenCalledWith(requestPath`${TABLE_ENDPOINT}/columns`, {});
 			expect(result[0]).toEqual([{ json: { data: COLUMNS }, pairedItem: { item: 0 } }]);
 		});
 	});

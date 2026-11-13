@@ -106,7 +106,7 @@ describe('replyToEmail — real encodeEmail round-trip', () => {
 			);
 
 			const sendCall = mockedGoogleApiRequest.mock.calls.find(
-				(call) => call[1] === '/gmail/v1/users/me/messages/send',
+				(call) => String(call[1]) === '/gmail/v1/users/me/messages/send',
 			);
 			const body = sendCall?.[2] as { raw: string };
 			const toHeader = decodeToHeader(body.raw);

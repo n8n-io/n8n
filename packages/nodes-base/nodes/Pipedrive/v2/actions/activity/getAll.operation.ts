@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
@@ -179,12 +180,18 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				responseData = await pipedriveApiRequestAllItemsCursor.call(
 					this,
 					'GET',
-					'/activities',
+					requestPath`/activities`,
 					{},
 					qs,
 				);
 			} else {
-				responseData = await pipedriveApiRequest.call(this, 'GET', '/activities', {}, qs);
+				responseData = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/activities`,
+					{},
+					qs,
+				);
 			}
 
 			const data = Array.isArray(responseData.data) ? responseData.data : [responseData.data];

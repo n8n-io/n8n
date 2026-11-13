@@ -106,7 +106,13 @@ export type {
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
+	ObservationResumeState,
+	BuiltObservationResumeStore,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
@@ -408,6 +414,7 @@ export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
+export { PromptCacheParamsError } from './runtime/model/prompt-cache-params-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -463,6 +470,11 @@ export type {
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
 export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	fromObservationResumeColumns,
+	toObservationResumeColumns,
+	type ObservationResumeColumns,
+} from './runtime/memory/observation-resume-columns';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

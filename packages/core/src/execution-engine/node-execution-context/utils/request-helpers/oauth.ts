@@ -32,13 +32,8 @@ import type {
 	WorkflowExecuteMode,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
-import {
-	OperationalError,
-	jsonParse,
-	NodeOperationError,
-	UserError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { OperationalError, UserError, UnexpectedError } from '@n8n/errors';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import { Stream } from 'stream';
@@ -188,7 +183,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 			currentCredential?.oauthTokenData?.access_token;
 
 		// if the access token value changed, the refresh already happend in another process, so we can just return the new token
-		if (currentAccessToken !== token.accessToken) {
+		if (currentAccessToken && currentAccessToken !== token.accessToken) {
 			return buildSigningToken(
 				token.client,
 				currentCredential?.oauthTokenData as ClientOAuth2TokenData,
@@ -685,8 +680,13 @@ export async function refreshOAuth2Token(
 	}
 
 	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
-	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
+	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData | undefined;
+	// Client-credentials grants acquire their first token through refreshOrFetchToken as well.
+	const token = buildSigningToken(
+		oAuthClient,
+		oauthTokenData ?? { access_token: '', refresh_token: '' },
+		oAuth2Options,
+	);
 
 	const newToken = await refreshOrFetchToken({
 		credentials,

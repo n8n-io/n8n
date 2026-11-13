@@ -1,0 +1,494 @@
+{
+	"name": "Wise Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "getBalances",
+				"profileId": 1001
+			},
+			"id": "wise-0",
+			"name": "Account Get Balances",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "getCurrencies"
+			},
+			"id": "wise-1",
+			"name": "Account Get Currencies",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "getStatement",
+				"profileId": 1001,
+				"borderlessAccountId": 2001,
+				"currency": "EUR",
+				"format": "json"
+			},
+			"id": "wise-2",
+			"name": "Account Get Statement",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "exchangeRate",
+				"operation": "get",
+				"source": "EUR",
+				"target": "USD"
+			},
+			"id": "wise-3",
+			"name": "Exchange Rate Get",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"operation": "get",
+				"profileId": 1001
+			},
+			"id": "wise-4",
+			"name": "Profile Get",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "profile",
+				"operation": "getAll"
+			},
+			"id": "wise-5",
+			"name": "Profile Get All",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "wise-6",
+			"name": "Recipient Get All",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "create",
+				"profileId": 1001,
+				"targetAccountId": 3001,
+				"amountType": "source",
+				"amount": 100,
+				"sourceCurrency": "eur",
+				"targetCurrency": "usd"
+			},
+			"id": "wise-7",
+			"name": "Quote Create",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "quote",
+				"operation": "get",
+				"quoteId": "bd244a95-dcf8-4c31-aac8-bf5e2f3e54c0"
+			},
+			"id": "wise-8",
+			"name": "Quote Get",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "create",
+				"profileId": 1001,
+				"quoteId": "bd244a95-dcf8-4c31-aac8-bf5e2f3e54c0",
+				"targetAccountId": 3001
+			},
+			"id": "wise-9",
+			"name": "Transfer Create",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "delete",
+				"transferId": 50500593
+			},
+			"id": "wise-10",
+			"name": "Transfer Delete",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "execute",
+				"profileId": 1001,
+				"transferId": 50500593
+			},
+			"id": "wise-11",
+			"name": "Transfer Execute",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "get",
+				"transferId": 50500593
+			},
+			"id": "wise-12",
+			"name": "Transfer Get",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "get",
+				"transferId": 50500593,
+				"downloadReceipt": true,
+				"fileName": "receipt.pdf"
+			},
+			"id": "wise-13",
+			"name": "Transfer Get Receipt",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "transfer",
+				"operation": "getAll",
+				"profileId": 1001,
+				"returnAll": true
+			},
+			"id": "wise-14",
+			"name": "Transfer Get All",
+			"type": "n8n-nodes-base.wise",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"wiseApi": {
+					"id": "1",
+					"name": "Wise account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Account Get Balances": [
+			{
+				"json": {
+					"id": 2001
+				}
+			}
+		],
+		"Account Get Currencies": [
+			{
+				"json": {
+					"code": "EUR"
+				}
+			}
+		],
+		"Account Get Statement": [
+			{
+				"json": {
+					"accountHolder": {
+						"type": "PERSONAL"
+					}
+				}
+			}
+		],
+		"Exchange Rate Get": [
+			{
+				"json": {
+					"rate": 1.08
+				}
+			}
+		],
+		"Profile Get": [
+			{
+				"json": {
+					"id": 1001,
+					"type": "personal"
+				}
+			}
+		],
+		"Profile Get All": [
+			{
+				"json": {
+					"id": 1001,
+					"type": "personal"
+				}
+			}
+		],
+		"Recipient Get All": [
+			{
+				"json": {
+					"id": 3001
+				}
+			}
+		],
+		"Quote Create": [
+			{
+				"json": {
+					"id": "bd244a95-dcf8-4c31-aac8-bf5e2f3e54c0"
+				}
+			}
+		],
+		"Quote Get": [
+			{
+				"json": {
+					"id": "bd244a95-dcf8-4c31-aac8-bf5e2f3e54c0"
+				}
+			}
+		],
+		"Transfer Create": [
+			{
+				"json": {
+					"id": 50500593
+				}
+			}
+		],
+		"Transfer Delete": [
+			{
+				"json": {
+					"id": 50500593,
+					"status": "cancelled"
+				}
+			}
+		],
+		"Transfer Execute": [
+			{
+				"json": {
+					"type": "BALANCE",
+					"status": "COMPLETED"
+				}
+			}
+		],
+		"Transfer Get": [
+			{
+				"json": {
+					"id": 50500593
+				}
+			}
+		],
+		"Transfer Get Receipt": [
+			{
+				"json": {}
+			}
+		],
+		"Transfer Get All": [
+			{
+				"json": {
+					"id": 50500593
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Account Get Balances",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Account Get Currencies",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Account Get Statement",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Exchange Rate Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Profile Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Profile Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Recipient Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quote Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Quote Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Execute",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Get Receipt",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Transfer Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

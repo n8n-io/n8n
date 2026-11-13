@@ -1,5 +1,6 @@
 import { ChildEntity, OneToOne, Relation } from '@n8n/typeorm';
-import { type IUser, UnexpectedError } from 'n8n-workflow';
+import type { IUser } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ServiceAccountDetails } from './service-account-details';
 import { User } from './user';

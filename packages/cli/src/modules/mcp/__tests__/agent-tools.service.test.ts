@@ -3,14 +3,15 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
 import {
+	CredentialsFinderService,
 	type EventService,
+	NodeTypesProxy,
 	ProjectScopeService,
 	UrlService,
-	NodeTypesProxy,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
@@ -100,7 +101,7 @@ type RegisteredTool = {
 	handler: (input: Record<string, unknown>, extra: { signal: AbortSignal }) => Promise<ToolResult>;
 };
 
-const user = Object.assign(new User(), { id: 'user-1' });
+const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 const baseConfig: AgentJsonConfig = {
 	name: 'My Agent',
@@ -166,6 +167,7 @@ describe('McpAgentToolsService', () => {
 	const projectScopeService = mockInstance(ProjectScopeService);
 	const slackManagedSetup = mockInstance(SlackManagedSetupService);
 	const slackManualSetup = mockInstance(SlackManualSetupService);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const slackManifest = {
 		settings: {
 			event_subscriptions: {
@@ -199,6 +201,7 @@ describe('McpAgentToolsService', () => {
 		projectScopeService,
 		new McpAgentSlackSetup(slackManagedSetup, slackManualSetup, mockLogger()),
 		agentSkillRefs,
+		credentialsFinderService,
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -289,6 +292,9 @@ describe('McpAgentToolsService', () => {
 				agentTaskRepository,
 				agentSkillRefs,
 				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
@@ -320,9 +326,9 @@ describe('McpAgentToolsService', () => {
 		it('registers all agent tools and the reference resource', () => {
 			expect([...tools.keys()].sort()).toEqual(
 				[
+					'archive_agent',
 					'call_agent',
 					'create_agent',
-					'delete_agent',
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
@@ -442,7 +448,7 @@ describe('McpAgentToolsService', () => {
 			['list_agent_versions', 'agent:read', identity],
 			['list_agent_sessions', 'agent:read', identity],
 			['get_agent_session', 'agent:read', { ...identity, sessionId: 'session-1' }],
-			['delete_agent', 'agent:delete', identity],
+			['archive_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
 				'verify_agent_mcp_server',
@@ -494,7 +500,7 @@ describe('McpAgentToolsService', () => {
 			['list_agent_versions', identity],
 			['list_agent_sessions', identity],
 			['get_agent_session', { ...identity, sessionId: 'session-1' }],
-			['delete_agent', identity],
+			['archive_agent', identity],
 			[
 				'update_agent_integration',
 				{ ...identity, action: 'disconnect', type: 'slack', credentialId: 'cred-1' },
@@ -2157,6 +2163,77 @@ describe('McpAgentToolsService', () => {
 			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
 		});
 
+		describe('credential usage', () => {
+			const authInput = {
+				...input,
+				url: 'https://other.test/mcp',
+				authentication: 'headerAuth',
+				credential: 'cred-1',
+			};
+
+			/** Answers the finder per scope: `connect` and `read` lookups. */
+			function grantCredential(grant: { connect: boolean; isGlobal?: boolean }) {
+				const entity = { id: 'cred-1', isGlobal: grant.isGlobal ?? false, isResolvable: false };
+				credentialsFinderService.findCredentialForUser.mockImplementation(
+					async (_id, _user, scopes) =>
+						(scopes.includes('credential:connect') ? grant.connect : true)
+							? (entity as never)
+							: null,
+				);
+			}
+
+			beforeEach(() => {
+				outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+				credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+					{ id: 'cred-1', name: 'hdr', type: 'httpHeaderAuth' },
+				] as never);
+				listMcpServerToolsMock.mockResolvedValue([]);
+			});
+
+			it('rejects a credential the user can only read', async () => {
+				grantCredential({ connect: false });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({
+					error: 'Credential not found or not accessible',
+				});
+				expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+			});
+
+			it('accepts a credential the user can connect', async () => {
+				grantCredential({ connect: true });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.structuredContent).toEqual({ ok: true, tools: [] });
+				expect(listMcpServerToolsMock).toHaveBeenCalledWith(
+					expect.objectContaining({ credential: 'cred-1' }),
+					expect.anything(),
+				);
+			});
+
+			it('accepts a readable global credential', async () => {
+				grantCredential({ connect: false, isGlobal: true });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.structuredContent).toEqual({ ok: true, tools: [] });
+				expect(listMcpServerToolsMock).toHaveBeenCalled();
+			});
+
+			it('rejects a usable credential that the project cannot use', async () => {
+				grantCredential({ connect: true });
+				credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.isError).toBe(true);
+				expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+			});
+		});
+
 		it('accepts a templated registry URL and passes it through for resolution', async () => {
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			listMcpServerToolsMock.mockResolvedValue([{ name: 'genie_ask', description: 'Ask' }]);
@@ -3170,23 +3247,33 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
-	describe('delete_agent', () => {
-		it('deletes an existing agent', async () => {
-			agentsService.delete.mockResolvedValue(true);
+	describe('archive_agent', () => {
+		it('archives an existing agent', async () => {
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'agent-1' });
-
-			expect(agentsService.delete).toHaveBeenCalledWith('agent-1', 'project-1');
-			expect(result.structuredContent).toEqual({ ok: true, deleted: true, agentId: 'agent-1' });
+			expect(agentPublishService.archiveAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				undefined,
+				'mcp',
+			);
+			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
 		});
 
-		it('returns an error result when the agent does not exist', async () => {
-			agentsService.delete.mockResolvedValue(false);
+		it('returns an error result for an archived agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ isArchived: true }));
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'nope' });
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({ error: 'Agent "nope" not found' });
+			expect(agentPublishService.archiveAgent).not.toHaveBeenCalled();
 		});
 	});
 });

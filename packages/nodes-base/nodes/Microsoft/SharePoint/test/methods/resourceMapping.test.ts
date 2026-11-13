@@ -1,7 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { getMappingColumns } from '../../v1/methods/resourceMapping';
 import { LIST_COLUMNS_REPLY } from '../fixtures/listColumnsReply';
@@ -19,7 +19,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		it('should map columns', async () => {
-			loadOptionsFunctions.getCredentials.mockResolvedValue({});
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'mydomain' });
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('create');
@@ -867,7 +867,7 @@ describe('Microsoft SharePoint Node', () => {
 				'microsoftSharePointOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://tenant.sharepoint.com/_api/v2.0/sites/site/lists/list/columns',
+					url: requestUrl`https://tenant.sharepoint.com/_api/v2.0/sites/site/lists/list/columns`,
 				}),
 			);
 			expect(fields.fields.map(({ id, type, readOnly }) => ({ id, type, readOnly }))).toEqual([
@@ -886,6 +886,9 @@ describe('Microsoft SharePoint Node', () => {
 
 		it('should not fall back when the content types read fails for another reason', async () => {
 			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'tenant' });
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
+			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('create');
 			const notFound = new NodeApiError(mock<INode>(), {}, { httpCode: '404' });
 			loadOptionsFunctions.helpers.httpRequestWithAuthentication = vi
 				.fn()
@@ -896,7 +899,7 @@ describe('Microsoft SharePoint Node', () => {
 		});
 
 		it('should map columns with id for update', async () => {
-			loadOptionsFunctions.getCredentials.mockResolvedValue({});
+			loadOptionsFunctions.getCredentials.mockResolvedValue({ subdomain: 'mydomain' });
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('site');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('list');
 			loadOptionsFunctions.getNodeParameter.mockReturnValueOnce('update');

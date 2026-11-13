@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
+
 ## Configuration add actions
 
 Show a leading `plus` icon beside empty-state configuration add labels. Use
@@ -54,6 +61,11 @@ the Agent and Assistant setup is complete. Let users close it during the visit.
 Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
+
+Keep a new Assistant chat local until the user sends a message. Opening the
+panel must not add an empty chat to history. Resume an existing chat when one
+is available. Send an opening prompt from the Agents list after the local chat
+is saved. Keep manual Agent edits independent of Assistant chat persistence.
 
 ## Builder side panel widths
 

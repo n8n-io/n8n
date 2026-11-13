@@ -1,9 +1,8 @@
 import { GROUPS_WITH_MANY_BOUNDARIES_FLAG, GROUPS_WITH_TRIGGERS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NodeGroupRuleOptions } from 'n8n-workflow';
-
-import { PostHogClient } from '@/posthog';
 
 /**
  * Per-user gate for the two relaxed node group rules.

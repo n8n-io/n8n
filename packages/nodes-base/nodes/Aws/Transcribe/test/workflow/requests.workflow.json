@@ -1,0 +1,111 @@
+{
+	"name": "AWS Transcribe request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 240],
+			"id": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f0001"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"transcriptionJobName": "n8n-job-001",
+				"mediaFileUri": "s3://n8n-media/audio.mp3",
+				"languageCode": "en-US",
+				"options": {}
+			},
+			"name": "Create Job",
+			"type": "n8n-nodes-base.awsTranscribe",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f0002",
+			"credentials": { "aws": { "id": "1", "name": "AWS account" } }
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"transcriptionJobName": "n8n-job-001",
+				"returnTranscript": false
+			},
+			"name": "Get Job",
+			"type": "n8n-nodes-base.awsTranscribe",
+			"typeVersion": 1,
+			"position": [300, 160],
+			"id": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f0003",
+			"credentials": { "aws": { "id": "1", "name": "AWS account" } }
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 5,
+				"filters": {}
+			},
+			"name": "Get Many Jobs",
+			"type": "n8n-nodes-base.awsTranscribe",
+			"typeVersion": 1,
+			"position": [300, 320],
+			"id": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f0004",
+			"credentials": { "aws": { "id": "1", "name": "AWS account" } }
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"transcriptionJobName": "n8n-job-001"
+			},
+			"name": "Delete Job",
+			"type": "n8n-nodes-base.awsTranscribe",
+			"typeVersion": 1,
+			"position": [300, 480],
+			"id": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f0005",
+			"credentials": { "aws": { "id": "1", "name": "AWS account" } }
+		}
+	],
+	"pinData": {
+		"Create Job": [
+			{
+				"json": {
+					"TranscriptionJobName": "n8n-job-001",
+					"TranscriptionJobStatus": "IN_PROGRESS"
+				}
+			}
+		],
+		"Get Job": [
+			{
+				"json": {
+					"TranscriptionJobName": "n8n-job-001",
+					"TranscriptionJobStatus": "COMPLETED"
+				}
+			}
+		],
+		"Get Many Jobs": [
+			{
+				"json": {
+					"TranscriptionJobName": "n8n-job-001",
+					"TranscriptionJobStatus": "COMPLETED"
+				}
+			}
+		],
+		"Delete Job": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Create Job", "type": "main", "index": 0 },
+					{ "node": "Get Job", "type": "main", "index": 0 },
+					{ "node": "Get Many Jobs", "type": "main", "index": 0 },
+					{ "node": "Delete Job", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "5b0c2f4e-1d7a-4f2b-9c3e-7a1d2e3f00ff",
+	"meta": { "instanceId": "test" },
+	"id": "AwsTranscribeRequests",
+	"tags": []
+}

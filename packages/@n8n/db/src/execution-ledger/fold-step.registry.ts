@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { assertValidFoldStepName, type ExecutionLedgerFoldStep } from './fold-step';
 

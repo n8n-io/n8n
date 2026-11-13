@@ -7,7 +7,7 @@ import {
 	type IntervalDefinition,
 } from '@n8n/constants';
 import { Service, type Constructable } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type {
 	ClusterTarget,

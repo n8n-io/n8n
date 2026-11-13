@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ImageResponse } from '../../../helpers/interfaces';
 import { accumulateImageTokenUsage } from '../../../helpers/token-usage';
@@ -115,7 +115,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...options,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/images/generations', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/images/generations`, {
 		body,
 	})) as ImageResponse;
 	const { data, usage } = response;

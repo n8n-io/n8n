@@ -6,7 +6,8 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { useResourceRegistry } from '../useResourceRegistry';
+import { turnHasArtifact, useResourceRegistry } from '../useResourceRegistry';
+import type { ArtifactTurn } from '../artifactTurns';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -1790,5 +1791,80 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifactOrigins.has('wf-1')).toBe(false);
 		});
+	});
+});
+
+describe('turnHasArtifact', () => {
+	function turn(overrides: Partial<ArtifactTurn> = {}): ArtifactTurn {
+		return { id: 'turn-1', role: 'assistant', isLive: false, toolCalls: [], ...overrides };
+	}
+
+	test('is true when the agent built a workflow in the turn', () => {
+		const built = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: {},
+					result: { workflowId: 'wf-1', workflowName: 'My Workflow' },
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(built)).toBe(true);
+	});
+
+	test('is true when the agent opened an existing workflow in the turn', () => {
+		const opened = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_workflows',
+					args: { action: 'get-json', workflowId: 'wf-existing' },
+					result: { id: 'wf-existing', name: 'Existing Workflow', nodes: [], connections: {} },
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(opened)).toBe(true);
+	});
+
+	test('is false when the turn has no tool calls', () => {
+		expect(turnHasArtifact(turn())).toBe(false);
+	});
+
+	test('is false when no tool call produces an artifact', () => {
+		const other = turn({
+			toolCalls: [{ toolCallId: 'tc-1', toolName: 'some-tool', args: {}, isLoading: false }],
+		});
+
+		expect(turnHasArtifact(other)).toBe(false);
+	});
+
+	test('is false when the build failed and returned no result', () => {
+		const failed = turn({
+			toolCalls: [
+				{
+					toolCallId: 'tc-1',
+					toolName: 'workflow_builder_build_workflow',
+					args: {},
+					error: 'The build failed',
+					isLoading: false,
+				},
+			],
+		});
+
+		expect(turnHasArtifact(failed)).toBe(false);
+	});
+
+	test('is false for a resource that the user attached to the message', () => {
+		const attached = turn({
+			role: 'user',
+			attachments: [{ type: 'workflow', id: 'wf-attached', name: 'Attached' }],
+		});
+
+		expect(turnHasArtifact(attached)).toBe(false);
 	});
 });

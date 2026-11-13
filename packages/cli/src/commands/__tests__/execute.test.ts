@@ -1,4 +1,5 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity, Project } from '@n8n/db';
@@ -27,7 +28,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -82,6 +82,7 @@ beforeEach(() => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: { engine: 'legacy' },
 			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
@@ -134,6 +135,7 @@ test('should start a task runner and the policy modules', async () => {
 		'policy-infrastructure',
 		'type-availability-policies',
 	]);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), ['execution-ledger']);
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
@@ -164,6 +166,7 @@ test('should not init the expression engine for commands that do not need it', a
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: { engine: 'vm' },
 			generic: { gracefulShutdownTimeout: 30 },
@@ -198,6 +201,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -254,6 +258,7 @@ test('reports a native verify mismatch to Sentry without the request scope', asy
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -307,6 +312,7 @@ test('stops native verify reports when Sentry turns off', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -399,6 +405,7 @@ test.each([
 			GlobalConfig,
 			mock<GlobalConfig>({
 				taskRunners: {},
+				codeExecution: { backend: 'task-runners' },
 				nodes: {},
 				expressionEngine: { engine, nativeEvaluation, nativeEvaluationVerifySample: sample },
 				generic: { gracefulShutdownTimeout: 30 },
@@ -435,6 +442,7 @@ test('passes no verify reporter when Sentry is not active', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',

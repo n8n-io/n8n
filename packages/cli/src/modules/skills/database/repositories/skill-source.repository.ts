@@ -143,6 +143,22 @@ export class SkillSourceRepository {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
 	}
 
+	/** Serializes source deletion with other changes to this source. */
+	async findForDelete(id: string, ctx: OperationContext): Promise<SkillSourceConnection | null> {
+		const manager = this.sources.managerFor(ctx);
+		return await manager.findOne(SkillSourceConnection, {
+			where: { id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
+	/** Deletes the source. Its links go by cascade. Callers delete its skills first. */
+	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
+		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });
+	}
+
 	/** The source of a synced skill, in one query. Null for a skill without a source. */
 	async findSyncedFrom(skillId: string, ctx: OperationContext = {}): Promise<SyncedFromRow | null> {
 		const link = await this.links
@@ -200,8 +216,11 @@ export class SkillSourceRepository {
 		return sources.sort((a, b) => time(a) - time(b));
 	}
 
-	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
-		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
+	async findLinksBySource(
+		sourceId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor(ctx).find(SkillSourceLink, { where: { sourceId } });
 	}
 
 	/**

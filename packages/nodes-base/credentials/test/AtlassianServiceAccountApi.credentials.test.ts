@@ -6,7 +6,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { TOKEN_REQUEST_TIMEOUT } from '../common/token-request';
 import {
