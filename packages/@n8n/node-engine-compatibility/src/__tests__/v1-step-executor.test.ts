@@ -250,7 +250,6 @@ describe('V1StepExecutor', () => {
 
 		expect(error).toBeInstanceOf(NodeOperationError);
 		expect(stepErrorDetails(error as Error)).toMatchObject({
-			name: 'NodeOperationError',
 			description: 'The service rejected the request',
 		});
 	});

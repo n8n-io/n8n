@@ -12,9 +12,11 @@ import { ExecutionBaseError, jsonParse, jsonStringify, WorkflowOperationError } 
 export function toV1ErrorDetails(error: unknown): JsonValue | undefined {
 	if (!(error instanceof ExecutionBaseError) || !error.toJSON) return undefined;
 
+	// The step error carries the name and message itself.
+	const { name: _name, message: _message, ...details } = error.toJSON();
 	// The round trip is what persistence does to the details anyway, and it drops
 	// what JSON cannot carry before the engine sees it.
-	return jsonParse<JsonValue>(jsonStringify(error.toJSON()));
+	return jsonParse<JsonValue>(jsonStringify(details));
 }
 
 /**

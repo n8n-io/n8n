@@ -20,10 +20,9 @@ describe('toV1ErrorDetails', () => {
 			itemIndex: 2,
 		});
 
-		expect(toV1ErrorDetails(error)).toEqual(deepCopy(error.toJSON?.()));
+		const { name: _name, message: _message, ...serialized } = error.toJSON?.() ?? {};
+		expect(toV1ErrorDetails(error)).toEqual(deepCopy(serialized));
 		expect(toV1ErrorDetails(error)).toMatchObject({
-			name: 'NodeOperationError',
-			message: 'boom',
 			description: 'Check the credentials',
 			context: { itemIndex: 2 },
 		});
@@ -34,6 +33,9 @@ describe('toV1ErrorDetails', () => {
 
 		expect(toV1ErrorDetails(error)).not.toHaveProperty('httpCode');
 		expect(toV1ErrorDetails(error)).not.toHaveProperty('node');
+		// The step error carries these itself.
+		expect(toV1ErrorDetails(error)).not.toHaveProperty('name');
+		expect(toV1ErrorDetails(error)).not.toHaveProperty('message');
 	});
 
 	it('has nothing for an error that is not a v1 execution error', () => {
