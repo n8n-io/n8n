@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	requestPath,
 } from 'n8n-workflow';
 
 import { sms77ApiRequest } from './GenericFunctions';
@@ -247,7 +248,7 @@ export class Sms77 implements INodeType {
 							text,
 							...options,
 						};
-						responseData = await sms77ApiRequest.call(this, 'POST', '/sms', body);
+						responseData = await sms77ApiRequest.call(this, 'POST', requestPath`/sms`, body);
 					}
 				}
 
@@ -261,7 +262,7 @@ export class Sms77 implements INodeType {
 							text,
 							...options,
 						};
-						responseData = await sms77ApiRequest.call(this, 'POST', '/voice', body);
+						responseData = await sms77ApiRequest.call(this, 'POST', requestPath`/voice`, body);
 					}
 				}
 

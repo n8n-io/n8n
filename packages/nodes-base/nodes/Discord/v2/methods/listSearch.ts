@@ -2,6 +2,7 @@ import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
+	requestPath,
 } from 'n8n-workflow';
 
 import { checkAccessToGuild } from '../helpers/utils';
@@ -18,7 +19,7 @@ async function getGuildId(this: ILoadOptionsFunctions) {
 		const userGuilds = (await discordApiRequest.call(
 			this,
 			'GET',
-			'/users/@me/guilds',
+			requestPath`/users/@me/guilds`,
 		)) as IDataObject[];
 
 		checkAccessToGuild(this.getNode(), guildId, userGuilds);
@@ -32,7 +33,7 @@ async function checkBotAccessToGuild(this: ILoadOptionsFunctions, guildId: strin
 		const members: Array<{ user: { id: string } }> = await discordApiRequest.call(
 			this,
 			'GET',
-			`/guilds/${guildId}/members`,
+			requestPath`/guilds/${guildId}/members`,
 			undefined,
 			{ limit: 1000 },
 		);
@@ -47,7 +48,7 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 	const response = (await discordApiRequest.call(
 		this,
 		'GET',
-		'/users/@me/guilds',
+		requestPath`/users/@me/guilds`,
 	)) as IDataObject[];
 
 	let guilds: IDataObject[] = [];
@@ -55,7 +56,7 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
 
 	if (isOAuth2) {
-		const botId = (await discordApiRequest.call(this, 'GET', '/users/@me')).id as string;
+		const botId = (await discordApiRequest.call(this, 'GET', requestPath`/users/@me`)).id as string;
 
 		for (const guild of response) {
 			if (!(await checkBotAccessToGuild.call(this, guild.id as string, botId))) continue;
@@ -76,7 +77,11 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 
 export async function channelSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
-	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+	const response = await discordApiRequest.call(
+		this,
+		'GET',
+		requestPath`/guilds/${guildId}/channels`,
+	);
 
 	return {
 		results: (response as IDataObject[])
@@ -94,7 +99,11 @@ export async function textChannelSearch(
 ): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
 
-	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+	const response = await discordApiRequest.call(
+		this,
+		'GET',
+		requestPath`/guilds/${guildId}/channels`,
+	);
 
 	return {
 		results: (response as IDataObject[])
@@ -110,7 +119,11 @@ export async function textChannelSearch(
 export async function categorySearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const guildId = await getGuildId.call(this);
 
-	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+	const response = await discordApiRequest.call(
+		this,
+		'GET',
+		requestPath`/guilds/${guildId}/channels`,
+	);
 
 	return {
 		results: (response as IDataObject[])
@@ -136,7 +149,7 @@ export async function userSearch(
 	const response = await discordApiRequest.call(
 		this,
 		'GET',
-		`/guilds/${guildId}/members`,
+		requestPath`/guilds/${guildId}/members`,
 		undefined,
 		qs,
 	);

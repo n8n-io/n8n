@@ -81,6 +81,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
 const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
@@ -244,7 +245,7 @@ export class WorkflowsPublicController {
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, WorkflowListPublicDto)
 	async getWorkflows(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Query query: ListWorkflowsQueryDto,
 	): Promise<WorkflowListPublicDto> {
@@ -283,7 +284,7 @@ export class WorkflowsPublicController {
 
 		this.eventService.emit('user-retrieved-all-workflows', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return {
@@ -327,7 +328,7 @@ export class WorkflowsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(422)
 	async createWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: CreateWorkflowPublicDto,
 	): Promise<CreatedWorkflowPublicDto> {
@@ -340,7 +341,7 @@ export class WorkflowsPublicController {
 		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
 			projectId,
 			parentFolderId: parentFolderId ?? undefined,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 			source: 'api',
 		});
 
@@ -361,7 +362,7 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, RetrievedWorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Query query: GetWorkflowQueryDto,
@@ -383,7 +384,7 @@ export class WorkflowsPublicController {
 
 		this.eventService.emit('user-retrieved-workflow', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return {
@@ -422,7 +423,7 @@ export class WorkflowsPublicController {
 		description: UPDATE_CONFLICT_DESCRIPTION,
 	})
 	async updateWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: UpdateWorkflowPublicDto,
@@ -443,7 +444,7 @@ export class WorkflowsPublicController {
 				{
 					parentFolderId: resolvedParentFolderId,
 					forceSave: true, // Skip version conflict check for public API
-					publicApi: true,
+					publicApi: req.publicApiClient,
 					publishIfActive: query.publishIfActive,
 					readOnlyNodeEdits: 'reject',
 					unsentNodeFields: PUBLIC_API_IGNORED_NODE_FIELDS,
@@ -473,11 +474,15 @@ export class WorkflowsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async deleteWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<DeletedWorkflowPublicDto> {
-		const workflow = await this.workflowService.deleteForPublicApi(req.user, workflowId);
+		const workflow = await this.workflowService.deleteForPublicApi(
+			req.user,
+			workflowId,
+			req.publicApiClient,
+		);
 
 		if (!workflow) {
 			// the user cannot see this workflow, or it does not exist
@@ -499,11 +504,15 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, WorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async archiveWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		const workflow = await this.workflowService.archiveForPublicApi(req.user, workflowId);
+		const workflow = await this.workflowService.archiveForPublicApi(
+			req.user,
+			workflowId,
+			req.publicApiClient,
+		);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -522,11 +531,15 @@ export class WorkflowsPublicController {
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async unarchiveWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		const workflow = await this.workflowService.unarchiveForPublicApi(req.user, workflowId);
+		const workflow = await this.workflowService.unarchiveForPublicApi(
+			req.user,
+			workflowId,
+			req.publicApiClient,
+		);
 
 		if (!workflow) {
 			throw new NotFoundError('Workflow not found');
@@ -639,7 +652,7 @@ export class WorkflowsPublicController {
 		description: PUBLISH_CONFLICT_DESCRIPTION,
 	})
 	async publishWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
@@ -649,6 +662,7 @@ export class WorkflowsPublicController {
 			name: body.name,
 			description: body.description,
 			source: 'api',
+			publicApi: req.publicApiClient,
 		});
 
 		return this.toWorkflowPublishPublicDto(workflow);
@@ -665,12 +679,13 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, WorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async unpublishWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
 		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
 			source: 'api',
+			publicApi: req.publicApiClient,
 		});
 
 		return this.toWorkflowPublicDto(workflow);
@@ -693,7 +708,7 @@ export class WorkflowsPublicController {
 		description: PUBLISH_CONFLICT_DESCRIPTION,
 	})
 	async activateWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: ActivateWorkflowPublicDto,
@@ -711,7 +726,7 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, WorkflowPublicDto)
 	@ApiErrorResponse(404)
 	async deactivateWorkflow(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
@@ -775,7 +790,7 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, WorkflowVersionPublicDto)
 	@ApiErrorResponse(404)
 	async getWorkflowVersion(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
@@ -802,7 +817,7 @@ export class WorkflowsPublicController {
 
 		this.eventService.emit('user-retrieved-workflow-version', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return toPublicWorkflowVersion(version);
@@ -911,7 +926,7 @@ export class WorkflowsPublicController {
 	@ApiResponse(200, DeprecatedWorkflowVersionPublicDto)
 	@ApiErrorResponse(404)
 	async getDeprecatedWorkflowVersion(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
@@ -926,7 +941,7 @@ export class WorkflowsPublicController {
 
 			this.eventService.emit('user-retrieved-workflow-version', {
 				userId: req.user.id,
-				publicApi: true,
+				publicApi: req.publicApiClient,
 			});
 
 			return toPublicWorkflowVersion(version);

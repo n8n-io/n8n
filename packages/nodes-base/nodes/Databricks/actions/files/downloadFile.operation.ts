@@ -1,5 +1,5 @@
 import mime from 'mime-types';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import {
@@ -7,13 +7,14 @@ import {
 	getActiveCredentialType,
 	getHost,
 	makePermissionErrorLegible,
+	toRequestPath,
 } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
 	const host = await getHost(this, credentialType);
 	const volumePath = this.getNodeParameter('volumePath', i) as string;
-	const filePath = this.getNodeParameter('filePath', i);
+	const filePath = String(this.getNodeParameter('filePath', i));
 
 	const parts = volumePath.split('.');
 	if (parts.length !== 3) {
@@ -24,17 +25,19 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 	const [catalog, schema, volume] = parts;
 
-	const downloadUrl = `${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}/${filePath}`;
-
 	try {
-		const response = await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: downloadUrl,
-			encoding: 'arraybuffer',
-			returnFullResponse: true,
-		});
+		const response = await databricksApiRequest(
+			this,
+			credentialType,
+			requestUrl`${host}/api/2.0/fs/files/Volumes/${catalog}/${schema}/${volume}${toRequestPath(filePath, this.getNode().typeVersion)}`,
+			{
+				method: 'GET',
+				encoding: 'arraybuffer',
+				returnFullResponse: true,
+			},
+		);
 
-		const fileName = (filePath as string).split('/').pop() || 'downloaded-file';
+		const fileName = filePath.split('/').pop() || 'downloaded-file';
 
 		let contentType = response.headers['content-type'] as string | undefined;
 		if (!contentType || contentType === 'application/octet-stream') {

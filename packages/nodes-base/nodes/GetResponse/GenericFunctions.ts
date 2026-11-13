@@ -7,29 +7,30 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function getresponseApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.getresponse.com/v3${resource}`,
+		uri: requestUrl`https://api.getresponse.com/v3${resource}`,
 		json: true,
 	};
 	try {
@@ -51,7 +52,7 @@ export async function getresponseApiRequest(
 export async function getResponseApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -62,15 +63,9 @@ export async function getResponseApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await getresponseApiRequest.call(
-			this,
-			method,
-			endpoint,
-			body,
-			query,
-			undefined,
-			{ resolveWithFullResponse: true },
-		);
+		responseData = await getresponseApiRequest.call(this, method, endpoint, body, query, {
+			resolveWithFullResponse: true,
+		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.TotalPages !== responseData.headers.CurrentPage);

@@ -1,0 +1,238 @@
+{
+	"name": "ERPNext Cloud Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "get",
+				"docType": "Sales%20Invoice",
+				"documentName": "ACC-SINV-2026-00001"
+			},
+			"id": "erpnext-0",
+			"name": "Get",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "getAll",
+				"docType": "Sales%20Invoice",
+				"limit": 2,
+				"options": {}
+			},
+			"id": "erpnext-1",
+			"name": "Get Many",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "getAll",
+				"docType": "Customer",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "erpnext-2",
+			"name": "Get Many All",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "create",
+				"docType": "Sales%20Invoice",
+				"properties": {
+					"customProperty": [
+						{
+							"field": "customer",
+							"value": "Acme Corp"
+						}
+					]
+				}
+			},
+			"id": "erpnext-3",
+			"name": "Create",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "update",
+				"docType": "Sales%20Invoice",
+				"documentName": "ACC-SINV-2026-00001",
+				"properties": {
+					"customProperty": [
+						{
+							"field": "customer",
+							"value": "Acme Corp"
+						}
+					]
+				}
+			},
+			"id": "erpnext-4",
+			"name": "Update",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "delete",
+				"docType": "Sales%20Invoice",
+				"documentName": "ACC-SINV-2026-00001"
+			},
+			"id": "erpnext-5",
+			"name": "Delete",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get": [
+			{
+				"json": {
+					"name": "ACC-SINV-2026-00001",
+					"customer": "Acme Corp",
+					"grand_total": 120
+				}
+			}
+		],
+		"Get Many": [
+			{
+				"json": {
+					"name": "ACC-SINV-2026-00001",
+					"customer": "Acme Corp",
+					"grand_total": 120
+				}
+			}
+		],
+		"Get Many All": [
+			{
+				"json": {
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Create": [
+			{
+				"json": {
+					"name": "ACC-SINV-2026-00001",
+					"customer": "Acme Corp",
+					"grand_total": 120
+				}
+			}
+		],
+		"Update": [
+			{
+				"json": {
+					"name": "ACC-SINV-2026-00001",
+					"customer": "Acme Corp",
+					"grand_total": 120
+				}
+			}
+		],
+		"Delete": [
+			{
+				"json": {
+					"message": "ok"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

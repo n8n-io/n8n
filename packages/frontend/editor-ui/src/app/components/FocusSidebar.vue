@@ -191,7 +191,7 @@ onBeforeUnmount(() => {
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
 				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
-					<SetupPanel />
+					<SetupPanel :is-read-only="isCanvasReadOnly" />
 				</div>
 				<div v-else-if="showEvaluationsPanel" :class="$style['setup-panel-wrapper']">
 					<TestsPanel />

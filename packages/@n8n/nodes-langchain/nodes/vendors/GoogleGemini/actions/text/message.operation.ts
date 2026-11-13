@@ -6,6 +6,7 @@ import {
 	NodeOperationError,
 	accumulateTokenUsage,
 	jsonParse,
+	requestPath,
 	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
@@ -23,7 +24,7 @@ import type {
 	FunctionCallPart,
 	TextPart,
 } from '../../helpers/interfaces';
-import { apiRequest } from '../../transport';
+import { apiRequest, modelPath } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
@@ -545,9 +546,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const requestedModel = model.replace(/^models\//, '');
 	const generateContent = async () => {
-		const response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		const response = (await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+			{
+				body,
+			},
+		)) as GenerateContentResponse;
 		captureUsage(response);
 		if (
 			requestedModel.startsWith('gemma-') &&

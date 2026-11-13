@@ -24,7 +24,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -483,6 +483,127 @@ describe('ExecutionService', () => {
 			// No entry is created for the missing node, and unrelated run data is left intact.
 			expect(runData['Missing Node']).toBeUndefined();
 			expect(runData['Other Node']).toBe(otherNodeRun);
+		});
+
+		describe('with dynamic credentials', () => {
+			const withRuntimeData = (
+				execution: IExecutionResponse,
+				runtimeData: Record<string, unknown>,
+			) => {
+				execution.data.executionData!.runtimeData = {
+					version: 1,
+					establishedAt: Date.now(),
+					source: 'manual',
+					...runtimeData,
+				};
+				return execution;
+			};
+
+			it.each([{ loadWorkflow: false }, { loadWorkflow: true }])(
+				'should reject a retry by another user (%o)',
+				async (options) => {
+					const { service, workflowRunner } = buildRetryService();
+					executionPersistence.findWithUnflattenedData.mockResolvedValue(
+						withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+							usesDynamicCredentials: true,
+							executedByUserId: 'owner-1',
+						}),
+					);
+
+					await expect(service.retry({ ...retryArgs(), options })).rejects.toThrow(ForbiddenError);
+					expect(workflowRunner.run).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should reject a retry when the run has no n8n user', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						usesDynamicCredentials: true,
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).rejects.toThrow(ForbiddenError);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('should reject a retry by another user when only the run data flags the credential', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				const runData = {
+					'Credential Node': [{ usedDynamicCredentials: true }],
+				} as unknown as IRunData;
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData }), {
+						executedByUserId: 'owner-1',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).rejects.toThrow(ForbiddenError);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('should drop the original identity when another user retries a run without private credentials', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						credentials: 'encrypted-owner-identity',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).not.toHaveProperty('credentials');
+			});
+
+			it('should drop the trigger secrets when another user retries the run', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						secureArtifacts: 'encrypted-artifacts',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).not.toHaveProperty(
+					'secureArtifacts',
+				);
+			});
+
+			it('should keep the original identity when the same user retries the run', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						credentials: 'encrypted-user-identity',
+						secureArtifacts: 'encrypted-artifacts',
+						usesDynamicCredentials: true,
+						executedByUserId: 'user-1',
+					}),
+				);
+
+				await service.retry(retryArgs());
+
+				const [data] = workflowRunner.run.mock.calls[0];
+				expect(data.executionData?.executionData?.runtimeData).toMatchObject({
+					credentials: 'encrypted-user-identity',
+					secureArtifacts: 'encrypted-artifacts',
+				});
+			});
+
+			it('should allow the user who started the run to retry it', async () => {
+				const { service, workflowRunner } = buildRetryService();
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(
+					withRuntimeData(buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }), {
+						usesDynamicCredentials: true,
+						executedByUserId: 'user-1',
+					}),
+				);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		it('should remove the last run of the node when it ended in an error', async () => {

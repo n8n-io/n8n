@@ -1,4 +1,5 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
+import { createHash } from 'node:crypto';
 
 import type { AgentSessionThread, AgentSessionTurn } from './agent-context.contracts';
 
@@ -12,6 +13,15 @@ const MAX_TEXT_CHARS = 4_000;
 const MAX_TOOL_VALUE_CHARS = 2_000;
 const MAX_BLOCK_CHARS = 100_000;
 const TRUNCATION_FOOTER = '… [truncated]';
+const TRANSCRIPT_PAGE_CHARS = 40_000;
+const TURN_START = '\n## Turn (';
+
+interface ValueLimits {
+	text: number;
+	toolValue: number;
+}
+
+const COMPACT_LIMITS: ValueLimits = { text: MAX_TEXT_CHARS, toolValue: MAX_TOOL_VALUE_CHARS };
 
 function truncate(value: string, max: number): string {
 	if (value.length <= max) return value;
@@ -24,7 +34,7 @@ function truncateBlockToFit(value: string, max: number): string | null {
 	return value.slice(0, max - TRUNCATION_FOOTER.length) + TRUNCATION_FOOTER;
 }
 
-function stringifyToolValue(value: unknown): string {
+function stringifyToolValue(value: unknown, max: number): string {
 	if (value === undefined) return '(none)';
 	let serialized: string;
 	try {
@@ -32,10 +42,10 @@ function stringifyToolValue(value: unknown): string {
 	} catch {
 		serialized = String(value);
 	}
-	return truncate(serialized, MAX_TOOL_VALUE_CHARS);
+	return truncate(serialized, max);
 }
 
-function formatInput(message: AgentPersistedMessageDto): string {
+function formatInput(message: AgentPersistedMessageDto, maxChars: number): string {
 	const text = message.content
 		.flatMap((part) => {
 			if (part.type === 'text') return [part.text];
@@ -43,34 +53,38 @@ function formatInput(message: AgentPersistedMessageDto): string {
 			return [];
 		})
 		.join('\n');
-	return `User: ${truncate(text, MAX_TEXT_CHARS)}`;
+	return `User: ${truncate(text, maxChars)}`;
 }
 
-function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn): string {
+function formatTimelineEvent(
+	event: TimelineEvent,
+	execution: AgentSessionTurn,
+	limits: ValueLimits,
+): string {
 	if (event.type === 'input') {
 		const message = execution.inputMessages?.find(({ id }) => id === event.messageId);
-		return message ? formatInput(message) : '';
+		return message ? formatInput(message, limits.text) : '';
 	}
 	if (event.type === 'background-task-signal') {
-		return `Background task results received: ${stringifyToolValue(event.signal.tasks)}`;
+		return `Background task results received: ${stringifyToolValue(event.signal.tasks, limits.toolValue)}`;
 	}
 	if (event.type === 'text') {
-		return `Assistant: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+		return `Assistant: ${truncate(event.content, limits.text)}`;
 	}
 	if (event.type === 'reasoning') {
-		return `Reasoning: ${truncate(event.content, MAX_TEXT_CHARS)}`;
+		return `Reasoning: ${truncate(event.content, limits.text)}`;
 	}
 	if (event.type === 'suspension') {
 		return `[suspended waiting on ${event.toolName}]`;
 	}
 	if (event.type === 'hitl-response') {
-		return `Human response: ${stringifyToolValue(event.response)}`;
+		return `Human response: ${stringifyToolValue(event.response, limits.toolValue)}`;
 	}
 	if (event.type === 'guardrail') {
 		return `[stopped by guardrail ${event.code}]`;
 	}
 	if (event.type === 'host-event') {
-		return `Host event ${event.name}: ${stringifyToolValue(event.payload)}`;
+		return `Host event ${event.name}: ${stringifyToolValue(event.payload, limits.toolValue)}`;
 	}
 	const durationMs = event.endTime > 0 ? event.endTime - event.startTime : null;
 	const headerParts = [
@@ -81,14 +95,15 @@ function formatTimelineEvent(event: TimelineEvent, execution: AgentSessionTurn):
 	if (durationMs !== null) headerParts.push(`${durationMs}ms`);
 	if (event.workflowName) headerParts.push(`workflow=${event.workflowName}`);
 	if (event.nodeDisplayName) headerParts.push(`node=${event.nodeDisplayName}`);
+	if (limits.toolValue === 0) return headerParts.join(' | ');
 	return [
 		headerParts.join(' | '),
-		`  Input: ${stringifyToolValue(event.input)}`,
-		`  Output: ${stringifyToolValue(event.output)}`,
+		`  Input: ${stringifyToolValue(event.input, limits.toolValue)}`,
+		`  Output: ${stringifyToolValue(event.output, limits.toolValue)}`,
 	].join('\n');
 }
 
-function formatExecution(execution: AgentSessionTurn): string {
+function formatExecution(execution: AgentSessionTurn, limits: ValueLimits): string {
 	const headerParts = [`status=${execution.status}`];
 	if (execution.model) headerParts.push(`model=${execution.model}`);
 	headerParts.push(`duration=${execution.duration}ms`);
@@ -101,13 +116,13 @@ function formatExecution(execution: AgentSessionTurn): string {
 			execution.timeline?.filter((event) => event.type === 'input').map((event) => event.messageId),
 		);
 		for (const message of execution.inputMessages) {
-			if (!steeredIds.has(message.id)) lines.push(formatInput(message));
+			if (!steeredIds.has(message.id)) lines.push(formatInput(message, limits.text));
 		}
 	} else if (execution.userMessage !== null) {
-		lines.push(`User: ${truncate(execution.userMessage, MAX_TEXT_CHARS)}`);
+		lines.push(`User: ${truncate(execution.userMessage, limits.text)}`);
 	}
 	for (const event of execution.timeline ?? []) {
-		const line = formatTimelineEvent(event, execution);
+		const line = formatTimelineEvent(event, execution, limits);
 		if (line) lines.push(line);
 	}
 	return lines.join('\n');
@@ -152,6 +167,32 @@ function continuesExecution(previous: AgentSessionTurn, current: AgentSessionTur
 	return current.userMessage === null;
 }
 
+function selectScope(
+	executions: AgentSessionTurn[],
+	executionId: string | undefined,
+): AgentSessionTurn[] | null {
+	return executionId === undefined ? executions : selectTurnExecutions(executions, executionId);
+}
+
+function formatPrefix(
+	thread: AgentSessionThread,
+	scoped: AgentSessionTurn[],
+	executionId: string | undefined,
+): string {
+	const scopeLabel = executionId === undefined ? 'whole session' : 'single turn';
+	const header =
+		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
+		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${scoped.length}`;
+
+	return [
+		PREVIEW_CONTEXT_OPEN_TAG,
+		header,
+		'',
+		'The user shared this transcript of a real conversation with the target agent',
+		'so you can assess its behavior and improve its configuration.',
+	].join('\n');
+}
+
 /**
  * Format a preview chat session (or single turn) into a markdown
  * block for injection into a builder chat message. Returns `null` when
@@ -163,22 +204,10 @@ export function formatPreviewSessionContext(
 	executions: AgentSessionTurn[],
 	executionId?: string,
 ): string | null {
-	const scoped =
-		executionId === undefined ? executions : selectTurnExecutions(executions, executionId);
+	const scoped = selectScope(executions, executionId);
 	if (scoped === null) return null;
 
-	const scopeLabel = executionId === undefined ? 'whole session' : 'single turn';
-	const header =
-		`Preview session transcript — title: ${thread.title ?? '(untitled)'}, ` +
-		`session #${thread.sessionNumber}, scope: ${scopeLabel}, turns: ${scoped.length}`;
-
-	const prefix = [
-		PREVIEW_CONTEXT_OPEN_TAG,
-		header,
-		'',
-		'The user shared this transcript of a real conversation with the target agent',
-		'so you can assess its behavior and improve its configuration.',
-	].join('\n');
+	const prefix = formatPrefix(thread, scoped, executionId);
 	const closing = `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
 	const includedNewestFirst: string[] = [];
 	let includedLength = 0;
@@ -186,7 +215,7 @@ export function formatPreviewSessionContext(
 	let omittedEarlierTurns = 0;
 
 	for (let i = scoped.length - 1; i >= 0; i--) {
-		const formatted = `\n${formatExecution(scoped[i])}`;
+		const formatted = `\n${formatExecution(scoped[i], COMPACT_LIMITS)}`;
 		const projectedLength = prefix.length + includedLength + formatted.length + closing.length;
 		if (projectedLength > MAX_BLOCK_CHARS) {
 			boundaryTurn = formatted;
@@ -238,4 +267,75 @@ export function formatPreviewSessionContext(
 	}
 
 	return prefix + includedTurns.join('') + footer + closing;
+}
+
+interface AgentSessionTranscriptPageOptions {
+	executionId?: string;
+	maxToolValueLength?: number;
+	cursor?: string;
+	pageSize?: number;
+}
+
+export type AgentSessionTranscriptPage =
+	| { ok: true; transcript: string; nextCursor: string | null }
+	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' };
+
+function digestOf(text: string): string {
+	return createHash('sha256').update(text).digest('base64url');
+}
+
+function isHighSurrogate(code: number): boolean {
+	return code >= 0xd800 && code <= 0xdbff;
+}
+
+function findPageEnd(transcript: string, start: number, pageSize: number): number {
+	const end = start + pageSize;
+	if (end >= transcript.length) return transcript.length;
+	const lastTurnStart = transcript.lastIndexOf(TURN_START, end);
+	if (lastTurnStart > start + pageSize / 2) return lastTurnStart;
+	return isHighSurrogate(transcript.charCodeAt(end - 1)) ? end - 1 : end;
+}
+
+function findPageStart(transcript: string, cursor: string): number | null {
+	const match = /^(\d+)\.([\w-]+)$/.exec(cursor);
+	if (!match) return null;
+	const start = Number(match[1]);
+	if (start === 0 || start >= transcript.length) return null;
+	return digestOf(transcript.slice(0, start)) === match[2] ? start : null;
+}
+
+/**
+ * Format one page of an Agent session transcript. Text is complete and each
+ * tool value is cut at `maxToolValueLength`; 0 leaves tool values out. No turn
+ * is left out: the pages joined in order give the complete transcript. A page
+ * ends before a turn when the page stays at least half full. The cursor carries
+ * a digest of the text before it, so a cursor from a session that changed since
+ * is rejected.
+ */
+export function formatAgentSessionTranscriptPage(
+	thread: AgentSessionThread,
+	executions: AgentSessionTurn[],
+	{
+		executionId,
+		maxToolValueLength = MAX_TOOL_VALUE_CHARS,
+		cursor,
+		pageSize = TRANSCRIPT_PAGE_CHARS,
+	}: AgentSessionTranscriptPageOptions = {},
+): AgentSessionTranscriptPage {
+	const scoped = selectScope(executions, executionId);
+	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
+
+	const limits: ValueLimits = { text: Number.POSITIVE_INFINITY, toolValue: maxToolValueLength };
+	const transcript =
+		formatPrefix(thread, scoped, executionId) +
+		scoped.map((execution) => `\n${formatExecution(execution, limits)}`).join('') +
+		`\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+
+	const start = cursor === undefined ? 0 : findPageStart(transcript, cursor);
+	if (start === null) return { ok: false, reason: 'invalid_cursor' };
+
+	const end = findPageEnd(transcript, start, pageSize);
+	const nextCursor =
+		end < transcript.length ? `${end}.${digestOf(transcript.slice(0, end))}` : null;
+	return { ok: true, transcript: transcript.slice(start, end), nextCursor };
 }

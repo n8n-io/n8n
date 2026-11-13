@@ -1,4 +1,4 @@
-import { NodeOperationError, toPathSegment } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { assertLakebaseOAuth } from './lakebase';
 import { databricksApiRequest, getHost, type DatabricksContext } from '../actions/helpers';
@@ -42,15 +42,17 @@ async function fetchLakebaseRestBase(
 	branch: string,
 ): Promise<string> {
 	const host = await getHost(context, 'databricksOAuth2Api');
-	const parent = `${host}/api/2.0/postgres/projects/${toPathSegment(project)}/branches/${toPathSegment(branch)}`;
-
-	const response: EndpointsResponse = await databricksApiRequest(context, 'databricksOAuth2Api', {
-		method: 'GET',
-		url: `${parent}/endpoints`,
-		headers: { Accept: 'application/json' },
-		json: true,
-		returnFullResponse: true,
-	});
+	const response: EndpointsResponse = await databricksApiRequest(
+		context,
+		'databricksOAuth2Api',
+		requestUrl`${host}/api/2.0/postgres/projects/${project}/branches/${branch}/endpoints`,
+		{
+			headers: { Accept: 'application/json' },
+			json: true,
+			method: 'GET',
+			returnFullResponse: true,
+		},
+	);
 	const endpointHost = response.body?.endpoints?.find(
 		(e) => e.status?.endpoint_type === 'ENDPOINT_TYPE_READ_WRITE',
 	)?.status?.hosts?.host;

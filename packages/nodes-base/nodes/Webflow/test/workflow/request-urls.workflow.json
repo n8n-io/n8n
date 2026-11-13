@@ -1,0 +1,587 @@
+{
+	"name": "Webflow Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "31e7aa43-fa28-532c-862d-ad1d7a7b43c7",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"live": false,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "a5b4ddb0-65ea-5c26-b978-3a8f0c18adf0",
+			"name": "Webflow v2 > Create",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"live": true,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 200],
+			"id": "640e7082-a63e-53bb-b7bb-3b780556af9c",
+			"name": "Webflow v2 > Create Live",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754"
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 400],
+			"id": "5358c312-d816-534a-895d-f03c28c7521f",
+			"name": "Webflow v2 > Get",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"id": "8bc36753-8878-563f-9128-544bdd5a34be",
+			"name": "Webflow v2 > Get Many",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 800],
+			"id": "175514e3-5b23-57f7-8417-5c6689f0ce5c",
+			"name": "Webflow v2 > Get Many All",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754",
+				"live": false,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 1000],
+			"id": "355ed7b7-4343-5bb3-a649-c6dcf709277d",
+			"name": "Webflow v2 > Update",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754",
+				"live": true,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 1200],
+			"id": "58620548-2b49-552b-860f-7c0731631916",
+			"name": "Webflow v2 > Update Live",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "deleteItem",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754"
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 2,
+			"position": [220, 1400],
+			"id": "76d24e28-2367-577e-a1d4-130509455a75",
+			"name": "Webflow v2 > Delete",
+			"credentials": {
+				"webflowOAuth2Api": {
+					"id": "webflowOAuth2",
+					"name": "Webflow OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "create",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"live": true,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "601c3272-1420-5e4c-b6df-159675cf7c57",
+			"name": "Webflow v1 > Create",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "get",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754"
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "c4de460c-8a9c-5215-a0e6-8657c7d07b26",
+			"name": "Webflow v1 > Get",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "getAll",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "9c2ea930-1fb2-5883-b4ad-6d9eb459ef27",
+			"name": "Webflow v1 > Get Many",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "getAll",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 2200],
+			"id": "fa66ea66-7d83-5962-9d0a-3456489f68c4",
+			"name": "Webflow v1 > Get Many All",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "update",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754",
+				"live": false,
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Pan Galactic Gargle Blaster"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"id": "f9746b73-8103-5cc6-b182-5222b4b445fa",
+			"name": "Webflow v1 > Update",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"operation": "delete",
+				"siteId": "580e63e98c9a982ac9b8b741",
+				"collectionId": "580e63fc8c9a982ac9b8b745",
+				"itemId": "580e64008c9a982ac9b8b754"
+			},
+			"type": "n8n-nodes-base.webflow",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "c347d856-3db6-5e5a-97f0-6e843c72e654",
+			"name": "Webflow v1 > Delete",
+			"credentials": {
+				"webflowApi": {
+					"id": "webflowApi",
+					"name": "Webflow API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Webflow v2 > Create": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Create Live": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Get": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Get Many": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Get Many All": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Update": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Update Live": [
+			{
+				"json": {
+					"id": "580e64008c9a982ac9b8b754",
+					"cmsLocaleId": "653ad57de882f528b32e810e",
+					"isArchived": false,
+					"isDraft": false,
+					"fieldData": {
+						"name": "Pan Galactic Gargle Blaster",
+						"slug": "pan-galactic-gargle-blaster"
+					}
+				}
+			}
+		],
+		"Webflow v2 > Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Webflow v1 > Create": [
+			{
+				"json": {
+					"_id": "580e64008c9a982ac9b8b754",
+					"_archived": false,
+					"_draft": false,
+					"name": "Pan Galactic Gargle Blaster",
+					"slug": "pan-galactic-gargle-blaster"
+				}
+			}
+		],
+		"Webflow v1 > Get": [
+			{
+				"json": {
+					"_id": "580e64008c9a982ac9b8b754",
+					"_archived": false,
+					"_draft": false,
+					"name": "Pan Galactic Gargle Blaster",
+					"slug": "pan-galactic-gargle-blaster"
+				}
+			}
+		],
+		"Webflow v1 > Get Many": [
+			{
+				"json": {
+					"_id": "580e64008c9a982ac9b8b754",
+					"_archived": false,
+					"_draft": false,
+					"name": "Pan Galactic Gargle Blaster",
+					"slug": "pan-galactic-gargle-blaster"
+				}
+			}
+		],
+		"Webflow v1 > Get Many All": [
+			{
+				"json": {
+					"_id": "580e64008c9a982ac9b8b754",
+					"_archived": false,
+					"_draft": false,
+					"name": "Pan Galactic Gargle Blaster",
+					"slug": "pan-galactic-gargle-blaster"
+				}
+			}
+		],
+		"Webflow v1 > Update": [
+			{
+				"json": {
+					"_id": "580e64008c9a982ac9b8b754",
+					"_archived": false,
+					"_draft": false,
+					"name": "Pan Galactic Gargle Blaster",
+					"slug": "pan-galactic-gargle-blaster"
+				}
+			}
+		],
+		"Webflow v1 > Delete": [
+			{
+				"json": {
+					"deleted": 1
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Webflow v2 > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Create Live",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Get Many All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Update Live",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v2 > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Get Many All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webflow v1 > Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

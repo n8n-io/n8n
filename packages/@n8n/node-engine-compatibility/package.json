@@ -25,6 +25,7 @@
   "dependencies": {
     "@n8n/engine": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:"
@@ -34,6 +35,7 @@
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@n8n/workflow-engine-check": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
     "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",

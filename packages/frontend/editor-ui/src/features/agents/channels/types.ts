@@ -131,6 +131,8 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	/** What the channel does and what setup needs, shown under its name in the channel list. */
+	getListDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
 		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */

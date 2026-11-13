@@ -9,8 +9,10 @@ import type {
 	IPairedItemData,
 	IPollFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { isSameOrigin } from '../isSameOrigin';
 
@@ -29,11 +31,10 @@ interface IAttachment {
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
@@ -45,37 +46,21 @@ export async function apiRequest(
 	const baseUrl = credentials.host as string;
 
 	query = query || {};
-	const hasUriOverride = !!uri;
-	const sendCredentials = !uri || isSameOrigin(uri, baseUrl);
 
-	if (!uri) {
-		uri = baseUrl.endsWith('/') ? `${baseUrl.slice(0, -1)}${endpoint}` : `${baseUrl}${endpoint}`;
-	}
-
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs: query,
-		uri,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
 
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
+	if (option.formData) {
+		options.formData = option.formData;
 	}
 
 	if (Object.keys(body).length === 0) {
 		delete options.body;
-	}
-
-	// A `uri` override can come from record content, so send the credential only to the NocoDB host.
-	if (!sendCredentials) {
-		return await this.helpers.request(options);
-	}
-
-	// The credential headers are custom (`xc-token`, `xc-auth`), so a redirect would not strip them.
-	if (hasUriOverride) {
-		options.followRedirect = false;
 	}
 
 	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
@@ -90,7 +75,7 @@ export async function apiRequest(
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
@@ -124,6 +109,8 @@ export async function downloadRecordAttachments(
 	pairedItem?: IPairedItemData[],
 ): Promise<INodeExecutionData[]> {
 	const elements: INodeExecutionData[] = [];
+	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
+	const { host: baseUrl } = await this.getCredentials<{ host: string }>(authenticationMethod);
 
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -139,10 +126,21 @@ export async function downloadRecordAttachments(
 			if (record[fieldName]) {
 				for (const [index, attachment] of attachments.entries()) {
 					const attachmentUrl = attachment.signedUrl || attachment.url;
-					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
+					const request: IRequestOptions = {
+						method: 'GET',
+						qs: {},
+						uri: attachmentUrl,
 						json: false,
 						encoding: null,
-					});
+					};
+					// The attachment URL comes from record content, so send the credential only to the NocoDB host.
+					// The credential headers are custom (`xc-token`, `xc-auth`), so a redirect would not strip them.
+					const file: Buffer = isSameOrigin(attachmentUrl, baseUrl)
+						? await this.helpers.requestWithAuthentication.call(this, authenticationMethod, {
+								...request,
+								followRedirect: false,
+							})
+						: await this.helpers.request(request);
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file),
 						attachment.title,

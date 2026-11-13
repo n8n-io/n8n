@@ -967,6 +967,24 @@ describe('AgentChatPanel', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
 		});
 
+		it('keeps the centered empty state while a new chat loads its history', () => {
+			// The history load counts as a recovering run.
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+			expect(isCentered(wrapper)).toBe(true);
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
+		});
+
+		it('hides the empty state while the history loads in other hosts', () => {
+			isLoadingHistoryMock.value = true;
+			isStreamingMock.value = true;
+			const wrapper = mountPanel({ newSession: true });
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+		});
+
 		describe('first message preview', () => {
 			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
 				wrapper.findComponent({ name: 'AgentChatMessageList' });
@@ -4221,6 +4239,52 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
+	describe('isAwaitingUserAnswer', () => {
+		type AwaitingVm = { isAwaitingUserAnswer: boolean };
+
+		it('is false while a waiting card is open, because the workflow resumes the run', () => {
+			messagesMock.value = [openWaitMessage()];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('is true while a card waits for the user to answer', () => {
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: {
+							card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+						},
+					},
+				},
+			];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('is false when no card is open', () => {
+			messagesMock.value = [];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
 
@@ -4627,6 +4691,18 @@ describe('AgentChatPanel', () => {
 			expect(input.props('acceptedMimeTypes')).toBe(
 				`image/png,image/jpeg,image/gif,image/webp,application/pdf,${AGENT_CHAT_DATA_ATTACHMENT_ACCEPT}`,
 			);
+		});
+
+		it('shows the empty state only after the history loads', async () => {
+			isLoadingHistoryMock.value = true;
+			const wrapper = mountPanel();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+
+			isLoadingHistoryMock.value = false;
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
 		});
 
 		describe('slots', () => {

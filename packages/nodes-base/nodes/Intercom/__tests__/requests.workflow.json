@@ -1,0 +1,402 @@
+{
+	"name": "Intercom request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "create",
+				"email": "nathan@n8n.io",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Lead",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "get",
+				"selectBy": "id",
+				"value": "5f1a2b3c4d5e6f7a8b9c0d1e"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Lead by ID",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get All Leads",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "delete",
+				"deleteBy": "id",
+				"value": "5f1a2b3c4d5e6f7a8b9c0d1e"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Delete Lead by ID",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "lead",
+				"operation": "delete",
+				"deleteBy": "userId",
+				"value": "usr-1001"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Delete Lead by User ID",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"selectBy": "id",
+				"value": "62b5e1d4c8a9f30012345678"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Get User by ID",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Get Many Users",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"id": "62b5e1d4c8a9f30012345678"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Delete User",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "get",
+				"selectBy": "id",
+				"value": "6311a7f2e4b0c9001a2b3c4d"
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Company by ID",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "users",
+				"listBy": "id",
+				"value": "6311a7f2e4b0c9001a2b3c4d",
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Company Users",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "users",
+				"listBy": "id",
+				"value": "6311a7f2e4b0c9001a2b3c4d",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.intercom",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Get All Company Users",
+			"credentials": {
+				"intercomApi": {
+					"id": "cred1",
+					"name": "Intercom account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Lead": [
+			{
+				"json": {
+					"type": "contact",
+					"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get Lead by ID": [
+			{
+				"json": {
+					"type": "contact",
+					"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get All Leads": [
+			{
+				"json": {
+					"type": "contact",
+					"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Delete Lead by ID": [
+			{
+				"json": {
+					"type": "contact",
+					"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"email": "nathan@n8n.io",
+					"deleted": true
+				}
+			}
+		],
+		"Delete Lead by User ID": [
+			{
+				"json": {
+					"type": "contact",
+					"id": "5f1a2b3c4d5e6f7a8b9c0d1e",
+					"email": "nathan@n8n.io",
+					"deleted": true
+				}
+			}
+		],
+		"Get User by ID": [
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30012345678",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get Many Users": [
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30012345678",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Delete User": [
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30012345678",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get Company by ID": [
+			{
+				"json": {
+					"type": "company",
+					"id": "6311a7f2e4b0c9001a2b3c4d",
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Get Company Users": [
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30012345678",
+					"email": "nathan@n8n.io"
+				}
+			}
+		],
+		"Get All Company Users": [
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30012345678",
+					"email": "nathan@n8n.io"
+				}
+			},
+			{
+				"json": {
+					"type": "user",
+					"id": "62b5e1d4c8a9f30087654321",
+					"email": "nathan@n8n.io"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Lead",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Lead by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Leads",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Lead by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Lead by User ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Users",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Company by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Company Users",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Company Users",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

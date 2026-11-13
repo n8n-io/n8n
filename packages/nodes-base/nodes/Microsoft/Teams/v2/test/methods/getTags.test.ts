@@ -3,6 +3,7 @@ import {
 	type ILoadOptionsFunctions,
 	type INode,
 	type NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
@@ -62,7 +63,11 @@ describe('Microsoft Teams v2, getTags', () => {
 		// Without `extractValue` the read hands back the resource locator object and the path
 		// throws for every user.
 		expect(ctx.getCurrentNodeParameter).toHaveBeenCalledWith('teamId', { extractValue: true });
-		expect(apiRequestAllItems).toHaveBeenCalledWith('value', 'GET', '/v1.0/teams/team-1/tags');
+		expect(apiRequestAllItems).toHaveBeenCalledWith(
+			'value',
+			'GET',
+			requestPath`/v1.0/teams/team-1/tags`,
+		);
 		// A single `microsoftApiRequest` would stop at the first page.
 		expect(apiRequest).not.toHaveBeenCalled();
 	});

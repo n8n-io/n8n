@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { mauticApiRequest } from '../GenericFunctions';
 import { MauticTrigger } from '../MauticTrigger.node';
@@ -71,7 +72,7 @@ describe('MauticTrigger', () => {
 			expect(randomBytes).toHaveBeenCalledWith(32);
 			expect(mauticApiRequest).toHaveBeenCalledWith(
 				'POST',
-				'/hooks/new',
+				requestPath`/hooks/new`,
 				expect.objectContaining({
 					secret: webhookSecret,
 					webhookUrl,
@@ -81,6 +82,19 @@ describe('MauticTrigger', () => {
 			const webhookData = mockHookFunctions.getWorkflowStaticData('node');
 			expect(webhookData.webhookId).toBe('hook-123');
 			expect(webhookData.webhookSecret).toBe(webhookSecret);
+		});
+	});
+
+	describe('webhookMethods.default.checkExists', () => {
+		it('should return false for a webhook ID of ".." without a request', async () => {
+			mockHookFunctions.getWorkflowStaticData.mockReturnValue({ webhookId: '..' });
+
+			const result = await trigger.webhookMethods!.default.checkExists.call(
+				mockHookFunctions as unknown as IHookFunctions,
+			);
+
+			expect(result).toBe(false);
+			expect(mauticApiRequest).not.toHaveBeenCalled();
 		});
 	});
 
@@ -98,7 +112,7 @@ describe('MauticTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(mauticApiRequest).toHaveBeenCalledWith('DELETE', '/hooks/hook-123/delete');
+			expect(mauticApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/hooks/hook-123/delete`);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});

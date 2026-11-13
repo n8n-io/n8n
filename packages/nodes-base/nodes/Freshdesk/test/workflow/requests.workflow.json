@@ -1,0 +1,398 @@
+{
+	"name": "Freshdesk Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "create",
+				"requester": "email",
+				"requesterIdentificationValue": "nathan@example.com",
+				"status": "open",
+				"priority": "low",
+				"source": "email",
+				"options": {}
+			},
+			"id": "freshdesk-0",
+			"name": "Ticket Create",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": "77",
+				"updateFields": {
+					"status": "pending"
+				}
+			},
+			"id": "freshdesk-1",
+			"name": "Ticket Update",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": "77"
+			},
+			"id": "freshdesk-2",
+			"name": "Ticket Get",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"options": {}
+			},
+			"id": "freshdesk-3",
+			"name": "Ticket Get Many",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "getAll",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "freshdesk-4",
+			"name": "Ticket Get All",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": "77"
+			},
+			"id": "freshdesk-5",
+			"name": "Ticket Delete",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"name": "Nathan",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"id": "freshdesk-6",
+			"name": "Contact Create",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "501"
+			},
+			"id": "freshdesk-7",
+			"name": "Contact Get",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"filters": {}
+			},
+			"id": "freshdesk-8",
+			"name": "Contact Get Many",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "update",
+				"contactId": "501",
+				"additionalFields": {
+					"job_title": "Engineer"
+				}
+			},
+			"id": "freshdesk-9",
+			"name": "Contact Update",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "501"
+			},
+			"id": "freshdesk-10",
+			"name": "Contact Delete",
+			"type": "n8n-nodes-base.freshdesk",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"freshdeskApi": {
+					"id": "1",
+					"name": "Freshdesk account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Ticket Create": [
+			{
+				"json": {
+					"id": 77,
+					"subject": "Printer is broken",
+					"status": 2
+				}
+			}
+		],
+		"Ticket Update": [
+			{
+				"json": {
+					"id": 77,
+					"subject": "Printer is broken",
+					"status": 2
+				}
+			}
+		],
+		"Ticket Get": [
+			{
+				"json": {
+					"id": 77,
+					"subject": "Printer is broken",
+					"status": 2
+				}
+			}
+		],
+		"Ticket Get Many": [
+			{
+				"json": {
+					"id": 77,
+					"subject": "Printer is broken",
+					"status": 2
+				}
+			}
+		],
+		"Ticket Get All": [
+			{
+				"json": {
+					"id": 77,
+					"subject": "Printer is broken",
+					"status": 2
+				}
+			},
+			{
+				"json": {
+					"id": 78,
+					"subject": "Screen is broken",
+					"status": 2
+				}
+			}
+		],
+		"Ticket Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Contact Create": [
+			{
+				"json": {
+					"id": 501,
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Get": [
+			{
+				"json": {
+					"id": 501,
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Get Many": [
+			{
+				"json": {
+					"id": 501,
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Update": [
+			{
+				"json": {
+					"id": 501,
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Contact Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Ticket Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Ticket Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Contact Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

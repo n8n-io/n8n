@@ -1,0 +1,120 @@
+{
+	"name": "Google Cloud Storage Object",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "4d0e5c3a-2a43-4a3b-9b0e-6a3c1f2b7a10",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"content\": \"Quarterly summary\"\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "c7d8e9f0-1a2b-4c3d-8e4f-5a6b7c8d9e01",
+			"name": "Set Content"
+		},
+		{
+			"parameters": {
+				"operation": "toText",
+				"sourceProperty": "content",
+				"options": {
+					"fileName": "summary.txt"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [440, 0],
+			"id": "a3f1c2d4-5b6e-4f70-8a91-b2c3d4e5f601",
+			"name": "Create File"
+		},
+		{
+			"parameters": {
+				"resource": "object",
+				"operation": "create",
+				"bucketName": "n8n-test-bucket",
+				"objectName": "reports/2026/summary.txt",
+				"createData": {},
+				"createQuery": {},
+				"encryptionHeaders": {}
+			},
+			"type": "n8n-nodes-base.googleCloudStorage",
+			"typeVersion": 1.1,
+			"position": [660, -100],
+			"id": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d01",
+			"name": "Create Object (OAuth2)",
+			"credentials": {
+				"googleCloudStorageOAuth2Api": {
+					"id": "1",
+					"name": "Google Cloud Storage OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"resource": "object",
+				"operation": "create",
+				"bucketName": "n8n-test-bucket",
+				"objectName": "reports/2026/summary.txt",
+				"createData": {},
+				"createQuery": {},
+				"encryptionHeaders": {}
+			},
+			"type": "n8n-nodes-base.googleCloudStorage",
+			"typeVersion": 1.1,
+			"position": [660, 100],
+			"id": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d02",
+			"name": "Create Object (Service Account)",
+			"credentials": {
+				"googleApi": {
+					"id": "2",
+					"name": "Google Service Account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Object (OAuth2)": [
+			{
+				"json": {
+					"kind": "storage#object",
+					"bucket": "n8n-test-bucket",
+					"name": "reports/2026/summary.txt"
+				}
+			}
+		],
+		"Create Object (Service Account)": [
+			{
+				"json": {
+					"kind": "storage#object",
+					"bucket": "n8n-test-bucket",
+					"name": "reports/2026/summary.txt"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [[{ "node": "Set Content", "type": "main", "index": 0 }]]
+		},
+		"Set Content": {
+			"main": [[{ "node": "Create File", "type": "main", "index": 0 }]]
+		},
+		"Create File": {
+			"main": [
+				[
+					{ "node": "Create Object (OAuth2)", "type": "main", "index": 0 },
+					{ "node": "Create Object (Service Account)", "type": "main", "index": 0 }
+				]
+			]
+		}
+	}
+}

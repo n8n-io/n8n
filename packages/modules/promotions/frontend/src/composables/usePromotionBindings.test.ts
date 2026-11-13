@@ -275,6 +275,19 @@ it.each([new Error('Offline'), new ResponseError('Forbidden', { httpStatusCode: 
 	},
 );
 
+it('reports a busy environment on Continue apart from other failures', async () => {
+	const session = usePromotionBindings();
+	session.start(blocked());
+	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
+	vi.mocked(continueApplyPromotion).mockRejectedValue(
+		new ResponseError('Another promotion operation is running', { httpStatusCode: 423 }),
+	);
+	await session.continueInstanceApply();
+	expect(session.error.value).toEqual({ kind: 'locked' });
+	expect(session.savedResources.value).toEqual([savedCredential]);
+	expect(session.canContinue.value).toBe(true);
+});
+
 it('ignores an editor result from a closed session', async () => {
 	const pending = createDeferredPromise<CreatedPromotionBinding | null>();
 	const session = usePromotionBindings();

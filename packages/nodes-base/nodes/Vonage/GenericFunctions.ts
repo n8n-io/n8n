@@ -5,13 +5,15 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function vonageApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
@@ -22,11 +24,11 @@ export async function vonageApiRequest(
 
 	body.api_secret = credentials.apiSecret as string;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		form: body,
 		qs,
-		uri: `https://rest.nexmo.com${path}`,
+		uri: requestUrl`https://rest.nexmo.com${path}`,
 		json: true,
 	};
 

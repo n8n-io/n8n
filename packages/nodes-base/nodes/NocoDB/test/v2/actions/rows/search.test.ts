@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/search.operation';
@@ -79,7 +80,7 @@ describe('NocoDB Rows Search Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/records',
+				requestPath`/api/v3/data/base1/table1/records`,
 				{},
 				{
 					where: '(name,eq,test)',
@@ -133,7 +134,7 @@ describe('NocoDB Rows Search Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/records',
+				requestPath`/api/v3/data/base1/table1/records`,
 				{},
 				{
 					fields: 'fieldC,fieldD',
@@ -188,7 +189,7 @@ describe('NocoDB Rows Search Action', () => {
 			expect(apiRequestAllItems.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/records',
+				requestPath`/api/v3/data/base1/table1/records`,
 				{},
 				{},
 			);

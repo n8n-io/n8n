@@ -251,7 +251,7 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
-		it.each([false, true])(
+		it.each([false, 'other'] as const)(
 			'rechecks project access in the workflow transaction with publicApi=%s',
 			async (publicApi) => {
 				const user = mock<User>();
@@ -1148,7 +1148,7 @@ describe('WorkflowCreationService', () => {
 			await expect(
 				workflowCreationService.createWorkflow(user, newWorkflow, {
 					projectId: 'other-project',
-					publicApi: true,
+					publicApi: 'other',
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});

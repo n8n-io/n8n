@@ -3,6 +3,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { outputSchemaField, parseJsonOutputField } from '../common/fields';
 import { parseJsonIfPresent } from '../common/output.utils';
@@ -68,7 +69,8 @@ export async function execute(
 
 	const result = await executeRequestWithSessionManagement.call(this, index, {
 		method: 'POST',
-		path: '/sessions/{sessionId}/windows/{windowId}/page-query',
+		path: (sessionId, windowId) =>
+			requestPath`/sessions/${sessionId}/windows/${windowId}/page-query`,
 		body: {
 			prompt,
 			configuration: {

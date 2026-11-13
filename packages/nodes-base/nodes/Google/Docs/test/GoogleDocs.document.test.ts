@@ -65,14 +65,14 @@ describe('Google Docs document input', () => {
 
 			const result = await node.execute.call(context);
 
-			expect(context.helpers.requestOAuth2).toHaveBeenCalledWith(
-				'googleDocsOAuth2Api',
-				expect.objectContaining({
-					method: operation === 'get' ? 'GET' : 'POST',
-					uri: `https://docs.googleapis.com/v1/documents/${documentId}${
-						operation === 'update' ? ':batchUpdate' : ''
-					}`,
-				}),
+			expect(context.helpers.requestOAuth2).toHaveBeenCalledOnce();
+			const [credentialType, options] = context.helpers.requestOAuth2.mock.calls[0];
+			expect(credentialType).toBe('googleDocsOAuth2Api');
+			expect(options.method).toBe(operation === 'get' ? 'GET' : 'POST');
+			expect(String(options.uri)).toBe(
+				`https://docs.googleapis.com/v1/documents/${documentId}${
+					operation === 'update' ? ':batchUpdate' : ''
+				}`,
 			);
 			expect(result).toEqual([[{ json: response, pairedItem: { item: 0 } }]]);
 		},

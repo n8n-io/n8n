@@ -72,14 +72,19 @@ export function mergeIntoStored(
 }
 
 /**
- * Whether `overwrite` would change the destination credential: a different name, or stored
- * data that changes when the package values merge into it. Arrays never count.
+ * Whether `overwrite` would change the destination credential: a different name, a different
+ * description, or stored data that changes when the package values merge into it. Arrays never
+ * count. The description counts only when the package decides it: the importer drops it from
+ * the package credential when the instance has credential descriptions off.
  */
 export function credentialDiffers(
-	stored: { name: string; data: ICredentialDataDecryptedObject },
-	incoming: { name: string; data?: SerializedCredentialData },
+	stored: { name: string; data: ICredentialDataDecryptedObject; description?: string | null },
+	incoming: { name: string; data?: SerializedCredentialData; description?: string | null },
 ): boolean {
 	if (stored.name !== incoming.name) return true;
+	if (incoming.description !== undefined && (stored.description ?? null) !== incoming.description) {
+		return true;
+	}
 	if (incoming.data === undefined) return false;
 
 	return !isEqual(mergeIntoStored(stored.data, incoming.data), stored.data);
@@ -87,7 +92,11 @@ export function credentialDiffers(
 
 /** What a package credential would write, so that two payloads compare by effect. */
 function writtenPayload(candidate: CredentialUpdateCandidate) {
-	return { name: candidate.name, data: mergeIntoStored({}, candidate.data ?? {}) };
+	return {
+		name: candidate.name,
+		description: candidate.description,
+		data: mergeIntoStored({}, candidate.data ?? {}),
+	};
 }
 
 function uniqueSorted(values: string[]): string[] {

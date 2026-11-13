@@ -7,8 +7,11 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import type { GoogleServiceAccount } from '../../../GenericFunctions';
 import { getGoogleAccessToken } from '../../../GenericFunctions';
@@ -16,12 +19,16 @@ import { getGoogleAccessToken } from '../../../GenericFunctions';
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 	headers: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse' | 'encoding' | 'json'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 	service: GoogleServiceAccount = 'sheetV2',
 ) {
 	const authenticationMethod = this.getNodeParameter(
@@ -29,16 +36,19 @@ export async function apiRequest(
 		0,
 		'serviceAccount',
 	) as string;
-	const options: IRequestOptions = {
+	const baseOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || `https://sheets.googleapis.com${resource}`,
 		json: true,
 		...option,
+	};
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+		...baseOptions,
+		uri: uri ?? requestUrl`https://sheets.googleapis.com${resource}`,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -85,18 +95,17 @@ export async function apiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 ) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	query.maxResults = 100;
-	const url = uri ? uri : `https://sheets.googleapis.com${method}`;
 	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
+		responseData = await apiRequest.call(this, method, endpoint, body, query, uri);
 		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');

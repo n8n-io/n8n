@@ -1,10 +1,11 @@
+import { requestPath, requestUrl, toPathSegment } from 'n8n-workflow';
 import type {
 	IDataObject,
-	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
+	RequestPath,
+	RequestUrl,
 } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -16,6 +17,7 @@ import {
 	permissionHintFor,
 	sanitizeApiMessage,
 	type DatabricksCredentialType,
+	type DatabricksRequestOptions,
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
@@ -35,11 +37,12 @@ import {
 async function listRequest<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
-	options: IHttpRequestOptions,
+	url: RequestUrl,
+	options: DatabricksRequestOptions,
 	permissionHint?: string,
 ): Promise<T> {
 	try {
-		return (await databricksApiRequest(context, credentialType, options)) as T;
+		return (await databricksApiRequest(context, credentialType, url, options)) as T;
 	} catch (error) {
 		makePermissionErrorLegible(error, permissionHint);
 		throw error;
@@ -55,9 +58,8 @@ export async function getWarehouses(
 
 	const response = await listRequest<{
 		warehouses?: Array<{ id: string; name: string; size?: string }>;
-	}>(this, credentialType, {
+	}>(this, credentialType, requestUrl`${host}/api/2.0/sql/warehouses`, {
 		method: 'GET',
-		url: `${host}/api/2.0/sql/warehouses`,
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
@@ -95,9 +97,8 @@ export async function getEndpoints(
 				}>;
 			};
 		}>;
-	}>(this, credentialType, {
+	}>(this, credentialType, requestUrl`${host}/api/2.0/serving-endpoints`, {
 		method: 'GET',
-		url: `${host}/api/2.0/serving-endpoints`,
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
@@ -142,9 +143,9 @@ export async function getCatalogs(
 	const response = await listRequest<{ catalogs?: Array<{ name: string; comment?: string }> }>(
 		this,
 		credentialType,
+		requestUrl`${host}/api/2.1/unity-catalog/catalogs`,
 		{
 			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/catalogs`,
 			headers: { Accept: 'application/json' },
 			json: true,
 		},
@@ -190,9 +191,10 @@ export async function getSchemas(
 		const schemasResponse = await listRequest<{ schemas?: Array<{ name: string }> }>(
 			this,
 			credentialType,
+			requestUrl`${host}/api/2.1/unity-catalog/schemas`,
 			{
 				method: 'GET',
-				url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+				qs: { catalog_name: selectedCatalog },
 				headers: { Accept: 'application/json' },
 				json: true,
 			},
@@ -226,17 +228,22 @@ async function fetchResourcesInSchema<T extends { name: string }>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
 	host: string,
-	apiPath: string,
+	apiPath: RequestPath,
 	catalogName: string,
 	schemaName: string,
 	responseKey: string,
 ): Promise<T[]> {
-	const response = await listRequest<Record<string, T[] | undefined>>(context, credentialType, {
-		method: 'GET',
-		url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response = await listRequest<Record<string, T[] | undefined>>(
+		context,
+		credentialType,
+		requestUrl`${host}${apiPath}`,
+		{
+			method: 'GET',
+			qs: { catalog_name: catalogName, schema_name: schemaName },
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	return response[responseKey] ?? [];
 }
 
@@ -279,7 +286,7 @@ export async function getVolumes(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/volumes',
+			requestPath`/api/2.1/unity-catalog/volumes`,
 			selectedCatalog,
 			selectedSchema,
 			'volumes',
@@ -340,7 +347,7 @@ export async function getTables(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/tables',
+			requestPath`/api/2.1/unity-catalog/tables`,
 			selectedCatalog,
 			selectedSchema,
 			'tables',
@@ -401,7 +408,7 @@ export async function getFunctions(
 			this,
 			credentialType,
 			host,
-			'/api/2.1/unity-catalog/functions',
+			requestPath`/api/2.1/unity-catalog/functions`,
 			selectedCatalog,
 			selectedSchema,
 			'functions',
@@ -452,7 +459,7 @@ async function fetchListPage<T>(
 	context: ILoadOptionsFunctions,
 	credentialType: DatabricksCredentialType,
 	host: string,
-	path: string,
+	path: RequestPath,
 	qs: IDataObject,
 	pageToken?: string,
 	permissionHint?: string,
@@ -483,7 +490,7 @@ export async function getJobs(
 			this,
 			credentialType,
 			host,
-			'/api/2.2/jobs/list',
+			requestPath`/api/2.2/jobs/list`,
 			{ limit: JOBS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
@@ -545,7 +552,7 @@ export async function getRuns(
 			this,
 			credentialType,
 			host,
-			'/api/2.2/jobs/runs/list',
+			requestPath`/api/2.2/jobs/runs/list`,
 			{ limit: RUNS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
@@ -589,7 +596,7 @@ const byText = (filter: string | undefined) => {
 // The management API has no name filter, so a search scans pages the way getJobs does
 async function listLakebase<P, T>(
 	context: ILoadOptionsFunctions,
-	path: string,
+	path: RequestPath,
 	entries: (page: P) => T[] | undefined,
 	filter: string | undefined,
 	paginationToken: string | undefined,
@@ -625,7 +632,7 @@ export async function getLakebaseProjects(
 ): Promise<INodeListSearchResult> {
 	const { items, nextPageToken } = await listLakebase(
 		this,
-		'/api/2.0/postgres/projects',
+		requestPath`/api/2.0/postgres/projects`,
 		(page: { projects?: LakebaseProject[] }) => page.projects,
 		filter,
 		paginationToken,
@@ -648,7 +655,7 @@ export async function getLakebaseBranches(
 
 	const { items, nextPageToken } = await listLakebase(
 		this,
-		`/api/2.0/postgres/projects/${toPathSegment(project)}/branches`,
+		requestPath`/api/2.0/postgres/projects/${project}/branches`,
 		(page: { branches?: LakebaseBranch[] }) => page.branches,
 		filter,
 		paginationToken,
@@ -681,7 +688,7 @@ export async function getLakebaseDatabases(
 
 	const { items, nextPageToken } = await listLakebase(
 		this,
-		`/api/2.0/postgres/projects/${toPathSegment(project)}/branches/${toPathSegment(branch)}/databases`,
+		requestPath`/api/2.0/postgres/projects/${project}/branches/${branch}/databases`,
 		(page: { databases?: LakebaseDatabase[] }) => page.databases,
 		filter,
 		paginationToken,

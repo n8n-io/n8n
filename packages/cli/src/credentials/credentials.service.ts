@@ -2184,6 +2184,7 @@ export class CredentialsService {
 			type: string;
 			projectId: string;
 			data?: ICredentialDataDecryptedObject;
+			description?: string | null;
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
@@ -2195,6 +2196,9 @@ export class CredentialsService {
 			type: opts.type,
 			data,
 		});
+		if (opts.description !== undefined && (await this.credentialDescriptions.isEnabled())) {
+			encryptedCredential.description = parseCredentialDescription(opts.description);
+		}
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,

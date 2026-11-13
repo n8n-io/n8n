@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 import type { DataTableRow } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import type { CsvColumnMetadata } from './csv-parser.service';
 import { CsvParserService } from './csv-parser.service';
 import type { DataTableColumn } from './data-table-column.entity';
 import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
@@ -24,86 +23,121 @@ export class DataTableCsvImportService {
 	}
 
 	/**
-	 * Builds transformed rows for importing CSV data into a newly created table.
+	 * Builds batches of transformed rows for importing CSV data into a newly created table.
 	 * Supports column renaming via dtoColumns.csvColumnName and falls back to
 	 * index-based mapping when no csvColumnName is provided.
 	 */
-	async buildRowsForNewTable(
+	async buildRowBatchesForNewTable(
 		fileId: string,
 		hasHeaders: boolean,
 		tableColumns: DataTableColumn[],
 		dtoColumns?: CreateDataTableDto['columns'],
-	): Promise<DataTableRow[]> {
+	): Promise<AsyncGenerator<DataTableRow[]>> {
+		const failure = {
+			logMessage: 'Failed to import data from CSV file',
+			fallbackMessage: 'Failed to read CSV file',
+		};
+
+		let columnMapping: Map<string, string>;
 		try {
-			const columnMapping = await this.buildColumnMappingForNewTable(
+			columnMapping = await this.buildColumnMappingForNewTable(
 				fileId,
 				hasHeaders,
 				tableColumns,
 				dtoColumns,
 			);
-
-			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
-
-			return this.transformRows(csvRows, columnMapping);
 		} catch (error) {
-			this.logger.error('Failed to import data from CSV file', { error, fileId });
-			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
+			throw this.toFileUploadError(error, fileId, failure);
 		}
+
+		return this.transformRowBatches(fileId, hasHeaders, columnMapping, failure);
 	}
 
 	/**
-	 * Validates CSV columns against an existing table and builds transformed rows.
+	 * Validates CSV columns against an existing table and builds batches of transformed rows.
 	 * System columns are silently skipped. Unrecognized columns cause an error.
 	 * Empty/missing values are converted to null.
 	 */
-	async validateAndBuildRowsForExistingTable(
+	async validateAndBuildRowBatchesForExistingTable(
 		fileId: string,
 		tableColumns: DataTableColumn[],
-	): Promise<{ rows: DataTableRow[]; systemColumnsIgnored: string[] }> {
+	): Promise<{ rowBatches: AsyncGenerator<DataTableRow[]>; systemColumnsIgnored: string[] }> {
+		const failure = {
+			logMessage: 'Failed to import CSV to existing table',
+			fallbackMessage: 'Failed to import CSV file',
+		};
+
+		let csvColumnNames: string[];
 		try {
-			const tableColumnNames = new Set(tableColumns.map((col) => col.name));
-
-			const { metadata: csvMetadata, rows: csvRows } =
-				await this.csvParserService.parseFileWithData(fileId);
-
-			const { matchedColumns, systemColumnsIgnored } = this.matchColumns(
-				csvMetadata.columns,
-				tableColumnNames,
-			);
-
-			const mapping = new Map(matchedColumns.map((col) => [col, col]));
-			return {
-				rows: this.transformRows(csvRows, mapping),
-				systemColumnsIgnored,
-			};
+			csvColumnNames = await this.csvParserService.parseColumnNames(fileId);
 		} catch (error) {
-			if (error instanceof DataTableValidationError) throw error;
-			this.logger.error('Failed to import CSV to existing table', { error, fileId });
-			throw new FileUploadError(
-				error instanceof Error ? error.message : 'Failed to import CSV file',
-			);
+			throw this.toFileUploadError(error, fileId, failure);
 		}
+
+		const tableColumnNames = new Set(tableColumns.map((col) => col.name));
+		const { matchedColumns, systemColumnsIgnored } = this.matchColumns(
+			csvColumnNames,
+			tableColumnNames,
+		);
+
+		const mapping = new Map(matchedColumns.map((col) => [col, col]));
+		return {
+			rowBatches: this.transformRowBatches(fileId, true, mapping, failure),
+			systemColumnsIgnored,
+		};
+	}
+
+	async claimFile(fileId: string) {
+		return await this.fileCleanupService.claimFile(fileId);
 	}
 
 	async cleanupFile(fileId: string) {
 		await this.fileCleanupService.deleteFile(fileId);
 	}
 
+	private async *transformRowBatches(
+		fileId: string,
+		hasHeaders: boolean,
+		columnMapping: Map<string, string>,
+		failure: { logMessage: string; fallbackMessage: string },
+	): AsyncGenerator<DataTableRow[]> {
+		try {
+			for await (const csvRows of this.csvParserService.parseFileInBatches(fileId, hasHeaders)) {
+				yield this.transformRows(csvRows, columnMapping);
+			}
+		} catch (error) {
+			throw this.toFileUploadError(error, fileId, failure);
+		}
+	}
+
+	private toFileUploadError(
+		error: unknown,
+		fileId: string,
+		failure: { logMessage: string; fallbackMessage: string },
+	) {
+		this.logger.error(failure.logMessage, { error, fileId });
+		if (error instanceof FileUploadError) {
+			return error;
+		}
+
+		return new FileUploadError(error instanceof Error ? error.message : failure.fallbackMessage);
+	}
+
 	private matchColumns(
-		csvColumns: CsvColumnMetadata[],
+		csvColumnNames: string[],
 		tableColumnNames: Set<string>,
 	): { matchedColumns: string[]; systemColumnsIgnored: string[] } {
 		const systemColumnsIgnored: string[] = [];
 		const unrecognizedColumns: string[] = [];
 		const matchedColumns: string[] = [];
 
-		for (const csvCol of csvColumns) {
-			if (DATA_TABLE_SYSTEM_COLUMNS.includes(csvCol.name)) {
-				systemColumnsIgnored.push(csvCol.name);
-			} else if (tableColumnNames.has(csvCol.name)) {
-				matchedColumns.push(csvCol.name);
+		for (const csvColName of csvColumnNames) {
+			if (DATA_TABLE_SYSTEM_COLUMNS.includes(csvColName)) {
+				systemColumnsIgnored.push(csvColName);
+			} else if (tableColumnNames.has(csvColName)) {
+				matchedColumns.push(csvColName);
 			} else {
-				unrecognizedColumns.push(csvCol.name);
+				unrecognizedColumns.push(csvColName);
 			}
 		}
 

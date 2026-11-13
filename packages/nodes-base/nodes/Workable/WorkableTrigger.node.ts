@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { verifySignature } from '../../utils/webhook-signature-verification';
 import { workableApiRequest } from './GenericFunctions';
@@ -100,7 +100,7 @@ export class WorkableTrigger implements INodeType {
 		loadOptions: {
 			async getJobs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { jobs } = await workableApiRequest.call(this, 'GET', '/jobs');
+				const { jobs } = await workableApiRequest.call(this, 'GET', requestPath`/jobs`);
 				for (const job of jobs) {
 					returnData.push({
 						name: job.full_title,
@@ -111,7 +111,7 @@ export class WorkableTrigger implements INodeType {
 			},
 			async getStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { stages } = await workableApiRequest.call(this, 'GET', '/stages');
+				const { stages } = await workableApiRequest.call(this, 'GET', requestPath`/stages`);
 				for (const stage of stages) {
 					returnData.push({
 						name: stage.name,
@@ -130,7 +130,11 @@ export class WorkableTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { subscriptions } = await workableApiRequest.call(this, 'GET', '/subscriptions');
+				const { subscriptions } = await workableApiRequest.call(
+					this,
+					'GET',
+					requestPath`/subscriptions`,
+				);
 				for (const subscription of subscriptions) {
 					if (subscription.target === webhookUrl) {
 						webhookData.webhookId = subscription.id as string;
@@ -148,7 +152,7 @@ export class WorkableTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
 				const { stage, job } = this.getNodeParameter('filters') as IDataObject;
-				const endpoint = '/subscriptions';
+				const endpoint = requestPath`/subscriptions`;
 
 				const body: IDataObject = {
 					event: snakeCase(triggerOn).toLowerCase(),
@@ -173,8 +177,8 @@ export class WorkableTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/subscriptions/${webhookData.webhookId}`;
 					try {
+						const endpoint = requestPath`/subscriptions/${webhookData.webhookId}`;
 						await workableApiRequest.call(this, 'DELETE', endpoint);
 					} catch (error) {
 						return false;

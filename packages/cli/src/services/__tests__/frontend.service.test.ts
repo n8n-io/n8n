@@ -719,6 +719,7 @@ describe('FrontendService', () => {
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 				activeModules: [],
+				expressionEngine: 'legacy',
 			};
 
 			const { service } = createMockService();
@@ -750,6 +751,7 @@ describe('FrontendService', () => {
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 				activeModules: [],
+				expressionEngine: 'legacy',
 				mfa: {
 					enabled: false,
 					enforced: false,
@@ -923,6 +925,14 @@ describe('FrontendService', () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
 			expect(settings.expressionEngine).toBe('quickjs');
+		});
+
+		it('should surface the engine in the public settings', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.expressionEngine).toBe('quickjs');
 		});
 	});
 

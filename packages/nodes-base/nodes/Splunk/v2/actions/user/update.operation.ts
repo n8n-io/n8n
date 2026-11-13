@@ -1,8 +1,9 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { userRLC } from '../../helpers/descriptions';
-import { formatFeed, populate } from '../../helpers/utils';
+import { toPathValue, formatFeed, populate } from '../../helpers/utils';
 import { splunkApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -79,7 +80,7 @@ export async function execute(
 	);
 
 	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
-	const endpoint = `/services/authentication/users/${userId}`;
+	const endpoint = requestPath`/services/authentication/users/${toPathValue(this.getNode().typeVersion, userId)}`;
 
 	const returnData = await splunkApiRequest.call(this, 'POST', endpoint, body).then(formatFeed);
 

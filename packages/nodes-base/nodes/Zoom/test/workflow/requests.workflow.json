@@ -1,0 +1,182 @@
+{
+	"name": "Zoom Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"topic": "Weekly sync",
+				"additionalFields": {}
+			},
+			"id": "zoom-0",
+			"name": "Meeting Create",
+			"type": "n8n-nodes-base.zoom",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"zoomApi": {
+					"id": "1",
+					"name": "Zoom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"meetingId": "85746065432",
+				"additionalFields": {}
+			},
+			"id": "zoom-1",
+			"name": "Meeting Get",
+			"type": "n8n-nodes-base.zoom",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"zoomApi": {
+					"id": "1",
+					"name": "Zoom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"limit": 10,
+				"filters": {}
+			},
+			"id": "zoom-2",
+			"name": "Meeting Get Many",
+			"type": "n8n-nodes-base.zoom",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"zoomApi": {
+					"id": "1",
+					"name": "Zoom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"meetingId": "85746065432",
+				"updateFields": {
+					"topic": "Daily sync"
+				}
+			},
+			"id": "zoom-3",
+			"name": "Meeting Update",
+			"type": "n8n-nodes-base.zoom",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"zoomApi": {
+					"id": "1",
+					"name": "Zoom account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"meetingId": "85746065432",
+				"additionalFields": {}
+			},
+			"id": "zoom-4",
+			"name": "Meeting Delete",
+			"type": "n8n-nodes-base.zoom",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"zoomApi": {
+					"id": "1",
+					"name": "Zoom account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Meeting Create": [
+			{
+				"json": {
+					"id": 85746065432,
+					"topic": "Weekly sync"
+				}
+			}
+		],
+		"Meeting Get": [
+			{
+				"json": {
+					"id": 85746065432,
+					"topic": "Weekly sync"
+				}
+			}
+		],
+		"Meeting Get Many": [
+			{
+				"json": {
+					"id": 85746065432,
+					"topic": "Weekly sync"
+				}
+			}
+		],
+		"Meeting Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Meeting Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Meeting Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Meeting Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Meeting Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Meeting Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Meeting Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -4,6 +4,8 @@ import { useI18n } from '@n8n/i18n';
 import { N8nSwitch, N8nText } from '@n8n/design-system';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 
+defineProps<{ isReadOnly?: boolean }>();
+
 const i18n = useI18n();
 const showCompleted = ref(true);
 </script>
@@ -11,7 +13,7 @@ const showCompleted = ref(true);
 <template>
 	<div :class="$style.container" data-test-id="setup-panel-container">
 		<div :class="$style.content" data-test-id="setup-panel-cards">
-			<SetupPanelCards :show-completed="showCompleted" />
+			<SetupPanelCards :show-completed="showCompleted" :is-read-only="isReadOnly" />
 		</div>
 		<footer :class="$style.footer" data-test-id="setup-panel-footer">
 			<N8nText :class="$style['toggle-label']" tag="label" size="small">

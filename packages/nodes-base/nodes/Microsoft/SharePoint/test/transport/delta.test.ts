@@ -64,17 +64,13 @@ describe('microsoftApiRequestDelta', () => {
 
 	it.each([
 		['driveItem', DRIVE, `${GRAPH}/v1.0/drives/b!drive-id/root/delta`],
-		[
-			'listItem',
-			LIST,
-			`${GRAPH}/v1.0/sites/${encodeURIComponent(SITE_ID)}/lists/list-guid/items/delta`,
-		],
+		['listItem', LIST, `${GRAPH}/v1.0/sites/${SITE_ID}/lists/list-guid/items/delta`],
 	])('addresses the %s feed', async (_feed, target, expected) => {
 		request.mockResolvedValueOnce(done());
 
 		await microsoftApiRequestDelta.call(ctx, { ...target } as DeltaRequest);
 
-		expect(optionsOf(0).uri).toBe(expected);
+		expect(String(optionsOf(0).uri)).toBe(expected);
 	});
 
 	it.each<[string, IDataObject[], Partial<DeltaRequest>, Partial<DeltaPage>, number]>([
