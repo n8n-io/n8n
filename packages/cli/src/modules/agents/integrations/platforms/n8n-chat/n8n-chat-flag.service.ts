@@ -1,8 +1,7 @@
 import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-
-import { PostHogClient } from '@/posthog';
 
 /** Backend read of the n8n Chat experiment flag, for the paths the editor's gate cannot reach. */
 @Service()

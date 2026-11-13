@@ -39,7 +39,7 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 			{
 				action: 'Review nodes using "Always Output Data" with multiple outputs',
 				description:
-					'After the update to n8n 3.0, these nodes no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case).',
+					'After the update to n8n 3.0, these nodes no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case). The finding stays while the node keeps "Always Output Data" on: after your review, set it to Won\'t fix.',
 			},
 		];
 	}

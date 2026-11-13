@@ -93,9 +93,14 @@ erDiagram
 "public.agents_observation_cursors" {
   varchar_36_ agentId FK
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   varchar_255_ observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents_observation_locks" {

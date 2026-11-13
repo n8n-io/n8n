@@ -838,6 +838,8 @@ Scripts in `.github/scripts/`:
 | `docker/docker-config.mjs`| Build context   | `docker-build-push.yml`|
 | `docker/docker-tags.mjs`  | Image tags      | `docker-build-push.yml`|
 | `docker/kafka-native-smoke-check.mjs`| Verify librdkafka binary loads in built image | `docker-build-smoke.yml`|
+| `docker/edit-image-native-smoke-check.mjs`| Verify the Edit Image v2 bindings load and draw text with the image's Arial font | `docker-build-smoke.yml`|
+| `docker/native-addons-smoke-check.mjs`| Verify isolated-vm and sqlite3 work in the built image, and that it has no build toolchain | `docker-build-smoke.yml`|
 | `docker/assert-manifest-format.mjs`| Assert a merged manifest is an OCI image index with the expected platforms | `docker-build-push.yml`|
 | `docker/should-smoke-build.mjs`| Narrow the `pnpm-workspace.yaml` smoke trigger to native dependency pins | `docker-build-smoke.yml`|
 | `docker/base-debian-smoke-check.mjs`| Verify the Debian base image contract (tools, no package manager, fonts, global npm modules) on amd64 and arm64 | `build-base-image.yml`|

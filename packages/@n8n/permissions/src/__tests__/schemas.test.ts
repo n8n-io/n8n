@@ -36,6 +36,7 @@ describe('globalRoleSchema', () => {
 		{ name: 'valid role: global:admin', value: 'global:admin', expected: true },
 		{ name: 'valid role: global:member', value: 'global:member', expected: true },
 		{ name: 'valid role: global:chatUser', value: 'global:chatUser', expected: true },
+		{ name: 'valid role: global:agent', value: 'global:agent', expected: true },
 		{ name: 'invalid role', value: 'global:invalid', expected: false },
 		{ name: 'invalid prefix', value: 'invalid:admin', expected: false },
 		{ name: 'empty string', value: '', expected: false },
@@ -52,6 +53,7 @@ describe('assignableGlobalRoleSchema', () => {
 		{ name: 'valid role: global:admin', value: 'global:admin', expected: true },
 		{ name: 'valid role: global:member', value: 'global:member', expected: true },
 		{ name: 'valid role: global:chatUser', value: 'global:chatUser', expected: true },
+		{ name: 'excluded role: global:agent', value: 'global:agent', expected: false },
 		{ name: 'object value', value: {}, expected: false },
 	])('should validate $name', ({ value, expected }) => {
 		const result = assignableGlobalRoleSchema.safeParse(value);

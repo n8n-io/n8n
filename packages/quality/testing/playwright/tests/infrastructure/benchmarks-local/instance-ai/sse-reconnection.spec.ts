@@ -9,7 +9,7 @@ const RECONNECT_CYCLES = 10;
 test.describe(
 	'Instance-AI Memory: SSE Reconnection',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('no event listener leaks from repeated SSE reconnections', async ({

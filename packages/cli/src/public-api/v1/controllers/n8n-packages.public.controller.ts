@@ -256,7 +256,7 @@ export class N8nPackagesPublicController {
 				dependencyPolicy: body.dependencyPolicy,
 				versionPolicy: body.versionPolicy,
 				credentialExportPolicy: body.credentialExportPolicy,
-				includeArchivedWorkflows: body.includeArchivedWorkflows,
+				includeArchived: body.includeArchived,
 			});
 		} catch (error) {
 			this.eventService.emit('n8n-package-export-failed', {
