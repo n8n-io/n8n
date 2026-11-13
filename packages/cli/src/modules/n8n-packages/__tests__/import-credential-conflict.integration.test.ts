@@ -1,6 +1,6 @@
 import { CREDENTIAL_DESCRIPTIONS_FLAG, type SerializedCredential } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -27,7 +27,6 @@ import {
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { PostHogClient } from '@/posthog';
 import {
 	affixRoleToSaveCredential,
 	saveCredential,
