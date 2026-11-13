@@ -11,7 +11,7 @@ vi.mock('node:fs', async (importOriginal) => {
 	return { ...actual, readFileSync: vi.fn() };
 });
 
-function ionosWordmark(color: string): string {
+function wordmark(color: string): string {
 	return `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 414 297"><defs><clipPath id="clippath"><rect x="2.402" width="411.598" height="120" style="fill:none;"/></clipPath></defs><g style="clip-path:url(#clippath);"><path d="M2 0h80v120H2z" style="fill:${color};"/><path d="M110 0h80v120h-80z" style="fill:${color};"/><path d="M220 0h80v120h-80z" style="fill:${color};"/></g><path d="M2 177h400v120H2z" style="fill:${color};"/></svg>`;
 }
 
@@ -28,10 +28,10 @@ const svgFiles: Record<string, string> = {
 	// A dark badge disappears on the dark theme, but its white glyph stays visible.
 	'badge.svg':
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="#222"/><rect x="6" y="6" width="12" height="12" fill="#fff"/></svg>',
-	// The IONOS Cloud community node ships a blue wordmark for the light theme and a white one
-	// for the dark theme. Same structure as the published files: style paint in clip-path groups.
-	'ionos.svg': ionosWordmark('#003d8f'),
-	'ionos.dark.svg': ionosWordmark('#fff'),
+	// A blue wordmark for the light theme and a white one for the dark theme, painted through
+	// style attributes inside clip-path groups.
+	'wordmark.svg': wordmark('#003d8f'),
+	'wordmark.dark.svg': wordmark('#fff'),
 	'half-transparent.svg':
 		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><style>.shape { fill: #000; fill-opacity: 0.5 }</style><rect class="shape" width="24" height="24"/></svg>',
 	'dark-tile-with-dot.svg':
@@ -44,8 +44,8 @@ const svgFiles: Record<string, string> = {
 const pngFiles: Record<string, Buffer> = {
 	'black.png': new Resvg(svgFiles['black.svg'] ?? '').render().asPng(),
 	'white.png': new Resvg(svgFiles['white.svg'] ?? '').render().asPng(),
-	'ionos.png': new Resvg(svgFiles['ionos.svg'] ?? '').render().asPng(),
-	'ionos.dark.png': new Resvg(svgFiles['ionos.dark.svg'] ?? '').render().asPng(),
+	'wordmark.png': new Resvg(svgFiles['wordmark.svg'] ?? '').render().asPng(),
+	'wordmark.dark.png': new Resvg(svgFiles['wordmark.dark.svg'] ?? '').render().asPng(),
 };
 
 vi.mocked(fs.readFileSync).mockImplementation((path) => {
@@ -169,13 +169,13 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			filename: credentialFilePath,
 		},
 		{
-			name: 'IONOS Cloud SVG icons as published',
-			code: createNodeCode({ light: 'file:ionos.svg', dark: 'file:ionos.dark.svg' }),
+			name: 'blue and white SVG wordmarks, each on its own theme',
+			code: createNodeCode({ light: 'file:wordmark.svg', dark: 'file:wordmark.dark.svg' }),
 			filename: nodeFilePath,
 		},
 		{
-			name: 'IONOS Cloud PNG icons as published',
-			code: createNodeCode({ light: 'file:ionos.png', dark: 'file:ionos.dark.png' }),
+			name: 'blue and white PNG wordmarks, each on its own theme',
+			code: createNodeCode({ light: 'file:wordmark.png', dark: 'file:wordmark.dark.png' }),
 			filename: nodeFilePath,
 		},
 		{
@@ -199,24 +199,35 @@ ruleTester.run('icon-contrast', IconContrastRule, {
 			],
 		},
 		{
-			name: 'IONOS Cloud dark SVG used alone, as the community node registry serves it',
-			code: createNodeCode('file:ionos.dark.svg'),
+			name: 'white SVG wordmark used as the only icon is invisible on the light theme',
+			code: createNodeCode('file:wordmark.dark.svg'),
 			filename: nodeFilePath,
 			errors: [
 				{
 					messageId: 'lowContrast',
-					data: { iconPath: 'ionos.dark.svg', theme: 'light', visible: 0 },
+					data: { iconPath: 'wordmark.dark.svg', theme: 'light', visible: 0 },
 				},
 			],
 		},
 		{
-			name: 'IONOS Cloud dark PNG used alone, as the community node registry serves it',
-			code: createNodeCode('file:ionos.dark.png'),
+			name: 'white PNG wordmark used as the only icon is invisible on the light theme',
+			code: createNodeCode('file:wordmark.dark.png'),
 			filename: nodeFilePath,
 			errors: [
 				{
 					messageId: 'lowContrast',
-					data: { iconPath: 'ionos.dark.png', theme: 'light', visible: 0 },
+					data: { iconPath: 'wordmark.dark.png', theme: 'light', visible: 0 },
+				},
+			],
+		},
+		{
+			name: 'white wordmark in the light slot is invisible on the light theme',
+			code: createNodeCode({ light: 'file:wordmark.dark.svg', dark: 'file:wordmark.dark.svg' }),
+			filename: nodeFilePath,
+			errors: [
+				{
+					messageId: 'lowContrast',
+					data: { iconPath: 'wordmark.dark.svg', theme: 'light', visible: 0 },
 				},
 			],
 		},
