@@ -4,7 +4,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { Expression } from 'n8n-workflow';
-import type { ShadowEvaluator } from 'n8n-workflow';
+import type { FeatureFlags, ShadowEvaluator } from 'n8n-workflow';
 
 import { QUICKJS_EXPRESSION_SHADOW_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -32,6 +32,9 @@ interface StartupTimings {
 	wasmReadyMs?: number;
 	bridgeReadyMs?: number;
 }
+
+const importRuntimeBundle = async () =>
+	await import('@n8n/expression-runtime/runtime-bundle.iife.js?raw');
 
 /** Watch the tab visibility. The returned function stops the watch and tells whether the tab stayed visible. */
 function watchVisibility(): () => boolean {
@@ -88,6 +91,36 @@ function watchWasmSource(): () => FileSource | undefined {
 	};
 }
 
+// Set from the preload until a start takes the watch, or a logout stops it.
+let stopPreloadWasmSourceWatch: (() => FileSource | undefined) | undefined;
+
+/** Stop the WASM watch of a preload when no shadow start takes it. */
+function dropPreloadWasmSourceWatch() {
+	stopPreloadWasmSourceWatch?.();
+	stopPreloadWasmSourceWatch = undefined;
+}
+
+/**
+ * Start the download of the QuickJS runtime bundle and WASM file, so a later
+ * shadow start does not wait for them. Does nothing when the shadow flag is
+ * off in `featureFlags`.
+ * Never throws.
+ */
+export function preloadQuickJsExpressionShadow(featureFlags: FeatureFlags | undefined) {
+	if (
+		stopPreloadWasmSourceWatch === undefined &&
+		featureFlags?.[QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name] === true
+	) {
+		try {
+			stopPreloadWasmSourceWatch = watchWasmSource();
+			void importRuntimeBundle().catch(() => {});
+			void Expression.loadQuickJsWasm().catch(() => {});
+		} catch {
+			// The preload is optional, and the caller must not fail because of it.
+		}
+	}
+}
+
 export interface ShadowSettings {
 	sampleRate: number;
 	timeoutMs: number;
@@ -140,15 +173,20 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	if (started) return;
 
 	const settingsStore = useSettingsStore();
-	if (!settingsStore.isCloudDeployment) return;
-	if (Expression.getActiveImplementation() !== 'legacy') return;
+	if (!settingsStore.isCloudDeployment || Expression.getActiveImplementation() !== 'legacy') {
+		dropPreloadWasmSourceWatch();
+		return;
+	}
 
 	// Read before the wait, so a logout during the wait stops this start.
 	const startSession = session;
 	const postHogStore = usePostHog();
 	await postHogStore.waitForFeatureFlags();
 	if (startSession !== session) return;
-	if (!postHogStore.isFeatureEnabled(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name)) return;
+	if (!postHogStore.isFeatureEnabled(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name)) {
+		dropPreloadWasmSourceWatch();
+		return;
+	}
 
 	// Checked again after the wait, so two calls cannot both start a run.
 	if (started) return;
@@ -189,14 +227,12 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 		return result;
 	};
 
-	const stopWasmSourceWatch = watchWasmSource();
+	const stopWasmSourceWatch = stopPreloadWasmSourceWatch ?? watchWasmSource();
+	stopPreloadWasmSourceWatch = undefined;
 	const initStart = performance.now();
 	let evaluator: ShadowEvaluator;
 	try {
-		const { default: runtimeBundle } = await timed(
-			'bundleImportMs',
-			async () => await import('@n8n/expression-runtime/runtime-bundle.iife.js?raw'),
-		);
+		const { default: runtimeBundle } = await timed('bundleImportMs', importRuntimeBundle);
 		await timed('wasmReadyMs', async () => await Expression.loadQuickJsWasm());
 		evaluator = await timed(
 			'bridgeReadyMs',
@@ -258,6 +294,7 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 export function stopQuickJsExpressionShadow() {
 	session += 1;
 	started = false;
+	dropPreloadWasmSourceWatch();
 	stopActiveRun?.();
 	stopActiveRun = undefined;
 }

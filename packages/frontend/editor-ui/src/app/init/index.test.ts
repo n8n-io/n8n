@@ -27,6 +27,7 @@ import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
+	preloadQuickJsExpressionShadow,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { flushPromises } from '@vue/test-utils';
@@ -84,6 +85,7 @@ vi.mock('@/app/init/expressionEngine', () => ({
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
 vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
+	preloadQuickJsExpressionShadow: vi.fn(),
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
@@ -348,6 +350,20 @@ describe('Init', () => {
 			expect(initializeQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
 			expect(postHogInit.mock.invocationCallOrder[0]).toBeLessThan(
 				vi.mocked(initializeQuickJsExpressionShadow).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should preload the expression shadow engine in the login hook before the settings request', async () => {
+			const featureFlags = { '126_quickjs_expression_shadow': true };
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId', featureFlags }));
+			});
+
+			await initializeCore();
+
+			expect(preloadQuickJsExpressionShadow).toHaveBeenCalledWith(featureFlags);
+			expect(vi.mocked(preloadQuickJsExpressionShadow).mock.invocationCallOrder[0]).toBeLessThan(
+				settingsStore.getSettings.mock.invocationCallOrder[0],
 			);
 		});
 

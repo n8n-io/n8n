@@ -41,6 +41,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
+	preloadQuickJsExpressionShadow,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -328,6 +329,8 @@ function registerAuthenticationHooks() {
 	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
+		// Before the settings request, so the QuickJS files download while the settings load.
+		preloadQuickJsExpressionShadow(user.featureFlags);
 		await loadFullSettings();
 
 		// Start the expression engine now if the boot could not read the settings.

@@ -6,6 +6,7 @@ import {
 	DEFAULT_SAMPLE_RATE,
 	DEFAULT_TIMEOUT_MS,
 	initializeQuickJsExpressionShadow,
+	preloadQuickJsExpressionShadow,
 	readShadowSettings,
 	stopQuickJsExpressionShadow,
 } from './init';
@@ -354,6 +355,101 @@ describe('initializeQuickJsExpressionShadow', () => {
 			);
 			expect(FakePerformanceObserver.last?.observe).toHaveBeenCalledWith({ type: 'resource' });
 			expect(FakePerformanceObserver.last?.disconnect).toHaveBeenCalled();
+		});
+	});
+
+	describe('preload', () => {
+		const flagOn = { '126_quickjs_expression_shadow': true };
+
+		const resource = (transferSize: number) =>
+			({
+				name: 'https://acme.app.n8n.cloud/assets/emscripten-module-B1g2L2eS.wasm',
+				transferSize,
+				encodedBodySize: 503_000,
+			}) as PerformanceResourceTiming;
+
+		it('loads the WASM file before the shadow run starts', () => {
+			preloadQuickJsExpressionShadow(flagOn);
+
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
+			expect(Expression.createQuickJsShadowEvaluator).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when the flag is off', () => {
+			preloadQuickJsExpressionShadow({ '126_quickjs_expression_shadow': false });
+			preloadQuickJsExpressionShadow(undefined);
+
+			expect(Expression.loadQuickJsWasm).not.toHaveBeenCalled();
+		});
+
+		it('preloads and starts without waiting for an idle callback', async () => {
+			vi.stubGlobal('requestIdleCallback', vi.fn());
+			vi.spyOn(Math, 'random').mockReturnValue(0);
+
+			preloadQuickJsExpressionShadow(flagOn);
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
+
+			await initializeQuickJsExpressionShadow();
+
+			expect(Expression.setShadowRunner).toHaveBeenCalledWith(expect.anything());
+			expect(window.requestIdleCallback).not.toHaveBeenCalled();
+		});
+
+		it('loads the files only once when it is called again', () => {
+			preloadQuickJsExpressionShadow(flagOn);
+			preloadQuickJsExpressionShadow(flagOn);
+
+			expect(Expression.loadQuickJsWasm).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports the source of a WASM file that loaded before the start', async () => {
+			preloadQuickJsExpressionShadow(flagOn);
+			const preloadObserver = FakePerformanceObserver.last;
+			preloadObserver?.deliver(resource(503_300));
+			vi.mocked(Expression.createQuickJsShadowEvaluator).mockRejectedValue(new Error('stop'));
+
+			await initializeQuickJsExpressionShadow();
+
+			expect(FakePerformanceObserver.last).toBe(preloadObserver);
+			expect(track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
+				expect.objectContaining({ quickjs_fe_wasm_source: 'network' }),
+			);
+		});
+
+		it.each([
+			['the instance is not on Cloud', () => (settingsStore.isCloudDeployment = false)],
+			[
+				'QuickJS is the main engine',
+				() => vi.mocked(Expression.getActiveImplementation).mockReturnValue('quickjs'),
+			],
+			['PostHog has the flag off', () => postHogStore.isFeatureEnabled.mockReturnValue(false)],
+		])('stops the watch of the WASM file when %s', async (_, preventStart) => {
+			preloadQuickJsExpressionShadow(flagOn);
+			preventStart();
+
+			await initializeQuickJsExpressionShadow();
+
+			expect(FakePerformanceObserver.last?.disconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not throw when the browser cannot watch the files', () => {
+			vi.stubGlobal(
+				'PerformanceObserver',
+				vi.fn(() => {
+					throw new Error('not supported');
+				}),
+			);
+
+			expect(() => preloadQuickJsExpressionShadow(flagOn)).not.toThrow();
+		});
+
+		it('stops the watch of the WASM file on logout', () => {
+			preloadQuickJsExpressionShadow(flagOn);
+
+			stopQuickJsExpressionShadow();
+
+			expect(FakePerformanceObserver.last?.disconnect).toHaveBeenCalledTimes(1);
 		});
 	});
 
