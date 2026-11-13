@@ -40,6 +40,18 @@ describe('useImportCurlCommand', () => {
 			expect(parameters.sendQuery).toBe(false);
 		});
 
+		test('Should preserve form-urlencoded data when content type includes a charset', () => {
+			const curl = `curl --url 'https://example.com' \\
+  -H 'content-type: application/x-www-form-urlencoded; charset=UTF-8' \\
+  --data-raw 'from=2026-10-30&to=2026-10-30&mode=action'`;
+
+			const parameters = toHttpNodeParameters(curl);
+
+			expect(parameters.contentType).toBe('raw');
+			expect(parameters.rawContentType).toBe('application/x-www-form-urlencoded; charset=UTF-8');
+			expect(parameters.body).toBe('from=2026-10-30&to=2026-10-30&mode=action');
+		});
+
 		test('Should parse JSON content type correctly', () => {
 			const curl =
 				'curl -X POST https://reqbin.com/echo/post/json -H \'Content-Type: application/json\' -d \'{"login":"my_login","password":"my_password"}\'';
