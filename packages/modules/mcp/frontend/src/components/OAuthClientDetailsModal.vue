@@ -28,10 +28,15 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { getClientBrand, scopeLabel } from '../clients.utils';
 import { useMCPStore } from '../mcp.store';
 
-const props = defineProps<{
-	client: OAuthClientResponseDto | null;
-	open: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		client: OAuthClientResponseDto | null;
+		open: boolean;
+		/** Refetch the clients page's list after a save. The overview passes `false`. */
+		refreshList?: boolean;
+	}>(),
+	{ refreshList: true },
+);
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -76,21 +81,31 @@ const canSave = computed(
 	() => trimmedName.value.length > 0 && (nameChanged.value || descriptionChanged.value),
 );
 
+// A row is one consent (client × owner), so the owner is part of its identity.
+function isSameRow(a: OAuthClientResponseDto | null, b: OAuthClientResponseDto) {
+	return a?.id === b.id && a.owner?.id === b.owner?.id;
+}
+
 async function onSave() {
 	const client = props.client;
-	if (!client || !canSave.value) return;
+	if (!client || !canSave.value || saving.value) return;
 
 	try {
 		saving.value = true;
-		const updated = await mcpStore.updateOAuthClientDetails(client, {
-			...(nameChanged.value ? { name: trimmedName.value } : {}),
-			...(descriptionChanged.value ? { description: trimmedDescription.value || null } : {}),
-		});
+		const updated = await mcpStore.updateOAuthClientDetails(
+			client,
+			{
+				...(nameChanged.value ? { name: trimmedName.value } : {}),
+				...(descriptionChanged.value ? { description: trimmedDescription.value || null } : {}),
+			},
+			{ refreshList: props.refreshList },
+		);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.mcp.oAuthClients.details.save.success'),
 		});
-		emit('updated', updated);
+		// The modal can show another client by now, if it was closed and reopened during the save.
+		if (isSameRow(props.client, client)) emit('updated', updated);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.details.save.error'));
 	} finally {

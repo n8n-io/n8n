@@ -410,10 +410,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	 * Updates a client's name and description. The registration is shared by
 	 * every consent row of the client, so all cached rows with that id get the
 	 * new values. Returns the given row with the saved values applied.
+	 *
+	 * Afterwards the clients page's list is refetched, so its active filters
+	 * apply to the new name. Callers that don't show that list (the overview)
+	 * pass `refreshList: false`, and the preview is refetched instead. Either
+	 * refetch also supersedes a fetch that started before the save, so that
+	 * fetch can't restore the old values.
 	 */
 	async function updateOAuthClientDetails(
 		client: OAuthClientResponseDto,
 		details: { name?: string; description?: string | null },
+		{ refreshList = true }: { refreshList?: boolean } = {},
 	): Promise<OAuthClientResponseDto> {
 		const updated = await updateOAuthClient(rootStore.restApiContext, client.id, details);
 		const applyUpdate = (row: OAuthClientResponseDto): OAuthClientResponseDto =>
@@ -422,6 +429,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 				: row;
 		oauthClients.value = oauthClients.value.map(applyUpdate);
 		oauthClientsPreview.value = oauthClientsPreview.value.map(applyUpdate);
+		// The save already succeeded, so a failed refetch must not report an error.
+		try {
+			if (refreshList) await getAllOAuthClients();
+			else await fetchOAuthClientsPreview();
+		} catch {
+			// The rows already show the saved values; the next interaction refetches.
+		}
 		return applyUpdate(client);
 	}
 

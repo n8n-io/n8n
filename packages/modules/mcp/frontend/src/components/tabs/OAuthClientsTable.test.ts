@@ -429,10 +429,14 @@ describe('OAuthClientsTable', () => {
 			);
 			await userEvent.click(saveButton);
 
-			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(client, {
-				name: 'Claude (marketing)',
-				description: 'Used by the marketing team',
-			});
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{
+					name: 'Claude (marketing)',
+					description: 'Used by the marketing team',
+				},
+				{ refreshList: true },
+			);
 			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			await waitFor(() => {
 				expect(getModal()).toHaveTextContent('Claude (marketing)');
@@ -456,9 +460,49 @@ describe('OAuthClientsTable', () => {
 			await userEvent.clear(modal.getByTestId('mcp-client-details-description-input'));
 			await userEvent.click(modal.getByTestId('mcp-client-details-save'));
 
-			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(client, {
-				description: null,
+			expect(mockMcpStore.updateOAuthClientDetails).toHaveBeenCalledWith(
+				client,
+				{ description: null },
+				{ refreshList: true },
+			);
+		});
+
+		it('should keep showing another client opened while an earlier save was in flight', async () => {
+			mockHasScope.mockReturnValue(true);
+			const claude = createOAuthClient({ id: 'client-1', name: 'Claude' });
+			const cursor = createOAuthClient({ id: 'client-2', name: 'Cursor' });
+			let resolveSave!: (value: typeof claude) => void;
+			mockMcpStore.updateOAuthClientDetails.mockReturnValue(
+				new Promise((resolve) => {
+					resolveSave = resolve;
+				}),
+			);
+
+			const { getAllByTestId } = createComponent({
+				props: { clients: [claude, cursor], loading: false },
 			});
+
+			await userEvent.click(getAllByTestId('mcp-client-name')[0]);
+			const nameInput = within(getModal()).getByTestId('mcp-client-details-name-input');
+			await userEvent.type(nameInput, ' 2');
+			await userEvent.click(within(getModal()).getByTestId('mcp-client-details-save'));
+
+			// Close the modal and open the other client before the save finishes.
+			await userEvent.keyboard('{Escape}');
+			await userEvent.click(getAllByTestId('mcp-client-name')[1]);
+			await waitFor(() => {
+				expect(within(getModal()).getByTestId('mcp-client-details-name-input')).toHaveValue(
+					'Cursor',
+				);
+			});
+
+			resolveSave({ ...claude, name: 'Claude 2' });
+			await waitFor(() => {
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			});
+
+			expect(within(getModal()).getByTestId('mcp-client-details-name-input')).toHaveValue('Cursor');
+			expect(getModal()).not.toHaveTextContent('Claude 2');
 		});
 
 		it('should not allow saving an empty name', async () => {

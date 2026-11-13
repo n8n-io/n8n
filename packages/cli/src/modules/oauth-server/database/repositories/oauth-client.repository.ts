@@ -56,11 +56,13 @@ export class OAuthClientRepository {
 		details: Partial<Pick<OAuthClient, 'name' | 'description'>>,
 		ctx: OperationContext,
 	): Promise<OAuthClient | null> {
-		const manager = this.table.managerFor(ctx);
-		if (Object.keys(details).length > 0) {
-			await manager.update(OAuthClient, { id, isFirstParty: false }, details);
-		}
-		return await manager.findOneBy(OAuthClient, { id, isFirstParty: false });
+		// One transaction, so a concurrent delete can't remove the row between the update and the read.
+		return await this.table.runInTransaction(ctx, async (manager) => {
+			if (Object.keys(details).length > 0) {
+				await manager.update(OAuthClient, { id, isFirstParty: false }, details);
+			}
+			return await manager.findOneBy(OAuthClient, { id, isFirstParty: false });
+		});
 	}
 
 	async findRegisteredNames(

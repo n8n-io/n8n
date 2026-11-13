@@ -493,6 +493,7 @@ onBeforeUnmount(() => {
 		<OAuthClientDetailsModal
 			v-model:open="detailsOpen"
 			:client="detailsClient"
+			:refresh-list="false"
 			@revoke="requestRevoke"
 			@updated="detailsClient = $event"
 		/>
