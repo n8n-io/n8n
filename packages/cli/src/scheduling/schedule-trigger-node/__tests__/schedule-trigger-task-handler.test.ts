@@ -3,7 +3,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
-import type { ExecutionEntity, ExecutionRepository, Project } from '@n8n/db';
+import type { ExecutionEntity, ExecutionRepository, Project, WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
@@ -29,6 +29,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 	const workflowExecutionService = mock<WorkflowExecutionService>();
 	const ownershipService = mock<OwnershipService>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
+	const workflowRepository = mock<WorkflowRepository>();
 	const globalConfig = mock<GlobalConfig>({ generic: { timezone: 'America/New_York' } });
 	const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
@@ -45,6 +46,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 		workflowExecutionService,
 		ownershipService,
 		workflowPublisherService,
+		workflowRepository,
 	);
 
 	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
@@ -94,6 +96,7 @@ describe('ScheduleTriggerTaskHandler', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+		workflowRepository.isActive.mockResolvedValue(true);
 		triggerExecutionContextFactory.findPublishedWorkflowData.mockResolvedValue(buildWorkflowData());
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-1');
 		workflowPublisherService.findPublisherUserId.mockResolvedValue(undefined);

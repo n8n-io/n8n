@@ -50,8 +50,6 @@ import type { ErrorWorkflowValidationService } from '@/workflows/error-workflow-
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
-import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
-import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { OwnershipService } from '@/services/ownership.service';
 
@@ -136,8 +134,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -528,8 +524,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -1603,9 +1597,7 @@ describe('WorkflowService', () => {
 		let activeWorkflowManagerMock: MockProxy<ActiveWorkflowManager>;
 		let externalHooksMock: MockProxy<ExternalHooks>;
 		let eventServiceMock: MockProxy<EventService>;
-		let scheduleTriggerJobRegistrarMock: MockProxy<ScheduleTriggerJobRegistrar>;
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
-		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
 		let workflowPublishGuardMock: MockProxy<WorkflowPublishGuardProxy>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 		let policyEnforcementServiceMock: MockProxy<PolicyEnforcementService>;
@@ -1660,9 +1652,7 @@ describe('WorkflowService', () => {
 			activeWorkflowManagerMock = mock();
 			externalHooksMock = mock<ExternalHooks>();
 			eventServiceMock = mock<EventService>();
-			scheduleTriggerJobRegistrarMock = mock();
 			workflowHookContextServiceMock = mock<WorkflowHookContextService>();
-			pollTriggerJobRegistrarMock = mock();
 			workflowPublishGuardMock = mock<WorkflowPublishGuardProxy>();
 			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 			// Stands in for the dummy always-allow check: with no backend registered the
@@ -1706,8 +1696,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
-				pollTriggerJobRegistrarMock, // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -2092,7 +2080,7 @@ describe('WorkflowService', () => {
 			expect(workflowRepositoryMock.update).not.toHaveBeenCalled();
 		});
 
-		test('deactivating through the outbox removes the durable schedule jobs in the same transaction, without routing through the leader', async () => {
+		test('deactivating through the outbox clears the active version without routing through the leader', async () => {
 			globalConfigMock.workflows.useWorkflowPublicationService = true;
 
 			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
@@ -2113,19 +2101,10 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
-			// active=false and the durable-job removal commit in the same transaction
 			expect(trx.update).toHaveBeenCalledWith(
 				WorkflowEntity,
 				{ id: WORKFLOW_ID },
 				expect.objectContaining({ active: false, activeVersionId: null }),
-			);
-			expect(scheduleTriggerJobRegistrarMock.removeWorkflowInTransaction).toHaveBeenCalledWith(
-				trx,
-				WORKFLOW_ID,
-			);
-			expect(pollTriggerJobRegistrarMock.removeWorkflowInTransaction).toHaveBeenCalledWith(
-				trx,
-				WORKFLOW_ID,
 			);
 			// in-memory teardown is left to the leader, not run here
 			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
@@ -2475,8 +2454,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -2657,8 +2634,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				workflowScheduledJobOwnerMock, // workflowScheduledJobOwner
 				durableJobProvisionerMock, // durableJobProvisioner
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
@@ -2972,8 +2947,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -3151,8 +3124,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -3343,8 +3314,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -3451,8 +3420,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
@@ -3562,8 +3529,6 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
-				mock(), // scheduleTriggerJobRegistrar
-				mock(), // pollTriggerJobRegistrar
 				mock(), // workflowScheduledJobOwner
 				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository

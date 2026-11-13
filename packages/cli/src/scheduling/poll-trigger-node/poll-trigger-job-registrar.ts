@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
-import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt } from '@n8n/scheduler';
@@ -125,18 +124,6 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
 		await this.jobProvisioner.deprovisionOwnerTaskType(
-			this.owner.ref(workflowId),
-			POLL_TRIGGER_TASK_TYPE,
-		);
-	}
-
-	/**
-	 * Delete the workflow's poll jobs within a caller-owned transaction, so removal
-	 * commits atomically with the `active = false` write. Keyed and idempotent like {@link removeWorkflow}.
-	 */
-	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
-			manager,
 			this.owner.ref(workflowId),
 			POLL_TRIGGER_TASK_TYPE,
 		);

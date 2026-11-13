@@ -129,8 +129,6 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		workflowPublicationNotifier,
-		mock(), // scheduleTriggerJobRegistrar
-		mock(), // pollTriggerJobRegistrar
 		mock(), // workflowScheduledJobOwner
 		mock(), // durableJobProvisioner
 		workflowPublishedVersionRepository,
