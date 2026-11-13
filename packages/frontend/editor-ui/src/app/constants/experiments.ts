@@ -161,6 +161,9 @@ export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
 
+/** Boolean flag. New threads of the user run on the Assistant agent, if the instance runs it. */
+export const INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT = createExperiment('141_assistant_agent');
+
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup
@@ -277,6 +280,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
+	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,

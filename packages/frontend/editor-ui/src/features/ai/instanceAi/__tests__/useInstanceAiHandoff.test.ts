@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
-	settings: { isAssistantAgentEnabled: false },
+	settings: { newThreadsUseAssistantAgent: false },
 	telemetryTrack: vi.fn(),
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
@@ -94,7 +94,7 @@ describe('useInstanceAiHandoff', () => {
 		localStorage.clear();
 		forgetAssistantAgentThread('thread-1');
 		mocks.instanceAiReady.value = true;
-		mocks.settings.isAssistantAgentEnabled = false;
+		mocks.settings.newThreadsUseAssistantAgent = false;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -809,7 +809,7 @@ describe('useInstanceAiHandoff', () => {
 			});
 
 		beforeEach(() => {
-			mocks.settings.isAssistantAgentEnabled = true;
+			mocks.settings.newThreadsUseAssistantAgent = true;
 		});
 
 		it('provisions a launched thread without creating it on the current runtime', async () => {

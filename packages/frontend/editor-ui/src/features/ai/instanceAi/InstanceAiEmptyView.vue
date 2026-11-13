@@ -717,7 +717,7 @@ const composerAttachOnlyMimeTypes = computed(() =>
 
 // The Assistant agent accepts only the files it can read. Check them on drop, not at send.
 const composerAcceptedMimeTypes = computed(() =>
-	settingsStore.isAssistantAgentEnabled ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+	settingsStore.newThreadsUseAssistantAgent ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
 );
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -854,7 +854,7 @@ async function handleSubmit(
 		return;
 	}
 
-	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
+	if (settingsStore.newThreadsUseAssistantAgent && !isCreatingApp.value) {
 		await startAssistantAgentThread(
 			selectedProject.value,
 			message,

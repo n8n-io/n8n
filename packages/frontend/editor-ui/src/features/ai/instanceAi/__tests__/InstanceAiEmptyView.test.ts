@@ -21,6 +21,7 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useAssistantCreditsStore } from '../assistantCredits.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT } from '@/app/constants/experiments';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -1660,6 +1661,21 @@ describe('InstanceAiEmptyView', () => {
 			useSettingsStore().moduleSettings = {
 				'instance-ai': { ...defaultModuleSettings, assistantAgentEnabled: true },
 			};
+			vi.mocked(usePostHog().isFeatureEnabled).mockImplementation(
+				(flag) => flag === INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name,
+			);
+		});
+
+		it('starts a current Assistant thread for a user outside the rollout', async () => {
+			vi.mocked(usePostHog().isFeatureEnabled).mockReturnValue(false);
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-accepted-mime-types')).toHaveTextContent('unset');
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(store.syncThread).toHaveBeenCalled();
+			expect(thread.sendMessage).toHaveBeenCalledWith('hello', expect.anything());
 		});
 
 		it('restricts the composer to the file types of the Assistant agent', () => {

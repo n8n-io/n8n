@@ -126,9 +126,13 @@ const subject = computed(() => props.subject);
 const { threads } = useInstanceAiEmbedThreads(subject);
 provide(INSTANCE_AI_EMBED_SUBJECT_KEY, subject);
 
-/** With the flag on, an agent panel starts its new threads on the Assistant agent. */
+/** An agent panel lists and opens the Assistant agent threads of its agent. */
 const usesAssistantAgent = computed(
 	() => settingsStore.isAssistantAgentEnabled && props.subject.type === 'agent',
+);
+/** For a user in the rollout, an agent panel starts its new threads on the Assistant agent. */
+const startsAssistantAgentThreads = computed(
+	() => usesAssistantAgent.value && settingsStore.newThreadsUseAssistantAgent,
 );
 /**
  * The Assistant agent threads that this panel created, and if each one is still
@@ -392,7 +396,7 @@ async function mintThread() {
 			// error — the hook owns its error UI, so just stop here.
 			return;
 		}
-		if (usesAssistantAgent.value) {
+		if (startsAssistantAgentThreads.value) {
 			// The server creates the thread with its first message.
 			if (
 				!mounted ||

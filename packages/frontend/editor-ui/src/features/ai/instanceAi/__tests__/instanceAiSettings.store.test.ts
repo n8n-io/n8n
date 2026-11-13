@@ -2,7 +2,10 @@ import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -266,6 +269,34 @@ describe('useInstanceAiSettingsStore', () => {
 
 			setModuleSettings(settingsStore, {});
 			expect(store.isAssistantAgentEnabled).toBe(false);
+		});
+	});
+
+	describe('newThreadsUseAssistantAgent', () => {
+		const setRollout = (value: boolean) => {
+			usePostHog().overrides[INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name] = { value };
+		};
+
+		it('is true when the backend registered the Assistant agent and the user is in the rollout', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+			setRollout(true);
+
+			expect(store.newThreadsUseAssistantAgent).toBe(true);
+		});
+
+		it('is false for a user outside the rollout', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+			setRollout(false);
+
+			expect(store.isAssistantAgentEnabled).toBe(true);
+			expect(store.newThreadsUseAssistantAgent).toBe(false);
+		});
+
+		it('is false when the backend has no agent, even in the rollout', () => {
+			setModuleSettings(settingsStore, {});
+			setRollout(true);
+
+			expect(store.newThreadsUseAssistantAgent).toBe(false);
 		});
 	});
 
