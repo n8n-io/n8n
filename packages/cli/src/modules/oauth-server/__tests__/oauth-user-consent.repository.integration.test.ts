@@ -65,6 +65,13 @@ describe('UserConsentRepository.recordLastUsed', () => {
 		expect(await lastUsedAt()).toEqual(at(61_000));
 	});
 
+	test('writes a use exactly at the interval boundary', async () => {
+		await consents.recordLastUsed(user.id, clientId, USED_AT, MIN_INTERVAL_MS);
+		await consents.recordLastUsed(user.id, clientId, at(MIN_INTERVAL_MS), MIN_INTERVAL_MS);
+
+		expect(await lastUsedAt()).toEqual(at(MIN_INTERVAL_MS));
+	});
+
 	test('never moves the time backwards', async () => {
 		await consents.recordLastUsed(user.id, clientId, at(5 * 60_000), MIN_INTERVAL_MS);
 		await consents.recordLastUsed(user.id, clientId, USED_AT, MIN_INTERVAL_MS);

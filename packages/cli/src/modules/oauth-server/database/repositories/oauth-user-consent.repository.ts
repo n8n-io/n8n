@@ -1,7 +1,7 @@
 import type { McpClientConnectedPeriod } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, LessThan, Or } from '@n8n/typeorm';
+import { DataSource, IsNull, LessThanOrEqual, Or } from '@n8n/typeorm';
 
 import { UserConsent } from '../entities/oauth-user-consent.entity';
 
@@ -67,7 +67,7 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 
 	/**
 	 * Stamps the last time the client used the user's grant, in one conditional
-	 * update. The write happens only when the stored time is missing or older than
+	 * update. The write happens only when the stored time is missing or at least
 	 * `minIntervalMs` before `usedAt`, so all mains share the throttle and the time
 	 * never moves backwards. A missing grant is a no-op.
 	 */
@@ -79,7 +79,7 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 	): Promise<void> {
 		const staleBefore = new Date(usedAt.getTime() - minIntervalMs);
 		await this.update(
-			{ userId, clientId, lastUsedAt: Or(IsNull(), LessThan(staleBefore)) },
+			{ userId, clientId, lastUsedAt: Or(IsNull(), LessThanOrEqual(staleBefore)) },
 			{ lastUsedAt: usedAt },
 		);
 	}

@@ -270,10 +270,21 @@ describe('McpServerMiddlewareService', () => {
 				expect(logger.info).not.toHaveBeenCalled();
 			});
 
-			it('records the use of the OAuth client grant', async () => {
+			it('records the use of the OAuth client grant with the token id', async () => {
+				const token = jwt.sign(
+					{ iss: 'https://idp.example', sub: 'idp-alice', jti: 'token-1' },
+					'any-secret',
+				);
+
+				await run(`Bearer ${token}`);
+
+				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', 'token-1');
+			});
+
+			it('records the use without a token id when the token has no jti', async () => {
 				await run(`Bearer ${signIssuerToken('https://idp.example')}`);
 
-				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc');
+				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', undefined);
 			});
 
 			it('keeps what earlier middleware put on the operation context', async () => {

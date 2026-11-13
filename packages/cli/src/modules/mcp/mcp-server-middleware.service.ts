@@ -138,14 +138,27 @@ export class McpServerMiddlewareService {
 				await this.deny(req, res, admitted, telemetryOf(admitted.reason, urlIssuer));
 				return;
 			}
-			await this.settleSecurityContext(req, res, next, inbound, admitted.context);
+			// The admission verified the token, so its `jti` is safe to read here.
+			const tokenId = this.claimsOf(token)?.jti;
+			await this.settleSecurityContext(
+				req,
+				res,
+				next,
+				inbound,
+				admitted.context,
+				typeof tokenId === 'string' ? tokenId : undefined,
+			);
 		};
 	}
 
 	/** Routing only, never a decision: the token is not verified yet. */
 	private issuerOf(token: string): unknown {
+		return this.claimsOf(token)?.iss;
+	}
+
+	private claimsOf(token: string): { iss?: unknown; jti?: unknown } | null | undefined {
 		try {
-			return this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss;
+			return this.jwtService.decodeUnverified<{ iss?: unknown; jti?: unknown } | null>(token);
 		} catch {
 			// `jwt.decode` throws on a JWT-typed token whose payload is not JSON.
 			return undefined;
@@ -158,6 +171,7 @@ export class McpServerMiddlewareService {
 		next: NextFunction,
 		inbound: Inbound,
 		context: SecurityContext,
+		tokenId: string | undefined,
 	) {
 		// RFC 9068 §2.2 requires `client_id`, and MCP attributes every OAuth call to a client.
 		if (context.clientId === undefined) {
@@ -179,7 +193,7 @@ export class McpServerMiddlewareService {
 		mcpReq.mcpScopes = context.tokenScopes ?? [];
 		// Keep what earlier middleware put on the operation context.
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
-		this.clientUsage.recordUse(user.id, context.clientId);
+		this.clientUsage.recordUse(user.id, context.clientId, tokenId);
 		next();
 	}
 

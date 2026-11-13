@@ -24,7 +24,7 @@ describe('McpClientUsageService', () => {
 	});
 
 	it('records the use with a one-minute throttle that the database enforces', () => {
-		service.recordUse('user-1', 'client-1');
+		service.recordUse('user-1', 'client-1', 'token-1');
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith(
 			'user-1',
@@ -34,18 +34,48 @@ describe('McpClientUsageService', () => {
 		);
 	});
 
-	it('leaves the throttle to the database, so every request reaches it', () => {
+	it('skips the database for the same token inside the interval', () => {
+		service.recordUse('user-1', 'client-1', 'token-1');
+		vi.advanceTimersByTime(59_999);
+		service.recordUse('user-1', 'client-1', 'token-1');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(1);
+		service.recordUse('user-1', 'client-1', 'token-1');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+
+	it('sends the first use of a new token, such as after the grant was created again', () => {
+		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse('user-1', 'client-1', 'token-2');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
+	});
+
+	it('leaves the throttle to the database when the token has no id', () => {
 		service.recordUse('user-1', 'client-1');
 		service.recordUse('user-1', 'client-1');
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 
-	it('logs a failed write and does not throw', async () => {
+	it('evicts only the oldest token when the fast path is full', () => {
+		for (let i = 0; i < 1001; i++) service.recordUse('user-1', 'client-1', `token-${i}`);
+		userConsentRepository.recordLastUsed.mockClear();
+
+		service.recordUse('user-1', 'client-1', 'token-0');
+		service.recordUse('user-1', 'client-1', 'token-1000');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
+	});
+
+	it('logs a failed write, does not throw, and retries on the next request', async () => {
 		const error = new Error('db down');
 		userConsentRepository.recordLastUsed.mockRejectedValueOnce(error);
 
-		expect(() => service.recordUse('user-1', 'client-1')).not.toThrow();
+		expect(() => service.recordUse('user-1', 'client-1', 'token-1')).not.toThrow();
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
 
 		expect(logger.warn).toHaveBeenCalledWith('Failed to update lastUsedAt on MCP client grant', {
@@ -53,5 +83,9 @@ describe('McpClientUsageService', () => {
 			clientId: 'client-1',
 			error,
 		});
+
+		service.recordUse('user-1', 'client-1', 'token-1');
+
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 });
