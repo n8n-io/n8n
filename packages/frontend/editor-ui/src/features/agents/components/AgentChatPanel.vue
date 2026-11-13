@@ -1138,12 +1138,17 @@ const displayedMessagingState = computed(() =>
 	isPreviewingFirstMessage.value ? 'waitingFirstChunk' : messagingState.value,
 );
 
+// A new n8n Chat has no history, so its first load does not hide the empty state.
+// No hand-off waits behind the load either: this page shows one as a bubble at once.
+const isLoadingNewChat = computed(
+	() => props.centerEmptyState && props.newSession && isLoadingHistory.value,
+);
 const isCenteredEmpty = computed(
 	() =>
 		props.centerEmptyState &&
 		props.newSession &&
 		displayedMessages.value.length === 0 &&
-		!isStreaming.value,
+		(!isStreaming.value || isLoadingNewChat.value),
 );
 
 watch(isStreaming, (v) => emit('update:streaming', v));
@@ -1733,8 +1738,7 @@ onBeforeUnmount(() => {
 		<template
 			v-if="
 				displayedMessages.length === 0 &&
-				!isStreaming &&
-				!isLoadingHistory &&
+				((!isStreaming && !isLoadingHistory) || isLoadingNewChat) &&
 				!stopNotice &&
 				!preparingSummary &&
 				!summaryMissing &&
