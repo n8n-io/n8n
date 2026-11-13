@@ -47,7 +47,12 @@ type ResponsesInputItem =
 			name: string;
 			arguments: string;
 	  }
-	| { type: 'function_call_output'; call_id: string; output: string };
+	| { type: 'function_call_output'; call_id: string; output: string }
+	| {
+			type: 'reasoning';
+			summary: Array<{ type: 'summary_text'; text: string }>;
+			encrypted_content: string;
+	  };
 
 interface OpenAIResponsesRequest {
 	model: string;
@@ -63,6 +68,7 @@ interface OpenAIResponsesRequest {
 	parallel_tool_calls?: boolean;
 	store?: boolean;
 	stream?: boolean;
+	include?: Array<'reasoning.encrypted_content'>;
 	metadata?: Record<string, unknown>;
 }
 
@@ -123,7 +129,10 @@ type ResponsesOutputItem =
 				type: string;
 				text: string;
 			}>;
+			encrypted_content?: string | null;
 	  };
+
+type ReasoningOutputItem = Extract<ResponsesOutputItem, { type: 'reasoning' }>;
 
 interface OpenAIStreamEvent {
 	type: string;
@@ -206,10 +215,18 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 						name: contentPart.toolName,
 						arguments: contentPart.input,
 					});
+				} else if (contentPart.type === 'reasoning') {
+					const encryptedContent = contentPart.providerMetadata?.encryptedContent;
+					// OpenAI only reuses reasoning that carries its encrypted payload.
+					// Reasoning without it, for example from another provider, is left out.
+					if (typeof encryptedContent === 'string') {
+						inputItems.push({
+							type: 'reasoning',
+							summary: [{ type: 'summary_text', text: contentPart.text }],
+							encrypted_content: encryptedContent,
+						});
+					}
 				}
-				// Reasoning is not sent back. OpenAI can only reuse reasoning with its
-				// encrypted payload, which this model does not request, and as assistant
-				// text the model would read it as part of its own answer.
 			}
 		}
 
@@ -317,6 +334,24 @@ function parseTokenUsage(
 				},
 			}
 		: undefined;
+}
+
+function isReasoningItem(item: unknown): item is ReasoningOutputItem {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'type' in item &&
+		item.type === 'reasoning' &&
+		'summary' in item &&
+		Array.isArray(item.summary)
+	);
+}
+
+function toReasoningContent(item: ReasoningOutputItem): MessageContent {
+	const text = item.summary.map((part) => part.text).join('');
+	return item.encrypted_content
+		? { type: 'reasoning', text, providerMetadata: { encryptedContent: item.encrypted_content } }
+		: { type: 'reasoning', text };
 }
 
 function toolCallId({ call_id: callId, id }: { call_id?: unknown; id?: unknown }): string {
@@ -436,6 +471,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			parallel_tool_calls: true,
 			store: false,
 			stream,
+			include: ['reasoning.encrypted_content'],
 		};
 	}
 
@@ -482,7 +518,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			}
 		}
 
-		const content: MessageContent[] = [];
+		const content = body.output.filter(isReasoningItem).map(toReasoningContent);
 		if (toolCalls.length) {
 			for (const toolCall of toolCalls) {
 				content.push({
@@ -544,12 +580,8 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 						arguments: (item.arguments as string) ?? '',
 					};
 				}
-				if (item?.type === 'reasoning') {
-					const summary = (item.summary as Array<Record<string, unknown>>) ?? [];
-					const reasoningText = summary
-						.map((s) => s.text)
-						.filter(Boolean)
-						.join('');
+				if (isReasoningItem(item)) {
+					const reasoningText = item.summary.map((part) => part.text).join('');
 					if (reasoningText) {
 						yield { type: 'reasoning-delta', delta: reasoningText };
 					}
@@ -585,6 +617,10 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 							argumentsDelta: buf.arguments,
 						};
 					}
+				}
+				if (isReasoningItem(item)) {
+					// The complete block carries the encrypted payload for the next turn.
+					yield { type: 'content', content: toReasoningContent(item) };
 				}
 			}
 

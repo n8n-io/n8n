@@ -335,32 +335,123 @@ describe('OpenAIChatModel', () => {
 		});
 	});
 
-	it('should not send reasoning back as assistant text', async () => {
-		let input: unknown;
-		nock(baseURL)
-			.post('/responses', (body: { input: unknown }) => {
-				input = body.input;
-				return true;
-			})
-			.reply(200, mockFinalResponse);
+	describe('reasoning', () => {
+		const encryptedContent = 'gAAAA-encrypted';
+		const reasoningItem = {
+			type: 'reasoning',
+			id: 'rs_1',
+			summary: [{ type: 'summary_text', text: 'Compare both cities.' }],
+			encrypted_content: encryptedContent,
+		};
+		const replyText = { type: 'text', text: 'Hello' } as const;
+		const captureInput = () => {
+			const captured: { input?: unknown } = {};
+			nock(baseURL)
+				.post('/responses', (body: { input: unknown }) => {
+					captured.input = body.input;
+					return true;
+				})
+				.reply(200, mockFinalResponse);
+			return captured;
+		};
 
-		await createModel().generate([
-			userMessage,
-			{
-				role: 'assistant',
-				content: [
-					{ type: 'reasoning', text: 'Thinking about it' },
-					{ type: 'text', text: 'Hello' },
-				],
-			},
-			{ role: 'user', content: [{ type: 'text', text: 'Again' }] },
-		]);
+		it('should request the encrypted reasoning and return it with the reasoning', async () => {
+			let include: unknown;
+			nock(baseURL)
+				.post('/responses', (body: { include: unknown }) => {
+					include = body.include;
+					return true;
+				})
+				.reply(200, { ...mockFinalResponse, output: [reasoningItem, ...mockFinalResponse.output] });
 
-		expect(input).toEqual([
-			{ role: 'user', content: 'Hi' },
-			{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hello' }] },
-			{ role: 'user', content: 'Again' },
-		]);
+			const result = await createModel().generate([userMessage]);
+
+			expect(include).toEqual(['reasoning.encrypted_content']);
+			expect(result.message.content[0]).toEqual({
+				type: 'reasoning',
+				text: 'Compare both cities.',
+				providerMetadata: { encryptedContent },
+			});
+		});
+
+		it('should stream the complete reasoning with its encrypted payload', async () => {
+			nock(baseURL)
+				.post('/responses')
+				.reply(
+					...sseEvents(
+						{
+							type: 'response.output_item.added',
+							output_index: 0,
+							item: { ...reasoningItem, summary: [] },
+						},
+						{ type: 'response.reasoning_summary_text.delta', delta: 'Compare both cities.' },
+						{ type: 'response.output_item.done', output_index: 0, item: reasoningItem },
+						{ type: 'response.completed', response: { status: 'completed' } },
+					),
+				);
+
+			const chunks = await collect(createModel().stream([userMessage]));
+
+			expect(chunks.slice(0, 2)).toEqual([
+				{ type: 'reasoning-delta', delta: 'Compare both cities.' },
+				{
+					type: 'content',
+					content: {
+						type: 'reasoning',
+						text: 'Compare both cities.',
+						providerMetadata: { encryptedContent },
+					},
+				},
+			]);
+		});
+
+		it('should send reasoning with its encrypted payload back as a reasoning item', async () => {
+			const captured = captureInput();
+
+			await createModel().generate([
+				userMessage,
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'reasoning',
+							text: 'Compare both cities.',
+							providerMetadata: { encryptedContent },
+						},
+						replyText,
+					],
+				},
+			]);
+
+			expect(captured.input).toEqual([
+				{ role: 'user', content: 'Hi' },
+				{
+					type: 'reasoning',
+					summary: [{ type: 'summary_text', text: 'Compare both cities.' }],
+					encrypted_content: encryptedContent,
+				},
+				{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hello' }] },
+			]);
+		});
+
+		it('should leave out reasoning without an encrypted payload', async () => {
+			const captured = captureInput();
+
+			await createModel().generate([
+				userMessage,
+				{
+					role: 'assistant',
+					content: [{ type: 'reasoning', text: 'Thinking about it' }, replyText],
+				},
+				{ role: 'user', content: [{ type: 'text', text: 'Again' }] },
+			]);
+
+			expect(captured.input, 'reasoning text must not become assistant text').toEqual([
+				{ role: 'user', content: 'Hi' },
+				{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hello' }] },
+				{ role: 'user', content: 'Again' },
+			]);
+		});
 	});
 
 	describe('failed responses', () => {
@@ -462,6 +553,7 @@ describe('OpenAIChatModel', () => {
 			parallel_tool_calls: true,
 			store: false,
 			stream: false,
+			include: ['reasoning.encrypted_content'],
 		});
 	});
 
