@@ -7,6 +7,7 @@ import type {
 	WorkflowTransferResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowsConfig } from '@n8n/config';
 import type {
 	CredentialUsedByWorkflow,
 	User,
@@ -67,6 +68,7 @@ import { ProjectService } from '@/services/project.service.ee';
 import { stripToolSuffix } from '@/utils';
 
 import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowService } from './workflow.service';
 
 /**
  * Database workflows use their own project permissions at runtime.
@@ -150,6 +152,8 @@ export class EnterpriseWorkflowService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly workflowsConfig: WorkflowsConfig,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async shareWithProjects(
@@ -806,6 +810,7 @@ export class EnterpriseWorkflowService {
 		destinationProjectId: string,
 		shareCredentials: string[] = [],
 		destinationParentFolderId?: string,
+		options: { publicApi?: boolean } = {},
 	): Promise<WorkflowTransferResult | undefined> {
 		// 1. get workflow
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -867,29 +872,45 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
-		const wasActive = this.isActiveWorkflow(workflow);
+		const transfer = async (): Promise<void> => {
+			// 7. transfer the workflow
+			await this.transferWorkflowOwnership(user, [workflow], destinationProject);
 
-		// 6. deactivate workflow if necessary
-		if (wasActive) {
+			// 8. share credentials into the destination project
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
+
+			// 9. Move workflow to the right folder if any
+			await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
+		};
+
+		let result: WorkflowTransferResult | undefined;
+		if (!this.isActiveWorkflow(workflow)) {
+			await transfer();
+		} else if (this.workflowsConfig.useWorkflowPublicationService) {
+			const failures = await this.workflowService.republishAroundTransfer(
+				user,
+				[workflowId],
+				destinationProject.id,
+				transfer,
+				{ publicApi: options.publicApi ?? false },
+			);
+			result = failures.get(workflowId);
+		} else {
+			// 6. deactivate the workflow
 			await this.activeWorkflowManager.remove(workflowId);
+
+			await transfer();
+
+			// 10. activate it again. The destination's policy can refuse the republish, and then the
+			// move unpublishes the workflow.
+			result = await this.attemptWorkflowReactivation(
+				workflowId,
+				workflow.activeVersionId,
+				user.id,
+			);
 		}
 
-		// 7. transfer the workflow
-		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
-
-		// 8. share credentials into the destination project
-		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
-
-		// 9. Move workflow to the right folder if any
-		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
-
-		// 10. try to activate it again if it was active. The destination's policy can refuse
-		// the republish, and then the move unpublishes the workflow.
-		if (wasActive) {
-			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
-		}
-
-		return;
+		return result;
 	}
 
 	/**
@@ -1098,37 +1119,54 @@ export class EnterpriseWorkflowService {
 
 		assertNoneOwnedBy(workflows, destinationProject);
 
-		// 5. deactivate all workflows if necessary
-		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
-		);
+		const transfer = async (): Promise<void> => {
+			// 6. transfer the workflows
+			await this.transferWorkflowOwnership(user, workflows, destinationProject);
 
-		await Promise.all(deactivateWorkflowsPromises);
+			// 7. share credentials into the destination project
+			await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
-		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(user, workflows, destinationProject);
-
-		// 7. share credentials into the destination project
-		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
-
-		// 8. Move all children folder to the destination project
-		await this.moveFoldersToDestination(
-			sourceFolderId,
-			childrenFolderIds,
-			destinationProjectId,
-			destinationParentFolderId,
-		);
-
-		// 9. try to activate workflows again if they were active
+			// 8. Move all children folder to the destination project
+			await this.moveFoldersToDestination(
+				sourceFolderId,
+				childrenFolderIds,
+				destinationProjectId,
+				destinationParentFolderId,
+			);
+		};
 
 		const unpublishedWorkflows: UnpublishedWorkflow[] = [];
-		for (const workflow of activeWorkflows) {
-			const result = await this.attemptWorkflowReactivation(
-				workflow.id,
-				workflow.activeVersionId,
-				user.id,
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const failures = await this.workflowService.republishAroundTransfer(
+				user,
+				activeWorkflows.map((workflow) => workflow.id),
+				destinationProject.id,
+				transfer,
+				{ publicApi: false },
 			);
-			if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
+			for (const workflow of activeWorkflows) {
+				const result = failures.get(workflow.id);
+				if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
+			}
+		} else {
+			// 5. deactivate all workflows
+			await Promise.all(
+				activeWorkflows.map(
+					async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
+				),
+			);
+
+			await transfer();
+
+			// 9. activate the workflows again
+			for (const workflow of activeWorkflows) {
+				const result = await this.attemptWorkflowReactivation(
+					workflow.id,
+					workflow.activeVersionId,
+					user.id,
+				);
+				if (result) unpublishedWorkflows.push({ id: workflow.id, name: workflow.name, ...result });
+			}
 		}
 
 		return { unpublishedWorkflows };

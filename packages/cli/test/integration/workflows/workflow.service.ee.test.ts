@@ -1,4 +1,5 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -46,6 +47,8 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // nodeTypes
 			mock(), // credentialsPermissionChecker
 			mock(), // workflowHistoryRepository
+			mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			mock(), // workflowService
 		);
 	});
 

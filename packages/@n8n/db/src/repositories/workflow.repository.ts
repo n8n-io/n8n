@@ -692,6 +692,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows;
 	}
 
+	async findWithActiveVersionByIds(workflowIds: string[]): Promise<WorkflowEntity[]> {
+		const workflows: WorkflowEntity[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			workflows.push(
+				...(await this.find({
+					where: { id: In(chunk) },
+					relations: { activeVersion: true },
+				})),
+			);
+		}
+
+		return workflows;
+	}
+
 	async findOneByAgentToolReference(
 		projectId: string,
 		reference: { workflowId?: string; workflowName: string },
