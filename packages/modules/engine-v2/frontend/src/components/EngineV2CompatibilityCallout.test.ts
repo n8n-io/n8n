@@ -17,8 +17,8 @@ describe('EngineV2CompatibilityCallout', () => {
 
 	it('lists every reason', () => {
 		const { getAllByTestId } = renderCallout([
-			{ code: 'error-workflow', severity: 'blocking', message: 'a' },
-			{ code: 'redaction-policy', severity: 'blocking', message: 'b' },
+			{ code: 'ERROR_WORKFLOW', severity: 'blocking', message: 'a' },
+			{ code: 'REDACTION_POLICY', severity: 'blocking', message: 'b' },
 		]);
 
 		expect(reasonTexts(getAllByTestId)).toEqual([
@@ -30,7 +30,7 @@ describe('EngineV2CompatibilityCallout', () => {
 	it('shows the node name before the text when the reason has one', () => {
 		const { getAllByTestId } = renderCallout([
 			{
-				code: 'trigger-external-identity',
+				code: 'TRIGGER_EXTERNAL_IDENTITY',
 				severity: 'blocking',
 				nodeId: 'node-1',
 				nodeName: 'Incoming webhook',
@@ -44,10 +44,10 @@ describe('EngineV2CompatibilityCallout', () => {
 	});
 
 	it.each([
-		['error-workflow', 'engineV2Compatibility.reason.errorWorkflow'],
-		['redaction-policy', 'engineV2Compatibility.reason.redactionPolicy'],
-		['end-user-credentials', 'engineV2Compatibility.reason.endUserCredentials'],
-		['trigger-external-identity', 'engineV2Compatibility.reason.triggerExternalIdentity'],
+		['ERROR_WORKFLOW', 'engineV2Compatibility.reason.errorWorkflow'],
+		['REDACTION_POLICY', 'engineV2Compatibility.reason.redactionPolicy'],
+		['END_USER_CREDENTIALS', 'engineV2Compatibility.reason.endUserCredentials'],
+		['TRIGGER_EXTERNAL_IDENTITY', 'engineV2Compatibility.reason.triggerExternalIdentity'],
 	] as const)('shows its own text for the known code %s', (code, key) => {
 		const { getAllByTestId } = renderCallout([
 			{ code, severity: 'blocking', message: 'English fallback from the package' },
@@ -73,8 +73,8 @@ describe('EngineV2CompatibilityCallout', () => {
 
 	it('uses the blocking title and theme when a reason blocks', () => {
 		const { getByTestId } = renderCallout([
-			{ code: 'error-workflow', severity: 'warning', message: 'a' },
-			{ code: 'redaction-policy', severity: 'blocking', message: 'b' },
+			{ code: 'ERROR_WORKFLOW', severity: 'warning', message: 'a' },
+			{ code: 'REDACTION_POLICY', severity: 'blocking', message: 'b' },
 		]);
 
 		const callout = getByTestId('engine-v2-compatibility-callout');
@@ -84,7 +84,7 @@ describe('EngineV2CompatibilityCallout', () => {
 
 	it('uses the warning title and theme when no reason blocks', () => {
 		const { getByTestId } = renderCallout([
-			{ code: 'error-workflow', severity: 'warning', message: 'a' },
+			{ code: 'ERROR_WORKFLOW', severity: 'warning', message: 'a' },
 		]);
 
 		const callout = getByTestId('engine-v2-compatibility-callout');

@@ -1,19 +1,19 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
 /*
- * The only file that knows the `@n8n/workflow-engine-check` contract. The package is not on
- * `master` yet, so this file holds a copy of its types and a stub check. When the package
- * lands, delete the copy and the stub, and import both from the package.
+ * The only file that knows the `@n8n/workflow-engine-check` contract. The package is private,
+ * and a published module can't depend on it at run time, so this file holds a copy of its
+ * types and a stub check. To use the package, delete the copy and the stub, and import both.
  */
 
 export type EngineV2EligibilityWorkflow = Pick<IWorkflowBase, 'nodes' | 'connections' | 'settings'>;
 
 /** Stable identifiers. Consumers key messages and metrics on them, so never rename one. */
 export type EngineV2ReasonCode =
-	| 'error-workflow'
-	| 'redaction-policy'
-	| 'end-user-credentials'
-	| 'trigger-external-identity';
+	| 'ERROR_WORKFLOW'
+	| 'REDACTION_POLICY'
+	| 'END_USER_CREDENTIALS'
+	| 'TRIGGER_EXTERNAL_IDENTITY';
 
 export interface EngineV2Reason {
 	code: EngineV2ReasonCode;

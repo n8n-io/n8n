@@ -7708,6 +7708,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      '@n8n/workflow-engine-check':
+        specifier: workspace:*
+        version: link:../../../@n8n/workflow-engine-check
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1

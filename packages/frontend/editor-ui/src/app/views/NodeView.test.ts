@@ -1067,7 +1067,7 @@ describe('NodeView', () => {
 		const CALLOUT = 'engine-v2-compatibility-callout';
 		const incompatible = createTestNode({ type: SET_NODE_TYPE, name: 'Incompatible' });
 		const blockingReason: EngineCompatibilityReason = {
-			code: 'error-workflow',
+			code: 'ERROR_WORKFLOW',
 			severity: 'blocking',
 			message: 'Engine v2 does not run an error workflow yet.',
 		};

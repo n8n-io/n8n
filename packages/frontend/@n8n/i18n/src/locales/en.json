@@ -1804,7 +1804,7 @@
 	"engineV2Compatibility.callout.title": "This workflow can't run on engine v2 yet",
 	"engineV2Compatibility.callout.titleWarnings": "Check this workflow before you run it on engine v2",
 	"engineV2Compatibility.reason.errorWorkflow": "Engine v2 doesn't run error workflows yet. Remove the error workflow in the workflow settings.",
-	"engineV2Compatibility.reason.redactionPolicy": "Engine v2 doesn't redact execution data yet. Turn off data redaction in the workflow settings.",
+	"engineV2Compatibility.reason.redactionPolicy": "Engine v2 isn't fully tested with data redaction yet. It might not redact some execution data.",
 	"engineV2Compatibility.reason.endUserCredentials": "Engine v2 doesn't support end-user credentials yet. Remove the end-user credential resolver in the workflow settings.",
 	"engineV2Compatibility.reason.triggerExternalIdentity": "Engine v2 can't run this trigger yet, because it takes credentials from the request.",
 	"engineV2Compatibility.publishBlocked": "This workflow can't run on engine v2 yet. Fix the issues listed on the canvas.",

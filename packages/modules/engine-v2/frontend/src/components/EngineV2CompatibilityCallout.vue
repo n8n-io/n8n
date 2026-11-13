@@ -13,10 +13,10 @@ const i18n = useI18n();
 
 // Keyed by `string`: a newer check can return a code that this map does not know yet.
 const REASON_TEXT_KEYS: Partial<Record<string, BaseTextKey>> = {
-	'error-workflow': 'engineV2Compatibility.reason.errorWorkflow',
-	'redaction-policy': 'engineV2Compatibility.reason.redactionPolicy',
-	'end-user-credentials': 'engineV2Compatibility.reason.endUserCredentials',
-	'trigger-external-identity': 'engineV2Compatibility.reason.triggerExternalIdentity',
+	ERROR_WORKFLOW: 'engineV2Compatibility.reason.errorWorkflow',
+	REDACTION_POLICY: 'engineV2Compatibility.reason.redactionPolicy',
+	END_USER_CREDENTIALS: 'engineV2Compatibility.reason.endUserCredentials',
+	TRIGGER_EXTERNAL_IDENTITY: 'engineV2Compatibility.reason.triggerExternalIdentity',
 };
 
 const hasBlockingReason = computed(() => reasons.some((reason) => reason.severity === 'blocking'));

@@ -17,7 +17,7 @@ import { useWorkflowEngineV2Compatibility } from './useWorkflowEngineV2Compatibi
 const INCOMPATIBLE_TYPE = 'n8n-nodes-base.incompatible';
 
 const reason: EngineCompatibilityReason = {
-	code: 'error-workflow',
+	code: 'ERROR_WORKFLOW',
 	severity: 'blocking',
 	message: 'Engine v2 does not run an error workflow yet.',
 };

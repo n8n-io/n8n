@@ -14,9 +14,10 @@ The module tells the editor if the open workflow can run on engine v2. Every ans
 `'v2'`.
 
 - `src/engineV2Check.ts` is the only file that knows the contract of
-  `@n8n/workflow-engine-check`. That package is not on `master` yet, so the file holds a copy of
-  its types and a stub check that reports "eligible, no reasons". To use the package, delete the
-  copy and the stub, and import them from the package. No other file changes.
+  `@n8n/workflow-engine-check`. That package is private, and this module is published, so the
+  module can't depend on it at run time. The file holds a copy of its types and a stub check that
+  reports "eligible, no reasons". To use the package, delete the copy and the stub, import them
+  from the package, and add the package to `dependencies`. No other source file changes.
 - `useEngineV2Compatibility` takes getters for the nodes, the connections and the settings of the
   workflow, because the document store belongs to the shell. It returns the reasons, the blocking
   reasons and `isNodeTypeIncompatible`. The node-type answer is "supported" until the package can

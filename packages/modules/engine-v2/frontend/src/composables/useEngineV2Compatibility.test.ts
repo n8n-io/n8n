@@ -7,7 +7,7 @@ import type { EngineCompatibilityReason } from '../engineV2Check';
 import { describeEngineV2Block, useEngineV2Compatibility } from './useEngineV2Compatibility';
 
 const blockingReason: EngineCompatibilityReason = {
-	code: 'trigger-external-identity',
+	code: 'TRIGGER_EXTERNAL_IDENTITY',
 	severity: 'blocking',
 	nodeId: 'node-1',
 	nodeName: 'Webhook',
@@ -15,7 +15,7 @@ const blockingReason: EngineCompatibilityReason = {
 };
 
 const warningReason: EngineCompatibilityReason = {
-	code: 'error-workflow',
+	code: 'ERROR_WORKFLOW',
 	severity: 'warning',
 	message: 'Engine v2 does not run an error workflow yet.',
 };
