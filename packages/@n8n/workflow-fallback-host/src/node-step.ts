@@ -38,6 +38,7 @@ import type {
 	IHttpRequestHelper,
 	INode,
 	INodeCredentials,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeType,
 	INodeTypes,
@@ -66,7 +67,7 @@ import { readinessIssues, toNodeParameters } from './check-ready';
 import { hostExtensions } from './extensions';
 import { binaryStore, inlineStoredBinary, registerExecution } from './binary-store';
 import { startDeduplication } from './deduplication';
-import { currentServiceChannel } from './service-calls';
+import { callService, currentServiceChannel } from './service-calls';
 import type { JsTaskResult } from './task-runner';
 import { runJsTask } from './task-runner';
 import { EVALUATE_TYPE, HostNodeTypes, LANGCHAIN_PREFIX } from './node-types';
@@ -653,14 +654,39 @@ class SlotCredentialsHelper extends ICredentialsHelper {
 	}
 
 	/**
-	 * n8n-core calls these after it refreshes an OAuth2 token or a
-	 * pre-authentication token. n8n stores the new data; the host has no store,
-	 * so the new token lasts for this step only. Throwing here failed the step
-	 * after a good refresh.
+	 * n8n-core calls these after it refreshes an OAuth2 token. The host has no
+	 * store: it sends the token data to n8n, which saves it and gives the next
+	 * request the new credential. Without a service channel the token lasts for
+	 * this step only, as before.
 	 */
-	async updateCredentials(): Promise<void> {}
+	async updateCredentials(
+		nodeCredentials: INodeCredentialsDetails,
+		_type: string,
+		data: ICredentialDataDecryptedObject,
+	): Promise<void> {
+		await this.sendOAuthTokenData(nodeCredentials, data.oauthTokenData);
+	}
 
-	async updateCredentialsOauthTokenData(): Promise<void> {}
+	async updateCredentialsOauthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		_type: string,
+		data: ICredentialDataDecryptedObject,
+		_additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<void> {
+		await this.sendOAuthTokenData(nodeCredentials, data.oauthTokenData);
+	}
+
+	private async sendOAuthTokenData(
+		nodeCredentials: INodeCredentialsDetails,
+		oauthTokenData: ICredentialDataDecryptedObject['oauthTokenData'],
+	): Promise<void> {
+		if (!currentServiceChannel() || nodeCredentials.id === null) return;
+		if (!isRecordValue(oauthTokenData)) return;
+		await callService('credentials', 'updateOauthTokenData', {
+			credentialId: nodeCredentials.id,
+			oauthTokenData,
+		});
+	}
 
 	getCredentialsProperties(): INodeProperties[] {
 		return [];

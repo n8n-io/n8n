@@ -746,6 +746,13 @@ function lowerHttpLibrary(c: NodeContext): void {
 		entries.push(['errorItems', raw('true')]);
 	}
 	requireInjectable(credentialType);
+	// n8n refreshes an expired OAuth2 token for the library node: it needs the
+	// n8n credential behind the slot. The id is not a secret.
+	if (credentialType !== undefined) entries.push(['credentialType', literal(credentialType)]);
+	const credentialId = credentialType ? c.node.credentials?.[credentialType]?.id : undefined;
+	if (typeof credentialId === 'string' && credentialId !== '') {
+		entries.push(['credentialId', literal(credentialId)]);
+	}
 	const parameters: TranslatedValue = { code: { kind: 'object', entries }, usage, failures: [] };
 	const call = nodeCall(
 		c,

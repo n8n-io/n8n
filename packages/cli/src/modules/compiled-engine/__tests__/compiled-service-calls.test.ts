@@ -20,7 +20,10 @@ vi.mock('@/deduplication/deduplication-helper', () => ({
 }));
 
 import { EngineDataTablesService } from '../../engine-v2/engine-data-tables.service';
+import { CompiledEngineCredentials } from '../compiled-engine-credentials';
+import { CompiledEngineSync } from '../compiled-engine-sync.service';
 import { CompiledServiceCalls } from '../compiled-service-calls';
+import type { LoadedWorkflow } from '../compiled-engine-sync.service';
 import type { WfrtServiceEvent } from '../compiled-engine.types';
 import { parseWfrtEvent } from '../compiled-engine.types';
 import type { WfrtAdminClient } from '../wfrt-admin.client';
@@ -42,7 +45,11 @@ describe('CompiledServiceCalls', () => {
 	const tables = mock<EngineDataTablesService>();
 	const client = mock<WfrtAdminClient>();
 	const logger = mock<Logger>();
+	const sync = mock<CompiledEngineSync>();
+	const credentials = mock<CompiledEngineCredentials>();
 	logger.scoped.mockReturnValue(logger);
+
+	const makeCalls = () => new CompiledServiceCalls(client, logger, sync, credentials);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -58,7 +65,7 @@ describe('CompiledServiceCalls', () => {
 
 	it('runs a data table call for the workflow and answers once for a call sent again', async () => {
 		tables.call.mockResolvedValue({ data: [{ id: 1, email: 'a@x.io' }] });
-		const calls = new CompiledServiceCalls(client, logger);
+		const calls = makeCalls();
 		const event = parseWfrtEvent(line) as WfrtServiceEvent;
 		await calls.handle(event);
 		await calls.handle(event);
@@ -84,13 +91,13 @@ describe('CompiledServiceCalls', () => {
 		tables.call.mockResolvedValue({
 			error: { kind: 'user', message: "unknown column name 'x'" },
 		});
-		const calls = new CompiledServiceCalls(client, logger);
+		const calls = makeCalls();
 		const answer = await calls.run(parseWfrtEvent(line) as WfrtServiceEvent);
 		expect(answer).toEqual({ ok: false, error: { message: "unknown column name 'x'" } });
 	});
 
 	it('refuses an unknown operation and an unknown service', async () => {
-		const calls = new CompiledServiceCalls(client, logger);
+		const calls = makeCalls();
 		const event = parseWfrtEvent(line) as WfrtServiceEvent;
 		expect(await calls.run({ ...event, op: 'dropAll' })).toEqual({
 			ok: false,
@@ -103,9 +110,76 @@ describe('CompiledServiceCalls', () => {
 		expect(tables.call).not.toHaveBeenCalled();
 	});
 
+	it('saves a token that a fallback-host node refreshed and reloads the credential', async () => {
+		const slot = {
+			slot: 'oauth',
+			type: 'oAuth2Api',
+			credentialId: 'cred1',
+			credentialName: 'OAuth',
+		};
+		sync.findLoaded.mockReturnValue({ artifact: { slots: [slot] } } as unknown as LoadedWorkflow);
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls().run({
+			...event,
+			service: 'credentials',
+			op: 'updateOauthTokenData',
+			args: { credentialId: 'oauth', oauthTokenData: { access_token: 'new' } },
+		});
+		expect(answer).toEqual({ ok: true, result: true });
+		expect(credentials.updateOAuthTokenData).toHaveBeenCalledWith(
+			slot,
+			{ access_token: 'new' },
+			'wf1',
+		);
+		expect(sync.onCredentialChanged).toHaveBeenCalledWith('cred1');
+	});
+
+	it('refreshes an OAuth2 token for a native request and reloads the credential', async () => {
+		const slot = {
+			slot: 'oauth',
+			type: 'oAuth2Api',
+			credentialId: 'cred1',
+			credentialName: 'OAuth',
+		};
+		sync.findLoaded.mockReturnValue({ artifact: { slots: [slot] } } as unknown as LoadedWorkflow);
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls().run({
+			...event,
+			service: 'credentials',
+			op: 'refreshOAuth2',
+			args: { credentialId: 'cred1' },
+		});
+		expect(answer).toEqual({ ok: true, result: { ok: true } });
+		expect(credentials.refreshOAuth2).toHaveBeenCalledWith(slot, 'wf1');
+		expect(sync.onCredentialChanged).toHaveBeenCalledWith('cred1');
+	});
+
+	it('refuses a credential that the workflow does not use', async () => {
+		sync.findLoaded.mockReturnValue({
+			artifact: {
+				slots: [
+					{ slot: 'oauth', type: 'oAuth2Api', credentialId: 'cred1', credentialName: 'OAuth' },
+				],
+			},
+		} as unknown as LoadedWorkflow);
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls().run({
+			...event,
+			service: 'credentials',
+			op: 'refreshOAuth2',
+			args: { credentialId: 'other' },
+		});
+		expect(answer).toEqual({
+			ok: false,
+			error: { message: 'The workflow does not use this credential' },
+		});
+		expect(credentials.refreshOAuth2).not.toHaveBeenCalled();
+		expect(sync.onCredentialChanged).not.toHaveBeenCalled();
+	});
+
 	it('runs a deduplication call for the workflow of the execution', async () => {
 		dedup.checkProcessedAndRecord.mockResolvedValue({ new: ['b'], processed: ['a'] });
-		const calls = new CompiledServiceCalls(client, logger);
+		const calls = makeCalls();
 		const event = parseWfrtEvent(line) as WfrtServiceEvent;
 		const answer = await calls.run({
 			...event,
