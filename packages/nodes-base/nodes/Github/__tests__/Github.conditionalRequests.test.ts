@@ -6,6 +6,7 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestOptions,
 	INode,
 	INodeParameters,
 	IWorkflowExecuteAdditionalData,
@@ -128,14 +129,16 @@ describe('GitHub conditional pull request reads', () => {
 		);
 		additionalData.credentialsHelper.authenticate.mockImplementation(
 			async (data, _type, options) => ({
-				...options,
+				...(options as IHttpRequestOptions),
 				headers: { ...options.headers, Authorization: `Bearer ${data.accessToken}` },
 			}),
 		);
 		const helpers = getRequestHelperFunctions(mock<Workflow>(), node, additionalData);
-		context.helpers.httpRequest = helpers.httpRequest;
-		context.helpers.httpRequestWithAuthentication = helpers.httpRequestWithAuthentication;
-		context.helpers.requestWithAuthentication = helpers.requestWithAuthentication;
+		context.helpers.httpRequest.mockImplementation(helpers.httpRequest);
+		context.helpers.httpRequestWithAuthentication.mockImplementation(
+			helpers.httpRequestWithAuthentication,
+		);
+		context.helpers.requestWithAuthentication.mockImplementation(helpers.requestWithAuthentication);
 		return {
 			credentialWrites,
 			preAuthentication: additionalData.credentialsHelper.preAuthentication,
