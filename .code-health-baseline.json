@@ -1205,42 +1205,6 @@
 				"hash": "affee27335fc"
 			}
 		],
-		"packages/frontend/@n8n/design-system/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 12,
-				"message": "packages/frontend/@n8n/design-system turns 'no-prototype-builtins' down to 'warn' for the whole package.",
-				"hash": "f7e604999631"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 13,
-				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/prefer-optional-chain' down to 'warn' for the whole package.",
-				"hash": "e6d8e187bb0b"
-			},
-			{
-				"rule": "lint-config-layering",
-				"line": 14,
-				"message": "packages/frontend/@n8n/design-system turns '@typescript-eslint/restrict-template-expressions' down to 'warn' for the whole package.",
-				"hash": "86a0b84b8415"
-			}
-		],
-		"packages/frontend/@n8n/i18n/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 6,
-				"message": "packages/frontend/@n8n/i18n turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
-				"hash": "5836fd4581b2"
-			}
-		],
-		"packages/frontend/@n8n/stores/eslint.config.mjs": [
-			{
-				"rule": "lint-config-layering",
-				"line": 6,
-				"message": "packages/frontend/@n8n/stores turns '@typescript-eslint/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
-				"hash": "63e2dd35dc47"
-			}
-		],
 		"packages/quality/testing/playwright/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",
@@ -1949,6 +1913,36 @@
 				"line": 6,
 				"message": "Business logic imports TypeORM directly.",
 				"hash": "b44bfdcf5ae3"
+			}
+		],
+		"packages/frontend/@n8n/design-system/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/frontend/@n8n/design-system turns 'no-prototype-builtins' down to 'warn' for the whole package.",
+				"hash": "9644c437d97d"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/frontend/@n8n/design-system turns 'typescript/restrict-template-expressions' down to 'warn' for the whole package.",
+				"hash": "20da8ce6d1ef"
+			}
+		],
+		"packages/frontend/@n8n/i18n/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/frontend/@n8n/i18n turns 'typescript/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "bedf7d582984"
+			}
+		],
+		"packages/frontend/@n8n/stores/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/frontend/@n8n/stores turns 'typescript/no-unnecessary-type-assertion' down to 'warn' for the whole package.",
+				"hash": "ca544d7d57ca"
 			}
 		]
 	}

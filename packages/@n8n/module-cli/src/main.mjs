@@ -103,7 +103,7 @@ const scaffold = async (args) => {
 				? ['', '  Frontend: packages/@n8n/module-cli/frontend-module-guide.md']
 				: []),
 			...(wants('backend')
-				? ['', '  Backend guide: scripts/backend-module/backend-module-guide.md']
+				? ['', '  Backend guide: docs/backend/how-to/build-a-backend-module.md']
 				: []),
 		].join('\n'),
 	);

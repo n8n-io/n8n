@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -18,6 +18,17 @@ export class InstanceAiModule implements ModuleInterface {
 
 		// Workers and webhook processes only relay eligible failures to main.
 		if (!this.isMain()) return;
+
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			// Services inject the overrides when they are first resolved, so set them
+			// before anything resolves a service. Only an eval instance loads this code.
+			const { AssistantTurnOverrides } = await import('./turn-setup/assistant-turn-overrides.js');
+			const { EvalAssistantTurnOverrides } = await import(
+				'./eval/eval-assistant-turn-overrides.js'
+			);
+			Container.set(AssistantTurnOverrides, Container.get(EvalAssistantTurnOverrides));
+		}
 
 		const { WorkflowMutationHooksProxy } = await import('@n8n/backend-services');
 		const { SelfHealingConfigurationService } = await import(
@@ -54,13 +65,13 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./assistant.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
-		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
 			await import('./eval/eval.controller.js');
 		}
 		if (Container.get(InstanceAiConfig).workflowSuggestionsEnabled) {
 			await import('./self-healing/self-healing-results.controller.js');
 			await import('./self-healing/self-healing-configurations.controller.js');
+			await import('./self-healing/self-healing-status.controller.js');
 			const { InboxSourceRegistry } = await import('../inbox/inbox-source.registry.js');
 			const { SelfHealingResultService } = await import(
 				'./self-healing/self-healing-result.service.js'
@@ -78,6 +89,10 @@ export class InstanceAiModule implements ModuleInterface {
 			Container.get(WorkflowMutationHooksProxy).registerProvider(
 				Container.get(WorkflowSuggestionEventRelay),
 			);
+			const { SelfHealingTelemetryEventRelay } = await import(
+				'./self-healing/self-healing-telemetry.event-relay.js'
+			);
+			Container.get(SelfHealingTelemetryEventRelay).init();
 		}
 
 		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
@@ -129,6 +144,10 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		// Its routes depend on the agents module, so they load only with the agent.
 		await import('./assistant-agent/assistant-agent.controller.js');
+		const { InstanceAiConfig } = await import('@n8n/config');
+		if (Container.get(InstanceAiConfig).evalInstance) {
+			await import('./eval/assistant-agent-eval.controller.js');
+		}
 		this.assistantAgentRegistered = true;
 	}
 
@@ -148,16 +167,28 @@ export class InstanceAiModule implements ModuleInterface {
 	async systemTasks() {
 		if (!this.isMain()) return [];
 
-		const { InstanceAiConfig } = await import('@n8n/config');
+		const { GlobalConfig, InstanceAiConfig } = await import('@n8n/config');
 		const { SelfHealingReconciliationTask } = await import(
 			'./self-healing/self-healing-reconciliation.task.js'
 		);
-		if (Container.get(InstanceAiConfig).pruneInterval <= 0) return [SelfHealingReconciliationTask];
+		const config = Container.get(InstanceAiConfig);
+		const tasks: SystemTaskClass[] = [SelfHealingReconciliationTask];
 
-		const { InstanceAiCheckpointPruningTask } = await import(
-			'./instance-ai-checkpoint-pruning.task.js'
-		);
-		return [InstanceAiCheckpointPruningTask, SelfHealingReconciliationTask];
+		// Like `telemetry-pulse`: make sure no job is scheduled when telemetry is off.
+		if (config.workflowSuggestionsEnabled && Container.get(GlobalConfig).diagnostics.enabled) {
+			const { SelfHealingConfigurationSnapshotTask } = await import(
+				'./self-healing/self-healing-configuration-snapshot.task.js'
+			);
+			tasks.push(SelfHealingConfigurationSnapshotTask);
+		}
+
+		if (config.pruneInterval > 0) {
+			const { InstanceAiCheckpointPruningTask } = await import(
+				'./instance-ai-checkpoint-pruning.task.js'
+			);
+			tasks.push(InstanceAiCheckpointPruningTask);
+		}
+		return tasks;
 	}
 
 	async settings() {

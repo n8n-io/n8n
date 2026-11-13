@@ -95,7 +95,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 // The host stashes a starter message before it opens a new thread.
@@ -246,6 +245,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
+		empty-state-icon="n8n-assistant"
 		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"

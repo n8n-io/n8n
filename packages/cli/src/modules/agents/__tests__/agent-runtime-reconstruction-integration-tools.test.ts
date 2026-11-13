@@ -64,6 +64,7 @@ import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracke
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
+import type { AgentServiceAccountService } from '../agent-service-account.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
@@ -413,6 +414,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentDefinitionService>(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
+			mock<AgentServiceAccountService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

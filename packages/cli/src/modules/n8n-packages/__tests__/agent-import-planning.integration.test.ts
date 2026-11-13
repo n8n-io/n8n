@@ -124,7 +124,7 @@ function input(sources: PreparedAgent[], projectId = project.id): ImportOrchestr
 		conflictPolicy: 'new-version',
 	});
 	return {
-		context: { user, projectId, folderId: null },
+		context: { user, projectId, folderId: null, publicApi: false },
 		agents: sources,
 		folders: [],
 		workflows: [],

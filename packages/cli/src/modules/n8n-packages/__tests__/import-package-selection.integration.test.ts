@@ -126,7 +126,7 @@ describe('importPackageSelectionFromDirectory', () => {
 		overrides?: Partial<ImportSelectionRequest>,
 	) {
 		return await Container.get(N8nPackagesService).importPackageSelectionFromDirectory(
-			{ user: owner, ...overrides },
+			{ user: owner, publicApi: false, ...overrides },
 			{ sourceDir },
 			selection,
 		);
