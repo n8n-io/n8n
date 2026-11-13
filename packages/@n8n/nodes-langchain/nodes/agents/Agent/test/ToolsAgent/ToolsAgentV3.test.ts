@@ -9,10 +9,8 @@ import * as helpers from '../../agents/ToolsAgent/V3/helpers';
 import type { MockedFunction } from 'vitest';
 
 // Mock the helper modules
-vi.mock('../../agents/ToolsAgent/V3/helpers', async () => {
-	const { mergeRequestMetadata } = await import(
-		'../../agents/ToolsAgent/V3/helpers/mergeRequestMetadata'
-	);
+vi.mock('../../agents/ToolsAgent/V3/helpers', async (importOriginal) => {
+	const { mergeRequestMetadata } = await importOriginal<typeof helpers>();
 	return {
 		buildExecutionContext: vi.fn(),
 		executeBatch: vi.fn(),

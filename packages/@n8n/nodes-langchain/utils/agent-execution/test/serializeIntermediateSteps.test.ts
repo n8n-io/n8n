@@ -1,4 +1,5 @@
 import { serializeIntermediateSteps } from '../serializeIntermediateSteps';
+import type { ToolCallData } from '../types';
 
 describe('serializeIntermediateSteps', () => {
 	it('should convert class instances with toJSON to plain objects', () => {
@@ -100,7 +101,7 @@ describe('serializeIntermediateSteps', () => {
 	});
 
 	it('should strip internal itemIndex property from steps without mutating original step object', () => {
-		const originalStep = {
+		const originalStep: ToolCallData = {
 			action: {
 				tool: 'TestTool',
 				toolInput: {},
