@@ -177,7 +177,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 /** The Assistant reads the same request fields as from its current runtime. */
@@ -705,6 +704,7 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
+						empty-state-icon="n8n-assistant"
 						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"

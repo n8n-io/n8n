@@ -22,6 +22,7 @@ import {
 	N8nLink,
 	N8nText,
 	N8nTooltip,
+	type IconName,
 } from '@n8n/design-system';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -113,6 +114,8 @@ const props = withDefaults(
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Shows this plain icon in the empty state instead of the agent's icon tile. */
+		emptyStateIcon?: IconName;
 		/** Replaces the model-derived attachment support, for pages that get no model. */
 		attachmentCapabilities?: ProviderAttachmentCapabilities;
 		/**
@@ -1741,7 +1744,7 @@ onBeforeUnmount(() => {
 			"
 		>
 			<slot name="empty-state">
-				<AgentChatEmptyState :agent-config="agentConfig" />
+				<AgentChatEmptyState :agent-config="agentConfig" :icon="emptyStateIcon" />
 			</slot>
 		</template>
 		<AgentChatMessageList

@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { AgentChatListItem } from '@n8n/api-types';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
@@ -54,10 +54,14 @@ function onClick(): void {
 	>
 		<div :class="$style.main">
 			<AgentPersonalisationIcon
-				:personalisation="agent ? agent.personalisation : assistant.personalisation"
+				v-if="agent"
+				:personalisation="agent.personalisation"
 				:size="40"
 				:class="$style.muted"
 			/>
+			<span v-else :class="$style.assistantIcon">
+				<N8nIcon icon="n8n-assistant" :size="24" />
+			</span>
 			<div :class="[$style.content, $style.muted]">
 				<N8nText bold :class="$style.title" data-test-id="n8n-chat-agent-card-name">
 					{{ name }}
@@ -114,6 +118,16 @@ function onClick(): void {
 	align-items: center;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+// Matches the size of an agent icon tile, so the names line up.
+.assistantIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
 }
 
 .unavailable {

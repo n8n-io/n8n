@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, type IconName } from '@n8n/design-system';
 
 import type { AgentJsonConfig } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
@@ -9,12 +9,16 @@ const i18n = useI18n();
 
 defineProps<{
 	agentConfig: AgentJsonConfig | null;
+	/** A plain icon for a built-in agent, such as n8n Assistant. Replaces the icon tile. */
+	icon?: IconName;
 }>();
 </script>
 
 <template>
 	<div :class="$style.emptyState">
+		<N8nIcon v-if="icon" :icon="icon" :size="40" :class="$style.icon" />
 		<AgentPersonalisationIcon
+			v-else
 			:personalisation="agentConfig?.personalisation"
 			:class="$style.icon"
 			:size="64"
