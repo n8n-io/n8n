@@ -103,6 +103,7 @@ watch(
 			<N8nScrollArea
 				as-child
 				type="hover"
+				edge-fade="bottom"
 				max-height="calc(var(--height--lg) * 5)"
 				:class="$style.queueScrollArea"
 			>
@@ -244,7 +245,6 @@ watch(
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/motion';
 @use '@n8n/design-system/css/mixins/utils';
-@use '@n8n/design-system/css/mixins/mixins';
 
 .messageQueueEntrance {
 	@include motion.fade-in-up;
@@ -253,7 +253,6 @@ watch(
 .queueScrollArea {
 	min-height: 0;
 	height: auto;
-	@include mixins.scroll-mask(bottom);
 }
 
 .backgroundJobList {
