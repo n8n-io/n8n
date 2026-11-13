@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestsList.test.ts
+  s_ee852ab0af0158::t_e5b58b543a991f 161-232,239-242,244,246-247
+  s_ee852ab0af0158::t_8f6b1004a683f6 233-238,243,245,248-249
+packages/frontend/editor-ui/src/features/agents/components/AgentTestDock.vue
+  s_ee852ab0af0158::t_75451640666a9f 399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bb8d15ecc727d42b514d08e16bdcb2f7d95d146",
+  "prompts": {},
+  "sessions": {
+    "s_ee852ab0af0158": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e33-d963-71df-9e22-818fd31f4b32",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

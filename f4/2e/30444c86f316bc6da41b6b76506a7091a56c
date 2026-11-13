@@ -1,0 +1,22 @@
+packages/cli/src/modules/mcp/__tests__/execution-tools.scopes.integration.test.ts
+  h_8fb27e0cdf6d1e 12,53
+packages/cli/src/modules/mcp/__tests__/get-execution.tool.test.ts
+  h_8fb27e0cdf6d1e 896
+packages/cli/src/modules/mcp/__tests__/install-community-node.registration.test.ts
+  h_8fb27e0cdf6d1e 17
+packages/cli/src/modules/mcp/tools/get-execution.tool.ts
+  h_8fb27e0cdf6d1e 110
+packages/cli/test/integration/mcp/get-execution.tool.test.ts
+  h_8fb27e0cdf6d1e 9,18,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f42e30444c86f316bc6da41b6b76506a7091a56c",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

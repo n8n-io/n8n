@@ -1,0 +1,20 @@
+packages/cli/src/encryption/__tests__/legacy-key-mismatch.integration.test.ts
+  s_da815555266412::t_17b37afb982e74 32,36-37
+  s_da815555266412::t_0e255c4bce174e 38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a4effa3f7a503247d31c4b550f4809296c973bf",
+  "prompts": {},
+  "sessions": {
+    "s_da815555266412": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2c52bc33ffeXKqP67rbOipgzG",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

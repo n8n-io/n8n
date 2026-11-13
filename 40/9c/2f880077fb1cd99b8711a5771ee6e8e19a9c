@@ -1,0 +1,32 @@
+packages/@n8n/api-types/src/index.ts
+  h_8a472ace01776f 898-902,937-947
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  h_8a472ace01776f 419-556
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-assignment-judge.test.ts
+  h_8a472ace01776f 1-253
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  h_8a472ace01776f 20,153
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  h_8a472ace01776f 118-119
+packages/cli/src/modules/agent-evals/agent-eval-assignment-judge.ts
+  h_8a472ace01776f 1-246
+packages/cli/src/modules/agent-evals/agent-eval-assignment.service.ts
+  h_8a472ace01776f 1-332
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  h_8a472ace01776f 6-9,26,45,85,259-333,337,339-346,356,367
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  h_8a472ace01776f 5-6,25-26,224-263
+packages/cli/src/modules/agent-evals/case-generation/case-generation-prompt.ts
+  h_8a472ace01776f 134-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "409c2f880077fb1cd99b8711a5771ee6e8e19a9c",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

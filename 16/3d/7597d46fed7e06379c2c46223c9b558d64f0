@@ -1,0 +1,18 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  h_8a472ace01776f 2897-2902
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  h_8a472ace01776f 620-653
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  h_8a472ace01776f 83-84,88-89,487,492,516,520,577-591,700-718
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "163d7597d46fed7e06379c2c46223c9b558d64f0",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

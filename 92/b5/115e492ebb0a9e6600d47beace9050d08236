@@ -1,0 +1,16 @@
+packages/cli/src/modules/agent-evals/assignment/__tests__/assignment-responsibilities.test.ts
+  h_8a472ace01776f 28,39,60,74,80
+packages/cli/src/modules/agent-evals/assignment/assignment-responsibilities.ts
+  h_8a472ace01776f 1,36-38,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92b5115e492ebb0a9e6600d47beace9050d08236",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_59738df80b2ddb::t_1b11bd9e73a155 154-181,322,330
+  s_59738df80b2ddb::t_07d0808aca29fc 323,710,2080
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_59738df80b2ddb::t_d9723fd5129ddd 384,386-387
+  s_59738df80b2ddb::t_4c1e7ec60fe50c 388-390,409,422-423,434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88987c69eba529a8803dafd47a1ea961c828d456",
+  "prompts": {},
+  "sessions": {
+    "s_59738df80b2ddb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a19ca9-1031-71df-9e22-8193ddb93a5f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_59738df80b2ddb::t_8b315c1805543a 428-431
+  s_59738df80b2ddb::t_6054f01d85136d 432-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef79ccd2e42c80784455efdc998b3baa0498e898",
+  "prompts": {},
+  "sessions": {
+    "s_59738df80b2ddb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a19ca9-1031-71df-9e22-8193ddb93a5f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

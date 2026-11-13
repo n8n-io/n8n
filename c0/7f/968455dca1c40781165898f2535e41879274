@@ -1,0 +1,70 @@
+spikes/skills-marketplace/validation.md
+  s_5f2cc24621ee6c::t_69d283a292b55e 65-76
+packages/@n8n/api-types/src/skills/skill-catalog.schema.ts
+  s_5f2cc24621ee6c::t_89887069e0308e 39
+  s_5f2cc24621ee6c::t_15d0d3f970546d 9-32,42-43,49,51-68
+  s_5f2cc24621ee6c::t_a9cd8f558bf6aa 70-74
+packages/cli/src/modules/skills/utils/skill-catalog.ts
+  s_5f2cc24621ee6c::t_d1f855c2dba8f6 6,12,22,25-30
+  s_5f2cc24621ee6c::t_15d0d3f970546d 1-5,7-11,13-17,19-21,23-24,31-59
+packages/frontend/editor-ui/src/features/settings/context/components/SkillCatalogDetail.vue
+  s_5f2cc24621ee6c::t_266c0f8077c0d4 244-249
+  s_5f2cc24621ee6c::t_89887069e0308e 1,3-13,15-37,41-47,49-60,62-76,78-123,125-162,165-186,216-227,229-243,250-279,281-379,381-384,386-404
+  s_5f2cc24621ee6c::t_0afa39b5a14e54 164
+  s_5f2cc24621ee6c::t_a7fc295e5a8726 2,38-40,380,385
+packages/cli/src/modules/skills/controllers/skill-catalog.controller.ts
+  s_5f2cc24621ee6c::t_f6f47b33fa18b6 1-3,5,48-53,55-59,61-65,67-77,79-83,85-95,97-101,103-104
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_5f2cc24621ee6c::t_f6f47b33fa18b6 3,5,32-38,40-44,46-51,53,60-64,66-70,72-73
+  s_5f2cc24621ee6c::t_a9cd8f558bf6aa 4,54-57,59
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsDiscover.test.ts
+  s_5f2cc24621ee6c::t_acea4d89aac1d7 15-19,21,27,32-36,38,73-74,76-80,82-89,91,200-201,205-209,211-222,224-236,239-244
+  s_5f2cc24621ee6c::t_9cb3716e02fa62 248-264,277-279
+  s_5f2cc24621ee6c::t_2b1c1e30056c2a 246-247,265-276,280-293
+packages/cli/src/modules/skills/__tests__/skill-catalog.service.test.ts
+  s_5f2cc24621ee6c::t_acea4d89aac1d7 1,48,105-113,115-118,120-127,129-132,134-159,161-167,169-177,181-188,190-192,194-219,221-222
+packages/frontend/editor-ui/src/features/settings/context/skillCatalog.utils.ts
+  s_5f2cc24621ee6c::t_89887069e0308e 1-17
+spikes/skills-marketplace/implementation.md
+  s_5f2cc24621ee6c::t_69d283a292b55e 3,10-11,47-54,58,63-67
+packages/cli/src/modules/skills/__tests__/skill-catalog.controller.test.ts
+  s_5f2cc24621ee6c::t_6b497a298b219c 11-18,20,24-28
+packages/frontend/editor-ui/src/features/settings/context/views/SettingsSkillsView.vue
+  s_5f2cc24621ee6c::t_db269f64d0abe5 118-122,124,951
+packages/cli/src/modules/skills/utils/skill-md.ts
+  s_5f2cc24621ee6c::t_2b1c1e30056c2a 139
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5f2cc24621ee6c::t_0afa39b5a14e54 3952
+  s_5f2cc24621ee6c::t_266c0f8077c0d4 3929-3934,3936-3951,3953-3976,3979-3980,3984,3988,4003
+  s_5f2cc24621ee6c::t_8a49afb12f9f5f 3935
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsDiscover.vue
+  s_5f2cc24621ee6c::t_db269f64d0abe5 325-378,380-382,384-408,411-424,436-443,445-466,468-514,541,554,570
+  s_5f2cc24621ee6c::t_a9cd8f558bf6aa 2-9,11,17-24,26,37-41,43-44,47-48,50,61,77-93,95-98,101,105,108-138,140-152,154-165,167-168,170-203,208-215,241-243
+  s_5f2cc24621ee6c::t_266c0f8077c0d4 410,608-609
+  s_5f2cc24621ee6c::t_d1f855c2dba8f6 444
+  s_5f2cc24621ee6c::t_6ef200e07b8f6c 204-207
+packages/cli/src/modules/skills/services/skill-catalog.service.ts
+  s_5f2cc24621ee6c::t_a9cd8f558bf6aa 1-6,8,144,146-147
+  s_5f2cc24621ee6c::t_235a7d2b2254be 12-13,18,34-44,46-56,58,60-65,72-97,130-131,133-143,145,148-159,161-170,172-178,180-184,187,201-218,221-240,244-251,253-263,266-286,288-296
+  s_5f2cc24621ee6c::t_2b1c1e30056c2a 19,219
+packages/cli/src/modules/skills/__tests__/skill-catalog.utils.test.ts
+  s_5f2cc24621ee6c::t_d1f855c2dba8f6 23
+  s_5f2cc24621ee6c::t_2b1c1e30056c2a 1-7,11-14,18-22,24-27
+  s_5f2cc24621ee6c::t_9cb3716e02fa62 8-10,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c07f968455dca1c40781165898f2535e41879274",
+  "prompts": {},
+  "sessions": {
+    "s_5f2cc24621ee6c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cf4f-c86b-7391-a83e-4e05b1b47613",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

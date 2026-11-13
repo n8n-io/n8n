@@ -1,0 +1,31 @@
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_5f5efe371ad2e2::t_fe6b5279d68193 217,224-229
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_5f5efe371ad2e2::t_273389a79fadcb 234-242,250,278
+packages/cli/src/user-management/email/user-management-mailer.ts
+  s_5f5efe371ad2e2::t_d3ba0ca90d7ba0 275,283,313,324,425,430,458
+  s_5f5efe371ad2e2::t_fe6b5279d68193 25
+packages/cli/src/services/project.service.ee.ts
+  s_5f5efe371ad2e2::t_d3ba0ca90d7ba0 617,624,648,680,745
+packages/cli/test/integration/public-api/projects.test.ts
+  s_5f5efe371ad2e2::t_215c532cac2dc6 1157-1158,1169-1175
+  s_5f5efe371ad2e2::t_7bdfa5523e5709 24
+packages/cli/src/user-management/email/__tests__/user-management-mailer.test.ts
+  s_5f5efe371ad2e2::t_614b0c796216b0 1,72,78,390,394-398
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0d4d45583b62fb7f040371d82f02db3fbf6060e",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
