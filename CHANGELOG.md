@@ -1,3 +1,11 @@
+## [2.48.4](https://github.com/n8n-io/n8n/compare/n8n@2.48.3...n8n@2.48.4) (2026-11-13)
+
+
+### Bug Fixes
+
+* **core:** Stop redacting executions that use global credentials ([#43775](https://github.com/n8n-io/n8n/issues/43775)) ([4f6927f](https://github.com/n8n-io/n8n/commit/4f6927ffdc31a35d115a6cc38b1025d5318ebf6a))
+
+
 ## [2.48.3](https://github.com/n8n-io/n8n/compare/n8n@2.48.2...n8n@2.48.3) (2026-11-13)
 
 
