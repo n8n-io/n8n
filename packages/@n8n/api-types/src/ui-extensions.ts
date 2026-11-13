@@ -9,6 +9,11 @@ import { z } from 'zod';
  */
 
 export const UI_EXTENSION_MESSAGE_SOURCE = 'n8n-ui-extension';
+/**
+ * The frame global that the view script sets to the view factory,
+ * `(Vue, n8n) => component`. The view runtime reads it.
+ */
+export const UI_EXTENSION_VIEW_FACTORY_GLOBAL = '__n8nUiExtensionView';
 export const UI_EXTENSION_PROTOCOL_VERSION = 1;
 
 /** The most views that one user can have. */

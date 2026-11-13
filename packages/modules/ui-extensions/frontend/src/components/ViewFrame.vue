@@ -33,12 +33,12 @@ const hasLeftFrame = ref(false);
 const theme = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 const nonce = document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce;
 // Built once: a new `srcdoc` would reload the view. The parent keys this component by view.
-const srcdoc = buildViewDocument({
-	runtime: props.runtime,
-	source: props.view.source,
-	nonce,
-	theme,
-});
+let srcdoc = '';
+try {
+	srcdoc = buildViewDocument({ runtime: props.runtime, source: props.view.source, nonce, theme });
+} catch (error) {
+	viewError.value = error instanceof Error ? error.message : String(error);
+}
 
 const context = computed(() =>
 	contextForView(props.view, props.pageContext, props.workflowAvailableInMcp),
@@ -115,6 +115,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage));
 				{{ i18n.baseText('uiExtensions.view.error', { interpolate: { message: viewError } }) }}
 			</N8nCallout>
 			<iframe
+				v-if="srcdoc"
 				ref="frame"
 				:class="$style.frame"
 				:sandbox="VIEW_FRAME_SANDBOX"

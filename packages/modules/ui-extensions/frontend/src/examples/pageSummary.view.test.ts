@@ -1,19 +1,26 @@
 import type { UiExtensionPageContext } from '@n8n/api-types';
 import { N8nBadge, N8nHeading, N8nText } from '@n8n/design-system';
 import { render } from '@testing-library/vue';
+import { runInNewContext } from 'node:vm';
 import * as Vue from 'vue';
+
+import { viewSourceToScript } from '../ui-extensions.frame';
 
 import source from './pageSummary.view.js?raw';
 
-/** Runs the view module the way the view runtime does, with the two globals. */
+/** Runs the view the way the frame does: as the view script, with the two globals. */
 function loadView(context: Vue.Ref<UiExtensionPageContext>) {
 	const n8n = {
 		useContext: () => Vue.computed(() => context.value),
 		t: (key: string) => `t:${key.split('.').at(-1)}`,
 	};
-	const body = source.replace(/\bexport\s+default\b/, 'return ');
-	// eslint-disable-next-line @typescript-eslint/no-implied-eval
-	return new Function('Vue', 'n8n', body)(Vue, n8n) as Vue.Component;
+	const window: Record<string, unknown> = {};
+	runInNewContext(viewSourceToScript(source), { window });
+	const factory = window.__n8nUiExtensionView as (
+		vue: typeof Vue,
+		api: typeof n8n,
+	) => Vue.Component;
+	return factory(Vue, n8n);
 }
 
 function renderView(initial: UiExtensionPageContext) {

@@ -1,13 +1,13 @@
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import { UI_EXTENSION_VIEW_FACTORY_GLOBAL, type UiExtensionPageContext } from '@n8n/api-types';
 import { nextTick } from 'vue';
 import * as Vue from 'vue';
 
 import {
 	createViewBridge,
-	evaluateViewSource,
-	readViewSource,
+	createViewComponent,
 	startViewRuntime,
 	type RuntimeWindow,
+	type ViewApi,
 } from './runtime';
 
 const workflowContext: UiExtensionPageContext = {
@@ -32,8 +32,10 @@ function createFrameWindow() {
 	const target = {
 		addEventListener: events.addEventListener.bind(events),
 		removeEventListener: events.removeEventListener.bind(events),
+		dispatchEvent: events.dispatchEvent.bind(events),
 		parent,
-	} as unknown as RuntimeWindow & { parent: { postMessage: ReturnType<typeof vi.fn> } };
+	} as unknown as RuntimeWindow &
+		EventTarget & { parent: { postMessage: ReturnType<typeof vi.fn> } };
 	const send = (data: unknown, source: unknown = parent) => {
 		const event = new MessageEvent('message', { data });
 		Object.defineProperty(event, 'source', { value: source });
@@ -125,72 +127,69 @@ describe('createViewBridge', () => {
 	});
 });
 
-describe('evaluateViewSource', () => {
+describe('createViewComponent', () => {
 	const globals = () => ({ Vue, n8n: createViewBridge(createFrameWindow().target).api });
 
-	it('returns the default export and passes the globals in', () => {
-		const component = evaluateViewSource(
-			'const label = typeof Vue.ref + typeof n8n.useContext;\nexport default { name: label };',
-			globals(),
-		);
+	it('calls the factory with the two globals and returns the component', () => {
+		const factory = (vue: typeof Vue, n8n: unknown) => ({
+			name: `${typeof vue.ref}:${typeof (n8n as { useContext: unknown }).useContext}`,
+		});
 
-		expect(component).toEqual({ name: 'functionfunction' });
+		expect(createViewComponent(factory, globals())).toEqual({ name: 'function:function' });
+	});
+
+	it('reports a view script that did not load, with the load error', () => {
+		expect(() => createViewComponent(undefined, globals())).toThrow('The view did not load.');
+		expect(() => createViewComponent(undefined, globals(), 'Unexpected token')).toThrow(
+			'The view did not load: Unexpected token',
+		);
 	});
 
 	it.each([
-		['an import statement', "import { ref } from 'vue';\nexport default {};"],
-		['no default export', 'const x = 1;'],
-		['two default exports', 'export default {};\nexport default {};'],
-	])('rejects a source with %s', (_case, source) => {
-		expect(() => evaluateViewSource(source, globals())).toThrow();
-	});
-
-	it('rejects a default export that is not a component', () => {
-		expect(() => evaluateViewSource('export default 42;', globals())).toThrow(
+		['a number', 42],
+		['an array', []],
+		['null', null],
+	])('rejects a default export that is %s', (_case, value) => {
+		expect(() => createViewComponent(() => value, globals())).toThrow(
 			'must be a Vue component options object',
 		);
 	});
 
-	it('throws the error of a source that throws', () => {
+	it('throws the error of a view that throws', () => {
 		expect(() =>
-			evaluateViewSource('throw new Error("boom");\nexport default {};', globals()),
+			createViewComponent(() => {
+				throw new Error('boom');
+			}, globals()),
 		).toThrow('boom');
 	});
 });
 
-describe('readViewSource', () => {
-	it('reads a JSON-encoded source', () => {
-		document.body.innerHTML = `<script type="application/json" id="view-source">${JSON.stringify(
-			'export default { template: "<p>\\u003c/script></p>" }',
-		)}</script>`;
-
-		expect(readViewSource(document)).toContain('export default');
-	});
-
-	it('rejects a value that is not a string', () => {
-		document.body.innerHTML = '<script type="application/json" id="view-source">42</script>';
-
-		expect(() => readViewSource(document)).toThrow('not a string');
-	});
-});
-
 describe('startViewRuntime', () => {
-	const setDocument = (source: string) => {
-		document.body.innerHTML = `<div id="app"></div><script type="application/json" id="view-source">${JSON.stringify(source).replace(/</g, '\\u003c')}</script>`;
-	};
+	const setFactory = (target: object, factory: unknown) =>
+		Object.assign(target, { [UI_EXTENSION_VIEW_FACTORY_GLOBAL]: factory });
 
-	const start = (components = {}) => {
+	const start = (factory: unknown, components = {}, doc: Document = document) => {
+		document.body.innerHTML = '<div id="app"></div>';
 		const frame = createFrameWindow();
-		const target = Object.assign(frame.target, { document });
+		const target = Object.assign(frame.target, { document: doc });
 		startViewRuntime(target, components);
-		return frame;
+		// The view script runs after the runtime script.
+		setFactory(target, factory);
+		return { ...frame, target };
 	};
 
 	it('posts ready, then mounts the view with the context on the first context message', async () => {
-		setDocument(
-			'export default { setup() { const c = n8n.useContext(); return { c }; }, template: `<p id="out">{{ c.page }}:{{ c.workflow?.name }}:{{ n8n.t("greeting.hello") }}</p>`, computed: { n8n: () => n8n } };',
-		);
-		const { parent, send } = start();
+		const { parent, send } = start((vue: typeof Vue, n8n: ViewApi) => ({
+			setup() {
+				const c = n8n.useContext();
+				const label = vue.computed(
+					() =>
+						`${c.value.page}:${c.value.page === 'workflow' ? (c.value.workflow?.name ?? '') : ''}:${n8n.t('greeting.hello')}`,
+				);
+				return { label };
+			},
+			template: '<p id="out">{{ label }}</p>',
+		}));
 
 		expect(parent.postMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'ready' }),
@@ -217,9 +216,8 @@ describe('startViewRuntime', () => {
 	});
 
 	it('registers the given components for the view', async () => {
-		setDocument('export default { template: "<Shout>hi</Shout>" };');
 		const Shout = { template: '<strong id="shout"><slot /></strong>' };
-		const { send } = start({ Shout });
+		const { send } = start(() => ({ template: '<Shout>hi</Shout>' }), { Shout });
 
 		send(contextMessage());
 		await nextTick();
@@ -227,24 +225,30 @@ describe('startViewRuntime', () => {
 		expect(document.getElementById('shout')?.textContent).toBe('hi');
 	});
 
-	it('posts an error when the source does not load', () => {
-		setDocument('export default {};\nexport default {};');
-		const { parent, send } = start();
+	it('reports a script error of the view script', () => {
+		document.body.innerHTML = '<div id="app"></div>';
+		const frame = createFrameWindow();
+		const target = Object.assign(frame.target, { document });
+		startViewRuntime(target, {});
 
-		send(contextMessage());
+		target.dispatchEvent(new ErrorEvent('error', { message: 'Unexpected token }' }));
+		frame.send(contextMessage());
 
-		expect(parent.postMessage).toHaveBeenLastCalledWith(
+		expect(frame.parent.postMessage).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				type: 'error',
-				message: expect.stringContaining('export default'),
+				message: 'The view did not load: Unexpected token }',
 			}),
 			'*',
 		);
 	});
 
 	it('posts an error when the view throws while it renders', async () => {
-		setDocument('export default { setup() { throw new Error("render failed"); } };');
-		const { parent, send } = start();
+		const { parent, send } = start(() => ({
+			setup() {
+				throw new Error('render failed');
+			},
+		}));
 
 		send(contextMessage());
 		await nextTick();
@@ -253,5 +257,22 @@ describe('startViewRuntime', () => {
 			expect.objectContaining({ type: 'error', message: 'render failed' }),
 			'*',
 		);
+	});
+
+	it('waits for the document to load before it mounts', async () => {
+		const loading = new EventTarget();
+		const doc = Object.assign(loading, {
+			readyState: 'loading',
+			getElementById: (id: string) => document.getElementById(id),
+		}) as unknown as Document;
+		const { send } = start(() => ({ template: '<p id="late">ok</p>' }), {}, doc);
+
+		send(contextMessage());
+		await nextTick();
+		expect(document.getElementById('late')).toBeNull();
+
+		loading.dispatchEvent(new Event('DOMContentLoaded'));
+		await nextTick();
+		expect(document.getElementById('late')?.textContent).toBe('ok');
 	});
 });

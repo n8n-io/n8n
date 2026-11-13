@@ -2,6 +2,7 @@ import {
 	UI_EXTENSION_ERROR_MESSAGE_MAX_LENGTH,
 	UI_EXTENSION_MESSAGE_SOURCE,
 	UI_EXTENSION_PROTOCOL_VERSION,
+	UI_EXTENSION_VIEW_FACTORY_GLOBAL,
 	uiExtensionHostMessageSchema,
 	type UiExtensionPageContext,
 } from '@n8n/api-types';
@@ -84,28 +85,19 @@ function isComponentOptions(value: unknown): value is Component {
 }
 
 /**
- * Turns the source of a view into its component. A view is one ES module with
- * no imports, and its default export is the component. The module runs as a
- * function body with the two globals as arguments.
+ * Builds the component of the view. The view script of the frame sets
+ * {@link UI_EXTENSION_VIEW_FACTORY_GLOBAL} to a factory that takes the two globals.
  */
-export function evaluateViewSource(source: string, globals: { Vue: typeof Vue; n8n: ViewApi }) {
-	if (/^\s*import[\s{*]/m.test(source)) {
-		throw new Error('A view cannot use import statements. Use the Vue and n8n globals.');
-	}
-	const exports = source.match(/\bexport\s+default\b/g) ?? [];
-	if (exports.length !== 1) {
-		throw new Error('A view must have exactly one "export default".');
+export function createViewComponent(
+	factory: unknown,
+	globals: { Vue: typeof Vue; n8n: ViewApi },
+	loadError?: string,
+): Component {
+	if (typeof factory !== 'function') {
+		throw new Error(loadError ? `The view did not load: ${loadError}` : 'The view did not load.');
 	}
 
-	const body = source.replace(/\bexport\s+default\b/, 'return ');
-	// The frame sandbox is the boundary. This only gives the module its globals.
-	// eslint-disable-next-line @typescript-eslint/no-implied-eval
-	const factory = new Function('Vue', 'n8n', `"use strict";\n${body}`) as (
-		vue: typeof Vue,
-		n8n: ViewApi,
-	) => unknown;
-	const component = factory(globals.Vue, globals.n8n);
-
+	const component: unknown = Reflect.apply(factory, undefined, [globals.Vue, globals.n8n]);
 	if (!isComponentOptions(component)) {
 		throw new Error('The default export of a view must be a Vue component options object.');
 	}
@@ -113,19 +105,8 @@ export function evaluateViewSource(source: string, globals: { Vue: typeof Vue; n
 }
 
 /**
- * The editor writes the source as a JSON string in `<script type="application/json" id="view-source">`.
- * JSON lets it escape `<`, so no source can close the script element.
- */
-export function readViewSource(document: Document): string {
-	const text = document.getElementById('view-source')?.textContent ?? '';
-	const source: unknown = text ? JSON.parse(text) : '';
-	if (typeof source !== 'string') throw new Error('The view source is not a string.');
-	return source;
-}
-
-/**
- * Starts a view in the frame: it reads the source, waits for the first context,
- * then mounts the view with the design-system components registered.
+ * Starts a view in the frame. It waits for the first context and for the view
+ * script, then mounts the view with the design-system components registered.
  */
 export function startViewRuntime(
 	target: RuntimeWindow & { document: Document },
@@ -134,10 +115,24 @@ export function startViewRuntime(
 	const bridge = createViewBridge(target);
 	Object.assign(target, { Vue, n8n: bridge.api });
 
-	bridge.whenContext(() => {
+	// The view script runs after this one. A syntax error in it shows here.
+	let loadError: string | undefined;
+	const onError = (event: Event) => {
+		loadError ??= event instanceof ErrorEvent && event.message ? event.message : undefined;
+	};
+	target.addEventListener('error', onError);
+
+	const whenDocumentLoaded = (listener: () => void) => {
+		if (target.document.readyState === 'loading') {
+			target.document.addEventListener('DOMContentLoaded', listener, { once: true });
+		} else listener();
+	};
+
+	function mount() {
+		target.removeEventListener('error', onError);
 		try {
-			const source = readViewSource(target.document);
-			const view = evaluateViewSource(source, { Vue, n8n: bridge.api });
+			const factory: unknown = Reflect.get(target, UI_EXTENSION_VIEW_FACTORY_GLOBAL);
+			const view = createViewComponent(factory, { Vue, n8n: bridge.api }, loadError);
 			const app = Vue.createApp(view);
 			for (const [name, component] of Object.entries(components)) app.component(name, component);
 			app.config.errorHandler = (error) => bridge.postError(error);
@@ -147,8 +142,9 @@ export function startViewRuntime(
 		} catch (error) {
 			bridge.postError(error);
 		}
-	});
+	}
 
+	bridge.whenContext(() => whenDocumentLoaded(mount));
 	bridge.post({ type: 'ready' });
 	return bridge;
 }
