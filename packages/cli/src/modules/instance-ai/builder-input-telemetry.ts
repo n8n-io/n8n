@@ -3,13 +3,10 @@ import {
 	mcpConnectRequestSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '@n8n/api-types';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type AssistantRuntime } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { Telemetry } from '@/telemetry';
-
-/** The Assistant runtime that showed the card. */
-export type BuilderInputRuntime = 'instance-ai' | 'agents';
 
 export interface BuilderAskedForInput {
 	userId: string;
@@ -18,7 +15,8 @@ export interface BuilderAskedForInput {
 	inputThreadId: string;
 	/** The suspend payload of the tool, or the confirmation payload built from it. */
 	payload: Record<string, unknown>;
-	runtime: BuilderInputRuntime;
+	/** The Assistant runtime that showed the card. */
+	runtime: AssistantRuntime;
 }
 
 function toTelemetryInputType(inputType: string): string {
