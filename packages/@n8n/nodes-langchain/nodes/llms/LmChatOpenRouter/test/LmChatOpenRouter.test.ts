@@ -387,7 +387,7 @@ describe('LmChatOpenRouter', () => {
 			return MockedChatOpenAI.mock.calls[0][0]?.configuration?.fetch as typeof fetch;
 		}
 
-		it('should delegate to the traced aiClientFetch under the wrapper', async () => {
+		it('should delegate to the traced AI client fetch under the wrapper', async () => {
 			globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
 			const ctx = setupMockContext();
 			await node.supplyData.call(ctx, 0);

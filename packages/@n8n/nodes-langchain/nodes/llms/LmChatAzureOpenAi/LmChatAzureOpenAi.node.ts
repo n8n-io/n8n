@@ -181,8 +181,9 @@ export class LmChatAzureOpenAi implements INodeType {
 
 				// Claude in Foundry answers on <resource>/anthropic; the SDK appends /v1/messages.
 				const anthropicURL = new URL(modelConfig.azureFoundryBaseURL).origin + '/anthropic';
+				const tracedFetch = createAiClientFetch(this);
 				const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
-					fetch: createAiClientFetch(this),
+					fetch: tracedFetch,
 					// undici v7 and the SDK's bundled fetch types disagree structurally
 					// (FormData iterators), so the dispatcher cannot carry its own type here.
 					fetchOptions: {
@@ -198,7 +199,6 @@ export class LmChatAzureOpenAi implements INodeType {
 				};
 				if (modelConfig.azureADTokenProvider) {
 					const getToken = modelConfig.azureADTokenProvider;
-					const tracedFetch = createAiClientFetch(this);
 					// The SDK's own bearer option is a static string, and an Entra token expires mid-run.
 					const fetchWithEntraToken: typeof fetch = async (input, init) => {
 						const headers = new Headers(init?.headers);

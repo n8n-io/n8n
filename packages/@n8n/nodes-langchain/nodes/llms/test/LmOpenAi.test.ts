@@ -78,7 +78,7 @@ describe('LmOpenAi', () => {
 			);
 		});
 
-		it('should wire the traced aiClientFetch into the OpenAI client', async () => {
+		it('should wire the traced AI client fetch into the OpenAI client', async () => {
 			const mockContext = setupMockContext();
 
 			await lmOpenAi.supplyData.call(mockContext, 0);
