@@ -55,6 +55,22 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-connection-parameter');
 	}
 
+	/** Hovers the help icon next to a field label, which opens the field's description tooltip. */
+	async showFieldHelp(label: string): Promise<void> {
+		const field = this.getCredentialInputs().filter({ hasText: label });
+		// The help icon stays hidden until the label is hovered.
+		await field.locator('label').first().hover();
+		await field.locator('[data-icon="circle-help"]').hover();
+	}
+
+	getFieldHelpTooltip(): Locator {
+		return this.root.page().locator('.n8n-tooltip:visible');
+	}
+
+	getFieldHelpLink(name: string): Locator {
+		return this.getFieldHelpTooltip().getByRole('link', { name, exact: true });
+	}
+
 	async waitForModal(): Promise<void> {
 		await this.root.waitFor({ state: 'visible' });
 	}
