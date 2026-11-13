@@ -59,8 +59,18 @@ The steps of a version 1 connection do not go over the IPC channel either.
 Each worker has a socket pair next to it, and a step goes through it as one
 frame: the length, a job number and the request JSON of the runtime, as the
 server read it. The server does not parse the request, and the worker parses
-it once. The IPC channel carries only pings, memory stats, connection hand-overs
-and log lines.
+it once. The IPC channel carries memory stats, connection hand-overs and log
+lines.
+
+The pool pings over that socket too, with a frame that has job number 0
+(`worker-pool.ts`, `step-worker.ts`). The IPC channel cannot carry the pings:
+Node.js also passes the socket of a connection hand-over over it, and it queues
+every later message to that worker until the worker takes the socket. A step
+can also take the channel away (`process.removeAllListeners('message')`, a
+closed descriptor). A worker that keeps serving its connections then answers no
+ping, so the pool would stop a healthy worker every `WF_FALLBACK_BLOCKED_MS`
+and count 0 steps for it. A worker that blocks its event loop still answers no
+ping, because it does not read the socket either.
 
 Each worker keeps one expression isolate (`expression-engine.ts`), so each
 step does not need a new one.

@@ -46,6 +46,21 @@ export interface StepWorkerData {
 export const DATA_FD = 4;
 
 /**
+ * The job number of a control frame on the step socket. It is not a job, so no
+ * step has it. Same as `CONTROL_JOB` of `worker-pool.ts`.
+ */
+export const CONTROL_JOB = 0;
+
+/**
+ * The supervision traffic on the step socket. The pool pings there, so a
+ * connection hand-over or a broken IPC channel cannot hide a worker that runs
+ * (`worker-pool.ts`).
+ */
+export type ControlMessage =
+	| { control: 'ping'; seq: number }
+	| { control: 'pong'; seq: number; rss: number; steps: number; inflight: number };
+
+/**
  * Control messages from the pool to a worker. Steps come on the step socket,
  * or on runtime connections that the pool hands over (`conn`, with the
  * socket as the handle of the message; `hello.ts`).
@@ -243,6 +258,45 @@ function main(): void {
 
 	let directSteps = 0;
 
+	// ---- supervision on the step socket
+
+	/** The counts that a pong gives the pool. */
+	const pongFields = () => ({
+		rss: process.memoryUsage.rss(),
+		steps: directSteps,
+		inflight,
+	});
+
+	/** Writes a control frame: `<u32 length><u32 0><control JSON>`. */
+	const writeControl = (message: ControlMessage) => {
+		const json = Buffer.from(JSON.stringify(message), 'utf8');
+		const frame = Buffer.allocUnsafe(8 + json.length);
+		frame.writeUInt32LE(4 + json.length, 0);
+		frame.writeUInt32LE(CONTROL_JOB, 4);
+		json.copy(frame, 8);
+		if (!steps.destroyed) steps.write(frame);
+	};
+
+	/**
+	 * Answers a control frame of the pool. A worker that blocks its event loop
+	 * cannot answer it, which is what the CPU guard looks for.
+	 */
+	const onControl = (body: Buffer) => {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body.toString('utf8'));
+		} catch {
+			log('A control frame is not JSON');
+			return;
+		}
+		if (typeof parsed !== 'object' || parsed === null) return;
+		const control: unknown = Reflect.get(parsed, 'control');
+		const seq: unknown = Reflect.get(parsed, 'seq');
+		if (control === 'ping' && typeof seq === 'number') {
+			writeControl({ control: 'pong', seq, ...pongFields() });
+		}
+	};
+
 	/** One response frame on a runtime connection. */
 	const writeResponse = (socket: Socket, response: StepResponse) => {
 		let frame: Buffer;
@@ -332,13 +386,8 @@ function main(): void {
 	const ready = new Promise<void>((resolve) => (preloaded = resolve));
 	process.on('message', (message: ToWorker, handle: unknown) => {
 		if (message.type === 'ping') {
-			send({
-				type: 'pong',
-				seq: message.seq,
-				rss: process.memoryUsage.rss(),
-				steps: directSteps,
-				inflight,
-			});
+			// Only a pool without a step socket pings here (`worker-pool.ts`).
+			send({ type: 'pong', seq: message.seq, ...pongFields() });
 		} else if (message.type === 'stats') {
 			sendStats(message.seq);
 		} else if (message.type === 'conn') {
@@ -365,6 +414,10 @@ function main(): void {
 		for (const frame of frames) {
 			if (frame.length < 4) continue;
 			const seq = frame.readUInt32LE(0);
+			if (seq === CONTROL_JOB) {
+				onControl(frame.subarray(4));
+				continue;
+			}
 			const mark = profiler?.start();
 			let request: StepRequest;
 			try {

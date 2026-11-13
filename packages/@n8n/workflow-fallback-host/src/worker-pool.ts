@@ -33,7 +33,16 @@
  * `<u32 length><u32 job><request JSON>`, and the answer is the same form
  * with the response JSON. The pool does not parse the request: the request
  * frame of the runtime goes to the worker as it is, and the worker parses it
- * once. The IPC channel carries only the control messages (ping, stats, log).
+ * once. The IPC channel carries the control messages (connection hand-over,
+ * stats, log).
+ *
+ * The CPU guard pings over the step socket, not over the IPC channel. The IPC
+ * channel also passes the socket of a connection hand-over, and Node.js queues
+ * every message to that worker until the worker takes the socket. A step can
+ * also stop the channel (`process.removeAllListeners('message')`, a closed
+ * descriptor). Either way the worker goes on with its steps and answers no
+ * ping, so the pool would stop a healthy worker every `blockedMs`. The step
+ * socket has neither problem: only the pool writes to it.
  */
 import { type ChildProcess, fork } from 'node:child_process';
 import type { Socket } from 'node:net';
@@ -41,7 +50,7 @@ import type { Socket } from 'node:net';
 import { workerLost } from './hello';
 import { encodeFrame, FrameDecoder, isJsonObject } from './protocol';
 import type { StepRequest, StepResponse } from './protocol';
-import type { FromWorker, StepWorkerData, ToWorker } from './step-worker';
+import type { ControlMessage, FromWorker, StepWorkerData, ToWorker } from './step-worker';
 
 /** Same as `WORKER_DATA_ENV` of `step-worker.ts`, which this file must not load. */
 const WORKER_DATA_ENV = 'WF_FALLBACK_WORKER_DATA';
@@ -51,6 +60,12 @@ const DATA_FD = 4;
 
 /** The bytes of the length and the job number before the JSON of a worker frame. */
 const WORKER_FRAME_HEADER = 8;
+
+/**
+ * The job number of a control frame on the step socket. It is not a job, so no
+ * step has it. Same as `CONTROL_JOB` of `step-worker.ts`.
+ */
+const CONTROL_JOB = 0;
 
 export interface WorkerPoolOptions {
 	/** The compiled `step-worker.js`. */
@@ -164,6 +179,10 @@ export class WorkerPool {
 
 	private connSeq = 0;
 
+	private pingsSent = 0;
+
+	private pongsAnswered = 0;
+
 	constructor(private readonly options: WorkerPoolOptions) {
 		for (let i = 0; i < options.size; i++) this.workers.push(this.spawn(false));
 		const every = Math.max(50, Math.min(1000, Math.floor(options.blockedMs / 4)));
@@ -260,17 +279,57 @@ export class WorkerPool {
 		// Node.js sends no other message to the worker until it confirms the
 		// handle, pings included. `check` stops a worker that does not.
 		target.handovers.set(conn, Date.now());
-		target.child.send(message, socket, { keepOpen: keep }, (error) => {
+		try {
+			target.child.send(message, socket, { keepOpen: keep }, (error) => {
+				target.handovers.delete(conn);
+				if (!error) return;
+				target.conns.delete(conn);
+				socket.destroy();
+			});
+		} catch (error) {
+			// A hand-over that throws keeps no half state: the runtime connects again.
+			this.options.log(
+				`A connection hand-over failed: ${error instanceof Error ? error.message : String(error)}.`,
+			);
 			target.handovers.delete(conn);
-			if (!error) return;
 			target.conns.delete(conn);
 			socket.destroy();
-		});
+		}
 	}
 
 	/** Steps that each worker runs now; for tests and stats. */
 	load(): number[] {
 		return this.workers.filter((w) => !w.alone).map((w) => w.jobs.size);
+	}
+
+	/** Pings that the pool sent, and pongs that a worker answered; for tests and monitoring. */
+	pingStats(): { sent: number; answered: number } {
+		return { sent: this.pingsSent, answered: this.pongsAnswered };
+	}
+
+	/**
+	 * What the pool itself holds, for tests and monitoring: its workers, the
+	 * sockets that it keeps a copy of, the connections that wait for a worker,
+	 * the hand-overs that a worker has not confirmed, and its own steps.
+	 */
+	state(): {
+		workers: number;
+		connections: number;
+		pending: number;
+		handovers: number;
+		jobs: number;
+	} {
+		let connections = 0;
+		let pending = 0;
+		let handovers = 0;
+		let jobs = 0;
+		for (const worker of this.workers) {
+			connections += worker.conns.size;
+			pending += worker.pending.length;
+			handovers += worker.handovers.size;
+			jobs += worker.jobs.size;
+		}
+		return { workers: this.workers.length, connections, pending, handovers, jobs };
 	}
 
 	/** The memory of each pool worker, after a garbage collection where possible. */
@@ -319,6 +378,8 @@ export class WorkerPool {
 
 	private nextSeq(): number {
 		this.seq = (this.seq + 1) % 0x1_0000_0000;
+		// `CONTROL_JOB` is no job number.
+		if (this.seq === CONTROL_JOB) this.seq = 1;
 		return this.seq;
 	}
 
@@ -413,16 +474,11 @@ export class WorkerPool {
 
 	private onMessage(worker: PoolWorker, message: FromWorker): void {
 		switch (message.type) {
-			case 'pong': {
-				worker.lastPong = Date.now();
-				worker.rss = message.rss;
-				worker.directSteps = message.steps;
-				worker.directInflight = message.inflight;
-				const limit = this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS;
-				const total = worker.steps + worker.directSteps;
-				if (!worker.alone && total >= limit) this.drain(worker, `it ran ${total} steps`);
+			case 'pong':
+				// `seq` 0 is no answer: the worker says that it reached its step limit.
+				if (message.seq > 0) this.pongsAnswered += 1;
+				this.onPong(worker, message.rss, message.steps, message.inflight);
 				return;
-			}
 			case 'conn-closed':
 				worker.conns.get(message.conn)?.destroy();
 				worker.handovers.delete(message.conn);
@@ -454,11 +510,45 @@ export class WorkerPool {
 		}
 	}
 
+	/** The pool counts an answer of the CPU guard: the worker runs. */
+	private onPong(worker: PoolWorker, rss: number, steps: number, inflight: number): void {
+		worker.lastPong = Date.now();
+		worker.rss = rss;
+		worker.directSteps = steps;
+		worker.directInflight = inflight;
+		const limit = this.options.recycleSteps ?? DEFAULT_RECYCLE_STEPS;
+		const total = worker.steps + worker.directSteps;
+		if (!worker.alone && total >= limit) this.drain(worker, `it ran ${total} steps`);
+	}
+
+	/** A control frame of a worker on the step socket: its answer to a ping. */
+	private onControl(worker: PoolWorker, body: Buffer): void {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(body.toString('utf8'));
+		} catch {
+			this.stop(worker, 'it wrote a control frame that is not JSON');
+			return;
+		}
+		if (!isJsonObject(parsed) || parsed.control !== 'pong') return;
+		const { rss, steps, inflight } = parsed;
+		if (typeof rss !== 'number' || typeof steps !== 'number' || typeof inflight !== 'number') {
+			this.stop(worker, 'it wrote a control frame without its counts');
+			return;
+		}
+		this.pongsAnswered += 1;
+		this.onPong(worker, rss, steps, inflight);
+	}
+
 	/** A result frame of a worker: the job number, then the response JSON. */
 	private onResult(worker: PoolWorker, frame: Buffer): void {
 		// The decoder removed the length, so the frame starts with the job number.
 		if (frame.length < 4) return;
 		const seq = frame.readUInt32LE(0);
+		if (seq === CONTROL_JOB) {
+			this.onControl(worker, frame.subarray(4));
+			return;
+		}
 		const job = worker.jobs.get(seq);
 		if (!job) return; // It timed out already.
 		worker.jobs.delete(seq);
@@ -493,9 +583,21 @@ export class WorkerPool {
 			if (!worker.alone && !worker.draining && worker.rss > rssLimit) {
 				this.drain(worker, `it uses ${Math.round(worker.rss / 1024 / 1024)} MB`);
 			}
-			const ping: ToWorker = { type: 'ping', seq: ++worker.pingSeq };
-			if (worker.child.connected) worker.child.send(ping, () => {});
+			this.ping(worker);
 		}
+	}
+
+	private ping(worker: PoolWorker): void {
+		const seq = ++worker.pingSeq;
+		this.pingsSent += 1;
+		const data = worker.data;
+		if (data && !data.destroyed) {
+			data.write(controlFrame({ control: 'ping', seq }));
+			return;
+		}
+		// A worker without a step socket runs no step, but it still gets the check.
+		const message: ToWorker = { type: 'ping', seq };
+		if (worker.child.connected) worker.child.send(message, () => {});
 	}
 
 	/** Replace a worker: a new one takes the new steps, the old one ends its own. */
@@ -604,6 +706,16 @@ function isSocket(value: unknown): value is Socket {
 	return (
 		typeof value === 'object' && value !== null && typeof Reflect.get(value, 'write') === 'function'
 	);
+}
+
+/** `<u32 length><u32 0><control JSON>`: a control frame for a worker. */
+function controlFrame(body: ControlMessage): Buffer {
+	const json = Buffer.from(JSON.stringify(body), 'utf8');
+	const frame = Buffer.allocUnsafe(WORKER_FRAME_HEADER + json.length);
+	frame.writeUInt32LE(4 + json.length, 0);
+	frame.writeUInt32LE(CONTROL_JOB, 4);
+	json.copy(frame, WORKER_FRAME_HEADER);
+	return frame;
 }
 
 /** `<u32 length><u32 job><body>`: one step for a worker. */
