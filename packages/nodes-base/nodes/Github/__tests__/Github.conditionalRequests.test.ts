@@ -35,8 +35,8 @@ describe('GitHub conditional pull request reads', () => {
 			limit: 10,
 			...parameters,
 		};
-		context.getNodeParameter.mockImplementation(
-			(name, _index, fallback) => params[name] ?? fallback,
+		context.getNodeParameter.mockImplementation((name, _index, fallback) =>
+			Object.prototype.hasOwnProperty.call(params, name) ? params[name] : fallback,
 		);
 		context.getNode.mockReturnValue(
 			mock<INode>({
