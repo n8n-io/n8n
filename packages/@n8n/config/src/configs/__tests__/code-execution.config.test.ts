@@ -25,7 +25,7 @@ describe('CodeExecutionConfig', () => {
 	});
 
 	test('reads the sandbox settings from env', () => {
-		vi.stubEnv('N8N_CODE_EXECUTION_BACKEND', 'sandbox');
+		vi.stubEnv('N8N_CODE_TASKS_BACKEND', 'sandbox');
 		vi.stubEnv('N8N_CODE_SANDBOX_URL', 'https://code-sandbox.example.com');
 		vi.stubEnv('N8N_CODE_SANDBOX_API_KEY', 'secret');
 		vi.stubEnv('N8N_CODE_SANDBOX_SCOPE', 'execution');
@@ -49,7 +49,7 @@ describe('CodeExecutionConfig', () => {
 
 	// Startup validation rejects these, so they must not fall back to the defaults.
 	test('keeps an invalid backend and URL as given', () => {
-		vi.stubEnv('N8N_CODE_EXECUTION_BACKEND', 'sandbx');
+		vi.stubEnv('N8N_CODE_TASKS_BACKEND', 'sandbx');
 		vi.stubEnv('N8N_CODE_SANDBOX_URL', 'not a url');
 
 		const config = Container.get(CodeExecutionConfig);

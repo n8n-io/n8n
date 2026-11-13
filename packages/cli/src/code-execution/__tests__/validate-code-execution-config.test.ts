@@ -25,7 +25,7 @@ describe('validateCodeExecutionConfig', () => {
 
 		expect(validate).toThrow(InvalidCodeExecutionConfigError);
 		expect(validate).toThrow(
-			'`N8N_CODE_EXECUTION_BACKEND` must be `task-runners` or `sandbox`, but is "sandbx".',
+			'`N8N_CODE_TASKS_BACKEND` must be `task-runners` or `sandbox`, but is "sandbx".',
 		);
 	});
 

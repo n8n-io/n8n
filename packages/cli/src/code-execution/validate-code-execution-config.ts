@@ -13,10 +13,13 @@ import { InvalidCodeExecutionConfigError } from './errors/invalid-code-execution
  * Code node runs, or silently select a different backend.
  */
 export function validateCodeExecutionConfig({ backend, sandbox }: CodeExecutionConfig) {
-	if (!isCodeExecutionBackend(backend)) {
+	// The config keeps an invalid backend as given instead of falling back to
+	// the default, so the value can be anything until this check passes.
+	const rawBackend: string = backend;
+	if (!isCodeExecutionBackend(rawBackend)) {
 		const allowed = CODE_EXECUTION_BACKENDS.map((value) => `\`${value}\``).join(' or ');
 		throw new InvalidCodeExecutionConfigError([
-			`\`N8N_CODE_EXECUTION_BACKEND\` must be ${allowed}, but is "${backend}".`,
+			`\`N8N_CODE_TASKS_BACKEND\` must be ${allowed}, but is "${rawBackend}".`,
 		]);
 	}
 
