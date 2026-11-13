@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentTurnTelemetry.test.ts
+  s_ba3342bf77eebe::t_c52e2e890e9345 69,74
+  s_ba3342bf77eebe::t_3fe8f62d39925a 47-50,53,62,70-73,75-77,108,110,135,137,154,156,166,168,189,191,210-249
+  s_ba3342bf77eebe::t_1c77f881dca439 11,28
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_ba3342bf77eebe::t_ef795c7af5877b 250
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentTurnTelemetry.ts
+  s_ba3342bf77eebe::t_1c77f881dca439 5,9-13,81
+  s_ba3342bf77eebe::t_97dc2f2a799bcc 30-31,34-36,46-47,53-54,68-71,73,104-109,111-113,116
+  s_ba3342bf77eebe::t_144f07a1119a5a 110
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentMessageTelemetry.ts
+  s_ba3342bf77eebe::t_1c77f881dca439 17-24
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_ba3342bf77eebe::t_08eb443b505df9 556
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_ba3342bf77eebe::t_fd5afca6dc1248 93-96
+  s_ba3342bf77eebe::t_1c77f881dca439 755
+  s_ba3342bf77eebe::t_33d5f1c193e185 1
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.responseTiming.ts
+  s_ba3342bf77eebe::t_38b8c3a6debac7 1-2,7-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5acd6e11b4a16a9c63470d3c6e96704b6c9b5789",
+  "prompts": {},
+  "sessions": {
+    "s_ba3342bf77eebe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09b8ca41-8199-4842-b463-bb177d33eaff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

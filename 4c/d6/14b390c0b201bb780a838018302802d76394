@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentMessageTelemetry.ts
+  s_06b06b12289ec6::t_1ecf4fba4a0326 17,55-61,67-70,81-82,85
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_06b06b12289ec6::t_24622c7492c47a 563-564
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_06b06b12289ec6::t_148337a3583434 1662-1663
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_06b06b12289ec6::t_24622c7492c47a 4,98-101
+  s_06b06b12289ec6::t_148337a3583434 102,247-261,744,746
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentTurnTelemetry.test.ts
+  s_06b06b12289ec6::t_2a2fe5bd67295a 1-257
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentTurnTelemetry.ts
+  s_06b06b12289ec6::t_f4e16f43302a0a 7,13,15-20
+  s_06b06b12289ec6::t_9503483c27fc5a 1-6,8-12,14,21-177
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_06b06b12289ec6::t_17f29cb59a309c 549-572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4cd614b390c0b201bb780a838018302802d76394",
+  "prompts": {},
+  "sessions": {
+    "s_06b06b12289ec6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc380d60-1b16-4440-830e-87923bc75b40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
