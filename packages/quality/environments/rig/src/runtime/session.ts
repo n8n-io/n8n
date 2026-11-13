@@ -10,6 +10,7 @@ import { openUrl, type PrefixPrinter, printError, ui } from '../ui/output';
 import { isInteractive, select } from '../ui/prompt';
 import { liveState } from './state';
 import { type Owner, type Supervisor } from './supervisor';
+import { RIG } from '../self/build-info';
 
 const SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
@@ -113,14 +114,14 @@ export class Session {
 	private async chooseDependencyMode(deps: Component[]): Promise<'background' | 'wait' | 'abort'> {
 		const names = deps.map((d) => d.name).join(', ');
 		if (this.options.dependencies === 'background' || !isInteractive()) {
-			ui.info(`Starting ${names} in the background. Logs: pnpm rig logs <component> -f`);
+			ui.info(`Starting ${names} in the background. Logs: ${RIG} logs <component> -f`);
 			return 'background';
 		}
 		return await select(`${names} ${deps.length > 1 ? 'are' : 'is'} not running.`, [
 			{
 				value: 'background',
 				label: 'Start in the background',
-				hint: 'logs: pnpm rig logs <component> -f',
+				hint: `logs: ${RIG} logs <component> -f`,
 			},
 			{ value: 'wait', label: 'Wait', hint: 'start it in another terminal' },
 			{ value: 'abort', label: 'Abort' },
@@ -211,7 +212,7 @@ export class Session {
 					: 'did not become ready in time',
 			),
 		);
-		if (!isTarget) ui.step(`Logs: pnpm rig logs ${component.name}`);
+		if (!isTarget) ui.step(`Logs: ${RIG} logs ${component.name}`);
 		return false;
 	}
 
@@ -245,7 +246,7 @@ export class Session {
 		if (!url) {
 			ui.warn(
 				this.env.topology.tunnel.provider === 'cloudflare'
-					? 'The tunnel has no URL yet. Run `pnpm rig services up`.'
+					? `The tunnel has no URL yet. Run \`${RIG} services up\`.`
 					: 'This environment has no tunnel. Set `tunnel: cloudflare` in env.yaml.',
 			);
 			return;
@@ -431,7 +432,7 @@ export class Session {
 		const removed = this.targets.filter((t) => !known.has(t.name));
 		for (const component of removed) {
 			ui.warn(
-				`${component.name} is no longer in the topology. Stop it with \`pnpm rig stop ${component.name}\`.`,
+				`${component.name} is no longer in the topology. Stop it with \`${RIG} stop ${component.name}\`.`,
 			);
 		}
 
@@ -488,7 +489,7 @@ export class Session {
 		if (owned.length === 0) return;
 		ui.success(
 			requiredServices(this.env.topology).length > 0
-				? 'Stopped. Services keep running: `pnpm rig stop` stops them too.'
+				? `Stopped. Services keep running: \`${RIG} stop\` stops them too.`
 				: 'Stopped.',
 		);
 	}

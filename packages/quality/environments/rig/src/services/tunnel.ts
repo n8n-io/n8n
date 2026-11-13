@@ -7,6 +7,7 @@ import type { Topology } from '../config/env-yaml';
 import type { EnvPaths } from '../config/paths';
 import { readDotenv } from '../env/dotenv';
 import { RigError } from '../errors';
+import { RIG } from '../self/build-info';
 
 /** The secret that a named tunnel needs. rig passes it to the container, not to the compose file. */
 export const TUNNEL_TOKEN_KEY = 'CLOUDFLARE_TUNNEL_TOKEN';
@@ -47,7 +48,7 @@ export function tunnelToken(paths: EnvPaths, topology: Topology): string | undef
 	if (!token) {
 		throw new RigError(
 			`The named tunnel for ${topology.tunnel.hostname} needs ${TUNNEL_TOKEN_KEY} in secrets.env.`,
-			`Run \`pnpm rig env edit --on secrets\` and add ${TUNNEL_TOKEN_KEY}=<token from the Cloudflare dashboard>, or remove \`tunnel.hostname\` for a quick tunnel.`,
+			`Run \`${RIG} env edit --on secrets\` and add ${TUNNEL_TOKEN_KEY}=<token from the Cloudflare dashboard>, or remove \`tunnel.hostname\` for a quick tunnel.`,
 		);
 	}
 	return token;

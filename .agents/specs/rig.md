@@ -6,7 +6,7 @@ workers, task runners, and engine v2. `rig` runs the services (Postgres,
 Redis) in containers. It runs the n8n components as local processes from the
 monorepo.
 
-Status: phase 1 (MVP) implemented. Phases 2 to 4 are open.
+Status: phases 1 (MVP) and 2 (global install) implemented. Phases 3 and 4 are open.
 
 ## Goals
 
@@ -32,7 +32,7 @@ Status: phase 1 (MVP) implemented. Phases 2 to 4 are open.
 |---|---|
 | Name | `rig`. Package `@n8n/rig`, private |
 | Location | `packages/quality/environments/rig` |
-| Distribution | No publishing. Phase 1 runs as `pnpm rig`. Phase 2 adds a global install that copies a bundled build from a checkout |
+| Distribution | No publishing. `pnpm rig` runs the source with tsx. `rig install-global` copies a `tsdown` bundle from a checkout to a versions directory and writes a shim |
 | Task runners | The launcher is the default (`runners.via: launcher`). Go is an accepted dependency on macOS |
 | `pnpm services` | Stays. `rig` reads the same image tags. Containers, ports, and files stay separate |
 | Service containers | Generated `docker compose` file per environment. No testcontainers, because environments must persist |
@@ -80,6 +80,9 @@ flowchart TD
 
 ~/.local/share/rig/
   current                    # name of the default environment
+  install.json               # global install: current version id and history
+  versions/<id>/rig.mjs      # bundled global rig, id = <version>+<commit>[.dirty.<time>]
+  versions/<id>/build.json   # build info and the checkout it was built from
   envs/<name>/
     env.yaml                 # topology
     env/
@@ -98,7 +101,10 @@ flowchart TD
     postgres-init.sql        # generated, creates the engine database
 
 ~/.cache/rig/
-  launcher/<version>/        # launcher builds (phase 2)
+  launcher/<version>/task-runner-launcher   # downloaded or built launcher releases
+  env-catalog/<hash>.json    # env var catalog of each checkout
+
+~/.local/bin/rig             # shim of the global install (RIG_BIN_DIR)
 ```
 
 ### Public URL
@@ -136,15 +142,17 @@ tunnel:
 ### Global config
 
 Change it with `rig config set <key> <value>` and read it with
-`rig config get`. `RIG_LAUNCHER_PATH` overrides `launcher.path`.
-`RIG_CONFIG_DIR` and `RIG_DATA_DIR` move the two directories (tests use them).
+`rig config get`. Remove a value with `rig config unset <key>`.
+`RIG_LAUNCHER_PATH` overrides `launcher.path`. `RIG_CONFIG_DIR`,
+`RIG_DATA_DIR`, `RIG_CACHE_DIR`, and `RIG_BIN_DIR` move the directories
+(tests use them).
 
 ```yaml
 # ~/.config/rig/config.yaml
 launcher:
-  path: ~/work/task-runner-launcher   # local launcher checkout (phase 1: required)
-  version: 1.6.0                      # used when path is not set (phase 2)
-repo: ~/work/n8n                      # default source outside a checkout (phase 2)
+  path: ~/work/task-runner-launcher   # optional: a local launcher checkout
+  version: 1.6.0                      # optional: a release, when path is not set
+repo: ~/work/n8n                      # default source outside a checkout
 ```
 
 ### Topology file
@@ -152,7 +160,7 @@ repo: ~/work/n8n                      # default source outside a checkout (phase
 ```yaml
 # ~/.local/share/rig/envs/<name>/env.yaml
 name: mm
-source: auto                # phase 1: auto only. Phase 2: repo:<path>. Phase 4: image:<tag>, npm:<version>
+source: auto                # auto | repo:<path>. Phase 4: image:<tag>, npm:<version>
 db: postgres                # sqlite | postgres
 queue: true
 mains: 2
@@ -238,8 +246,11 @@ not start with `-` as the command.
 | `rig exec <component> -- <cmd…>` | Run a command with the resolved env of a component |
 | `rig print <component> --format shell\|dotenv\|json` | Print the resolved env |
 | `rig print <component> --format vscode` (phase 3) | Print a VS Code launch configuration |
-| `rig config get [key]`, `rig config set <key> <value>` | Read and change the global config |
-| `rig doctor` (phase 2) | Check Docker, Node, Go, `uv`, ports, build state, and the launcher |
+| `rig config get [key]`, `rig config set <key> <value>`, `rig config unset <key>` | Read and change the global config |
+| `rig doctor [--env <name>]` | Check Node, pnpm, Docker, the checkout and its build, the launcher, Go, `uv`, the ports of the environment, and the global install. Exit code 1 on a problem |
+| `rig install-global [--from <path>] [--force]` | Build and install the global `rig` |
+| `rig self-update [--from <path>] [--force] [--rollback]` | Rebuild the global `rig`, or point it to the previous version |
+| `rig --version` | The running version, and the global version when it handed off |
 
 ### Wizard
 
@@ -492,10 +503,15 @@ N8N_LOG_LEVEL = debug
 
 | Order | Source | Phase |
 |---|---|---|
-| 1 | `launcher.path` in the global config. `rig` runs `make build` when `bin/main` is older than the Go sources | 1 |
-| 2 | Cached build in `~/.cache/rig/launcher/<version>/`. `rig` downloads the release source tarball and runs `go build -o … cmd/launcher/main.go` | 2 |
-| 3 | Release binary from GitHub, checked against the `.sha256` asset. Linux only, because releases have no darwin builds | 2 |
-| 4 | `n8nio/runners:<version>` container, for `image:` sources | 4 |
+| 1 | `launcher.path` in the global config (or `RIG_LAUNCHER_PATH`). `rig` runs `make build` when `bin/main` is older than the Go sources | 1 |
+| 2 | A release in `~/.cache/rig/launcher/<version>/task-runner-launcher`. On Linux x64 and arm64, `rig` downloads the release archive and checks it against the `.sha256` asset. Elsewhere (macOS), it downloads the source tarball of the tag and runs `go build -o … ./cmd/launcher`. The tarball has no published checksum; HTTPS from GitHub is the trust anchor | 2 |
+| 3 | `n8nio/runners:<version>` container, for `image:` sources | 4 |
+
+The release version is `launcher.version` from the global config, else
+`ARG LAUNCHER_VERSION` in `docker/images/runners/Dockerfile.debian` of the
+checkout, else a default in the code. So each checkout uses the launcher that
+its runners image ships. `rig` writes the binary to a temporary directory and
+renames it into the cache, so parallel processes never see a partial file.
 
 Note: the launcher Go module is `task-runner-launcher`, not a GitHub path. So
 `go install <module>@<version>` does not work. Build from the source tarball.
@@ -675,7 +691,7 @@ anything.
 | `engine` rules | Call `assertEngineSupported` from `n8n-containers`. Map `remote` to `container` |
 | `engine: remote` adds Redis | (no error) |
 | `workers > 0` requires `queue: true` | `Workers need queue mode. Add --queue.` |
-| `runners.via: launcher` requires a launcher binary | `Set launcher.path in ~/.config/rig/config.yaml.` |
+| `runners.via: launcher` requires a launcher binary | A release is the default. On macOS without Go: `The task runner launcher <version> needs Go to build on darwin.` |
 | `runners.languages` has `python` | Check that `uv` is on `PATH` |
 | Source has no build | `packages/cli/dist is missing. Run pnpm build.` |
 | `dist` is older than the last commit | Warning only |
@@ -684,34 +700,59 @@ anything.
 
 | Source | Phase | Rule |
 |---|---|---|
-| `auto` | 1 | Walk up from the current directory to the `package.json` with `"name": "n8n-monorepo"`. Use `INIT_CWD` when `pnpm` changed the directory |
-| `repo:<path>` | 2 | Use the given checkout |
+| `auto` | 1 | Walk up from the current directory to the `package.json` with `"name": "n8n-monorepo"`. Use `INIT_CWD` when `pnpm` changed the directory. Outside a checkout, use `repo` from the global config (phase 2) |
+| `repo:<path>` | 2 | Use the given checkout, also when `rig` runs in another checkout |
 | `npm:<version>` | 4 | Install `n8n@<version>` into `~/.cache/rig/n8n/<version>` and run from there |
 | `image:<tag>` | 4 | Run n8n components as containers with the same layers, ports, and logs |
 
-An environment does not store the repo path in phase 1. The same environment
-runs against any worktree you start it from. `rig status` shows the source
-path of each running component.
+With `source: auto`, an environment does not store the repo path. The same
+environment runs against any worktree you start it from. `rig status` shows the
+source path of each running component. A session keeps its checkout when it
+reloads `env.yaml`. `rig doctor` shows the checkout and where it came from.
 
 ## Global install (phase 2)
 
 `pnpm rig install-global`:
 
-1. Bundles `rig` into one `rig.mjs` file with `tsdown`. The imports from
-   `n8n-containers` have no testcontainers dependency, so they bundle.
-2. Copies the file to `~/.local/share/rig/versions/<version>+<sha>/rig.mjs`.
-3. Writes the `~/.local/bin/rig` shim. The shim points to the current version.
-4. Checks that `~/.local/bin` is on `PATH`.
+1. Bundles `rig` into one `dist/rig.mjs` file with `tsdown`
+   (`tsdown.config.ts`, `--config-loader unrun`, because the package is
+   CommonJS). All dependencies bundle, including the `n8n-containers` imports,
+   which have no testcontainers dependency. `typescript` stays out: the env
+   var catalog loads it from the checkout that it reads (see below). The
+   build also writes `dist/build.json`: version, commit, dirty flag, and time.
+2. Copies the file to `~/.local/share/rig/versions/<id>/rig.mjs`. The id is
+   `<version>+<commit>`. When the rig package has uncommitted changes, the id
+   gets `.dirty.<time>`, so each such build is a new version.
+3. Writes the `~/.local/bin/rig` shim: `exec node '<versions>/<id>/rig.mjs' "$@"`.
+   It runs `node` from `PATH`, so a Node version switch applies. The shim has
+   a marker line. `rig` does not replace a `rig` file without the marker,
+   unless `--force` is given.
+4. Records the id in `install.json` and keeps the last five versions.
+5. Checks that `~/.local/bin` is on `PATH`, and that the shell does not find
+   another `rig` first.
 
 Do not use `pnpm link --global`. It ties the binary to one working tree, so a
 branch switch or a deleted worktree changes or breaks the global binary.
 
-- `rig self-update` rebuilds from the current checkout, or from `repo` in the
-  global config.
-- `rig self-update --rollback` points the shim to the previous version.
-- **Hand-off**: when the global `rig` runs inside a checkout that contains
-  `packages/quality/environments/rig`, it runs that version. `RIG_NO_DELEGATE=1`
-  turns this off. `rig --version` shows both versions.
+- The checkout to build from: `--from <path>`, then the checkout of the
+  current directory, then `repo` in the global config, then the checkout of
+  the installed version, then (from source) the checkout of the running code.
+- `rig self-update` rebuilds the same way. `rig self-update --rollback`
+  points the shim to the version before the current one in the history.
+- **Hand-off**: when the bundled `rig` runs inside a checkout that contains
+  `packages/quality/environments/rig/bin/rig.mjs`, it runs that file with
+  the same arguments and sets `RIG_DELEGATED_FROM=<global id>`. It forwards
+  signals and exits with the code or signal of the child. When that checkout
+  has no `node_modules`, the global version runs and prints a note.
+  `RIG_NO_DELEGATE=1` turns the hand-off off. `rig --version` shows both
+  versions.
+- Hints name the command that works: `pnpm rig …` when pnpm runs the script
+  (`npm_lifecycle_event=rig`), else `rig …`.
+- **TypeScript in the bundle**: `env-catalog/extract.ts` has only a type
+  import of `typescript`. At run time it loads `typescript` with
+  `createRequire` from the rig package of the checkout, then `packages/cli`,
+  then the checkout root, and accepts only a module with the JavaScript
+  compiler API (TS 6, not the native TS 7).
 
 ## Relation to n8n-containers
 
@@ -743,6 +784,7 @@ packages/quality/environments/rig/
   package.json              # @n8n/rig, private, bin: rig
   README.md
   bin/rig.mjs               # starts src/cli.ts with tsx, forwards signals
+  tsdown.config.ts          # the bundle for the global install
   src/
     cli.ts                  # citty entry point, error and usage output
     environment.ts          # RigEnv: loads an environment, components, resolution
@@ -756,6 +798,8 @@ packages/quality/environments/rig/
       env-browse.ts         # env browse, the interactive editor
       layers.ts             # layer names, layer files, managed key conflicts
       tools.ts              # exec, print, psql, redis-cli, config
+      doctor.ts             # rig doctor
+      self.ts               # install-global, self-update, --version
       wizard.ts             # interactive rig create
     config/
       paths.ts              # XDG paths, EnvPaths
@@ -784,8 +828,12 @@ packages/quality/environments/rig/
       health.ts             # readiness probes, port checks
       logs.ts               # log rotation, tail, file follower
     launcher/
-      binary.ts             # build from launcher.path
+      binary.ts             # launcher source: checkout build, release download or source build
       config.ts             # launcher-config.json generation
+    self/
+      build-info.ts         # bundle build info, version ids, the command name for hints
+      install.ts            # bundle build, versions directory, shim, rollback, PATH check
+      delegate.ts           # hand-off from the global rig to the checkout rig
     ui/
       output.ts             # messages, prefixed lines, tables
       prompt.ts             # @clack/prompts wrappers (select, multiselect, text, confirm)
@@ -805,7 +853,8 @@ checkout or worktree you run it from.
 Dependencies: `citty`, `zod`, `yaml`, `picocolors`, `chokidar`, and `tsx` from
 the pnpm catalog, `typescript` from the `typescript-tooling` catalog,
 `@clack/prompts` 1.x for prompts, plus `@n8n/utils` (`sleep`) and
-`n8n-containers` from the workspace. `tsdown` comes in phase 2.
+`n8n-containers` from the workspace. `tsdown` from the `typescript` catalog
+builds the bundle.
 
 `dotenv.ts` edits files in place. `rig env set` changes one line and keeps
 comments, order, and commented-out keys. When a commented-out line has the
@@ -841,6 +890,21 @@ same key, `rig env set` uncomments and updates that line.
   and the managed vars. Manual: a real quick tunnel served `/healthz/readiness`
   and the editor over HTTPS, kept its URL across two `rig up` sessions, and
   `p` opened it.
+- Global install (`test/self.test.ts`): version ids, install with shim and
+  build info, rollback, pruning to five versions, an existing foreign `rig`
+  file, no hand-off from source, and a real `tsdown` build to a temporary
+  directory (one file, no `typescript` or `testcontainers` import).
+- Sources (`test/source.test.ts`): `auto` and `repo:<path>`, the global
+  `repo` fallback, launcher version precedence, and a checksum mismatch with a
+  mocked download.
+- Manual for phase 2: `install-global` in a sandbox (`RIG_*_DIR`,
+  `RIG_BIN_DIR`); outside a checkout, `rig up` with `repo` from the global
+  config, the launcher built once from the 1.6.0 source tarball on macOS, and
+  `env browse` from the bundle (TypeScript from the checkout); inside a
+  checkout, the hand-off, `RIG_NO_DELEGATE`, `self-update`, `--rollback`, and
+  Ctrl+C through shim, bundle, and checkout rig. The Linux download ran in a
+  `node:24-slim` container: download, checksum, cache hit, and an unknown
+  version.
 - Not done: an automated integration test with Docker.
 
 ## Implementation TODO
@@ -881,14 +945,15 @@ same key, `rig env set` uncomments and updates that line.
 
 ### Phase 2: global install
 
-- [ ] `tsdown` bundle. Keep `typescript` external or load it from the checkout: it is large, and the catalog needs a checkout anyway
-- [ ] `rig install-global`, shim, `PATH` check
-- [ ] `rig self-update`, `--rollback`
-- [ ] Hand-off to the repo version, `RIG_NO_DELEGATE`, `--version` output
-- [ ] `source: repo:<path>` and `repo` in the global config
-- [ ] Launcher build from the release source tarball into `~/.cache/rig/launcher`
-- [ ] Launcher release download on Linux with SHA-256 check
-- [ ] `rig doctor`
+- [x] `tsdown` bundle. `typescript` stays external and loads from the checkout
+- [x] `rig install-global`, shim, `PATH` check
+- [x] `rig self-update`, `--rollback`
+- [x] Hand-off to the repo version, `RIG_NO_DELEGATE`, `--version` output
+- [x] `source: repo:<path>` and `repo` in the global config
+- [x] Launcher build from the release source tarball into `~/.cache/rig/launcher`
+- [x] Launcher release download on Linux with SHA-256 check
+- [x] `rig doctor`
+- [x] `rig config unset`, `launcher.version`, and the launcher version from the runners image (added during implementation)
 
 ### Phase 3: developer experience
 

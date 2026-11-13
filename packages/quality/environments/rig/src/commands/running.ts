@@ -23,6 +23,7 @@ import {
 	restartComponents,
 	stopComponents,
 } from './common';
+import { RIG } from '../self/build-info';
 
 export const upCommand = defineCommand({
 	meta: { name: 'up', description: 'Start the services and all components, and show their logs' },
@@ -262,7 +263,7 @@ export const statusCommand = defineCommand({
 		console.log(`\n${table(rows)}`);
 		if (checks.some((c) => c.drift)) {
 			console.log(
-				pc.dim('\nDrift: the env changed after the start. Run `pnpm rig restart <component>`.'),
+				pc.dim(`\nDrift: the env changed after the start. Run \`${RIG} restart <component>\`.`),
 			);
 		}
 		const sources = new Set(checks.map((c) => c.state?.source).filter(Boolean));
@@ -317,7 +318,7 @@ export const openCommand = defineCommand({
 			throw new RigError(
 				'The tunnel has no URL.',
 				env.topology.tunnel.provider === 'cloudflare'
-					? 'Run `pnpm rig services up` or `pnpm rig up`.'
+					? `Run \`${RIG} services up\` or \`${RIG} up\`.`
 					: 'Set `tunnel: cloudflare` in env.yaml.',
 			);
 		}

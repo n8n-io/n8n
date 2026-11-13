@@ -4,13 +4,12 @@ import { join } from 'node:path';
 import { sleep } from '@n8n/utils/sleep';
 import pc from 'picocolors';
 
-import { launcherCheckout } from '../config/global-config';
 import type { RigEnv } from '../environment';
 import type { ResolveContext } from '../env/resolve';
 import { RigError } from '../errors';
 import { ensureLauncherBinary } from '../launcher/binary';
 import { nodeBinary, writeLauncherConfig } from '../launcher/config';
-import { CLI_DIR, requireMonorepoRoot } from '../source';
+import { CLI_DIR } from '../source';
 import { type Component, portsOf, type ProcessComponent } from '../topology/components';
 import type { PrefixPrinter } from '../ui/output';
 import { isPortFree, isReady, portOwner, readinessUrl, waitUntilReady } from './health';
@@ -24,6 +23,7 @@ import {
 	processStartTime,
 	writeState,
 } from './state';
+import { RIG } from '../self/build-info';
 
 /** Who owns a started component. */
 export type Owner = 'self' | 'background' | { pid: number | null; tty: string | null };
@@ -78,9 +78,9 @@ export class Supervisor {
 		return this.env.componentHash(component, this.resolveOverrides);
 	}
 
-	private command(component: Component, repoRoot: string): Command {
+	private async command(component: Component, repoRoot: string): Promise<Command> {
 		if (component.kind === 'launcher') {
-			const binary = ensureLauncherBinary(launcherCheckout(this.env.globalConfig), (message) =>
+			const binary = await ensureLauncherBinary(this.env.launcherSource(), (message) =>
 				this.printer.event(component.name, message),
 			);
 			const runnerTypes = this.env.topology.runners.languages.map((language) =>
@@ -102,7 +102,7 @@ export class Supervisor {
 			const owner = portOwner(port);
 			throw new RigError(
 				`Port ${port} of ${component.name} is in use${owner ? ` by ${owner}` : ''}.`,
-				'Stop that process, or stop the other environment with `pnpm rig stop --env <name>`.',
+				`Stop that process, or stop the other environment with \`${RIG} stop --env <name>\`.`,
 			);
 		}
 	}
@@ -113,14 +113,14 @@ export class Supervisor {
 		if (running) {
 			throw new RigError(
 				`${component.name} is already running (pid ${running.pid}${running.ownerTty ? `, in ${running.ownerTty}` : ''}).`,
-				`Use \`pnpm rig restart ${component.name}\` or \`pnpm rig stop ${component.name}\`.`,
+				`Use \`${RIG} restart ${component.name}\` or \`${RIG} stop ${component.name}\`.`,
 			);
 		}
 
-		const repoRoot = this.env.repoRoot ?? requireMonorepoRoot();
+		const repoRoot = this.env.requireRepoRoot();
 		await this.assertPortsFree(component);
 		const { env } = this.env.resolve(component, this.resolveOverrides);
-		const command = this.command(component, repoRoot);
+		const command = await this.command(component, repoRoot);
 
 		if (component.kind === 'launcher') {
 			writeLauncherConfig(

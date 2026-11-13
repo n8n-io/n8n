@@ -7,6 +7,7 @@ import { Supervisor } from '../runtime/supervisor';
 import { type Component, startStages } from '../topology/components';
 import { PrefixPrinter, printError, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
+import { RIG } from '../self/build-info';
 
 export const envArg = {
 	env: {
@@ -91,7 +92,7 @@ export async function restartComponents(
 				if (result === 'ready') ui.success(`${component.name} is ready (pid ${pid})`);
 				else
 					ui.error(
-						`${component.name} is not ready (${result}). Logs: pnpm rig logs ${component.name}`,
+						`${component.name} is not ready (${result}). Logs: ${RIG} logs ${component.name}`,
 					);
 			}),
 		);
@@ -135,7 +136,7 @@ export async function offerRestart(
 	const doRestart = restart ?? (isInteractive() ? await confirm('Restart them now?', true) : false);
 	if (!doRestart) {
 		ui.step(
-			'Restart later with `pnpm rig restart <component>`, or press r in the terminal that runs them.',
+			`Restart later with \`${RIG} restart <component>\`, or press r in the terminal that runs them.`,
 		);
 		return;
 	}

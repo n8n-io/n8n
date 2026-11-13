@@ -10,16 +10,53 @@ Design and status: [`.agents/specs/rig.md`](../../../../.agents/specs/rig.md).
 ## Setup
 
 You need Docker, Node, and a build of the repository (`pnpm build`).
-External task runners also need a checkout of the
-[task runner launcher](https://github.com/n8n-io/task-runner-launcher) and Go.
-The Python runner needs [`uv`](https://docs.astral.sh/uv/).
-
-```bash
-pnpm rig config set launcher.path ~/work/task-runner-launcher
-```
+The Python runner needs [`uv`](https://docs.astral.sh/uv/). `pnpm rig doctor`
+checks all of it.
 
 Run `pnpm rig` from the repository root. In a package directory, use
 `pnpm -w rig`.
+
+### Task runner launcher
+
+External task runners need the
+[task runner launcher](https://github.com/n8n-io/task-runner-launcher). By
+default, `rig` uses the release that the runners image of the checkout pins
+(`LAUNCHER_VERSION` in `docker/images/runners/Dockerfile.debian`), and caches
+it in `~/.cache/rig/launcher/<version>/`:
+
+- On Linux, `rig` downloads the release and checks its SHA-256 sum.
+- On macOS, releases have no binary. `rig` builds the release source once with
+  Go.
+
+To use another release, or your own launcher checkout:
+
+```bash
+pnpm rig config set launcher.version 1.5.1
+pnpm rig config set launcher.path ~/work/task-runner-launcher   # rig runs `make build` when the Go code changes
+pnpm rig config unset launcher.path
+```
+
+### Global install
+
+```bash
+pnpm rig install-global       # builds rig and writes ~/.local/bin/rig
+rig --version
+```
+
+The global `rig` is one bundled file in
+`~/.local/share/rig/versions/<version>+<commit>/`. It does not depend on the
+checkout that built it, so a branch switch or a deleted worktree does not
+break it.
+
+- Inside an n8n checkout that contains rig, the global `rig` runs the rig of
+  that checkout. `RIG_NO_DELEGATE=1` turns this off. `rig --version` shows
+  both versions.
+- Outside a checkout, `rig` runs n8n from `repo` in the global config
+  (`rig config set repo ~/work/n8n`). To pin one environment to a checkout,
+  set `source: repo:<path>` in its `env.yaml`.
+- `rig self-update` rebuilds from the current checkout, `repo`, or the
+  checkout of the installed version. `rig self-update --rollback` returns to
+  the previous version. `rig` keeps the last five versions.
 
 ## Quick start
 
@@ -144,7 +181,9 @@ changes. `--refresh` reads the source again.
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
 | `print <component> --format shell\|dotenv\|json` | Print the resolved env |
 | `psql`, `redis-cli` | Open a shell in a service container |
-| `config get\|set` | Read and change the global config |
+| `config get\|set\|unset` | Read and change the global config: `launcher.path`, `launcher.version`, `repo` |
+| `doctor` | Check Docker, Node, Go, `uv`, the checkout and its build, the launcher, ports, and the global install |
+| `install-global`, `self-update [--rollback]` | Install and update the global `rig` |
 
 Add `--env <name>` after a command to select an environment. Without it,
 `rig` uses `RIG_ENV`, then the default environment from `rig use`.
@@ -160,8 +199,11 @@ Add `--env <name>` after a command to select an environment. Without it,
 | `~/.local/share/rig/envs/<name>/logs/` | One log file for each component |
 | `~/.local/share/rig/envs/<name>/data/` | User folders and binary data |
 
-`~/.cache/rig/env-catalog/` holds the env var catalog of each checkout.
-`RIG_CONFIG_DIR`, `RIG_DATA_DIR`, and `RIG_CACHE_DIR` change these locations.
+`~/.cache/rig/env-catalog/` holds the env var catalog of each checkout, and
+`~/.cache/rig/launcher/` the launcher releases. `~/.local/share/rig/versions/`
+holds the global installs. `RIG_CONFIG_DIR`, `RIG_DATA_DIR`, `RIG_CACHE_DIR`,
+and `RIG_BIN_DIR` (the shim directory, default `~/.local/bin`) change these
+locations.
 
 ## Relation to n8n-containers
 

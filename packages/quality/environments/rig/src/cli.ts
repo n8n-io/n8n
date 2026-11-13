@@ -1,5 +1,6 @@
 import { type CommandDef, defineCommand, runCommand as runCitty, runMain, showUsage } from 'citty';
 
+import { doctorCommand } from './commands/doctor';
 import { envCommand } from './commands/env';
 import {
 	createCommand,
@@ -25,13 +26,16 @@ import {
 	psqlCommand,
 	redisCliCommand,
 } from './commands/tools';
+import { installGlobalCommand, printVersion, selfUpdateCommand } from './commands/self';
 import { RigError } from './errors';
+import { runningVersion } from './self/build-info';
+import { handOff } from './self/delegate';
 import { printError } from './ui/output';
 
 const rig = defineCommand({
 	meta: {
 		name: 'rig',
-		version: '0.1.0',
+		version: runningVersion(),
 		description: 'Create and run local n8n environments',
 	},
 	subCommands: {
@@ -54,6 +58,9 @@ const rig = defineCommand({
 		psql: psqlCommand,
 		'redis-cli': redisCliCommand,
 		config: configCommand,
+		doctor: doctorCommand,
+		'install-global': installGlobalCommand,
+		'self-update': selfUpdateCommand,
 	},
 });
 
@@ -65,16 +72,21 @@ function usageErrorCode(error: unknown): string | undefined {
 
 async function main(): Promise<void> {
 	const rawArgs = process.argv.slice(2);
+	// The global rig runs the version of the checkout that it runs in.
+	if (await handOff(rawArgs)) return;
+	if (rawArgs.length === 1 && ['--version', '-v'].includes(rawArgs[0])) {
+		printVersion();
+		return;
+	}
 	const beforeSeparator = rawArgs.includes('--')
 		? rawArgs.slice(0, rawArgs.indexOf('--'))
 		: rawArgs;
 	if (
 		rawArgs.length === 0 ||
 		beforeSeparator.includes('--help') ||
-		beforeSeparator.includes('-h') ||
-		(rawArgs.length === 1 && rawArgs[0] === '--version')
+		beforeSeparator.includes('-h')
 	) {
-		// citty prints the usage or the version.
+		// citty prints the usage.
 		await runMain(rig, { rawArgs: rawArgs.length === 0 ? ['--help'] : beforeSeparator });
 		return;
 	}

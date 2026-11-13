@@ -1,6 +1,51 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, relative } from 'node:path';
-import ts from 'typescript';
+import type * as TS from 'typescript';
+
+import { RigError } from '../errors';
+
+/**
+ * Packages whose `typescript` dependency has the JavaScript compiler API
+ * (TS 6). The root may get the native TS 7 compiler, which has no such API.
+ */
+const TYPESCRIPT_HOSTS = ['packages/quality/environments/rig', 'packages/cli', '.'];
+
+let ts: typeof TS;
+
+function isCompilerApi(value: unknown): value is typeof TS {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'createProgram' in value &&
+		typeof value.createProgram === 'function'
+	);
+}
+
+/**
+ * Loads TypeScript from the checkout. The global rig bundle does not contain
+ * it, and the catalog reads a checkout anyway.
+ */
+function loadTypeScript(repoRoot: string): typeof TS {
+	const candidates = [
+		...TYPESCRIPT_HOSTS.map((dir) => join(repoRoot, dir, 'package.json')),
+		import.meta.url,
+	];
+	for (const from of candidates) {
+		if (from.startsWith('/') && !existsSync(from)) continue;
+		try {
+			const loaded: unknown = createRequire(from)('typescript');
+			if (isCompilerApi(loaded)) return loaded;
+		} catch {
+			// Try the next place.
+		}
+	}
+	throw new RigError(
+		`Cannot load the TypeScript compiler API from ${repoRoot}.`,
+		'Run `pnpm install` in the checkout.',
+	);
+}
 
 /** How the editor asks for a value. */
 export type EnvVarKind = 'boolean' | 'number' | 'string' | 'enum' | 'enum-list' | 'list' | 'json';
@@ -44,14 +89,14 @@ export function findEnvFiles(repoRoot: string): string[] {
 		.map((file) => join(repoRoot, file));
 }
 
-function withoutUndefined(type: ts.Type): ts.Type[] {
+function withoutUndefined(type: TS.Type): TS.Type[] {
 	const members = type.isUnion() ? type.types : [type];
 	return members.filter(
 		(member) => !(member.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void)),
 	);
 }
 
-function stringLiterals(types: ts.Type[]): string[] | undefined {
+function stringLiterals(types: TS.Type[]): string[] | undefined {
 	if (types.length === 0) return undefined;
 	const values: string[] = [];
 	for (const type of types) {
@@ -67,8 +112,8 @@ function separatorOf(typeName: string): string {
 }
 
 function classify(
-	checker: ts.TypeChecker,
-	type: ts.Type,
+	checker: TS.TypeChecker,
+	type: TS.Type,
 ): Pick<EnvVarInfo, 'kind' | 'options' | 'separator'> {
 	const members = withoutUndefined(type);
 
@@ -95,7 +140,7 @@ function classify(
 	return { kind: 'json' };
 }
 
-function defaultText(node: ts.PropertyDeclaration, sourceFile: ts.SourceFile): string | undefined {
+function defaultText(node: TS.PropertyDeclaration, sourceFile: TS.SourceFile): string | undefined {
 	const init = node.initializer;
 	if (!init) return undefined;
 	if (ts.isStringLiteral(init) || ts.isNoSubstitutionTemplateLiteral(init)) return init.text;
@@ -103,8 +148,8 @@ function defaultText(node: ts.PropertyDeclaration, sourceFile: ts.SourceFile): s
 }
 
 function envDecoratorName(
-	node: ts.PropertyDeclaration,
-	sourceFile: ts.SourceFile,
+	node: TS.PropertyDeclaration,
+	sourceFile: TS.SourceFile,
 ): string | undefined {
 	for (const decorator of ts.getDecorators(node) ?? []) {
 		const call = decorator.expression;
@@ -117,6 +162,7 @@ function envDecoratorName(
 
 /** Reads every `@Env` property with the type checker. Takes a few seconds. */
 export function extractEnvCatalog(repoRoot: string, files = findEnvFiles(repoRoot)): EnvVarInfo[] {
+	ts = loadTypeScript(repoRoot);
 	const program = ts.createProgram(files, {
 		target: ts.ScriptTarget.ES2022,
 		module: ts.ModuleKind.NodeNext,
@@ -134,7 +180,7 @@ export function extractEnvCatalog(repoRoot: string, files = findEnvFiles(repoRoo
 		const sourceFile = program.getSourceFile(file);
 		if (!sourceFile) continue;
 
-		const visit = (node: ts.Node) => {
+		const visit = (node: TS.Node) => {
 			if (ts.isPropertyDeclaration(node)) {
 				const name = envDecoratorName(node, sourceFile);
 				if (name) {
