@@ -524,7 +524,12 @@ function triggerValue(wf: JsonRecord, bundle: Bundle): JsonRecord {
 		// webhooks whose item is the request body.
 		return type === 'n8n-nodes-base.webhook' ? pinned : { body: pinned };
 	}
-	if (/scheduleTrigger$|\.cron$|\.interval$/.test(type)) return { scheduledAt: Date.now() };
+	if (/scheduleTrigger$|\.cron$|\.interval$/.test(type)) {
+		// v1 fired at prepare time: the trigger item (timestamp, readable date, weekday) is of then.
+		const preparedAt =
+			typeof bundle.meta.prepared_at === 'string' ? Date.parse(bundle.meta.prepared_at) : NaN;
+		return { scheduledAt: Number.isNaN(preparedAt) ? Date.now() : preparedAt };
+	}
 	return { body: {}, headers: {}, query: {} };
 }
 
