@@ -1,0 +1,79 @@
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_0bd072907a08fd 1,78-97
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_0987e0753e7905 2,6-31,95,114
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_dfe3f914c8bb46::t_a42b1f78741931 636
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_dfe3f914c8bb46::t_2e28ceaaa113c5 377,400
+packages/cli/src/modules/agents/__tests__/agent-document.test.ts
+  s_dfe3f914c8bb46::t_f4db781ede9d50 34,60,69
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_dfe3f914c8bb46::t_e65bf2a3e472c3 2043,2053
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_dfe3f914c8bb46::t_462920d3d592b2 317
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_dfe3f914c8bb46::t_848868bdbebdc0 781
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_229fcd8273db9b 713,804
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_e50f268cee3ba5 88-93
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_01bb470c2dbaaf 40,59,73-78,312,417-422,541,628,634,763,803-974
+packages/cli/src/modules/agents/approval/__tests__/channel-hitl-options.test.ts
+  s_dfe3f914c8bb46::t_78ab581aba19ad 6,9-31,33-44,47-48,50-52,54-55,57,62-64,66-74,76,78-79,81-107,110-126,128-135,137-138
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_39cbf3d1b75044 59,89-90,110-111,113-114,130-175,199-201,234,238-240,249,260-263,274
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_55045ae2c88f7d 7,11-16,18-19,30,85-122
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-hitl.ts
+  s_dfe3f914c8bb46::t_b74e3a689a0b2e 1-8,38,40-46,63-110
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-hitl.ts
+  s_dfe3f914c8bb46::t_17ae14146a170b 1-8,45-51,65-110
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-hitl.ts
+  s_dfe3f914c8bb46::t_e2132c7cf58df3 13
+packages/cli/test/integration/agents/agent-channel-approval.integration.test.ts
+  s_dfe3f914c8bb46::t_b8b5a10a0c2fd0 175-176,183,274-278,287-290,387-388,425,434-461,473
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_e74ed12a8d8714 2,19,26,30-31,46-47,49-53
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentApprovalRouteSelect.test.ts
+  s_dfe3f914c8bb46::t_a57cacec51b370 16,19,43-46,48-53,56-58,60-61,63-73,76-101,104-114,116,118-125,127,129,133,135,137,140-146
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_73016784a7c960 3,102,108,196,222,232,235,237-240,251,257,269,287,297,322,326-332,336,338,340,395,419,429-436,439,442,514,520,534
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlDestinationPicker.test.ts
+  s_dfe3f914c8bb46::t_2e1a4499cd43ba 201-217
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlPanel.test.ts
+  s_dfe3f914c8bb46::t_1b6216807d89aa 53,63,102
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentRegistryMcpConfigForm.test.ts
+  s_dfe3f914c8bb46::t_68af6b1f968fe5 240-243
+packages/frontend/editor-ui/src/features/agents/__tests__/hitlConfiguration.test.ts
+  s_dfe3f914c8bb46::t_c5bd32bc619f7e 1-6,14,28,115-154
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_dfe3f914c8bb46::t_3ab36337a0da65 701-745
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_dfe3f914c8bb46::t_a8f65d3017bf34 169
+packages/frontend/editor-ui/src/features/agents/__tests__/validationIssues.test.ts
+  s_dfe3f914c8bb46::t_b641d7d4b0722f 5
+packages/frontend/editor-ui/src/features/agents/utils/hitlConfiguration.ts
+  s_dfe3f914c8bb46::t_2144d0ff12fc24 2,28-29,34-35,80-84,87-95,99-110
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.test.ts
+  s_dfe3f914c8bb46::t_7f36cdd564e091 14,17
+packages/nodes-base/nodes/AgentDecision/AgentDecisionTrigger.node.ts
+  s_dfe3f914c8bb46::t_309bc91806d5dc 72,91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e12fab2b3afcafab88c4453ded169bef9b8b13dc",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

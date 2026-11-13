@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_dd7e80244d88e6::t_e1b22f455d4746 154-169,179,181
+  s_dd7e80244d88e6::t_fe7909f7a1c066 170-178,180,182-187
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_dd7e80244d88e6::t_c07af64cf93831 150-151,292-298,1988-1990
+  s_dd7e80244d88e6::t_c34ba35c451419 13,1311-1314,1500,1979-1987,1991-2013,2033
+  s_dd7e80244d88e6::t_7de42a2902ba7a 300-301,325,576,609,621-622,677,2014-2031,2034-2036,2100
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_dd7e80244d88e6::t_f36d838889a40a 163-164
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_dd7e80244d88e6::t_f014bf708abdaa 262
+  s_dd7e80244d88e6::t_14be520a14b392 1127-1128,1132-1133,1137-1138
+  s_dd7e80244d88e6::t_e7c0bb4356c3ea 112-113,203-204,1124-1126,1129-1131,1134-1136,1139-1142
+  s_dd7e80244d88e6::t_ee4489ce200cc0 1143-1146,1414,1545-1547
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_dd7e80244d88e6::t_309b41c0b866ba 102-103,110-115,1112-1118
+  s_dd7e80244d88e6::t_1f4e222a0b2ae5 1119-1122
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_dd7e80244d88e6::t_a8f479193c499d 442,485-507
+  s_dd7e80244d88e6::t_6f77b23d5a23d5 508
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_dd7e80244d88e6::t_58054ec1e60c9b 295-310,312-317,319-321,324-329,332-337,339-342,344-348
+  s_dd7e80244d88e6::t_c9719be57fb47c 277-294
+  s_dd7e80244d88e6::t_2e86253073c2ac 311,318,322-323,330-331,338,343,349-359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdab4867c21432f8eb12a3c23cbf85194e57671b",
+  "prompts": {},
+  "sessions": {
+    "s_dd7e80244d88e6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18cf2-d4b8-71df-9e22-8184693749a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/FirstAssignmentPanel.vue
+  h_8a472ace01776f 184,192-231,292-302
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/__tests__/FirstAssignmentPanel.test.ts
+  h_8a472ace01776f 171-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b6b86d893c7552699ea0d8a4f00f41508e0ade7",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

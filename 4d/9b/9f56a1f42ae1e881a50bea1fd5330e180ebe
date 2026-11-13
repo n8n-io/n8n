@@ -1,0 +1,48 @@
+packages/@n8n/telemetry/src/events/agents.ts
+  h_8a472ace01776f 1341-1357
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 8342-8395
+packages/frontend/editor-ui/src/features/agents/agentEvalAssignment.api.ts
+  h_8a472ace01776f 1-85
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentBrief.vue
+  h_8a472ace01776f 1-56
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentCoachCard.vue
+  h_8a472ace01776f 1-92
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentEvidence.vue
+  h_8a472ace01776f 1-116
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentResponsibilities.vue
+  h_8a472ace01776f 1-149
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentScorecard.vue
+  h_8a472ace01776f 1-86
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/FirstAssignmentPanel.vue
+  h_8a472ace01776f 1-326
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/__tests__/FirstAssignmentPanel.test.ts
+  h_8a472ace01776f 1-221
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/assignmentStatus.ts
+  h_8a472ace01776f 1-29
+packages/frontend/editor-ui/src/features/agents/composables/__tests__/useAgentFirstAssignmentFlag.test.ts
+  h_8a472ace01776f 1-26
+packages/frontend/editor-ui/src/features/agents/composables/useAgentEvalConfigWrite.ts
+  h_8a472ace01776f 1-46
+packages/frontend/editor-ui/src/features/agents/composables/useAgentFirstAssignmentFlag.ts
+  h_8a472ace01776f 1-19
+packages/frontend/editor-ui/src/features/agents/composables/useApplyAgentEvalSuggestions.ts
+  h_8a472ace01776f 1,6-11,22,44-54,72
+packages/frontend/editor-ui/src/features/agents/composables/useFirstAssignment.ts
+  h_8a472ace01776f 1-325
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  h_8a472ace01776f 32-38,163-187,193-277
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  h_8a472ace01776f 5-8,28-29,31,60-70,85-92,222-224,235-280,326-328,341,345-358,360,370-373,375,381,400,405,537-545
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d9b9f56a1f42ae1e881a50bea1fd5330e180ebe",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
