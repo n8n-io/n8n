@@ -1,0 +1,347 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"Three",
+		"Seen Input",
+		"Spread",
+		"First Last",
+		"Each Item",
+		"Each Spread",
+		"Tag",
+		"Seen Node",
+		"Filter",
+		"Seen Filter",
+		"Filter Input"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "code-paired"
+					}
+				}
+			]
+		],
+		"Three": [
+			[
+				{
+					"n": 0
+				},
+				{
+					"n": 1
+				},
+				{
+					"n": 2
+				}
+			]
+		],
+		"Seen Input": [
+			[
+				{
+					"seen": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					}
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 1
+						},
+						"pairedItem": {
+							"item": 1
+						}
+					}
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 2
+						},
+						"pairedItem": {
+							"item": 2
+						}
+					}
+				}
+			]
+		],
+		"Spread": [
+			[
+				{
+					"json": {
+						"n": 0
+					},
+					"pairedItem": {
+						"item": 0
+					},
+					"hours": 3
+				},
+				{
+					"json": {
+						"n": 1
+					},
+					"pairedItem": {
+						"item": 1
+					},
+					"hours": 3
+				},
+				{
+					"json": {
+						"n": 2
+					},
+					"pairedItem": {
+						"item": 2
+					},
+					"hours": 3
+				}
+			]
+		],
+		"First Last": [
+			[
+				{
+					"first": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"last": {
+						"json": {
+							"n": 2
+						},
+						"pairedItem": {
+							"item": 2
+						}
+					},
+					"json": {
+						"n": 0
+					}
+				}
+			]
+		],
+		"Each Item": [
+			[
+				{
+					"seen": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"index": 0
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 1
+						},
+						"pairedItem": {
+							"item": 1
+						}
+					},
+					"index": 1
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 2
+						},
+						"pairedItem": {
+							"item": 2
+						}
+					},
+					"index": 2
+				}
+			]
+		],
+		"Each Spread": [
+			[
+				{
+					"seen": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					}
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 1
+						},
+						"pairedItem": {
+							"item": 1
+						}
+					}
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 2
+						},
+						"pairedItem": {
+							"item": 2
+						}
+					}
+				}
+			]
+		],
+		"Tag": [
+			[
+				{
+					"n": 0,
+					"tag": "x"
+				},
+				{
+					"n": 1,
+					"tag": "x"
+				},
+				{
+					"n": 2,
+					"tag": "x"
+				}
+			]
+		],
+		"Seen Node": [
+			[
+				{
+					"all": [
+						{
+							"json": {
+								"n": 0,
+								"tag": "x"
+							},
+							"pairedItem": {
+								"item": 0
+							}
+						},
+						{
+							"json": {
+								"n": 1,
+								"tag": "x"
+							},
+							"pairedItem": {
+								"item": 1
+							}
+						},
+						{
+							"json": {
+								"n": 2,
+								"tag": "x"
+							},
+							"pairedItem": {
+								"item": 2
+							}
+						}
+					],
+					"item": {
+						"json": {
+							"n": 0,
+							"tag": "x"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"first": {
+						"json": {
+							"n": 0,
+							"tag": "x"
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"last": {
+						"json": {
+							"n": 2,
+							"tag": "x"
+						},
+						"pairedItem": {
+							"item": 2
+						}
+					}
+				}
+			]
+		],
+		"Filter": [
+			[
+				{
+					"n": 0
+				},
+				{
+					"n": 2
+				}
+			],
+			[
+				{
+					"n": 1
+				}
+			]
+		],
+		"Seen Filter": [
+			[
+				{
+					"first": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					},
+					"item": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					}
+				}
+			]
+		],
+		"Filter Input": [
+			[
+				{
+					"seen": {
+						"json": {
+							"n": 0
+						},
+						"pairedItem": {
+							"item": 0
+						}
+					}
+				},
+				{
+					"seen": {
+						"json": {
+							"n": 2
+						},
+						"pairedItem": {
+							"item": 1
+						}
+					}
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

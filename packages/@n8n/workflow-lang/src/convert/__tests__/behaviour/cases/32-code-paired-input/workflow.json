@@ -1,0 +1,193 @@
+{
+	"name": "Code paired input",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "code-paired",
+				"options": {}
+			},
+			"webhookId": "9d1a6f42-2c3b-4e5d-8a7f-1b2c3d4e5f60"
+		},
+		{
+			"id": "three",
+			"name": "Three",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"parameters": {
+				"jsCode": "return [{ json: { n: 0 } }, { json: { n: 1 } }, { json: { n: 2 } }];"
+			}
+		},
+		{
+			"id": "seen-input",
+			"name": "Seen Input",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, -260],
+			"parameters": {
+				"jsCode": "return $input.all().map((item) => ({ json: { seen: item } }));"
+			}
+		},
+		{
+			"id": "spread",
+			"name": "Spread",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, -160],
+			"parameters": {
+				"jsCode": "return $input.all().map((item) => ({ json: { ...item, hours: 3 } }));"
+			}
+		},
+		{
+			"id": "first-last",
+			"name": "First Last",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, -60],
+			"parameters": {
+				"jsCode": "return [{ json: { first: $input.first(), last: $input.last(), json: $json } }];"
+			}
+		},
+		{
+			"id": "each-item",
+			"name": "Each Item",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 40],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { seen: $input.item, index: $itemIndex } };"
+			}
+		},
+		{
+			"id": "each-spread",
+			"name": "Each Spread",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 140],
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "return { json: { seen: { ...$input.item } } };"
+			}
+		},
+		{
+			"id": "tag",
+			"name": "Tag",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 240],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "t",
+							"name": "tag",
+							"value": "x",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "seen-node",
+			"name": "Seen Node",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 240],
+			"parameters": {
+				"jsCode": "return [{ json: { all: $('Tag').all(), item: $('Tag').item, first: $('Tag').first(), last: $('Tag').last() } }];"
+			}
+		},
+		{
+			"id": "filter",
+			"name": "Filter",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [400, 340],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "c1",
+							"leftValue": "={{ $json.n }}",
+							"operator": {
+								"type": "number",
+								"operation": "notEquals"
+							},
+							"rightValue": 1
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "seen-filter",
+			"name": "Seen Filter",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 380],
+			"parameters": {
+				"jsCode": "return [{ json: { first: $('Filter').first(), item: $('Filter').item } }];"
+			}
+		},
+		{
+			"id": "filter-input",
+			"name": "Filter Input",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [600, 480],
+			"parameters": {
+				"jsCode": "return $input.all().map((item) => ({ json: { seen: item } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [[{ "node": "Three", "type": "main", "index": 0 }]]
+		},
+		"Three": {
+			"main": [
+				[
+					{ "node": "Seen Input", "type": "main", "index": 0 },
+					{ "node": "Spread", "type": "main", "index": 0 },
+					{ "node": "First Last", "type": "main", "index": 0 },
+					{ "node": "Each Item", "type": "main", "index": 0 },
+					{ "node": "Each Spread", "type": "main", "index": 0 },
+					{ "node": "Tag", "type": "main", "index": 0 },
+					{ "node": "Filter", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Tag": {
+			"main": [[{ "node": "Seen Node", "type": "main", "index": 0 }]]
+		},
+		"Filter": {
+			"main": [
+				[
+					{ "node": "Seen Filter", "type": "main", "index": 0 },
+					{ "node": "Filter Input", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

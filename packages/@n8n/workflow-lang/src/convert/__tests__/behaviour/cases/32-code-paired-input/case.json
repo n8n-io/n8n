@@ -1,0 +1,18 @@
+{
+	"description": "A Code node returns the input items as it gets them, through $input.all(), $input.first(), $input.last(), $input.item and $('Three'), after a trigger with 3 items and after a Filter: the pairedItem of each item, and an item that the code spreads into a result",
+	"trigger": {
+		"body": {
+			"label": "code-paired"
+		}
+	},
+	"compare": [
+		"Seen Input",
+		"Spread",
+		"First Last",
+		"Seen Node",
+		"Each Item",
+		"Each Spread",
+		"Seen Filter",
+		"Filter Input"
+	]
+}
