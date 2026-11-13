@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_ee852ab0af0158::t_66b94aa65a3fbb 74-75,95,136,166-171,190-191
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestModeChat.test.ts
+  s_ee852ab0af0158::t_275761e9a70eef 237-240,242-250,252-257,259-263,265-267,270-273,275,289-291
+  s_ee852ab0af0158::t_a5c532c9cd1291 234-236,264,268-269,276,278-287
+  s_ee852ab0af0158::t_5a667c67e147f5 274,288
+  s_ee852ab0af0158::t_766a91e99170a0 241
+  s_ee852ab0af0158::t_7a65cc5c4e55c6 251
+  s_ee852ab0af0158::t_c42b37c1c28a8c 258
+  s_ee852ab0af0158::t_559dc9a511e1e9 277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79eaf692cd5f5cb060f8a23d087a545f075112e0",
+  "prompts": {},
+  "sessions": {
+    "s_ee852ab0af0158": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e33-d963-71df-9e22-818fd31f4b32",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

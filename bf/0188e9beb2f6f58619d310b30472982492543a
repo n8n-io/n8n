@@ -1,0 +1,62 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_dd7e80244d88e6::t_cc2a32c8044409 87-92,208
+packages/frontend/editor-ui/src/features/agents/agentEvals.api.ts
+  s_dd7e80244d88e6::t_f9051c928239d6 3-4,49-52
+  s_dd7e80244d88e6::t_6e35cf0d6f9153 53-62,266,272
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_dd7e80244d88e6::t_63e022666f1009 330-346,356-357
+  s_dd7e80244d88e6::t_e6d87e32409847 347-355,358-359
+packages/cli/src/modules/agent-evals/agent-chat-tests.repository.ts
+  s_dd7e80244d88e6::t_f027660ba60ece 12,26-32,53-85,101,111
+  s_dd7e80244d88e6::t_b69d366f9f08f1 2-9,86-100,102-110,112-113,123
+packages/cli/src/modules/agent-evals/__tests__/agent-chat-tests.service.test.ts
+  s_dd7e80244d88e6::t_b6487cd7cbd211 4,32-33,48,50,56-69
+  s_dd7e80244d88e6::t_4036e743981003 70-72
+packages/@n8n/api-types/src/schemas/agent-eval-checks.schema.ts
+  s_dd7e80244d88e6::t_934e262be0b396 75-78
+  s_dd7e80244d88e6::t_49ca40fe8b0623 79-82
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_dd7e80244d88e6::t_48201ac3d3fee8 155-160
+  s_dd7e80244d88e6::t_78d6453628014d 161-162
+packages/cli/src/modules/agent-evals/__tests__/agent-chat-tests.repository.integration.test.ts
+  s_dd7e80244d88e6::t_e43b17885749c4 3-11,50-56,59-68,94
+  s_dd7e80244d88e6::t_0f84f4f69a5863 69-93,95-96
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_dd7e80244d88e6::t_f9575d9bda6175 153
+  s_dd7e80244d88e6::t_9d4a081146823d 117,154-158,161,837
+  s_dd7e80244d88e6::t_5a07b597382f41 159-160,162-163,788-792,834-836,838-849
+packages/cli/src/modules/agent-evals/agent-eval.service.ts
+  s_dd7e80244d88e6::t_36c895cd4a82b0 308-310
+  s_dd7e80244d88e6::t_c9441f2e85bc9e 311-312
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_dd7e80244d88e6::t_b8e42702aa970a 130
+  s_dd7e80244d88e6::t_671a6e7357672e 129
+  s_dd7e80244d88e6::t_541d1a8aa4462a 131-139
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_dd7e80244d88e6::t_801831126a9063 6,120-124,135
+  s_dd7e80244d88e6::t_c8e03bd4751e6a 125-134
+packages/cli/src/modules/agent-evals/agent-chat-tests.service.ts
+  s_dd7e80244d88e6::t_ded110aff340dd 1-5,8,32,35,45
+  s_dd7e80244d88e6::t_7b90347dd5196a 36-44,46-53
+packages/@n8n/api-types/src/index.ts
+  s_dd7e80244d88e6::t_efef69af57ff48 894
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  s_dd7e80244d88e6::t_45f335804d0f38 1061-1065
+  s_dd7e80244d88e6::t_675e92a86c6aa1 1066-1067
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf0188e9beb2f6f58619d310b30472982492543a",
+  "prompts": {},
+  "sessions": {
+    "s_dd7e80244d88e6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18cf2-d4b8-71df-9e22-8184693749a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

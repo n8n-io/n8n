@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_1d71d0bc0304f3::t_74a60073da7ed4 2,178-203
+  s_1d71d0bc0304f3::t_2242c239dd32a2 204-209,221,1359-1362
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_1d71d0bc0304f3::t_e7d5d5a65b36ea 13,33,55,1242-1281,1287,1293
+  s_1d71d0bc0304f3::t_554ba8733217b0 1282-1286,1288-1292,1294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "321fe26eda5e52fbcaf83f719c3eb68f41cc1cf1",
+  "prompts": {},
+  "sessions": {
+    "s_1d71d0bc0304f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18df2-ccb6-71df-9e22-818af293550a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

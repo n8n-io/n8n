@@ -1,0 +1,18 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  h_8a472ace01776f 2117-2155
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  h_8a472ace01776f 81-83
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  h_8a472ace01776f 586-614
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ffbb303b8e49be6aa8f753d6959427b8ded2afb",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

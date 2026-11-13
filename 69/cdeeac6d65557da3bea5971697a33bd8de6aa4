@@ -1,0 +1,31 @@
+packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts
+  s_9b3403f33f27bc::t_e975ff09624b5f 28,232-236,242-253,330-331,362,409-414,445,453
+packages/nodes-base/nodes/Postgres/v2/actions/database/select.operation.ts
+  s_9b3403f33f27bc::t_e975ff09624b5f 127,147-155
+packages/nodes-base/nodes/Postgres/v2/helpers/interfaces.ts
+  s_9b3403f33f27bc::t_e975ff09624b5f 23
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_9b3403f33f27bc::t_ec3c06622b5ba4 1266,1730-1811
+  s_9b3403f33f27bc::t_c6df5ee5738317 1812
+packages/nodes-base/nodes/Postgres/v2/actions/common.descriptions.ts
+  s_9b3403f33f27bc::t_e975ff09624b5f 364-366,378
+packages/nodes-base/nodes/Postgres/test/v2/startAfter.integration.test.ts
+  s_9b3403f33f27bc::t_ec3c06622b5ba4 47-49,235-248
+  s_9b3403f33f27bc::t_ac4007b94e561e 249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69cdeeac6d65557da3bea5971697a33bd8de6aa4",
+  "prompts": {},
+  "sessions": {
+    "s_9b3403f33f27bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b824e7d0-3e6b-453b-803b-35e874412684",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

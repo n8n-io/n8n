@@ -1,0 +1,24 @@
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_6c2341b8f2ea7f::t_71ac6887894734 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "784203223af4ddb5d8215789cfa6a717b022df44",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c2341b8f2ea7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95848dd9-6fd9-47d0-92e9-82bbc662db10",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
