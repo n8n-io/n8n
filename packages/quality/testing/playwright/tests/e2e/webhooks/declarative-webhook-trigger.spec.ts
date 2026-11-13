@@ -45,7 +45,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('should register the hook on activation, run only on an allowed delivery, and remove the hook on deactivation', async ({
+		test('should register the hook on activation, answer a handshake, run only on an allowed delivery, and remove the hook on deactivation', async ({
 			api,
 			services,
 		}) => {
@@ -72,8 +72,19 @@ test.describe(
 			const hook = registration.body as { target_url: string; events: string[] };
 			expect(hook.events).toEqual(['created']);
 
-			const deliver = async (data: object) =>
-				await api.webhooks.trigger(new URL(hook.target_url).pathname, { method: 'POST', data });
+			const deliver = async (data: object, headers?: Record<string, string>) =>
+				await api.webhooks.trigger(new URL(hook.target_url).pathname, {
+					method: 'POST',
+					data,
+					headers,
+				});
+
+			// A handshake echoes the secret as plain text and starts no execution.
+			const handshake = await deliver({}, { 'X-Hook-Secret': 's1' });
+			expect(handshake.status()).toBe(200);
+			expect(await handshake.text()).toBe('s1');
+			expect(handshake.headers()['content-type']).toContain('text/plain');
+			expect(handshake.headers()['x-hook-secret']).toBe('s1');
 
 			// A ping and an event that the node does not listen to start no execution.
 			const ping = await deliver({ type: 'ping' });

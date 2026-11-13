@@ -3095,8 +3095,25 @@ export interface IDeclarativeWebhookTrigger {
 	handler?: DeclarativeWebhookHandler;
 }
 
+/** A vendor request that confirms the endpoint. It starts no workflow. */
+export interface DeclarativeWebhookHandshake {
+	/** On `default`, a truthy result makes the request a handshake. On `setup`, a falsy result replies 401. */
+	when?: string;
+	respond?: {
+		/** Default `OK`. */
+		body?: string;
+		/** Default 200. */
+		statusCode?: number;
+		/** Default `text/plain` for a string body, unless `headers` sets a Content-Type. */
+		contentType?: string;
+		headers?: Record<string, string>;
+	};
+}
+
 /** The request stages of a declarative webhook trigger, in run order. Expressions can use `$webhookRequest`. A body with a `+json` content type is parsed as JSON. */
 export interface DeclarativeWebhookHandler {
+	/** Runs first. On a `setup` endpoint, every request is a handshake. */
+	handshake?: DeclarativeWebhookHandshake;
 	/** If `when` is truthy, reply with `response` (default `OK`) and start no workflow. */
 	ping?: { when: string; response?: string };
 	/** Start the workflow only if `actual` is in `allowed` (a string is one item). A `wildcard` in `allowed` accepts all. */

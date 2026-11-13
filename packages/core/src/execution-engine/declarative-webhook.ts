@@ -6,6 +6,7 @@ import type {
 	DeclarativeWebhookCheckExists,
 	DeclarativeWebhookCreate,
 	DeclarativeWebhookDelete,
+	DeclarativeWebhookHandshake,
 	IDataObject,
 	IDeclarativeWebhookTrigger,
 	IHookFunctions,
@@ -19,6 +20,7 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { randomBytes, randomInt, randomUUID } from 'node:crypto';
+import { validateHeaderValue } from 'node:http';
 
 import { ExecuteSingleContext, HookContext, WebhookContext } from './node-execution-context';
 import type { NodeExecutionContext } from './node-execution-context/node-execution-context';
@@ -307,6 +309,43 @@ async function shapeItems(
 	return items;
 }
 
+/** Sends the configured reply and starts no workflow. */
+function respondToHandshake(
+	context: WebhookContext,
+	handshake: DeclarativeWebhookHandshake,
+	extraKeys: IWorkflowDataProxyAdditionalKeys,
+): IWebhookResponseData {
+	const { body, statusCode = 200, contentType, headers = {} } = handshake.respond ?? {};
+	const res = context.getResponseObject();
+	for (const [name, value] of Object.entries(headers)) {
+		const header = resolve(context, value, extraKeys);
+		const text = typeof header === 'string' ? header : JSON.stringify(header);
+		try {
+			// Skip a missing or invalid value, as the server does for response headers.
+			validateHeaderValue(name, text);
+		} catch {
+			continue;
+		}
+		res.setHeader(name, text);
+	}
+	const resolved = body === undefined ? 'OK' : resolve(context, body, extraKeys);
+	// With `undefined`, the server would send its default message.
+	const value = resolved === undefined ? '' : resolved;
+	// A string reply would go out as HTML. Send it as plain text, as the hand-written triggers do.
+	const type =
+		contentType ??
+		(typeof value === 'string' && !res.getHeader('content-type') ? 'text/plain' : undefined);
+	if (type) res.setHeader('content-type', type);
+	if (statusCode === 200) return { webhookResponse: value };
+
+	// The server sets the status of the route, so another status needs a direct reply.
+	res.status(statusCode);
+	// The same rule as the server reply: a string is sent as it is, other values as JSON.
+	if (typeof value === 'string') res.send(value);
+	else res.json(value);
+	return { noWebhookResponse: true };
+}
+
 /** The server parses only `application/json`, so a vendor type such as `application/vnd.api+json` arrives unparsed. */
 async function readBody(context: WebhookContext) {
 	const req = context.getRequestObject();
@@ -324,9 +363,9 @@ async function readBody(context: WebhookContext) {
 	return context.getBodyData();
 }
 
-/** Builds the default `webhook()` of a declarative webhook trigger. Stage order: ping, filter, output. */
+/** Builds the default `webhook()` of a declarative webhook trigger. Stage order: handshake, ping, filter, output. */
 export function createDeclarativeWebhook(trigger: IDeclarativeWebhookTrigger) {
-	const { ping, filter, output } = trigger.handler ?? {};
+	const { handshake, ping, filter, output } = trigger.handler ?? {};
 	return async function (this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		if (!(this instanceof WebhookContext)) {
 			throw new UnexpectedError('Declarative webhook trigger needs a WebhookContext');
@@ -336,6 +375,18 @@ export function createDeclarativeWebhook(trigger: IDeclarativeWebhookTrigger) {
 		const query = this.getQueryData();
 		const request = { body, headers, query };
 		const extraKeys: IWorkflowDataProxyAdditionalKeys = { $webhookRequest: request };
+
+		if (this.getWebhookName() === 'setup') {
+			if (handshake?.when !== undefined && !resolve(this, handshake.when, extraKeys)) {
+				this.getResponseObject().status(401).send('Unauthorized');
+				return { noWebhookResponse: true };
+			}
+			return respondToHandshake(this, handshake ?? {}, extraKeys);
+		}
+
+		if (handshake?.when !== undefined && resolve(this, handshake.when, extraKeys)) {
+			return respondToHandshake(this, handshake, extraKeys);
+		}
 
 		if (ping && resolve(this, ping.when, extraKeys)) {
 			return {
