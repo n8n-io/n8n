@@ -45,7 +45,6 @@ export class CodeExecutionConfig {
 	 * When set to `sandbox`, you must also set `N8N_CODE_SANDBOX_URL` and
 	 * `N8N_CODE_SANDBOX_API_KEY`. n8n doesn't start if the value is invalid.
 	 */
-	// Validated at startup, so a typo fails instead of falling back to task runners.
 	@Env('N8N_CODE_EXECUTION_BACKEND')
 	backend: string = 'task-runners';
 
