@@ -181,6 +181,55 @@ describe('MCP Schedule Trigger intervals', () => {
 		},
 	);
 
+	test.each([1.3, 1.4])(
+		'identifies the node and interval in v%s when several Schedule Triggers exist',
+		async (version) => {
+			const code = `
+				const daily = trigger({
+					type: 'n8n-nodes-base.scheduleTrigger',
+					version: ${version},
+					config: {
+						name: 'Daily schedule',
+						parameters: { rule: { interval: [{ field: 'days', daysInterval: 1 }] } },
+					},
+				});
+				const frequent = trigger({
+					type: 'n8n-nodes-base.scheduleTrigger',
+					version: ${version},
+					config: {
+						name: 'Frequent schedule',
+						parameters: {
+							rule: {
+								interval: [
+									{ field: 'minutes', minutesInterval: 5 },
+									{ field: 'minutes', minutesInterval: 60 },
+								],
+							},
+						},
+					},
+				});
+				const done = node({
+					type: 'n8n-nodes-base.noOp',
+					version: 1,
+					config: { name: 'Done' },
+				});
+				export default workflow('multiple-schedules-test', 'Multiple schedules test')
+					.add(daily.to(done))
+					.add(frequent.to(done));
+			`;
+			const expectedError = "node 'Frequent schedule', interval 2: Minutes must be in range 1-59";
+
+			const validated = await validateCode(code);
+			const created = await createTool().handler({ code });
+
+			expect(validated.structuredContent).toEqual({ valid: false, errors: [expectedError] });
+			expect(created.structuredContent).toMatchObject({ error: expectedError });
+			expect(validated.isError).toBe(true);
+			expect(created.isError).toBe(true);
+			expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+		},
+	);
+
 	test.each([
 		{ field: 'seconds', parameter: 'secondsInterval', value: 1 },
 		{ field: 'seconds', parameter: 'secondsInterval', value: 59 },

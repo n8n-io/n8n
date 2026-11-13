@@ -50,7 +50,9 @@ export async function validateScheduleTriggerIntervals(
 				);
 			} catch (error) {
 				if (error instanceof NodeOperationError) {
-					throw new UserError(error.description ?? error.message);
+					throw new UserError(
+						`node '${node.name ?? node.type}', interval ${index + 1}: ${error.description ?? error.message}`,
+					);
 				}
 				throw error;
 			}
