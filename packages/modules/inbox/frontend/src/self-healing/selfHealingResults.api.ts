@@ -1,5 +1,6 @@
 import type {
 	ProjectType,
+	SelfHealingOriginalAction,
 	SelfHealingResultActionResponse,
 	SelfHealingResultDetail,
 	SelfHealingStatusDto,
@@ -35,8 +36,11 @@ export async function reviewSelfHealingResult(
 	context: IRestApiContext,
 	selection: SelfHealingSelection,
 	action: SelfHealingReviewAction,
+	originalAction: SelfHealingOriginalAction,
 ): Promise<SelfHealingResultActionResponse> {
-	return await makeRestApiRequest(context, 'POST', `${resultPath(selection)}/${action}`);
+	return await makeRestApiRequest(context, 'POST', `${resultPath(selection)}/${action}`, {
+		originalAction,
+	});
 }
 
 export async function fetchResultWorkflow(

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { WorkflowSuggestionProposalDetail } from './workflow-suggestions';
+import { Z } from './zod-class';
 
 export const selfHealingResultOutcomeSchema = z.enum(['fix_ready', 'needs_you', 'could_not_fix']);
 export type SelfHealingResultOutcome = z.infer<typeof selfHealingResultOutcomeSchema>;
@@ -91,3 +92,16 @@ export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
 	 */
 	restorationError?: { workflowId: string; error: string };
 };
+
+export const selfHealingOriginalActionSchema = z.enum([
+	'publish',
+	'continue',
+	'open_editor',
+	'dismiss',
+]);
+export type SelfHealingOriginalAction = z.infer<typeof selfHealingOriginalActionSchema>;
+
+export class SelfHealingResultActionDto extends Z.class({
+	/** The button that the user selected. Telemetry only. */
+	originalAction: selfHealingOriginalActionSchema.optional(),
+}) {}
