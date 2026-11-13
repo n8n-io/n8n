@@ -146,4 +146,63 @@ describe('Agent service accounts', () => {
 		expect((await agentRepo.findOneByOrFail({ id: agent.id })).identityId).toBeNull();
 		expect(await countServiceAccounts()).toBe(before);
 	});
+	describe('rename', () => {
+		const rename = async (agentId: string, name: string) => {
+			const agent = await agentRepo.findOneByOrFail({ id: agentId });
+			agent.name = name;
+			return await agentRepo.saveDraftFenced(agent);
+		};
+
+		it('renames the service account and its personal project with the agent', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+
+			expect(await rename(agent.id, 'Support Agent')).toBe(true);
+
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+			const { identityId } = await agentRepo.findOneByOrFail({ id: agent.id });
+			const personalProject = await Container.get(
+				ProjectRepository,
+			).getPersonalProjectForUserOrFail(identityId!);
+			expect(personalProject.name).toBe('Support Agent');
+		});
+
+		it('keeps the last name when the new name is blank', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Support Agent', { actor });
+
+			expect(await rename(agent.id, '   ')).toBe(true);
+
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+		});
+
+		it('does not save the agent name when the account rename fails', async () => {
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+			vi.spyOn(Container.get(ServiceAccountRepository), 'rename').mockRejectedValueOnce(
+				new Error('rename failed'),
+			);
+			const draft = await agentRepo.findOneByOrFail({ id: agent.id });
+			const { revision } = draft;
+			draft.name = 'Support Agent';
+
+			await expect(agentRepo.saveDraftFenced(draft)).rejects.toThrow('rename failed');
+
+			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Untitled');
+			// The caller's agent keeps the stored revision, so a retry still passes the fence.
+			expect(draft.revision).toBe(revision);
+			expect(await agentRepo.saveDraftFenced(draft)).toBe(true);
+			await expectServiceAccountWithPersonalProject(agent.id, 'Support Agent');
+		});
+
+		it('renames an agent without a service account', async () => {
+			agentsConfig.serviceAccountsEnabled = false;
+			const project = await createTeamProject();
+			const agent = await agentsService.create(project.id, 'Untitled', { actor });
+
+			expect(await rename(agent.id, 'Support Agent')).toBe(true);
+
+			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Support Agent');
+		});
+	});
 });
