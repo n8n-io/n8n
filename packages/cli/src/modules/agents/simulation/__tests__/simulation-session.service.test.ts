@@ -375,7 +375,7 @@ describe('SimulationSessionService', () => {
 
 		const described = JSON.stringify(vi.mocked(backend.describeTools).mock.calls[0][0]);
 		expect(described).not.toContain('s3cret-mcp-key');
-		expect(described).toContain('https://mcp.example.com/mcp?key=%5BREDACTED%5D');
+		expect(described).toContain('https://mcp.example.com/mcp');
 	});
 
 	it('marks a tool the backend leaves out as unsupported by the simulator', async () => {

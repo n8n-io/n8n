@@ -346,7 +346,7 @@ describe('SimulationSession', () => {
 
 		const [request, call] = world.handleRequest.mock.calls[0];
 		expect(JSON.stringify(request)).not.toContain('s3cret-mcp-key');
-		expect(request.url).toBe('https://mcp.example.com/mcp?key=%5BREDACTED%5D');
+		expect(request.url).toBe('https://mcp.example.com/mcp');
 		expect(call).toMatchObject({ mcpServerName: 'docs' });
 	});
 
@@ -356,12 +356,12 @@ describe('SimulationSession', () => {
 			{
 				name: 'acct_a',
 				url: 'https://mcp.example.com/mcp?key=key-a',
-				simulatorUrl: 'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
+				simulatorUrl: 'https://mcp.example.com/mcp?n8n_mcp_server=acct_a',
 			},
 			{
 				name: 'acct_b',
 				url: 'https://mcp.example.com/mcp?key=key-b',
-				simulatorUrl: 'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
+				simulatorUrl: 'https://mcp.example.com/mcp?n8n_mcp_server=acct_b',
 			},
 		];
 		const session = new SimulationSession({
@@ -400,12 +400,12 @@ describe('SimulationSession', () => {
 			{
 				name: 'acct_a',
 				url: 'https://mcp.example.com?key=key-a',
-				simulatorUrl: 'https://mcp.example.com/?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
+				simulatorUrl: 'https://mcp.example.com/?n8n_mcp_server=acct_a',
 			},
 			{
 				name: 'acct_b',
 				url: 'https://mcp.example.com?key=key-b',
-				simulatorUrl: 'https://mcp.example.com/?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
+				simulatorUrl: 'https://mcp.example.com/?n8n_mcp_server=acct_b',
 			},
 		];
 		const session = new SimulationSession({
