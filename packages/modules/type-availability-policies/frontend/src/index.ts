@@ -8,6 +8,7 @@ export {
 export { useTypeAvailability } from './composables/useTypeAvailability';
 export {
 	describeAgentToolRestriction,
+	describeImportedRestrictions,
 	describeNodeTypeRestriction,
 	describeTypeRestriction,
 	describeRestrictedNodeTypes,
@@ -34,11 +35,15 @@ export { default as RestrictedNodePanel } from './components/RestrictedNodePanel
 export { default as RestrictedTypeCallout } from './components/RestrictedTypeCallout.vue';
 export { default as RestrictedSubWorkflowCallout } from './components/RestrictedSubWorkflowCallout.vue';
 export { default as ContactAdminModal } from './components/ContactAdminModal.vue';
-export { getPolicyViolations } from './policy-violations/policyViolations';
+export {
+	getPolicyViolations,
+	type PolicyViolationListItem,
+} from './policy-violations/policyViolations';
 export { parseExecutionBlockCauses } from './wont-execute/wontExecute';
 export { default as WontExecuteFilter } from './wont-execute/WontExecuteFilter.vue';
 export { default as WontExecuteCallout } from './wont-execute/WontExecuteCallout.vue';
 export { default as PolicyViolationList } from './policy-violations/PolicyViolationList.vue';
+export { default as PolicyViolationToastBody } from './policy-violations/PolicyViolationToastBody.vue';
 export {
 	useTransferPreview,
 	type TransferPreview,

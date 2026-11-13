@@ -177,6 +177,19 @@ export function describeRestrictedNodeTypes(restricted: RestrictedNodeTypeName[]
 	].join('\n');
 }
 
+const IMPORTED_DESCRIPTION_KEY: Record<RestrictionContact, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.importedRestricted.description',
+	project: 'typeAvailabilityPolicies.importedRestricted.description.project',
+	optIn: 'typeAvailabilityPolicies.importedRestricted.description.optIn',
+};
+
+export function describeImportedRestrictions(verdicts: RestrictionVerdict[]): string {
+	const contact = sharedRestrictionContact(
+		verdicts.map((verdict) => getRestrictionContact(verdict)),
+	);
+	return useI18n().baseText(IMPORTED_DESCRIPTION_KEY[contact]);
+}
+
 export type RestrictionMessage = NodeTypeAvailabilityScope | 'optIn' | 'generic';
 
 export function getRestrictionMessage(
