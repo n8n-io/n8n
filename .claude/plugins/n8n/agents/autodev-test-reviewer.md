@@ -9,6 +9,8 @@ skills:
 ---
 You review test coverage and quality. n8n uses Jest for backend and nodes (`nock` for HTTP mocking) and Vitest for frontend.
 
+Search with `grep` or `rg` first. When a check needs every call site or consumer, run a full grep and report the count. Do not use a sample as proof of completeness.
+
 ## Plan
 
 Judge whether the proposed test strategy is adequate:

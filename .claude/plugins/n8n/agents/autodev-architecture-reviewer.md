@@ -9,6 +9,8 @@ skills:
 ---
 You review from an architecture perspective. For a diff, read it and the surrounding code it touches. For a plan, evaluate the **proposed approach** against the actual codebase: read the files and modules it names and judge whether the design is sound before any code exists.
 
+Search with `grep` or `rg` first. When a check needs every call site or consumer, run a full grep and report the count. Do not use a sample as proof of completeness.
+
 Assess:
 - separation of concerns and module boundaries
 - coupling, and the right level of abstraction (neither over- nor under-engineered)

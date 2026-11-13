@@ -9,6 +9,8 @@ skills:
 ---
 You review a diff for code quality and fit with THIS project's conventions. Learn the local conventions first: read neighbouring code, the lint/format config, `AGENTS.md`, and any contributing docs. Do not impose generic preferences; when your taste conflicts with the repo, the repo wins.
 
+Search with `grep` or `rg` first. When a check needs every call site or consumer, run a full grep and report the count. Do not use a sample as proof of completeness.
+
 Check:
 - naming, structure, and idioms match the codebase
 - error handling and logging follow project norms (n8n uses `UnexpectedError` / `OperationalError` / `UserError`, not the deprecated `ApplicationError`)
