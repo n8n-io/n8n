@@ -2,7 +2,6 @@ import type { Agent as RuntimeAgent, GenerateResult } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import type { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -80,27 +79,17 @@ const makeGenerateResult = (overrides: Partial<GenerateResult> = {}): GenerateRe
 
 function buildService(
 	overrides: {
-		queueMode?: boolean;
 		agentsActive?: boolean;
 		mcpRegistryActive?: boolean;
 	} = {},
 ) {
-	const executionsConfig = mock<ExecutionsConfig>();
-	Object.defineProperty(executionsConfig, 'mode', {
-		get: () => (overrides.queueMode ? 'queue' : 'regular'),
-	});
 	const moduleRegistry = mock<ModuleRegistry>();
 	moduleRegistry.isActive.mockImplementation((moduleName) => {
 		if (moduleName === 'agents') return overrides.agentsActive ?? true;
 		if (moduleName === 'mcp-registry') return overrides.mcpRegistryActive ?? true;
 		return true;
 	});
-	return new EvalAgentExecutionService(
-		logger,
-		executionsConfig,
-		moduleRegistry,
-		mock<OutboundHttp>(),
-	);
+	return new EvalAgentExecutionService(logger, moduleRegistry, mock<OutboundHttp>());
 }
 
 describe('EvalAgentExecutionService.executeWithLlmMock', () => {
@@ -120,17 +109,6 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	});
 
 	const request = { projectId: 'proj-1' };
-
-	it('refuses queue mode upfront', async () => {
-		const result = await buildService({ queueMode: true }).executeWithLlmMock(
-			'agent-1',
-			user,
-			request,
-		);
-		expect(result.success).toBe(false);
-		expect(result.errors[0]).toMatch(/queue mode is not supported/);
-		expect(agentEvaluation.prepare).not.toHaveBeenCalled();
-	});
 
 	it('refuses when the agents module is inactive', async () => {
 		const result = await buildService({ agentsActive: false }).executeWithLlmMock(

@@ -2,7 +2,7 @@ import type { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
@@ -243,7 +243,6 @@ describe('EvalExecutionService', () => {
 	const postHogClient = mock<PostHogClient>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
 	const binaryDataService = mock<BinaryDataService>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
@@ -282,7 +281,6 @@ describe('EvalExecutionService', () => {
 			postHogClient,
 			workflowRunner,
 			activeExecutions,
-			executionsConfig,
 			binaryDataService,
 			workflowStaticDataService,
 			loadNodesAndCredentials,
@@ -292,8 +290,6 @@ describe('EvalExecutionService', () => {
 			instanceAiConfig,
 			moduleRegistry,
 		);
-		// Reset to safe default — tests that flip queue mode reassign in-test.
-		Object.assign(executionsConfig, { mode: 'regular' });
 
 		// Root vi config sets `restoreMocks: true`, which strips implementations
 		// between tests — re-set every impl we depend on here.
@@ -955,17 +951,6 @@ describe('EvalExecutionService', () => {
 			expect(result.success).toBe(false);
 			expect(result.executionId).toBe(DB_EXECUTION_ID);
 			expect(result.errors).toEqual([expect.stringContaining('no run data')]);
-		});
-
-		it('refuses to run in queue mode before touching anything else', async () => {
-			Object.assign(executionsConfig, { mode: 'queue' });
-
-			const result = await service.executeWithLlmMock('wf-1', makeUser());
-
-			expect(result.success).toBe(false);
-			expect(result.errors).toEqual([expect.stringContaining('queue mode')]);
-			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
-			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 	});
 

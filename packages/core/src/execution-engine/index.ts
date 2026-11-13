@@ -94,7 +94,8 @@ declare module 'n8n-workflow' {
 		/**
 		 * Invoked by `WorkflowRunner` once `additionalData` is fully built, just
 		 * before the workflow runs. Function fields don't survive queue
-		 * serialization, so callers using this hook must stay on the main process.
+		 * serialization, so `WorkflowRunner` runs a workflow that sets this hook
+		 * in the calling process, also in queue mode.
 		 *
 		 * @internal
 		 */

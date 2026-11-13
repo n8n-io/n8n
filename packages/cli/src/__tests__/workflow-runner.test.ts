@@ -849,6 +849,7 @@ describe('run', () => {
 			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
 
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				executionMode: 'trigger',
 				workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
 			});
@@ -954,6 +955,7 @@ describe('run', () => {
 			});
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
 			workflowData: { nodes: [], staticData: {} },
@@ -986,6 +988,7 @@ describe('run', () => {
 		const recreateNodeExecutionStackSpy = vi.spyOn(core, 'recreateNodeExecutionStack');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			triggerToStartFrom: { name: 'trigger', data: undefined },
 
 			workflowData: { nodes: [], staticData: {} },
@@ -1018,6 +1021,7 @@ describe('run', () => {
 		);
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			triggerToStartFrom: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -1050,6 +1054,7 @@ describe('run', () => {
 				.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
 
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				executionMode: 'webhook',
 				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
 				executionData: createRunExecutionData({}),
@@ -1151,6 +1156,7 @@ describe('run', () => {
 			);
 
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				triggerToStartFrom: undefined,
 				workflowData: { nodes: [], staticData: {} },
 				executionData: undefined,
@@ -1195,6 +1201,7 @@ describe('run', () => {
 		});
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
 			workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
@@ -1243,6 +1250,7 @@ describe('run', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
 				executionData: executionData ?? createRunExecutionData({}),
 				triggerToStartFrom: undefined,
@@ -1293,6 +1301,26 @@ describe('run', () => {
 			expect(additionalData.rootExecutionMode).toBe('manual');
 		});
 
+		it('runs in this process in queue mode, because the closure cannot be serialized', async () => {
+			globalConfig.executions.mode = 'queue';
+			try {
+				const { data } = arrangeRunDeps();
+				vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
+				vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
+				data.executionMode = 'evaluation';
+				const configureAdditionalData = vi.fn();
+				data.configureAdditionalData = configureAdditionalData;
+				const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
+
+				await runner.run(data);
+
+				expect(enqueueExecution).not.toHaveBeenCalled();
+				expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+			} finally {
+				globalConfig.executions.mode = 'regular';
+			}
+		});
+
 		it('is a no-op when not provided', async () => {
 			const { data } = arrangeRunDeps();
 			// Not setting data.configureAdditionalData
@@ -1316,6 +1344,7 @@ describe('run', () => {
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
 				executionData: Object.assign(createRunExecutionData({}), { pushRefUserId: undefined }),
 				triggerToStartFrom: undefined,
@@ -1353,6 +1382,7 @@ describe('run', () => {
 			);
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
 				executionData: createRunExecutionData({}),
 				triggerToStartFrom: undefined,
@@ -1374,6 +1404,7 @@ describe('enqueueExecution', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
@@ -1400,6 +1431,7 @@ describe('enqueueExecution', () => {
 			mock<core.ExecutionLifecycleHooks>(),
 		);
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			executionMode: 'trigger',
 			workflowData: { nodes: [], staticData: {} },
 			forceFullExecutionData: true,
@@ -1425,6 +1457,7 @@ describe('enqueueExecution', () => {
 	describe('when the start fails on main', () => {
 		const runHook = vi.fn().mockResolvedValue(undefined);
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			executionMode: 'webhook',
 			workflowData: { nodes: [], staticData: {} },
 			executionData: createRunExecutionData({}),
@@ -1483,6 +1516,7 @@ describe('enqueueExecution', () => {
 			mock<core.ExecutionLifecycleHooks>(),
 		);
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			executionMode: 'trigger',
 			workflowData: { nodes: [], staticData: {} },
 			forceFullExecutionData: false,
@@ -1548,6 +1582,7 @@ describe('enqueueExecution', () => {
 				mock<core.ExecutionLifecycleHooks>(),
 			);
 			const data = mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				executionMode: 'trigger',
 				workflowData: { nodes: [], staticData: {} },
 				forceFullExecutionData,
@@ -1581,6 +1616,7 @@ describe('enqueueExecution', () => {
 		});
 		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
@@ -1614,6 +1650,7 @@ describe('enqueueExecution', () => {
 		});
 		const processError = vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
@@ -1642,6 +1679,7 @@ describe('enqueueExecution', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
@@ -1671,6 +1709,7 @@ describe('enqueueExecution', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			pushRef: 'push-ref',
@@ -1709,6 +1748,7 @@ describe('enqueueExecution', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			...processData,
@@ -1730,6 +1770,7 @@ describe('enqueueExecution', () => {
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			executionMode: 'trigger',
@@ -1799,6 +1840,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const startedAt = new Date(Date.now() - 5000); // 5 seconds ago
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: {
 				nodes: [],
 				staticData: {},
@@ -1854,6 +1896,7 @@ describe('workflow timeout with startedAt', () => {
 
 		const startedAt = new Date(Date.now() - 15000); // 15 seconds ago (timeout already elapsed)
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: {
 				nodes: [],
 				staticData: {},
@@ -1899,6 +1942,7 @@ describe('workflow timeout with startedAt', () => {
 		Container.get(GlobalConfig).executions.timeout = 10;
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: {
 				nodes: [],
 				staticData: {},
@@ -1952,6 +1996,7 @@ describe('workflow timeout with startedAt', () => {
 		});
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: {
 				nodes: [],
 				staticData: {},
@@ -2025,6 +2070,7 @@ describe('pre-persist context establishment', () => {
 		executionMode: WorkflowExecuteMode = 'webhook',
 	): IWorkflowExecutionDataProcess =>
 		mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			executionMode,
 			workflowData: {
 				id: 'wf-1',
@@ -2377,6 +2423,7 @@ describe('streaming functionality', () => {
 		const mockSetInterval = vi.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
+			configureAdditionalData: undefined,
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			executionMode: 'webhook',
@@ -2419,6 +2466,7 @@ describe('streaming functionality', () => {
 
 		await runner.run(
 			mock<IWorkflowExecutionDataProcess>({
+				configureAdditionalData: undefined,
 				streamingEnabled: true,
 				httpResponse: mock<StreamingResponse>({ writableEnded: false }),
 			}),

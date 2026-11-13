@@ -137,6 +137,22 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		);
 	}
 
+	/**
+	 * Mark the running runs of one instance as errored. Called on startup with
+	 * more than one main, where another main can still run its own runs.
+	 */
+	async markIncompleteAsErrorForInstance(runningInstanceId: string) {
+		return await this.update(
+			{ status: 'running', runningInstanceId },
+			{
+				status: 'error',
+				errorCode: 'interrupted',
+				completedAt: new Date(),
+				runningInstanceId: null,
+			},
+		);
+	}
+
 	/** Lightweight read of just the cross-main cancellation flag for a run. */
 	async isCancellationRequested(id: string): Promise<boolean> {
 		const run = await this.findOne({ where: { id }, select: ['id', 'cancelRequested'] });

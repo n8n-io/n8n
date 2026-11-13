@@ -356,7 +356,7 @@ export async function executeWorkflow(
 
 	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
 	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
+	// serialization, so WorkflowRunner keeps these runs in this process.
 	const instrument = context.instrumentToolAdditionalData;
 	if (instrument && instrumentedToolName) {
 		runData.configureAdditionalData = (additionalData) => {

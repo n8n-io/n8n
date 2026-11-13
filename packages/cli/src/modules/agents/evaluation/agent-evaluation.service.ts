@@ -1,6 +1,5 @@
 import { raceWithAbort, throwIfAborted } from '@n8n/agents';
 import { Service } from '@n8n/di';
-import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
 
@@ -28,7 +27,6 @@ import { pruneConfigForEval, summarizeTools } from './evaluation-config';
 export class AgentEvaluationService {
 	constructor(
 		private readonly settings: AgentsSettingsService,
-		private readonly executionsConfig: ExecutionsConfig,
 		private readonly repository: AgentRepository,
 		private readonly skillRefs: AgentSkillRefsService,
 		private readonly reconstruction: AgentRuntimeReconstructionService,
@@ -41,9 +39,6 @@ export class AgentEvaluationService {
 		agentId: string,
 		abortSignal?: AbortSignal,
 	) {
-		if (this.executionsConfig.mode === 'queue') {
-			return 'Agent eval execution requires main process mode — queue mode is not supported.';
-		}
 		if (!(await raceWithAbort(async () => await this.settings.getEnabled(), abortSignal))) {
 			return 'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.';
 		}

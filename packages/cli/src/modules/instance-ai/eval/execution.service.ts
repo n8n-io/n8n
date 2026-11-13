@@ -9,7 +9,7 @@ import {
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { NodeTypesProxy, PostHogClient } from '@n8n/backend-services';
-import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import { InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
@@ -145,7 +145,6 @@ export class EvalExecutionService {
 		private readonly postHogClient: PostHogClient,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -168,15 +167,9 @@ export class EvalExecutionService {
 				? undefined
 				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs };
 
-		// Eval routes through WorkflowRunner with a configureAdditionalData closure
-		// that doesn't survive queue serialization. Refuse upfront so vendor calls
-		// can never leak to real providers from a worker that never wires the mock.
-		if (this.executionsConfig.mode === 'queue') {
-			return this.errorResult(
-				randomUUID(),
-				'Eval execution requires main process mode — queue mode is not supported.',
-			);
-		}
+		// Eval routes through WorkflowRunner with a configureAdditionalData closure.
+		// WorkflowRunner keeps such runs in this process, also in queue mode, so a
+		// worker that never wires the mock never runs them.
 
 		// Retry transient lookup misses from concurrent eval runs.
 		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [

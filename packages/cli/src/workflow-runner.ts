@@ -552,11 +552,14 @@ export class WorkflowRunner {
 		// queue/local decision because a worker cannot write to it.
 		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
+		// A `configureAdditionalData` closure does not survive queue serialization,
+		// so a run that has one must stay in this process.
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
+			data.configureAdditionalData === undefined &&
+			(process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
+				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual');
 
 		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
 
@@ -589,6 +592,7 @@ export class WorkflowRunner {
 		// only run these when not in queue mode or when the execution is manual,
 		// since these calls are now done by the worker directly
 		if (
+			!shouldEnqueue ||
 			this.executionsConfig.mode !== 'queue' ||
 			this.instanceSettings.instanceType === 'worker' ||
 			data.executionMode === 'manual' ||

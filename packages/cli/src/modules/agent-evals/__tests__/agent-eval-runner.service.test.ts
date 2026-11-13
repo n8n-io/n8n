@@ -158,6 +158,7 @@ describe('AgentEvalRunnerService', () => {
 			// `agentEvalsEnabled` is gone from here: the flag is the gate's business now.
 			evaluation: { agentEvalsRunTimeoutMinutes: 60 },
 			executions: { mode: 'regular' },
+			multiMainSetup: { enabled: false },
 		} as unknown as GlobalConfig;
 		instanceSettings = { hostId: 'main-1' } as unknown as InstanceSettings;
 		moduleRegistry = mock<ModuleRegistry>();
@@ -249,10 +250,17 @@ describe('AgentEvalRunnerService', () => {
 			expect(runRepository.createRun).not.toHaveBeenCalled();
 		});
 
-		it('refuses in queue mode', async () => {
+		it('starts in queue mode, on the main that received the request', async () => {
 			globalConfig.executions.mode = 'queue';
-			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('queue mode');
-			expect(runRepository.createRun).not.toHaveBeenCalled();
+			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { runId, finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(runId).toBe('run-1');
+			expect(runRepository.markAsRunning).toHaveBeenCalledWith('run-1', 'main-1');
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalled();
 		});
 
 		it('refuses when a module the run depends on is inactive', async () => {
@@ -1206,13 +1214,6 @@ describe('AgentEvalRunnerService', () => {
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
-		it('refuses in queue mode', async () => {
-			globalConfig.executions.mode = 'queue';
-			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
-				'queue mode',
-			);
-		});
-
 		it('rejects when the user cannot run agents in the project', async () => {
 			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
 			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
@@ -1428,10 +1429,18 @@ describe('AgentEvalRunnerService', () => {
 			await expect(service.cleanupInterruptedRuns()).resolves.toBeUndefined();
 		});
 
-		it('does not sweep in queue mode (never touches another main’s runs)', async () => {
+		it('sweeps all incomplete runs in queue mode with one main', async () => {
 			globalConfig.executions.mode = 'queue';
 			await service.cleanupInterruptedRuns();
+			expect(runRepository.markAllIncompleteAsError).toHaveBeenCalled();
+		});
+
+		it('sweeps only the runs of this host with more than one main', async () => {
+			globalConfig.executions.mode = 'queue';
+			globalConfig.multiMainSetup.enabled = true;
+			await service.cleanupInterruptedRuns();
 			expect(runRepository.markAllIncompleteAsError).not.toHaveBeenCalled();
+			expect(runRepository.markIncompleteAsErrorForInstance).toHaveBeenCalledWith('main-1');
 		});
 	});
 });

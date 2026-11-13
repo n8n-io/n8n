@@ -66,9 +66,10 @@ interface CaseUsage {
  * Executes an agent-eval dataset against a real agent and persists per-case
  * results, then aggregates run-level status.
  *
- * Runs on the main process only: the tool-mock substrate reused from the
- * instance-ai eval path carries a closure that cannot cross a queue boundary
- * (see {@link EvalAgentExecutionService}). A per-run pool caps in-flight cases
+ * Runs on the main process that started the run, also in queue mode: the
+ * tool-mock substrate reused from the instance-ai eval path carries a closure
+ * that cannot cross a queue boundary, so `WorkflowRunner` keeps instrumented
+ * workflow-tool runs in this process (see {@link EvalAgentExecutionService}). A per-run pool caps in-flight cases
  * and layers on the shared, license-tiered instance-wide evaluation concurrency
  * queue (the same one the workflow eval uses), so a single run can't flood the
  * queue and concurrent runs can't collectively exceed the plan limit;
@@ -112,10 +113,6 @@ export class AgentEvalRunnerService {
 		// Per user, since PostHog owns cohort rollout. The REST layer gates too — this
 		// is the backstop for any other caller.
 		await this.flagGate.assertEnabled(user);
-
-		if (this.globalConfig.executions.mode === 'queue') {
-			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
-		}
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
 		assertRequiredModulesActive(this.moduleRegistry);
@@ -215,10 +212,6 @@ export class AgentEvalRunnerService {
 		options: { timeoutMs?: number; whatToCheck?: string } = {},
 	): Promise<AgentEvalResult> {
 		await this.flagGate.assertEnabled(user);
-
-		if (this.globalConfig.executions.mode === 'queue') {
-			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
-		}
 
 		assertRequiredModulesActive(this.moduleRegistry);
 
@@ -571,14 +564,13 @@ export class AgentEvalRunnerService {
 	 * module startup; best-effort so it can never block boot.
 	 */
 	async cleanupInterruptedRuns(): Promise<void> {
-		// Runs are only ever created/executed on a single-main (non-queue)
-		// instance — `startRun` refuses queue mode, and n8n multi-main requires it.
-		// So on such an instance every incomplete run at startup is this instance's
-		// own leftover, safe to sweep. Skip entirely in queue mode so bringing up
-		// an additional main never touches runs owned by a different instance.
-		if (this.globalConfig.executions.mode === 'queue') return;
+		// Runs execute on mains only. With one main, every incomplete run at
+		// startup is a leftover of this main. With more than one main, another
+		// main can still run its own runs, so only sweep the runs of this host.
 		try {
-			const result = await this.runRepository.markAllIncompleteAsError();
+			const result = this.globalConfig.multiMainSetup.enabled
+				? await this.runRepository.markIncompleteAsErrorForInstance(this.instanceSettings.hostId)
+				: await this.runRepository.markAllIncompleteAsError();
 			if (result.affected && result.affected > 0) {
 				this.logger.debug(
 					`[AgentEvalRunner] Marked ${result.affected} interrupted run(s) as errored on startup`,

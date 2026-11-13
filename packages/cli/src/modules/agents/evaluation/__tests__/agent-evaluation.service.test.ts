@@ -38,11 +38,10 @@ const baseConfig: AgentJsonConfig = {
 
 function setup(config: AgentJsonConfig | null = baseConfig) {
 	const settings = mock<Dependencies[0]>();
-	const executions = mock<Dependencies[1]>({ mode: 'regular' });
-	const repository = mock<Dependencies[2]>();
+	const repository = mock<Dependencies[1]>();
 	const skillRefs = createAgentSkillRefsService();
-	const reconstruction = mock<Dependencies[4]>();
-	const credentials = mock<Dependencies[5]>();
+	const reconstruction = mock<Dependencies[3]>();
+	const credentials = mock<Dependencies[4]>();
 	const saved = Object.assign(new Agent(), {
 		id: 'agent-1',
 		projectId: 'proj-1',
@@ -56,14 +55,12 @@ function setup(config: AgentJsonConfig | null = baseConfig) {
 	return {
 		service: new AgentEvaluationService(
 			settings,
-			executions,
 			repository,
 			skillRefs,
 			reconstruction,
 			credentials,
 		),
 		settings,
-		executions,
 		repository,
 		skillRefs,
 		reconstruction,
@@ -76,15 +73,6 @@ describe('AgentEvaluationService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(userHasScopes).mockResolvedValue(true);
-	});
-
-	it('rejects queue mode before loading an Agent', async () => {
-		const { service, executions, repository } = setup();
-		executions.mode = 'queue';
-		expect(await service.prepare(user, 'proj-1', 'agent-1')).toEqual({
-			error: expect.stringContaining('queue mode is not supported'),
-		});
-		expect(repository.findByIdAndProjectId).not.toHaveBeenCalled();
 	});
 
 	it.each(['disabled', 'denied'])('checks access before reading a draft: %s', async (failure) => {
@@ -234,13 +222,12 @@ describe('AgentEvaluationService', () => {
 		);
 	});
 
-	it.each(['queue', 'disabled', 'denied'])(
+	it.each(['disabled', 'denied'])(
 		'rechecks access before runtime construction: %s',
 		async (failure) => {
-			const { service, executions, settings, reconstruction } = setup();
+			const { service, settings, reconstruction } = setup();
 			const result = await service.prepare(user, 'proj-1', 'agent-1');
 			if (!result.preparation) throw new Error('Expected evaluation preparation');
-			if (failure === 'queue') executions.mode = 'queue';
 			if (failure === 'disabled') settings.getEnabled.mockResolvedValue(false);
 			if (failure === 'denied') vi.mocked(userHasScopes).mockResolvedValue(false);
 			await expect(result.preparation.buildRuntime({})).rejects.toThrow();
