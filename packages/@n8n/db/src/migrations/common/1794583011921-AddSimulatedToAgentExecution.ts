@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * on both dialects, because recreating the table on SQLite would cascade-delete
  * rows.
  */
-export class AddSimulatedToAgentExecution1794511143370 implements ReversibleMigration {
+export class AddSimulatedToAgentExecution1794583011921 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const executions = escape.tableName('agent_execution');
 		const simulated = escape.columnName('simulated');
