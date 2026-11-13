@@ -16,6 +16,7 @@ const { routes } = Container.get(ControllerRegistryMetadata).getControllerMetada
 // A route added later without a scope here fails.
 const expectedScopes: Record<string, string> = {
 	approve: 'promotions:approveReviews',
+	close: 'promotions:approveReviews',
 	getChanges: 'promotions:readReviews',
 	getDetails: 'promotions:readReviews',
 };

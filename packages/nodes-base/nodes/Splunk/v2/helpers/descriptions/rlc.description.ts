@@ -21,7 +21,7 @@ export const reportRLC: INodeProperties = {
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. Errors%20in%20the%20last%20hour',
+			placeholder: 'e.g. Errors in the last hour',
 		},
 	],
 };

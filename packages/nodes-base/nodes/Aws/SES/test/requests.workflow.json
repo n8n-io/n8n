@@ -1,0 +1,164 @@
+{
+	"name": "AWS SES requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e201",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "customVerificationEmail",
+				"operation": "get",
+				"templateName": "Welcome"
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e202",
+			"name": "Get Verification Template",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, -400],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "customVerificationEmail",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e203",
+			"name": "List Verification Templates",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, -300],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "customVerificationEmail",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e204",
+			"name": "List All Verification Templates",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "create",
+				"templateName": "Welcome",
+				"subjectPart": "Hi {{name}}",
+				"htmlPart": "<p>Hi</p>"
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e205",
+			"name": "Create Template",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "delete",
+				"templateName": "Old Welcome"
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e206",
+			"name": "Delete Template",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "getAll",
+				"limit": 3
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e207",
+			"name": "List Templates",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e208",
+			"name": "List All Templates",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "update",
+				"templateName": "Welcome",
+				"updateFields": {
+					"textPart": "Hi there",
+					"subjectPart": "Welcome back",
+					"htmlPart": "<p>Hi there</p>"
+				}
+			},
+			"id": "9a1d3b7c-2f4e-4c55-9d38-5ad1c1a0e209",
+			"name": "Update Template",
+			"type": "n8n-nodes-base.awsSes",
+			"typeVersion": 1,
+			"position": [220, 300],
+			"credentials": { "aws": { "id": "1", "name": "AWS" } }
+		}
+	],
+	"pinData": {
+		"Get Verification Template": [
+			{
+				"json": {
+					"GetCustomVerificationEmailTemplateResult": { "TemplateName": "Welcome" }
+				}
+			}
+		],
+		"List Verification Templates": [
+			{ "json": { "TemplateName": "Welcome" } },
+			{ "json": { "TemplateName": "Reminder" } }
+		],
+		"List All Verification Templates": [
+			{ "json": { "TemplateName": "Welcome" } },
+			{ "json": { "TemplateName": "Reminder" } }
+		],
+		"Create Template": [{ "json": { "ResponseMetadata": { "RequestId": "req-create" } } }],
+		"Delete Template": [{ "json": { "ResponseMetadata": { "RequestId": "req-delete" } } }],
+		"List Templates": [{ "json": { "Name": "Welcome" } }, { "json": { "Name": "Reminder" } }],
+		"List All Templates": [{ "json": { "Name": "Welcome" } }, { "json": { "Name": "Reminder" } }],
+		"Update Template": [{ "json": { "ResponseMetadata": { "RequestId": "req-update" } } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Get Verification Template", "type": "main", "index": 0 },
+					{ "node": "List Verification Templates", "type": "main", "index": 0 },
+					{ "node": "List All Verification Templates", "type": "main", "index": 0 },
+					{ "node": "Create Template", "type": "main", "index": 0 },
+					{ "node": "Delete Template", "type": "main", "index": 0 },
+					{ "node": "List Templates", "type": "main", "index": 0 },
+					{ "node": "List All Templates", "type": "main", "index": 0 },
+					{ "node": "Update Template", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" }
+}

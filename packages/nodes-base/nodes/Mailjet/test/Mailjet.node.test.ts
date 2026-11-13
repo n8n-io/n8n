@@ -1,5 +1,6 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { Mailjet } from '../Mailjet.node';
 import * as GenericFunctions from '../GenericFunctions';
 import type { Mocked, MockInstance } from 'vitest';
@@ -92,7 +93,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -128,7 +129,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -164,7 +165,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.not.objectContaining({
@@ -201,7 +202,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -236,7 +237,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.not.objectContaining({
@@ -276,7 +277,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -342,7 +343,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -378,7 +379,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -415,7 +416,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -452,7 +453,7 @@ describe('Mailjet Node', () => {
 
 			expect(mailjetApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.not.objectContaining({
@@ -519,7 +520,7 @@ describe('Mailjet Node', () => {
 			expect(mailjetApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({
@@ -532,7 +533,7 @@ describe('Mailjet Node', () => {
 			expect(mailjetApiRequestSpy).toHaveBeenNthCalledWith(
 				2,
 				'POST',
-				'/v3.1/send',
+				requestPath`/v3.1/send`,
 				expect.objectContaining({
 					Messages: expect.arrayContaining([
 						expect.objectContaining({

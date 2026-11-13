@@ -6,22 +6,25 @@ import type {
 	IHttpRequestMethods,
 	IDataObject,
 	IHttpRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	qs: IDataObject = {},
 	body: IDataObject | undefined = undefined,
 ) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: method,
 		qs,
 		body,
-		url: `https://api.github.com${resource}`,
+		url: requestUrl`https://api.github.com${resource}`,
 		json: true,
 	};
 

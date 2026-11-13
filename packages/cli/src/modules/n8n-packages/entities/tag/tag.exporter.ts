@@ -17,6 +17,7 @@ type TagPackageKeyHandling = {
 	workflows: 'exclude';
 	workflowMappings: 'exclude';
 	folderMappings: 'exclude';
+	agentMappings: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<

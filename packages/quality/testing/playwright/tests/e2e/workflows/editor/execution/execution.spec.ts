@@ -47,7 +47,7 @@ async function assertNodeExecutionStates(
 test.describe(
 	'Execution',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should test manual workflow @engine:v2', async ({ n8n }) => {
@@ -141,6 +141,7 @@ test.describe(
 				{ nodeName: 'Manual', success: 'visible' },
 				{ nodeName: 'Wait', running: 'visible' },
 			]);
+			await expect(n8n.canvas.getWaitingNodes()).toContainText('Wait');
 
 			await n8n.canvas.stopExecutionButton().click();
 

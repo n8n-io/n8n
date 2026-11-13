@@ -1,12 +1,23 @@
-import { testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	linkUserToProject,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
+import { GLOBAL_MEMBER_ROLE, ServiceAccountRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
-import { createRole } from '@test-integration/db/roles';
+import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
+import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import {
+	addApiKey,
 	createMember,
 	createMemberWithApiKey,
+	createOwner,
 	createOwnerWithApiKey,
+	createUser,
 	getUserById,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -120,9 +131,11 @@ describe('Users in Public API', () => {
 			const owner = await createOwnerWithApiKey();
 			const memberWithMfa = await createMember();
 			// Manually enable MFA for this member
-			const userRepository = (await import('@n8n/db')).UserRepository;
+			const { PersonRepository } = await import('@n8n/db');
 			const { Container } = await import('@n8n/di');
-			await Container.get(userRepository).update(memberWithMfa.id, { mfaEnabled: true });
+			await Container.get(PersonRepository).save(
+				Object.assign(memberWithMfa, { mfaEnabled: true }),
+			);
 
 			const memberWithoutMfa = await createMember();
 
@@ -136,6 +149,47 @@ describe('Users in Public API', () => {
 
 			expect(userWithMfa).toHaveProperty('mfaEnabled', true);
 			expect(userWithoutMfa).toHaveProperty('mfaEnabled', false);
+		});
+
+		describe('with a service account', () => {
+			const createServiceAccount = async () =>
+				await Container.get(ServiceAccountRepository).create({
+					name: 'Deploy bot',
+					role: GLOBAL_MEMBER_ROLE,
+				});
+			const idsOf = (users: Array<{ id: string }>) => users.map(({ id }) => id).sort();
+
+			it('should return persons only', async () => {
+				const owner = await createOwnerWithApiKey();
+				const member = await createMember();
+				await createServiceAccount();
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.get('/users')
+					.query({ limit: 2 });
+
+				expect(response.status).toBe(200);
+				expect(idsOf(response.body.data)).toEqual([owner.id, member.id].sort());
+				// The count covers persons only, so a full page of persons is the last page.
+				expect(response.body.nextCursor).toBeNull();
+			});
+
+			it('should return persons only when filtering by project', async () => {
+				const owner = await createOwnerWithApiKey();
+				const member = await createMember();
+				const serviceAccount = await createServiceAccount();
+				const project = await createTeamProject('service-account-project', member);
+				await linkUserToProject(serviceAccount, project, 'project:editor');
+
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.get('/users')
+					.query({ projectId: project.id });
+
+				expect(response.status).toBe(200);
+				expect(idsOf(response.body.data)).toEqual([member.id]);
+			});
 		});
 	});
 
@@ -176,9 +230,9 @@ describe('Users in Public API', () => {
 			const owner = await createOwnerWithApiKey();
 			const member = await createMember();
 			// Enable MFA for this member
-			const userRepository = (await import('@n8n/db')).UserRepository;
+			const { PersonRepository } = await import('@n8n/db');
 			const { Container } = await import('@n8n/di');
-			await Container.get(userRepository).update(member.id, { mfaEnabled: true });
+			await Container.get(PersonRepository).save(Object.assign(member, { mfaEnabled: true }));
 
 			const response = await testServer.publicApiAgentFor(owner).get(`/users/${member.id}`);
 
@@ -253,7 +307,7 @@ describe('Users in Public API', () => {
 
 			const storedUser = await getUserById(returnedUser.id);
 			expect(returnedUser.id).toBe(storedUser.id);
-			expect(returnedUser.email).toBe(storedUser.email);
+			expect(returnedUser.email).toBe(storedUser.toIUser().email);
 			expect(returnedUser.email).toBe(payloadUser.email);
 			expect(storedUser.role.slug).toBe(payloadUser.role);
 		});
@@ -422,6 +476,54 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(204);
 			const storedUser = await getUserById(member.id);
 			expect(storedUser.role.slug).toBe(payload.newRoleName);
+		});
+
+		describe('as a user with a custom role', () => {
+			const createUserManagerWithApiKey = async () => {
+				const role = await createCustomRoleWithScopeSlugs(
+					['user:list', 'user:read', 'user:changeRole'],
+					{ roleType: 'global' },
+				);
+				const userManager = await createUser({ role });
+				userManager.apiKeys = [await addApiKey(userManager, { scopes: ['user:changeRole'] })];
+				return userManager;
+			};
+
+			beforeEach(() => {
+				testServer.license.enable('feat:advancedPermissions');
+			});
+
+			it("should not change the owner's role", async () => {
+				const owner = await createOwner();
+				const userManager = await createUserManagerWithApiKey();
+
+				const response = await testServer
+					.publicApiAgentFor(userManager)
+					.patch(`/users/${owner.id}/role`)
+					.send({ newRoleName: 'global:member' });
+
+				expect(response.status).toBe(403);
+				expect(response.body).toHaveProperty(
+					'message',
+					CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER,
+				);
+				const storedOwner = await getUserById(owner.id);
+				expect(storedOwner.role.slug).toBe('global:owner');
+			});
+
+			it("should change a member's role", async () => {
+				const member = await createMember();
+				const userManager = await createUserManagerWithApiKey();
+
+				const response = await testServer
+					.publicApiAgentFor(userManager)
+					.patch(`/users/${member.id}/role`)
+					.send({ newRoleName: 'global:admin' });
+
+				expect(response.status).toBe(204);
+				const storedUser = await getUserById(member.id);
+				expect(storedUser.role.slug).toBe('global:admin');
+			});
 		});
 	});
 });

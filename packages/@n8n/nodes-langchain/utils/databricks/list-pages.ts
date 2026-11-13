@@ -1,5 +1,5 @@
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
-import { NodeOperationError, type ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeOperationError, type ILoadOptionsFunctions, type RequestUrl } from 'n8n-workflow';
 
 import { DATABRICKS_CREDENTIAL_TYPE } from './token-provider';
 
@@ -16,7 +16,7 @@ interface Page {
  */
 export async function listDatabricksPages<P extends Page, T>(
 	ctx: ILoadOptionsFunctions,
-	url: string,
+	url: RequestUrl,
 	qs: Record<string, string | undefined>,
 	pick: (page: P) => T[] | undefined,
 ): Promise<T[]> {

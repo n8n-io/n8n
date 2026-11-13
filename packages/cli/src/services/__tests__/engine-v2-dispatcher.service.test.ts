@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UUID_V7_PATTERN } from '@n8n/constants';
 import { ConflictError, NotFoundError, NotImplementedError, UserError } from '@n8n/errors';
 import type {
@@ -16,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
+import { EngineV2LifecycleSubscriptions } from '@/modules/engine-v2/engine-lifecycle-event-subscriptions';
 import {
 	EngineDidNotAdmitError,
 	type EngineDataPlaneProxyService,
@@ -136,11 +138,13 @@ describe('EngineV2Dispatcher', () => {
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
 	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
+	const lifecycleSubscriptions = mockInstance(EngineV2LifecycleSubscriptions);
 
 	let dispatcher: EngineV2Dispatcher;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		lifecycleSubscriptions.subscribe.mockResolvedValue(undefined);
 		proxy.isAvailable.mockReturnValue(true);
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
@@ -248,6 +252,25 @@ describe('EngineV2Dispatcher', () => {
 			},
 		);
 
+		it('subscribes to lifecycle events for a run with a push ref', async () => {
+			await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+			expect(proxy.startExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
+			);
+		});
+
+		it.each([
+			['a manual run without a push ref', runData()],
+			['an active trigger run', triggerRunData()],
+			['a webhook run', webhookRunData()],
+		])('does not subscribe to lifecycle events for %s', async (_name, data) => {
+			await dispatcher.start(data);
+
+			const [request] = proxy.startExecution.mock.calls[0];
+			expect(request.lifecycleEventSubscription).toBeUndefined();
+		});
+
 		it('sends the workflow beside the graph, narrowed to what a read reports', async () => {
 			const workflowData = workflow();
 
@@ -270,6 +293,36 @@ describe('EngineV2Dispatcher', () => {
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
 			});
+		});
+
+		it('stores the pin data of a manual run beside the workflow', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ pinData }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('falls back to the pin data saved on the workflow for a manual run', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			await dispatcher.start(runData({ workflowData: workflow({ pinData }) }));
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document.pinData).toEqual(pinData);
+		});
+
+		it('stores no pin data for a production run, as v1 ignores it there', async () => {
+			const pinData = { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData;
+
+			const data = webhookRunData();
+			data.workflowData.pinData = pinData;
+
+			await dispatcher.start(data);
+
+			const { workflow: document } = proxy.startExecution.mock.calls[0][0];
+			expect(document).not.toHaveProperty('pinData');
 		});
 
 		it('passes the v1 mode and the caller to the data plane', async () => {
@@ -774,6 +827,12 @@ describe('EngineV2Dispatcher', () => {
 				});
 			});
 
+			it('registers the push session with the user of the pushRef', async () => {
+				await dispatcher.start(runData({ pushRef: 'push-1', userId: 'user-1' }));
+
+				expect(pushRegistry.register.mock.calls[0][1].userId).toBe('user-1');
+			});
+
 			it('records the run before it dispatches, so no event can arrive first', async () => {
 				let registeredBeforeDispatch = false;
 				proxy.startExecution.mockImplementationOnce(async ({ executionId }) => {
@@ -809,6 +868,45 @@ describe('EngineV2Dispatcher', () => {
 				await dispatcher.start(runData());
 
 				expect(pushRegistry.register).not.toHaveBeenCalled();
+			});
+
+			it('subscribes to the lifecycle events before it dispatches', async () => {
+				const executionId = await dispatcher.start(runData({ pushRef: 'push-1' }));
+
+				expect(lifecycleSubscriptions.subscribe).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeGreaterThan(
+					pushRegistry.register.mock.invocationCallOrder[0],
+				);
+				expect(lifecycleSubscriptions.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
+					proxy.startExecution.mock.invocationCallOrder[0],
+				);
+			});
+
+			it('does not subscribe when nothing is watching the run', async () => {
+				await dispatcher.start(runData());
+
+				expect(lifecycleSubscriptions.subscribe).not.toHaveBeenCalled();
+			});
+
+			it('does not start the run when the subscription fails', async () => {
+				const failure = new Error('Redis is unavailable');
+				lifecycleSubscriptions.subscribe.mockRejectedValueOnce(failure);
+				const data = runData({
+					pushRef: 'push-1',
+					triggerToStartFrom: {
+						name: MANUAL_TRIGGER.name,
+						data: taskData([[{ json: { from: 'trigger' } }]]),
+					},
+				});
+
+				await expect(dispatcher.start(data)).rejects.toBe(failure);
+
+				const [executionId] = pushRegistry.register.mock.calls[0];
+				expect(proxy.startExecution).not.toHaveBeenCalled();
+				expect(pushRegistry.release).toHaveBeenCalledExactlyOnceWith(executionId);
+				expect(payloadFiles.discard).toHaveBeenCalledExactlyOnceWith([
+					[{ json: { from: 'trigger' } }],
+				]);
 			});
 
 			it('releases the session when the data plane refused the run', async () => {

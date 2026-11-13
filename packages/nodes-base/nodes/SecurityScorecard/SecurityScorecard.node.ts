@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { companyFields, companyOperations } from './descriptions/CompanyDescription';
 import { industryFields, industryOperations } from './descriptions/IndustryDescription';
@@ -118,7 +118,12 @@ export class SecurityScorecard implements INodeType {
 						privacy,
 					};
 
-					responseData = await scorecardApiRequest.call(this, 'POST', 'portfolios', body);
+					responseData = await scorecardApiRequest.call(
+						this,
+						'POST',
+						requestPath`portfolios`,
+						body,
+					);
 					returnData.push(responseData as IDataObject);
 				}
 
@@ -127,7 +132,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'DELETE',
-						`portfolios/${portfolioId}`,
+						requestPath`portfolios/${portfolioId}`,
 					);
 					returnData.push({ success: true });
 				}
@@ -147,7 +152,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'PUT',
-						`portfolios/${portfolioId}`,
+						requestPath`portfolios/${portfolioId}`,
 						body,
 					);
 					returnData.push(responseData as IDataObject);
@@ -155,7 +160,7 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0);
-					responseData = await scorecardApiRequest.call(this, 'GET', 'portfolios');
+					responseData = await scorecardApiRequest.call(this, 'GET', requestPath`portfolios`);
 					responseData = responseData.entries;
 
 					if (!returnAll) {
@@ -174,7 +179,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'PUT',
-						`portfolios/${portfolioId}/companies/${domain}`,
+						requestPath`portfolios/${portfolioId}/companies/${domain}`,
 					);
 					returnData.push(responseData as IDataObject);
 				}
@@ -185,7 +190,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'DELETE',
-						`portfolios/${portfolioId}/companies/${domain}`,
+						requestPath`portfolios/${portfolioId}/companies/${domain}`,
 					);
 					returnData.push({ success: true });
 				}
@@ -197,7 +202,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`portfolios/${portfolioId}/companies`,
+						requestPath`portfolios/${portfolioId}/companies`,
 						{},
 						filterParams,
 					);
@@ -228,10 +233,18 @@ export class SecurityScorecard implements INodeType {
 						);
 					}
 
-					const response = await scorecardApiRequest.call(this, 'GET', '', {}, {}, reportUrl, {
-						encoding: null,
-						resolveWithFullResponse: true,
-					});
+					const response = await scorecardApiRequest.call(
+						this,
+						'GET',
+						requestPath``,
+						{},
+						{},
+						reportUrl,
+						{
+							encoding: null,
+							resolveWithFullResponse: true,
+						},
+					);
 
 					let mimeType: string | undefined;
 					if (response.headers['content-type']) {
@@ -294,7 +307,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'POST',
-						`reports/${reportType}`,
+						requestPath`reports/${reportType}`,
 						body,
 					);
 
@@ -303,7 +316,7 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0);
-					responseData = await scorecardApiRequest.call(this, 'GET', 'reports/recent');
+					responseData = await scorecardApiRequest.call(this, 'GET', requestPath`reports/recent`);
 					responseData = responseData.entries;
 
 					if (!returnAll) {
@@ -325,7 +338,12 @@ export class SecurityScorecard implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
-					responseData = await scorecardApiRequest.call(this, 'POST', 'invitations', body);
+					responseData = await scorecardApiRequest.call(
+						this,
+						'POST',
+						requestPath`invitations`,
+						body,
+					);
 					returnData.push(responseData as IDataObject);
 				}
 			}
@@ -336,7 +354,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`industries/${industry}/score`,
+						requestPath`industries/${industry}/score`,
 					);
 					returnData.push(responseData as IDataObject);
 				}
@@ -348,7 +366,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`industries/${industry}/history/factors`,
+						requestPath`industries/${industry}/history/factors`,
 					);
 					responseData = responseData.entries;
 
@@ -380,7 +398,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`industries/${industry}/history/factors`,
+						requestPath`industries/${industry}/history/factors`,
 						{},
 						options,
 					);
@@ -405,7 +423,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`companies/${scorecardIdentifier}`,
+						requestPath`companies/${scorecardIdentifier}`,
 					);
 					returnData.push(responseData as IDataObject);
 				}
@@ -417,7 +435,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`companies/${scorecardIdentifier}/factors`,
+						requestPath`companies/${scorecardIdentifier}/factors`,
 						{},
 						filterParams,
 					);
@@ -448,7 +466,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`companies/${scorecardIdentifier}/history/factors/score`,
+						requestPath`companies/${scorecardIdentifier}/history/factors/score`,
 						{},
 						options,
 					);
@@ -485,7 +503,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`companies/${scorecardIdentifier}/history/factors/score`,
+						requestPath`companies/${scorecardIdentifier}/history/factors/score`,
 						{},
 						options,
 					);
@@ -510,7 +528,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
-						`companies/${scorecardIdentifier}/score-plans/by-target/${targetScore}`,
+						requestPath`companies/${scorecardIdentifier}/score-plans/by-target/${targetScore}`,
 					);
 
 					responseData = responseData.entries;

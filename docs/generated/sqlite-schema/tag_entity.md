@@ -16,7 +16,7 @@ CREATE TABLE "tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [folder_tag](folder_tag.md) [workflows_tags](workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [agents_tags](agents_tags.md) [folder_tag](folder_tag.md) [workflows_tags](workflows_tags.md) |  |  |
 | name | varchar(24) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -39,6 +39,7 @@ CREATE TABLE "tag_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar
 ```mermaid
 erDiagram
 
+"agents_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder_tag" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflows_tags" |o--|| "tag_entity" : "FOREIGN KEY (tagId) REFERENCES tag_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
@@ -47,6 +48,10 @@ erDiagram
   varchar_36_ id PK
   varchar_24_ name
   datetime_3_ updatedAt
+}
+"agents_tags" {
+  varchar_36_ agentId PK
+  varchar_36_ tagId PK
 }
 "folder_tag" {
   varchar_36_ folderId PK

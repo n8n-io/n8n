@@ -1,5 +1,5 @@
 import { Tool } from '@n8n/agents';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';

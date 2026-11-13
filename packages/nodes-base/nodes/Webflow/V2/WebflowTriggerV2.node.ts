@@ -7,7 +7,7 @@ import type {
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { getSites, webflowApiRequest } from '../GenericFunctions';
 import { verifySignature } from '../WebflowTriggerHelpers';
@@ -119,7 +119,7 @@ export class WebflowTriggerV2 implements INodeType {
 				const registeredWebhooks = await webflowApiRequest.call(
 					this,
 					'GET',
-					`/sites/${siteId}/webhooks`,
+					requestPath`/sites/${siteId}/webhooks`,
 				);
 
 				const webhooks = registeredWebhooks.body?.webhooks || registeredWebhooks;
@@ -139,7 +139,7 @@ export class WebflowTriggerV2 implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const siteId = this.getNodeParameter('site') as string;
 				const event = this.getNodeParameter('event') as string;
-				const endpoint = `/sites/${siteId}/webhooks`;
+				const endpoint = requestPath`/sites/${siteId}/webhooks`;
 				const body: IDataObject = {
 					site_id: siteId,
 					triggerType: event,
@@ -158,8 +158,8 @@ export class WebflowTriggerV2 implements INodeType {
 				if (!webhookData.webhookId) {
 					return true;
 				}
-				const endpoint = `/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 				try {
+					const endpoint = requestPath`/sites/${siteId}/webhooks/${webhookData.webhookId}`;
 					responseData = await webflowApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;

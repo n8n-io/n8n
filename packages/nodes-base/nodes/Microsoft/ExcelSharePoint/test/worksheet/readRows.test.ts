@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 const USED_RANGE_REPLY = {
 	address: 'Sheet1!A1:B2',
 	values: [
@@ -71,7 +72,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Rows', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
 			{},
 			{},
 		);
@@ -86,7 +87,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Rows', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range(address='${encodeURIComponent('A1:B2')}')`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/range(address='A1:B2')`,
 			{},
 			{},
 		);
@@ -115,8 +116,8 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Rows', () => {
 				value: 'https://contoso.sharepoint.com/sites/site1/Shared Documents/Q4 ~ report?.xlsx',
 			},
 		});
-		apiRequest.mockImplementation(async (_method: string, resource: string) =>
-			resource.startsWith('/v1.0/shares/')
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) =>
+			resource.value.startsWith('/v1.0/shares/')
 				? { id: 'ITEM123', parentReference: { siteId: SITE_ID, driveId: 'b!drive1' } }
 				: { ...USED_RANGE_REPLY },
 		);
@@ -129,7 +130,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Rows', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/shares/u!aHR0cHM6Ly9jb250b3NvLnNoYXJlcG9pbnQuY29tL3NpdGVzL3NpdGUxL1NoYXJlZCBEb2N1bWVudHMvUTQgfiByZXBvcnQ_Lnhsc3g/driveItem',
+			requestPath`/v1.0/shares/u!aHR0cHM6Ly9jb250b3NvLnNoYXJlcG9pbnQuY29tL3NpdGVzL3NpdGUxL1NoYXJlZCBEb2N1bWVudHMvUTQgfiByZXBvcnQ_Lnhsc3g/driveItem`,
 			{},
 			{ $select: 'id,parentReference' },
 		);
@@ -144,7 +145,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Get Rows', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
 			{},
 			{ $select: 'values,address' },
 		);

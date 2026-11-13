@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, provide, reactive } from 'vue';
-import { mount } from '@vue/test-utils';
+import { defineComponent, h, nextTick, provide, reactive, type Ref } from 'vue';
+import { flushPromises, mount } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -11,18 +11,23 @@ import {
 	createThreadComponentRenderer,
 	defaultModuleSettings,
 	InstanceAiInputStub,
+	inputFocusSpy,
 	makeThread,
 } from '../../__tests__/createThreadComponentRenderer';
 import InstanceAiConversation from '../InstanceAiConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
+import { useAssistantCreditsStore } from '../../assistantCredits.store';
 import {
+	consumePendingFirstMessage,
 	getPendingWorkflowAttachment,
+	stashPendingFirstMessage,
 	stashPendingAgentAttachment,
 	stashPendingRedirectLanding,
 	stashPendingWorkflowAttachment,
 } from '../../composables/useInstanceAiHandoff';
 import type { InstanceAiEmbedSubject } from '../../embed/instanceAiEmbed.types';
 import type { InstanceAiHandoffContext, InstanceAiMessage } from '@n8n/api-types';
+import type { UseInfiniteScrollOptions } from '@vueuse/core';
 import { ResponseError } from '@n8n/rest-api-client';
 import { USER_TYPED_MESSAGE } from '../../prefills';
 
@@ -49,10 +54,44 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
 
-vi.mock('@vueuse/core', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@vueuse/core')>()),
-	useScroll: () => ({ arrivedState: { bottom: true } }),
+// jsdom has no layout, so the scroll state and the top-of-list trigger cannot fire. Drive them directly.
+const infiniteScroll = vi.hoisted(() => ({
+	load: undefined as (() => Promise<void>) | undefined,
+	options: undefined as UseInfiniteScrollOptions | undefined,
+	isLoading: undefined as Ref<boolean> | undefined,
+	arrivedState: undefined as { top: boolean; bottom: boolean } | undefined,
+	/** The `bottom` value that the scroll state reads when it measures the view. */
+	measuredBottom: true,
 }));
+
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	const { reactive, ref } = await import('vue');
+	return {
+		...actual,
+		useScroll: () => {
+			// The same start state as vueuse, before any scroll event.
+			const arrivedState = reactive({ top: true, bottom: false });
+			infiniteScroll.arrivedState = arrivedState;
+			return {
+				arrivedState,
+				measure: () => {
+					arrivedState.bottom = infiniteScroll.measuredBottom;
+				},
+			};
+		},
+		useInfiniteScroll: (
+			_el: unknown,
+			load: () => Promise<void>,
+			options: UseInfiniteScrollOptions,
+		) => {
+			infiniteScroll.load = load;
+			infiniteScroll.options = options;
+			infiniteScroll.isLoading = ref(false);
+			return { isLoading: infiniteScroll.isLoading, reset: () => {} };
+		},
+	};
+});
 
 describe('InstanceAiConversation', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
@@ -61,6 +100,7 @@ describe('InstanceAiConversation', () => {
 	beforeEach(() => {
 		// Prevent stashed hand-off state from leaking between test cases.
 		localStorage.clear();
+		infiniteScroll.measuredBottom = true;
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		useSettingsStore().moduleSettings = { 'instance-ai': { ...defaultModuleSettings } };
@@ -96,68 +136,203 @@ describe('InstanceAiConversation', () => {
 	// assertions mount a small host directly with `@vue/test-utils` and read the
 	// child wrapper's own `emitted()`.
 	function mountConversation(
-		props: { mentionsEnabled?: boolean } = {},
-		openWorkflowPreview = vi.fn(),
+		props: { mentionsEnabled?: boolean; autofocus?: boolean } = {},
+		showMentionedWorkflow = vi.fn(),
 	) {
 		const Host = defineComponent({
 			setup() {
 				provideThread(thread);
-				provide('openWorkflowPreview', openWorkflowPreview);
+				provide('showMentionedWorkflow', showMentionedWorkflow);
 				return () => h(InstanceAiConversation, props);
 			},
 		});
-		return mount(Host, { global: { stubs: { InstanceAiInput: InstanceAiInputStub } } });
+		return mount(Host, {
+			global: {
+				stubs: { InstanceAiInput: InstanceAiInputStub, InstanceAiConfirmationPanel: true },
+			},
+		});
 	}
 
+	/**
+	 * A submit from the composer with the mention bookkeeping of one workflow
+	 * mention. Returns the composer's restore callback, which a refused send
+	 * must call to give the draft back.
+	 */
+	function emitMentionSubmit(wrapper: ReturnType<typeof mountConversation>) {
+		const restoreDraft = vi.fn(() => true);
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit(
+			'submit',
+			'Compare orders',
+			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+			restoreDraft,
+			USER_TYPED_MESSAGE,
+			Date.now(),
+			{
+				total: 1,
+				workflow: 1,
+				node: 0,
+				group: 0,
+			},
+			['wf-1'],
+		);
+		return { restoreDraft };
+	}
+
+	it('focuses the embedded composer on load when another control has focus', async () => {
+		const button = document.createElement('button');
+		document.body.append(button);
+		button.focus();
+		const wrapper = mountConversation({ autofocus: true });
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		button.remove();
+	});
+
+	it('focuses the composer when its panel becomes visible', async () => {
+		const props = reactive({ autofocus: false });
+		const wrapper = mountConversation(props);
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		externalInput.focus();
+		await nextTick();
+		expect(inputFocusSpy).not.toHaveBeenCalled();
+		props.autofocus = true;
+		await nextTick();
+		await nextTick();
+		expect(inputFocusSpy).toHaveBeenCalled();
+		wrapper.unmount();
+		externalInput.remove();
+	});
+
+	it.each([true, false])(
+		'only focuses a revealed composer when focus is idle (idle: %s)',
+		async (focusIsIdle) => {
+			const wrapper = mountConversation({ autofocus: true });
+			const externalInput = document.createElement('input');
+			document.body.append(externalInput);
+			try {
+				await flushPromises();
+				const composer = wrapper.findComponent(InstanceAiInputStub);
+				thread.pendingConfirmations = [
+					{
+						messageId: 'approval-message',
+						agentNode: {
+							agentId: 'agent-1',
+							role: 'orchestrator',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [],
+							children: [],
+							timeline: [],
+						},
+						toolCall: {
+							toolCallId: 'approval-tool',
+							toolName: 'run_workflow',
+							args: {},
+							isLoading: true,
+							confirmationStatus: 'pending',
+							confirmation: { requestId: 'approval-1', severity: 'info', message: 'Run?' },
+						},
+					},
+				];
+				await nextTick();
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).toContain('display: none;');
+				externalInput.focus();
+				if (focusIsIdle) externalInput.blur();
+				inputFocusSpy.mockClear();
+
+				thread.pendingConfirmations = [];
+				await nextTick();
+				await nextTick();
+
+				expect(wrapper.findComponent(InstanceAiInputStub).vm).toBe(composer.vm);
+				expect(composer.attributes('style')).not.toContain('display: none;');
+				expect(inputFocusSpy).toHaveBeenCalledTimes(focusIsIdle ? 1 : 0);
+				if (!focusIsIdle) expect(document.activeElement).toBe(externalInput);
+			} finally {
+				wrapper.unmount();
+				externalInput.remove();
+			}
+		},
+	);
+
+	it('keeps external focus when a greeting ends and remounts the composer', async () => {
+		vi.useFakeTimers();
+		const wrapper = mountConversation({ autofocus: true });
+		const externalInput = document.createElement('input');
+		document.body.append(externalInput);
+		try {
+			await flushPromises();
+			store.isOnboardingChromeHidden.mockReturnValue(true);
+			thread.messages = [
+				{
+					id: 'greeting',
+					role: 'assistant',
+					content: 'Hi there',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+			];
+			await nextTick();
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+			externalInput.focus();
+			inputFocusSpy.mockClear();
+
+			await vi.advanceTimersByTimeAsync(5000);
+
+			expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+			expect(inputFocusSpy).not.toHaveBeenCalled();
+			expect(document.activeElement).toBe(externalInput);
+		} finally {
+			wrapper.unmount();
+			externalInput.remove();
+		}
+	});
+
+	it('forwards draft content changes to the embedded host', () => {
+		const wrapper = mountConversation();
+		wrapper.findComponent(InstanceAiInputStub).vm.$emit('content-change', true);
+		expect(wrapper.findComponent(InstanceAiConversation).emitted('content-change')).toEqual([
+			[true],
+		]);
+		wrapper.unmount();
+	});
+
 	it('blocks the composer and keeps the out-of-credits notice when credits are gone', () => {
-		store.isOutOfCredits = true;
-		store.isLowCredits = true;
+		const creditsStore = mockedStore(useAssistantCreditsStore);
+		creditsStore.isOutOfCredits = true;
+		creditsStore.isLowCredits = true;
 
 		const wrapper = mountConversation();
 
 		expect(wrapper.get('[data-test-id="instance-ai-input-out-of-credits"]').text()).toBe('true');
 		expect(wrapper.get('[data-test-id="credit-warning-banner"]').text()).toContain(
-			"You've run out of AI credits",
+			"You've run out of Assistant credits",
 		);
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 	});
 
-	it('routes mention references and workflow opening through the thread host', async () => {
-		thread.producedArtifacts.set('wf-1', {
-			type: 'workflow',
-			id: 'wf-1',
-			name: 'Orders',
-		});
-		const openWorkflowPreview = vi.fn();
-		const wrapper = mountConversation({ mentionsEnabled: true }, openWorkflowPreview);
+	it('offers the workflow tabs of the thread, with their origin, as mention artifacts', () => {
+		thread.producedArtifacts.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Orders' });
+		thread.producedArtifacts.set('wf-2', { type: 'workflow', id: 'wf-2', name: 'Leads' });
+		thread.producedArtifactOrigins.set('wf-2', 'mentioned');
+		const wrapper = mountConversation({ mentionsEnabled: true });
 		const input = wrapper.findComponent(InstanceAiInputStub);
-		const reference = {
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		};
 
-		input.vm.$emit('mention-reference-added', reference);
-		input.vm.$emit('mention-workflow-open', 'wf-1');
-		await nextTick();
-
-		expect(thread.upsertTransientWorkflowReference).toHaveBeenCalledWith({
-			...reference,
-			projectId: 'thread-project',
-		});
-		expect(thread.transientWorkflowReferences.get('draft-1')).toMatchObject(reference);
-		expect(openWorkflowPreview).toHaveBeenCalledWith('wf-1');
-		expect(input.props('mentionArtifacts')).toEqual([{ id: 'wf-1', name: 'Orders' }]);
-
-		input.vm.$emit('mention-reference-removed', 'draft-1');
-		expect(thread.removeTransientWorkflowReference).toHaveBeenCalledWith('draft-1');
-		expect(thread.transientWorkflowReferences.has('draft-1')).toBe(false);
+		expect(input.props('mentionArtifacts')).toEqual([
+			{ id: 'wf-1', name: 'Orders' },
+			{ id: 'wf-2', name: 'Leads', origin: 'mentioned' },
+		]);
 	});
 
-	it('accepts the submitted mention draft only after the message is admitted', async () => {
-		const wrapper = mountConversation();
-		const input = wrapper.findComponent(InstanceAiInputStub);
-		const acceptDraft = vi.fn();
+	it('shows the mentioned workflow only once the message is admitted', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
 		let admit!: (sent: boolean) => void;
 		vi.mocked(thread.sendMessage).mockReturnValueOnce(
 			new Promise<boolean>((resolve) => {
@@ -165,21 +340,7 @@ describe('InstanceAiConversation', () => {
 			}),
 		);
 
-		input.vm.$emit(
-			'submit',
-			'Compare orders',
-			[{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
-			vi.fn(),
-			USER_TYPED_MESSAGE,
-			Date.now(),
-			acceptDraft,
-			{
-				total: 1,
-				workflow: 1,
-				node: 0,
-				group: 0,
-			},
-		);
+		const { restoreDraft } = emitMentionSubmit(wrapper);
 		await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
 		expect(thread.sendMessage).toHaveBeenCalledWith(
 			'Compare orders',
@@ -190,12 +351,26 @@ describe('InstanceAiConversation', () => {
 					node: 0,
 					group: 0,
 				},
+				mentionedWorkflowIds: ['wf-1'],
 			}),
 		);
-		expect(acceptDraft).not.toHaveBeenCalled();
+		// The pick itself moved nothing: the tab comes with the sent message.
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
 
 		admit(true);
-		await vi.waitFor(() => expect(acceptDraft).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(showMentionedWorkflow).toHaveBeenCalledExactlyOnceWith('wf-1'));
+		expect(restoreDraft).not.toHaveBeenCalled();
+	});
+
+	it('gives the draft back and shows no mentioned workflow when the send is refused', async () => {
+		const showMentionedWorkflow = vi.fn();
+		const wrapper = mountConversation({ mentionsEnabled: true }, showMentionedWorkflow);
+		vi.mocked(thread.sendMessage).mockResolvedValueOnce(false);
+
+		const { restoreDraft } = emitMentionSubmit(wrapper);
+		await vi.waitFor(() => expect(restoreDraft).toHaveBeenCalledOnce());
+
+		expect(showMentionedWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('renders visible messages from the thread', () => {
@@ -211,6 +386,122 @@ describe('InstanceAiConversation', () => {
 		);
 		const { getByText } = renderer();
 		expect(getByText('Hello')).toBeInTheDocument();
+	});
+
+	it('keeps the visible messages in place when older messages load above them', async () => {
+		thread.messages = [
+			{ id: 'msg-1', role: 'user', content: 'Hello', createdAt: '2026-04-01T00:00:00.000Z' },
+		] as InstanceAiMessage[];
+		let contentHeight = 1000;
+		// The position of the first message in the scrolled content.
+		let firstMessageTop = 300;
+		thread.loadOlderMessages = vi.fn(async () => {
+			// The older page adds 600px above the first message.
+			firstMessageTop += 600;
+			contentHeight += 600;
+		});
+		const wrapper = mountConversation();
+		const viewport = wrapper.find('[data-reka-scroll-area-viewport]').element;
+		let scrollTop = 50;
+		Object.defineProperty(viewport, 'scrollHeight', { get: () => contentHeight });
+		Object.defineProperty(viewport, 'scrollTop', {
+			get: () => scrollTop,
+			set: (value: number) => {
+				scrollTop = value;
+			},
+		});
+		const firstMessage = wrapper.find('[data-message-id="msg-1"]').element;
+		firstMessage.getBoundingClientRect = () => new DOMRect(0, firstMessageTop - scrollTop);
+
+		const loading = infiniteScroll.load?.();
+		// The user scrolls and a live reply grows below the view while the page loads.
+		scrollTop = 20;
+		contentHeight += 400;
+		await loading;
+
+		expect(thread.loadOlderMessages).toHaveBeenCalledOnce();
+		expect(scrollTop).toBe(620);
+	});
+
+	it('loads older messages after the first scroll event', () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		mountConversation();
+		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
+
+		// On mount the view is at the top before it scrolls to the bottom.
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+		// One scroll event that the throttled scroll state does not see.
+		infiniteScroll.options?.onScroll?.(new Event('scroll'));
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+	});
+
+	it('stops following new messages when older messages load', async () => {
+		Object.assign(thread, { hasMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {});
+		const wrapper = mountConversation();
+		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(false);
+
+		// One jump to the top that the throttled scroll state did not see.
+		infiniteScroll.measuredBottom = false;
+		await infiniteScroll.load?.();
+		await nextTick();
+
+		expect(wrapper.find('[data-icon="arrow-down"]').exists()).toBe(true);
+	});
+
+	it('shows a spinner while older messages load', async () => {
+		const wrapper = mountConversation();
+		const spinner = '[data-test-id="instance-ai-older-messages-loading"]';
+		expect(wrapper.find(spinner).exists()).toBe(false);
+
+		infiniteScroll.isLoading!.value = true;
+		await nextTick();
+
+		expect(wrapper.find(spinner).exists()).toBe(true);
+	});
+
+	it('shows an error and stops the retries until the user scrolls away from the top', async () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {
+			throw new Error('Network error');
+		});
+		const wrapper = mountConversation();
+		const view = { scrollHeight: 1000, clientHeight: 500 } as HTMLElement;
+		infiniteScroll.options?.onScroll?.(new Event('scroll'));
+
+		await infiniteScroll.load?.();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-older-messages-error"]').text()).toContain(
+			"Couldn't load earlier messages",
+		);
+		expect(showErrorSpy).not.toHaveBeenCalled();
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+
+		infiniteScroll.arrivedState!.top = false;
+		await nextTick();
+
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+	});
+
+	it('lets the user retry a failed load in a thread too short to scroll', async () => {
+		Object.assign(thread, { hasOlderMessages: true });
+		thread.loadOlderMessages = vi.fn(async () => {
+			throw new Error('Network error');
+		});
+		const wrapper = mountConversation();
+		// The content fits in the view, so the user cannot scroll away from the top.
+		const view = { scrollHeight: 400, clientHeight: 500 } as HTMLElement;
+		const retryNotice = '[data-test-id="instance-ai-older-messages-error"]';
+
+		await infiniteScroll.load?.();
+		await nextTick();
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(false);
+
+		await wrapper.find(`${retryNotice} button`).trigger('click');
+
+		expect(infiniteScroll.options?.canLoadMore?.(view)).toBe(true);
+		expect(wrapper.find(retryNotice).exists()).toBe(false);
 	});
 
 	it('renders the above-input and inline-offers slots', () => {
@@ -399,6 +690,112 @@ describe('InstanceAiConversation', () => {
 			);
 		});
 	});
+
+	it('does not fetch or connect a local draft, and waits for persistence before sending', async () => {
+		store.threads = [];
+		thread.hydrationStatus = 'idle';
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{
+				props: { newThread: true, beforeSend },
+				global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+			},
+			() => thread,
+		);
+		const { getByTestId } = renderer();
+		await flushPromises();
+		expect(store.loadThread).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(thread.connectSSE).not.toHaveBeenCalled();
+		expect(thread.hydrationStatus).toBe('ready');
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
+
+		await fireEvent.click(getByTestId('instance-ai-input-submit'));
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+		expect(getByTestId('instance-ai-input-busy').textContent).toBe('idle');
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			expect.objectContaining({
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+	});
+
+	it('replays a local draft opening prompt once, after provisioning, with its pending agent', async () => {
+		store.threads = [];
+		stashPendingFirstMessage(thread.id, {
+			message: 'Build a support agent',
+			authorship: USER_TYPED_MESSAGE,
+			responseStartedAtEpochMs: 123,
+		});
+		stashPendingAgentAttachment(thread.id, {
+			type: 'agent',
+			id: 'agent-1',
+			projectId: 'proj-1',
+			pending: true,
+		});
+		const gate = Promise.withResolvers<void>();
+		const beforeSend = vi.fn(() => gate.promise);
+		const renderer = createThreadComponentRenderer(
+			InstanceAiConversation,
+			{ props: { newThread: true, beforeSend } },
+			() => thread,
+		);
+		renderer();
+		await flushPromises();
+
+		expect(beforeSend).toHaveBeenCalledOnce();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(thread.loadHistoricalMessages).not.toHaveBeenCalled();
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		gate.resolve();
+		await flushPromises();
+
+		expect(thread.sendMessage).toHaveBeenCalledExactlyOnceWith(
+			'Build a support agent',
+			expect.objectContaining({
+				authorship: USER_TYPED_MESSAGE,
+				responseStartedAtEpochMs: 123,
+				attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+			}),
+		);
+		expect(consumePendingFirstMessage(thread.id)).toBeNull();
+	});
+
+	it.each(['provisioning failed', 'send refused'])(
+		'retains a local opening prompt when %s',
+		async (failure) => {
+			store.threads = [];
+			const pending = { message: 'Build a support agent', authorship: USER_TYPED_MESSAGE };
+			stashPendingFirstMessage(thread.id, pending);
+			const beforeSend = vi.fn(async () => {
+				if (failure === 'provisioning failed') throw new Error('provisioning failed');
+			});
+			vi.mocked(thread.sendMessage).mockResolvedValue(false);
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{ props: { newThread: true, beforeSend } },
+				() => thread,
+			);
+			renderer();
+			await flushPromises();
+
+			expect(beforeSend).toHaveBeenCalledOnce();
+			expect(consumePendingFirstMessage(thread.id)).toEqual(pending);
+		},
+	);
 
 	it('awaits beforeSend before sending, restoring the draft if it rejects', async () => {
 		const beforeSend = vi.fn().mockRejectedValueOnce(new Error('flush failed'));

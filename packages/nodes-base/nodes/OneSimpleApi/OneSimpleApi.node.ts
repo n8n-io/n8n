@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { oneSimpleApiRequest } from './GenericFunctions';
 
@@ -683,14 +683,14 @@ export class OneSimpleApi implements INodeType {
 							qs.force = 'no';
 						}
 
-						const response = await oneSimpleApiRequest.call(this, 'GET', '/pdf', {}, qs);
+						const response = await oneSimpleApiRequest.call(this, 'GET', requestPath`/pdf`, {}, qs);
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
 							const buffer = (await oneSimpleApiRequest.call(
 								this,
 								'GET',
-								'',
+								requestPath``,
 								{},
 								{},
 								response.url as string,
@@ -730,14 +730,20 @@ export class OneSimpleApi implements INodeType {
 							qs.force = 'no';
 						}
 
-						const response = await oneSimpleApiRequest.call(this, 'GET', '/screenshot', {}, qs);
+						const response = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/screenshot`,
+							{},
+							qs,
+						);
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
 							const buffer = (await oneSimpleApiRequest.call(
 								this,
 								'GET',
-								'',
+								requestPath``,
 								{},
 								{},
 								response.url as string,
@@ -763,7 +769,13 @@ export class OneSimpleApi implements INodeType {
 							qs.headers = 'yes';
 						}
 
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/page_info', {}, qs);
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/page_info`,
+							{},
+							qs,
+						);
 					}
 				}
 
@@ -774,7 +786,7 @@ export class OneSimpleApi implements INodeType {
 						responseData = await oneSimpleApiRequest.call(
 							this,
 							'GET',
-							'/instagram_profile',
+							requestPath`/instagram_profile`,
 							{},
 							qs,
 						);
@@ -783,7 +795,13 @@ export class OneSimpleApi implements INodeType {
 					if (operation === 'spotifyArtistProfile') {
 						const artistName = this.getNodeParameter('artistName', i) as string;
 						qs.profile = artistName;
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/spotify_profile', {}, qs);
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/spotify_profile`,
+							{},
+							qs,
+						);
 					}
 				}
 
@@ -795,14 +813,26 @@ export class OneSimpleApi implements INodeType {
 						qs.from_currency = fromCurrency;
 						qs.to_currency = toCurrency;
 						qs.from_value = value;
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/exchange_rate', {}, qs);
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/exchange_rate`,
+							{},
+							qs,
+						);
 					}
 
 					if (operation === 'imageMetadata') {
 						const link = this.getNodeParameter('link', i) as string;
 						qs.url = link;
 						qs.raw = true;
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/image_info', {}, qs);
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/image_info`,
+							{},
+							qs,
+						);
 					}
 				}
 
@@ -811,13 +841,19 @@ export class OneSimpleApi implements INodeType {
 					if (operation === 'validateEmail') {
 						const emailAddress = this.getNodeParameter('emailAddress', i) as string;
 						qs.email = emailAddress;
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/email', {}, qs);
+						responseData = await oneSimpleApiRequest.call(this, 'GET', requestPath`/email`, {}, qs);
 					}
 					// expandURL
 					if (operation === 'expandURL') {
 						const url = this.getNodeParameter('link', i) as string;
 						qs.url = url;
-						responseData = await oneSimpleApiRequest.call(this, 'GET', '/unshorten', {}, qs);
+						responseData = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/unshorten`,
+							{},
+							qs,
+						);
 					}
 
 					if (operation === 'qrCode') {
@@ -835,14 +871,20 @@ export class OneSimpleApi implements INodeType {
 							qs.format = options.format as string;
 						}
 
-						const response = await oneSimpleApiRequest.call(this, 'GET', '/qr_code', {}, qs);
+						const response = await oneSimpleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/qr_code`,
+							{},
+							qs,
+						);
 
 						if (download) {
 							const output = this.getNodeParameter('output', i) as string;
 							const buffer = (await oneSimpleApiRequest.call(
 								this,
 								'GET',
-								'',
+								requestPath``,
 								{},
 								{},
 								response.url as string,

@@ -7,23 +7,23 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { decodePathValue, NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function autopilotApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	_option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials<{ apiKey: string }>('autopilotApi');
 
 	const endpoint = 'https://api2.autopilothq.com/v1';
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			autopilotapikey: credentials.apiKey,
@@ -31,7 +31,7 @@ export async function autopilotApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body as IDataObject).length) {
@@ -52,7 +52,7 @@ export async function autopilotApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -65,7 +65,9 @@ export async function autopilotApiRequestAllItems(
 	let responseData;
 	do {
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
-		endpoint = `${base}/${responseData.bookmark}`;
+		if (responseData.bookmark !== undefined) {
+			endpoint = requestPath`${base}/${responseData.bookmark}`;
+		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit && !returnAll) {
@@ -74,3 +76,6 @@ export async function autopilotApiRequestAllItems(
 	} while (responseData.bookmark !== undefined);
 	return returnData;
 }
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;

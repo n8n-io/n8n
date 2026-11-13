@@ -12,4 +12,6 @@ this. Flag `throw new Error(...)` in new code and pick by cause:
 - `UnexpectedError` — a bug: logic mistake, unhandled case, failed assertion
 
 Do not flag `ApplicationError`; the `no-application-error` ESLint rule already
-fails the build for it.
+fails the build for it. Do not flag imports of these classes from
+`n8n-workflow`; the `no-base-error-import-from-workflow` rule makes code import
+them from `@n8n/errors`.

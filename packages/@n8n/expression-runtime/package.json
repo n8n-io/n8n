@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.37.0",
+  "version": "0.39.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -35,6 +35,7 @@
   ],
   "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
+    "@jitl/quickjs-wasmfile-release-sync": "0.32.0",
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
     "@n8n/utils": "workspace:*",
@@ -45,7 +46,7 @@
     "lodash": "catalog:",
     "luxon": "catalog:",
     "md5": "2.3.0",
-    "quickjs-emscripten": "^0.32.0",
+    "quickjs-emscripten-core": "0.32.0",
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "zod": "catalog:"

@@ -29,11 +29,14 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	hasExecutionRunNodes,
+	isExecutionOutputRedacted,
 	isTerminalExecutionStatus,
 	ManualExecutionCancelledError,
+	redactErrorReport,
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
@@ -51,6 +54,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getPushRefUserId,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -291,19 +295,18 @@ export class WorkflowRunner {
 			}
 		}
 
-		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
-		this.errorReporter.error(error, { executionId });
-
-		if (error instanceof MaxStalledCountError) {
-			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
-				executionId,
-				'stall',
-			);
-			if (claimed.length === 0) {
-				this.activeExecutions.finalizeExecution(executionId);
-				return;
-			}
-		}
+		// The run data is gone at this point, so the stored workflow setting decides;
+		// the instance floor is already enforced on that setting.
+		const redacted = isExecutionOutputRedacted(
+			undefined,
+			hooks?.workflowData.settings,
+			executionMode,
+		);
+		this.logger.error(
+			`Problem with execution ${executionId}: ${redacted ? error.constructor.name : error.message}. Aborting.`,
+		);
+		const toReport = redacted ? redactErrorReport(error) : error;
+		if (toReport) this.errorReporter.error(toReport, { executionId });
 
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
@@ -325,6 +328,51 @@ export class WorkflowRunner {
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
 			storedAt,
 		};
+
+		if (error instanceof MaxStalledCountError) {
+			// Save-as-claim: transition to `crashed` and persist the error payload in one
+			// guarded write. If crash recovery (or another writer) transitioned the
+			// execution first, keep its data and run no hooks.
+			let claimed: boolean;
+			try {
+				claimed = await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						stoppedAt: fullRunData.stoppedAt,
+						status: fullRunData.status,
+						data: fullRunData.data,
+					},
+					{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
+				);
+			} catch (claimError) {
+				// A failed claim rolls back, so the row stays claimable for crash
+				// recovery. It must not abort finalization.
+				this.logger.warn('Could not persist the stalled execution as crashed', {
+					executionId,
+					error: ensureError(claimError),
+				});
+				this.errorReporter.error(ensureError(claimError), { executionId });
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			if (!claimed) {
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			try {
+				await this.executionCrashService.announceStalledExecution(executionId);
+			} catch (announceError) {
+				// The announce is telemetry; its failure must not abort finalization
+				// for an execution already persisted as crashed.
+				this.logger.warn('Could not announce the stalled execution as crashed', {
+					executionId,
+					error: ensureError(announceError),
+				});
+				this.errorReporter.error(ensureError(announceError), { executionId });
+			}
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.
@@ -441,11 +489,14 @@ export class WorkflowRunner {
 
 		if (!establishContextError) {
 			try {
-				await this.credentialsPermissionChecker.check(
+				const { personalCredentialsCount } = await this.credentialsPermissionChecker.check(
 					data.workflowData.id,
 					data.workflowData.nodes,
 					data.userId,
 				);
+				// Reuses the check's result so telemetry costs no extra query. Always
+				// set, so a reused `data` object cannot keep the count of an earlier run.
+				data.telemetryMetadata = { ...data.telemetryMetadata, personalCredentialsCount };
 			} catch (error) {
 				const executionId = await this.activeExecutions.add(data, existingExecution);
 				await this.failExecution(data, executionId, error, responsePromise, existingExecution);
@@ -672,6 +723,7 @@ export class WorkflowRunner {
 
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
+				userId: getPushRefUserId(data),
 			});
 
 			if (data.configureAdditionalData) {
@@ -792,6 +844,7 @@ export class WorkflowRunner {
 				executionId,
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
+				pushRefUserId: getPushRefUserId(data),
 				streamingEnabled: data.streamingEnabled,
 				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,

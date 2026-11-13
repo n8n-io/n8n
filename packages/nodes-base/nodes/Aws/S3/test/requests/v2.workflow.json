@@ -1,0 +1,348 @@
+{
+	"name": "AWS S3 V2 requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5c0d7e10-0000-4000-8000-000000002000",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "bucket",
+				"operation": "create",
+				"name": "orders-archive",
+				"additionalFields": {}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002001",
+			"name": "Create Bucket",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 120],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "bucket",
+				"operation": "delete",
+				"name": "old-archive"
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002002",
+			"name": "Delete Bucket",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 240],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"bucketName": "orders-archive",
+				"folderName": "invoices",
+				"additionalFields": {
+					"parentFolderKey": "2024/q1"
+				}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002003",
+			"name": "Create Folder",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 360],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"bucketName": "orders-archive",
+				"folderName": "drafts",
+				"additionalFields": {
+					"parentFolderKey": "2024/"
+				}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002004",
+			"name": "Create Folder Empty Segment",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 480],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"bucketName": "orders-archive",
+				"folderKey": "2024/old/"
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002005",
+			"name": "Delete Folder",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "copy",
+				"sourcePath": "/orders-archive/2024/a.pdf",
+				"destinationPath": "/orders-archive/2025/a copy.pdf",
+				"additionalFields": {}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002006",
+			"name": "Copy File",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 720],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "download",
+				"bucketName": "orders-archive",
+				"fileKey": "2024/q1/report 1.pdf"
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002007",
+			"name": "Download File",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 840],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"bucketName": "orders-archive",
+				"fileKey": "archive//old.txt",
+				"options": {}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002008",
+			"name": "Delete File Empty Segment",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 960],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "upload",
+				"bucketName": "orders-archive",
+				"fileName": "notes.txt",
+				"binaryData": false,
+				"fileContent": "hello",
+				"additionalFields": {
+					"parentFolderKey": "2024/q1"
+				}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002009",
+			"name": "Upload File",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 1080],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "delete",
+				"bucketName": "logs.example.com",
+				"fileKey": "app/2024.log",
+				"options": {}
+			},
+			"id": "5c0d7e10-0000-4000-8000-000000002010",
+			"name": "Delete File Path Style",
+			"type": "n8n-nodes-base.awsS3",
+			"typeVersion": 2,
+			"position": [220, 1200],
+			"credentials": {
+				"aws": {
+					"id": "1",
+					"name": "AWS"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Bucket": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Delete Bucket": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Create Folder": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Create Folder Empty Segment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Delete Folder": [
+			{
+				"json": {
+					"deleted": [
+						{
+							"Key": "2024/old/"
+						}
+					]
+				}
+			}
+		],
+		"Copy File": [
+			{
+				"json": {
+					"ETag": "\"etag-copy\"",
+					"LastModified": "2024-05-01T00:00:00.000Z"
+				}
+			}
+		],
+		"Delete File Empty Segment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Upload File": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Delete File Path Style": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Bucket",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Bucket",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Folder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Folder Empty Segment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Folder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Copy File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Download File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete File Empty Segment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upload File",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete File Path Style",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

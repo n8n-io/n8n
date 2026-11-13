@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -125,6 +125,7 @@ describe('MigrationRules', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe('initial rendering and loading', () => {
@@ -157,6 +158,59 @@ describe('MigrationRules', () => {
 
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
+		});
+
+		it('shows a message over the skeleton only after the report loads for 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveReport: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.getReport).mockReturnValue(
+				new Promise((resolve) => (resolveReport = resolve)),
+			);
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toHaveTextContent(
+				'Still scanning your workflows…',
+			);
+
+			resolveReport(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('does not show the message when the report loads in less than 5 seconds', async () => {
+			vi.useFakeTimers();
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('shows the message when a refresh takes more than 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveRefresh: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+				new Promise((resolve) => (resolveRefresh = resolve)),
+			);
+			renderComponent();
+			await vi.advanceTimersByTimeAsync(0);
+
+			await fireEvent.click(screen.getByText('Refresh'));
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toBeInTheDocument();
+
+			resolveRefresh(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
 		});
 	});
 

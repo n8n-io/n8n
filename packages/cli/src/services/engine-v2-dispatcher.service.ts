@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest } from '@n8n/engine';
 import {
 	ConflictError,
@@ -10,6 +10,7 @@ import {
 import type {
 	INode,
 	INodeExecutionData,
+	IPinData,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
@@ -17,6 +18,7 @@ import type {
 import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
+import { getPushRefUserId } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import {
 	createExecutionIdV2,
 	type ExecutionIdV2,
@@ -61,7 +63,7 @@ const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecut
 	main.map((slot) => slot ?? []);
 
 function toResumeRefusal(executionId: string, status: number, reason: string): Error {
-	// `locateResumeTarget` already verified this token, so a 401 means the step is gone.
+	// `locateResume` already verified this token, so a 401 means the step is gone.
 	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
 	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
 	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
@@ -202,6 +204,15 @@ export class EngineV2Dispatcher {
 
 		const { executionId, request } = prepared;
 		try {
+			await this.subscribeToLifecycleEvents(executionId, data);
+		} catch (error) {
+			// No run exists yet, so the trigger's files belong to no one.
+			this.pushRegistry.release(executionId);
+			await this.payloadFiles.discard(fired.outputs);
+			throw error;
+		}
+
+		try {
 			await this.proxy.startExecution(request);
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.
@@ -233,6 +244,7 @@ export class EngineV2Dispatcher {
 			triggerName: trigger.name,
 			triggerOutputs: trigger.outputs,
 			allowNonTriggerRoot: plan !== undefined,
+			pinData: this.resolvePinData(data),
 		});
 		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps = await this.toSeededSteps(plan);
@@ -263,6 +275,8 @@ export class EngineV2Dispatcher {
 					projectId: data.projectId,
 				},
 				responseExpectation: toResponseExpectation(data.engineV2Response?.responseMode),
+				// Only a run with a push ref has an editor session to relay events to.
+				lifecycleEventSubscription: data.pushRef ? { kind: 'all' } : undefined,
 			},
 		};
 	}
@@ -282,6 +296,7 @@ export class EngineV2Dispatcher {
 
 		this.pushRegistry.register(executionId, {
 			pushRef,
+			userId: getPushRefUserId(data),
 			workflowId: workflowData.id,
 			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger:
@@ -289,6 +304,30 @@ export class EngineV2Dispatcher {
 					? undefined
 					: { nodeName: trigger.name, outputs: trigger.outputs },
 		});
+	}
+
+	/** v1's `resolvePinData`: a production run ignores pinned data. */
+	private resolvePinData(data: IWorkflowExecutionDataProcess): IPinData | undefined {
+		if (!['manual', 'evaluation'].includes(data.executionMode)) return undefined;
+		return data.pinData ?? data.workflowData.pinData;
+	}
+
+	/**
+	 * An editor that watches the run shows its progress from lifecycle events.
+	 * The events are not replayed, so the subscription must be active before the
+	 * run starts. The subscription ends with the push session.
+	 */
+	private async subscribeToLifecycleEvents(
+		executionId: string,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<void> {
+		if (!data.pushRef) return;
+
+		// Lazily imported: the subscriptions belong to the engine-v2 module.
+		const { EngineV2LifecycleSubscriptions } = await import(
+			'@/modules/engine-v2/engine-lifecycle-event-subscriptions.js'
+		);
+		await Container.get(EngineV2LifecycleSubscriptions).subscribe(executionId);
 	}
 
 	/** v1's `getExecutionStartNode`: the one case where it honours the editor's start nodes. */

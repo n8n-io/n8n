@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IBinaryData, IDataObject } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
@@ -78,7 +79,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -165,7 +166,7 @@ describe('Anthropic Node', () => {
 			]);
 			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/file.pdf');
 			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('abcdefgh'), 'application/pdf');
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -251,7 +252,7 @@ describe('Anthropic Node', () => {
 				url: 'https://example.com/file.pdf',
 				returnFullResponse: true,
 			});
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -310,7 +311,7 @@ describe('Anthropic Node', () => {
 
 			await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -332,7 +333,7 @@ describe('Anthropic Node', () => {
 
 			await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -354,7 +355,7 @@ describe('Anthropic Node', () => {
 			await text.message.execute.call(executeFunctionsMock, 0);
 
 			// An exact body match, so an unconditional cache_control would fail here.
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -736,7 +737,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1/files', {
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', requestPath`/v1/files`, {
 				qs: {
 					limit: 10,
 				},
@@ -834,7 +835,7 @@ describe('Anthropic Node', () => {
 			const result = await file.deleteFile.execute.call(executeFunctionsMock, 0);
 
 			expect(result).toEqual([{ json: { id: 'file_123' }, pairedItem: { item: 0 } }]);
-			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', '/v1/files/file_123');
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', requestPath`/v1/files/file_123`);
 		});
 	});
 
@@ -919,7 +920,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -1003,7 +1004,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -1077,7 +1078,7 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/messages', {
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', requestPath`/v1/messages`, {
 				body: {
 					model: 'claude-sonnet-4-20250514',
 					max_tokens: 1024,
@@ -1144,14 +1145,18 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/generate_prompt', {
-				body: {
-					task: 'A chef for a meal prep planning service',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/generate_prompt`,
+				{
+					body: {
+						task: 'A chef for a meal prep planning service',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 
@@ -1207,21 +1212,25 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/improve_prompt', {
-				body: {
-					messages: [
-						{
-							role: 'user',
-							content: 'Plan meals for the week',
-						},
-					],
-					system: 'You are a chef',
-					feedback: 'Make it more detailed and include cooking times',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/improve_prompt`,
+				{
+					body: {
+						messages: [
+							{
+								role: 'user',
+								content: 'Plan meals for the week',
+							},
+						],
+						system: 'You are a chef',
+						feedback: 'Make it more detailed and include cooking times',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 
@@ -1282,20 +1291,24 @@ describe('Anthropic Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1/experimental/templatize_prompt', {
-				body: {
-					messages: [
-						{
-							role: 'user',
-							content: 'Translate hello to German',
-						},
-					],
-					system: 'You are a professional English to German translator',
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/v1/experimental/templatize_prompt`,
+				{
+					body: {
+						messages: [
+							{
+								role: 'user',
+								content: 'Translate hello to German',
+							},
+						],
+						system: 'You are a professional English to German translator',
+					},
+					enableAnthropicBetas: {
+						promptTools: true,
+					},
 				},
-				enableAnthropicBetas: {
-					promptTools: true,
-				},
-			});
+			);
 		});
 	});
 });

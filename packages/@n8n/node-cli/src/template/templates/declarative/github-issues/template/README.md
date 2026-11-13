@@ -2,7 +2,7 @@
 
 This is an n8n community node. It lets you use GitHub Issues in your n8n workflows.
 
-[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/sustainable-use-license/) workflow automation platform.
+[n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/n8n-community-license/) workflow automation platform.
 
 [Installation](#installation)
 [Operations](#operations)
@@ -65,7 +65,7 @@ Refer to the [GitHub Authorizing OAuth apps documentation](https://docs.github.c
 
 ## Compatibility
 
-Compatible with n8n@1.60.0 or later
+This node needs n8n 2.46.1 or later.
 
 ## Resources
 

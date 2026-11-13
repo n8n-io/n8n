@@ -1,6 +1,8 @@
 import { z } from 'zod/v4';
 
 export const oAuthAuthorizationServerMetadataSchema = z.object({
+	issuer: z.string(),
+	authorization_response_iss_parameter_supported: z.boolean().optional(),
 	authorization_endpoint: z.url({ protocol: /^https?$/ }),
 	token_endpoint: z.url({ protocol: /^https?$/ }),
 	registration_endpoint: z.url({ protocol: /^https?$/ }).optional(),

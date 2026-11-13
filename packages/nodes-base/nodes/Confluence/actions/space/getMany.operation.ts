@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -39,5 +40,10 @@ export const execute: ConfluenceOperation = async function (
 	const options = this.getNodeParameter('options', itemIndex, {});
 	const descriptionFormatQs = spaceDescriptionFormatQs(options);
 
-	return await fetchPaginatedResults.call(this, '/wiki/api/v2/spaces', limit, descriptionFormatQs);
+	return await fetchPaginatedResults.call(
+		this,
+		requestPath`/wiki/api/v2/spaces`,
+		limit,
+		descriptionFormatQs,
+	);
 };

@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as terminate from '../../../actions/session/terminate.operation';
 import { ERROR_MESSAGES } from '../../../constants';
 import * as transport from '../../../transport';
@@ -30,7 +31,10 @@ describe('Test Airtop, session terminate operation', () => {
 		const result = await terminate.execute.call(createMockExecuteFunction(nodeParameters), 0);
 
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
-		expect(transport.apiRequest).toHaveBeenCalledWith('DELETE', '/sessions/test-session-123');
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/sessions/test-session-123`,
+		);
 
 		expect(result).toEqual([
 			{

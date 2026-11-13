@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-apps",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -61,6 +61,7 @@
     "lru-cache": "catalog:",
     "mime-types": "catalog:",
     "n8n-core": "workspace:*",
+    "semver": "catalog:",
     "tar": "catalog:",
     "uuid": "catalog:"
   },
@@ -74,7 +75,10 @@
     "@types/compression": "catalog:",
     "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/jsdom": "catalog:",
     "@types/mime-types": "catalog:",
+    "@types/semver": "catalog:",
+    "jsdom": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

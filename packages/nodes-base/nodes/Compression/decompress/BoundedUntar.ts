@@ -1,5 +1,6 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { isSafeObjectProperty, setSafeObjectProperty, UserError } from 'n8n-workflow';
+import { isSafeObjectProperty, setSafeObjectProperty } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import path from 'node:path';
 import type { ReadEntry } from 'tar';
 

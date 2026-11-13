@@ -32,3 +32,15 @@ Flag NEW code where a parameter reaches a sink without escaping:
 - SQL identifiers — table, column, `ORDER BY`, a cast suffix after `name:`. They cannot be bound, so they need an allowlist; numeric fields a numeric cast
 - A SQL dialect reaching JavaScript (AlaSQL in the Merge node) gaining a new construct that can call a function
 - Command execution with unsanitized shell arguments
+
+## Path segments in requests
+
+ESLint `require-encoded-path-segments` checks only the folders in its `files` list. Review the other nodes, and what the rule cannot see.
+
+Flag NEW code where a non-literal value reaches a request path without `toPathSegment()`:
+
+- A path built across statements, with `.replace()`, `.join('/')` or `new URL()`
+- `encodeURIComponent` alone: it passes `.` and `..`
+- A disable directive for the rule whose reason the code does not support
+
+Do NOT flag deprecated nodes, query strings or hosts.

@@ -141,9 +141,6 @@ export {
 	aiPreferenceContentSchema,
 	aiPreferenceScopeSchema,
 	aiPreferenceSourceSchema,
-	CONTEXT_PREFERENCES_CONTROL_VARIANT,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
 	aiPreferenceScopeOf,
 	aiPreferenceTargetOf,
 } from './schemas/ai-preference.schema';
@@ -217,6 +214,7 @@ export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
+	DependencyVersion,
 	ResolvedDependency,
 	ResolvedDependenciesResult,
 	DependenciesBatchResponse,
@@ -227,11 +225,7 @@ export type {
 	DependencyCountsBatchResponse,
 } from './schemas/dependency-counts.schema';
 
-export type {
-	ProjectType,
-	ProjectIcon,
-	ProjectRelation,
-} from './schemas/project.schema';
+export type { ProjectType, ProjectIcon, ProjectRelation } from './schemas/project.schema';
 
 export {
 	isSourceControlledFileStatus,
@@ -367,11 +361,15 @@ export type {
 	MigrationNotifyResult,
 	MigrationNotifySkipReason,
 	WorkflowMigrationResult,
+	BreakingChangeAssistantAction,
 } from './schemas/breaking-changes.schema';
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeAssistantActionSchema,
+	breakingChangeInstanceIssueSchema,
 	breakingChangeRuleImpactSchema,
+	breakingChangeWorkflowIssueSchema,
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
@@ -455,6 +453,7 @@ export {
 	confirmationInputTypeSchema,
 	appBlueprintSchema,
 	appBlueprintResumeSchema,
+	appBlueprintErrorsSchema,
 	instanceAiTargetApprovalSchema,
 	channelConfigSchema,
 	mcpConnectServerSchema,
@@ -550,6 +549,7 @@ export {
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
 	instanceAiNodesAttachmentSchema,
+	instanceAiElementAttachmentSchema,
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
 	formatAttachmentSizeLimit,
@@ -610,6 +610,7 @@ export type {
 	InstanceAiRunLimitMeta,
 	AppBlueprint,
 	AppBlueprintResume,
+	AppBlueprintErrors,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -703,7 +704,6 @@ export type {
 	InstanceAiEnvManagedFields,
 	InstanceAiVerificationFailure,
 	InstanceAiVerificationResponse,
-	InstanceAiUserPreferencesResponse,
 	InstanceAiProviderConnection,
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
@@ -716,6 +716,7 @@ export type {
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
 	InstanceAiNodesAttachment,
+	InstanceAiElementAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -727,6 +728,8 @@ export type {
 	InstanceAiCredentialDestinationDecision,
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
+	InstanceAiMigrationReportHandoffContext,
+	InstanceAiAutomatedMigrationOutcome,
 	InstanceAiHandoffContext,
 	InstanceAiThreadArtifact,
 	InstanceAiThreadArtifactsContext,
@@ -771,6 +774,17 @@ export type {
 	AssistantThreadTabsState,
 	AssistantThreadTabsResponse,
 } from './schemas/assistant-thread-tabs.schema';
+
+export {
+	assistantAgentTargetSchema,
+	assistantAgentPreviewSessionSchema,
+} from './schemas/assistant-agent-targets.schema';
+export type {
+	AssistantAgentTarget,
+	AssistantAgentPreviewSession,
+	AssistantAgentTargetsState,
+	AssistantAgentTargetsResponse,
+} from './schemas/assistant-agent-targets.schema';
 
 export {
 	instanceAiSetupCredentialSelectionKey,
@@ -1064,3 +1078,10 @@ export {
 	type ScimTransferTargetProject,
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
+export {
+	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
+	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitSettingsSchema,
+	type ExecutionLimitPeriodUnit,
+	type ExecutionLimitSettings,
+} from './schemas/execution-limit-settings.schema';

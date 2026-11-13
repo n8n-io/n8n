@@ -1,3 +1,4 @@
+import type { AppEventMap } from '@n8n/backend-module-apps';
 import type { DataTableEventMap } from '@n8n/backend-module-data-table';
 import type {
 	AuthenticationMethod,
@@ -27,7 +28,10 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
+import type {
+	ClosedHostStatus,
+	PromotionFailureKind,
+} from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -74,6 +78,12 @@ export type { UserLike };
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
 
+export type SystemDeactivationReason =
+	| 'memory-guard'
+	| 'crash-recovery'
+	| 'source-control-pull'
+	| 'instance-ai-eval-rollback';
+
 export type CrashDetector =
 	| 'stall'
 	| 'queue-recovery'
@@ -87,7 +97,9 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = DataTableEventMap & {
+type ModuleEventMap = DataTableEventMap & AppEventMap;
+
+export type RelayEventMap = ModuleEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -165,7 +177,7 @@ export type RelayEventMap = DataTableEventMap & {
 		projectIds?: string[];
 		counts: ExportPackageEventCounts;
 		credentialExportPolicy: CredentialExportPolicy;
-		includeArchivedWorkflows: boolean;
+		includeArchived: boolean;
 	};
 
 	'n8n-package-export-failed': {
@@ -235,6 +247,13 @@ export type RelayEventMap = DataTableEventMap & {
 		publicApi: boolean;
 		deactivatedVersionId: string | null;
 		source?: WorkflowActionSource;
+	};
+
+	'workflow-deactivated-by-system': {
+		workflowId: string;
+		workflowName: string;
+		deactivatedVersionId: string;
+		reason: SystemDeactivationReason;
 	};
 
 	'workflow-pre-execute': {
@@ -375,6 +394,10 @@ export type RelayEventMap = DataTableEventMap & {
 	'user-logged-in': {
 		user: UserLike;
 		authenticationMethod: AuthenticationMethod;
+	};
+
+	'user-logged-out': {
+		user: UserLike;
 	};
 
 	'user-login-failed': {
@@ -571,6 +594,31 @@ export type RelayEventMap = DataTableEventMap & {
 		projectId: string | undefined;
 	};
 
+	/** A user retrieved the decrypted data of a credential through `includeData=true`. */
+	'credentials-data-read': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+		publicApi: boolean;
+	};
+
+	/**
+	 * A user retrieved the decrypted data of several credentials at once through
+	 * `includeData=true` on the list. One event per chunk of ids, so that every id is
+	 * recorded and every event stays small.
+	 */
+	'credentials-list-data-read': {
+		user: UserLike;
+		/** Ids of the credentials whose data was returned, this chunk only. */
+		credentialIds: string[];
+		/** Number of credentials whose data was returned, across all chunks. */
+		credentialCount: number;
+		/** 1-based index of this chunk. */
+		chunk: number;
+		chunkCount: number;
+		publicApi: boolean;
+	};
+
 	'credentials-user-disconnected': {
 		user: UserLike;
 		credentialType: string;
@@ -581,6 +629,17 @@ export type RelayEventMap = DataTableEventMap & {
 		user: UserLike;
 		credentialId: string;
 		outcome: CredentialAuthProbeOutcome;
+	};
+
+	'oauth-client-registered': {
+		userId?: string;
+		credentialId: string;
+		credentialType: string;
+		method?: 'cimd' | 'dcr' | 'none_available';
+		success: boolean;
+		cimdEnabled: boolean;
+		serverSupportsCimd?: boolean;
+		serverSupportsDcr?: boolean;
 	};
 
 	'oauth-callback-binding-rejected': {
@@ -1293,6 +1352,18 @@ export type RelayEventMap = DataTableEventMap & {
 		projectId: string;
 	};
 
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
@@ -1384,8 +1455,12 @@ export type RelayEventMap = DataTableEventMap & {
 		user: UserLike;
 		/** Set when the outcome is 'success'. */
 		providerId?: string;
+		/** Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
 		authType: PromotionProviderAuthType;
+		/** Git host providers only. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		outcome: 'success' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
@@ -1394,7 +1469,12 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-environment-created': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 		/** Promote environments only. */
@@ -1404,7 +1484,12 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-provider-updated': {
 		user: UserLike;
 		providerId: string;
+		/** The name after the update. Set when the outcome is 'success'. */
+		providerName?: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. The URL after the update. Set when the outcome is 'success'. */
+		hostBaseUrl?: string;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'auth' | 'config'>;
 		outcome: 'success' | 'failed';
@@ -1415,13 +1500,24 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-provider-deleted': {
 		user: UserLike;
 		providerId: string;
+		providerName: string;
 		providerType: PromotionProviderType;
+		authType: PromotionProviderAuthType;
+		/** Git host providers only. */
+		hostBaseUrl?: string;
 	};
 
+	/** Name, provider, and repository are the values after the update. */
 	'promotion-environment-updated': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
+		environmentScope: PromotionEnvironmentScope;
 		/** The fields the request sent, never their values. */
 		changedFields: Array<'name' | 'remote' | 'provider' | 'settings'>;
 	};
@@ -1429,6 +1525,11 @@ export type RelayEventMap = DataTableEventMap & {
 	'promotion-environment-deleted': {
 		user: UserLike;
 		environmentId: string;
+		environmentName: string;
+		providerId: string;
+		providerName: string;
+		/** The remote URL without query or fragment, or the Git host repository path. */
+		repository: string;
 		direction: PromotionDirection;
 		environmentScope: PromotionEnvironmentScope;
 	};
@@ -1461,6 +1562,8 @@ export type RelayEventMap = DataTableEventMap & {
 		};
 		/** Project scope only. */
 		selectedWorkflowCount?: number;
+		/** Project scope only. */
+		selectedFolderCount?: number;
 		/** Set when the outcome is not 'failed'. */
 		openedReview?: boolean;
 	};
@@ -1477,6 +1580,10 @@ export type RelayEventMap = DataTableEventMap & {
 		workflowsChanged?: number;
 		/** Set when the outcome is 'applied'. */
 		workflowsFailedToPublish?: number;
+		/** Set when the outcome is 'applied'. */
+		foldersChanged?: number;
+		/** Set when the outcome is 'applied'. */
+		projectsChanged?: number;
 	};
 
 	'promotion-merge-request-opened': {
@@ -1496,6 +1603,21 @@ export type RelayEventMap = DataTableEventMap & {
 		/** Time from the review opening to this approval. */
 		reviewAgeMs: number;
 		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-review-closed': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this close. */
+		reviewAgeMs: number;
+		/** What the host reported at close time. Null when the close failed before n8n asked the host. */
+		hostStatus: ClosedHostStatus | null;
+		outcome: 'closed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 	};

@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
-import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import type { IDataObject, IHookFunctions, INode, IWebhookFunctions } from 'n8n-workflow';
 
 import { FacebookTrigger } from '../FacebookTrigger.node';
 import type { Mocked } from 'vitest';
@@ -70,6 +70,58 @@ describe('FacebookTrigger', () => {
 			expect(mockResponse.send).not.toHaveBeenCalled();
 			expect(mockResponse.status).not.toHaveBeenCalled();
 			expect(result).toEqual({});
+		});
+	});
+
+	describe('webhookMethods', () => {
+		let mockHookFunctions: Mocked<IHookFunctions>;
+		const request = vi.fn();
+
+		beforeEach(() => {
+			mockHookFunctions = mock<IHookFunctions>({
+				helpers: mock<IHookFunctions['helpers']>({ request }),
+			});
+			mockHookFunctions.getNode.mockReturnValue(
+				mock<INode>({ id: 'node-id', name: 'Facebook Trigger' }),
+			);
+			mockHookFunctions.getNodeWebhookUrl.mockReturnValue('https://n8n.example.com/webhook/fb');
+			mockHookFunctions.getNodeParameter.mockImplementation(((name: string) => {
+				const parameters: IDataObject = {
+					authType: 'accessToken',
+					appId: '1234567890123456',
+					object: 'page',
+					fields: ['feed'],
+					options: {},
+				};
+				return parameters[name];
+			}) as unknown as IHookFunctions['getNodeParameter']);
+			mockHookFunctions.getCredentials.mockResolvedValue({ accessToken: 'test-app-token' });
+		});
+
+		const requestUri = () => String(request.mock.calls[0][0].uri);
+
+		it('should send checkExists to the app subscriptions URL', async () => {
+			request.mockResolvedValue({ data: [] });
+
+			await node.webhookMethods.default.checkExists.call(mockHookFunctions);
+
+			expect(requestUri()).toBe('https://graph.facebook.com/v23.0/1234567890123456/subscriptions');
+		});
+
+		it('should send create to the app subscriptions URL', async () => {
+			request.mockResolvedValue({ success: true });
+
+			await node.webhookMethods.default.create.call(mockHookFunctions);
+
+			expect(requestUri()).toBe('https://graph.facebook.com/v23.0/1234567890123456/subscriptions');
+		});
+
+		it('should send delete to the app subscriptions URL', async () => {
+			request.mockResolvedValue({ success: true });
+
+			await node.webhookMethods.default.delete.call(mockHookFunctions);
+
+			expect(requestUri()).toBe('https://graph.facebook.com/v23.0/1234567890123456/subscriptions');
 		});
 	});
 });
