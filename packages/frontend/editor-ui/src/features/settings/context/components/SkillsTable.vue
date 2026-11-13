@@ -191,7 +191,7 @@ function sourceActions(source: SkillSourceListItem) {
 		items.push({
 			value: 'replaceCredential',
 			label: i18n.baseText('settings.context.skills.sources.replaceCredential'),
-			icon: 'key',
+			icon: 'key-round',
 		});
 		items.push({
 			value: 'checkNow',

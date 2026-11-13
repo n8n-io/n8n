@@ -17,6 +17,7 @@ import {
 import { CredentialsEntity, CredentialsRepository, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { GithubAppApi } from 'n8n-nodes-base/credentials/GithubAppApi.credentials';
 import { GithubOAuth2Api } from 'n8n-nodes-base/credentials/GithubOAuth2Api.credentials';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -31,6 +32,7 @@ import { SkillSourceRepository } from '../../database/repositories/skill-source.
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { OauthService } from '@/oauth/oauth.service';
 
 import {
@@ -844,6 +846,51 @@ describe('Skill Sync with credentials', () => {
 			expect(
 				(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).credentialId,
 			).toBe(teamCredential.id);
+		});
+
+		it('rereads the latest revision after a check overlaps credential replacement', async () => {
+			const { sourceId, skillId } = await importPrivate();
+			const client = Container.get(GitHubSkillSourceClient);
+			const sync = Container.get(SkillSyncService);
+			const probe = client.probe.bind(client);
+			const probed = createDeferredPromise();
+			const resume = createDeferredPromise();
+			github.push('acme/private', {
+				'skills/pdf/SKILL.md': skillMd('pdf').replace('Follow', 'Read'),
+			});
+			const paused = vi.spyOn(client, 'probe').mockImplementationOnce(async (...args) => {
+				const revision = await probe(...args);
+				probed.resolve();
+				await resume.promise;
+				return revision;
+			});
+			const oldCheck = sync.checkAll();
+			try {
+				await probed.promise;
+				const latest = github.push('acme/private', {
+					'skills/pdf/SKILL.md': skillMd('pdf').replace('Follow', 'Use'),
+				});
+				await post(editor, `/skill-sources/${sourceId}/credential`, {
+					credentialId: oauthCredential.id,
+				});
+				expect((await db().findOneByOrFail(SkillSourceLink, { skillId })).pendingRevision).toBe(
+					latest,
+				);
+
+				resume.resolve();
+				await oldCheck;
+				await sync.checkAll();
+
+				expect(await db().findOneByOrFail(SkillSourceLink, { skillId })).toMatchObject({
+					pendingRevision: latest,
+					pendingContent: { instructions: 'Use pdf.' },
+				});
+				expect(await lastErrorOf(sourceId)).toBeNull();
+			} finally {
+				resume.resolve();
+				await oldCheck;
+				paused.mockRestore();
+			}
 		});
 
 		it('ignores health and folder results from an earlier credential selection', async () => {

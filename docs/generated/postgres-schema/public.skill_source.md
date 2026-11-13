@@ -6,7 +6,7 @@
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Creator. The check task reads the feature flag of this user. NULL after the user is deleted |
-| credentialId | varchar(36) |  | true |  | [public.credentials_entity](public.credentials_entity.md) | Credential that reads a private source. NULL = public access |
+| credentialId | varchar(36) |  | true |  | [public.credentials_entity](public.credentials_entity.md) | Credential that reads the source. NULL means public access only when requiresCredential is false |
 | credentialVersion | integer | 0 | false |  |  | Credential selection revision used to reject older check results |
 | id | uuid |  | false | [public.skill_source_link](public.skill_source_link.md) |  | UUIDv7, made by the application |
 | identityKey | varchar(255) |  | false |  |  | Source type, host, owner and repository in lower case, e.g. "github:github.com/acme/skills". The duplicate rules compare it |

@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddSkillSourceHealth1794488303980 implements ReversibleMigration {
+export class AddSkillSourceHealth1794568002958 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const source = escape.tableName('skill_source');
 		const link = escape.tableName('skill_source_link');
@@ -16,6 +16,9 @@ export class AddSkillSourceHealth1794488303980 implements ReversibleMigration {
 		);
 		if (isPostgres) {
 			await runQuery(
+				`COMMENT ON COLUMN ${source}.${escape.columnName('credentialId')} IS 'Credential that reads the source. NULL means public access only when requiresCredential is false'`,
+			);
+			await runQuery(
 				`COMMENT ON COLUMN ${source}.${required} IS 'True when the source requires a credential, including after credential deletion'`,
 			);
 			await runQuery(
@@ -27,7 +30,12 @@ export class AddSkillSourceHealth1794488303980 implements ReversibleMigration {
 		}
 	}
 
-	async down({ escape, runQuery }: MigrationContext) {
+	async down({ escape, runQuery, isPostgres }: MigrationContext) {
+		if (isPostgres) {
+			await runQuery(
+				`COMMENT ON COLUMN ${escape.tableName('skill_source')}.${escape.columnName('credentialId')} IS 'Credential that reads a private source. NULL = public access'`,
+			);
+		}
 		await runQuery(
 			`ALTER TABLE ${escape.tableName('skill_source_link')} DROP COLUMN ${escape.columnName('sourceUnavailable')}`,
 		);

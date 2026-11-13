@@ -368,13 +368,16 @@ export class SkillSourceRepository {
 						? { mode: 'pessimistic_write' }
 						: undefined,
 			});
+			if (!current) return undefined;
 			if (
-				!current ||
-				(expected &&
-					(current.credentialId !== expected.credentialId ||
-						current.credentialVersion !== expected.credentialVersion))
-			)
+				expected &&
+				(current.credentialId !== expected.credentialId ||
+					current.credentialVersion !== expected.credentialVersion)
+			) {
+				// An older check can still write links. The next check must read them again.
+				await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
 				return undefined;
+			}
 			const missingBefore = await this.findMissingSkills([sourceId], ctx);
 			const before = {
 				errorReason: current.lastErrorReason,

@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'AddSkillSourceHealth1794488303980';
+const migrationName = 'AddSkillSourceHealth1794568002958';
 type Values = Record<string, string | number | null>;
 
 describe('AddSkillSourceHealth migration', () => {
