@@ -965,6 +965,8 @@ export class AgentRuntime {
 			freshRun: ctx.isFreshRun,
 			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
 		});
+		// Fresh, resumed and crash-resumed runs all start here, so each one checks its own scope.
+		await this.context.refreshEpisodicRecallAvailability(options?.persistence);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
