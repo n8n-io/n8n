@@ -60,7 +60,7 @@ type PartitionedVersion = { runnable: WorkflowTriggerVersion; unresolvable: Unre
  * e.g. the n8n Trigger's "Instance Started" event fires exactly for the
  * leader's startup pass. Records from before the `reason` column existed
  * default to `publish` at the DB level, i.e. today's `update` behavior.
- * A first publication overrides `publish` → `activate`; see
+ * A first publication overrides `publish` or `transfer` → `activate`; see
  * {@link WorkflowPublicationApplier.resolveActivationMode}.
  */
 const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActivateMode> = {
@@ -68,6 +68,7 @@ const ACTIVATION_MODE_BY_REASON: Record<WorkflowPublicationReason, WorkflowActiv
 	[WorkflowPublicationReason.Startup]: 'init',
 	[WorkflowPublicationReason.LeadershipTakeover]: 'leadershipChange',
 	[WorkflowPublicationReason.Reconcile]: 'update',
+	[WorkflowPublicationReason.Transfer]: 'update',
 };
 
 /**
@@ -179,6 +180,7 @@ export class WorkflowPublicationApplier {
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerCandidates, desiredTriggerNodes, {
 			versionChanged: oldVersion !== null && oldVersion.versionId !== newVersion.versionId,
+			reregisterUnchanged: record.reason === WorkflowPublicationReason.Transfer,
 		});
 
 		this.logger.debug(
@@ -500,7 +502,9 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 	): WorkflowActivateMode {
 		const reason = record.reason ?? WorkflowPublicationReason.Publish;
-		if (reason === WorkflowPublicationReason.Publish && oldVersion === null) return 'activate';
+		const isUserIntent =
+			reason === WorkflowPublicationReason.Publish || reason === WorkflowPublicationReason.Transfer;
+		if (isUserIntent && oldVersion === null) return 'activate';
 		return ACTIVATION_MODE_BY_REASON[reason];
 	}
 
