@@ -19,7 +19,7 @@ import type {
 import { resolveCanonicalMcpCatalogs } from './agent-execution.service';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { createMcpMockFetch } from './mcp-mock-fetch';
-import { createLlmMockHandler } from './mock-handler';
+import { createLlmMockHandler, type WriteLedgerEntry } from './mock-handler';
 import { redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 import { createWebSearchMock } from './web-search-mock';
 
@@ -73,7 +73,13 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				scenarioHints,
 			}));
 		const worldId = restored?.worldId ?? `llm-mock-${randomUUID()}`;
-		return await this.buildWorld(worldId, agent, seed, restored?.scenarioHints ?? scenarioHints);
+		return await this.buildWorld(
+			worldId,
+			agent,
+			seed,
+			restored?.scenarioHints ?? scenarioHints,
+			restored?.writeLedger ?? [],
+		);
 	}
 
 	private async buildWorld(
@@ -81,11 +87,14 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 		agent: SimulatedAgent,
 		seed: InstanceAiEvalAgentScenarioSeed,
 		scenarioHints: string,
+		writeLedger: WriteLedgerEntry[],
 	): Promise<SimulationWorld> {
+		// Shared with the handler, which appends each simulated write, so it can be saved.
 		const httpMock: EvalLlmMockHandler = createLlmMockHandler({
 			scenarioHints,
 			globalContext: seed.globalContext,
 			nodeHints: seed.toolHints,
+			writeLedger,
 		});
 		const mcpServers = agent.tools
 			.filter((tool) => tool.kind === 'mcp' && tool.url)
@@ -124,6 +133,8 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				worldId,
 				scenarioHints,
 				seed: seed as unknown as JsonObject,
+				// A later turn, after a restart too, must still see what earlier turns wrote.
+				writeLedger: writeLedger.slice(-MAX_SAVED_WRITES) as unknown as JsonObject[],
 			}),
 			handleRequest: async (request, call): Promise<SimulatedReply> => {
 				if (request.protocol === 'web_search') {
@@ -169,6 +180,10 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				if (!response) {
 					return { outcome: 'unsupported', detail: 'The LLM mock could not answer this request.' };
 				}
+				// A failed generation comes back as a 200 with an error marker, not as a reply.
+				if (isMockGenerationError(response.body)) {
+					return { outcome: 'unavailable', detail: 'The LLM mock failed to answer this request.' };
+				}
 				return {
 					outcome: 'served',
 					source: 'made_up',
@@ -192,9 +207,17 @@ function seedTools(agent: SimulatedAgent): AgentSeedToolSummary[] {
 		}));
 }
 
-function parseSaved(
-	saved: SavedSimulationWorld | undefined,
-): { worldId: string; scenarioHints: string; seed: InstanceAiEvalAgentScenarioSeed } | undefined {
+/** Writes kept with a saved world: enough for later reads, small enough for the thread row. */
+const MAX_SAVED_WRITES = 50;
+
+function parseSaved(saved: SavedSimulationWorld | undefined):
+	| {
+			worldId: string;
+			scenarioHints: string;
+			seed: InstanceAiEvalAgentScenarioSeed;
+			writeLedger: WriteLedgerEntry[];
+	  }
+	| undefined {
 	if (!saved) return undefined;
 	const { worldId, scenarioHints, seed } = saved;
 	if (typeof worldId !== 'string' || typeof scenarioHints !== 'string') return undefined;
@@ -202,5 +225,27 @@ function parseSaved(
 	if (typeof seed.globalContext !== 'string' || typeof seed.openingMessage !== 'string') {
 		return undefined;
 	}
-	return { worldId, scenarioHints, seed: seed as unknown as InstanceAiEvalAgentScenarioSeed };
+	return {
+		worldId,
+		scenarioHints,
+		seed: seed as unknown as InstanceAiEvalAgentScenarioSeed,
+		writeLedger: parseWriteLedger(saved.writeLedger),
+	};
+}
+
+function parseWriteLedger(value: unknown): WriteLedgerEntry[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(entry): entry is WriteLedgerEntry =>
+			typeof entry === 'object' &&
+			entry !== null &&
+			typeof (entry as WriteLedgerEntry).hostname === 'string' &&
+			typeof (entry as WriteLedgerEntry).method === 'string' &&
+			typeof (entry as WriteLedgerEntry).endpoint === 'string' &&
+			typeof (entry as WriteLedgerEntry).nodeName === 'string',
+	);
+}
+
+function isMockGenerationError(body: unknown): boolean {
+	return typeof body === 'object' && body !== null && '_evalMockError' in body;
 }

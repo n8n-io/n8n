@@ -161,6 +161,11 @@ interface MockHandlerOptions {
 	maxRetries?: number;
 	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
 	signal?: AbortSignal;
+	/**
+	 * Successful writes to start from, appended to in place. A caller that keeps a world across
+	 * handlers (a test chat after a restart) passes the saved ledger so reads still see them.
+	 */
+	writeLedger?: WriteLedgerEntry[];
 }
 
 // A real request never answers in zero time. Instant cache hits let a node that
@@ -347,7 +352,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 	// Successful writes of this execution (one handler per execution), shown to
 	// later requests to the same service so a read returns what was written.
-	const writeLedger: WriteLedgerEntry[] = [];
+	const writeLedger: WriteLedgerEntry[] = options?.writeLedger ?? [];
 
 	return async (requestOptions, node) => {
 		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.

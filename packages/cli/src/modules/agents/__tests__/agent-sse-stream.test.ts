@@ -650,6 +650,7 @@ describe('emitChunkEvents — test runs', () => {
 			expect.objectContaining({
 				type: 'tool-result',
 				toolCallId: 'tc-1',
+				output: { ok: true },
 				simulation: { route: 'blocked', reason: 'unsupported_by_simulator', detail: 'No Slack' },
 			}),
 		]);

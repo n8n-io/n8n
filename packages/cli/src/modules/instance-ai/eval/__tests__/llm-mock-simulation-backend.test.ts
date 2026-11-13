@@ -53,8 +53,12 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('serves node, workflow, MCP and web search tools, and nothing else', async () => {
 		const { backend } = setup();
+		const withWorkflow: SimulatedAgent = {
+			...agent,
+			tools: [...agent.tools, { toolName: 'Lookup_workflow', kind: 'workflow' }],
+		};
 
-		await expect(backend.describeTools(agent)).resolves.toEqual([
+		await expect(backend.describeTools(withWorkflow)).resolves.toEqual([
 			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
 			{ toolName: 'linear', kind: 'mcp', testability: 'simulated' },
 			{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' },
@@ -63,6 +67,7 @@ describe('LlmMockSimulationBackend', () => {
 				testability: 'blocked',
 				reason: 'unsupported_by_simulator',
 			}),
+			{ toolName: 'Lookup_workflow', kind: 'workflow', testability: 'simulated' },
 		]);
 	});
 
@@ -107,6 +112,23 @@ describe('LlmMockSimulationBackend', () => {
 			headers: {},
 			body: { ok: true, ts: '1.2' },
 		});
+	});
+
+	it('says unavailable when the mock failed to generate a reply, so the call is blocked', async () => {
+		const { backend, httpMock } = setup();
+		httpMock.mockResolvedValue({
+			statusCode: 200,
+			headers: {},
+			body: { _evalMockError: true, message: 'Mock generation failed: timeout' },
+		});
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		await expect(
+			world.handleRequest(
+				{ protocol: 'http', method: 'GET', url: 'https://slack.com/api/conversations.list' },
+				{ toolName: 'Send_Slack', nodeType: 'n8n-nodes-base.slack' },
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
 	});
 
 	it('says unsupported when the mock has no answer, so the call is blocked', async () => {
@@ -183,5 +205,26 @@ describe('LlmMockSimulationBackend', () => {
 		});
 		expect(webSearch).toHaveBeenCalledWith({ query: 'n8n' });
 		expect(searchReply).toMatchObject({ outcome: 'served', body: { results: [] } });
+	});
+
+	it('keeps the simulated writes of earlier turns in a saved world', async () => {
+		const { backend } = setup();
+		const first = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const firstOptions = vi.mocked(createLlmMockHandler).mock.calls[0][0];
+		const write = {
+			hostname: 'slack.com',
+			method: 'POST',
+			endpoint: '/api/chat.postMessage',
+			nodeName: 'Send_Slack',
+			body: '{"text":"v2"}',
+		};
+		firstOptions?.writeLedger?.push(write);
+
+		const saved = structuredClone(first.save());
+		await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'later', saved });
+
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ writeLedger: [write] }),
+		);
 	});
 });
