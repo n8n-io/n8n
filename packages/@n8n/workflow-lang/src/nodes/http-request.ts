@@ -343,10 +343,31 @@ function failureStatus(message: string): number | undefined {
 	return digits3(message.slice(at + marker.length, at + marker.length + 3));
 }
 
+/** The codes that Node.js gives a failed connection, as v1's AxiosError keeps them. */
+const NETWORK_CODES = [
+	'ECONNREFUSED',
+	'ECONNRESET',
+	'EAI_AGAIN',
+	'EHOSTUNREACH',
+	'ECONNABORTED',
+	'ENOTFOUND',
+	'ETIMEDOUT',
+	'ERRADDRINUSE',
+	'EADDRNOTAVAIL',
+];
+
+/** The network error code of a failure of the request, when its message names one. */
+function failureCode(message: string): string | undefined {
+	for (const code of NETWORK_CODES) {
+		if (message.indexOf(code) >= 0) return code;
+	}
+	return undefined;
+}
+
 /**
  * The reason of a failed request, as v1's item carries it: the AxiosError with the status,
  * its code, the message and the body of the response. A failure without a status (a
- * network error) keeps the name that the runtime gives it.
+ * network error) keeps the name 'Error' and the code that Node.js gives it.
  */
 function requestReason(status: number | undefined, message: string, body?: unknown): Item {
 	const reason: Item = { name: status === undefined ? 'Error' : 'AxiosError', message };
@@ -355,7 +376,10 @@ function requestReason(status: number | undefined, message: string, body?: unkno
 		reason.status = status;
 		reason.statusCode = status;
 		if (body !== undefined) reason.error = bodyText(body);
+		return reason;
 	}
+	const code = failureCode(message);
+	if (code !== undefined) reason.code = code;
 	return reason;
 }
 

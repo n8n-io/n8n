@@ -1,0 +1,18 @@
+{
+	"description": "HTTP Request 4.2 with a refused connection under continueErrorOutput: v1's error item is an Error with the message of the connection and no description",
+	"trigger": {
+		"body": {
+			"label": "row-1"
+		}
+	},
+	"http": {
+		"Call": {
+			"path": "rpc",
+			"responses": [
+				{
+					"error": "connect ECONNREFUSED 127.0.0.1:1"
+				}
+			]
+		}
+	}
+}

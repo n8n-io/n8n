@@ -1,0 +1,49 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": ["Webhook", "Call", "Rejected"],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1"
+					}
+				}
+			]
+		],
+		"Call": [
+			[],
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"label": "row-1"
+					},
+					"error": {
+						"message": "connect ECONNREFUSED 127.0.0.1:1",
+						"name": "Error",
+						"stack": "Error: connect ECONNREFUSED 127.0.0.1:1\n    at AxiosError.from (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:1577:24)\n    at RedirectableRequest.handleRequestError (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:4792:25)\n    at RedirectableRequest.emit (node:events:526:24)\n    at eventHandlers.<computed> (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/follow-redirects@1.16.2_debug@4.4.3_supports-color@8.1.1_/node_modules/follow-redirects/index.js:56:24)\n    at ClientRequest.emit (node:events:514:20)\n    at emitErrorEvent (node:_http_client:115:11)\n    at Socket.socketErrorListener (node:_http_client:794:5)\n    at Socket.emit (node:events:526:24)\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at Axios.request (/Users/craig/work/n8n/.claude/worktrees/error-outputs/node_modules/.pnpm/axios@1.20.0_debug@4.4.3_supports-color@8.1.1__supports-color@8.1.1/node_modules/axios/dist/node/axios.cjs:6308:43)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async requestWithResponseLimit (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:45:16)\n    at async invokeWithChallengeAuth (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:26:16)\n    at async invokeAxios (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/axios/invoke.js:13:16)\n    at async sendLegacyRequest (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/legacy-request.js:43:15)\n    at async executeLegacyRequest (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/legacy-request.js:15:16)\n    at async Object.requestLegacy (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/@n8n/backend-network/dist/http/outbound-http.js:50:28)\n    at async proxyRequestToAxios (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.js:9:12)\n    at async Object.request (/Users/craig/work/n8n/.claude/worktrees/error-outputs/packages/core/dist/execution-engine/node-execution-context/utils/request-helpers/factory.js:65:20)",
+						"code": "ECONNREFUSED"
+					}
+				}
+			]
+		],
+		"Rejected": [
+			[
+				{
+					"message": "connect ECONNREFUSED 127.0.0.1:1",
+					"description": null,
+					"itemKeys": ["headers", "params", "query", "body", "error"]
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

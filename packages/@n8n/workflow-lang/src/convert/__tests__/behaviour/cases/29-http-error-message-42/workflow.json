@@ -1,0 +1,81 @@
+{
+	"name": "HTTP error message 4.2",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": { "httpMethod": "POST", "path": "errors", "options": {} }
+		},
+		{
+			"id": "call",
+			"name": "Call",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.2,
+			"position": [200, 0],
+			"onError": "continueErrorOutput",
+			"parameters": {
+				"method": "POST",
+				"url": "http://127.0.0.1:47123/rpc/do_thing",
+				"options": {}
+			}
+		},
+		{
+			"id": "accepted",
+			"name": "Accepted",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, -100],
+			"parameters": {
+				"assignments": {
+					"assignments": [{ "id": "a1", "name": "status", "value": "accepted", "type": "string" }]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "rejected",
+			"name": "Rejected",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 100],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "b1",
+							"name": "message",
+							"value": "={{ $json.error.message }}",
+							"type": "string"
+						},
+						{
+							"id": "b2",
+							"name": "description",
+							"value": "={{ $json.error.description }}",
+							"type": "string"
+						},
+						{
+							"id": "b3",
+							"name": "itemKeys",
+							"value": "={{ Object.keys($json) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": { "main": [[{ "node": "Call", "type": "main", "index": 0 }]] },
+		"Call": {
+			"main": [
+				[{ "node": "Accepted", "type": "main", "index": 0 }],
+				[{ "node": "Rejected", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"settings": { "executionOrder": "v1" }
+}

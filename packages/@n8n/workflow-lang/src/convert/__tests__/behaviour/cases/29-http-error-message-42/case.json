@@ -1,0 +1,22 @@
+{
+	"description": "HTTP Request 4.2 with an error status under continueErrorOutput: v1's error item carries the whole AxiosError as `error`, with the status and the body in its message and no description",
+	"trigger": {
+		"body": { "label": "row-1" }
+	},
+	"http": {
+		"Call": {
+			"path": "rpc",
+			"responses": [
+				{
+					"status": 400,
+					"body": {
+						"code": "PGRST202",
+						"message": "Could not find the function",
+						"details": null,
+						"hint": "Perhaps you meant to call another one"
+					}
+				}
+			]
+		}
+	}
+}
