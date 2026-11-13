@@ -42,13 +42,14 @@ export class AppSourceArchiveService {
 		projectId: string,
 		appId: string,
 		plan: AppPlan,
+		theme: 'light' | 'dark' | 'both',
 		actor?: AppActor,
 	): Promise<AppBuildResponse> {
 		return await this.changes.commit(
 			projectId,
 			appId,
 			null,
-			createPlanScaffold(plan),
+			createPlanScaffold(plan, theme),
 			'Wireframe',
 			undefined,
 			actor,

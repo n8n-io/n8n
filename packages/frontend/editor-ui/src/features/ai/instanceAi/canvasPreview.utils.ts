@@ -457,6 +457,7 @@ export interface PendingAppPlan {
 	toolCallId: string;
 	name: string;
 	plan: AppPlan;
+	theme: 'light' | 'dark' | 'both';
 }
 
 /**
@@ -480,6 +481,7 @@ export function getPendingAppPlan(turns: readonly ArtifactTurn[]): PendingAppPla
 				toolCallId: tc.toolCallId,
 				name: typeof blueprint.name === 'string' ? blueprint.name : 'App',
 				plan: parsed.data,
+				theme: blueprint.theme === 'light' || blueprint.theme === 'dark' ? blueprint.theme : 'both',
 			};
 		}) ?? undefined
 	);

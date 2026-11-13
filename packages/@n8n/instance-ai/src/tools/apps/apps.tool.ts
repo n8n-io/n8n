@@ -141,7 +141,9 @@ async function createApp(
 		}));
 	// The wireframe of the plan is the first version, so the preview shows it right away.
 	const wireframe =
-		!existing && blueprint.plan ? await apps.commitPlan(app.id, blueprint.plan) : undefined;
+		!existing && blueprint.plan
+			? await apps.commitPlan(app.id, blueprint.plan, blueprint.theme)
+			: undefined;
 	await reportChangedApp(context, app.id, async () => app);
 	if (existing) return { app, alreadyCreated: true };
 	return wireframe

@@ -3,6 +3,7 @@ import {
 	WIREFRAME_FONT_URL,
 	renderWireframeBody,
 	type AppPlan,
+	type WireframeRenderOptions,
 } from '@n8n/api-types';
 
 import { createAppScaffold } from './app-scaffold';
@@ -14,7 +15,10 @@ import type { AppFiles } from '../storage/app-version-stores';
  * builder can swap one block at a time for a real component. `public/plan.json`
  * lets the preview overlay show the plan and the build progress.
  */
-export function createPlanScaffold(plan: AppPlan): AppFiles {
+export function createPlanScaffold(
+	plan: AppPlan,
+	theme: WireframeRenderOptions['theme'] = 'both',
+): AppFiles {
 	const files = new Map(createAppScaffold());
 	const add = (name: string, content: string) => files.set(name, Buffer.from(content));
 
@@ -26,7 +30,7 @@ export function createPlanScaffold(plan: AppPlan): AppFiles {
 			'</script>',
 			'',
 			'<template>',
-			renderWireframeBody(plan, { vue: true }),
+			renderWireframeBody(plan, { vue: true, theme }),
 			'</template>',
 			'',
 		].join('\n'),

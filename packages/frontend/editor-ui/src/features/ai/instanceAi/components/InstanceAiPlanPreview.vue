@@ -12,14 +12,20 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 
 import { useInstanceAiStore } from '../instanceAi.store';
 
-const props = defineProps<{ name: string; plan: AppPlan }>();
+const props = defineProps<{
+	name: string;
+	plan: AppPlan;
+	theme: 'light' | 'dark' | 'both';
+}>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
 const selecting = ref(false);
 
-const srcdoc = computed(() => renderWireframeDocument(props.plan, { selectable: true }));
+const srcdoc = computed(() =>
+	renderWireframeDocument(props.plan, { selectable: true }, { theme: props.theme }),
+);
 
 function post(type: 'select:enable' | 'select:disable' | 'select:clear') {
 	frame.value?.contentWindow?.postMessage({ source: PLAN_OVERLAY_MESSAGE_SOURCE, type }, '*');

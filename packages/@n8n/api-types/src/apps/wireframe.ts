@@ -132,6 +132,8 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 export interface WireframeRenderOptions {
 	/** Adds `v-pre` to each block so the HTML is a valid Vue template. */
 	vue?: boolean;
+	/** The app theme. `both` follows the color scheme of the browser. Defaults to `both`. */
+	theme?: 'light' | 'dark' | 'both';
 }
 
 /** One planned block. Its root carries `data-plan-id`. */
@@ -147,7 +149,7 @@ export function renderWireframeBlock(
 	const showLabel = component.kind !== 'button' && component.kind !== 'nav';
 	const showHead = component.kind !== 'button' && (showLabel || markers);
 	return [
-		`<div class="wf-block wf-k-${component.kind}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+		`<div class="wf-block wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 		component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
 		options.vue ? ' v-pre' : '',
 		'>',
@@ -186,7 +188,7 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 		})
 		.join('\n');
 	return [
-		`<div class="wf-app wf-layout-${plan.layout ?? 'topbar'}" data-plan-id="${APP_PLAN_SHELL_ID}">`,
+		`<div class="wf-app wf-layout-${plan.layout ?? 'topbar'} wf-theme-${options.theme ?? 'both'}" data-plan-id="${APP_PLAN_SHELL_ID}">`,
 		nav ? `  <div class="wf-nav-slot">${nav}</div>` : '',
 		'  <div class="wf-content">',
 		screens,
@@ -207,9 +209,12 @@ export const WIREFRAME_CSS = `
   --wf-paper: #fbfbf9; --wf-panel: #ffffff; --wf-line: #2b2b2b; --wf-line-soft: #c9c9c9; --wf-wash: #f0efeb;
   --wf-font: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
 }
-@media (prefers-color-scheme: dark) { .wf-app, .wf-block {
+@media (prefers-color-scheme: dark) { .wf-theme-both {
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
   --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e; } }
+.wf-theme-dark {
+  --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
+  --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e; }
 .wf-app { font-family: var(--wf-font); font-weight: 300; font-size: 13px; color: var(--wf-ink); background: var(--wf-paper);
   min-height: 100vh; display: flex; flex-direction: column; }
 .wf-app.wf-layout-sidebar { flex-direction: row; }
@@ -517,6 +522,7 @@ export function planOverlayScript(config: PlanOverlayConfig): string {
 export function renderWireframeDocument(
 	plan: AppPlan,
 	overlay: Omit<PlanOverlayConfig, 'plan' | 'planUrl'> = {},
+	options: Pick<WireframeRenderOptions, 'theme'> = {},
 ): string {
 	return [
 		'<!doctype html><html><head><meta charset="utf-8">',
@@ -524,7 +530,7 @@ export function renderWireframeDocument(
 		`<link rel="stylesheet" href="${WIREFRAME_FONT_URL}">`,
 		`<style>html,body{margin:0}${WIREFRAME_CSS}</style>`,
 		'</head><body>',
-		renderWireframeBody(plan),
+		renderWireframeBody(plan, options),
 		`<script>${planOverlayScript({ ...overlay, plan })}</script>`,
 		'</body></html>',
 	].join('\n');

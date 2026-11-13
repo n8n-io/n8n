@@ -1331,7 +1331,11 @@ export interface InstanceAiAppService {
 		label: string | null,
 	): Promise<AppBuildResponse>;
 	/** Saves the wireframe of the plan as the first version of a new app and builds it. */
-	commitPlan(appId: string, plan: AppPlan): Promise<AppBuildResponse>;
+	commitPlan(
+		appId: string,
+		plan: AppPlan,
+		theme: 'light' | 'dark' | 'both',
+	): Promise<AppBuildResponse>;
 	/** The bindings of the draft version, with the TypeScript declarations that describe them. */
 	getBindings(appId: string): Promise<AppBindingsResponse & { types: string }>;
 	/** Saves the full binding list as a new version on top of `baseVersionId`. */

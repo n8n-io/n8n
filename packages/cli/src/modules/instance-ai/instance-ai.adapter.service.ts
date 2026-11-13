@@ -3661,9 +3661,9 @@ export class InstanceAiAdapterService {
 				const { sources } = await services('app:read');
 				return await sources.exportDraft(projectId, appId);
 			},
-			commitPlan: async (appId, plan) => {
+			commitPlan: async (appId, plan, theme) => {
 				const { sources } = await services('app:update');
-				return await sources.commitPlan(projectId, appId, plan, actor);
+				return await sources.commitPlan(projectId, appId, plan, theme, actor);
 			},
 			commit: async (appId, baseVersionId, archive, label) => {
 				const { sources } = await services('app:update');

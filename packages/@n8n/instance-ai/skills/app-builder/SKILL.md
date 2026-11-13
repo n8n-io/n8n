@@ -164,8 +164,9 @@ Follow `buildOrder`. Do one step per commit, and do not batch steps:
    `data-plan-screen` sections or switch to Vue Router.
 
 Do not add sample or mock data. An empty table shows its empty state. Tell the
-user in one short line which part you build next. Keep `src/plan/` and
-`public/plan.json` until every block is built.
+user in one short line which part you build next. Keep `public/plan.json`
+when you are done: the preview uses it to show what each part is connected to.
+Remove `src/plan/` once no `wf-block` is left.
 
 ## Build order for a new app
 

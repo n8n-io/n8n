@@ -1017,6 +1017,7 @@ function handleNewThreadClick() {
 								:class="$style.previewSlot"
 								:name="preview.pendingAppPlan.value.name"
 								:plan="preview.pendingAppPlan.value.plan"
+								:theme="preview.pendingAppPlan.value.theme"
 							/>
 							<template v-else>
 								<InstanceAiWorkflowPreview
