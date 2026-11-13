@@ -1,6 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { Readable } from 'stream';
 
 import * as genericFunctions from '../../GenericFunctions';
@@ -76,7 +77,7 @@ describe('Test YouTube, video => upload', () => {
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledTimes(1);
 		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/youtube/v3/videos',
+			requestPath`/upload/youtube/v3/videos`,
 			{
 				recordingDetails: { recordingDate: undefined },
 				snippet: {
@@ -100,7 +101,6 @@ describe('Test YouTube, video => upload', () => {
 				part: 'snippet,status,recordingDetails',
 				uploadType: 'resumable',
 			},
-			undefined,
 			{
 				headers: { 'X-Upload-Content-Length': 2097152, 'X-Upload-Content-Type': 'video/mp4' },
 				json: true,

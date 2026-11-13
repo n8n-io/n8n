@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	NodeApiError,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
 import {
@@ -47,7 +48,7 @@ export async function execute(
 	const asyncAutomationResponse = await apiRequest.call(
 		this,
 		'POST',
-		`/async/sessions/${sessionId}/windows/${windowId}/execute-automation`,
+		requestPath`/async/sessions/${sessionId}/windows/${windowId}/execute-automation`,
 		{
 			automationId: 'auto',
 			parameters: {
@@ -63,7 +64,11 @@ export async function execute(
 	let automationStatusResponse: IAirtopResponse;
 
 	while (true) {
-		automationStatusResponse = await apiRequest.call(this, 'GET', `/requests/${reqId}/status`);
+		automationStatusResponse = await apiRequest.call(
+			this,
+			'GET',
+			requestPath`/requests/${reqId}/status`,
+		);
 		const status = automationStatusResponse?.status ?? '';
 
 		validateAirtopApiResponse(this.getNode(), automationStatusResponse);

@@ -6,18 +6,18 @@ import type {
 	INodePropertyOptions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
- * Return the access token URL based on the user's environment.
+ * Return the identity base URL based on the user's environment.
  */
-async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+async function getIdentityBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const { environment, domain } = await this.getCredentials('bitwardenApi');
 
-	return environment === 'cloudHosted'
-		? 'https://identity.bitwarden.com/connect/token'
-		: `${domain}/identity/connect/token`;
+	return environment === 'cloudHosted' ? 'https://identity.bitwarden.com' : `${domain}/identity`;
 }
 
 /**
@@ -35,13 +35,13 @@ async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 export async function bitwardenApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
 ): Promise<any> {
 	const baseUrl = await getBaseUrl.call(this);
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Bearer ${token}`,
 			'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ export async function bitwardenApiRequest(
 		method,
 		qs,
 		body,
-		uri: `${baseUrl}${endpoint}`,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
 
@@ -76,7 +76,7 @@ export async function getAccessToken(
 ): Promise<any> {
 	const credentials = await this.getCredentials('bitwardenApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
@@ -90,7 +90,7 @@ export async function getAccessToken(
 			deviceType: 2, // https://github.com/bitwarden/server/blob/main/src/Libraries/Clients/DeviceType.cs
 			deviceIdentifier: 'n8n',
 		},
-		uri: await getTokenUrl.call(this),
+		uri: requestUrl`${await getIdentityBaseUrl.call(this)}/connect/token`,
 		json: true,
 	};
 
@@ -109,7 +109,7 @@ export async function handleGetAll(
 	this: IExecuteFunctions,
 	i: number,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
@@ -131,7 +131,7 @@ export async function handleGetAll(
 export async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 	const returnData: INodePropertyOptions[] = [];
 	const token = await getAccessToken.call(this);
-	const endpoint = `/public/${resource}`;
+	const endpoint = requestPath`/public/${resource}`;
 
 	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token as string);
 

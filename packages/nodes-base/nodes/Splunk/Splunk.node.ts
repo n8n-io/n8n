@@ -12,12 +12,13 @@ export class Splunk extends VersionedNodeType {
 			icon: 'file:splunk.svg',
 			group: ['transform'],
 			description: 'Consume the Splunk Enterprise API',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SplunkV1(baseDescription),
 			2: new SplunkV2(baseDescription),
+			2.1: new SplunkV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -1,0 +1,510 @@
+{
+	"name": "Elasticsearch request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"indexId": "my-index",
+				"documentId": "doc1"
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Delete Document",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"indexId": "my-index",
+				"documentId": "doc1",
+				"simple": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Document",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"indexId": "my-index",
+				"returnAll": false,
+				"limit": 5,
+				"simple": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Many Documents",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"indexId": "my-index",
+				"returnAll": true,
+				"simple": false,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get All Documents",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"indexId": "my-index",
+				"returnAll": true,
+				"simple": false,
+				"options": {
+					"sort": "name:asc"
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Get All Sorted Documents",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"indexId": "my-index",
+				"dataToSend": "defineBelow",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Nathan"
+						}
+					]
+				},
+				"additionalFields": {
+					"documentId": "doc1"
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Create Document with ID",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"indexId": "my-index",
+				"dataToSend": "defineBelow",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Jan"
+						}
+					]
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Create Document",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"indexId": "my-index",
+				"dataToSend": "defineBelow",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Jan"
+						}
+					]
+				},
+				"additionalFields": {},
+				"options": {
+					"bulkOperation": true
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Bulk Create Document",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"indexId": "my-index",
+				"documentId": "doc1",
+				"dataToSend": "defineBelow",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Jan"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Update Document",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "index",
+				"operation": "create",
+				"indexId": "my-index",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Create Index",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "index",
+				"operation": "delete",
+				"indexId": "my-index"
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Delete Index",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "index",
+				"operation": "get",
+				"indexId": "my-index",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Get Index",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "index",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.elasticsearch",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Get Many Indices",
+			"credentials": {
+				"elasticsearchApi": {
+					"id": "cred1",
+					"name": "Elasticsearch account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete Document": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"result": "deleted"
+				}
+			}
+		],
+		"Get Document": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_version": 1,
+					"found": true,
+					"_source": {
+						"name": "Nathan"
+					}
+				}
+			}
+		],
+		"Get Many Documents": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_score": 1,
+					"_source": {
+						"name": "Nathan"
+					}
+				}
+			}
+		],
+		"Get All Documents": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_score": 1,
+					"_source": {
+						"name": "Nathan"
+					}
+				}
+			}
+		],
+		"Get All Sorted Documents": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_score": 1,
+					"_source": {
+						"name": "Nathan"
+					},
+					"sort": ["Nathan"]
+				}
+			}
+		],
+		"Create Document with ID": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_version": 1,
+					"result": "created"
+				}
+			}
+		],
+		"Create Document": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "Xk2pB4sB7dQ1",
+					"_version": 1,
+					"result": "created"
+				}
+			}
+		],
+		"Bulk Create Document": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "Yb7qC5tC8eR2",
+					"result": "created",
+					"status": 201
+				}
+			}
+		],
+		"Update Document": [
+			{
+				"json": {
+					"_index": "my-index",
+					"_id": "doc1",
+					"_version": 2,
+					"result": "updated"
+				}
+			}
+		],
+		"Create Index": [
+			{
+				"json": {
+					"id": "my-index",
+					"acknowledged": true,
+					"shards_acknowledged": true
+				}
+			}
+		],
+		"Delete Index": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Index": [
+			{
+				"json": {
+					"id": "my-index",
+					"aliases": {}
+				}
+			}
+		],
+		"Get Many Indices": [
+			{
+				"json": {
+					"indexId": "my-index"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Delete Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Documents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Documents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Sorted Documents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Document with ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Bulk Create Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Document",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Index",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Index",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Index",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Indices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

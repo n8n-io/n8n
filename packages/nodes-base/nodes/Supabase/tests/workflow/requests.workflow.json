@@ -1,0 +1,344 @@
+{
+	"name": "Supabase Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"tableId": "users",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Nathan Smith"
+						}
+					]
+				}
+			},
+			"id": "supabase-0",
+			"name": "Create Row",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"tableId": "users",
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "id",
+							"keyValue": "42"
+						}
+					]
+				}
+			},
+			"id": "supabase-1",
+			"name": "Get Row",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"tableId": "user profiles",
+				"limit": 50,
+				"filterType": "none"
+			},
+			"id": "supabase-2",
+			"name": "Get Many Rows",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"tableId": "users",
+				"returnAll": true,
+				"filterType": "string",
+				"filterString": "email=eq.$1&name=ilike.*nat*",
+				"filterStringParameters": {
+					"values": [
+						{
+							"value": "nathan@example.com"
+						}
+					]
+				}
+			},
+			"id": "supabase-3",
+			"name": "Get Many Rows Filter String",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"tableId": "users",
+				"filterType": "manual",
+				"matchType": "allFilters",
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "id",
+							"condition": "eq",
+							"keyValue": "42"
+						}
+					]
+				},
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Nathan Smith"
+						}
+					]
+				}
+			},
+			"id": "supabase-4",
+			"name": "Update Row",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"tableId": "users",
+				"filterType": "string",
+				"filterString": "id=in.(42,43)",
+				"fieldsUi": {
+					"fieldValues": [
+						{
+							"fieldId": "name",
+							"fieldValue": "Nathan Smith"
+						}
+					]
+				}
+			},
+			"id": "supabase-5",
+			"name": "Update Row Filter String",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tableId": "users",
+				"filterType": "manual",
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "id",
+							"condition": "eq",
+							"keyValue": "42"
+						}
+					]
+				}
+			},
+			"id": "supabase-6",
+			"name": "Delete Row",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tableId": "users",
+				"filterType": "string",
+				"filterString": "name=eq.Nathan Smith"
+			},
+			"id": "supabase-7",
+			"name": "Delete Row Filter String",
+			"type": "n8n-nodes-base.supabase",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"supabaseApi": {
+					"id": "1",
+					"name": "Supabase account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Row": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Get Row": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Get Many Rows": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Get Many Rows Filter String": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Update Row": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Update Row Filter String": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Delete Row": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Delete Row Filter String": [
+			{
+				"json": {
+					"id": 42,
+					"name": "Nathan Smith",
+					"email": "nathan@example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Create Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Rows Filter String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Row Filter String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Row",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Row Filter String",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

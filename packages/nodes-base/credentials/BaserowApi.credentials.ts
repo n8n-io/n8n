@@ -1,10 +1,11 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 // https://api.baserow.io/api/redoc/#section/Authentication
@@ -58,10 +59,9 @@ export class BaserowApi implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const host = (credentials.host as string).replace(/\/$/, '');
 		const { token } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${host}/api/user/token-auth/`,
+			url: requestUrl`${credentials.host}/api/user/token-auth/`,
 			body: {
 				username: credentials.username,
 				password: credentials.password,

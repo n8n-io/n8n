@@ -1,3 +1,4 @@
+import { requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -57,7 +58,7 @@ describe('Job -> Get Run', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.2/jobs/runs/get`,
+				url: requestUrl`${HOST}/api/2.2/jobs/runs/get`,
 				qs: { run_id: RUN_ID },
 			}),
 		);

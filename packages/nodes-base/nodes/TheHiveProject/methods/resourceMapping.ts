@@ -5,6 +5,7 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	loadAlertStatus,
@@ -22,7 +23,7 @@ import {
 import { theHiveApiRequest } from '../transport';
 
 async function getCustomFields(this: ILoadOptionsFunctions) {
-	const customFields = (await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+	const customFields = (await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, {
 		query: [
 			{
 				_name: 'listCustomField',

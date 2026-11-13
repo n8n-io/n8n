@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { notionApiRequestV3 } from '../../v3/transport';
 
@@ -13,7 +14,7 @@ describe('Notion V3 transport', () => {
 			},
 		} as unknown as IExecuteFunctions;
 
-		await notionApiRequestV3.call(context, 'GET', '/users');
+		await notionApiRequestV3.call(context, 'GET', requestPath`/users`);
 
 		expect(httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'notionApi',

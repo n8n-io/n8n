@@ -36,7 +36,22 @@ describe('DataTableCsvImportService', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('validateAndBuildRowsForExistingTable', () => {
+	async function* toBatches(...batches: Array<Array<Record<string, string>>>) {
+		for (const batch of batches) {
+			yield batch;
+		}
+	}
+
+	async function collectRows<T>(rowBatches: AsyncIterable<T[]>): Promise<T[]> {
+		const rows: T[] = [];
+		for await (const batch of rowBatches) {
+			rows.push(...batch);
+		}
+
+		return rows;
+	}
+
+	describe('validateAndBuildRowBatchesForExistingTable', () => {
 		const fileId = 'test-file-id';
 		const tableColumns: DataTableColumn[] = [
 			{
@@ -63,127 +78,138 @@ describe('DataTableCsvImportService', () => {
 		];
 
 		it('should transform matching CSV columns into rows', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 2,
-					columnCount: 3,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'age', type: 'number' },
-						{ name: 'email', type: 'string' },
-					],
-				},
-				rows: [
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['name', 'age', 'email']);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([
 					{ name: 'Alice', age: '30', email: 'alice@test.com' },
 					{ name: 'Bob', age: '25', email: 'bob@test.com' },
-				],
-			});
+				]),
+			);
 
-			const result = await service.validateAndBuildRowsForExistingTable(fileId, tableColumns);
+			const result = await service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns);
+			const rows = await collectRows(result.rowBatches);
 
-			expect(result.rows).toHaveLength(2);
-			expect(result.rows[0]).toEqual({ name: 'Alice', age: '30', email: 'alice@test.com' });
+			expect(rows).toHaveLength(2);
+			expect(rows[0]).toEqual({ name: 'Alice', age: '30', email: 'alice@test.com' });
 			expect(result.systemColumnsIgnored).toEqual([]);
 		});
 
+		it('should keep the batches of the parser', async () => {
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['name']);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ name: 'Alice' }, { name: 'Bob' }], [{ name: 'Carol' }]),
+			);
+
+			const { rowBatches } = await service.validateAndBuildRowBatchesForExistingTable(
+				fileId,
+				tableColumns,
+			);
+
+			const batches: unknown[][] = [];
+			for await (const batch of rowBatches) {
+				batches.push(batch);
+			}
+
+			expect(batches).toEqual([[{ name: 'Alice' }, { name: 'Bob' }], [{ name: 'Carol' }]]);
+		});
+
+		it('should validate columns before it reads any rows', async () => {
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['unknown_col']);
+
+			await expect(
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
+			).rejects.toThrow(DataTableValidationError);
+
+			expect(mockCsvParserService.parseFileInBatches).not.toHaveBeenCalled();
+		});
+
 		it('should ignore system columns and return them in systemColumnsIgnored', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 4,
-					columns: [
-						{ name: 'id', type: 'number' },
-						{ name: 'name', type: 'string' },
-						{ name: 'createdAt', type: 'date' },
-						{ name: 'updatedAt', type: 'date' },
-					],
-				},
-				rows: [{ id: '1', name: 'Alice', createdAt: '2024-01-01', updatedAt: '2024-01-01' }],
-			});
+			mockCsvParserService.parseColumnNames.mockResolvedValue([
+				'id',
+				'name',
+				'createdAt',
+				'updatedAt',
+			]);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ id: '1', name: 'Alice', createdAt: '2024-01-01', updatedAt: '2024-01-01' }]),
+			);
 
-			const result = await service.validateAndBuildRowsForExistingTable(fileId, tableColumns);
+			const result = await service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns);
+			const rows = await collectRows(result.rowBatches);
 
-			expect(result.rows).toHaveLength(1);
-			expect(result.rows[0]).toEqual({ name: 'Alice' });
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toEqual({ name: 'Alice' });
 			expect(result.systemColumnsIgnored).toEqual(['id', 'createdAt', 'updatedAt']);
 		});
 
 		it('should throw DataTableValidationError when CSV has unrecognized columns', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 3,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'unknown_col', type: 'string' },
-						{ name: 'another_unknown', type: 'string' },
-					],
-				},
-				rows: [{ name: 'Alice', unknown_col: 'x', another_unknown: 'y' }],
-			});
+			mockCsvParserService.parseColumnNames.mockResolvedValue([
+				'name',
+				'unknown_col',
+				'another_unknown',
+			]);
 
 			await expect(
-				service.validateAndBuildRowsForExistingTable(fileId, tableColumns),
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
 			).rejects.toThrow(DataTableValidationError);
 
 			await expect(
-				service.validateAndBuildRowsForExistingTable(fileId, tableColumns),
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
 			).rejects.toThrow(
 				'CSV contains columns not found in the data table: unknown_col, another_unknown',
 			);
 		});
 
 		it('should throw DataTableValidationError when zero non-system columns match', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 2,
-					columns: [
-						{ name: 'id', type: 'number' },
-						{ name: 'createdAt', type: 'date' },
-					],
-				},
-				rows: [{ id: '1', createdAt: '2024-01-01' }],
-			});
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['id', 'createdAt']);
 
 			await expect(
-				service.validateAndBuildRowsForExistingTable(fileId, tableColumns),
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
 			).rejects.toThrow(DataTableValidationError);
 
 			await expect(
-				service.validateAndBuildRowsForExistingTable(fileId, tableColumns),
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
 			).rejects.toThrow('No matching columns found');
 		});
 
 		it('should convert empty and missing CSV values to null', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 2,
-					columnCount: 2,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'age', type: 'number' },
-					],
-				},
-				rows: [{ name: 'Alice', age: '' }, { name: '' }],
-			});
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['name', 'age']);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ name: 'Alice', age: '' }, { name: '' }]),
+			);
 
-			const result = await service.validateAndBuildRowsForExistingTable(fileId, tableColumns);
+			const result = await service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns);
+			const rows = await collectRows(result.rowBatches);
 
-			expect(result.rows[0]).toEqual({ name: 'Alice', age: null });
-			expect(result.rows[1]).toEqual({ name: null, age: null });
+			expect(rows[0]).toEqual({ name: 'Alice', age: null });
+			expect(rows[1]).toEqual({ name: null, age: null });
 		});
 
-		it('should wrap unexpected errors in FileUploadError', async () => {
-			mockCsvParserService.parseFileWithData.mockRejectedValue(new Error('disk read failed'));
+		it('should wrap unexpected header errors in FileUploadError', async () => {
+			mockCsvParserService.parseColumnNames.mockRejectedValue(new Error('disk read failed'));
 
 			await expect(
-				service.validateAndBuildRowsForExistingTable(fileId, tableColumns),
+				service.validateAndBuildRowBatchesForExistingTable(fileId, tableColumns),
 			).rejects.toThrow(FileUploadError);
+		});
+
+		it('should wrap unexpected row errors in FileUploadError', async () => {
+			mockCsvParserService.parseColumnNames.mockResolvedValue(['name']);
+			mockCsvParserService.parseFileInBatches.mockImplementation(async function* () {
+				yield [{ name: 'Alice' }];
+				throw new Error('Invalid Closing Quote');
+			});
+
+			const { rowBatches } = await service.validateAndBuildRowBatchesForExistingTable(
+				fileId,
+				tableColumns,
+			);
+
+			await expect(collectRows(rowBatches)).rejects.toThrow(FileUploadError);
 		});
 	});
 
-	describe('buildRowsForNewTable', () => {
+	describe('buildRowBatchesForNewTable', () => {
 		const fileId = 'test-file-id';
 		const tableColumns: DataTableColumn[] = [
 			{
@@ -211,12 +237,17 @@ describe('DataTableCsvImportService', () => {
 					{ name: 'age', type: 'number' },
 				],
 			});
-			mockCsvParserService.parseFileData.mockResolvedValue([{ name: 'Alice', age: '30' }]);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ name: 'Alice', age: '30' }]),
+			);
 
-			const result = await service.buildRowsForNewTable(fileId, true, tableColumns);
+			const rows = await collectRows(
+				await service.buildRowBatchesForNewTable(fileId, true, tableColumns),
+			);
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({ 'First Name': 'Alice', Age: '30' });
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toEqual({ 'First Name': 'Alice', Age: '30' });
+			expect(mockCsvParserService.parseFileInBatches).toHaveBeenCalledWith(fileId, true);
 		});
 
 		it('should map CSV columns by csvColumnName when provided', async () => {
@@ -225,12 +256,16 @@ describe('DataTableCsvImportService', () => {
 				{ name: 'Age', type: 'number' as const, csvColumnName: 'csv_age' },
 			];
 
-			mockCsvParserService.parseFileData.mockResolvedValue([{ csv_name: 'Alice', csv_age: '30' }]);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ csv_name: 'Alice', csv_age: '30' }]),
+			);
 
-			const result = await service.buildRowsForNewTable(fileId, true, tableColumns, dtoColumns);
+			const rows = await collectRows(
+				await service.buildRowBatchesForNewTable(fileId, true, tableColumns, dtoColumns),
+			);
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({ 'First Name': 'Alice', Age: '30' });
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toEqual({ 'First Name': 'Alice', Age: '30' });
 		});
 
 		it('should convert empty and missing CSV values to null', async () => {
@@ -242,23 +277,34 @@ describe('DataTableCsvImportService', () => {
 					{ name: 'age', type: 'number' },
 				],
 			});
-			mockCsvParserService.parseFileData.mockResolvedValue([
-				{ name: 'Alice', age: '' },
-				{ name: '' },
-			]);
+			mockCsvParserService.parseFileInBatches.mockReturnValue(
+				toBatches([{ name: 'Alice', age: '' }, { name: '' }]),
+			);
 
-			const result = await service.buildRowsForNewTable(fileId, true, tableColumns);
+			const rows = await collectRows(
+				await service.buildRowBatchesForNewTable(fileId, true, tableColumns),
+			);
 
-			expect(result[0]).toEqual({ 'First Name': 'Alice', Age: null });
-			expect(result[1]).toEqual({ 'First Name': null, Age: null });
+			expect(rows[0]).toEqual({ 'First Name': 'Alice', Age: null });
+			expect(rows[1]).toEqual({ 'First Name': null, Age: null });
 		});
 
 		it('should wrap unexpected errors in FileUploadError', async () => {
 			mockCsvParserService.parseFile.mockRejectedValue(new Error('file not found'));
 
-			await expect(service.buildRowsForNewTable(fileId, true, tableColumns)).rejects.toThrow(
+			await expect(service.buildRowBatchesForNewTable(fileId, true, tableColumns)).rejects.toThrow(
 				FileUploadError,
 			);
+		});
+	});
+
+	describe('claimFile', () => {
+		it('should delegate to file cleanup service', async () => {
+			mockFileCleanupService.claimFile.mockResolvedValue('test-file-id.importing');
+
+			await expect(service.claimFile('test-file-id')).resolves.toBe('test-file-id.importing');
+
+			expect(mockFileCleanupService.claimFile).toHaveBeenCalledWith('test-file-id');
 		});
 	});
 

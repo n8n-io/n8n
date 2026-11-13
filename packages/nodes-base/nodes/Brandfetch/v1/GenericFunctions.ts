@@ -7,8 +7,10 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	JsonObject,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 const ALLOWED_LOGO_HOSTNAME_SUFFIXES = ['.brandfetch.io', '.brandfetch.com'];
 
@@ -48,18 +50,18 @@ function assertSafeLogoUrl(this: IExecuteFunctions, rawUrl: unknown): string {
 export async function brandfetchApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'headers'> = {},
 ): Promise<any> {
 	try {
-		let options: IRequestOptions = {
+		let options: LegacyRequestOptions = {
 			method,
 			qs,
 			body,
-			url: uri || `https://api.brandfetch.io/v2${resource}`,
+			...(uri ? { url: uri } : { url: requestUrl`https://api.brandfetch.io/v2${resource}` }),
 			json: true,
 		};
 
@@ -102,7 +104,7 @@ export async function fetchAndPrepareBinaryData(
 ) {
 	const safeUrl = assertSafeLogoUrl.call(this, logoFormats.src);
 
-	const data = await brandfetchApiRequest.call(this, 'GET', '', {}, {}, safeUrl, {
+	const data = await brandfetchApiRequest.call(this, 'GET', requestPath``, {}, {}, safeUrl, {
 		json: false,
 		encoding: null,
 	});

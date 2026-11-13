@@ -2,7 +2,7 @@ import FormData from 'form-data';
 import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../../../utils/sendAndWait/utils';
 import { capitalize, createUtmCampaignLink } from '../../../../utils/utilities';
@@ -268,7 +268,7 @@ export async function checkAccessToChannel(
 	let guildId = '';
 
 	try {
-		const channel = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
+		const channel = await discordApiRequest.call(this, 'GET', requestPath`/channels/${channelId}`);
 		guildId = channel.guild_id;
 	} catch (error) {}
 
@@ -328,7 +328,11 @@ export async function sendDiscordMessage(
 
 		if (isOAuth2) {
 			try {
-				await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+				await discordApiRequest.call(
+					this,
+					'GET',
+					requestPath`/guilds/${guildId}/members/${userId}`,
+				);
 			} catch (error) {
 				if (error instanceof NodeApiError && error.httpCode === '404') {
 					throw new NodeOperationError(
@@ -347,7 +351,7 @@ export async function sendDiscordMessage(
 		}
 
 		channelId = (
-			(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
+			(await discordApiRequest.call(this, 'POST', requestPath`/users/@me/channels`, {
 				recipient_id: userId,
 			})) as IDataObject
 		).id as string;
@@ -385,11 +389,16 @@ export async function sendDiscordMessage(
 		response = await discordApiMultiPartRequest.call(
 			this,
 			'POST',
-			`/channels/${channelId}/messages`,
+			requestPath`/channels/${channelId}/messages`,
 			multiPartBody,
 		);
 	} else {
-		response = await discordApiRequest.call(this, 'POST', `/channels/${channelId}/messages`, body);
+		response = await discordApiRequest.call(
+			this,
+			'POST',
+			requestPath`/channels/${channelId}/messages`,
+			body,
+		);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

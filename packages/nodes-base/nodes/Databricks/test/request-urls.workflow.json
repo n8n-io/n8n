@@ -1,0 +1,504 @@
+{
+	"name": "Databricks Request URLs Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "getFileInfo",
+				"volumePath": "main.default.my_volume",
+				"filePath": "reports/2024/q1.csv"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "request-url-000",
+			"name": "Get File Info",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "listDirectory",
+				"volumePath": "main.default.my_volume",
+				"directoryPath": "reports/2024",
+				"additionalFields": {
+					"pageSize": 50
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "request-url-001",
+			"name": "List Nested Directory",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "listDirectory",
+				"volumePath": "main.default.my_volume",
+				"directoryPath": "",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "request-url-002",
+			"name": "List Volume Root",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "executeMessageQuery",
+				"spaceId": "01ef9c3d5e7f1a2b3c4d5e6f7a8b9c0d",
+				"conversationId": "01efa1b2c3d4e5f6a7b8c9d0e1f2a3b4",
+				"messageId": "01efb2c3d4e5f6a7b8c9d0e1f2a3b4c5",
+				"attachmentId": "01efc3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "request-url-003",
+			"name": "Execute Message Query",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "genie",
+				"operation": "getQueryResults",
+				"spaceId": "01ef9c3d5e7f1a2b3c4d5e6f7a8b9c0d",
+				"conversationId": "01efa1b2c3d4e5f6a7b8c9d0e1f2a3b4",
+				"messageId": "01efb2c3d4e5f6a7b8c9d0e1f2a3b4c5",
+				"attachmentId": "01efc3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "request-url-004",
+			"name": "Get Query Results",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "getVolume",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"volumeName": "my_volume"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "request-url-005",
+			"name": "Get Volume",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "createFunction",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"functionName": "add_one",
+				"inputParams": "[{\"name\":\"x\",\"type_name\":\"INT\"}]",
+				"returnType": "INT",
+				"routineBody": "SQL",
+				"routineDefinition": "x + 1"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "request-url-006",
+			"name": "Create Function",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "getFunction",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"fullName": {
+					"mode": "string",
+					"value": "main.default.add_one"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "request-url-007",
+			"name": "Get Function",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "listFunctions",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "request-url-008",
+			"name": "List Functions",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "unityCatalog",
+				"operation": "deleteFunction",
+				"catalogName": {
+					"mode": "string",
+					"value": "main"
+				},
+				"schemaName": {
+					"mode": "string",
+					"value": "default"
+				},
+				"fullName": {
+					"mode": "string",
+					"value": "main.default.old_fn"
+				}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "request-url-009",
+			"name": "Delete Function",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "databricksSql",
+				"operation": "executeQuery",
+				"warehouseId": {
+					"mode": "string",
+					"value": "a1b2c3d4e5f6a7b8"
+				},
+				"query": "SELECT id FROM main.default.sales"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "request-url-010",
+			"name": "Execute Chunked Query",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [220, -200],
+			"id": "to-file-001",
+			"name": "To File"
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "uploadFile",
+				"dataFieldName": "data",
+				"volumePath": "main.default.my_volume",
+				"filePath": "uploads/2024/report.json"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [440, -200],
+			"id": "upload-001",
+			"name": "Upload File",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Upload File": [
+			{
+				"json": {
+					"success": true,
+					"message": "File uploaded successfully to uploads/2024/report.json"
+				}
+			}
+		],
+		"List Nested Directory": [
+			{
+				"json": {
+					"contents": [
+						{
+							"name": "q1.csv",
+							"path": "/Volumes/main/default/my_volume/reports/2024/q1.csv"
+						}
+					]
+				}
+			}
+		],
+		"List Volume Root": [
+			{
+				"json": {
+					"contents": [
+						{
+							"name": "reports",
+							"is_directory": true
+						}
+					]
+				}
+			}
+		],
+		"Execute Message Query": [
+			{
+				"json": {
+					"statement_response": {
+						"statement_id": "stmt-genie-001"
+					},
+					"deep_link": "https://adb-1234567890.1.azuredatabricks.net/genie/rooms/01ef9c3d5e7f1a2b3c4d5e6f7a8b9c0d/chats/01efa1b2c3d4e5f6a7b8c9d0e1f2a3b4"
+				}
+			}
+		],
+		"Get Query Results": [
+			{
+				"json": {
+					"statement_response": {
+						"result": {
+							"data_array": [["42"]]
+						}
+					},
+					"deep_link": "https://adb-1234567890.1.azuredatabricks.net/genie/rooms/01ef9c3d5e7f1a2b3c4d5e6f7a8b9c0d/chats/01efa1b2c3d4e5f6a7b8c9d0e1f2a3b4"
+				}
+			}
+		],
+		"Get Volume": [
+			{
+				"json": {
+					"name": "my_volume",
+					"full_name": "main.default.my_volume",
+					"volume_type": "MANAGED"
+				}
+			}
+		],
+		"Create Function": [
+			{
+				"json": {
+					"name": "add_one",
+					"full_name": "main.default.add_one"
+				}
+			}
+		],
+		"Get Function": [
+			{
+				"json": {
+					"name": "add_one",
+					"full_name": "main.default.add_one"
+				}
+			}
+		],
+		"List Functions": [
+			{
+				"json": {
+					"functions": [
+						{
+							"full_name": "main.default.add_one"
+						}
+					]
+				}
+			}
+		],
+		"Delete Function": [
+			{
+				"json": {
+					"success": true,
+					"message": "Function deleted successfully",
+					"functionName": "main.default.old_fn"
+				}
+			}
+		],
+		"Execute Chunked Query": [
+			{
+				"json": {
+					"id": "1"
+				}
+			},
+			{
+				"json": {
+					"id": "2"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get File Info",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Nested Directory",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Volume Root",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Execute Message Query",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Query Results",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Volume",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Function",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Function",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Functions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Function",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Execute Chunked Query",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "To File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"To File": {
+			"main": [
+				[
+					{
+						"node": "Upload File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

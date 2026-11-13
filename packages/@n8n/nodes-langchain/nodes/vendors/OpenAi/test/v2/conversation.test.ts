@@ -1,5 +1,6 @@
 import lodashGet from 'lodash/get';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as transport from '../../transport';
 import * as create from '../../v2/actions/conversation/create.operation';
@@ -103,7 +104,7 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/conversations', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/conversations`, {
 				body: {
 					items: expect.any(Array),
 				},
@@ -140,7 +141,7 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/conversations', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/conversations`, {
 				body: {
 					items: expect.any(Array),
 					metadata: { custom: 'value', source: 'test' },
@@ -177,7 +178,7 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/conversations', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/conversations`, {
 				body: {
 					items: expect.any(Array),
 				},
@@ -234,7 +235,10 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/conversations/conv_1234567890');
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/conversations/conv_1234567890`,
+			);
 		});
 	});
 
@@ -260,7 +264,10 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('DELETE', '/conversations/conv_1234567890');
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/conversations/conv_1234567890`,
+			);
 		});
 	});
 
@@ -291,11 +298,15 @@ describe('OpenAI Conversation Operations', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/conversations/conv_1234567890', {
-				body: {
-					metadata: { custom: 'value', source: 'test' },
+			expect(mockApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/conversations/conv_1234567890`,
+				{
+					body: {
+						metadata: { custom: 'value', source: 'test' },
+					},
 				},
-			});
+			);
 		});
 
 		it('should throw error for invalid JSON metadata', async () => {

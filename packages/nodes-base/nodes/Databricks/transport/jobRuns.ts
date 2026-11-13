@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -52,13 +52,17 @@ async function fetchJobRunsPage(
 	host: string,
 	params: ListJobRunsParams,
 ): Promise<Page<DatabricksJobRun>> {
-	const response: unknown = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.2/jobs/runs/list`,
-		qs: toQuery(params),
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response: unknown = await databricksApiRequest(
+		context,
+		credentialType,
+		requestUrl`${host}/api/2.2/jobs/runs/list`,
+		{
+			method: 'GET',
+			qs: toQuery(params),
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	if (!isJobRunsListResponse(response)) {
 		throw new NodeOperationError(
 			context.getNode(),

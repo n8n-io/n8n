@@ -57,7 +57,7 @@ describe('Pipedrive v2 normalises ISO date inputs to YYYY-MM-DD on outgoing requ
 			IDataObject,
 		];
 		expect(method).toBe('POST');
-		expect(endpoint).toBe('/deals');
+		expect(String(endpoint)).toBe('/deals');
 		expect(body.expected_close_date).toBe('2026-04-13');
 	});
 
@@ -77,7 +77,7 @@ describe('Pipedrive v2 normalises ISO date inputs to YYYY-MM-DD on outgoing requ
 			IDataObject,
 		];
 		expect(method).toBe('PATCH');
-		expect(endpoint).toBe('/deals/10');
+		expect(String(endpoint)).toBe('/deals/10');
 		expect(body.expected_close_date).toBe('2026-04-13');
 	});
 
@@ -99,7 +99,7 @@ describe('Pipedrive v2 normalises ISO date inputs to YYYY-MM-DD on outgoing requ
 			IDataObject,
 		];
 		expect(method).toBe('POST');
-		expect(endpoint).toBe('/activities');
+		expect(String(endpoint)).toBe('/activities');
 		expect(body.due_date).toBe('2026-04-01');
 	});
 
@@ -119,7 +119,7 @@ describe('Pipedrive v2 normalises ISO date inputs to YYYY-MM-DD on outgoing requ
 			IDataObject,
 		];
 		expect(method).toBe('PATCH');
-		expect(endpoint).toBe('/activities/10');
+		expect(String(endpoint)).toBe('/activities/10');
 		expect(body.due_date).toBe('2026-04-02');
 	});
 });
