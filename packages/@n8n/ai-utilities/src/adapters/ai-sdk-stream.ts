@@ -6,10 +6,11 @@ import type {
 } from '@ai-sdk/provider';
 import { randomUUID } from 'node:crypto';
 
+import type { NormalizedStreamChunk } from './normalize-tool-call-deltas';
 import { toFinishReason, toUsage } from '../converters/ai-sdk-call';
 import { fromChatModelMessage, toProviderMetadata } from '../converters/ai-sdk-message';
 import type { MessageContent } from '../types/message';
-import type { FinishReason, StreamChunk, TokenUsage } from '../types/output';
+import type { FinishReason, TokenUsage } from '../types/output';
 
 /** Ids for streamed text and reasoning when the chat model does not number its parts. */
 const DEFAULT_TEXT_ID = 'text';
@@ -19,10 +20,8 @@ type TextKind = 'text' | 'reasoning';
 
 interface ToolCallState {
 	id: string;
-	/** True while the chat model has not sent an id for the call. */
-	anonymous: boolean;
 	name?: string;
-	/** Whether `tool-input-start` was sent. It needs the name and the final id. */
+	/** Whether `tool-input-start` was sent. It needs the name. */
 	started: boolean;
 	input: string;
 	/** Chat model metadata of all chunks of the call. */
@@ -34,10 +33,7 @@ interface ToolCallState {
  * every text, reasoning and tool input with start and end parts.
  *
  * Tool call deltas are matched by id, so parallel tool calls can interleave.
- * A delta without an id continues the tool call that got the last delta,
- * because `tool-call-delta` has no index to tell parallel calls apart. A call
- * that started without an id takes the next new id as its own, and its tool
- * input starts only then, so all its parts carry one id.
+ * normalizeToolCallDeltas gives every delta its id before it gets here.
  *
  * A complete text, reasoning or tool call block closes the open part with its
  * id, or the only open part when it has no id. Only the part of the block that
@@ -59,9 +55,6 @@ export class AiSdkStreamConverter {
 	/** Names of all tool calls of the stream, for the tool results that follow them. */
 	private readonly toolNames = new Map<string, string>();
 
-	/** Tool call that deltas without an id belong to. */
-	private currentToolCallId: string | undefined;
-
 	/** Set by an error chunk or an error finish. A failed turn sends no tool calls. */
 	private failed = false;
 
@@ -69,7 +62,7 @@ export class AiSdkStreamConverter {
 
 	constructor(private readonly provider: string) {}
 
-	convert(chunk: StreamChunk): LanguageModelV4StreamPart[] {
+	convert(chunk: NormalizedStreamChunk): LanguageModelV4StreamPart[] {
 		const providerMetadata = toProviderMetadata(this.provider, chunk.providerMetadata);
 
 		switch (chunk.type) {
@@ -82,16 +75,13 @@ export class AiSdkStreamConverter {
 					chunk.delta,
 					providerMetadata,
 				);
-			case 'tool-call-delta': {
-				const state = this.toolCallForDelta(chunk.id, chunk.name);
-				this.currentToolCallId = state.id;
+			case 'tool-call-delta':
 				return this.appendToolInput(
-					state,
+					this.openToolCall(chunk.id),
 					chunk.name,
 					chunk.argumentsDelta,
 					chunk.providerMetadata,
 				);
-			}
 			case 'content':
 				return this.content(chunk.content, chunk.id, chunk.providerMetadata);
 			case 'finish':
@@ -175,32 +165,10 @@ export class AiSdkStreamConverter {
 		return parts;
 	}
 
-	private openToolCall(id: string, anonymous: boolean): ToolCallState {
-		const state = this.openToolCalls.get(id) ?? { id, anonymous, started: false, input: '' };
+	private openToolCall(id: string): ToolCallState {
+		const state = this.openToolCalls.get(id) ?? { id, started: false, input: '' };
 		this.openToolCalls.set(id, state);
 		return state;
-	}
-
-	private toolCallForDelta(id: string | undefined, name: string | undefined): ToolCallState {
-		const current =
-			this.currentToolCallId === undefined
-				? undefined
-				: this.openToolCalls.get(this.currentToolCallId);
-		if (id === undefined) return current ?? this.openToolCall(randomUUID(), true);
-
-		const known = this.openToolCalls.get(id);
-		if (known) return known;
-
-		// A different name means a new call, not the id of the anonymous one.
-		const sameCall = name === undefined || current?.name === undefined || name === current.name;
-		if (current?.anonymous && sameCall) {
-			this.openToolCalls.delete(current.id);
-			current.id = id;
-			current.anonymous = false;
-			this.openToolCalls.set(id, current);
-			return current;
-		}
-		return this.openToolCall(id, false);
 	}
 
 	private startToolInput(state: ToolCallState, name: string): LanguageModelV4StreamPart[] {
@@ -232,9 +200,7 @@ export class AiSdkStreamConverter {
 				: [];
 		}
 		// The input that arrived before the start is sent in one delta.
-		return state.name !== undefined && !state.anonymous
-			? this.startToolInput(state, state.name)
-			: [];
+		return state.name !== undefined ? this.startToolInput(state, state.name) : [];
 	}
 
 	/** A complete content block is sent as a bracketed part of its own. */
@@ -289,8 +255,7 @@ export class AiSdkStreamConverter {
 		part: LanguageModelV4ToolCall,
 		metadata: Record<string, unknown> | undefined,
 	): LanguageModelV4StreamPart[] {
-		const state = this.openToolCall(part.toolCallId, false);
-		state.anonymous = false;
+		const state = this.openToolCall(part.toolCallId);
 		const parts = this.appendToolInput(state, part.toolName, undefined, metadata);
 		if (part.input.startsWith(state.input)) {
 			parts.push(
@@ -318,12 +283,10 @@ export class AiSdkStreamConverter {
 
 	private closeToolCall(state: ToolCallState): LanguageModelV4StreamPart[] {
 		this.openToolCalls.delete(state.id);
-		if (this.currentToolCallId === state.id) this.currentToolCallId = undefined;
 		// Without a name there is no tool to call.
 		if (state.name === undefined) return [];
 
-		// A call that never got an id starts now, under its generated id.
-		const parts = state.started ? [] : this.startToolInput(state, state.name);
+		const parts: LanguageModelV4StreamPart[] = [];
 		this.readyToolCalls.set(state.id, {
 			type: 'tool-call',
 			toolCallId: state.id,

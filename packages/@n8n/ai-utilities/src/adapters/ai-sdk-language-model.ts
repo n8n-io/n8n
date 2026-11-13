@@ -7,6 +7,8 @@ import type {
 } from '@ai-sdk/provider';
 
 import { AiSdkStreamConverter } from './ai-sdk-stream';
+import { normalizeToolCallDeltas } from './normalize-tool-call-deltas';
+import type { NormalizedStreamChunk } from './normalize-tool-call-deltas';
 import {
 	bindCallTools,
 	toChatModelConfig,
@@ -19,7 +21,6 @@ import {
 	toProviderMetadata,
 } from '../converters/ai-sdk-message';
 import type { ChatModel } from '../types/chat-model';
-import type { StreamChunk } from '../types/output';
 
 /**
  * Runs an AI Node SDK `ChatModel` as a Vercel AI SDK language model.
@@ -70,7 +71,9 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 		const abortSignal = options.abortSignal
 			? AbortSignal.any([options.abortSignal, cancellation.signal])
 			: cancellation.signal;
-		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
+		const iterator = normalizeToolCallDeltas(model.stream(messages, { ...config, abortSignal }))[
+			Symbol.asyncIterator
+		]();
 		const converter = new AiSdkStreamConverter(this.provider);
 		const modelId = this.modelId;
 
@@ -83,7 +86,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 				// A pull that enqueues nothing is not called again, so read on until
 				// a chunk gives parts or the chat model stream ends.
 				while (true) {
-					let next: IteratorResult<StreamChunk>;
+					let next: IteratorResult<NormalizedStreamChunk>;
 					try {
 						next = await iterator.next();
 					} catch (error) {
@@ -105,7 +108,7 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 			},
 			async cancel() {
 				cancellation.abort();
-				await iterator.return?.();
+				await iterator.return?.(undefined);
 			},
 		});
 

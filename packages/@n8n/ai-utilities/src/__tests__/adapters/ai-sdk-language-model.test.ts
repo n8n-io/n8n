@@ -817,7 +817,8 @@ describe('AiSdkLanguageModelAdapter', () => {
 
 			expect(parts).toEqual([
 				{ type: 'tool-input-start', id: 'call-1', toolName: 'lookup' },
-				{ type: 'tool-input-delta', id: 'call-1', delta: '{"q":1}' },
+				{ type: 'tool-input-delta', id: 'call-1', delta: '{"q":' },
+				{ type: 'tool-input-delta', id: 'call-1', delta: '1}' },
 				{ type: 'tool-input-end', id: 'call-1' },
 				{ type: 'tool-call', toolCallId: 'call-1', toolName: 'lookup', input: '{"q":1}' },
 			]);
@@ -838,10 +839,10 @@ describe('AiSdkLanguageModelAdapter', () => {
 			const calls = (await readAll(stream)).filter((part) => part.type === 'tool-call');
 
 			expect(calls).toEqual([
-				{ type: 'tool-call', toolCallId: expect.any(String), toolName: 'lookup', input: '{"q":1}' },
 				{ type: 'tool-call', toolCallId: 'b', toolName: 'weather', input: '{}' },
+				{ type: 'tool-call', toolCallId: expect.any(String), toolName: 'lookup', input: '{"q":1}' },
 			]);
-			expect(calls[0]).not.toMatchObject({ toolCallId: 'b' });
+			expect(calls[1]).not.toMatchObject({ toolCallId: 'b' });
 		});
 
 		it('matches a complete tool call without an id to the only pending call', async () => {
