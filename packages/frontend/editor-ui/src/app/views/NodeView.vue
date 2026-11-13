@@ -2503,7 +2503,8 @@ onBeforeUnmount(() => {
 
 .engineV2CompatibilityCallout {
 	position: absolute;
-	top: var(--spacing--sm);
+	// Clears the Editor / Executions / Evaluations tabs, which overlap the top of the canvas.
+	top: var(--spacing--xl);
 	left: 50%;
 	transform: translateX(-50%);
 	max-width: 60%;
