@@ -701,7 +701,11 @@ export function planOverlayMain(
 			return !shell || !shell.classList.contains('wf-app');
 		}
 		const node = doc.querySelector(`[data-plan-id="${id}"]`);
-		if (node) return !node.classList.contains('wf-block');
+		if (node) {
+			const built = !node.classList.contains('wf-block');
+			if (built) doneIds.add(id);
+			return built;
+		}
 		// A part on another page is not in the DOM. The builder follows `buildOrder`, so the
 		// parts before the announced one are done, and the plan can mark a part as built.
 		return (
