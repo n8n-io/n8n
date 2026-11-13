@@ -15,6 +15,12 @@ function attachesWorkflow(attachment: InstanceAiAttachment): boolean {
 	return attachment.type === 'workflow' || attachment.type === 'nodes';
 }
 
+/** The user message names a saved workflow: an attachment, or a handoff from the setup panel or a migration report. */
+function namesSavedWorkflow(request: InstanceAiMessage): boolean {
+	if (request.attachments?.some(attachesWorkflow)) return true;
+	return request.context !== undefined && 'workflowId' in request.context;
+}
+
 /** The running assistant message and the user message that started it. */
 function findRunningTurn(messages: InstanceAiMessage[]) {
 	const index = messages.length - 1;
@@ -49,7 +55,7 @@ export function useWorkflowStaging(options: {
 		const turn = runningTurn.value;
 		if (!options.enabled() || !turn) return undefined;
 		if (turn.continuesSavedWorkflow) return undefined;
-		if (turn.request?.attachments?.some(attachesWorkflow)) return undefined;
+		if (turn.request && namesSavedWorkflow(turn.request)) return undefined;
 		const staging = getWorkflowStaging(turn.tree, {
 			hasNodeType: (nodeType) => options.describeType(nodeType) !== undefined,
 		});

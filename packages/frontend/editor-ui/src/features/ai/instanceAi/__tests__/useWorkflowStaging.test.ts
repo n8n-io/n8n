@@ -1,6 +1,7 @@
 import type {
 	InstanceAiAgentNode,
 	InstanceAiAttachment,
+	InstanceAiHandoffContext,
 	InstanceAiMessage,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
@@ -122,6 +123,30 @@ describe('useWorkflowStaging', () => {
 		const { stagingDraft } = setup([userMessage([attachment]), assistantMessage([loadBuilder])]);
 
 		expect(stagingDraft.value).toBeUndefined();
+	});
+
+	it.each<[string, InstanceAiHandoffContext]>([
+		['the setup panel', { source: 'setup-panel-execute', workflowId: 'wf-1' }],
+		['a migration report', { source: 'migration-report', ruleId: 'rule-1', workflowId: 'wf-1' }],
+	])('stages nothing when the user message comes from %s of a saved workflow', (_, context) => {
+		const { stagingDraft } = setup([
+			{ ...userMessage(), context },
+			assistantMessage([loadBuilder, readSlack]),
+		]);
+
+		expect(stagingDraft.value).toBeUndefined();
+	});
+
+	it('stages a new workflow when the handoff context names no workflow', () => {
+		const { stagingDraft } = setup([
+			{
+				...userMessage(),
+				context: { source: 'agent-preview', agentId: 'agent-1', threadId: 'thread-1' },
+			},
+			assistantMessage([loadBuilder, readSlack]),
+		]);
+
+		expect(stagingDraft.value).toBeDefined();
 	});
 
 	it.each<[string, InstanceAiToolCallState]>([
