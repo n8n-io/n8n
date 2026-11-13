@@ -79,6 +79,7 @@ component_management:
         - packages/@n8n/cli/**
         - packages/@n8n/client-oauth2/**
         - packages/@n8n/code-runtime-js/**
+        - packages/@n8n/code-task-protocol/**
         - packages/@n8n/config/**
         - packages/@n8n/constants/**
         - packages/@n8n/crdt/**
