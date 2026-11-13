@@ -137,10 +137,18 @@ changes branch/commit/test naming throughout — see Phase 3 and AGENTS.md "Secu
 
 ## Phase 2 — Plan, then planner↔reviewer consensus loop
 
-**2a. Draft the plan** — dispatch the **`n8n:autodev-planner`** agent for the ticket; it identifies
-affected packages and designs the approach per n8n conventions. Save its plan to
-`.claude/plans/<TICKET-ID>.md` — this single path is the source of truth the implementer and
-reviewers read from. Fallback: the `/n8n:plan <TICKET-ID>` command, which writes the same file.
+**2a. Draft the plan.** If a knowledge graph tool is available to you (for example Graphiti
+`search_memory_facts`), ask it once for prior decisions and known gaps on the area. Treat the answer
+as a lead and confirm it in the PR, ticket or code. Add the confirmed findings to the planner brief.
+Skip this when no such tool exists. Do not copy graph text into a PR description, because it can
+hold customer names.
+
+Then dispatch the **`n8n:autodev-planner`** agent for the ticket; it identifies affected packages and
+designs the approach per n8n conventions. Save its plan to `.claude/plans/<TICKET-ID>.md`. This
+single path is the source of truth the implementer and reviewers read from. Keep the state block at
+the top of that file (see Resuming mid-flow): write it when you first save the plan, and keep it
+when you save a revised plan. Fallback: the `/n8n:plan <TICKET-ID>` command, which writes the same
+file.
 
 **2b. Parallel multi-angle plan review loop.** Review the plan from several independent angles **in
 parallel** — dispatch the subagents in a single turn so they run concurrently, each told the input
@@ -267,8 +275,9 @@ smallest change that resolves the finding — never gold-plate or add scope in r
 After fixing, **re-run the affected review lenses** on the new diff. Repeat fix → re-review until
 **no `[BLOCKER]` or `[MAJOR]` findings remain** and the package test suite is green — or the
 3-round cap is hit, then escalate with the unresolved findings. Commit fixes atomically.
-When the loop is clean, run the one second-opinion pass on the diff (Phase 4), fix real findings,
-then continue to Phase 6.
+When the loop is clean, run the one second-opinion pass on the diff (Phase 4). Fix real findings,
+re-run the affected lenses and the package tests, and do not run the second opinion again. Then
+continue to Phase 6.
 
 ## Phase 6 — Open the PR (automatic, ready for review)
 

@@ -9,8 +9,6 @@ skills:
 ---
 You review from an architecture perspective. For a diff, read it and the surrounding code it touches. For a plan, evaluate the **proposed approach** against the actual codebase: read the files and modules it names and judge whether the design is sound before any code exists.
 
-Search with `grep` or `rg` first. When a check needs every call site or consumer, run a full grep and report the count. Do not use a sample as proof of completeness.
-
 Assess:
 - separation of concerns and module boundaries
 - coupling, and the right level of abstraction (neither over- nor under-engineered)
@@ -30,7 +28,7 @@ Assess:
 
 **Diff sibling paths against each other:**
 - When the change contains two paths that do the same job (create at activation and re-create at runtime, a helper and its inline twin, a validated call next to an unvalidated one in the same chain), compare what each accepts, deletes, validates, and persists.
-- A difference the PR does not explain is a finding. If it is expected while the rest is brought across separately, report it as an FYI so the next reader is not surprised.
+- A difference the PR does not explain is a finding. If it is expected while the rest is brought across separately, report it as `[MINOR]` and say the difference is expected, so the next reader is not surprised.
 
 **Backwards compatibility is about what is already live**, not only saved artifacts: an active workflow, a stored id, a provider subscription or cursor created by the old code must keep working through the upgrade. Show it by naming the path that is byte-identical to the base and the inputs that can no longer reach the code.
 
