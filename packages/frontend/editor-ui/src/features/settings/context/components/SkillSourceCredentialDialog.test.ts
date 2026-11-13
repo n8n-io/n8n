@@ -43,11 +43,11 @@ describe('SkillSourceCredentialDialog', () => {
 		vi.clearAllMocks();
 		mockedStore(useSkillsStore).fetchReplacementCredentials.mockResolvedValue([
 			{ id: 'new', name: 'New GitHub', type: 'githubApi' },
+			{ id: 'other', name: 'Other GitHub', type: 'githubApi' },
 		]);
 	});
 
-	async function chooseCredential() {
-		const view = render();
+	async function pick(view: ReturnType<typeof render>, name: string) {
 		await waitFor(() =>
 			expect(view.getByTestId('skill-source-credential-select')).toHaveAttribute(
 				'disabled',
@@ -55,7 +55,12 @@ describe('SkillSourceCredentialDialog', () => {
 			),
 		);
 		await userEvent.click(view.getByTestId('skill-source-credential-select'));
-		await userEvent.click(await view.findByRole('option', { name: 'New GitHub' }));
+		await userEvent.click(await view.findByRole('option', { name }));
+	}
+
+	async function chooseCredential() {
+		const view = render();
+		await pick(view, 'New GitHub');
 		return view;
 	}
 
@@ -74,7 +79,33 @@ describe('SkillSourceCredentialDialog', () => {
 		const view = await chooseCredential();
 		await userEvent.click(view.getByTestId('skill-source-credential-save'));
 		expect(await view.findByRole('alert')).toHaveTextContent('GitHub rejected this credential');
+		expect(view.getByTestId('skill-source-credential-select')).toHaveTextContent('New GitHub');
 		expect(view.emitted('replaced')).toBeUndefined();
+	});
+
+	it('clears the error of a failed credential when the user picks another one', async () => {
+		mockedStore(useSkillsStore).replaceSourceCredential.mockRejectedValue(
+			new ResponseError('Expired', { meta: { reason: 'credential_invalid' } }),
+		);
+		const view = await chooseCredential();
+		await userEvent.click(view.getByTestId('skill-source-credential-save'));
+		expect(await view.findByRole('alert')).toBeInTheDocument();
+		await pick(view, 'Other GitHub');
+		expect(view.queryByRole('alert')).toBeNull();
+	});
+
+	it('shows no toast when the list fails after the dialog closed', async () => {
+		let fail: (error: Error) => void = () => {};
+		mockedStore(useSkillsStore).fetchReplacementCredentials.mockReturnValue(
+			new Promise((_resolve, reject) => {
+				fail = reject;
+			}),
+		);
+		const view = render();
+		view.unmount();
+		fail(new Error('Network'));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(showError).not.toHaveBeenCalled();
 	});
 
 	it('does not save before a selection and cancels without a write', async () => {

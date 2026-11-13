@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { SkillSourceCredentialOption, SkillSourceListItem } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -30,15 +30,28 @@ const saving = ref(false);
 const errorText = ref('');
 const items = computed(() => credentials.value.map(({ id, name }) => ({ value: id, label: name })));
 
+// The list can fail after the user closed the dialog. Then no toast is shown.
+let isOpen = true;
+onBeforeUnmount(() => {
+	isOpen = false;
+});
+
 onMounted(async () => {
 	try {
 		credentials.value = await store.fetchReplacementCredentials(props.source);
 	} catch (error) {
-		showError(error, i18n.baseText('settings.context.skills.connect.credential.error.load'));
+		if (isOpen) {
+			showError(error, i18n.baseText('settings.context.skills.connect.credential.error.load'));
+		}
 	} finally {
 		loading.value = false;
 	}
 });
+
+function onSelect(value: unknown) {
+	credentialId.value = typeof value === 'string' ? value : '';
+	errorText.value = '';
+}
 
 async function replace() {
 	if (saving.value || !credentialId.value || !props.source.canReplaceCredential) return;
@@ -89,7 +102,7 @@ async function replace() {
 							i18n.baseText('settings.context.skills.sources.replaceCredential.placeholder')
 						"
 						data-test-id="skill-source-credential-select"
-						@update:model-value="credentialId = typeof $event === 'string' ? $event : ''"
+						@update:model-value="onSelect"
 					/>
 				</N8nInputLabel>
 				<N8nText v-if="!loading && !credentials.length" tag="p">{{

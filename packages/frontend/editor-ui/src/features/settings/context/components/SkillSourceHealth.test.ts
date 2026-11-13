@@ -22,7 +22,7 @@ describe('SkillSourceHealth', () => {
 			health: 'source_unavailable',
 			label: 'Source unavailable',
 			description:
-				"The repository or branch is missing, or n8n doesn't have access. Your skills keep their last accepted version.",
+				"n8n can't read this source. The repository or branch may be missing, n8n may not have access, or GitHub may be down. Your skills keep their last accepted version.",
 		},
 		{
 			health: 'delayed',

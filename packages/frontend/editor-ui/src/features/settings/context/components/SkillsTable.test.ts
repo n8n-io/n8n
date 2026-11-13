@@ -578,8 +578,11 @@ describe('SkillsTable', () => {
 			);
 			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
 			expect(emitted('replaceCredential')).toEqual([[row]]);
-			await rerender({ sources: [source({ canReview: false })] });
+			await rerender({ sources: [source({ canReview: true, canReplaceCredential: false })] });
 			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
 			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
 		});
 
