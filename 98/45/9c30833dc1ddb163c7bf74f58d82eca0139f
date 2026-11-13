@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9416adef5f807e::t_6fcd1cb05461da 488-508
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9416adef5f807e::t_2b37e9c573a419 40,458,464-467
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98459c30833dc1ddb163c7bf74f58d82eca0139f",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
