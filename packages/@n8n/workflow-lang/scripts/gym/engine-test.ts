@@ -480,6 +480,9 @@ function runDataOf(wf: JsonRecord, trigger: string, events: WfrtEvent[]): JsonRe
 			if (e.kind === 'main' || e.kind === 'ai_tool' || e.index > 0) continue;
 			if (reported.has(e.to) || subRuns.has(e.to)) continue;
 			if (!(e.to in runData) || e.from in runData) continue;
+			// A root that failed did not reach its sub-nodes, or the host reported their runs.
+			const rootRuns = runData[e.to];
+			if (Array.isArray(rootRuns) && rootRuns.some((r) => isRecord(r) && 'error' in r)) continue;
 			runData[e.from] = [{ data: { main: [] } }];
 			changed = true;
 		}
