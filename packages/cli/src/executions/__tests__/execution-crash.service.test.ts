@@ -304,6 +304,26 @@ describe('ExecutionCrashService', () => {
 			await crashService.announceStalledExecution('1');
 
 			expect(announced()).toEqual([]);
+			expect(executionLedger.recordEnded).not.toHaveBeenCalled();
+		});
+
+		test('records the ended row of the stalled run with the workflow name', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue({
+				id: '1',
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				status: 'crashed',
+				startedAt,
+				stoppedAt,
+			} as never);
+
+			await crashService.announceStalledExecution('1', 'Stalled workflow');
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([
+					endedFactsOf(crashedExecution('1', { workflowName: 'Stalled workflow' })),
+				]),
+			);
 		});
 	});
 
