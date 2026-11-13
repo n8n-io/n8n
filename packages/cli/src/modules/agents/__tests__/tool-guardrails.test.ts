@@ -136,6 +136,65 @@ describe('withToolGuardrails', () => {
 		expect(afterHook.beforeTool).toBeUndefined();
 	});
 
+	it('runs one hook at both stages when stage is absent', async () => {
+		const [hook] = hooksFor([
+			{
+				kind: 'keywords',
+				id: 'both-g',
+				keywords: ['secret'],
+				tools: [{ type: 'node', name: 'read_file' }],
+			},
+		]);
+
+		expect(hook.beforeTool).toBeTypeOf('function');
+		expect(hook.afterTool).toBeTypeOf('function');
+
+		const stoppedInput = await hook.beforeTool?.(ctx('read_file', { note: 'a secret' }));
+		expect(stoppedInput).toEqual({ action: 'stop', code: 'guardrail.keywords.both-g' });
+
+		const stoppedResult = await hook.afterTool?.(ctx('read_file', {}), { note: 'a secret' });
+		expect(stoppedResult).toEqual({ action: 'stop', code: 'guardrail.keywords.both-g' });
+
+		const cleanResult = await hook.afterTool?.(ctx('read_file', {}), { note: 'all clean' });
+		expect(cleanResult).toEqual({ action: 'allow' });
+	});
+
+	it('covers every tool when tools is absent', async () => {
+		const [hook] = hooksFor([
+			{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['secret'] },
+		]);
+
+		// No refs, yet the registry's tools are all covered.
+		const stop = await hook.beforeTool?.(ctx('read_file', { note: 'a secret' }));
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+
+		const otherStop = await hook.beforeTool?.(ctx('my_renamed_tool', { note: 'a secret' }));
+		expect(otherStop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+
+		// The check still applies to the content.
+		const clean = await hook.beforeTool?.(ctx('read_file', { note: 'hello' }));
+		expect(clean).toBeUndefined();
+	});
+
+	it('runs both stages but stays filtered when stage is absent and tools is set', async () => {
+		const [hook] = hooksFor([
+			{
+				kind: 'keywords',
+				id: 'g1',
+				keywords: ['secret'],
+				tools: [{ type: 'node', name: 'read_file' }],
+			},
+		]);
+
+		const uncovered = await hook.beforeTool?.(ctx('my_renamed_tool', { note: 'a secret' }));
+		expect(uncovered).toBeUndefined();
+
+		const uncoveredAfter = await hook.afterTool?.(ctx('my_renamed_tool', {}), {
+			note: 'a secret',
+		});
+		expect(uncoveredAfter).toEqual({ action: 'allow' });
+	});
+
 	it('stops a PII before-guardrail on matching input and allows clean input', async () => {
 		const hooks = hooksFor([
 			{
