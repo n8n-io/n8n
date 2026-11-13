@@ -1109,4 +1109,5 @@ export type {
 	ToolTestability,
 	ToolTestKind,
 	ToolTestCapability,
+	AgentTestRunToolsResponse,
 } from './schemas/agent-safe-testing.schema';
