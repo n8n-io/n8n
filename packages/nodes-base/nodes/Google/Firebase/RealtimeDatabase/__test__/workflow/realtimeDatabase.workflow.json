@@ -1,0 +1,164 @@
+{
+	"name": "Google Cloud Realtime Database request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{\n  \"name\": \"Alice\",\n  \"city\": \"Berlin\",\n  \"age\": 31\n}\n",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c02",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"path": "users/u8Kf2Lq9/profile",
+				"attributes": "name, city"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, -400],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c03",
+			"name": "Create Profile",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"operation": "push",
+				"path": "orders",
+				"attributes": "name, city"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, -240],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c04",
+			"name": "Push Order",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"operation": "update",
+				"path": "users/u8Kf2Lq9/",
+				"attributes": "age"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, -80],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c05",
+			"name": "Update User",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"operation": "get"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, 80],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c06",
+			"name": "Get Root",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"operation": "get",
+				"path": "logs/2026-10-12T09:00:00Z/status"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, 240],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c07",
+			"name": "Get Log Status",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"projectId": "acme-shop-default-rtdb",
+				"operation": "delete",
+				"path": "orders/-NxQ7aB3cD4eF5gH6iJ"
+			},
+			"type": "n8n-nodes-base.googleFirebaseRealtimeDatabase",
+			"typeVersion": 1,
+			"position": [440, 400],
+			"id": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c08",
+			"name": "Delete Order",
+			"credentials": {
+				"googleFirebaseRealtimeDatabaseOAuth2Api": {
+					"id": "firebase-cred-1",
+					"name": "Firebase account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Profile": [{ "json": { "name": "Alice", "city": "Berlin" } }],
+		"Push Order": [{ "json": { "name": "-NxQ7aB3cD4eF5gH6iJ" } }],
+		"Update User": [{ "json": { "age": 31 } }],
+		"Get Root": [{ "json": { "users": { "u8Kf2Lq9": { "age": 31 } } } }],
+		"Get Log Status": [{ "json": { "logs/2026-10-12T09:00:00Z/status": "ok" } }],
+		"Delete Order": [{ "json": { "success": true } }]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{ "node": "Create Profile", "type": "main", "index": 0 },
+					{ "node": "Push Order", "type": "main", "index": 0 },
+					{ "node": "Update User", "type": "main", "index": 0 },
+					{ "node": "Get Root", "type": "main", "index": 0 },
+					{ "node": "Get Log Status", "type": "main", "index": 0 },
+					{ "node": "Delete Order", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "8b2d4f10-6a1e-4c3b-9d57-1e0f2a3b4c99",
+	"id": "firebaseRealtimeDatabaseUrls",
+	"tags": []
+}

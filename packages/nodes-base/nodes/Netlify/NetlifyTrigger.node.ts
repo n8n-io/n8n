@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { netlifyApiRequest } from './GenericFunctions';
 import { verifySignature } from './NetlifyTriggerHelpers';
@@ -122,7 +122,7 @@ export class NetlifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const event = this.getNodeParameter('event') as string;
 				qs.site_id = this.getNodeParameter('siteId') as string;
-				const webhooks = await netlifyApiRequest.call(this, 'GET', '/hooks', {}, qs);
+				const webhooks = await netlifyApiRequest.call(this, 'GET', requestPath`/hooks`, {}, qs);
 				for (const webhook of webhooks) {
 					if (webhook.type === 'url') {
 						if (webhook.data.url === webhookUrl && webhook.event === snakeCase(event)) {
@@ -152,7 +152,7 @@ export class NetlifyTrigger implements INodeType {
 				if (event === 'submissionCreated' && formId !== '*') {
 					body.form_id = this.getNodeParameter('formId') as string;
 				}
-				const webhook = await netlifyApiRequest.call(this, 'POST', '/hooks', body);
+				const webhook = await netlifyApiRequest.call(this, 'POST', requestPath`/hooks`, body);
 				webhookData.webhookId = webhook.id;
 				webhookData.webhookSecret = webhookSecret;
 				return true;
@@ -160,7 +160,11 @@ export class NetlifyTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await netlifyApiRequest.call(this, 'DELETE', `/hooks/${webhookData.webhookId}`);
+					await netlifyApiRequest.call(
+						this,
+						'DELETE',
+						requestPath`/hooks/${webhookData.webhookId}`,
+					);
 				} catch (error) {
 					return false;
 				}
@@ -175,7 +179,7 @@ export class NetlifyTrigger implements INodeType {
 		loadOptions: {
 			async getSites(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const sites = await netlifyApiRequest.call(this, 'GET', '/sites');
+				const sites = await netlifyApiRequest.call(this, 'GET', requestPath`/sites`);
 				for (const site of sites) {
 					returnData.push({
 						name: site.name,
@@ -188,7 +192,11 @@ export class NetlifyTrigger implements INodeType {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const siteId = this.getNodeParameter('siteId');
-				const forms = await netlifyApiRequest.call(this, 'GET', `/sites/${siteId}/forms`);
+				const forms = await netlifyApiRequest.call(
+					this,
+					'GET',
+					requestPath`/sites/${siteId}/forms`,
+				);
 				for (const form of forms) {
 					returnData.push({
 						name: form.name,

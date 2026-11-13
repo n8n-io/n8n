@@ -6,16 +6,28 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { decodePathValue, NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
-import { removeTrailingSlash } from '@utils/utilities';
+export function jobPath(job: string, nodeVersion: number): RequestPath {
+	return job
+		.replace(/\/$/, '')
+		.split('/')
+		.reduce(
+			(path, part) => requestPath`${path}/${nodeVersion < 1.1 ? decodePathValue(part) : part}`,
+			requestPath`/job`,
+		);
+}
 
 async function getJenkinsCrumb(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject | null> {
-	const options: IRequestOptions = {
+	const baseUrl = (credentials.baseUrl as string) || '';
+	const uri = requestPath`/crumbIssuer/api/json`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 		},
@@ -25,7 +37,7 @@ async function getJenkinsCrumb(
 			password: credentials.apiKey as string,
 		},
 		sendCredentialsOnCrossOriginRedirect: false,
-		uri: `${removeTrailingSlash((credentials.baseUrl as string) || '')}/crumbIssuer/api/json`,
+		...(baseUrl ? { uri: requestUrl`${baseUrl}${uri}` } : { baseURL: '', uri }),
 		json: true,
 		resolveWithFullResponse: true,
 	};
@@ -89,46 +101,50 @@ function getQueueItemUrl(error: JsonObject, baseUrl: string): string | undefined
 export async function jenkinsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	uri: string,
+	uri: RequestPath,
 	qs: IDataObject = {},
 	body: any = '',
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'form' | 'headers' | 'json'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('jenkinsApi');
 	const baseUrl = (credentials.baseUrl as string) || '';
 
-	const buildOptions = (extraHeaders: IDataObject = {}): IRequestOptions => {
-		const options: IRequestOptions = {
+	const buildOptions = (
+		extraHeaders: IDataObject = {},
+	): WithRequestTarget<IRequestOptions, 'uri'> => {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			method,
 			auth: {
 				username: credentials.username as string,
 				password: credentials.apiKey as string,
 			},
 			sendCredentialsOnCrossOriginRedirect: false,
-			uri: `${removeTrailingSlash(baseUrl)}${uri}`,
+			...(baseUrl ? { uri: requestUrl`${baseUrl}${uri}` } : { baseURL: '', uri }),
 			json: true,
 			qs,
 			body,
-		};
-		return Object.assign({}, options, option, {
+			...option,
 			headers: {
 				Accept: 'application/json',
 				...extraHeaders,
 				...(option.headers as IDataObject | undefined),
 			},
-		});
+		};
+		return options;
 	};
 
 	const sendRequest = async () => {
 		try {
-			return await this.helpers.request(buildOptions());
+			const options: WithRequestTarget<IRequestOptions, 'uri'> = buildOptions();
+			return await this.helpers.request(options);
 		} catch (error) {
 			// API token requests skip the CSRF check, so a crumb is only fetched when
 			// Jenkins asks for one (e.g. password auth) and the request is retried once
 			if (!isMissingCrumbError(error)) throw error;
 			const crumb = await getJenkinsCrumb.call(this, credentials);
 			if (!crumb) throw error;
-			return await this.helpers.request(buildOptions(crumb));
+			const options: WithRequestTarget<IRequestOptions, 'uri'> = buildOptions(crumb);
+			return await this.helpers.request(options);
 		}
 	};
 

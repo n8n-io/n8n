@@ -64,6 +64,7 @@ import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -113,6 +114,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const sourceToDelete = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -794,6 +796,13 @@ const checkingSourceIds = ref<string[]>([]);
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
 
+async function onSourceDeleted() {
+	sourceToDelete.value = undefined;
+	void loadCreators();
+	await loadSources();
+	await load();
+}
+
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
 	try {
@@ -1053,6 +1062,7 @@ onMounted(async () => {
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@delete-source="sourceToDelete = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1098,6 +1108,12 @@ onMounted(async () => {
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
+		/>
+		<SkillSourceDeleteDialog
+			v-if="skillSyncEnabled && sourceToDelete"
+			:source="sourceToDelete"
+			@close="sourceToDelete = undefined"
+			@deleted="onSourceDeleted"
 		/>
 		<input
 			ref="skillFolderInput"

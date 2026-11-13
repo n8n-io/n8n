@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -77,7 +78,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		qs.$select = (options.fields as string[]).map((field) => field.trim()).join(',');
 	}
 
-	const endpoint = `/messages/${messageId}/attachments`;
+	const endpoint = requestPath`/messages/${messageId}/attachments`;
 	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(
 			this,

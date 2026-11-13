@@ -23,6 +23,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -30,6 +31,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -294,6 +296,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 		const previousActiveVersionId = workflow.activeVersionId;
+		const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
 
 		const updatedWorkflow = await workflowService.update(
 			owner,
@@ -311,13 +314,18 @@ describe('update()', () => {
 				connections: {},
 			} as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+			{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 		);
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(updatedWorkflow.versionId);
 		expect(updatedWorkflow.activeVersionId).not.toBe(previousActiveVersionId);
 		expect(updatedWorkflow.activeVersion?.versionId).toBe(updatedWorkflow.versionId);
+		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
+			versionId: updatedWorkflow.versionId,
+			source: 'api',
+			publicApi: 'other',
+		});
 	});
 
 	test('saves the API update as a draft when an open review blocks re-publication', async () => {
@@ -348,7 +356,7 @@ describe('update()', () => {
 					connections: {},
 				} as WorkflowEntity,
 				workflow.id,
-				{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+				{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 			),
 		).rejects.toMatchObject({
 			httpStatusCode: 409,
@@ -375,12 +383,13 @@ describe('update()', () => {
 			owner,
 			{ settings: { timezone: 'Europe/Berlin' } } as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true },
+			{ forceSave: true, publicApi: 'editor_ui', source: 'api' },
 		);
 
 		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
 			versionId: workflow.activeVersionId,
-			source: 'ui',
+			source: 'api',
+			publicApi: 'editor_ui',
 			publishHistory: 'none',
 		});
 	});
@@ -1145,6 +1154,25 @@ describe('activateWorkflow trigger cleanup', () => {
 			expect.stringContaining('Rolled back partial activation'),
 			{ workflowId: workflow.id },
 		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should not tear down triggers when the credential check refuses', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new TriggerCredentialAccessError(new UserError('Node "Trigger" cannot use the credential')),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'Node "Trigger" cannot use the credential',
+		);
+
+		expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 
 		const reloaded = await workflowRepository.findById(workflow.id);
 		expect(reloaded?.active).toBe(false);

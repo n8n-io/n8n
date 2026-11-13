@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
@@ -106,7 +107,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const responseData = await pipedriveApiRequest.call(
 				this,
 				'PATCH',
-				`/organizations/${organizationId}`,
+				requestPath`/organizations/${organizationId}`,
 				body,
 			);
 

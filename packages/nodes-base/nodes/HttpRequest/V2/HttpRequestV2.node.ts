@@ -26,6 +26,7 @@ import {
 	getAllowedDomains,
 	getOAuth2AdditionalParameters,
 	getSecrets,
+	removeRequestOptions,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -1119,6 +1120,7 @@ export class HttpRequestV2 implements INodeType {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeRequestOptions(response.reason);
 					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({

@@ -20,7 +20,7 @@ import type { EvalAgentExecutionService } from '../agent-execution.service';
 import type { EvalExecutionService } from '../execution.service';
 import type { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 import { EvalThreadCredentialAllowlistService } from '../thread-credential-allowlist.service';
-import type { EvalThreadRestoreService } from '../thread-restore.service';
+import { EvalThreadRestoreService } from '../thread-restore.service';
 import type { InstanceAiMemoryService } from '../../instance-ai-memory.service';
 import type { InstanceAiSettingsService } from '../../instance-ai-settings.service';
 import { InstanceAiEvalController } from '../eval.controller';
@@ -287,6 +287,11 @@ describe('InstanceAiEvalController', () => {
 		} as InstanceAiEvalRestoreThreadRequest;
 
 		beforeEach(() => {
+			// The orchestration lives in the service; run it for real over the mocked
+			// per-step methods, so these tests keep covering the full restore.
+			evalThreadRestore.restoreSeedArtifacts.mockImplementation(
+				EvalThreadRestoreService.prototype.restoreSeedArtifacts.bind(evalThreadRestore),
+			);
 			evalThreadRestore.restoreAgents.mockResolvedValue([]);
 			evalThreadRestore.publishSeedWorkflows.mockResolvedValue([]);
 			evalThreadRestore.restoreFolders.mockResolvedValue(new Map());

@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import { seaTableApiRequest } from '../../GenericFunctions';
@@ -24,7 +25,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		this,
 		{},
 		'POST',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/snapshot/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/snapshot/`,
 		{ dtable_name: 'snapshot' },
 	);
 

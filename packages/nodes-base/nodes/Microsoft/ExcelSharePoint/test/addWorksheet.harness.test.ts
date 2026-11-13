@@ -1,6 +1,6 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 
-const workbookRoot = '/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123';
+const workbookRoot = '/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123';
 
 const credentials = {
 	microsoftOAuth2Api: {

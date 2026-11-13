@@ -75,7 +75,7 @@ describe('AssistantSandboxWorkspaceSource', () => {
 		await expect(source.acquire(scope)).resolves.toBeUndefined();
 	});
 
-	it('keeps the sandbox cache entry in use from acquire until release', async () => {
+	it('gives each turn its own run ID from acquire until release', async () => {
 		const { source, sandboxService, options } = createSource();
 		const config = { enabled: true, provider: 'n8n-sandbox' };
 		sandboxService.resolveSandboxConfig.mockResolvedValue(config);
@@ -83,9 +83,13 @@ describe('AssistantSandboxWorkspaceSource', () => {
 		const lease = await source.acquire(scope);
 
 		expect(lease).toEqual({ config, threadId: 'thread-1', user });
-		expect(options?.runState.getActiveRunId('thread-1')).toBe('thread-1');
+		const runId = options?.runState.getActiveRunId('thread-1');
+		expect(runId).toEqual(expect.any(String));
 		await source.release(scope);
 		expect(options?.runState.getActiveRunId('thread-1')).toBeUndefined();
+
+		await source.acquire(scope);
+		expect(options?.runState.getActiveRunId('thread-1')).not.toBe(runId);
 	});
 
 	it('returns the workspace after the workspace setup, and deletes the sandbox with the thread', async () => {

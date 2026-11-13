@@ -168,6 +168,7 @@ const personalSelfHealingTab = computed((): TabOptions<string> | null => {
 	return {
 		label: i18n.baseText('selfHealing.config.heading'),
 		value: PERSONAL_SELF_HEALING_VIEW,
+		preview: true,
 		to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: project.id } },
 	};
 });

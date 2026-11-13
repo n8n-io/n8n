@@ -1,0 +1,90 @@
+{
+	"name": "SIGNL4 Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "send",
+				"message": "Server is down",
+				"additionalFields": {
+					"title": "Outage"
+				}
+			},
+			"id": "signl4-0",
+			"name": "Alert Send",
+			"type": "n8n-nodes-base.signl4",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"signl4Api": {
+					"id": "1",
+					"name": "SIGNL4 account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "alert",
+				"operation": "resolve",
+				"externalId": "ticket-4711"
+			},
+			"id": "signl4-1",
+			"name": "Alert Resolve",
+			"type": "n8n-nodes-base.signl4",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"signl4Api": {
+					"id": "1",
+					"name": "SIGNL4 account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Alert Send": [
+			{
+				"json": {
+					"eventId": "2518588198735831904"
+				}
+			}
+		],
+		"Alert Resolve": [
+			{
+				"json": {
+					"eventId": "2518588198735831904"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Alert Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Alert Resolve",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

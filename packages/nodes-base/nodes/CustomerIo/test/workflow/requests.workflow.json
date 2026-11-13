@@ -1,0 +1,309 @@
+{
+	"name": "Customer.io Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "get",
+				"campaignId": 15
+			},
+			"id": "node-0",
+			"name": "Campaign Get",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getAll"
+			},
+			"id": "node-1",
+			"name": "Campaign Get Many",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "getMetrics",
+				"campaignId": 15,
+				"period": "weeks",
+				"additionalFields": {}
+			},
+			"id": "node-2",
+			"name": "Campaign Get Metrics",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "upsert",
+				"id": "nathan@example.com",
+				"additionalFields": {
+					"email": "nathan@example.com"
+				}
+			},
+			"id": "node-3",
+			"name": "Customer Upsert",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"id": "cus_8812"
+			},
+			"id": "node-4",
+			"name": "Customer Delete",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"customerId": "cus_8812",
+				"eventName": "purchase",
+				"additionalFields": {}
+			},
+			"id": "node-5",
+			"name": "Event Track",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "trackAnonymous",
+				"eventName": "visit",
+				"additionalFields": {}
+			},
+			"id": "node-6",
+			"name": "Event Track Anonymous",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "segment",
+				"operation": "add",
+				"segmentId": 7,
+				"customerIds": "cus_8812"
+			},
+			"id": "node-7",
+			"name": "Segment Add Customers",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "segment",
+				"operation": "remove",
+				"segmentId": 7,
+				"customerIds": "cus_8812"
+			},
+			"id": "node-8",
+			"name": "Segment Remove Customers",
+			"type": "n8n-nodes-base.customerIo",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"customerIoApi": {
+					"id": "1",
+					"name": "Customer.io account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Campaign Get": [
+			{
+				"json": {
+					"id": 15,
+					"name": "Welcome"
+				}
+			}
+		],
+		"Campaign Get Many": [
+			{
+				"json": {
+					"id": 15,
+					"name": "Welcome"
+				}
+			}
+		],
+		"Campaign Get Metrics": [
+			{
+				"json": {
+					"sent": [3]
+				}
+			}
+		],
+		"Customer Upsert": [
+			{
+				"json": {
+					"id": "nathan@example.com",
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Customer Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Event Track": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Event Track Anonymous": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Segment Add Customers": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Segment Remove Customers": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Campaign Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Campaign Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Campaign Get Metrics",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Track",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Track Anonymous",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Segment Add Customers",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Segment Remove Customers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

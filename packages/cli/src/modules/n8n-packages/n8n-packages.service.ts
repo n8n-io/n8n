@@ -124,6 +124,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'projectId'
 	| 'folderId'
 	| 'apiKeyScopes'
+	| 'publicApi'
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
@@ -705,6 +706,7 @@ export class N8nPackagesService {
 
 		return {
 			user: request.user,
+			publicApi: request.publicApi,
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,

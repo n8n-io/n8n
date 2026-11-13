@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	dimensionDropdown,
@@ -603,7 +604,7 @@ export async function execute(
 	}
 
 	const method = 'POST';
-	const endpoint = `/v1beta/properties/${propertyId}:runReport`;
+	const endpoint = requestPath`/v1beta/properties/${propertyId}:runReport`;
 
 	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);

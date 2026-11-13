@@ -1,0 +1,1398 @@
+{
+	"name": "Trello Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "create",
+				"name": "Roadmap"
+			},
+			"id": "trello-0",
+			"name": "Board Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "get",
+				"id": {
+					"__rl": true,
+					"value": "5f1b2c3d4e5f6a7b8c9d0e1f",
+					"mode": "id"
+				}
+			},
+			"id": "trello-1",
+			"name": "Board Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "update",
+				"id": {
+					"__rl": true,
+					"value": "5f1b2c3d4e5f6a7b8c9d0e1f",
+					"mode": "id"
+				},
+				"updateFields": {
+					"name": "Plan"
+				}
+			},
+			"id": "trello-2",
+			"name": "Board Update",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "board",
+				"operation": "delete",
+				"id": {
+					"__rl": true,
+					"value": "5f1b2c3d4e5f6a7b8c9d0e1f",
+					"mode": "id"
+				}
+			},
+			"id": "trello-3",
+			"name": "Board Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardMember",
+				"operation": "getAll",
+				"id": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"returnAll": true
+			},
+			"id": "trello-4",
+			"name": "Board Member Get Many",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardMember",
+				"operation": "add",
+				"id": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"idMember": "62c3d4e5f6a7b8c9d0e1f2a4",
+				"type": "normal"
+			},
+			"id": "trello-5",
+			"name": "Board Member Add",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardMember",
+				"operation": "invite",
+				"id": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"email": "nathan@example.com"
+			},
+			"id": "trello-6",
+			"name": "Board Member Invite",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "boardMember",
+				"operation": "remove",
+				"id": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"idMember": "62c3d4e5f6a7b8c9d0e1f2a4"
+			},
+			"id": "trello-7",
+			"name": "Board Member Remove",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "create",
+				"listId": "61b2c3d4e5f6a7b8c9d0e1f3",
+				"name": "Fix printer"
+			},
+			"id": "trello-8",
+			"name": "Card Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "get",
+				"id": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				}
+			},
+			"id": "trello-9",
+			"name": "Card Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "update",
+				"id": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"updateFields": {
+					"name": "Printer"
+				}
+			},
+			"id": "trello-10",
+			"name": "Card Update",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "card",
+				"operation": "delete",
+				"id": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				}
+			},
+			"id": "trello-11",
+			"name": "Card Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cardComment",
+				"operation": "create",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"text": "Done"
+			},
+			"id": "trello-12",
+			"name": "Card Comment Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cardComment",
+				"operation": "update",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"commentId": "67b8c9d0e1f2a3b4c5d6e7f9",
+				"text": "Done"
+			},
+			"id": "trello-13",
+			"name": "Card Comment Update",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cardComment",
+				"operation": "delete",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"commentId": "67b8c9d0e1f2a3b4c5d6e7f9"
+			},
+			"id": "trello-14",
+			"name": "Card Comment Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "archive",
+				"id": "61b2c3d4e5f6a7b8c9d0e1f3",
+				"archive": true
+			},
+			"id": "trello-15",
+			"name": "List Archive",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2250],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"idBoard": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"name": "Backlog"
+			},
+			"id": "trello-16",
+			"name": "List Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "get",
+				"id": "61b2c3d4e5f6a7b8c9d0e1f3"
+			},
+			"id": "trello-17",
+			"name": "List Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2550],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"id": "5f1b2c3d4e5f6a7b8c9d0e1f",
+				"returnAll": true
+			},
+			"id": "trello-18",
+			"name": "List Get Many",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2700],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getCards",
+				"id": "61b2c3d4e5f6a7b8c9d0e1f3",
+				"returnAll": true
+			},
+			"id": "trello-19",
+			"name": "List Get Cards",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 2850],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "update",
+				"id": "61b2c3d4e5f6a7b8c9d0e1f3",
+				"updateFields": {
+					"name": "Doing"
+				}
+			},
+			"id": "trello-20",
+			"name": "List Update",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "create",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"url": "https://example.com/report.pdf"
+			},
+			"id": "trello-21",
+			"name": "Attachment Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3150],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "get",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"id": "63d4e5f6a7b8c9d0e1f2a3b5"
+			},
+			"id": "trello-22",
+			"name": "Attachment Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3300],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "getAll",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				}
+			},
+			"id": "trello-23",
+			"name": "Attachment Get Many",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3450],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attachment",
+				"operation": "delete",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"id": "63d4e5f6a7b8c9d0e1f2a3b5"
+			},
+			"id": "trello-24",
+			"name": "Attachment Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "create",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"name": "Steps"
+			},
+			"id": "trello-25",
+			"name": "Checklist Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3750],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "get",
+				"id": "64e5f6a7b8c9d0e1f2a3b4c6"
+			},
+			"id": "trello-26",
+			"name": "Checklist Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 3900],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "getAll",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				}
+			},
+			"id": "trello-27",
+			"name": "Checklist Get Many",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4050],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "delete",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"id": "64e5f6a7b8c9d0e1f2a3b4c6"
+			},
+			"id": "trello-28",
+			"name": "Checklist Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "createCheckItem",
+				"checklistId": "64e5f6a7b8c9d0e1f2a3b4c6",
+				"name": "Call vendor"
+			},
+			"id": "trello-29",
+			"name": "Checklist Create Item",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4350],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "getCheckItem",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"checkItemId": "65f6a7b8c9d0e1f2a3b4c5d7"
+			},
+			"id": "trello-30",
+			"name": "Checklist Get Item",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4500],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "updateCheckItem",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"checkItemId": "65f6a7b8c9d0e1f2a3b4c5d7"
+			},
+			"id": "trello-31",
+			"name": "Checklist Update Item",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4650],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "deleteCheckItem",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"checkItemId": "65f6a7b8c9d0e1f2a3b4c5d7"
+			},
+			"id": "trello-32",
+			"name": "Checklist Delete Item",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "create",
+				"boardId": {
+					"__rl": true,
+					"value": "5f1b2c3d4e5f6a7b8c9d0e1f",
+					"mode": "id"
+				},
+				"name": "Urgent",
+				"color": "red"
+			},
+			"id": "trello-33",
+			"name": "Label Create",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 4950],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "get",
+				"id": "66a7b8c9d0e1f2a3b4c5d6e8"
+			},
+			"id": "trello-34",
+			"name": "Label Get",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5100],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "getAll",
+				"boardId": {
+					"__rl": true,
+					"value": "5f1b2c3d4e5f6a7b8c9d0e1f",
+					"mode": "id"
+				}
+			},
+			"id": "trello-35",
+			"name": "Label Get Many",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5250],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "update",
+				"id": "66a7b8c9d0e1f2a3b4c5d6e8",
+				"updateFields": {
+					"name": "Later"
+				}
+			},
+			"id": "trello-36",
+			"name": "Label Update",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5400],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "delete",
+				"id": "66a7b8c9d0e1f2a3b4c5d6e8"
+			},
+			"id": "trello-37",
+			"name": "Label Delete",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5550],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "addLabel",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"id": "66a7b8c9d0e1f2a3b4c5d6e8"
+			},
+			"id": "trello-38",
+			"name": "Label Add To Card",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5700],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "label",
+				"operation": "removeLabel",
+				"cardId": {
+					"__rl": true,
+					"value": "60a1b2c3d4e5f6a7b8c9d0e2",
+					"mode": "id"
+				},
+				"id": "66a7b8c9d0e1f2a3b4c5d6e8"
+			},
+			"id": "trello-39",
+			"name": "Label Remove From Card",
+			"type": "n8n-nodes-base.trello",
+			"typeVersion": 1,
+			"position": [300, 5850],
+			"credentials": {
+				"trelloApi": {
+					"id": "1",
+					"name": "Trello account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Board Create": [
+			{
+				"json": {
+					"id": "trello-0",
+					"operation": "create"
+				}
+			}
+		],
+		"Board Get": [
+			{
+				"json": {
+					"id": "trello-1",
+					"operation": "get"
+				}
+			}
+		],
+		"Board Update": [
+			{
+				"json": {
+					"id": "trello-2",
+					"operation": "update"
+				}
+			}
+		],
+		"Board Delete": [
+			{
+				"json": {
+					"id": "trello-3",
+					"operation": "delete"
+				}
+			}
+		],
+		"Board Member Get Many": [
+			{
+				"json": {
+					"id": "trello-4",
+					"operation": "getAll"
+				}
+			}
+		],
+		"Board Member Add": [
+			{
+				"json": {
+					"id": "trello-5",
+					"operation": "add"
+				}
+			}
+		],
+		"Board Member Invite": [
+			{
+				"json": {
+					"id": "trello-6",
+					"operation": "invite"
+				}
+			}
+		],
+		"Board Member Remove": [
+			{
+				"json": {
+					"id": "trello-7",
+					"operation": "remove"
+				}
+			}
+		],
+		"Card Create": [
+			{
+				"json": {
+					"id": "trello-8",
+					"operation": "create"
+				}
+			}
+		],
+		"Card Get": [
+			{
+				"json": {
+					"id": "trello-9",
+					"operation": "get"
+				}
+			}
+		],
+		"Card Update": [
+			{
+				"json": {
+					"id": "trello-10",
+					"operation": "update"
+				}
+			}
+		],
+		"Card Delete": [
+			{
+				"json": {
+					"id": "trello-11",
+					"operation": "delete"
+				}
+			}
+		],
+		"Card Comment Create": [
+			{
+				"json": {
+					"id": "trello-12",
+					"operation": "create"
+				}
+			}
+		],
+		"Card Comment Update": [
+			{
+				"json": {
+					"id": "trello-13",
+					"operation": "update"
+				}
+			}
+		],
+		"Card Comment Delete": [
+			{
+				"json": {
+					"id": "trello-14",
+					"operation": "delete"
+				}
+			}
+		],
+		"List Archive": [
+			{
+				"json": {
+					"id": "trello-15",
+					"operation": "archive"
+				}
+			}
+		],
+		"List Create": [
+			{
+				"json": {
+					"id": "trello-16",
+					"operation": "create"
+				}
+			}
+		],
+		"List Get": [
+			{
+				"json": {
+					"id": "trello-17",
+					"operation": "get"
+				}
+			}
+		],
+		"List Get Many": [
+			{
+				"json": {
+					"id": "trello-18",
+					"operation": "getAll"
+				}
+			}
+		],
+		"List Get Cards": [
+			{
+				"json": {
+					"id": "trello-19",
+					"operation": "getCards"
+				}
+			}
+		],
+		"List Update": [
+			{
+				"json": {
+					"id": "trello-20",
+					"operation": "update"
+				}
+			}
+		],
+		"Attachment Create": [
+			{
+				"json": {
+					"id": "trello-21",
+					"operation": "create"
+				}
+			}
+		],
+		"Attachment Get": [
+			{
+				"json": {
+					"id": "trello-22",
+					"operation": "get"
+				}
+			}
+		],
+		"Attachment Get Many": [
+			{
+				"json": {
+					"id": "trello-23",
+					"operation": "getAll"
+				}
+			}
+		],
+		"Attachment Delete": [
+			{
+				"json": {
+					"id": "trello-24",
+					"operation": "delete"
+				}
+			}
+		],
+		"Checklist Create": [
+			{
+				"json": {
+					"id": "trello-25",
+					"operation": "create"
+				}
+			}
+		],
+		"Checklist Get": [
+			{
+				"json": {
+					"id": "trello-26",
+					"operation": "get"
+				}
+			}
+		],
+		"Checklist Get Many": [
+			{
+				"json": {
+					"id": "trello-27",
+					"operation": "getAll"
+				}
+			}
+		],
+		"Checklist Delete": [
+			{
+				"json": {
+					"id": "trello-28",
+					"operation": "delete"
+				}
+			}
+		],
+		"Checklist Create Item": [
+			{
+				"json": {
+					"id": "trello-29",
+					"operation": "createCheckItem"
+				}
+			}
+		],
+		"Checklist Get Item": [
+			{
+				"json": {
+					"id": "trello-30",
+					"operation": "getCheckItem"
+				}
+			}
+		],
+		"Checklist Update Item": [
+			{
+				"json": {
+					"id": "trello-31",
+					"operation": "updateCheckItem"
+				}
+			}
+		],
+		"Checklist Delete Item": [
+			{
+				"json": {
+					"id": "trello-32",
+					"operation": "deleteCheckItem"
+				}
+			}
+		],
+		"Label Create": [
+			{
+				"json": {
+					"id": "trello-33",
+					"operation": "create"
+				}
+			}
+		],
+		"Label Get": [
+			{
+				"json": {
+					"id": "trello-34",
+					"operation": "get"
+				}
+			}
+		],
+		"Label Get Many": [
+			{
+				"json": {
+					"id": "trello-35",
+					"operation": "getAll"
+				}
+			}
+		],
+		"Label Update": [
+			{
+				"json": {
+					"id": "trello-36",
+					"operation": "update"
+				}
+			}
+		],
+		"Label Delete": [
+			{
+				"json": {
+					"id": "trello-37",
+					"operation": "delete"
+				}
+			}
+		],
+		"Label Add To Card": [
+			{
+				"json": {
+					"id": "trello-38",
+					"operation": "addLabel"
+				}
+			}
+		],
+		"Label Remove From Card": [
+			{
+				"json": {
+					"id": "trello-39",
+					"operation": "removeLabel"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Board Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Member Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Member Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Member Invite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Board Member Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Comment Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Comment Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Comment Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Archive",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Get Cards",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attachment Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Create Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Get Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Update Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Checklist Delete Item",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Add To Card",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Label Remove From Card",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

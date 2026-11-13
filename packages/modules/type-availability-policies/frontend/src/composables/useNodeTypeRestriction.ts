@@ -187,7 +187,7 @@ export function getRestrictionMessage(
 	return verdict?.scope ?? 'generic';
 }
 
-export type RestrictedCalloutSurface = 'tool' | 'credential';
+export type RestrictedCalloutSurface = 'tool' | 'chatTool' | 'credential';
 
 const CALLOUT_COPY: Record<
 	RestrictedCalloutSurface,
@@ -199,6 +199,15 @@ const CALLOUT_COPY: Record<
 			project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
 			optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
 			generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
+	chatTool: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.chatTool.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.chatTool.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.chatTool.generic',
 		},
 		interpolationKey: 'nodeType',
 	},

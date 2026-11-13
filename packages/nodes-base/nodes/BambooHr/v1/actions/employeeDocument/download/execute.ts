@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -13,7 +14,7 @@ export async function download(this: IExecuteFunctions, index: number) {
 	const output: string = this.getNodeParameter('output', index) as string;
 
 	//endpoint
-	const endpoint = `employees/${id}/files/${fileId}/`;
+	const endpoint = requestPath`employees/${id}/files/${fileId}/`;
 
 	//response
 	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject, {
