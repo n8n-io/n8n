@@ -209,6 +209,13 @@ describe('redactMcpUrl', () => {
 		);
 	});
 
+	it('removes a token in the path and the fragment, and keeps plain segments', () => {
+		expect(redactMcpUrl('https://mcp.zapier.com/api/mcp/s/aB3dE9xYz71QwErT/mcp#frag')).toBe(
+			'https://mcp.zapier.com/api/mcp/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://api.example.com/v2/sse')).toBe('https://api.example.com/v2/sse');
+	});
+
 	it('leaves a URL without a query as it is', () => {
 		expect(redactMcpUrl('https://mcp.linear.app/mcp')).toBe('https://mcp.linear.app/mcp');
 	});
