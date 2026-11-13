@@ -117,8 +117,11 @@ function initializeEditor() {
 		}),
 	});
 
-	highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
-	highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
+	highlighter.updateColors(
+		editor.value as EditorView,
+		plaintextSegments.value,
+		resolvedSegments.value,
+	);
 }
 
 watch(
@@ -130,8 +133,11 @@ watch(
 			changes: { from: 0, to: editor.value.state.doc.length, insert: resolvedExpression.value },
 		});
 
-		highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
-		highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
+		highlighter.updateColors(
+			editor.value as EditorView,
+			plaintextSegments.value,
+			resolvedSegments.value,
+		);
 	},
 );
 
