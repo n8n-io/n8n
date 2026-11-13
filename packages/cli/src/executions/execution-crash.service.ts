@@ -67,30 +67,29 @@ export class ExecutionCrashService {
 	}
 
 	/**
-	 * Announce an execution the caller already transitioned to `crashed` itself.
-	 * Performs no transition and no counting; the caller's lifecycle hooks count it.
+	 * Announces a run the caller already moved to `crashed`, and records its `ended` row.
+	 * Does not count it: the caller's lifecycle hooks do that.
 	 */
-	async announceStalledExecution(executionId: string): Promise<void> {
+	async announceStalledExecution(executionId: string, workflowName?: string): Promise<void> {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: false,
 		});
 		if (!execution || execution.status !== 'crashed' || !execution.stoppedAt) return;
 
-		this.announce(
-			[
-				{
-					id: execution.id,
-					workflowId: execution.workflowId,
-					mode: execution.mode,
-					startedAt: execution.startedAt ?? null,
-					stoppedAt: execution.stoppedAt,
-					retryOf: execution.retryOf ?? undefined,
-					workflowVersionId: execution.workflowVersionId ?? undefined,
-					tracingContext: execution.tracingContext ?? undefined,
-				},
-			],
-			'stall',
-		);
+		const crashed: CrashedExecution = {
+			id: execution.id,
+			workflowId: execution.workflowId,
+			workflowName,
+			mode: execution.mode,
+			startedAt: execution.startedAt ?? null,
+			stoppedAt: execution.stoppedAt,
+			retryOf: execution.retryOf ?? undefined,
+			workflowVersionId: execution.workflowVersionId ?? undefined,
+			tracingContext: execution.tracingContext ?? undefined,
+		};
+		this.announce([crashed], 'stall');
+		// The hooks on main did not run this run, so the ledger handler skips it.
+		this.recordEnded([crashed]);
 	}
 
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {

@@ -362,7 +362,10 @@ export class WorkflowRunner {
 			}
 
 			try {
-				await this.executionCrashService.announceStalledExecution(executionId);
+				await this.executionCrashService.announceStalledExecution(
+					executionId,
+					hooks?.workflowData.name,
+				);
 			} catch (announceError) {
 				// The announce is telemetry; its failure must not abort finalization
 				// for an execution already persisted as crashed.
