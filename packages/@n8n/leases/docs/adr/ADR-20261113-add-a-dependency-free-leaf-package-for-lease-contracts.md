@@ -1,4 +1,4 @@
-# Keep the leases package free of runtime dependencies
+# Add a dependency-free leaf package for lease contracts
 
 Date: 2026-11-13
 
@@ -10,19 +10,23 @@ Source: https://linear.app/n8n/issue/CAP-750
 
 ## Context
 
-`@n8n/leases` holds the contracts for leases: the `LeaseProvider` port and the `Lease`,
-`LeaseFence`, `LeaseHandler`, and `LeaseSource` types. A consumer, such as a trigger service,
-implements handlers and sources. A backend implements the provider.
+A lease gives one resource, such as the trigger of a published workflow, to exactly one main in a
+cluster, with no leader. Two sides use leases. A consumer says which leases it wants and holds the
+ones that this main gets. A backend decides which main holds each lease. The two sides live in
+different places and change at different times, so they need a shared contract that belongs to
+neither of them.
 
-A fence check runs inside a transaction of the consumer. A write that depends on a lease then
-commits only while this process holds the lease. So the contracts must carry a transaction handle.
-In the cli, business logic passes its transaction as an `OperationContext`. Another backend or
-consumer can use a different handle.
+A fence check runs inside a transaction of the consumer, so the contract must carry a transaction
+handle. In the cli, business logic passes its transaction as an `OperationContext`.
 
 ## Decision
 
-`@n8n/leases` has no runtime dependencies. It imports no database, dependency injection,
-scheduler, or other n8n code. Its source imports only its own files.
+Add `@n8n/leases`, a leaf package that holds only the lease contracts: the lease types, the
+`LeaseProvider` port that a backend implements, and `LeaseEndedError`. Consumers and backends
+depend on this package, not on each other.
+
+The package has no runtime dependencies. It imports no database, dependency injection, scheduler,
+or other n8n code. Its source imports only its own files.
 
 The main reason is that consumers and backends can change independently of each other.
 
