@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import Modal from '@/app/components/Modal.vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import ToolListItem from './ToolListItem.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import {
 	N8nButton,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogHeader,
+	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
@@ -40,12 +44,15 @@ import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composab
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import { partitionLast } from '@n8n/utils/sort/partition-last';
 
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
 	modalName: string;
 	data: {
 		tools: INode[];
 		onConfirm: (tools: INode[]) => void;
 		customAgentId?: string;
+		stacked?: boolean;
 	};
 }>();
 
@@ -78,6 +85,8 @@ const toast = useToast();
 const message = useMessage();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 const { installNode: installCommunityNode } = useInstallNode();
 const { warnIfRestricted } = useRestrictedNodeWarning();
 const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
@@ -361,20 +370,41 @@ function handleSave() {
 function handleSettingsChangeName(name: string) {
 	settingsContentRef.value?.handleChangeName(name);
 }
+
+async function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		width="780px"
-		:show-close="currentView === 'list'"
-		:custom-class="$style.modal"
+	<N8nDialog
+		:open="modalOpen"
+		size="2xlarge"
+		:stacked="data.stacked === true"
+		:show-close-button="currentView === 'list'"
+		:container-class="$style.modal"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #header>
+		<N8nDialogHeader :class="currentView === 'list' ? $style.listHeader : undefined">
 			<!-- List view header -->
-			<N8nHeading v-if="currentView === 'list'" tag="h2" size="large">
-				{{ modalTitle }}
-			</N8nHeading>
+			<template v-if="currentView === 'list'">
+				<N8nDialogTitle :class="$style.listTitle">
+					{{ modalTitle }}
+				</N8nDialogTitle>
+				<N8nInput
+					v-model="searchQuery"
+					:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+					clearable
+				>
+					<template #prefix>
+						<N8nIcon icon="search" />
+					</template>
+				</N8nInput>
+			</template>
 
 			<!-- Settings view header -->
 			<div v-else :class="$style.settingsHeader">
@@ -384,36 +414,25 @@ function handleSettingsChangeName(name: string) {
 						text
 						size="large"
 						variant="ghost"
-						:class="$style.backButton"
+						data-test-id="chat-tools-manager-back"
 						@click="handleBack"
 					/>
-					<N8nInlineTextEdit
-						:model-value="settingsNodeName"
-						:max-width="350"
-						:class="$style.title"
-						@update:model-value="handleSettingsChangeName"
-					/>
+					<N8nDialogTitle>
+						<N8nInlineTextEdit
+							:model-value="settingsNodeName"
+							:max-width="350"
+							@update:model-value="handleSettingsChangeName"
+						/>
+					</N8nDialogTitle>
 				</div>
 				<N8nButton variant="solid" size="small" :disabled="!settingsIsValid" @click="handleSave">
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
-		</template>
+		</N8nDialogHeader>
 
-		<template #content>
-			<N8nInput
-				v-show="currentView === 'list'"
-				v-model="searchQuery"
-				:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
-				clearable
-				:class="$style.searchInput"
-			>
-				<template #prefix>
-					<N8nIcon icon="search" />
-				</template>
-			</N8nInput>
-
-			<!-- List view: scrolls itself, scrollbar in padding gutter -->
+		<N8nDialogBody>
+			<!-- List view: the body padding is reset so this scrollbar sits on the dialog edge. -->
 			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
 				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
 					<N8nHeading size="small" color="text-light" tag="h3">
@@ -423,7 +442,7 @@ function handleSettingsChangeName(name: string) {
 							})
 						}}
 					</N8nHeading>
-					<div :class="$style.toolsList">
+					<div>
 						<ToolListItem
 							v-for="tool in filteredConfiguredTools"
 							:key="tool.definition.id"
@@ -447,7 +466,7 @@ function handleSettingsChangeName(name: string) {
 							})
 						}}
 					</N8nHeading>
-					<div :class="$style.toolsList">
+					<div>
 						<ToolListItem
 							v-for="nodeType in filteredAvailableTools"
 							:key="nodeType.name"
@@ -472,7 +491,7 @@ function handleSettingsChangeName(name: string) {
 			</div>
 
 			<!-- Settings view: doesn't scroll, lets NodeToolSettingsContent.tabContent scroll -->
-			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+			<div v-if="currentView === 'settings' && settingsNode">
 				<NodeToolSettingsContent
 					ref="settingsContentRef"
 					:initial-node="settingsNode"
@@ -481,8 +500,8 @@ function handleSettingsChangeName(name: string) {
 					@update:node-name="settingsNodeName = $event"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogBody>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
@@ -492,11 +511,20 @@ function handleSettingsChangeName(name: string) {
 	}
 }
 
+.listHeader {
+	flex-direction: column;
+	align-items: stretch;
+	padding-inline-end: var(--n8n-dialog-region--padding, var(--spacing--md));
+	gap: var(--spacing--sm);
+}
+
+.listTitle {
+	padding-inline-end: calc(var(--n8n-dialog-close--size, var(--spacing--lg)) + var(--spacing--xs));
+}
+
 .settingsHeader {
 	display: flex;
-	align-items: center;
 	justify-content: space-between;
-	width: 100%;
 }
 
 .settingsHeaderLeft {
@@ -507,54 +535,17 @@ function handleSettingsChangeName(name: string) {
 	flex: 1;
 }
 
-.icon {
-	flex-shrink: 0;
-	flex-grow: 0;
-}
-
-.title {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--regular);
-	line-height: var(--line-height--lg);
-	color: var(--color--text--shade-1);
-	flex: 1;
-	min-width: 0;
-}
-
 .listWrapper {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--sm);
-	max-height: 60vh;
-	overflow-y: auto;
-	margin-right: calc(-1 * var(--spacing--lg));
-	padding-right: var(--spacing--lg);
-	padding-top: var(--spacing--sm);
-}
-
-.settingsWrapper {
 	display: flex;
 	flex-direction: column;
 	max-height: 60vh;
-	overflow: hidden;
-	margin-right: calc(-1 * var(--spacing--lg));
-	padding-top: var(--spacing--sm);
-}
-
-.searchInput {
-	padding: var(--spacing--sm) 0;
-	width: 100%;
 }
 
 .section {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
-}
-
-.toolsList {
-	display: flex;
-	flex-direction: column;
 }
 
 .emptyState {
