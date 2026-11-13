@@ -482,6 +482,9 @@ export const removeTrailingSlash = (url: string) => {
 	return url;
 };
 
+// Postgres-only operations that, like select, send one query for each input item
+const POSTGRES_PER_ITEM_OPERATIONS = ['listSchemas', 'listTables'];
+
 export function addExecutionHints(
 	context: IExecuteFunctions,
 	node: INode,
@@ -489,9 +492,13 @@ export function addExecutionHints(
 	operation: string,
 	executeOnce: boolean | undefined,
 ) {
+	const runsOncePerItem =
+		operation === 'select' ||
+		(node.type === POSTGRES_NODE_TYPE && POSTGRES_PER_ITEM_OPERATIONS.includes(operation));
+
 	if (
 		(node.type === POSTGRES_NODE_TYPE || node.type === MYSQL_NODE_TYPE) &&
-		operation === 'select' &&
+		runsOncePerItem &&
 		items.length > 1 &&
 		!executeOnce
 	) {

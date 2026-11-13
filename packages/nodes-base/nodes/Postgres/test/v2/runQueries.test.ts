@@ -63,6 +63,26 @@ describe('Test PostgresV2, runQueries', () => {
 		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
 	});
 
+	// Before 2.3 the fallback is chosen by operation, not by reading the SQL
+	describe.each(['listSchemas', 'listTables'])(
+		'empty result for %s before nodeVersion 2.3',
+		(operation) => {
+			it('should return no items rather than a success report', async () => {
+				const pgp = pgPromise();
+				const db = createMockDb([]);
+				const thisArg = mockDeep<IExecuteFunctions>();
+				const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
+
+				const result = await runQueries([{ query: 'SELECT 1', values: [] }], {
+					nodeVersion: 2.2,
+					operation,
+				});
+
+				expect(result).toEqual([]);
+			});
+		},
+	);
+
 	describe('empty result fallback (nodeVersion >= 2.3)', () => {
 		// Minimal stand-in for n8n-core's constructExecutionMetaData, sufficient for these tests.
 		const fakeConstructExecutionMetaData = (
