@@ -370,6 +370,18 @@ describe('ThinkingBlock', () => {
 		expect(getByTestId('thinking-block-subline')).not.toHaveTextContent('Gmail');
 	});
 
+	it('should keep the newest words of streaming reasoning in view', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({ status: 'active' }),
+				entries: [reasoning('Figuring out the trigger. Gmail can filter by label')],
+				active: true,
+			},
+		});
+
+		expect(getByTestId('thinking-block-subline-label')).toHaveAttribute('data-truncate', 'start');
+	});
+
 	it('should show "Thinking" on the subline until reasoning adds to the title', () => {
 		// The title already shows the first sentence, so the subline does not repeat it.
 		const tc = makeToolCall({ toolCallId: 'tc-1' });

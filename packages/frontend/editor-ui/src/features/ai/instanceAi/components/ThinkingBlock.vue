@@ -86,7 +86,7 @@ function asActivity(text: string | undefined) {
 }
 
 /** Reuse the context row label while it is the latest active entry. */
-const activity = computed<{ key: string; text: string } | undefined>(() => {
+const activity = computed<{ key: string; text: string; truncate?: 'start' } | undefined>(() => {
 	const toolCall = tailToolCall.value;
 	if (toolCall) return asActivity(toolCallLabel(toolCall));
 
@@ -96,7 +96,9 @@ const activity = computed<{ key: string; text: string } | undefined>(() => {
 	if (last?.type === 'reasoning' && specificProgress.value) {
 		// One key for the whole segment, so the subline follows the stream at once.
 		const text = reasoningLabel(last.content);
-		return text === undefined ? undefined : { key: `reasoning-${index}`, text };
+		return text === undefined
+			? undefined
+			: { key: `reasoning-${index}`, text, truncate: 'start' as const };
 	}
 	if (last?.type === 'skill-update') return asActivity(skillUpdateLabel(last));
 	return last?.type === 'instance-context' ? asActivity(getInstanceContextLabel(last)) : undefined;
@@ -142,6 +144,7 @@ const durationSec = computed<number | undefined>(() => {
 		:active="props.active"
 		:awaiting-input="props.awaitingInput"
 		:activity-label="steadyActivity?.text"
+		:activity-label-truncate="steadyActivity?.truncate"
 		:duration-sec="durationSec"
 		test-id="instance-ai-thinking-block"
 	>
