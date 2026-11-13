@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { InProcessLockService } from '../in-process-lock.service';
 import { LockNamespace } from '../lock-service.interface';

@@ -6,8 +6,10 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
 
 /** Headers we send to Dataverse must be string-valued. */
@@ -232,7 +234,7 @@ function backoffDelay(attempt: number): number {
 async function dispatchWithRetry(
 	ctx: DataverseContext,
 	credentialType: string,
-	options: IHttpRequestOptions,
+	options: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 ): Promise<unknown> {
 	const method = options.method ?? 'GET';
 	let lastError: unknown;
@@ -279,6 +281,19 @@ async function resolveBaseUrl(ctx: DataverseContext, credentialType: string): Pr
 	return url;
 }
 
+function assertSameOrigin(ctx: DataverseContext, baseUrl: string, link: string): void {
+	if (
+		!URL.canParse(link) ||
+		!URL.canParse(baseUrl) ||
+		new URL(link).origin !== new URL(baseUrl).origin
+	) {
+		throw new NodeApiError(ctx.getNode(), {
+			message:
+				'Refusing to follow a Dataverse pagination link outside the configured Environment URL',
+		} as JsonObject);
+	}
+}
+
 /**
  * Build and dispatch an authenticated Dataverse request, returning the raw
  * response and letting the *original* upstream error propagate (no
@@ -290,7 +305,7 @@ async function resolveBaseUrl(ctx: DataverseContext, credentialType: string): Pr
 export async function dataverseApiRequestRaw(
 	ctx: DataverseContext,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath | string,
 	body: IDataObject = {},
 	qs: DataverseQuery = {},
 	headers: DataverseHeaders = {},
@@ -298,27 +313,20 @@ export async function dataverseApiRequestRaw(
 	returnFullResponse = false,
 ): Promise<IDataObject | DataverseFullResponse> {
 	const baseUrl = await resolveBaseUrl(ctx, credentialType);
-	let url: string;
-	if (/^https?:\/\//i.test(resource)) {
-		// An absolute resource is a server-issued `@odata.nextLink` (server-driven
+	if (typeof resource === 'string') {
+		// A string resource is a server-issued `@odata.nextLink` (server-driven
 		// paging). Require it to stay within the configured environment so a tampered
 		// saved token can't redirect the authenticated request to another host.
-		if (!resource.toLowerCase().startsWith(`${baseUrl.toLowerCase()}/`)) {
-			throw new NodeApiError(ctx.getNode(), {
-				message:
-					'Refusing to follow a Dataverse pagination link outside the configured Environment URL',
-			} as JsonObject);
-		}
-		url = resource;
-	} else {
-		url = `${baseUrl}${DATAVERSE_API_PATH}${resource}`;
+		assertSameOrigin(ctx, baseUrl, resource);
 	}
 
-	const options: IHttpRequestOptions = {
+	const options: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs,
-		url,
+		...(typeof resource === 'string'
+			? { url: resource }
+			: { url: requestUrl`${baseUrl}${DATAVERSE_API_PATH}${resource}` }),
 		headers: {
 			...ODATA_DEFAULT_HEADERS,
 			'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
@@ -354,7 +362,7 @@ export async function dataverseApiRequestRaw(
 export async function dataverseApiRequest(
 	ctx: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: DataverseQuery = {},
 	headers: DataverseHeaders = {},
@@ -378,7 +386,7 @@ export async function dataverseApiRequest(
 export async function dataverseApiRequestWithResponse(
 	ctx: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: DataverseQuery = {},
 	headers: DataverseHeaders = {},
@@ -410,7 +418,7 @@ export async function dataverseApiRequestWithResponse(
 export async function dataverseApiRequestAllItems(
 	ctx: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	qs: DataverseQuery = {},
 	limit = 0,
 	credentialType: string,
@@ -425,13 +433,15 @@ export async function dataverseApiRequestAllItems(
 	};
 
 	const results: IDataObject[] = [];
-	let url = `${baseUrl}${DATAVERSE_API_PATH}${resource}`;
+	let nextLink = '';
 	let useQs: DataverseQuery | undefined = qs;
 
 	do {
-		const options: IHttpRequestOptions = {
+		const options: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions> = {
 			method,
-			url,
+			...(nextLink
+				? { url: nextLink }
+				: { url: requestUrl`${baseUrl}${DATAVERSE_API_PATH}${resource}` }),
 			qs: useQs,
 			headers,
 			json: true,
@@ -453,10 +463,11 @@ export async function dataverseApiRequestAllItems(
 			}
 		}
 
-		url = (response['@odata.nextLink'] as string) ?? '';
+		nextLink = (response['@odata.nextLink'] as string) ?? '';
+		if (nextLink) assertSameOrigin(ctx, baseUrl, nextLink);
 		// nextLink already encodes the query string, so don't resend qs.
 		useQs = undefined;
-	} while (url);
+	} while (nextLink);
 
 	return results;
 }

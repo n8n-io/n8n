@@ -1,7 +1,9 @@
+import { i18nInstance } from '@n8n/i18n';
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
+import AgentChannelWebhookInstructions from './AgentChannelWebhookInstructions.vue';
 import AgentChannelWebhookSetup from './AgentChannelWebhookSetup.vue';
 
 const { getAgentWebhookUrl } = vi.hoisted(() => ({ getAgentWebhookUrl: vi.fn() }));
@@ -72,7 +74,8 @@ function mountView(overrides: Record<string, unknown> = {}) {
 			runtime: { load: async () => {}, loading: ref(false) },
 			...overrides,
 		},
-		global: { stubs },
+		// `I18nT` resolves against the real global i18n instance.
+		global: { stubs, plugins: [i18nInstance] },
 	});
 }
 
@@ -143,10 +146,37 @@ describe('AgentChannelWebhookSetup', () => {
 		expect(wrapper.vm.currentSettings).toEqual({ authentication: 'jwtAuth' });
 	});
 
-	it('tells an unpublished agent to publish before it connects', () => {
-		const wrapper = mountView({ isPublished: false });
+	it.each(['setup', 'edit'] as const)(
+		'shows API instructions for the selected authentication in %s mode',
+		async (mode) => {
+			const wrapper = mountView({ mode });
 
-		expect(wrapper.find('[data-testid="webhook-publish-notice"]').exists()).toBe(true);
+			await wrapper.get('[data-testid="webhook-authentication"]').setValue('jwtAuth');
+
+			const instructions = wrapper.getComponent(AgentChannelWebhookInstructions);
+			expect(instructions.props('authentication')).toBe('jwtAuth');
+		},
+	);
+
+	it('finishes the setup with Done', () => {
+		const wrapper = mountView();
+
+		expect(wrapper.get('[data-testid="webhook-connect"]').text()).toBe('generic.done');
+	});
+
+	it.each([
+		['setup', 'webhook-endpoint-description'],
+		['edit', 'webhook-url-hint'],
+	] as const)('links to the Responses format in %s mode', async (mode, testId) => {
+		getAgentWebhookUrl.mockResolvedValue({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		const wrapper = mountView({ mode });
+		await flushPromises();
+
+		const link = wrapper.get(`[data-testid="${testId}"] a`);
+		expect(link.attributes('href')).toBe(
+			'https://platform.openai.com/docs/api-reference/responses',
+		);
+		expect(link.attributes('target')).toBe('_blank');
 	});
 
 	it('shows the endpoint URL that the backend builds', async () => {

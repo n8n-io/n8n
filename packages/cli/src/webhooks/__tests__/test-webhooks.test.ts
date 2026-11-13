@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
+import { NotFoundError, UserError } from '@n8n/errors';
 import type * as express from 'express';
 import { HookContext } from 'n8n-core';
 import type { ExecutionContextService } from 'n8n-core';
@@ -26,8 +27,8 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import type { Push } from '@/push';
 import type {
 	TestWebhookRegistrationsService,
 	TestWebhookRegistration,
@@ -36,6 +37,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '@/webhooks/webhook.types';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
@@ -66,16 +68,19 @@ describe('TestWebhooks', () => {
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
 	const executionContextService = mock<ExecutionContextService>();
+	const push = mock<Push>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	const testWebhooks = new TestWebhooks(
 		logger,
-		mock(),
+		push,
 		mock(),
 		registrations,
 		mock(),
 		mock(),
 		webhookService,
 		executionContextService,
+		credentialsPermissionChecker,
 	);
 
 	beforeAll(() => {
@@ -148,6 +153,46 @@ describe('TestWebhooks', () => {
 			expect(getNodeWebhookUrl).toHaveBeenCalledTimes(1);
 			expect(getNodeWebhookUrl).toHaveBeenCalledWith('setup');
 			expect(formTestUrls).toEqual([formTestUrl]);
+		});
+
+		// The webhook phase can load sub-nodes with their credentials, so every node is checked.
+		test('checks the credentials of every node as the user before it creates the webhook', async () => {
+			const webhookNode = mock<INode>({ name: 'MCP Server Trigger' });
+			const otherNode = mock<INode>({ name: 'MCP Client Tool' });
+			const entity = mock<IWorkflowBase>({ id: workflowEntity.id });
+			// Set after creation: `mock()` would wrap the array in a proxy that the assertion cannot compare.
+			entity.nodes = [webhookNode, otherNode];
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(
+				mock<Workflow>({ expression: mock<WorkflowExpression>() }),
+			);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+				mock<IWebhookData>({ ...webhook, node: 'MCP Server Trigger' }),
+			]);
+
+			await testWebhooks.registerWebhooks({ ...args, workflowEntity: entity });
+
+			expect(credentialsPermissionChecker.check).toHaveBeenCalledExactlyOnceWith(
+				workflowEntity.id,
+				[webhookNode, otherNode],
+				userId,
+			);
+			const [checkOrder] = credentialsPermissionChecker.check.mock.invocationCallOrder;
+			const [createOrder] = webhookService.createWebhookIfNotExists.mock.invocationCallOrder;
+			expect(checkOrder).toBeLessThan(createOrder);
+		});
+
+		test('creates no webhook when the credential check refuses', async () => {
+			const refusal = new UserError('Node "GitLab Trigger" does not have access to the credential');
+			credentialsPermissionChecker.check.mockRejectedValueOnce(refusal);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(
+				mock<Workflow>({ expression: mock<WorkflowExpression>() }),
+			);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			await expect(testWebhooks.registerWebhooks(args)).rejects.toBe(refusal);
+
+			expect(registrations.register).not.toHaveBeenCalled();
+			expect(webhookService.createWebhookIfNotExists).not.toHaveBeenCalled();
 		});
 
 		test('registers with a TTL that covers the listener window plus the buffer', async () => {
@@ -735,6 +780,43 @@ describe('TestWebhooks', () => {
 			expect(deactivateOrder).toBeLessThan(releaseOrder);
 		});
 
+		test('sends testWebhookReceived to the user of the test webhook', async () => {
+			const pushRef = 'push-ref';
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				expression: mock<WorkflowExpression>(),
+				getNode: vi
+					.fn()
+					.mockReturnValue(mock<ReturnType<Workflow['getNode']>>({ type: 'n8n-nodes-base.noOp' })),
+			});
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue(undefined);
+			registrations.get.mockResolvedValueOnce({
+				version: 1,
+				pushRef,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			vi.spyOn(WebhookHelpers, 'executeWebhook').mockImplementation(async (...args: unknown[]) => {
+				const onDone = args[10] as (error: Error | null, data: unknown) => void;
+				onDone(null, { noWebhookResponse: true });
+				return 'execution-id';
+			});
+
+			await testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path }, method: httpMethod }),
+				mock<express.Response>(),
+			);
+			await flushMicrotasks();
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'testWebhookReceived' }),
+				pushRef,
+				userId,
+			);
+		});
+
 		test('logs when isolate release fails after teardown', async () => {
 			const expression = mock<WorkflowExpression>();
 			const workflowStartNode = mock<ReturnType<Workflow['getNode']>>({
@@ -898,6 +980,30 @@ describe('TestWebhooks', () => {
 			const [releaseOrder] = (expression.releaseIsolate as Mock).mock.invocationCallOrder;
 			expect(acquireOrder).toBeLessThan(deactivateOrder);
 			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
+
+		test('sends testWebhookDeleted to the user of the test webhook', async () => {
+			const pushRef = 'push-ref';
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(
+				mock<Workflow>({ id: workflowEntity.id, expression: mock<WorkflowExpression>() }),
+			);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockResolvedValue(undefined);
+			registrations.getAllKeys.mockResolvedValue(['key1']);
+			registrations.get.mockResolvedValue({
+				version: 1,
+				pushRef,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+
+			await testWebhooks.cancelWebhook(workflowEntity.id);
+			await flushMicrotasks();
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'testWebhookDeleted' }),
+				pushRef,
+				userId,
+			);
 		});
 
 		test('releases isolate and logs when deactivateWebhooks throws', async () => {

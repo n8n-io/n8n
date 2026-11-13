@@ -36,7 +36,13 @@ import {
 function memberFields(user: User) {
 	// The response type needs strings.
 	const { id, email, firstName, lastName } = accountSummary(user);
-	return { id, email: email ?? '', firstName: firstName ?? '', lastName: lastName ?? '' };
+	return {
+		id,
+		email: email ?? '',
+		firstName: firstName ?? '',
+		lastName: lastName ?? '',
+		kind: user.kind,
+	};
 }
 
 @RestController('/projects')

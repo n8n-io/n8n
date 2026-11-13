@@ -4,8 +4,9 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { hackerNewsApiRequest, hackerNewsApiRequestAllItems } from './GenericFunctions';
 
@@ -272,7 +273,7 @@ export class HackerNews implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				let qs: IDataObject = {};
-				let endpoint = '';
+				let endpoint: RequestPath;
 				let includeComments = false;
 
 				if (resource === 'all') {
@@ -292,7 +293,7 @@ export class HackerNews implements INodeType {
 							qs.hitsPerPage = this.getNodeParameter('limit', i);
 						}
 
-						endpoint = 'search?';
+						endpoint = requestPath`search?`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -302,7 +303,7 @@ export class HackerNews implements INodeType {
 					}
 				} else if (resource === 'article') {
 					if (operation === 'get') {
-						endpoint = `items/${this.getNodeParameter('articleId', i)}`;
+						endpoint = requestPath`items/${this.getNodeParameter('articleId', i)}`;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						includeComments = additionalFields.includeComments as boolean;
 					} else {
@@ -314,7 +315,7 @@ export class HackerNews implements INodeType {
 					}
 				} else if (resource === 'user') {
 					if (operation === 'get') {
-						endpoint = `users/${this.getNodeParameter('username', i)}`;
+						endpoint = requestPath`users/${this.getNodeParameter('username', i)}`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

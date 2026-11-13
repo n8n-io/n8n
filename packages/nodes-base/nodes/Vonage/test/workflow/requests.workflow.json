@@ -1,0 +1,59 @@
+{
+	"name": "Vonage Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"from": "Acme",
+				"to": "4915112345678",
+				"message": "Hello"
+			},
+			"id": "vonage-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.vonage",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"vonageApi": {
+					"id": "1",
+					"name": "Vonage account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"to": "4915112345678",
+					"message-id": "0A0000000123ABCD1",
+					"status": "0"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

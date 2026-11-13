@@ -85,7 +85,7 @@ export const messageFields: INodeProperties[] = [
 			loadOptions: {
 				routing: {
 					request: {
-						url: '={{$credentials.businessAccountId}}/phone_numbers',
+						url: '=/{{ toPathSegment($credentials.businessAccountId) }}/phone_numbers',
 						method: 'GET',
 					},
 					output: {
@@ -122,7 +122,7 @@ export const messageFields: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'POST',
-				url: '={{$value}}/messages',
+				url: '=/{{ toPathSegment($value) }}/messages',
 			},
 		},
 		displayOptions: {

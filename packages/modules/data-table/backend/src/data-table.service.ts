@@ -60,6 +60,29 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
+// Rough storage of one row besides its values: row header, `id`, `createdAt`, `updatedAt`
+// and the primary key index entry. The real size depends on the database.
+// This is a conservative estimate to avoid exceeding the storage limit.
+const ESTIMATED_ROW_OVERHEAD_BYTES = 64;
+
+// A number, boolean or date takes at most 8 bytes. Strings use their real length.
+const ESTIMATED_FIXED_VALUE_BYTES = 8;
+
+function estimateValueSize(value: DataTableColumnJsType | undefined): number {
+	if (value === null || value === undefined) {
+		return 0;
+	}
+
+	return typeof value === 'string' ? Buffer.byteLength(value) : ESTIMATED_FIXED_VALUE_BYTES;
+}
+
+function estimateSingleRowSize(row: DataTableRow): number {
+	return Object.values(row).reduce<number>(
+		(total, value) => total + estimateValueSize(value),
+		ESTIMATED_ROW_OVERHEAD_BYTES,
+	);
+}
+
 @Service()
 export class DataTableService {
 	constructor(
@@ -193,23 +216,25 @@ export class DataTableService {
 		);
 
 		if (dto.fileId) {
+			let claimedFileId: string | undefined;
 			try {
+				claimedFileId = await this.csvImportService.claimFile(dto.fileId);
 				const tableColumns = await this.getColumns(result.id, projectId);
-				const rows = await this.csvImportService.buildRowsForNewTable(
-					dto.fileId,
+				const rowBatches = await this.csvImportService.buildRowBatchesForNewTable(
+					claimedFileId,
 					dto.hasHeaders ?? true,
 					tableColumns,
 					dto.columns,
 				);
 
-				if (rows.length > 0) {
-					await this.insertRows(result.id, projectId, rows);
-				}
+				await this.insertRowBatches(result.id, projectId, rowBatches);
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
 				throw error;
 			} finally {
-				await this.csvImportService.cleanupFile(dto.fileId);
+				if (claimedFileId) {
+					await this.csvImportService.cleanupFile(claimedFileId);
+				}
 			}
 		}
 
@@ -254,22 +279,82 @@ export class DataTableService {
 		await this.validateDataTableSize();
 		await this.validateDataTableExists(dataTableId, projectId);
 
+		const claimedFileId = await this.csvImportService.claimFile(fileId);
 		try {
 			const tableColumns = await this.getColumns(dataTableId, projectId);
-			const { rows, systemColumnsIgnored } =
-				await this.csvImportService.validateAndBuildRowsForExistingTable(fileId, tableColumns);
+			const { rowBatches, systemColumnsIgnored } =
+				await this.csvImportService.validateAndBuildRowBatchesForExistingTable(
+					claimedFileId,
+					tableColumns,
+				);
 
-			if (rows.length > 0) {
-				await this.insertRows(dataTableId, projectId, rows);
-			}
+			const importedRowCount = await this.insertRowBatches(dataTableId, projectId, rowBatches);
 
 			return {
-				importedRowCount: rows.length,
+				importedRowCount,
 				systemColumnsIgnored,
 			};
 		} finally {
-			await this.csvImportService.cleanupFile(fileId);
+			await this.csvImportService.cleanupFile(claimedFileId);
 		}
+	}
+
+	/**
+	 * Inserts all batches in one transaction, so a failure leaves the table unchanged.
+	 * Stops before a batch would take the data tables over the storage limit.
+	 */
+	private async insertRowBatches(
+		dataTableId: string,
+		projectId: string,
+		rowBatches: AsyncIterable<DataTableRows>,
+	): Promise<number> {
+		await this.validateDataTableSize();
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		const remainingBytes = await this.dataTableSizeValidator.getRemainingStorageBytes(
+			async () => await this.dataTableRepository.findDataTablesSize(),
+		);
+
+		const insertedRowCount = await this.transactionRunner.run({}, async (ctx) => {
+			const columns = await this.dataTableColumnRepository.getColumnsInContext(dataTableId, ctx);
+			let estimatedBytes = 0;
+			let insertedRows = 0;
+
+			for await (const rowsBatch of rowBatches) {
+				const transformedRows = this.validateAndTransformRows(rowsBatch, columns);
+
+				estimatedBytes += this.estimateRowsSize(transformedRows);
+				if (estimatedBytes > remainingBytes) {
+					throw new DataTableValidationError(
+						'Data table size limit exceeded: this file is too large for the remaining storage. No rows were imported.',
+					);
+				}
+
+				const result = await this.dataTableRowsRepository.insertRowsInContext(
+					dataTableId,
+					transformedRows,
+					columns,
+					'count',
+					ctx,
+				);
+
+				insertedRows += result.insertedRows;
+			}
+
+			return insertedRows;
+		});
+
+		if (insertedRowCount > 0) {
+			this.dataTableSizeValidator.reset();
+
+			await this.dataTableRepository.touchUpdatedAt(dataTableId);
+		}
+
+		return insertedRowCount;
+	}
+
+	private estimateRowsSize(rows: DataTableRows): number {
+		return rows.reduce((total, row) => total + estimateSingleRowSize(row), 0);
 	}
 
 	// Updates data table properties (currently limited to renaming)

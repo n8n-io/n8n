@@ -375,8 +375,7 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			memoryModel: '',
-			reflectorObservationTokens: 40_000,
-			midRunObservation: false,
+			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -410,6 +409,12 @@ describe('GlobalConfig', () => {
 			maxConcurrentRuns: -1,
 			maxConcurrentRunsPerUser: -1,
 			maxConcurrentSubAgents: -1,
+			observationMaxWindowTokens: 200_000,
+			observationLogPlacement: 'message',
+			observationFailurePolicy: 'retry',
+			observerMaxBatches: 5,
+			reflectionMode: 'background',
+			historyRecall: true,
 		},
 		queue: {
 			health: {
@@ -559,7 +564,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,

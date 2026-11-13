@@ -37,7 +37,7 @@ export class ExecutionCrashService {
 		status: ResumableExecutionStatus,
 		detector: CrashDetector,
 		expectedAttempts?: number,
-	): Promise<CrashedExecution[]> {
+	): Promise<boolean> {
 		return await this.executionRepository.markAsCrashedFrom(executionId, status, {
 			expectedAttempts,
 			onTransitioned: (batch) => {

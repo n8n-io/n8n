@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -258,7 +259,7 @@ export async function execute(this: IExecuteFunctions, index: number, _: INodeEx
 		saveToSentItems,
 	};
 
-	await microsoftApiRequest.call(this, 'POST', '/sendMail', index, body, {});
+	await microsoftApiRequest.call(this, 'POST', requestPath`/sendMail`, index, body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

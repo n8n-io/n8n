@@ -6,8 +6,9 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 	IHttpRequestMethods,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
@@ -580,14 +581,12 @@ export class AirtableV1 implements INodeType {
 			extractValue: true,
 		}) as string;
 
-		const table = encodeURI(
-			this.getNodeParameter('table', 0, undefined, {
-				extractValue: true,
-			}) as string,
-		);
+		const table = this.getNodeParameter('table', 0, undefined, {
+			extractValue: true,
+		}) as string;
 
 		let returnAll = false;
-		let endpoint = '';
+		let endpoint: RequestPath;
 		let requestMethod: IHttpRequestMethods;
 
 		const body: IDataObject = {};
@@ -599,7 +598,7 @@ export class AirtableV1 implements INodeType {
 			// ----------------------------------
 
 			requestMethod = 'POST';
-			endpoint = `${application}/${table}`;
+			endpoint = requestPath`${application}/${table}`;
 
 			let addAllFields: boolean;
 			let fields: string[];
@@ -673,7 +672,7 @@ export class AirtableV1 implements INodeType {
 					rows.push(id);
 
 					if (rows.length === bulkSize || i === items.length - 1) {
-						endpoint = `${application}/${table}`;
+						endpoint = requestPath`${application}/${table}`;
 
 						// Make one request after another. This is slower but makes
 						// sure that we do not run into the rate limit they have in
@@ -708,7 +707,7 @@ export class AirtableV1 implements INodeType {
 			// ----------------------------------
 			try {
 				requestMethod = 'GET';
-				endpoint = `${application}/${table}`;
+				endpoint = requestPath`${application}/${table}`;
 
 				returnAll = this.getNodeParameter('returnAll', 0);
 
@@ -773,7 +772,7 @@ export class AirtableV1 implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				id = this.getNodeParameter('id', i) as string;
 
-				endpoint = `${application}/${table}/${id}`;
+				endpoint = requestPath`${application}/${table}/${id}`;
 
 				// Make one request after another. This is slower but makes
 				// sure that we do not run into the rate limit they have in
@@ -855,7 +854,7 @@ export class AirtableV1 implements INodeType {
 					rows.push(row);
 
 					if (rows.length === bulkSize || i === items.length - 1) {
-						endpoint = `${application}/${table}`;
+						endpoint = requestPath`${application}/${table}`;
 
 						// Make one request after another. This is slower but makes
 						// sure that we do not run into the rate limit they have in

@@ -25,8 +25,20 @@ export class SignInPage extends BasePage {
 		return this.page.getByTestId('reveal-password-login');
 	}
 
+	/** Full-page warning the editor writes when the secure auth cookie cannot work on this origin. */
+	getInsecureConnectionWarning(): Locator {
+		return this.page.getByText(
+			'Your n8n server is configured to use a secure cookie, however you are either visiting this via an insecure URL, or using Safari.',
+		);
+	}
+
 	async goto(): Promise<void> {
 		await this.page.goto('/signin');
+	}
+
+	/** Opens the sign-in page at an absolute URL, for example on another host name. */
+	async gotoUrl(url: string): Promise<void> {
+		await this.page.goto(url);
 	}
 
 	async fillEmail(email: string): Promise<void> {

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -18,7 +19,7 @@ export async function getAll(
 	const limit: number = this.getNodeParameter('limit', 0, 0);
 
 	//endpoint
-	const endpoint = `employees/${id}/files/view/`;
+	const endpoint = requestPath`employees/${id}/files/view/`;
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

@@ -1,5 +1,5 @@
 import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 /**

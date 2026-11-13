@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { vonageApiRequest } from './GenericFunctions';
 
@@ -474,7 +474,7 @@ export class Vonage implements INodeType {
 							body.ttl = (body.ttl as number) * 60000;
 						}
 
-						responseData = await vonageApiRequest.call(this, 'POST', '/sms/json', body);
+						responseData = await vonageApiRequest.call(this, 'POST', requestPath`/sms/json`, body);
 
 						responseData = responseData.messages;
 					}

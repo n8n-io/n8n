@@ -10,6 +10,7 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	jsonParse,
+	requestPath,
 	assertParamIsString,
 	validateNodeParameters,
 	assertParamIsNumber,
@@ -1010,7 +1011,7 @@ export class Beeminder implements INodeType {
 			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = '/users/me/goals.json';
+				const endpoint = requestPath`/users/me/goals.json`;
 
 				const returnData: INodePropertyOptions[] = [];
 				const goals = await beeminderApiRequest.call(this, 'GET', endpoint);

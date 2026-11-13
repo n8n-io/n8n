@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 import type { CompanySearchResponse } from '../types';
@@ -30,7 +30,7 @@ export async function search(this: IExecuteFunctions, i: number): Promise<INodeE
 	const responseData: CompanySearchResponse = await lonescaleApiRequest.call(
 		this,
 		'GET',
-		'/companies/search',
+		requestPath`/companies/search`,
 		{},
 		qs,
 	);
