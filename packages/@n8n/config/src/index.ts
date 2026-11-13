@@ -69,12 +69,7 @@ export { sampleRateSchema } from './configs/sentry.config';
 export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
-export {
-	CODE_EXECUTION_BACKENDS,
-	CodeExecutionConfig,
-	CodeSandboxConfig,
-	isCodeExecutionBackend,
-} from './configs/code-execution.config';
+export { CodeExecutionConfig, CodeSandboxConfig } from './configs/code-execution.config';
 export type { CodeExecutionBackendType, CodeSandboxScope } from './configs/code-execution.config';
 export { SecurityConfig } from './configs/security.config';
 export { PublicApiRateLimitConfig } from './configs/public-api.config';

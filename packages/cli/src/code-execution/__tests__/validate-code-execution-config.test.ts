@@ -3,7 +3,10 @@ import type { CodeExecutionConfig } from '@n8n/config';
 import { InvalidCodeExecutionConfigError } from '../errors/invalid-code-execution-config.error';
 import { validateCodeExecutionConfig } from '../validate-code-execution-config';
 
-const makeConfig = (backend: string, sandbox: Partial<CodeExecutionConfig['sandbox']> = {}) =>
+const makeConfig = (
+	backend: CodeExecutionConfig['backend'],
+	sandbox: Partial<CodeExecutionConfig['sandbox']> = {},
+) =>
 	({
 		backend,
 		sandbox: { url: '', apiKey: '', scope: 'execution', ...sandbox },
@@ -18,15 +21,6 @@ describe('validateCodeExecutionConfig', () => {
 
 	it('accepts the sandbox backend with a URL and an API key', () => {
 		expect(() => validateCodeExecutionConfig(makeConfig('sandbox', validSandbox))).not.toThrow();
-	});
-
-	it('rejects an unknown backend', () => {
-		const validate = () => validateCodeExecutionConfig(makeConfig('sandbx', validSandbox));
-
-		expect(validate).toThrow(InvalidCodeExecutionConfigError);
-		expect(validate).toThrow(
-			'`N8N_CODE_TASKS_BACKEND` must be `task-runners` or `sandbox`, but is "sandbx".',
-		);
 	});
 
 	it('rejects the sandbox backend without a URL and an API key', () => {

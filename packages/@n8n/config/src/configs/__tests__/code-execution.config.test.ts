@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 
-import { CodeExecutionConfig, isCodeExecutionBackend } from '../code-execution.config';
+import { CodeExecutionConfig } from '../code-execution.config';
 
 const { readFileSyncMock } = vi.hoisted(() => ({
 	readFileSyncMock: vi.fn(),
@@ -47,32 +47,24 @@ describe('CodeExecutionConfig', () => {
 		expect(Container.get(CodeExecutionConfig).sandbox.apiKey).toBe('secret-from-file');
 	});
 
-	// Startup validation rejects these, so they must not fall back to the defaults.
-	test('keeps an invalid backend and URL as given', () => {
-		vi.stubEnv('N8N_CODE_TASKS_BACKEND', 'sandbx');
+	// Startup validation rejects it, so it must not fall back to the default.
+	test('keeps an invalid URL as given', () => {
 		vi.stubEnv('N8N_CODE_SANDBOX_URL', 'not a url');
+
+		expect(Container.get(CodeExecutionConfig).sandbox.url).toBe('not a url');
+	});
+
+	test.each([
+		['N8N_CODE_TASKS_BACKEND', 'sandbx'],
+		['N8N_CODE_SANDBOX_SCOPE', 'workflow'],
+	])('falls back to the default on invalid %s', (envName, value) => {
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.stubEnv(envName, value);
 
 		const config = Container.get(CodeExecutionConfig);
 
-		expect(config.backend).toBe('sandbx');
-		expect(config.sandbox.url).toBe('not a url');
-	});
-
-	test('falls back to the default on an invalid scope', () => {
-		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-		vi.stubEnv('N8N_CODE_SANDBOX_SCOPE', 'workflow');
-
-		expect(Container.get(CodeExecutionConfig).sandbox.scope).toBe('execution');
-		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('N8N_CODE_SANDBOX_SCOPE'));
-	});
-
-	describe('isCodeExecutionBackend', () => {
-		test.each(['task-runners', 'sandbox'])('accepts %s', (value) => {
-			expect(isCodeExecutionBackend(value)).toBe(true);
-		});
-
-		test.each(['', 'sandbx', 'Sandbox'])('rejects "%s"', (value) => {
-			expect(isCodeExecutionBackend(value)).toBe(false);
-		});
+		expect(config.backend).toBe('task-runners');
+		expect(config.sandbox.scope).toBe('execution');
+		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining(envName));
 	});
 });

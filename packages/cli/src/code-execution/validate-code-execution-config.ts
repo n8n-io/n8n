@@ -1,25 +1,14 @@
-import {
-	CODE_EXECUTION_BACKENDS,
-	isCodeExecutionBackend,
-	type CodeExecutionConfig,
-} from '@n8n/config';
+import type { CodeExecutionConfig } from '@n8n/config';
 import { z } from 'zod/v4';
 
 import { InvalidCodeExecutionConfigError } from './errors/invalid-code-execution-config.error';
 
 /**
- * Fails startup when the code execution config is invalid. There is no
- * fallback to task runners, so a bad config must not wait until the first
- * Code node runs, or silently select a different backend.
+ * Fails startup when the sandbox backend is selected without valid settings.
+ * There is no fallback to task runners, so a bad config must not wait until
+ * the first Code node runs.
  */
 export function validateCodeExecutionConfig({ backend, sandbox }: CodeExecutionConfig) {
-	if (!isCodeExecutionBackend(backend)) {
-		const allowed = CODE_EXECUTION_BACKENDS.map((value) => `\`${value}\``).join(' or ');
-		throw new InvalidCodeExecutionConfigError([
-			`\`N8N_CODE_TASKS_BACKEND\` must be ${allowed}, but is "${backend}".`,
-		]);
-	}
-
 	if (backend !== 'sandbox') return;
 
 	const codeSandboxConfigSchema = z.object({

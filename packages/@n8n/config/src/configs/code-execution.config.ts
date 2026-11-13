@@ -2,12 +2,9 @@ import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
 
-export const CODE_EXECUTION_BACKENDS = ['task-runners', 'sandbox'] as const;
+const codeExecutionBackendSchema = z.enum(['task-runners', 'sandbox']);
 
-export type CodeExecutionBackendType = (typeof CODE_EXECUTION_BACKENDS)[number];
-
-export const isCodeExecutionBackend = (value: string): value is CodeExecutionBackendType =>
-	CODE_EXECUTION_BACKENDS.some((backend) => backend === value);
+export type CodeExecutionBackendType = z.infer<typeof codeExecutionBackendSchema>;
 
 // Only `execution` is supported for now. `workflow` and `project` come later.
 const codeSandboxScopeSchema = z.enum(['execution']);
@@ -47,10 +44,10 @@ export class CodeExecutionConfig {
 	 * Where n8n runs the code of Code nodes. One of `task-runners` or `sandbox`.
 	 * The `sandbox` backend is experimental and isn't ready for production use.
 	 * When set to `sandbox`, you must also set `N8N_CODE_SANDBOX_URL` and
-	 * `N8N_CODE_SANDBOX_API_KEY`. n8n doesn't start if the value is invalid.
+	 * `N8N_CODE_SANDBOX_API_KEY`.
 	 */
-	@Env('N8N_CODE_TASKS_BACKEND')
-	backend: string = 'task-runners';
+	@Env('N8N_CODE_TASKS_BACKEND', codeExecutionBackendSchema)
+	backend: CodeExecutionBackendType = 'task-runners';
 
 	@Nested
 	sandbox: CodeSandboxConfig;
