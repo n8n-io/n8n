@@ -337,3 +337,24 @@ describe('detail fidelity and states', () => {
 		expect(html).not.toContain('<script');
 	});
 });
+
+describe('opens', () => {
+	const screens = (opens: string) => [
+		{ id: 'list', name: 'List', components: [{ id: 'rows', kind: 'table', label: 'Rows', opens }] },
+		{
+			id: 'record',
+			name: 'Record',
+			path: '/rows/:id',
+			components: [{ id: 'record-body', kind: 'detail', label: 'Record' }],
+		},
+	];
+
+	it('accepts a screen id or a part on another screen', () => {
+		expect(appPlanSchema.safeParse({ screens: screens('record') }).success).toBe(true);
+		expect(appPlanSchema.safeParse({ screens: screens('record-body') }).success).toBe(true);
+	});
+
+	it('rejects an id that is neither', () => {
+		expect(appPlanSchema.safeParse({ screens: screens('nowhere') }).success).toBe(false);
+	});
+});

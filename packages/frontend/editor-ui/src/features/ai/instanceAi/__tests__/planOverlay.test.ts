@@ -49,3 +49,34 @@ describe('plan overlay progress', () => {
 		expect(document.querySelector('.plan-ov-building')).toBeNull();
 	});
 });
+
+describe('plan overlay pages', () => {
+	it('opens the page of a part that `opens` names, with the button in the pinned card', () => {
+		const pages = appPlanSchema.parse({
+			screens: [
+				{
+					id: 'list',
+					name: 'List',
+					components: [{ id: 'rows', kind: 'table', label: 'Rows', opens: 'record-body' }],
+				},
+				{
+					id: 'record',
+					name: 'Record',
+					path: '/rows/:id',
+					components: [{ id: 'record-body', kind: 'detail', label: 'Record' }],
+				},
+			],
+		});
+		document.body.innerHTML = renderWireframeBody(pages);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, { plan: pages });
+
+		document.querySelector<HTMLElement>('[data-plan-id="rows"]')!.click();
+		const card = document.querySelector('.plan-ov-tip');
+		expect(card?.classList.contains('pinned')).toBe(true);
+		expect(card?.textContent).toContain('Record');
+
+		document.querySelector<HTMLElement>('.plan-ov-go')!.click();
+		expect(document.querySelector<HTMLElement>('[data-plan-screen="record"]')!.hidden).toBe(false);
+		expect(document.querySelector<HTMLElement>('[data-plan-screen="list"]')!.hidden).toBe(true);
+	});
+});

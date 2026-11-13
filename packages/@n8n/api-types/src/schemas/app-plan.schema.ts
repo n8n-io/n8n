@@ -166,6 +166,8 @@ export const appPlanSchema = z
 		plan.screens.forEach((screen, s) =>
 			screen.components.forEach((c, i) => add(c.id, ['screens', s, 'components', i, 'id'])),
 		);
+		const screenIds = new Set(plan.screens.map((screen) => screen.id));
+		const partIds = new Set(plan.screens.flatMap((screen) => screen.components.map((c) => c.id)));
 		plan.screens.forEach((screen, s) => {
 			const local = new Map(screen.components.map((c) => [c.id, c]));
 			screen.rows?.forEach((row, r) =>
@@ -182,6 +184,13 @@ export const appPlanSchema = z
 				),
 			);
 			screen.components.forEach((component, i) => {
+				if (component.opens && !screenIds.has(component.opens) && !partIds.has(component.opens)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `"opens" of "${component.id}" must name a screen id, e.g. "${plan.screens.at(-1)?.id}"`,
+						path: ['screens', s, 'components', i, 'opens'],
+					});
+				}
 				if (!component.inside) return;
 				const parent = local.get(component.inside);
 				if (!parent || parent.inside || parent.id === component.id) {

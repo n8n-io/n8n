@@ -549,6 +549,10 @@ export const PLAN_OVERLAY_CSS = `
 .plan-ov-detail[disabled] { opacity: .6; cursor: default; }
 .plan-ov-secondary { margin-top: 6px; border-color: #e5e8eb; background: #fff; color: #424a53; }
 .plan-ov-secondary:hover:not([disabled]) { background: #f6f8fa; }
+.plan-ov-tip.pinned { box-shadow: 0 0 0 2px #ff6d5a, 0 12px 32px -8px rgba(15, 23, 42, .28); }
+.plan-ov-go { margin-left: auto; padding: 2px 8px; border: 1px solid #e5e8eb; border-radius: 6px; background: #fff;
+  color: #ea4b30; font: 600 11px system-ui, sans-serif; cursor: pointer; }
+.plan-ov-go:hover { background: #fff6f4; }
 .plan-ov-foot a { color: #ea4b30; font-weight: 500; text-decoration: none; }
 .plan-ov-foot a:hover { text-decoration: underline; }
 .plan-ov-hl { position: fixed; z-index: 2147483645; pointer-events: none; border-radius: 10px;
@@ -623,6 +627,10 @@ export function planOverlayMain(
 	};
 	let byId: Record<string, AppPlanComponent> = {};
 	let screens: Record<string, { name: string; path?: string }> = {};
+	// `opens` may name a part instead of a screen; it then means the screen of that part.
+	let screenOfPart: Record<string, string> = {};
+	let pinned = false;
+	let switchTimer = 0;
 	let order: string[] = [];
 	// The step the builder announced. Without it, the next unbuilt step counts as current.
 	let buildingId: string | null = null;
@@ -644,6 +652,8 @@ export function planOverlayMain(
 		all.forEach((c) => (byId[c.id] = c));
 		screens = {};
 		plan.screens.forEach((sc) => (screens[sc.id] = { name: sc.name, path: sc.path }));
+		screenOfPart = {};
+		plan.screens.forEach((sc) => sc.components.forEach((c) => (screenOfPart[c.id] = sc.id)));
 		order = plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
 	}
 
@@ -661,7 +671,13 @@ export function planOverlayMain(
 		return config.progress ? order.find((id) => !isBuilt(id)) : undefined;
 	}
 
+	function screenFor(id: string): string | undefined {
+		return screens[id] ? id : screenOfPart[id];
+	}
+
 	function hideTip() {
+		pinned = false;
+		window.clearTimeout(switchTimer);
 		tip?.remove();
 		ring?.remove();
 		tip = null;
@@ -741,11 +757,21 @@ export function planOverlayMain(
 			tip.append(sec);
 		}
 		if (comp.opens) {
-			const target = screens[comp.opens];
+			const targetId = screenFor(comp.opens);
+			const target = targetId ? screens[targetId] : undefined;
 			const sec = section('Opens page');
 			const row = el('div', 'plan-ov-res');
 			row.append(el('span', 'plan-ov-chip', `↗ ${target?.name ?? comp.opens}`));
 			if (target?.path) row.append(el('span', 'plan-ov-field', target.path));
+			if (targetId) {
+				const go = el('button', 'plan-ov-go', 'Go to page →');
+				go.setAttribute('type', 'button');
+				go.addEventListener('click', () => {
+					hideTip();
+					showScreen(targetId);
+				});
+				row.append(go);
+			}
 			sec.append(row);
 			tip.append(sec);
 		}
@@ -795,8 +821,13 @@ export function planOverlayMain(
 			foot.append(a);
 			tip.append(foot);
 		}
-		tip.addEventListener('mouseenter', () => window.clearTimeout(hideTimer));
-		tip.addEventListener('mouseleave', hideTip);
+		tip.addEventListener('mouseenter', () => {
+			window.clearTimeout(hideTimer);
+			window.clearTimeout(switchTimer);
+		});
+		tip.addEventListener('mouseleave', () => {
+			if (!pinned) hideTimer = window.setTimeout(hideTip, 400);
+		});
 
 		const r = target.getBoundingClientRect();
 		ring = el('div', 'plan-ov-hl');
@@ -811,24 +842,38 @@ export function planOverlayMain(
 		tipFor = target;
 	}
 
+	// Hover intent: an open card waits a moment before it switches to another part, so the
+	// pointer can cross other parts on its way to the card. A click pins the card.
 	doc.addEventListener('mouseover', (event) => {
 		const target = event.target instanceof Element ? event.target : null;
-		if (!target || tip?.contains(target)) return;
+		if (!target || pinned) return;
+		if (tip?.contains(target)) {
+			window.clearTimeout(switchTimer);
+			window.clearTimeout(hideTimer);
+			return;
+		}
 		const node = target.closest('[data-plan-id]');
 		const id = node?.getAttribute('data-plan-id');
-		if (node && id && (byId[id] || id === 'shell') && !(id === 'shell' && tipFor)) {
+		window.clearTimeout(switchTimer);
+		if (node && id && byId[id]) {
 			window.clearTimeout(hideTimer);
-			if (id !== 'shell') showTip(node, id);
+			if (!tip) showTip(node, id);
+			else if (tipFor !== node) switchTimer = window.setTimeout(() => showTip(node, id), 400);
 		} else if (tip) {
 			window.clearTimeout(hideTimer);
-			hideTimer = window.setTimeout(hideTip, 200);
+			hideTimer = window.setTimeout(hideTip, 400);
 		}
+	});
+	doc.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') hideTip();
 	});
 	window.addEventListener('scroll', hideTip, true);
 
 	// Screen switching in the wireframe: nav links, the page strip, back links and parts that open a page.
 	// A built nav or list brings its own routing.
-	function showScreen(id: string) {
+	function showScreen(requested: string) {
+		const id = screenFor(requested);
+		if (!id) return;
 		doc.querySelectorAll('[data-plan-screen]').forEach((s) => {
 			(s as HTMLElement).hidden = s.getAttribute('data-plan-screen') !== id;
 		});
@@ -847,9 +892,15 @@ export function planOverlayMain(
 			showScreen(link.getAttribute('data-plan-screen-link') ?? '');
 			return;
 		}
-		const opener = event.target.closest('[data-plan-opens]');
-		if (opener && opener.classList.contains('wf-block')) {
-			showScreen(opener.getAttribute('data-plan-opens') ?? '');
+		if (tip?.contains(event.target)) return;
+		const node = event.target.closest('[data-plan-id]');
+		const id = node?.getAttribute('data-plan-id');
+		if (node && id && byId[id]) {
+			showTip(node, id);
+			pinned = true;
+			tip?.classList.add('pinned');
+		} else {
+			hideTip();
 		}
 	});
 
