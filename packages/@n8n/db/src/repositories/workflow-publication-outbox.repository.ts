@@ -44,6 +44,11 @@ export class WorkflowPublicationOutboxRepository extends BaseRepository<Workflow
 		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
+	/** Get the latest request, including its terminal outcome, for publication callers. */
+	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
+	}
+
 	/**
 	 * Enqueue a publication for `workflowId`. If a pending record is already in
 	 * place for the same workflow, its `publishedVersionId` is updated in place,

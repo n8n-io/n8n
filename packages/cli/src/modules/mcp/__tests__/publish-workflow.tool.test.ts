@@ -11,6 +11,7 @@ import z from 'zod';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { Telemetry } from '@/telemetry';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -198,7 +199,7 @@ describe('publish-workflow MCP tool', () => {
 				});
 
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					versionId: undefined,
+					versionId: workflow.versionId,
 					name: undefined,
 					description: undefined,
 					source: 'n8n-mcp',
@@ -284,6 +285,54 @@ describe('publish-workflow MCP tool', () => {
 					publishHistory: 'none',
 				});
 			});
+		});
+
+		test('keeps a pending publication pollable when the activation response has no active version', async () => {
+			const workflow = createWorkflow();
+			const publicationStatus = {
+				status: 'in_progress',
+				versionId: workflow.versionId,
+				liveVersionId: null,
+				pendingVersionId: workflow.versionId,
+				triggers: [],
+				errorMessage: null,
+			};
+			const publicationStatusService = mockInstance(WorkflowPublicationStatusService, {
+				waitForPublication: vi.fn().mockResolvedValue(publicationStatus),
+			});
+			vi.mocked(workflowFinderService.findWorkflowForUser).mockResolvedValue(workflow);
+			vi.mocked(workflowService.activateWorkflow).mockResolvedValue(workflow);
+			const tool = createPublishWorkflowTool(
+				user,
+				workflowFinderService,
+				workflowService,
+				telemetry,
+				collaborationService,
+				publicationStatusService,
+			);
+
+			const result = await tool.handler({ workflowId: workflow.id });
+
+			expect(publicationStatusService.waitForPublication).toHaveBeenCalledWith(
+				workflow.id,
+				workflow.versionId,
+			);
+			expect(result.structuredContent).toEqual({
+				success: false,
+				workflowId: workflow.id,
+				activeVersionId: null,
+				publicationStatus,
+			});
+			expect(z.object(tool.config.outputSchema!).parse(result.structuredContent)).toEqual(
+				result.structuredContent,
+			);
+			expect(result.content).toEqual([
+				{ type: 'text', text: JSON.stringify(result.structuredContent) },
+			]);
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({ results: expect.objectContaining({ success: false }) }),
+			);
 		});
 
 		describe('telemetry tracking', () => {

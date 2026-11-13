@@ -1,19 +1,24 @@
 import { createWorkflowWithHistory, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { CredentialsFinderService, NodeTypesProxy, RoleService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowPublicationOutboxRepository } from '@n8n/db';
+import { WorkflowPublicationOutboxRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
 import { createPublishWorkflowTool } from '@/modules/mcp/tools/publish-workflow.tool';
+import { createWorkflowDetailsTool } from '@/modules/mcp/tools/get-workflow-details.tool';
 import { Push } from '@/push';
+import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
@@ -24,8 +29,15 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createOwner } from '../shared/db/users';
 import { initNodeTypes } from '../shared/utils';
 
-// Skip retry delays. Keep the real trigger activation and publication status writes.
-vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn() }));
+// Skip trigger retry delays. Keep the publication polling delay.
+vi.mock('@n8n/utils/sleep', async (importOriginal) => {
+	const { sleep } = await importOriginal<typeof import('@n8n/utils/sleep')>();
+	return {
+		sleep: vi.fn(async (ms: number, signal?: AbortSignal) => {
+			if (ms < 1_000) await sleep(ms, signal);
+		}),
+	};
+});
 
 mockInstance(ActiveExecutions);
 mockInstance(Push);
@@ -71,6 +83,7 @@ describe('publish_workflow trigger activation', () => {
 	});
 
 	afterEach(async () => {
+		publicationNotifier.requestDrain.mockReset();
 		await Container.get(ActiveWorkflowManager).removeAll();
 		await testDb.truncate([
 			'WorkflowPublishedVersion',
@@ -91,7 +104,29 @@ describe('publish_workflow trigger activation', () => {
 		await testDb.terminate();
 	});
 
-	async function publishAndActivate(nodes: INode[]) {
+	async function detailsFor(
+		user: User,
+		workflowId: string,
+		detailLevel: 'full' | 'execution' = 'full',
+	) {
+		const tool = createWorkflowDetailsTool(
+			user,
+			'https://example.test',
+			Container.get(WorkflowFinderService),
+			mock<CredentialsService>(),
+			mock<CredentialsFinderService>(),
+			Container.get(NodeTypesProxy),
+			{ webhook: 'webhook', webhookTest: 'webhook-test' },
+			telemetry,
+			Container.get(RoleService),
+			Container.get(ProjectService),
+			undefined,
+			statusService,
+		);
+		return await tool.handler({ workflowId, detailLevel });
+	}
+
+	async function queuePublication(nodes: INode[]) {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory(
 			{ nodes, connections: {}, settings: { availableInMCP: true } },
@@ -106,28 +141,104 @@ describe('publish_workflow trigger activation', () => {
 			Container.get(WorkflowService),
 			telemetry,
 			collaborationService,
+			statusService,
 		);
-		const response = tool.handler(
-			{ workflowId: workflow.id },
-			{} as Parameters<typeof tool.handler>[1],
+		const response = Promise.resolve(
+			tool.handler({ workflowId: workflow.id }, {} as Parameters<typeof tool.handler>[1]),
 		);
+		let responseSettled = false;
+		void response.then(() => {
+			responseSettled = true;
+		});
 
 		// Start activation only after the publication transaction commits. Do not start a poll loop.
 		await Promise.race([publicationQueued.promise, response]);
 		const record = await outboxRepository.claimNextPendingRecord();
+		if (!record) {
+			throw new Error(
+				`Publication was not queued: ${JSON.stringify((await response).structuredContent)}`,
+			);
+		}
 		expect(record).toMatchObject({
 			workflowId: workflow.id,
 			publishedVersionId: workflow.versionId,
 			status: 'in_progress',
 		});
+		const pendingDetails = await detailsFor(owner, workflow.id);
+		expect(pendingDetails.structuredContent).toMatchObject({
+			workflow: {
+				active: false,
+				publicationStatus: { status: 'in_progress', pendingVersionId: workflow.versionId },
+			},
+		});
+		expect(responseSettled).toBe(false);
+		return { response, workflow, owner, record: record! };
+	}
+
+	async function publishAndActivate(nodes: INode[]) {
+		const { response, workflow, owner, record } = await queuePublication(nodes);
+		await consumer.processRecord(record, new AbortController().signal);
+
+		return { result: await response, workflow, owner, recordId: record.id };
+	}
+
+	test.each([30, 60])(
+		'reports a %i-minute schedule activation in legacy publication mode',
+		async (minutes) => {
+			const workflowsConfig = Container.get(WorkflowsConfig);
+			workflowsConfig.useWorkflowPublicationService = false;
+			try {
+				const owner = await createOwner();
+				const workflow = await createWorkflowWithHistory(
+					{
+						nodes: [scheduleNode('schedule', minutes)],
+						connections: {},
+						settings: { availableInMCP: true },
+					},
+					owner,
+				);
+				const tool = createPublishWorkflowTool(
+					owner,
+					Container.get(WorkflowFinderService),
+					Container.get(WorkflowService),
+					telemetry,
+					collaborationService,
+				);
+
+				const result = await tool.handler({ workflowId: workflow.id });
+
+				expect(result.structuredContent).toMatchObject({
+					success: minutes === 30,
+					activeVersionId: minutes === 30 ? workflow.versionId : null,
+					...(minutes === 60 ? { error: expect.stringContaining('Invalid interval') } : {}),
+				});
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = true;
+			}
+		},
+	);
+
+	test('reports a workflow as inactive after unpublication', async () => {
+		const { workflow, owner } = await publishAndActivate([scheduleNode('valid', 30)]);
+
+		await Container.get(WorkflowService).deactivateWorkflow(owner, workflow.id, {
+			source: 'n8n-mcp',
+		});
+		const record = await outboxRepository.claimNextPendingRecord();
+		expect(record).not.toBeNull();
 		await consumer.processRecord(record!, new AbortController().signal);
 
-		return { result: await response, workflow, recordId: record!.id };
-	}
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: {
+				active: false,
+				publicationStatus: { status: 'not_published', liveVersionId: null },
+			},
+		});
+	});
 
 	test('returns success for a valid 30-minute schedule', async () => {
 		const trigger = scheduleNode('valid', 30);
-		const { result, workflow, recordId } = await publishAndActivate([trigger]);
+		const { result, workflow, owner, recordId } = await publishAndActivate([trigger]);
 
 		expect(await outboxRepository.findOneBy({ id: recordId })).toMatchObject({
 			status: 'completed',
@@ -143,6 +254,42 @@ describe('publish_workflow trigger activation', () => {
 			success: true,
 			workflowId: workflow.id,
 			activeVersionId: workflow.versionId,
+			publicationStatus: { status: 'published', versionId: workflow.versionId },
+		});
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: { active: true, publicationStatus: { status: 'published' } },
+		});
+	});
+
+	test('returns a pending status that workflow details can poll', async () => {
+		const { response, workflow, owner, record } = await queuePublication([
+			scheduleNode('invalid', 60),
+		]);
+
+		const result = await response;
+		expect(result.structuredContent).toMatchObject({
+			success: false,
+			activeVersionId: null,
+			publicationStatus: {
+				status: 'in_progress',
+				versionId: workflow.versionId,
+				pendingVersionId: workflow.versionId,
+			},
+		});
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: { active: false, publicationStatus: { status: 'in_progress' } },
+		});
+
+		await consumer.processRecord(record, new AbortController().signal);
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: {
+				active: false,
+				publicationStatus: {
+					status: 'failed',
+					versionId: workflow.versionId,
+					errorMessage: expect.stringContaining('Invalid interval'),
+				},
+			},
 		});
 	});
 
@@ -156,7 +303,7 @@ describe('publish_workflow trigger activation', () => {
 			const invalidTrigger = scheduleNode('invalid', 60);
 			const validTrigger = scheduleNode('valid', 30);
 			const nodes = includeValidTrigger ? [invalidTrigger, validTrigger] : [invalidTrigger];
-			const { result, workflow, recordId } = await publishAndActivate(nodes);
+			const { result, workflow, owner, recordId } = await publishAndActivate(nodes);
 
 			expect(await outboxRepository.findOneBy({ id: recordId })).toMatchObject({
 				status: outboxStatus,
@@ -182,7 +329,23 @@ describe('publish_workflow trigger activation', () => {
 				success: false,
 				workflowId: workflow.id,
 				error: expect.stringContaining('Invalid interval'),
+				publicationStatus: { status, versionId: workflow.versionId },
 			});
+			for (const detailLevel of ['full', 'execution'] as const) {
+				expect((await detailsFor(owner, workflow.id, detailLevel)).structuredContent).toMatchObject(
+					{
+						workflow: {
+							active: includeValidTrigger,
+							publicationStatus: {
+								status,
+								versionId: workflow.versionId,
+								liveVersionId: includeValidTrigger ? workflow.versionId : null,
+								errorMessage: expect.stringContaining('Invalid interval'),
+							},
+						},
+					},
+				);
+			}
 		},
 	);
 });

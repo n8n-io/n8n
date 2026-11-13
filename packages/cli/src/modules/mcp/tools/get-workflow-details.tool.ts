@@ -6,6 +6,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
+import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -94,6 +95,7 @@ export const createWorkflowDetailsTool = (
 	roleService: RoleService,
 	projectService: ProjectService,
 	testBaseWebhookUrl: string = baseWebhookUrl,
+	publicationStatusService?: WorkflowPublicationStatusService,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -138,6 +140,7 @@ export const createWorkflowDetailsTool = (
 					projectService,
 					{ workflowId, detailLevel },
 					testBaseWebhookUrl,
+					publicationStatusService,
 				);
 
 				// Track successful execution
@@ -175,6 +178,7 @@ export async function getWorkflowDetails(
 	projectService: ProjectService,
 	{ workflowId, detailLevel = 'full' }: { workflowId: string; detailLevel?: WorkflowDetailsLevel },
 	testBaseWebhookUrl: string = baseWebhookUrl,
+	publicationStatusService?: WorkflowPublicationStatusService,
 ): Promise<WorkflowDetailsResult> {
 	const includeGraph = detailLevel === 'full';
 	// The published version is loaded in both modes: execution mode omits its
@@ -244,10 +248,14 @@ export async function getWorkflowDetails(
 		}
 	}
 
+	const publicationStatus = await publicationStatusService?.getLatestStatus(workflowId);
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
 		name: workflow.name,
-		active: workflow.activeVersionId !== null,
+		active: publicationStatus
+			? publicationStatus.liveVersionId !== null
+			: workflow.activeVersionId !== null,
+		...(publicationStatus ? { publicationStatus } : {}),
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId,
