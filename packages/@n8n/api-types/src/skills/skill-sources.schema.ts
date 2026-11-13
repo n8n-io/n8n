@@ -53,6 +53,12 @@ const skillSourceTarget = {
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
 export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
 
+/** Moves a source and all its synced skills to the new scope. */
+export class ChangeSkillSourceScopeDto extends Z.class({
+	...skillSourceScope,
+	credentialId: z.string().min(1).max(36).optional(),
+}) {}
+
 export const SKILL_SOURCE_MAX_SKILLS = 200;
 
 /** Connects the source in the scope and imports the picked skills. */
@@ -301,6 +307,8 @@ export type SkillSourceListItem = {
 	canReview: boolean;
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
+	/** A private source needs a credential in the new scope. */
+	requiresCredential: boolean;
 };
 
 /** A refused source delete names only the agents that the user may read. */
@@ -318,3 +326,9 @@ export const skillSourceDeleteBlockSchema = z.object({
 });
 
 export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;
+
+export const skillSourceScopeBlockSchema = skillSourceDeleteBlockSchema.extend({
+	reason: z.literal('agents_out_of_scope'),
+});
+
+export type SkillSourceScopeBlock = z.infer<typeof skillSourceScopeBlockSchema>;

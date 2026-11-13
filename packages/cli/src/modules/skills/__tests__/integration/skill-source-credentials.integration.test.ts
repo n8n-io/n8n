@@ -13,7 +13,7 @@ import {
 	mockInstance,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { CredentialsEntity, CredentialsRepository, type Project } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { GithubAppApi } from 'n8n-nodes-base/credentials/GithubAppApi.credentials';
@@ -70,6 +70,7 @@ describe('Skill Sync with credentials', () => {
 	const postHog = mockInstance(PostHogClient);
 	const github = new FakeGitHub();
 	let owner: SuperAgentTest;
+	let ownerUser: User;
 	let editor: SuperAgentTest;
 	let member: SuperAgentTest;
 	let team: Project;
@@ -93,7 +94,7 @@ describe('Skill Sync with credentials', () => {
 	});
 
 	beforeAll(async () => {
-		const ownerUser = await createOwner();
+		ownerUser = await createOwner();
 		const editorUser = await createMember();
 		const memberUser = await createMember();
 		owner = server.authAgentFor(ownerUser);
@@ -476,6 +477,81 @@ describe('Skill Sync with credentials', () => {
 				{ id: data.sourceId },
 			);
 			expect(source.credentialId).toBe(teamCredential.id);
+		});
+
+		describe('change private source scope', () => {
+			async function connectPrivate() {
+				const body = { url: PRIVATE, ...scope(), credentialId: teamCredential.id };
+				const { data: discovery } = await post<SkillSourceDiscovery>(
+					editor,
+					'/skill-sources/discover',
+					body,
+				);
+				return (
+					await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+						...body,
+						skillKeys: discovery.skills.map(({ key }) => key),
+					})
+				).data;
+			}
+
+			it.each(['missing', 'outOfScope', 'unreadable'] as const)(
+				'refuses a %s credential and keeps the old scope',
+				async (reason) => {
+					const { sourceId } = await connectPrivate();
+					const manager = Container.get(DataSource).manager;
+					const before = await manager.findOneByOrFail(SkillSourceConnection, { id: sourceId });
+					let credentialId = reason === 'missing' ? undefined : teamCredential.id;
+					if (reason === 'unreadable') {
+						github.grant('ghp_no_access', []);
+						credentialId = (
+							await saveCredential(ghCredential('Other GitHub', 'ghp_no_access'), {
+								user: ownerUser,
+								role: 'credential:owner',
+							})
+						).id;
+					}
+					const { meta } = await post(
+						owner,
+						`/skill-sources/${sourceId}/change-scope`,
+						{
+							scope: 'instance',
+							...(credentialId ? { credentialId } : {}),
+						},
+						reason === 'outOfScope' ? 403 : 404,
+					);
+					expect(meta?.reason).toBe(
+						reason === 'missing'
+							? 'credential_missing'
+							: reason === 'outOfScope'
+								? 'credential_out_of_scope'
+								: 'not_found',
+					);
+					expect(await manager.findOneByOrFail(SkillSourceConnection, { id: sourceId })).toEqual(
+						before,
+					);
+				},
+			);
+
+			it('uses the new credential after moving to Global and back to a project', async () => {
+				const { sourceId, imported } = await connectPrivate();
+				const manager = Container.get(DataSource).manager;
+				const read = async () =>
+					await manager.findOneByOrFail(SkillSourceConnection, { id: sourceId });
+				await post(owner, `/skill-sources/${sourceId}/change-scope`, {
+					scope: 'instance',
+					credentialId: ownerCredential.id,
+				});
+				expect(await read()).toMatchObject({ projectId: null, credentialId: ownerCredential.id });
+				await post(owner, `/skill-sources/${sourceId}/change-scope`, {
+					...scope(),
+					credentialId: teamCredential.id,
+				});
+				expect(await read()).toMatchObject({ projectId: team.id, credentialId: teamCredential.id });
+				expect(await manager.find(SkillSourceLink, { where: { sourceId } })).toHaveLength(
+					imported.length,
+				);
+			});
 		});
 
 		it('cannot read the private repository without a credential', async () => {

@@ -1,4 +1,5 @@
 import {
+	ChangeSkillSourceScopeDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
@@ -85,6 +86,18 @@ export class SkillSourceController {
 	@Get('/')
 	async list(req: AuthenticatedRequest) {
 		return await this.skillSourceService.list(req.user);
+	}
+
+	// The service checks delete in the current scope and create in the target scope.
+	@Post('/:sourceId/change-scope')
+	async changeScope(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: ChangeSkillSourceScopeDto,
+	) {
+		await this.skillSourceService.changeScope(req.user, sourceId, payload);
+		return { ok: true };
 	}
 
 	/** The source's scope decides access. The service checks its delete permission. */

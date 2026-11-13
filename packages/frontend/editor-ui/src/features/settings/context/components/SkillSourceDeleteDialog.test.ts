@@ -44,6 +44,7 @@ const source: SkillSourceListItem = {
 	health: 'connected',
 	lastCheckedAt: null,
 	canReview: true,
+	requiresCredential: false,
 	canDelete: true,
 };
 

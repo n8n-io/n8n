@@ -1,5 +1,7 @@
 import {
 	type AgentSkill,
+	type ChangeSkillSourceScopeDto,
+	type SkillSourceScopeBlock,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
 	type DiscoveredSkill,
@@ -58,7 +60,8 @@ import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
-import { isNameTaken, nextFreeName } from './skill.policy';
+import { blockingSourceForMove } from './skill-source.policy';
+import { findLosingAgents, isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
@@ -259,6 +262,7 @@ export class SkillSourceService {
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
 				canReview: canReview(source),
 				canDelete: canDelete(source),
+				requiresCredential: source.credentialId !== null,
 			};
 		});
 	}
@@ -335,6 +339,124 @@ export class SkillSourceService {
 			throw error;
 		}
 		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+	}
+
+	/** Moves a source and its skills together. Agent references and versions stay intact. */
+	async changeScope(
+		user: User,
+		sourceId: string,
+		payload: ChangeSkillSourceScopeDto,
+	): Promise<void> {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		const { target, scopeType } = await this.resolveScope(user, payload);
+		if (!(await this.skillAccess.canChangeSourceScope(user, source, target))) {
+			throw new ForbiddenError('You are not allowed to move this source out of its scope.');
+		}
+		if (source.projectId === target.projectId) return;
+		const credentialId = source.credentialId === null ? null : payload.credentialId;
+		if (credentialId === undefined) {
+			throw new SkillSourceRequestError(
+				'credential_missing',
+				'Pick a credential in the new scope to move this private source.',
+			);
+		}
+		if (credentialId !== null) {
+			const client = this.clients.get(source.type);
+			if (!client) throw new NotFoundError('Source type not found');
+			const credential = await this.resolveCredential(user, credentialId, target.projectId, client);
+			try {
+				const auth = client.authFrom(credential);
+				if (client.probe) await client.probe(source.locator, auth);
+				else await client.discover(source.locator, auth);
+			} catch (error) {
+				throw toSkillSourceRequestError(error);
+			}
+		}
+		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		const fromProject = source.projectId
+			? (await this.skillRepository.findProjects([source.projectId])).get(source.projectId)
+			: undefined;
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
+				if (!locked) throw new NotFoundError('Source not found');
+				if (locked.projectId !== source.projectId || locked.credentialId !== source.credentialId) {
+					throw new ConflictError('The source changed. Reload the skills table and try again.');
+				}
+				const same = await this.sourceRepository.findSameSources(locked.identityKey, ctx);
+				const duplicate = blockingSourceForMove(same, sourceId, target.projectId);
+				if (duplicate) throw duplicateError(duplicate.projectId === null ? 'global' : 'scope');
+				const links = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				await this.skillRepository.lockForEdit(
+					links.map(({ skillId }) => skillId),
+					ctx,
+				);
+				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				const usedBy = new Set<string>();
+				if (target.projectId !== null) {
+					for (const { skillId } of current) {
+						for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) usedBy.add(id);
+					}
+				}
+				const agents = await this.skillUsage.findAgents([...usedBy], ctx);
+				const losing = findLosingAgents([...usedBy], target, agents);
+				if (losing.length > 0) {
+					const visible = losing.flatMap((id) => {
+						const agent = agents.get(id);
+						return agent && (readable === null || readable.includes(agent.projectId))
+							? [{ id, ...agent }]
+							: [];
+					});
+					const projects = await this.skillRepository.findProjects(
+						visible.map((a) => a.projectId),
+						ctx,
+					);
+					const block: SkillSourceScopeBlock = {
+						reason: 'agents_out_of_scope',
+						agents: visible.map((agent) => ({
+							agentId: agent.id,
+							agentName: agent.name,
+							projectId: agent.projectId,
+							projectName: projects.get(agent.projectId)?.name ?? agent.projectId,
+						})),
+						hiddenAgents: losing.length - visible.length,
+					};
+					throw new ConflictError(
+						'Remove the skills from these agents before you move the source.',
+						undefined,
+						block,
+					);
+				}
+				for (const { skillId } of current) {
+					await this.skillService.moveTrusted(skillId, target, undefined, ctx, {
+						syncedSourceId: sourceId,
+						checkedSource: { projectId: locked.projectId },
+						agentProjectIds: readable ?? 'all',
+					});
+				}
+				await this.sourceRepository.changeScope(sourceId, target.projectId, credentialId, ctx);
+			});
+		} catch (error) {
+			if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
+			throw error;
+		}
+		await this.skillsTelemetry.changedSourceScope(
+			{
+				provider: source.type,
+				from_scope:
+					source.projectId === null
+						? 'global'
+						: fromProject?.type === 'personal'
+							? 'personal'
+							: 'team',
+				to_scope: scopeType,
+			},
+			user.id,
+		);
 	}
 
 	// ---------------------------------------------------------------- steps

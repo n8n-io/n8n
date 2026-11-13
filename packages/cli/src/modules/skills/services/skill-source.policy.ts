@@ -47,3 +47,15 @@ export function requiredSourceScope(
 	if (kind === 'global') return action === 'view' ? null : `skill:${OPERATION[action]}`;
 	return `projectSkill:${OPERATION[action]}`;
 }
+
+/** A source in Global or the target scope blocks a move. The moving source does not. */
+export function blockingSourceForMove(
+	sources: Array<{ id: string; projectId: string | null }>,
+	sourceId: string,
+	projectId: string | null,
+): { id: string; projectId: string | null } | undefined {
+	return sources.find(
+		(source) =>
+			source.id !== sourceId && (source.projectId === projectId || source.projectId === null),
+	);
+}

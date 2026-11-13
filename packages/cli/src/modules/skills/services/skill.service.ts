@@ -633,7 +633,12 @@ export class SkillService {
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		{ nameAfterMove, checkedSource, agentProjectIds = 'all' }: SkillMoveOptions = {},
+		{
+			nameAfterMove,
+			checkedSource,
+			agentProjectIds = 'all',
+			syncedSourceId,
+		}: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -652,7 +657,11 @@ export class SkillService {
 				nameAfterMove ??
 				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			// All skills of a source share its scope, so a synced skill moves only with its source.
-			if (await this.sourceRepository.isLinked(skillId, txCtx)) {
+			const sourceBlocksMove = syncedSourceId
+				? (await this.sourceRepository.findLinkBySkillId(skillId, txCtx))?.sourceId !==
+					syncedSourceId
+				: await this.sourceRepository.isLinked(skillId, txCtx);
+			if (sourceBlocksMove) {
 				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 				throw new SkillSyncedError(
 					name ?? skillId,

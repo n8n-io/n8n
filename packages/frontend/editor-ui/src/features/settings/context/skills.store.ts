@@ -1,4 +1,5 @@
 import type {
+	ChangeSkillSourceScopeDto,
 	SkillListCollapsedSource,
 	SkillSourceListItem,
 	ConnectSkillSourceDto,
@@ -162,6 +163,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
 	}
 
+	/** Moves a source and its synced skills. The caller reloads the lists. */
+	async function changeSourceScope(sourceId: string, payload: ChangeSkillSourceScopeDto) {
+		await api.changeSkillSourceScope(rootStore.restApiContext, sourceId, payload);
+	}
+
 	/** Check for updates on one source. The caller reloads the lists. */
 	async function checkSource(sourceId: string) {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
@@ -194,5 +200,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSources,
 		checkSource,
 		deleteSource,
+		changeSourceScope,
 	};
 });

@@ -74,6 +74,8 @@ export type SkillSaveResult = {
 };
 
 export type SkillMoveOptions = {
+	/** Only a source move can move a skill that still syncs with this source. */
+	syncedSourceId?: string;
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
 	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */

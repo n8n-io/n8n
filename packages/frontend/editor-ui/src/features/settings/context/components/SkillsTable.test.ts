@@ -390,6 +390,7 @@ describe('SkillsTable', () => {
 			health: 'connected',
 			lastCheckedAt: null,
 			canReview: true,
+			requiresCredential: false,
 			canDelete: true,
 			...overrides,
 		});
@@ -540,6 +541,17 @@ describe('SkillsTable', () => {
 			);
 			await userEvent.click(document.querySelector('[data-test-id="action-deleteSource"]')!);
 			expect(emitted('deleteSource')).toEqual([[row]]);
+		});
+
+		it('opens Change scope from the source menu', async () => {
+			const row = source();
+			const { getByTestId, emitted } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-changeScope"]')!);
+			expect(emitted('changeSourceScope')).toEqual([[row]]);
 		});
 
 		it('hides Delete source from users with update permission but no delete permission', async () => {

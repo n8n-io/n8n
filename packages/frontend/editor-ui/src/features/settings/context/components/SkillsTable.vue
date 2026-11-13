@@ -25,7 +25,7 @@ import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
-type SourceAction = 'checkNow' | 'openInGitHub' | 'deleteSource';
+type SourceAction = 'checkNow' | 'openInGitHub' | 'deleteSource' | 'changeScope';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -61,6 +61,7 @@ const emit = defineEmits<{
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
 	deleteSource: [source: SkillSourceListItem];
+	changeSourceScope: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -200,6 +201,11 @@ function sourceActions(source: SkillSourceListItem) {
 	});
 	if (source.canDelete) {
 		items.push({
+			value: 'changeScope',
+			label: i18n.baseText('settings.context.skills.sources.scope.action'),
+			icon: 'globe',
+		});
+		items.push({
 			value: 'deleteSource',
 			label: i18n.baseText('settings.context.skills.sources.delete.action'),
 			icon: 'trash-2',
@@ -212,6 +218,7 @@ function sourceActions(source: SkillSourceListItem) {
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
 	else if (action === 'deleteSource') emit('deleteSource', source);
+	else if (action === 'changeScope') emit('changeSourceScope', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 

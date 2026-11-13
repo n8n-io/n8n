@@ -154,6 +154,23 @@ export class SkillSourceRepository {
 		});
 	}
 
+	/** Updates the scope after the caller moves all linked skills in the same transaction. */
+	async changeScope(
+		sourceId: string,
+		projectId: string | null,
+		credentialId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		try {
+			await this.sources
+				.managerFor(ctx)
+				.update(SkillSourceConnection, { id: sourceId }, { projectId, credentialId });
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
+			throw error;
+		}
+	}
+
 	/** Deletes the source. Its links go by cascade. Callers delete its skills first. */
 	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
 		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });

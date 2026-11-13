@@ -1,4 +1,5 @@
 import type {
+	ChangeSkillSourceScopeDto,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -175,6 +176,20 @@ export async function listSkillSources(context: IRestApiContext): Promise<SkillS
 /** Deletes a source and its synced skills. */
 export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+}
+
+/** Moves a source and all its synced skills together. */
+export async function changeSkillSourceScope(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: ChangeSkillSourceScopeDto,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/change-scope`,
+		payload,
+	);
 }
 
 /** Check for updates on one source. */

@@ -1,4 +1,4 @@
-import { requiredSourceScope } from '../services/skill-source.policy';
+import { blockingSourceForMove, requiredSourceScope } from '../services/skill-source.policy';
 
 describe('requiredSourceScope', () => {
 	it.each([
@@ -27,4 +27,24 @@ describe('requiredSourceScope', () => {
 	] as const)('$action on a $kind source needs $scope', ({ action, kind, scope }) => {
 		expect(requiredSourceScope(action, kind)).toBe(scope);
 	});
+});
+
+describe('blockingSourceForMove', () => {
+	it.each([
+		{ storedScope: null, target: 'target', sameSource: true, blocked: false },
+		{ storedScope: 'old', target: null, sameSource: true, blocked: false },
+		{ storedScope: null, target: 'target', sameSource: false, blocked: true },
+		{ storedScope: 'target', target: 'target', sameSource: false, blocked: true },
+		{ storedScope: 'other', target: 'target', sameSource: false, blocked: false },
+		{ storedScope: 'other', target: null, sameSource: false, blocked: false },
+		{ storedScope: null, target: null, sameSource: false, blocked: true },
+	])(
+		'stored in $storedScope, target $target, same source $sameSource: blocked $blocked',
+		({ storedScope, target, sameSource, blocked }) => {
+			const source = { id: sameSource ? 'moving' : 'other', projectId: storedScope };
+			expect(blockingSourceForMove([source], 'moving', target)).toEqual(
+				blocked ? source : undefined,
+			);
+		},
+	);
 });

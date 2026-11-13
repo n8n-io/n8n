@@ -65,6 +65,7 @@ import SkillSourceConnectDialog, {
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
+import SkillSourceScopeDialog from '../components/SkillSourceScopeDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -115,6 +116,7 @@ const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
+const sourceToMove = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -803,6 +805,12 @@ async function onSourceDeleted() {
 	await load();
 }
 
+async function onSourceMoved() {
+	sourceToMove.value = undefined;
+	await loadSources();
+	await load();
+}
+
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
 	try {
@@ -1063,6 +1071,7 @@ onMounted(async () => {
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
 			@delete-source="sourceToDelete = $event"
+			@change-source-scope="sourceToMove = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1114,6 +1123,13 @@ onMounted(async () => {
 			:source="sourceToDelete"
 			@close="sourceToDelete = undefined"
 			@deleted="onSourceDeleted"
+		/>
+		<SkillSourceScopeDialog
+			v-if="skillSyncEnabled && sourceToMove"
+			:source="sourceToMove"
+			:scope-options="scopeOptions"
+			@close="sourceToMove = undefined"
+			@moved="onSourceMoved"
 		/>
 		<input
 			ref="skillFolderInput"

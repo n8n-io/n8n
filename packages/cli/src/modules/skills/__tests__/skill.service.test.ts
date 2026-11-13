@@ -13,6 +13,7 @@ import {
 	resetSkillMocks,
 } from './test-utils/skill-services';
 import type { Skill } from '../database/entities/skill.entity';
+import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
 import { getSkillHash } from '../utils/skill-hash';
@@ -643,6 +644,27 @@ describe('SkillService', () => {
 			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
+
+		it.each(['another-source', null])(
+			'refuses a source move when the skill link is %s',
+			async (sourceId) => {
+				links.findLinkBySkillId.mockResolvedValue(
+					sourceId ? mock<SkillSourceLink>({ sourceId }) : null,
+				);
+				await expect(
+					service.moveTrusted(
+						'skill_a',
+						{ projectId: null },
+						undefined,
+						{},
+						{
+							syncedSourceId: 'moving-source',
+						},
+					),
+				).rejects.toThrow(SkillSyncedError);
+				expect(skills.updateTarget).not.toHaveBeenCalled();
+			},
+		);
 
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
 			skills.findLatestSummaries.mockResolvedValue(

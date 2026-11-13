@@ -578,6 +578,17 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
 		}),
 	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A user moved a source and all its synced skills to another scope. Fires after the transaction commits. Contains no source, skill, agent, project, or credential names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope: z.enum(['global', 'team', 'personal']),
+			to_scope: z.enum(['global', 'team', 'personal']),
+		}),
+	},
 	USER_STOPPED_SKILL_SYNC: {
 		name: 'User stopped skill sync',
 		description:
