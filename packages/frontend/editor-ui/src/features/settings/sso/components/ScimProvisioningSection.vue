@@ -11,8 +11,6 @@ import {
 	N8nOption,
 	N8nPreviewBadge,
 	N8nSelect,
-	N8nSettingsRow,
-	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -160,13 +158,14 @@ watch(
 				<N8nPreviewBadge size="xsmall" data-test-id="sso-scim-preview-badge" />
 			</div>
 		</template>
-		<N8nSettingsRowGroup v-if="config">
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.sso.scim.enable.title')"
-				:description="i18n.baseText('settings.sso.scim.enable.description')"
-				action-fill
-			>
-				<template #action>
+		<!-- The same card and row containers as the SAML and OIDC settings above, so the sizes match. -->
+		<div v-if="config" :class="shared.card">
+			<div :class="shared.settingsItem">
+				<div :class="shared.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.scim.enable.title') }}</label>
+					<small>{{ i18n.baseText('settings.sso.scim.enable.description') }}</small>
+				</div>
+				<div :class="shared.settingsItemControl">
 					<N8nTooltip
 						as-child
 						:disabled="props.ssoEnabled"
@@ -174,11 +173,10 @@ watch(
 						placement="top"
 					>
 						<!-- A disabled select gets no pointer events, so the wrapper shows the tooltip. -->
-						<div :class="$style.fill" data-test-id="sso-scim-enabled-select-wrapper">
+						<div :class="$style.selectWrapper" data-test-id="sso-scim-enabled-select-wrapper">
 							<N8nSelect
 								v-model="selectValue"
 								size="medium"
-								:class="$style.fill"
 								:disabled="saving || !props.ssoEnabled"
 								:aria-label="i18n.baseText('settings.sso.scim.enable.title')"
 								data-test-id="sso-scim-enabled-select"
@@ -196,31 +194,30 @@ watch(
 							</N8nSelect>
 						</div>
 					</N8nTooltip>
-				</template>
-			</N8nSettingsRow>
+				</div>
+			</div>
 
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.sso.scim.baseUrl.title')"
-				:description="i18n.baseText('settings.sso.scim.baseUrl.description')"
-				action-fill
-			>
-				<template #action>
+			<div :class="shared.settingsItem">
+				<div :class="shared.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.scim.baseUrl.title') }}</label>
+					<small>{{ i18n.baseText('settings.sso.scim.baseUrl.description') }}</small>
+				</div>
+				<div :class="shared.settingsItemControl">
 					<N8nCopyInput
-						:class="$style.fill"
 						:value="config.baseUrl"
 						:label="i18n.baseText('settings.sso.scim.baseUrl.title')"
 						size="medium"
 						data-test-id="sso-scim-base-url"
 					/>
-				</template>
-			</N8nSettingsRow>
+				</div>
+			</div>
 
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.sso.scim.token.title')"
-				:description="tokenDescription"
-				action-fill
-			>
-				<template #action>
+			<div :class="shared.settingsItem">
+				<div :class="shared.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.scim.token.title') }}</label>
+					<small>{{ tokenDescription }}</small>
+				</div>
+				<div :class="shared.settingsItemControl">
 					<div v-if="maskedToken" :class="$style.tokenAction">
 						<!-- The full token is only known right after it is created, so only then it can be copied. -->
 						<N8nCopyInput
@@ -259,9 +256,9 @@ watch(
 					>
 						{{ i18n.baseText('settings.sso.scim.token.generate') }}
 					</N8nButton>
-				</template>
-			</N8nSettingsRow>
-		</N8nSettingsRowGroup>
+				</div>
+			</div>
+		</div>
 
 		<N8nAlertDialog
 			:open="showRegenerateDialog"
@@ -276,6 +273,8 @@ watch(
 	</N8nSettingsSection>
 </template>
 
+<style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
+
 <style lang="scss" module>
 .titleRow {
 	display: flex;
@@ -283,11 +282,17 @@ watch(
 	gap: var(--spacing--2xs);
 }
 
-/* The rows use `action-fill`, so their controls fill the action column. */
-.fill {
+/* The shared control is a flex row, so these wrappers fill it and pass the width on. */
+.selectWrapper {
+	display: flex;
 	width: 100%;
+
+	> * {
+		flex: 1 1 auto;
+	}
 }
 
+/* The token field takes the room that the menu button leaves in the control. */
 .tokenAction {
 	display: flex;
 	align-items: center;
