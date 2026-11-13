@@ -5,8 +5,13 @@ import { ExecutionLedgerRepository } from './database/repositories/execution-led
 
 /** Claims, and so removes, every ledger row. For tests only. */
 export async function claimAllLedgerRows(): Promise<ExecutionLedgerRow[]> {
-	return await Container.get(TransactionRunner).run(
-		{},
-		async (ctx) => await Container.get(ExecutionLedgerRepository).claimBatch(10_000, ctx),
-	);
+	const rows: ExecutionLedgerRow[] = [];
+	for (;;) {
+		const batch = await Container.get(TransactionRunner).run(
+			{},
+			async (ctx) => await Container.get(ExecutionLedgerRepository).claimBatch(10_000, ctx),
+		);
+		if (batch.length === 0) return rows;
+		rows.push(...batch);
+	}
 }
