@@ -82,6 +82,20 @@ describe('OutboundRedactor', () => {
 		expect(wrapped.getParentTypes('x')).toEqual(['base']);
 	});
 
+	it('removes a secret with spaces from a form-encoded body and query', async () => {
+		const { redactor } = await redactorWithCredential({ password: 'my real password' });
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://example.com/login?note=my+real+password',
+			body: new URLSearchParams({ pass: 'my real password' }),
+		});
+
+		expect(JSON.stringify(request)).not.toContain('my+real+password');
+		expect(JSON.stringify(request)).not.toContain('my real password');
+	});
+
 	it('removes a short password from the URL path and a free-form body', async () => {
 		const { redactor } = await redactorWithCredential({ password: 'pw4567' });
 

@@ -504,6 +504,30 @@ describe('SimulationSessionService', () => {
 		).resolves.toBeUndefined();
 	});
 
+	it('reopens a cached chat whose stored world another main changed since', async () => {
+		const backend = llmBackend();
+		const { service, threadRepository } = setup({ backend });
+		const first = await service.openForDraftRun(openInput);
+		await first!.markTestChat();
+		const saved = vi.mocked(threadRepository.update).mock.calls[0][1].simulation;
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({ simulation: saved } as never);
+
+		await expect(service.openForDraftRun(openInput)).resolves.toBe(first);
+
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({
+			simulation: {
+				testRun: true,
+				world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'newer' } },
+			},
+		} as never);
+		const reopened = await service.openForDraftRun(openInput);
+
+		expect(reopened).not.toBe(first);
+		expect(backend.openWorld).toHaveBeenLastCalledWith(
+			expect.objectContaining({ saved: { seed: 'newer' } }),
+		);
+	});
+
 	it('keeps the stored world when the simulator is down on a later turn', async () => {
 		const backend = llmBackend();
 		vi.mocked(backend.openWorld).mockRejectedValue(new Error('down'));
