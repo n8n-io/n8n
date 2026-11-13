@@ -19,6 +19,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
@@ -485,7 +486,10 @@ describe('NodeSettings', () => {
 						},
 						beforeMount: () => {
 							// A saved workflow, so NodeCredentials has a workflow scope to fetch.
-							useWorkflowsStore().isNewWorkflow = false;
+							const workflowId = useWorkflowsStore().workflowId;
+							useWorkflowsListStore().workflowsById = {
+								[workflowId]: { id: workflowId },
+							} as unknown as ReturnType<typeof useWorkflowsListStore>['workflowsById'];
 							// The inline agent controls fetch the agent scope before NodeCredentials mounts.
 							void useCredentialsStore().fetchUsableCredentials(agentScope);
 						},
