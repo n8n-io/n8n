@@ -476,6 +476,18 @@ describe('AssistantConfirmationCard', () => {
 			});
 		});
 
+		it('uses the request id as input id when the card has none, as the backend does', async () => {
+			const { getByTestId, accept } = renderInThread({ ...runApproval, inputThreadId: undefined });
+
+			await fireEvent.click(getByTestId('approval-card-allow-once'));
+			accept();
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ input_thread_id: 'req-aa' }),
+			);
+		});
+
 		it('tracks always allow as approve_always', async () => {
 			const { getByTestId, accept } = renderInThread(runApproval);
 
