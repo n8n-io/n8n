@@ -1,7 +1,9 @@
 import { appPlanSchema, listPlanComponents } from '../../schemas/app-plan.schema';
 import { appBlueprintSchema } from '../../schemas/instance-ai.schema';
 import {
+	collectDetailCss,
 	describePlanComponent,
+	sanitizeDetailHtml,
 	planOverlayScript,
 	renderWireframeBody,
 	renderWireframeDocument,
@@ -123,5 +125,52 @@ describe('planOverlayScript', () => {
 			screens: [{ ...plan.screens[0], name: '</script><script>alert(1)' }],
 		});
 		expect(doc.match(/<\/script>/g)).toHaveLength(1);
+	});
+});
+
+describe('detailed parts', () => {
+	const detailed = {
+		...plan,
+		screens: [
+			{
+				...plan.screens[0],
+				components: [
+					{
+						...byId('kpi-pending'),
+						detail: {
+							html: '<div class="card" onclick="steal()"><b>12</b><script>alert(1)</script><a href="javascript:x()">x</a></div>',
+							css: '.card { color: red; }</style><script>',
+						},
+					},
+				],
+			},
+		],
+	};
+
+	it('renders the detail HTML instead of the sketch, marked as sample data', () => {
+		const html = renderWireframeBody(detailed);
+		expect(html).toContain('wf-hifi');
+		expect(html).toContain('<b>12</b>');
+		expect(html).not.toContain('wf-kpi-value');
+	});
+
+	it('strips scripts, event handlers and javascript URLs from the detail', () => {
+		const clean = sanitizeDetailHtml(detailed.screens[0].components[0].detail!.html);
+		expect(clean).not.toMatch(/script|onclick|javascript:/i);
+		expect(clean).toContain('<b>12</b>');
+	});
+
+	it('scopes the detail CSS to its part', () => {
+		const css = collectDetailCss(detailed);
+		expect(css).toContain('@scope ([data-plan-id="kpi-pending"] .wf-hifi-body)');
+		expect(css).not.toMatch(/<\/?style/i);
+	});
+
+	it('leaves the CSS out of Vue templates', () => {
+		expect(renderWireframeBody(detailed, { vue: true })).not.toContain('<style>');
+	});
+
+	it('marks the part as detailed in the hover info', () => {
+		expect(describePlanComponent(detailed.screens[0].components[0], {}).detailed).toBe(true);
 	});
 });

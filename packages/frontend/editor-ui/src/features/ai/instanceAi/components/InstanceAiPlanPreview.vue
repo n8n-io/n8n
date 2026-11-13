@@ -18,6 +18,8 @@ const props = defineProps<{
 	theme: 'light' | 'dark' | 'both';
 }>();
 
+const emit = defineEmits<{ detail: [component: { planId: string; label: string }] }>();
+
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
@@ -40,7 +42,13 @@ function onMessage(event: MessageEvent) {
 	if (event.source !== frame.value?.contentWindow) return;
 	const data: unknown = event.data;
 	if (!isRecord(data) || data.source !== PLAN_OVERLAY_MESSAGE_SOURCE) return;
-	if (data.type !== 'selected' || typeof data.planId !== 'string') return;
+	if (typeof data.planId !== 'string') return;
+	if (data.type === 'detail') {
+		const target = listPlanComponents(props.plan).find((c) => c.id === data.planId);
+		if (target) emit('detail', { planId: target.id, label: target.label });
+		return;
+	}
+	if (data.type !== 'selected') return;
 	selecting.value = false;
 	const component = listPlanComponents(props.plan).find((c) => c.id === data.planId);
 	store.stageElement({

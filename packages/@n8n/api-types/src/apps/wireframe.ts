@@ -28,6 +28,8 @@ export interface PlanComponentInfo {
 	title: string;
 	kind: string;
 	status: 'planned' | 'building' | 'built';
+	/** The part has a high-fidelity version with sample data. */
+	detailed: boolean;
 	data?: PlanResourceInfo & { fields: string[]; shows?: string };
 	action?: PlanResourceInfo & { does: string };
 	link?: { label: string; href: string };
@@ -73,6 +75,7 @@ export function describePlanComponent(
 		title: component.label,
 		kind: component.kind,
 		status: component.status ?? 'planned',
+		detailed: component.detail !== undefined,
 		lines,
 	};
 	if (component.data) {
@@ -185,11 +188,44 @@ export interface WireframeRenderOptions {
 }
 
 /** One planned block. Its root carries `data-plan-id`. */
+/** Detail HTML without scripts, frames, event handlers or `javascript:` URLs. */
+export function sanitizeDetailHtml(html: string): string {
+	return html
+		.replace(/<(script|style|iframe|object|embed|template)\b[\s\S]*?<\/\1\s*>/gi, '')
+		.replace(/<\/?(script|style|iframe|object|embed|template|link|meta|base)\b[^>]*>/gi, '')
+		.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+		.replace(/(href|src|action|formaction)\s*=\s*("|')?\s*javascript:[^"'\s>]*("|')?/gi, '$1="#"');
+}
+
+/** The CSS of a detailed part, scoped to that part. */
+export function scopedDetailCss(component: AppPlanComponent): string {
+	const css = component.detail?.css?.replace(/<\/?style/gi, '');
+	return css ? `@scope ([data-plan-id="${component.id}"] .wf-hifi-body) {\n${css}\n}\n` : '';
+}
+
+/** The scoped CSS of every detailed part, for a stylesheet next to the wireframe. */
+export function collectDetailCss(plan: AppPlan): string {
+	return listPlanComponents(plan).map(scopedDetailCss).join('');
+}
+
 export function renderWireframeBlock(
 	component: AppPlanComponent,
 	plan: AppPlan,
 	options: WireframeRenderOptions = {},
 ): string {
+	if (component.detail) {
+		// In a Vue template a <style> tag is dropped, so the caller ships the CSS separately.
+		const style = options.vue ? '' : `<style>${scopedDetailCss(component)}</style>`;
+		return [
+			`<div class="wf-block wf-hifi wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+			component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
+			options.vue ? ' v-pre' : '',
+			'>',
+			style,
+			`<div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div>`,
+			'</div>',
+		].join('');
+	}
 	const markers = [
 		component.data ? '<span class="wf-mark" title="Data">▤</span>' : '',
 		component.action ? '<span class="wf-mark" title="Workflow">⚡</span>' : '',
@@ -286,6 +322,11 @@ export const WIREFRAME_CSS = `
 .wf-nav-items { display: flex; gap: 6px; }
 .wf-nav-item { padding: 3px 10px; border-radius: 999px; cursor: pointer; color: var(--wf-ink-soft); }
 .wf-nav-item.active { background: var(--wf-wash); color: var(--wf-ink); font-weight: 400; }
+.wf-block.wf-hifi { position: relative; padding: 0; background: transparent; border: 1.5px dashed var(--wf-line-soft);
+  box-shadow: none; overflow: hidden; }
+.wf-hifi-body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 400; }
+.wf-block.wf-hifi::after { content: 'Sample data'; position: absolute; top: 6px; right: 6px; z-index: 1; padding: 1px 7px;
+  border-radius: 999px; background: #fff4e5; color: #b25e00; font: 600 10px/16px system-ui, sans-serif; pointer-events: none; }
 .wf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .wf-kpis .wf-kpi { border: 1.5px solid var(--wf-line-soft); border-radius: 8px; padding: 8px 10px; }
 .wf-kpi-value { display: block; font-size: 28px; font-weight: 700; color: var(--wf-ink-faint); line-height: 1.2; }
@@ -335,10 +376,10 @@ export const PLAN_OVERLAY_CSS = `
   animation: plan-ov-in .14s ease-out; }
 @keyframes plan-ov-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .plan-ov-tip * { box-sizing: border-box; }
-.plan-ov-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px; }
+.plan-ov-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 12px 8px; }
 .plan-ov-kind { flex: none; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
   background: #fff1ee; color: #ea4b30; font-size: 13px; }
-.plan-ov-title { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-ov-title { flex: 1 1 120px; min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.3; }
 .plan-ov-st { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
   font-size: 11px; font-weight: 500; background: #f1f3f5; color: #57606a; }
 .plan-ov-st::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -357,6 +398,11 @@ export const PLAN_OVERLAY_CSS = `
 .plan-ov-text { margin-top: 6px; color: #424a53; }
 .plan-ov-empty { padding: 0 12px 10px; color: #8b949e; }
 .plan-ov-foot { padding: 8px 12px; border-top: 1px solid #eef0f2; background: #fafbfc; }
+.plan-ov-st.detailed { background: #f3edff; color: #6d28d9; }
+.plan-ov-detail { width: 100%; padding: 6px 10px; border: 1px solid #f3c4bb; border-radius: 8px; background: #fff6f4;
+  color: #c2361d; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+.plan-ov-detail:hover:not([disabled]) { background: #ffece8; }
+.plan-ov-detail[disabled] { opacity: .6; cursor: default; }
 .plan-ov-foot a { color: #ea4b30; font-weight: 500; text-decoration: none; }
 .plan-ov-foot a:hover { text-decoration: underline; }
 .plan-ov-hl { position: fixed; z-index: 2147483645; pointer-events: none; border-radius: 10px;
@@ -513,6 +559,7 @@ export function planOverlayMain(
 			el('span', 'plan-ov-kind', kindIcons[id === 'shell' ? 'shell' : info.kind] ?? '▢'),
 			el('span', 'plan-ov-title', info.title),
 		);
+		if (info.detailed && !isBuilt(id)) head.append(el('span', 'plan-ov-st detailed', 'Detailed'));
 		// Once every part is built, the card only shows what the part is connected to.
 		if (!order.every(isBuilt)) {
 			head.append(
@@ -542,6 +589,22 @@ export function planOverlayMain(
 		}
 		if (!info.data && !info.action)
 			tip.append(el('div', 'plan-ov-empty', 'Layout only. No data or workflow behind this part.'));
+		if (config.selectable && id !== 'shell') {
+			const foot = el('div', 'plan-ov-foot');
+			const button = el(
+				'button',
+				'plan-ov-detail',
+				info.detailed ? '✨ Redo the detail' : '✨ Detail this part',
+			);
+			button.setAttribute('type', 'button');
+			button.addEventListener('click', () => {
+				window.parent.postMessage({ source, type: 'detail', planId: id }, '*');
+				button.textContent = 'Asked the Assistant…';
+				button.setAttribute('disabled', '');
+			});
+			foot.append(button);
+			tip.append(foot);
+		}
 		if (info.link) {
 			const foot = el('div', 'plan-ov-foot');
 			const a = el('a', undefined, `${info.link.label} ↗`);

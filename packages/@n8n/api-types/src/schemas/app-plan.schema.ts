@@ -68,6 +68,16 @@ export const appPlanComponentSchema = z.object({
 	variant: z.enum(['line', 'bar', 'pie', 'select', 'pills']).optional(),
 	data: appPlanDataSchema.optional(),
 	action: appPlanActionSchema.optional(),
+	/**
+	 * A high-fidelity version of this part with sample data, for parts the user
+	 * wants to see in detail before the build. Plain HTML and CSS, no scripts.
+	 */
+	detail: z
+		.object({
+			html: z.string().min(1).max(20000),
+			css: z.string().max(10000).optional(),
+		})
+		.optional(),
 	status: appPlanComponentStatusSchema.optional(),
 });
 export type AppPlanComponent = z.infer<typeof appPlanComponentSchema>;

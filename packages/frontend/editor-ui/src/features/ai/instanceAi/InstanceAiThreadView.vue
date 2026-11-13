@@ -268,6 +268,24 @@ const preview = useCanvasPreview({
 	},
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
+
+/** "Detail this part" in the plan view: asks the Assistant for a high-fidelity version of one part. */
+async function detailPlanPart({ planId, label }: { planId: string; label: string }) {
+	const item = thread.actionableConfirmations.find(
+		(pending) => pending.toolCall.confirmation.appBlueprint !== undefined,
+	);
+	const blueprint = item?.toolCall.confirmation.appBlueprint;
+	if (!item || !blueprint) return;
+	await thread.confirmAction(item.toolCall.confirmation.requestId, {
+		kind: 'appBlueprint',
+		approved: false,
+		blueprint,
+		revise: {
+			feedback: `Show the "${label}" part (plan id \`${planId}\`) in high fidelity: add a \`detail\` to that component with the HTML and CSS it will have in the finished app, filled with believable sample data. Keep the rest of the plan as it is.`,
+			planIds: [planId],
+		},
+	});
+}
 watch(
 	[requestedAppId, () => preview.tabsLoaded.value],
 	([appId, tabsLoaded]) => {
@@ -1018,6 +1036,7 @@ function handleNewThreadClick() {
 								:name="preview.pendingAppPlan.value.name"
 								:plan="preview.pendingAppPlan.value.plan"
 								:theme="preview.pendingAppPlan.value.theme"
+								@detail="detailPlanPart"
 							/>
 							<template v-else>
 								<InstanceAiWorkflowPreview

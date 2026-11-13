@@ -145,6 +145,20 @@ The `plan` is the wireframe of the app. Keep it short and concrete:
 
 Use the same resource names in the plan and in `bindings`.
 
+### Detailed parts
+
+Leave `detail` out by default. Add it only when the user asks to see a part in
+detail, for example with "Detail this part" in the wireframe:
+
+- `detail.html` is the markup of that one part as it will look in the finished
+  app: the real layout, labels and states, filled with believable sample data
+  that matches the plan (names, numbers, dates). Do not use real data.
+- `detail.css` styles it. n8n scopes it to the part, so use plain class
+  selectors. Match the theme of the blueprint.
+- Plain HTML and CSS only: no scripts, event handlers, external images or
+  fonts. Inline SVG is fine for icons and small charts. Keep it short.
+- Change only the asked part, and keep its `id`, `data` and `action`.
+
 ## Build an app from its plan
 
 When the approved blueprint has a `plan`, n8n already saved its wireframe as
@@ -169,7 +183,9 @@ watches the preview, so the first commit must come fast:
    styles: background, colors and type of the theme, page grid. Keep
    `data-plan-id="shell"` on that element. Leave every `wf-block` as it is.
    The blocks keep their wireframe look until you replace them.
-2. **Each component, in `buildOrder`.** Replace exactly one `wf-block` element
+2. **Each component, in `buildOrder`.** If the component has a `detail`, the
+   user approved that design: build the real component to look like it, with
+   real data instead of the sample data. Replace exactly one `wf-block` element
    with the real component, usually its own file under `src/components/`. Put
    `data-plan-id="<id>"` on the root element of the real component, and do not
    give it the `wf-block` class. If the component needs a data table, workflow
