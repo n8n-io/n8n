@@ -1,0 +1,239 @@
+import { ALWAYS_SENSITIVE_HEADERS } from '@n8n/utils/redaction/sensitive-headers';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
+import { isRecord } from '@n8n/utils/is-record';
+import type { ICredentialsHelper } from 'n8n-workflow';
+
+import type { OutboundRequest } from './tool-simulation.contracts';
+
+const PLACEHOLDER = '[REDACTED]';
+// Shorter values would match ordinary text; erring long only blurs the simulated reply.
+const MIN_SECRET_LENGTH = 4;
+// A value under a name that does not look secret is still a secret in generic credentials
+// (`httpHeaderAuth.value`, `httpQueryAuth.value`). Those are collected from this length on.
+const MIN_UNNAMED_SECRET_LENGTH = 8;
+// Path segments of a credential URL this long are tokens, not route words.
+const MIN_URL_TOKEN_LENGTH = 16;
+// Credential fields that name the service rather than unlock it. The simulator needs them to
+// recognise the request, so they stay. Everything else in a credential counts as secret.
+const NON_SECRET_CREDENTIAL_KEYS: ReadonlySet<string> = new Set([
+	'name',
+	'authentication',
+	'sendin',
+	'granttype',
+	'tokentype',
+	'token_type',
+	'scope',
+	'version',
+	'apiversion',
+]);
+// Where generic header and query auth keep the secret, whatever it looks like.
+const GENERIC_AUTH_SECRET_KEYS: ReadonlySet<string> = new Set(['value']);
+const NON_SECRET_CREDENTIAL_KEY_PATTERN =
+	/(url|uri|host|hostname|domain|subdomain|server|endpoint|region|environment|alloweddomains|allowedhttprequestdomains)$/i;
+const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
+
+/**
+ * Keeps real credentials out of requests sent to a simulation backend. It records the values
+ * that tools decrypt, except the service address and settings, and removes them wherever a node
+ * put them (headers, URL path, query, body). Nodes that apply generic auth themselves put the
+ * secret under a header or query name that need not look secret, so names are not trusted.
+ */
+export class OutboundRedactor {
+	private readonly secrets = new Set<string>();
+
+	/** Wraps a credentials helper so every decrypted secret is recorded. */
+	wrap(helper: ICredentialsHelper): ICredentialsHelper {
+		return new Proxy(helper, {
+			get: (target, property, receiver) => {
+				const value: unknown = Reflect.get(target, property, receiver);
+				if (property !== 'getDecrypted' || typeof value !== 'function') {
+					return typeof value === 'function' ? value.bind(target) : value;
+				}
+				return async (...args: unknown[]) => {
+					const decrypted: unknown = await Reflect.apply(value, target, args);
+					this.collect(decrypted);
+					return decrypted;
+				};
+			},
+		});
+	}
+
+	redact(request: OutboundRequest): OutboundRequest {
+		const headers: Record<string, string> = {};
+		for (const [name, value] of Object.entries(request.headers ?? {})) {
+			if (SENSITIVE_HEADERS.has(name.toLowerCase()) || isSensitiveKey(name)) continue;
+			headers[name] = this.scrub(value);
+		}
+		return {
+			...request,
+			url: this.redactUrl(request.url),
+			headers,
+			...(request.body === undefined ? {} : { body: this.redactValue(request.body) }),
+		};
+	}
+
+	/** `known` marks values that are secret whatever their key: generic auth values and JSON. */
+	private collect(value: unknown, key?: string, known = false): void {
+		if (typeof value === 'string') {
+			this.collectString(value, key, known);
+			return;
+		}
+		// A numeric secret (a PIN in custom auth JSON) goes out as its string form.
+		if (typeof value === 'number' || typeof value === 'bigint') {
+			if (
+				known ||
+				(key !== undefined && (isSensitiveKey(key) || GENERIC_AUTH_SECRET_KEYS.has(key)))
+			) {
+				const text = String(value);
+				if (text.length >= MIN_SECRET_LENGTH) this.secrets.add(text);
+			}
+			return;
+		}
+		if (Array.isArray(value)) {
+			for (const item of value) this.collect(item, key, known);
+		} else if (isRecord(value)) {
+			for (const [childKey, child] of Object.entries(value)) this.collect(child, childKey, known);
+		}
+	}
+
+	private collectString(value: string, key: string | undefined, known: boolean): void {
+		const secret =
+			known || (key !== undefined && (isSensitiveKey(key) || GENERIC_AUTH_SECRET_KEYS.has(key)));
+		if (secret) {
+			if (value.length >= MIN_SECRET_LENGTH) this.secrets.add(value);
+			return;
+		}
+		if (key && isNonSecretCredentialKey(key)) {
+			this.collectUrlSecrets(value);
+			return;
+		}
+		// `httpCustomAuth.json` holds the headers and query values as a JSON string: all secret.
+		const parsed = parseJsonObject(value);
+		if (parsed !== undefined) {
+			this.collect(parsed, undefined, true);
+			return;
+		}
+		if (value.length >= MIN_UNNAMED_SECRET_LENGTH && !/\s/.test(value)) this.secrets.add(value);
+	}
+
+	private redactUrl(url: string): string {
+		let parsed: URL;
+		try {
+			parsed = new URL(url);
+		} catch {
+			return this.scrub(url);
+		}
+		parsed.username = '';
+		parsed.password = '';
+		for (const name of [...parsed.searchParams.keys()]) {
+			if (isSensitiveKey(name)) parsed.searchParams.set(name, PLACEHOLDER);
+		}
+		return this.scrub(parsed.toString());
+	}
+
+	/**
+	 * A service address stays, but a URL can carry its credential: a webhook URL's path
+	 * (`/services/T/B/<token>`) or a query value. Long path segments and query values count.
+	 */
+	private collectUrlSecrets(value: string): void {
+		let parsed: URL;
+		try {
+			parsed = new URL(value);
+		} catch {
+			return;
+		}
+		for (const segment of parsed.pathname.split('/')) {
+			if (segment.length >= MIN_URL_TOKEN_LENGTH) this.secrets.add(safeDecode(segment));
+		}
+		for (const queryValue of parsed.searchParams.values()) {
+			if (queryValue.length >= MIN_SECRET_LENGTH) this.secrets.add(queryValue);
+		}
+		if (parsed.password.length >= MIN_SECRET_LENGTH) {
+			this.secrets.add(safeDecode(parsed.password));
+		}
+	}
+
+	private redactValue(value: unknown, key?: string): unknown {
+		if (key && isSensitiveKey(key)) return PLACEHOLDER;
+		if (typeof value === 'string') return this.scrub(value);
+		// A numeric secret (a PIN) sent as a JSON number.
+		if (
+			(typeof value === 'number' || typeof value === 'bigint') &&
+			this.secrets.has(String(value))
+		) {
+			return PLACEHOLDER;
+		}
+		if (Array.isArray(value)) return value.map((item) => this.redactValue(item));
+		// Uploads and streams are not JSON: walking them would turn bytes into numbered keys.
+		if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
+			return `[binary body, ${value.byteLength} bytes]`;
+		}
+		if (value instanceof URLSearchParams) return this.scrub(value.toString());
+		// Multipart fields tell the simulator what the request does; files are only described.
+		if (value instanceof FormData) {
+			const fields: Record<string, unknown> = {};
+			for (const [name, entry] of value.entries()) {
+				fields[name] =
+					typeof entry === 'string'
+						? this.redactValue(entry, name)
+						: `[file ${entry.name}, ${entry.size} bytes]`;
+			}
+			return fields;
+		}
+		if (isRecord(value) && !isPlainObject(value)) {
+			return `[${value.constructor?.name ?? 'non-JSON'} body]`;
+		}
+		if (isRecord(value)) {
+			return Object.fromEntries(
+				Object.entries(value).map(([childKey, child]) => [
+					childKey,
+					this.redactValue(child, childKey),
+				]),
+			);
+		}
+		return value;
+	}
+
+	private scrub(text: string): string {
+		let out = text;
+		for (const secret of this.secrets) {
+			// Raw, URL-encoded, form-encoded (spaces as `+`), and JSON-escaped inside a JSON string.
+			const formEncoded = new URLSearchParams({ v: secret }).toString().slice(2);
+			const jsonEscaped = JSON.stringify(secret).slice(1, -1);
+			for (const form of new Set([secret, encodeURIComponent(secret), formEncoded, jsonEscaped])) {
+				out = out.split(form).join(PLACEHOLDER);
+			}
+		}
+		return out;
+	}
+}
+
+function isNonSecretCredentialKey(key: string): boolean {
+	return (
+		NON_SECRET_CREDENTIAL_KEYS.has(key.toLowerCase()) || NON_SECRET_CREDENTIAL_KEY_PATTERN.test(key)
+	);
+}
+
+function parseJsonObject(text: string): unknown {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		return typeof parsed === 'object' && parsed !== null ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function isPlainObject(value: object): boolean {
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+function safeDecode(text: string): string {
+	try {
+		return decodeURIComponent(text);
+	} catch {
+		return text;
+	}
+}

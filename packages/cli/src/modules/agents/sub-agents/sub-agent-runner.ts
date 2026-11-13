@@ -354,6 +354,11 @@ export class SubAgentRunner {
 		let activeRun: ActiveRun | undefined;
 
 		try {
+			// The child runs under the parent's test run, so its execution is a test run too.
+			// Inside the try, so a failed write still finalizes the admitted execution.
+			if (context.instrumentation?.simulatedRun) {
+				await this.executionRepository.update({ id: executionId }, { simulated: true });
+			}
 			context.abortSignal?.throwIfAborted();
 			if (operation.type !== 'run') await context.beforeResume?.();
 			const reconstructed = await reconstructionService.reconstructFromResolvedSource({

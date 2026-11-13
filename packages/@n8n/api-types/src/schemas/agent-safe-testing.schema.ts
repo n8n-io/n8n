@@ -1,0 +1,78 @@
+import { z } from 'zod';
+
+/** PostHog flag: agent draft runs are test runs that send nothing to real services. */
+export const AGENT_SAFE_TESTING_FLAG = '140_agent_safe_testing';
+
+/**
+ * How a preview chat runs, chosen when it starts. `test` sends every tool call to a
+ * simulation; `live` runs the draft against real services, as before safe testing.
+ * Live is the default until the panel can show test runs.
+ */
+export const agentChatModeSchema = z.enum(['test', 'live']);
+export type AgentChatMode = z.infer<typeof agentChatModeSchema>;
+
+/** How one tool call ran in a test run. */
+export const toolCallRouteSchema = z.enum([
+	// A read sent to the real service, on purpose.
+	'real_read',
+	// Answered by the simulation from seeded or earlier state.
+	'simulated',
+	// Answered with a reply that an LLM invented.
+	'simulated_made_up',
+	// Not run. Nothing was sent.
+	'blocked',
+]);
+export type ToolCallRoute = z.infer<typeof toolCallRouteSchema>;
+
+/** Why a tool call took its route. */
+export const toolCallReasonSchema = z.enum([
+	'served_from_world',
+	'invented_by_llm',
+	'real_read_allowed',
+	// A simulator gap (for example a 501), not an agent failure.
+	'unsupported_by_simulator',
+	// The simulator is down, timed out or failed.
+	'simulator_unavailable',
+	// No simulator can serve this kind of tool.
+	'not_simulatable',
+	// A rule blocked the call.
+	'blocked_by_policy',
+]);
+export type ToolCallReason = z.infer<typeof toolCallReasonSchema>;
+
+/** The reasons that fit each route, so a payload cannot claim a blocked call was served. */
+const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
+	real_read: ['real_read_allowed'],
+	simulated: ['served_from_world'],
+	simulated_made_up: ['invented_by_llm'],
+	blocked: [
+		'unsupported_by_simulator',
+		'simulator_unavailable',
+		'not_simulatable',
+		'blocked_by_policy',
+	],
+};
+
+export const toolCallSimulationSchema = z
+	.object({
+		route: toolCallRouteSchema,
+		reason: toolCallReasonSchema,
+		/** Short detail that is safe to show to the user. */
+		detail: z.string().optional(),
+	})
+	.refine(({ route, reason }) => REASONS_BY_ROUTE[route].includes(reason), {
+		message: 'The reason does not fit the route',
+		path: ['reason'],
+	});
+export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
+
+export const toolTestKindSchema = z.enum([
+	'node',
+	'workflow',
+	'custom',
+	'mcp',
+	'integration',
+	'web_search',
+	'other',
+]);
+export type ToolTestKind = z.infer<typeof toolTestKindSchema>;

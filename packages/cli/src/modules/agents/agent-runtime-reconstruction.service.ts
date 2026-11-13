@@ -829,6 +829,9 @@ export class AgentRuntimeReconstructionService {
 			webSearchFetch,
 			previewChat,
 		});
+		if (instrumentation?.toolCallInterceptor) {
+			reconstructed.toolCallInterceptor(instrumentation.toolCallInterceptor);
+		}
 		return { agent: reconstructed, resolvedTools, mcpServerAttributions };
 	}
 

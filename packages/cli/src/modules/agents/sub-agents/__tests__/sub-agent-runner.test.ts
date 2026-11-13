@@ -222,6 +222,49 @@ describe('SubAgentRunner', () => {
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
 	});
 
+	it.each([true, false])(
+		'marks the child execution simulated only under a test run (test run: %s)',
+		async (simulatedRun) => {
+			await runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'test',
+				...(simulatedRun ? { instrumentation: { simulatedRun: true } } : {}),
+			});
+
+			if (simulatedRun) {
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: 'agent-execution-1' },
+					{ simulated: true },
+				);
+			} else {
+				expect(executionRepository.update).not.toHaveBeenCalledWith(expect.anything(), {
+					simulated: true,
+				});
+			}
+		},
+	);
+
+	it('finalizes the child execution when marking it simulated fails', async () => {
+		executionRepository.update.mockRejectedValueOnce(new Error('db down'));
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'test',
+				instrumentation: { simulatedRun: true },
+			}),
+		).rejects.toThrow('db down');
+
+		expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+			'agent-execution-1',
+			expect.anything(),
+		);
+	});
+
 	it('sends the knowledge use of the child run when it ends', async () => {
 		await runner.run(spawnRequest, {
 			parentAgentId,

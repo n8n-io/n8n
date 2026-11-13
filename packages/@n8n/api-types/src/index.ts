@@ -1090,3 +1090,19 @@ export {
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,
 } from './schemas/execution-limit-settings.schema';
+
+export {
+	AGENT_SAFE_TESTING_FLAG,
+	toolCallRouteSchema,
+	toolCallReasonSchema,
+	toolCallSimulationSchema,
+	agentChatModeSchema,
+	type AgentChatMode,
+	toolTestKindSchema,
+} from './schemas/agent-safe-testing.schema';
+export type {
+	ToolCallRoute,
+	ToolCallReason,
+	ToolCallSimulation,
+	ToolTestKind,
+} from './schemas/agent-safe-testing.schema';

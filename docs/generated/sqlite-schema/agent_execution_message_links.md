@@ -74,6 +74,7 @@ erDiagram
   varchar_255_ model
   varchar_36_ parentExecutionId FK
   INTEGER promptTokens
+  boolean simulated
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status

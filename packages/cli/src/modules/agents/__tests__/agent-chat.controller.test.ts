@@ -51,6 +51,7 @@ import {
 	startServer,
 	waitForClose,
 } from '@test/file-stream-server';
+import type { SimulationSessionService } from '../simulation/simulation-session.service';
 
 // Draft runs check `agent:read`; these tests run as a user who holds it.
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -91,6 +92,7 @@ function makeController() {
 		agentValidationService,
 		agentExecutionOrchestratorService,
 		mock<N8NCheckpointStorage>(),
+		mock<SimulationSessionService>(),
 	);
 
 	const messageQueue = mock<AgentMessageQueueService>();
@@ -1229,6 +1231,31 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		);
 		expect(events()).toContainEqual({ type: 'error', message: 'database unavailable' });
 		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledWith(['att-1']);
+	});
+
+	it.each([
+		{ mode: 'test' as const, expected: { mode: 'test' } },
+		{ mode: undefined, expected: {} },
+	])('queues the chat mode with a preview message (mode: $mode)', async ({ mode, expected }) => {
+		const { controller, messageQueue } = makeController();
+		const { res } = makeCleanupSseResponse();
+		void controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{
+				message: 'hi',
+				sessionId: 'thread-1',
+				newSession: true,
+				...(mode ? { mode } : {}),
+			} as never,
+		);
+		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+
+		const payload = messageQueue.enqueue.mock.calls[0][0].payload;
+		expect(payload).toMatchObject({ kind: 'preview', ...expected });
+		if (!mode) expect(payload).not.toHaveProperty('mode');
+		res.emit('close');
 	});
 
 	it('keeps accepted input and attachments when the waiting browser disconnects', async () => {
