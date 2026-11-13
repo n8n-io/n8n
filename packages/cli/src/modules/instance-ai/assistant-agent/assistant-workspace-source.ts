@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import type { InstanceAiContext, SandboxConfig } from '@n8n/instance-ai';
 import type { Workspace } from '@n8n/agents';
 import { ErrorReporter } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import type {
 	SystemAgentWorkspaceDestroyScope,
@@ -40,10 +41,10 @@ export class AssistantSandboxWorkspaceSource
 	private readonly sandboxService: InstanceAiSandboxService;
 
 	/**
-	 * Threads with a turn on this main. The sandbox cache keeps their entries
-	 * while the turn runs. The remote sandbox does not depend on it.
+	 * Run ID of each thread with a turn on this main. The sandbox cache keeps their
+	 * entries while the turn runs. The remote sandbox does not depend on it.
 	 */
-	private readonly activeThreads = new Set<string>();
+	private readonly activeTurns = new Map<string, string>();
 
 	constructor(
 		logger: Logger,
@@ -58,7 +59,7 @@ export class AssistantSandboxWorkspaceSource
 			logger: logger.scoped('instance-ai'),
 			errorReporter,
 			runState: {
-				getActiveRunId: (threadId) => (this.activeThreads.has(threadId) ? threadId : undefined),
+				getActiveRunId: (threadId) => this.activeTurns.get(threadId),
 				hasSuspendedRun: () => false,
 			},
 			backgroundTasks: { getRunningTasks: () => [] },
@@ -77,12 +78,12 @@ export class AssistantSandboxWorkspaceSource
 		if (!this.settingsService.getSandboxStatus().workflowBuilderAvailable) return undefined;
 		const config = await this.sandboxService.resolveSandboxConfig(user);
 		if (!config.enabled) return undefined;
-		this.activeThreads.add(threadId);
+		this.activeTurns.set(threadId, randomUUID());
 		return { config, threadId, user };
 	}
 
 	async release({ threadId }: SystemAgentWorkspaceScope): Promise<void> {
-		this.activeThreads.delete(threadId);
+		this.activeTurns.delete(threadId);
 	}
 
 	async destroy({ threadId, userId }: SystemAgentWorkspaceDestroyScope): Promise<void> {

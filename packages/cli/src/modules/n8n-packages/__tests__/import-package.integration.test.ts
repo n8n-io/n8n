@@ -1135,7 +1135,7 @@ describe('Package import rejection cases', () => {
 });
 
 describe('Package import event emission', () => {
-	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
+	it("emits workflow-created per workflow with the request's public API client, plus one n8n-package-imported on success", async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -1143,6 +1143,7 @@ describe('Package import event emission', () => {
 		try {
 			await importPackage({
 				user: owner,
+				publicApi: 'editor_ui',
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-event-1', name: 'Event One' }),
 					serializedWorkflow({ id: 'wf-event-2', name: 'Event Two' }),
@@ -1152,10 +1153,10 @@ describe('Package import event emission', () => {
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
 			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
-			expect(createdEvents).toHaveLength(2);
-			expect(
-				createdEvents.every(([, payload]) => (payload as { source: string }).source === 'import'),
-			).toBe(true);
+			expect(createdEvents.map(([, payload]) => payload)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(importedEvents).toHaveLength(1);
 
 			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];

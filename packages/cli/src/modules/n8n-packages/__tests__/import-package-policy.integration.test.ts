@@ -263,6 +263,7 @@ describe('contentImport on a direct package import', () => {
 describe('contentImport on a git pull', () => {
 	/** Mirrors what a promotions Apply runs: the package is source of truth. */
 	const pullPolicy: Omit<ImportRequest, 'user'> = {
+		publicApi: false,
 		projectConflictPolicy: 'overwrite',
 		conflictPolicy: 'new-version',
 		idPolicy: 'source',

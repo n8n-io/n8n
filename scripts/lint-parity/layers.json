@@ -17,6 +17,7 @@
 		"packages/@n8n/telemetry",
 		"packages/@n8n/tournament",
 		"packages/@n8n/utils",
+		"packages/@n8n/workflow-engine-check",
 		"packages/workflow"
 	],
 	"backend": [
@@ -32,6 +33,7 @@
 		"packages/@n8n/blob-storage",
 		"packages/@n8n/cli",
 		"packages/@n8n/client-oauth2",
+		"packages/@n8n/code-runtime-js",
 		"packages/@n8n/config",
 		"packages/@n8n/db",
 		"packages/@n8n/decorators",
