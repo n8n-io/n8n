@@ -12,8 +12,9 @@ durable event (at least `started` and `finished` per workflow) costs:
 - one `pread` to read it back for the event stream, a JSON line on a socket, and per-event handling in n8n's main
   process with one database round trip (TypeORM).
 
-The system calls alone cost about 3-5 µs per workflow. n8n's per-event handling caps at about 1,000-5,000
-executions per second. Neither fits.
+Measured on one pinned VM core (W3, 30,000 in flight, 2026-11-13): 112,764 wf/s at 8.87 µs per workflow without
+the on-disk outbox, and 86,312-88,829 wf/s at 10.7-11.0 µs with it. The outbox costs about 2 µs per workflow. n8n's
+per-event handling caps at about 1,000-5,000 executions per second. Neither fits.
 
 ## Design
 
