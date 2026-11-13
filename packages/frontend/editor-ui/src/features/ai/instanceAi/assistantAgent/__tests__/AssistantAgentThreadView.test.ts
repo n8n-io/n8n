@@ -997,7 +997,7 @@ describe('AssistantAgentThreadView', () => {
 			expect(queryByTestId('assistant-agent-artifacts-panel-toggle')).not.toBeInTheDocument();
 		});
 
-		it('keeps the panel while a new thread sends its first message', async () => {
+		function renderNewThread() {
 			if (threadArea.width) threadArea.width.value = 1200;
 			stashPendingAssistantAgentMessage({
 				threadId: 'thread-new',
@@ -1007,9 +1007,13 @@ describe('AssistantAgentThreadView', () => {
 				authorship: USER_TYPED_MESSAGE,
 				mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 			});
-			const { getByTestId } = renderView({
-				props: { threadId: 'thread-new', projectId: 'project-1' },
-			});
+			// The chat is busy while it loads history and sends the first message.
+			isBusy.value = true;
+			return renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+		}
+
+		it('keeps the panel while a new thread sends its first message', async () => {
+			const { getByTestId } = renderNewThread();
 			await flushPromises();
 			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
 
@@ -1021,6 +1025,18 @@ describe('AssistantAgentThreadView', () => {
 			chatMessages.value = [userMessage];
 			await flushPromises();
 			expect(getByTestId('assistant-agent-artifacts-panel')).toBeInTheDocument();
+		});
+
+		it('hides the panel when the server refuses the first message', async () => {
+			const { queryByTestId } = renderNewThread();
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			isBusy.value = false;
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-artifacts-panel')).not.toBeInTheDocument();
 		});
 
 		it('shows the panel over a narrow chat only when asked for', async () => {
