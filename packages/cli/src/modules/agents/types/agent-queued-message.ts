@@ -93,6 +93,8 @@ export type AgentQueueDispatch =
 			kind: QueuedUserChatMessage['kind'];
 			options?: Record<string, unknown>;
 			stopReportId?: string;
+			/** Kept with the dispatch: losing it would run a requested test run live. */
+			mode?: QueuedUserChatMessage['mode'];
 	  }
 	| (Omit<
 			QueuedIntegrationMessage,
