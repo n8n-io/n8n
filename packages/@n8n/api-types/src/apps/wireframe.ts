@@ -491,8 +491,8 @@ export function planOverlayMain(
 		// The app may render after this script runs, so recount when the DOM changes.
 		let pending = 0;
 		new MutationObserver(() => {
-			window.cancelAnimationFrame(pending);
-			pending = window.requestAnimationFrame(renderProgress);
+			window.clearTimeout(pending);
+			pending = window.setTimeout(renderProgress, 30);
 		}).observe(doc.body, {
 			childList: true,
 			subtree: true,
