@@ -9,6 +9,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	assertValidStalenessThresholds,
 	CancelExecutionService,
 	ExecutionQueryService,
 	ExecutionStartHandler,
@@ -20,6 +21,7 @@ import {
 	StepWorker,
 	WaitSweeper,
 } from '../execution';
+import type { StalenessThresholds } from '../execution';
 import {
 	BatchingLifecycleEventPublisher,
 	LifecycleEventPublisherFactory,
@@ -64,6 +66,11 @@ export interface EngineRuntimeOptions {
 	waitSweepIntervalMs?: number;
 	/** How many handlers each queue runs at once. Defaults to 1 each. */
 	concurrency?: { step?: number; orchestration?: number };
+	/**
+	 * How long a row can stay `queued` or `running` before the engine treats it
+	 * as stuck. Defaults to `DEFAULT_STALENESS_THRESHOLDS`.
+	 */
+	staleness?: StalenessThresholds;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -94,6 +101,7 @@ export function createEngineRuntime({
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
 	concurrency = {},
+	staleness,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -105,11 +113,15 @@ export function createEngineRuntime({
 		);
 	}
 
+	// Refused here and not at the first write: an invalid threshold would
+	// otherwise fail every write of a row that becomes `queued` or `running`.
+	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
+
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
 		concurrency: concurrency.orchestration,
 	});
 	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
 		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
