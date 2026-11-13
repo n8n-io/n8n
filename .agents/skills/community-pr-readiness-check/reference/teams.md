@@ -38,28 +38,16 @@ Use the canonical owners script at `.github/scripts/owners/owners.mjs`. It parse
    ```
    Allocations are already sorted by `fileCount` descending — take the first entry as the winning team.
 4. Clean up: `rm /tmp/pr-<number>-files.txt`.
-5. Strip the `@n8n-io/` prefix from `allocations[0].team` — the GitHub team slug is `nodes`, `iam`, `ai`, etc. If `allocations` is empty (no file matched any rule, which is possible only if `OWNERS` lost its catch-all), fall back to `catalysts`.
-6. Map the GitHub team slug to its Linear team name and PR label using the table below. The `team` field in the JSON output is the **Linear team name**. If the resolved GitHub team slug has no entry in the table, fall back to `Engineering`.
+5. Strip the `@n8n-io/` prefix from `allocations[0].team` — the GitHub team slug is `nodes`, `iam`, `ai`, etc. If `allocations` is empty (no file matched any rule, which is possible only if `OWNERS` lost its catch-all), fall back to `qa-dx`.
+6. Map the GitHub team slug to its Linear team name and PR label using `.github/scripts/owners/teams.json` (see below). The `team` field in the JSON output is the **Linear team name**. If the resolved GitHub team slug has no entry in the file, fall back to `Engineering`.
 
 **Sub-agent fallback**: if `node` execution is denied by the sandbox, read `OWNERS` directly and apply last-match-wins by hand. All the active rules fit on one screen.
 
 ## GitHub team → Linear team → GitHub label
 
-| GitHub team (`@n8n-io/…`) | Linear team             | GitHub team label  |
-|---------------------------|-------------------------|--------------------|
-| `catalysts`               | Catalysts               | `team:cats`        |
-| `adore`                   | Adore                   | `team:adore`       |
-| `ai`                      | AI                      | `team:ai`          |
-| `nodes`                   | NODES                   | `team:nodes`       |
-| `design`                  | Design                  | `team:design`      |
-| `iam`                     | Identity & Access       | `team:identity`    |
-| `ligo`                    | Lifecycle & Governance  | `team:lifecycle`   |
-| `ai-assistant`            | AI Assistant            | `team:instance-ai` |
-| `frontend`                | Adore                   | `team:adore`       |
-| `qa-dx`                   | Developer Platform      | `team:qa-dx`       |
-| `migrations-review`       | Catalysts               | `team:cats`        |
+The mapping lives in `.github/scripts/owners/teams.json`, keyed by GitHub team slug. Each entry has `linearTeam` (the Linear team name) and, for some teams, `githubLabel`. Read that file instead of keeping a copy here.
 
-The **GitHub team label** column is what gets applied to the PR after a successful Linear assignment (see `reference/label-flow.md`).
+The `githubLabel` value is what gets applied to the PR after a successful Linear assignment (see `reference/label-flow.md`). If the slug has no `githubLabel`, apply no team label.
 
 ## Linear ticket label rules
 

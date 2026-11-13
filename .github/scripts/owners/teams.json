@@ -1,0 +1,37 @@
+{
+	"ai": { "linearTeam": "AI", "linearKey": "AI", "githubLabel": "team:ai" },
+	"ai-agents": { "linearTeam": "Agent", "linearKey": "AGENT" },
+	"ai-assistant": {
+		"linearTeam": "Assistant",
+		"linearKey": "AST",
+		"githubLabel": "team:instance-ai"
+	},
+	"ai-trust": { "linearTeam": "AI Trust", "linearKey": "TRUST" },
+	"community-engineering": { "linearTeam": "Community Engineering", "linearKey": "CE" },
+	"context": { "linearTeam": "Context", "linearKey": "CONTEXT" },
+	"core-application": { "linearTeam": "Core Application", "linearKey": "CAP" },
+	"core-execution": { "linearTeam": "Core Execution", "linearKey": "CET" },
+	"design-engineering": { "linearTeam": "Design", "githubLabel": "team:design" },
+	"enterprise-nodes": { "linearTeam": "Enterprise Nodes & Partnerships", "linearKey": "ENT" },
+	"frontend": { "linearTeam": "Adore", "linearKey": "ADO", "githubLabel": "team:adore" },
+	"governance-and-observability": {
+		"linearTeam": "Governance & Observability",
+		"linearKey": "GOV"
+	},
+	"growth": { "linearTeam": "Growth", "linearKey": "GRO" },
+	"iam": { "linearTeam": "Identity & Access", "linearKey": "IAM", "githubLabel": "team:identity" },
+	"knowledge": { "linearTeam": "Knowledge", "linearKey": "KNO" },
+	"ligo": {
+		"linearTeam": "Lifecycle & Governance",
+		"linearKey": "LIGO",
+		"githubLabel": "team:lifecycle"
+	},
+	"migrations-review": {
+		"linearTeam": "Catalysts",
+		"linearKey": "CAT",
+		"githubLabel": "team:cats"
+	},
+	"nodes": { "linearTeam": "NODES", "linearKey": "NODE", "githubLabel": "team:nodes" },
+	"qa-dx": { "linearTeam": "Developer Platform", "linearKey": "DEVP", "githubLabel": "team:qa-dx" },
+	"relay": { "linearTeam": "Relay", "linearKey": "RLY" }
+}
