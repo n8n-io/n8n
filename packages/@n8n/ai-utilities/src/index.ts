@@ -61,6 +61,7 @@ export {
 	type EgressFilter,
 	type ProxyFetchOptions,
 } from './utils/http-proxy-agent';
+export { createAiClientFetch, withTraceHeaders } from './utils/trace-headers-fetch';
 export { braveSearch, searxngSearch, type BraveSearchOptions } from './web-search';
 export type { WebSearchOptions, WebSearchResponse, WebSearchResult } from './web-search';
 export {

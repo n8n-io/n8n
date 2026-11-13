@@ -1198,7 +1198,7 @@ describe('utils', () => {
 					expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
 					expect(sentHeaders(0).get('traceparent')).toBeNull();
 					expect(logger.warn).toHaveBeenCalledWith(
-						'Failed to add the trace context to an MCP request',
+						'Failed to add the trace context to an outbound request',
 						{ error: 'tracer failed' },
 					);
 				});
