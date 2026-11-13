@@ -1,6 +1,5 @@
 import type { PushMessage } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { Publisher } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { EventEmitter } from 'events';
 import type { InstanceSettings } from 'n8n-core';
@@ -11,6 +10,7 @@ import type WebSocket from 'ws';
 import { Push } from '@/push';
 import type { PushConfig } from '@/push/push.config';
 import { WebSocketPush } from '@/push/websocket.push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 vi.unmock('@/push');
 vi.useFakeTimers();

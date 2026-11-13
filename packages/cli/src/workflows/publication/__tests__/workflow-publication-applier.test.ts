@@ -160,7 +160,7 @@ describe('WorkflowPublicationApplier', () => {
 		// `clearAllMocks` keeps implementations, so restore the clearing default.
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		policyEnforcementService.enforceWorkflowPublish.mockResolvedValue(mock());
-		credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
+		credentialsPermissionChecker.check.mockResolvedValue();
 		workflowPublisherService.findPublisherUserIdForAccessCheck.mockResolvedValue('publisher-1');
 	});
 
@@ -304,7 +304,11 @@ describe('WorkflowPublicationApplier', () => {
 				credentials: { httpBearerAuth: { id: 'cred-1', name: 'Owner token' } },
 			});
 			const nodes = [trigger, subNode];
-			workflowHistoryRepository.findOneBy.mockResolvedValue({ ...newVersion, nodes });
+			workflowHistoryRepository.findOneBy.mockResolvedValue({
+				...newVersion,
+				nodes,
+				setUpdateDate: () => {},
+			});
 			setTriggerSets([], [trigger]);
 
 			await applier.apply(makeRecord(), abort);
