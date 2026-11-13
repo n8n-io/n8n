@@ -6,7 +6,7 @@ user-invocable: false
 
 # Review contract
 
-**Getting the input.** The orchestrator says whether you review a plan or a diff. If it gave no diff, use `git diff $(git merge-base HEAD origin/HEAD)...HEAD`. If you cannot tell plan from diff, say so in one line and review what you have.
+**Getting the input.** The orchestrator says whether you review a plan or a diff. If it gave no diff, use `git diff "$(git merge-base HEAD "$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)")"...HEAD`. If you cannot tell plan from diff, say so in one line and review what you have.
 
 **Format.** Findings only, highest severity first, at most ~10, merged where they share a cause. No preamble, no recap.
 - Tag each `[BLOCKER]` (breaks something or misses the requirement), `[MAJOR]` (real gap or risk), `[MINOR]` (polish).

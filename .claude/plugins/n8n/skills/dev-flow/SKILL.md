@@ -105,7 +105,7 @@ review** (not a draft) so all CI jobs run, then go straight to watching it (Phas
 Every loop in this skill is **bounded** to avoid spinning forever:
 - Cap each convergence loop at **3 rounds** by default. The cap is per convergence attempt: a
   genuinely new finding (a fresh CI failure or a new review/bot comment in Phase 7) resets the
-  counter, so a healthy PR that legitimately takes several rounds isn't escalated prematurely.
+  counter, so a healthy PR that legitimately takes several rounds isn't escalated prematurely. An absolute ceiling of **8 rounds in total** applies across resets: at the ceiling, stop and escalate.
 - If a loop hasn't converged after its cap — plan or implementation reviews keep finding
   `[BLOCKER]`/`[MAJOR]` issues, or CI won't go green — **stop and escalate to the user** with a
   crisp summary of what's unresolved and why. Don't loop silently or lower the bar to "pass".
@@ -184,7 +184,8 @@ field fetched in Phase 1, and using it lets Linear auto-link the PR.
 Check the current branch first; only create one if needed, off the up-to-date default branch:
 
 ```bash
-default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@' || echo main)
+default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+default=${default:-main}
 current=$(git branch --show-current)
 if [ -z "$current" ] || [ "$current" = "$default" ]; then
   git fetch origin
