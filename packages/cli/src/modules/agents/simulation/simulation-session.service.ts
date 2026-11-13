@@ -2,11 +2,12 @@ import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
 import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
+import { In } from '@n8n/typeorm';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { TtlMap } from '@/utils/ttl-map';
@@ -52,6 +53,7 @@ export class SimulationSessionService {
 		private readonly skillRefs: AgentSkillRefsService,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -165,6 +167,9 @@ export class SimulationSessionService {
 			const gap = nodeSimulationGap(ref.node.nodeType, ref.node.nodeParameters);
 			if (gap) hostGaps.set(nodeNameToToolName(ref.name), gap);
 		}
+		for (const [toolName, gap] of await this.workflowEngineGaps(config)) {
+			if (!hostGaps.has(toolName)) hostGaps.set(toolName, gap);
+		}
 		for (const integration of saved.integrations ?? []) {
 			if (!isCredentialAgentIntegration(integration)) continue;
 			tools.push({ toolName: integration.type, kind: 'integration' });
@@ -181,6 +186,33 @@ export class SimulationSessionService {
 			},
 			hostGaps,
 		};
+	}
+
+	/**
+	 * Workflow tools whose workflow runs on Engine v2. The run would go to the data plane,
+	 * where the test run's hooks do not reach; the runtime refuses it as well.
+	 */
+	private async workflowEngineGaps(config: AgentJsonConfig): Promise<Map<string, string>> {
+		const gaps = new Map<string, string>();
+		const refs = (config.tools ?? []).flatMap((ref) =>
+			ref.type === 'workflow' && ref.enabled !== false && ref.workflowId ? [ref] : [],
+		);
+		if (refs.length === 0) return gaps;
+		const workflows = await this.workflowRepository.find({
+			where: { id: In(refs.flatMap((ref) => (ref.workflowId ? [ref.workflowId] : []))) },
+			select: ['id', 'settings'],
+		});
+		const onEngineV2 = new Set(
+			workflows.filter((workflow) => workflow.settings?.engineType === 'v2').map(({ id }) => id),
+		);
+		for (const ref of refs) {
+			if (!ref.workflowId || !onEngineV2.has(ref.workflowId)) continue;
+			gaps.set(
+				sanitizeToolName(ref.name ?? ref.workflow),
+				'Workflows that run on Engine v2 cannot run in a test run yet.',
+			);
+		}
+		return gaps;
 	}
 
 	private hostGap(kind: SimulatedTool['kind']): string | undefined {

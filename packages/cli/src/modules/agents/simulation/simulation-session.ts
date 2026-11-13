@@ -18,6 +18,7 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } fr
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
+import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard';
 import { nodeSimulationGap } from './non-http-node-types';
 import { OutboundRedactor } from './outbound-redaction';
 import type {
@@ -197,6 +198,10 @@ export class SimulationSession {
 		try {
 			output = await this.activeCalls.run(active, run);
 		} catch (error) {
+			// The workflow would have left this process, or paused; it was refused or stopped.
+			if (!active.blocked && error instanceof InstrumentedRunUnsupportedError) {
+				active.blocked = blocked('not_simulatable', error.message);
+			}
 			if (active.blocked) {
 				this.decisions.set(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);

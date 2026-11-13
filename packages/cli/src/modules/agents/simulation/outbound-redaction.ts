@@ -8,11 +8,31 @@ import type { OutboundRequest } from './tool-simulation.contracts';
 const PLACEHOLDER = '[REDACTED]';
 // Shorter values would match ordinary text; erring long only blurs the simulated reply.
 const MIN_SECRET_LENGTH = 4;
+// A value under a name that does not look secret is still a secret in generic credentials
+// (`httpHeaderAuth.value`, `httpQueryAuth.value`). Those are collected from this length on.
+const MIN_UNNAMED_SECRET_LENGTH = 8;
+// Credential fields that name the service rather than unlock it. The simulator needs them to
+// recognise the request, so they stay. Everything else in a credential counts as secret.
+const NON_SECRET_CREDENTIAL_KEYS: ReadonlySet<string> = new Set([
+	'name',
+	'authentication',
+	'sendin',
+	'granttype',
+	'tokentype',
+	'token_type',
+	'scope',
+	'version',
+	'apiversion',
+]);
+const NON_SECRET_CREDENTIAL_KEY_PATTERN =
+	/(url|uri|host|hostname|domain|subdomain|server|endpoint|region|environment|alloweddomains|allowedhttprequestdomains)$/i;
 const SENSITIVE_HEADERS = new Set(ALWAYS_SENSITIVE_HEADERS);
 
 /**
- * Keeps real credentials out of requests sent to a simulation backend. It records the secret
- * values that tools decrypt, and removes them wherever a node put them (URL path, query, body).
+ * Keeps real credentials out of requests sent to a simulation backend. It records the values
+ * that tools decrypt, except the service address and settings, and removes them wherever a node
+ * put them (headers, URL path, query, body). Nodes that apply generic auth themselves put the
+ * secret under a header or query name that need not look secret, so names are not trusted.
  */
 export class OutboundRedactor {
 	private readonly secrets = new Set<string>();
@@ -50,7 +70,7 @@ export class OutboundRedactor {
 
 	private collect(value: unknown, key?: string): void {
 		if (typeof value === 'string') {
-			if (key && isSensitiveKey(key) && value.length >= MIN_SECRET_LENGTH) this.secrets.add(value);
+			this.collectString(value, key);
 			return;
 		}
 		if (Array.isArray(value)) {
@@ -58,6 +78,21 @@ export class OutboundRedactor {
 		} else if (isRecord(value)) {
 			for (const [childKey, child] of Object.entries(value)) this.collect(child, childKey);
 		}
+	}
+
+	private collectString(value: string, key: string | undefined): void {
+		if (key && isSensitiveKey(key)) {
+			if (value.length >= MIN_SECRET_LENGTH) this.secrets.add(value);
+			return;
+		}
+		if (key && isNonSecretCredentialKey(key)) return;
+		// `httpCustomAuth.json` holds the headers and query values as a JSON string.
+		const parsed = parseJsonObject(value);
+		if (parsed !== undefined) {
+			this.collect(parsed);
+			return;
+		}
+		if (value.length >= MIN_UNNAMED_SECRET_LENGTH && !/\s/.test(value)) this.secrets.add(value);
 	}
 
 	private redactUrl(url: string): string {
@@ -98,5 +133,22 @@ export class OutboundRedactor {
 			}
 		}
 		return out;
+	}
+}
+
+function isNonSecretCredentialKey(key: string): boolean {
+	return (
+		NON_SECRET_CREDENTIAL_KEYS.has(key.toLowerCase()) || NON_SECRET_CREDENTIAL_KEY_PATTERN.test(key)
+	);
+}
+
+function parseJsonObject(text: string): unknown {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		return typeof parsed === 'object' && parsed !== null ? parsed : undefined;
+	} catch {
+		return undefined;
 	}
 }
