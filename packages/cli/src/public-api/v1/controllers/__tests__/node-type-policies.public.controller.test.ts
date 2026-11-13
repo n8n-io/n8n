@@ -1,13 +1,17 @@
 import type {
+	CreatePolicyDocumentDto,
+	ReplaceAttachmentsDto,
+	UpdatePolicyDocumentDto,
 	PolicyEffectiveWriteResultPublicDto,
 	PutInstancePolicyDto,
 	PutProjectPolicyDto,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import type { AuthenticatedRequest, OperationContext, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -248,6 +252,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			'user-id',
+			req.ctx,
 		);
 		expect(result).toEqual({
 			scopeId: effectiveWrite.scopeId,
@@ -270,6 +275,7 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			'user-id',
+			req.ctx,
 		);
 		expect(result).toEqual({
 			scopeId: effectiveWrite.scopeId,
@@ -278,5 +284,113 @@ describe('NodeTypePoliciesPublicController handler bodies', () => {
 			version: effectiveWrite.version,
 			warnings: effectiveWrite.warnings,
 		});
+	});
+});
+
+describe('NodeTypePoliciesPublicController operation context on policy writes', () => {
+	const moduleRegistry = mock<ModuleRegistry>();
+	const service = mock<TypeAvailabilityPolicyService>();
+	const controller = new NodeTypePoliciesPublicController(moduleRegistry);
+	const res = mock<Response>();
+	const stop = new Error('Stopping for test');
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(true);
+		Container.set(TypeAvailabilityPolicyService, service);
+	});
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	type Route = {
+		route: string;
+		call: (req: AuthenticatedRequest) => Promise<unknown>;
+		arrange: () => void;
+		ctxPassed: () => OperationContext | undefined;
+	};
+
+	const routes: Route[] = [
+		{
+			route: 'putNodeTypeInstancePolicy',
+			call: async (req) =>
+				await controller.putNodeTypeInstancePolicy(req, res, {} as PutInstancePolicyDto),
+			arrange: () => service.setEffectivePolicy.mockRejectedValue(stop),
+			ctxPassed: () => service.setEffectivePolicy.mock.calls[0][5],
+		},
+		{
+			route: 'putNodeTypeProjectPolicy',
+			call: async (req) =>
+				await controller.putNodeTypeProjectPolicy(
+					req,
+					res,
+					'project-id',
+					{} as PutProjectPolicyDto,
+				),
+			arrange: () => service.setEffectivePolicy.mockRejectedValue(stop),
+			ctxPassed: () => service.setEffectivePolicy.mock.calls[0][5],
+		},
+		{
+			route: 'createNodeTypePolicyDocument',
+			call: async (req) =>
+				await controller.createNodeTypePolicyDocument(req, res, {} as CreatePolicyDocumentDto),
+			arrange: () => service.createPolicyDocument.mockRejectedValue(stop),
+			ctxPassed: () => service.createPolicyDocument.mock.calls[0][3],
+		},
+		{
+			route: 'updateNodeTypePolicyDocument',
+			call: async (req) =>
+				await controller.updateNodeTypePolicyDocument(
+					req,
+					res,
+					'policy-id',
+					{} as UpdatePolicyDocumentDto,
+				),
+			arrange: () => service.updatePolicyDocument.mockRejectedValue(stop),
+			ctxPassed: () => service.updatePolicyDocument.mock.calls[0][5],
+		},
+		{
+			route: 'deleteNodeTypePolicyDocument',
+			call: async (req) => await controller.deleteNodeTypePolicyDocument(req, res, 'policy-id'),
+			arrange: () => service.deletePolicyDocument.mockRejectedValue(stop),
+			ctxPassed: () => service.deletePolicyDocument.mock.calls[0][3],
+		},
+		{
+			route: 'replaceNodeTypePolicyAttachments',
+			call: async (req) =>
+				await controller.replaceNodeTypePolicyAttachments(
+					req,
+					res,
+					'scope-id',
+					{} as ReplaceAttachmentsDto,
+				),
+			arrange: () => service.replaceAttachments.mockRejectedValue(stop),
+			ctxPassed: () => service.replaceAttachments.mock.calls[0][5],
+		},
+	];
+
+	const callRoute = async ({ call }: Route, ctx?: OperationContext) => {
+		const req = mock<AuthenticatedRequest>({ user: mock<User>({ id: 'user-id' }), ctx });
+		await call(req).catch((e: unknown) => {
+			if (e !== stop) throw e;
+		});
+		return req;
+	};
+
+	it.each(routes)('$route passes the request operation context to the service', async (route) => {
+		route.arrange();
+		const req = await callRoute(route, { security: mock<SecurityContext>() });
+
+		expect(req.ctx).toBeDefined();
+		expect(route.ctxPassed()).toBe(req.ctx);
+	});
+
+	it.each(routes)('$route passes no operation context when the request has none', async (route) => {
+		route.arrange();
+
+		await callRoute(route, undefined);
+
+		expect(route.ctxPassed()).toBeUndefined();
 	});
 });

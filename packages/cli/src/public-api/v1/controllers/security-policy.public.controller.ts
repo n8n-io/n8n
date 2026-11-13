@@ -80,6 +80,7 @@ export class SecurityPolicyPublicController {
 		await this.securitySettingsService.updateSecuritySettings(
 			{ personalSpacePublishing, personalSpaceSharing, redactionEnforcement },
 			req.user,
+			req.ctx,
 		);
 		const settings = await this.securitySettingsService.getSecuritySettings();
 
