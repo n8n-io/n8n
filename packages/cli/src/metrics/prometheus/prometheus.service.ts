@@ -6,6 +6,7 @@ import promClient from 'prom-client';
 import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
+import { PrometheusAgentMetricsService } from './agent-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
 import { METRICS_PATH } from './constant';
@@ -60,6 +61,7 @@ export class PrometheusMetricsService {
 		webhook: PrometheusWebhookAndFormMetricsService,
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
 		instanceAi: PrometheusInstanceAiMetricsService,
+		agent: PrometheusAgentMetricsService,
 		mcpPostSave: PrometheusMcpPostSaveMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
 		workflowPublication: PrometheusWorkflowPublicationMetricsService,
@@ -90,6 +92,7 @@ export class PrometheusMetricsService {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			agent,
 			mcpPostSave,
 			dbPool,
 			workflowPublication,
