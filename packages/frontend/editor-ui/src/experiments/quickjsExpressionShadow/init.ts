@@ -206,6 +206,7 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 
 	const send = (initStatus: 'ready' | 'failed', report: ShadowReport, startupReport = false) => {
 		telemetry.track(TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED, {
+			quickjs_fe_event_version: '2',
 			quickjs_fe_init_status: initStatus,
 			quickjs_fe_startup_report: startupReport,
 			quickjs_fe_init_duration_ms: initDurationMs,

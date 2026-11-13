@@ -210,6 +210,7 @@ describe('initializeQuickJsExpressionShadow', () => {
 		expect(track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED,
 			expect.objectContaining({
+				quickjs_fe_event_version: '2',
 				quickjs_fe_init_status: 'ready',
 				quickjs_fe_startup_report: true,
 				quickjs_fe_evaluations: 0,

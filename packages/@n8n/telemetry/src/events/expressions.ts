@@ -9,9 +9,14 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 		name: 'Expression engine shadow run reported',
 		// Experiment cleanup: remove with quickjsExpressionShadow (126_quickjs_expression_shadow).
 		description:
-			'The editor evaluated a sample of expressions with the QuickJS engine next to the legacy engine, and reported the aggregated comparison. Sent every few minutes while the shadow run has new data, and when the tab is hidden. It never carries expression text or values.',
+			'The editor evaluated a sample of expressions with the QuickJS engine next to the legacy engine, and reported the aggregated comparison. Sent every few minutes while the shadow run has new data, and when the tab is hidden. It never carries expression text or values. Version 2 of the event measures the bundle import, the WASM load, the start duration and the visibility check only for the time that remained after a preload. It adds quickjs_fe_preloaded and stops sending quickjs_fe_start_variant and quickjs_fe_idle_wait_ms. Rows without quickjs_fe_event_version are version 1, and they include the whole load time. To compare load times, use version 2 rows where quickjs_fe_preloaded is false and version 1 rows where quickjs_fe_start_variant is boot or boot_only.',
 		// The `quickjs_fe_` prefix keeps these generic names apart in the PostHog property list.
 		properties: z.object({
+			quickjs_fe_event_version: z
+				.literal('2')
+				.describe(
+					'Version of this event. Rows without it are version 1. Version 2 measures the load steps only for the time that remained after a preload',
+				),
 			quickjs_fe_init_status: z
 				.enum(['ready', 'failed'])
 				.describe('Whether the QuickJS shadow engine started'),
