@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * thread. Plain ALTER TABLE on both dialects, because recreating the table on
  * SQLite would cascade-delete its agent_execution rows.
  */
-export class AddTestChatToAgentExecutionThreads1794514039327 implements ReversibleMigration {
+export class AddTestChatToAgentExecutionThreads1794583011922 implements ReversibleMigration {
 	async up({ runQuery, escape, isPostgres }: MigrationContext) {
 		const threads = escape.tableName('agent_execution_threads');
 		const simulation = escape.columnName('simulation');
