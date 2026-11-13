@@ -518,6 +518,49 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
+	it('shows the Flex retries input with the default only for the flex tier', () => {
+		const flex = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } }),
+			},
+			global: { stubs: globalStubs },
+		});
+		const input = flex.find('[data-testid="agent-flex-max-retries-input"]');
+		expect(input.exists()).toBe(true);
+		expect((input.element as HTMLInputElement).value).toBe('10');
+
+		const standard = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ model: 'openai/gpt-6.1-sol' }) },
+			global: { stubs: globalStubs },
+		});
+		expect(standard.find('[data-testid="agent-flex-max-retries-input"]').exists()).toBe(false);
+	});
+
+	it('saves the Flex retries and keeps the other settings', async () => {
+		const config = makeConfig({ model: 'openai/gpt-6.1-sol', config: { serviceTier: 'flex' } });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-flex-max-retries-input"]').setValue('4');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config).toEqual({ serviceTier: 'flex', flexMaxRetries: 4 });
+	});
+
+	it('removes the Flex retries from the config when the field is cleared', async () => {
+		const config = makeConfig({
+			model: 'openai/gpt-6.1-sol',
+			config: { serviceTier: 'flex', flexMaxRetries: 4 },
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-flex-max-retries-input"]').setValue('abc');
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(last.config).toEqual({ serviceTier: 'flex' });
+	});
+
 	it('shows the service tier select with the default tier for OpenAI', () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig({ model: 'openai/gpt-6.1-sol' }) },

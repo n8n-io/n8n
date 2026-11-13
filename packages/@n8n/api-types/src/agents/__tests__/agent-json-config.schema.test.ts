@@ -367,6 +367,25 @@ describe('AgentJsonConfigSchema — config.serviceTier', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — config.flexMaxRetries', () => {
+	it.each([0, 10, 50])('accepts %s', (flexMaxRetries) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { flexMaxRetries },
+		});
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.config?.flexMaxRetries).toBe(flexMaxRetries);
+	});
+
+	it.each([-1, 51, 1.5])('rejects %s', (flexMaxRetries) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { flexMaxRetries },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — vectorStores', () => {
 	const embedding = { model: 'openai/text-embedding-3-small', credential: 'embed-cred' };
 

@@ -6,7 +6,7 @@ import { isDraftAgentConfig } from './agent-config-lifecycle';
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
-import { AGENT_SERVICE_TIERS } from './service-tier';
+import { AGENT_FLEX_MAX_RETRIES_MAX, AGENT_SERVICE_TIERS } from './service-tier';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
@@ -702,6 +702,8 @@ export const AgentJsonConfigBaseSchema = z.object({
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			/** OpenAI service tier. Ignored for other providers. */
 			serviceTier: z.enum(AGENT_SERVICE_TIERS).optional(),
+			/** How often a turn is retried while OpenAI has no free Flex capacity. Ignored for other providers. */
+			flexMaxRetries: z.number().int().min(0).max(AGENT_FLEX_MAX_RETRIES_MAX).optional(),
 			maxIterations: z
 				.number()
 				.int()

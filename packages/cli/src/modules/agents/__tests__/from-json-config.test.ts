@@ -170,7 +170,11 @@ describe('buildFromJson()', () => {
 	const getDefaultExecutionOptions = (agent: unknown) =>
 		(
 			agent as {
-				defaultExecutionOptions?: { maxIterations?: number; providerOptions?: unknown };
+				defaultExecutionOptions?: {
+					maxIterations?: number;
+					providerOptions?: unknown;
+					flexUnavailableRetries?: number;
+				};
 			}
 		).defaultExecutionOptions;
 
@@ -1276,6 +1280,24 @@ describe('buildFromJson()', () => {
 				maxIterations: 10,
 				providerOptions: { openai: { serviceTier: 'priority' } },
 			});
+		});
+
+		it('passes flexMaxRetries as flexUnavailableRetries', async () => {
+			const agent = await build({
+				model: 'openai/gpt-6.1-sol',
+				config: { serviceTier: 'flex', flexMaxRetries: 3 },
+			});
+
+			expect(getDefaultExecutionOptions(agent)).toMatchObject({ flexUnavailableRetries: 3 });
+		});
+
+		it('ignores flexMaxRetries for other providers', async () => {
+			const agent = await build({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { flexMaxRetries: 3 },
+			});
+
+			expect(getDefaultExecutionOptions(agent)).toBeUndefined();
 		});
 
 		it('ignores the tier for other providers', async () => {

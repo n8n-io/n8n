@@ -302,6 +302,9 @@ export async function buildFromJson(
 			...(config.config.serviceTier && getModelServiceTierCapability(config.model)
 				? { providerOptions: { openai: { serviceTier: config.config.serviceTier } } }
 				: {}),
+			...(config.config.flexMaxRetries !== undefined && getModelServiceTierCapability(config.model)
+				? { flexUnavailableRetries: config.config.flexMaxRetries }
+				: {}),
 		};
 		if (Object.keys(executionOptions).length > 0) {
 			agent.configuration(executionOptions);

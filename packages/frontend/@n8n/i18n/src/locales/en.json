@@ -9761,6 +9761,8 @@
 	"agents.builder.advanced.promptCaching.hint": "Cache repeated parts of the prompt to reduce latency and cost",
 	"agents.builder.advanced.promptCachingTtl.label": "Cache duration",
 	"agents.builder.advanced.serviceTier.label": "Service tier",
+	"agents.builder.advanced.flexMaxRetries.label": "Max retries",
+	"agents.builder.advanced.flexMaxRetries.hint": "How often a turn is retried while OpenAI has no free Flex capacity. The wait starts at 1 second and doubles up to 30 seconds.",
 	"agents.builder.advanced.serviceTier.hint": "Flex costs about half and runs slower: the agent waits and retries when OpenAI has no free capacity. Priority is faster and costs more.",
 	"agents.builder.advanced.concurrency.label": "Tool call concurrency",
 	"agents.builder.advanced.concurrency.hint": "How many tool calls the agent can run in parallel",
