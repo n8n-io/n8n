@@ -128,7 +128,7 @@ function onClearSelection() {
 function onUserClearSelection() {
 	// An explicit clear also cancels a selection that still waits for the list or for a page.
 	autoSelectTab = null;
-	selectsFromNextPage = false;
+	nextPageSelection++;
 	onClearSelection();
 }
 function onActiveTabChange(tab: 'open' | 'closed') {
@@ -185,14 +185,14 @@ function onItemChange(change: InboxItemChange) {
 	}
 }
 
-let selectsFromNextPage = false;
+// Only the latest close selects from the next page. An explicit clear cancels it.
+let nextPageSelection = 0;
 // Assistant fixes arrive in Waiting, so its next page comes before a row in Authored.
 async function selectFromNextWaitingPage(closed: InboxItemChange, fallback?: InboxItem) {
 	const { waiting } = store.lists;
-	selectsFromNextPage = true;
+	const request = ++nextPageSelection;
 	await waiting.loadMore();
-	if (!selectsFromNextPage || !isActive() || activeTab.value !== 'open') return;
-	selectsFromNextPage = false;
+	if (request !== nextPageSelection || !isActive() || activeTab.value !== 'open') return;
 	// A selection the user made while the page loaded wins.
 	const selected = selectionFromRoute(router.currentRoute.value);
 	if (selected && (selected.type !== closed.type || selected.id !== closed.id)) return;
