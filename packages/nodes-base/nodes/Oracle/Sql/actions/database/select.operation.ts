@@ -149,8 +149,6 @@ export async function execute(
 			const { column, value } = getStartAfter(this, i);
 
 			if (column !== '') {
-				const uniqueColumns = await uniqueColumnsOf(schema, table);
-				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
 				if (!columnMetaDataObject[column]) {
 					throw new NodeOperationError(
 						this.getNode(),
@@ -158,6 +156,8 @@ export async function execute(
 						{ itemIndex: i },
 					);
 				}
+				const uniqueColumns = await uniqueColumnsOf(schema, table);
+				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
 
 				if (value !== '') {
 					const predicate = `${quoteSqlIdentifier(column)} > :${values.length}`;

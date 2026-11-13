@@ -590,17 +590,19 @@ export function addSortRules(
 
 export async function getUniqueKeyColumns(pool: Mysql2Pool, table: string): Promise<string[]> {
 	const [rows] = await pool.query<RowDataPacket[]>(`SHOW INDEX FROM ${escapeSqlIdentifier(table)}`);
-	const columnsByKey = new Map<string, string[]>();
+	const columnsByKey = new Map<string, Array<string | null>>();
 	for (const row of rows) {
-		// A functional index part has no Column_name
-		if (Number(row.Non_unique) !== 0 || row.Column_name == null) continue;
+		if (Number(row.Non_unique) !== 0) continue;
 		const key = String(row.Key_name);
+		// A functional key part has no Column_name. It still counts as a part of the key
 		columnsByKey.set(key, [
 			...(columnsByKey.get(key) ?? []),
-			String(row.Column_name).toLowerCase(),
+			row.Column_name == null ? null : String(row.Column_name).toLowerCase(),
 		]);
 	}
-	return [...columnsByKey.values()].filter((cols) => cols.length === 1).map(([col]) => col);
+	return [...columnsByKey.values()].flatMap((cols) =>
+		cols.length === 1 && cols[0] !== null ? [cols[0]] : [],
+	);
 }
 
 export function replaceEmptyStringsByNulls(

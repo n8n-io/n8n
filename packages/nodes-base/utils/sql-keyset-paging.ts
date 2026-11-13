@@ -9,10 +9,16 @@ const sameColumn = (a: string, b: string, caseInsensitive: boolean) =>
 export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number) {
 	const cursor = ((ctx.getNodeParameter('startAfter', itemIndex, {}) as IDataObject).values ??
 		{}) as IDataObject;
-	return {
-		column: String(cursor.column ?? ''),
-		value: typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? ''),
-	};
+	const column = String(cursor.column ?? '');
+	const value = typeof cursor.value === 'number' ? cursor.value : String(cursor.value ?? '');
+	if (column === '' && value !== '') {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			'Start After has a Value but no Column. Select the Column to page by',
+			{ itemIndex },
+		);
+	}
+	return { column, value };
 }
 
 export function assertUniqueCursorColumn(

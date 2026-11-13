@@ -257,7 +257,7 @@ describe('Test All operations', () => {
 	const deptTable = 'N8N_TEST_DEPT';
 	const maxEmpName = 100;
 	const createTbl = `CREATE TABLE if not exists ${table} (
-    id           NUMBER          NOT NULL PRIMARY KEY,
+    id           NUMBER          NOT NULL,
     name         VARCHAR2(${maxEmpName}),
     age          NUMBER(38),
     salary       FLOAT(126),
@@ -1678,7 +1678,8 @@ VALUES (
 			},
 		);
 
-		describe('startAfter', () => {
+		// These tests mock the catalog query, so they do not run against a real database
+		describe.skipIf(Boolean(integratedTests))('startAfter', () => {
 			const baseParameters: IDataObject = {
 				operation: 'select',
 				schema: { __rl: true, mode: 'list', value: CONFIG.user },

@@ -489,6 +489,8 @@ describe('Test MySql V2, getUniqueKeyColumns', () => {
 					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 1, Column_name: 'a' },
 					{ Key_name: 'uq_pair', Non_unique: 0, Seq_in_index: 2, Column_name: 'b' },
 					{ Key_name: 'uq_expr', Non_unique: 0, Seq_in_index: 1, Column_name: null },
+					{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 1, Column_name: 'c' },
+					{ Key_name: 'uq_mixed', Non_unique: 0, Seq_in_index: 2, Column_name: null },
 					{ Key_name: 'idx_name', Non_unique: 1, Seq_in_index: 1, Column_name: 'name' },
 				],
 				[],
