@@ -1,0 +1,40 @@
+{
+  "name": "@n8n/n8n-node-codegen",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Generates version 2 of the n8n node from the public API spec",
+  "scripts": {
+    "bundle-spec": "redocly bundle ../../cli/src/public-api/v1/openapi.decorator-routes.generated.yml --dereferenced --output dist/routes.yml",
+    "generate": "pnpm bundle-spec && tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
+    "test": "pnpm bundle-spec && vitest run",
+    "test:unit": "pnpm bundle-spec && vitest run"
+  },
+  "dependencies": {
+    "pluralize": "^8.0.0",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@redocly/cli": "^2.76.0",
+    "@types/node": "catalog:",
+    "@types/pluralize": "^0.0.33",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
