@@ -1,0 +1,17 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  ai_agent 2788-2793,2973-2976
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCardSubtitle.vue
+  ai_agent 11-12,48,57
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderToolbar.test.ts
+  ai_agent 4,18,39,43-45
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  ai_agent 1081-1118
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  ai_agent 202-205,218,220,226,293,333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29f035909512aa8d7b7c771242ab4ef4fc8babb3",
+  "prompts": {}
+}
