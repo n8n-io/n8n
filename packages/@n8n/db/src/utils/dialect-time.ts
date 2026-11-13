@@ -3,23 +3,28 @@
  * across instances must use the DB clock, never an instance clock, so these are
  * the only time expressions the scheduler repositories embed in queries.
  *
+ * `Tx` helpers give the transaction start time on Postgres, the same value for
+ * every statement in a transaction. `Clock` helpers give the current time on
+ * Postgres, read again after a row-lock wait. SQLite gives statement time from
+ * both.
+ *
  * Millisecond precision on both dialects (`CURRENT_TIMESTAMP(3)` / `%f`), so a
  * value read back compares consistently with one written.
  */
 
 /**
- * @returns DB-clock `now`, per dialect.
+ * @returns DB transaction start time on Postgres, statement time on SQLite.
  */
-export function dbNowLiteral(isPostgres: boolean): string {
+export function dbTxNowLiteral(isPostgres: boolean): string {
 	return isPostgres ? 'CURRENT_TIMESTAMP(3)' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
 }
 
 /**
- * DB-clock `now` plus a millisecond offset, per dialect.
+ * DB transaction start time plus a millisecond offset, per dialect.
  * A negative `ms` gives an instant in the past (e.g. a retention cutoff).
  * `ms` is caller-computed (safe to inline).
  */
-export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
+export function dbTxNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 	const rounded = Math.round(ms);
 	if (isPostgres) {
 		return `CURRENT_TIMESTAMP(3) + (${rounded} || ' milliseconds')::interval`;
@@ -29,8 +34,27 @@ export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 }
 
 /**
+ * @returns DB current time, per dialect. It is volatile on Postgres, so the
+ * planner cannot use it as an index scan key.
+ */
+export function dbClockNowLiteral(isPostgres: boolean): string {
+	return isPostgres ? 'clock_timestamp()::timestamptz(3)' : dbTxNowLiteral(false);
+}
+
+/**
+ * DB current time plus a millisecond offset, per dialect.
+ * A negative `ms` gives an instant in the past.
+ */
+export function dbClockNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
+	if (isPostgres) {
+		return `clock_timestamp()::timestamptz(3) + (${Math.round(ms)} || ' milliseconds')::interval`;
+	}
+	return dbTxNowPlusMsLiteral(false, ms);
+}
+
+/**
  * A column's value plus a millisecond offset, per dialect. Unlike
- * {@link dbNowPlusMsLiteral}, the base is a stored column, not DB-now, so a value
+ * {@link dbTxNowPlusMsLiteral}, the base is a stored column, not DB time, so a value
  * derived from another column isn't re-anchored to the current instant.
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
@@ -45,13 +69,13 @@ export function columnPlusMsLiteral(isPostgres: boolean, columnExpr: string, ms:
 }
 
 /**
- * Whichever is later of a column's value or DB-clock `now`, plus a millisecond
- * offset, per dialect. Unlike {@link columnPlusMsLiteral}, a column value already
+ * Whichever is later of a column's value or DB transaction start time, plus a
+ * millisecond offset, per dialect. Unlike {@link columnPlusMsLiteral}, a column value already
  * in the past doesn't drag the result into the past with it.
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
  */
-export function columnOrNowPlusMsLiteral(
+export function columnOrTxNowPlusMsLiteral(
 	isPostgres: boolean,
 	columnExpr: string,
 	ms: number,
@@ -63,23 +87,23 @@ export function columnOrNowPlusMsLiteral(
 	const seconds = rounded / 1000;
 	// SQLite's `%Y-%m-%d %H:%M:%f` is fixed-width and zero-padded, so a lexical MAX
 	// on the formatted strings agrees with a chronological one.
-	return `STRFTIME('%Y-%m-%d %H:%M:%f', MAX(${columnExpr}, ${dbNowLiteral(false)}), '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
+	return `STRFTIME('%Y-%m-%d %H:%M:%f', MAX(${columnExpr}, ${dbTxNowLiteral(false)}), '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
 }
 
 /**
- * Whichever is later of a column's value or DB-clock `now` plus a millisecond
- * offset, per dialect. Ratchets a deadline forward: a stored value further out
+ * Whichever is later of a column's value or DB transaction start time plus a
+ * millisecond offset, per dialect. Ratchets a deadline forward: a stored value further out
  * than the offset stands, and a `NULL` column takes the offset.
  * `ms` is caller-computed (safe to inline); `columnExpr` must already be a safe
  * SQL fragment (a quoted column name), never caller input.
  */
-export function laterOfColumnAndNowPlusMsLiteral(
+export function laterOfColumnAndTxNowPlusMsLiteral(
 	isPostgres: boolean,
 	columnExpr: string,
 	ms: number,
 ): string {
-	const now = dbNowLiteral(isPostgres);
-	const offset = dbNowPlusMsLiteral(isPostgres, ms);
+	const now = dbTxNowLiteral(isPostgres);
+	const offset = dbTxNowPlusMsLiteral(isPostgres, ms);
 	if (isPostgres) {
 		return `GREATEST(COALESCE(${columnExpr}, ${now}), ${offset})`;
 	}

@@ -1,4 +1,4 @@
-import { dbNowLiteral, isUniqueConstraintError, parseDbTime } from '@n8n/db';
+import { dbTxNowLiteral, isUniqueConstraintError, parseDbTime } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
@@ -38,7 +38,7 @@ export class InstanceMonitoringReportRepository extends Repository<InstanceMonit
 	async readDbNow(): Promise<Date> {
 		const isPostgres = this.manager.connection.options.type === 'postgres';
 		const [row]: Array<{ dbNow: Date | string }> = await this.query(
-			`SELECT ${dbNowLiteral(isPostgres)} AS "dbNow"`,
+			`SELECT ${dbTxNowLiteral(isPostgres)} AS "dbNow"`,
 		);
 		return parseDbTime(row.dbNow);
 	}

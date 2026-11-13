@@ -10,7 +10,7 @@ import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
-import { dbNowLiteral, laterOfColumnAndNowPlusMsLiteral } from '../utils/dialect-time';
+import { dbTxNowLiteral, laterOfColumnAndTxNowPlusMsLiteral } from '../utils/dialect-time';
 
 export type { PollerCursor } from '../entities/poller-state';
 
@@ -116,7 +116,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.update(PollerState)
 			.set({
 				cursor,
-				updatedAt: () => dbNowLiteral(this.isPostgres),
+				updatedAt: () => dbTxNowLiteral(this.isPostgres),
 			})
 			.where({ workflowId, nodeId });
 
@@ -195,8 +195,8 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 				// other's deadline.
 				consecutiveErrors: () => '"consecutiveErrors" + 1',
 				backoffUntil: () =>
-					laterOfColumnAndNowPlusMsLiteral(this.isPostgres, '"backoffUntil"', delayMs),
-				updatedAt: () => dbNowLiteral(this.isPostgres),
+					laterOfColumnAndTxNowPlusMsLiteral(this.isPostgres, '"backoffUntil"', delayMs),
+				updatedAt: () => dbTxNowLiteral(this.isPostgres),
 			})
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
 			.execute();
@@ -220,7 +220,7 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			.set({
 				consecutiveErrors: 0,
 				backoffUntil: null,
-				updatedAt: () => dbNowLiteral(this.isPostgres),
+				updatedAt: () => dbTxNowLiteral(this.isPostgres),
 			})
 			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
 			.andWhere('("consecutiveErrors" <> 0 OR "backoffUntil" IS NOT NULL)')
