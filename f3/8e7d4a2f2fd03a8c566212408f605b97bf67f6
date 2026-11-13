@@ -1,0 +1,21 @@
+packages/frontend/@n8n/design-system/src/components/N8nAttachments/Attachment/Attachment.test.ts
+  s_a4391183eb34f9::t_7a0383a486adc8 146
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_a4391183eb34f9::t_67279fbc4ff12a 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f38e7d4a2f2fd03a8c566212408f605b97bf67f6",
+  "prompts": {},
+  "sessions": {
+    "s_a4391183eb34f9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d080-e24d-75f9-b82c-04f2b1539bfa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
