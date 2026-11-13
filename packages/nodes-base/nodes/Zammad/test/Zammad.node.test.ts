@@ -4,7 +4,7 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Zammad } from '../Zammad.node';
@@ -129,7 +129,7 @@ describe('Zammad Node', () => {
 
 			expect(mockCredentialTestFunctions.helpers!.request).toHaveBeenCalledWith({
 				method: 'GET',
-				uri: 'https://test.zammad.com/api/v1/users/me',
+				uri: requestUrl`https://test.zammad.com/api/v1/users/me`,
 				json: true,
 				rejectUnauthorized: true,
 				auth: {
@@ -167,7 +167,7 @@ describe('Zammad Node', () => {
 
 			expect(mockCredentialTestFunctions.helpers!.request).toHaveBeenCalledWith({
 				method: 'GET',
-				uri: 'https://test.zammad.com/api/v1/users/me',
+				uri: requestUrl`https://test.zammad.com/api/v1/users/me`,
 				json: true,
 				rejectUnauthorized: false,
 				headers: {
@@ -201,6 +201,27 @@ describe('Zammad Node', () => {
 				status: 'Error',
 				message: 'Unauthorized',
 			});
+		});
+
+		it('should return an error status for an invalid base URL', async () => {
+			const credentials: ICredentialsDecrypted = {
+				id: 'test',
+				name: 'test',
+				type: 'zammadTokenAuthApi',
+				data: {
+					baseUrl: 'test.zammad.com',
+					accessToken: 'test-token',
+					allowUnauthorizedCerts: false,
+				},
+			};
+
+			const result = await node.methods.credentialTest.zammadTokenAuthApiTest.call(
+				mockCredentialTestFunctions as ICredentialTestFunctions,
+				credentials,
+			);
+
+			expect(result).toEqual({ status: 'Error', message: 'Invalid base URL' });
+			expect(mockCredentialTestFunctions.helpers!.request).not.toHaveBeenCalled();
 		});
 	});
 
@@ -241,7 +262,10 @@ describe('Zammad Node', () => {
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/ticket_states');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/ticket_states`,
+			);
 			expect(result).toEqual([
 				{ name: 'Open', value: 1 },
 				{ name: 'Closed', value: 2 },
@@ -259,7 +283,7 @@ describe('Zammad Node', () => {
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/groups');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', requestPath`/groups`);
 			expect(result).toEqual([
 				{ name: 'Support', value: 1 },
 				{ name: 'Sales', value: 2 },
@@ -277,7 +301,7 @@ describe('Zammad Node', () => {
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/groups');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', requestPath`/groups`);
 			expect(result).toEqual([
 				{ name: 'Support', value: 'Support' },
 				{ name: 'Sales', value: 'Sales' },
@@ -299,7 +323,10 @@ describe('Zammad Node', () => {
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/organizations');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/organizations`,
+			);
 			expect(result).toEqual([
 				{ name: 'Acme Corp', value: 'Acme Corp' },
 				{ name: 'Beta Inc', value: 'Beta Inc' },
@@ -319,7 +346,7 @@ describe('Zammad Node', () => {
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
 			);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/users');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', requestPath`/users`);
 			expect(result).toEqual([
 				{ name: 'customer1@example.com', value: 'customer1@example.com' },
 				{ name: 'customer2@example.com', value: 'customer2@example.com' },
@@ -364,7 +391,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/users', {
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', requestPath`/users`, {
 				firstname: 'John',
 				lastname: 'Doe',
 			});
@@ -395,7 +422,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', '/users/1', {
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', requestPath`/users/1`, {
 				lastname: 'Smith',
 			});
 			expect(result).toEqual([[{ json: mockUser, itemData: { item: 0 } }]]);
@@ -453,8 +480,31 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('DELETE', '/users/1');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'DELETE',
+				requestPath`/users/1`,
+			);
 			expect(result).toEqual([[{ json: { success: true }, itemData: { item: 0 } }]]);
+		});
+
+		it('should reject a user ID that is a dot segment', async () => {
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation((paramName) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'delete';
+					case 'id':
+						return '..';
+					default:
+						return null;
+				}
+			});
+
+			await expect(node.execute.call(mockExecuteFunctions as IExecuteFunctions)).rejects.toThrow(
+				'Invalid identifier: ".." is not allowed',
+			);
+			expect(GenericFunctions.zammadApiRequest).not.toHaveBeenCalled();
 		});
 
 		it('should get a user', async () => {
@@ -479,7 +529,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/users/1');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', requestPath`/users/1`);
 			expect(result).toEqual([[{ json: mockUser, itemData: { item: 0 } }]]);
 		});
 
@@ -512,7 +562,7 @@ describe('Zammad Node', () => {
 
 			expect(GenericFunctions.zammadApiRequestAllItems).toHaveBeenCalledWith(
 				'GET',
-				'/users/search',
+				requestPath`/users/search`,
 				{},
 				{ query: '' },
 				0,
@@ -544,7 +594,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', '/users/me');
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('GET', requestPath`/users/me`);
 			expect(result).toEqual([[{ json: mockUser, itemData: { item: 0 } }]]);
 		});
 	});
@@ -603,17 +653,21 @@ describe('Zammad Node', () => {
 
 			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/tickets', {
-				article: {
-					body: 'Test article',
-					type: 'note',
-					internal: false,
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/tickets`,
+				{
+					article: {
+						body: 'Test article',
+						type: 'note',
+						internal: false,
+					},
+					title: 'Test Ticket',
+					group: 'Support',
+					customer: 'test@example.com',
+					linear: '1234',
 				},
-				title: 'Test Ticket',
-				group: 'Support',
-				customer: 'test@example.com',
-				linear: '1234',
-			});
+			);
 		});
 
 		it('should include to and cc for email articles', async () => {
@@ -658,19 +712,23 @@ describe('Zammad Node', () => {
 
 			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/tickets', {
-				article: {
-					subject: 'Hello',
-					body: 'Email body',
-					type: 'email',
-					internal: false,
-					to: 'recipient@example.com',
-					cc: 'other@example.com',
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/tickets`,
+				{
+					article: {
+						subject: 'Hello',
+						body: 'Email body',
+						type: 'email',
+						internal: false,
+						to: 'recipient@example.com',
+						cc: 'other@example.com',
+					},
+					title: 'Email Ticket',
+					group: 'Support',
+					customer: 'customer@example.com',
 				},
-				title: 'Email Ticket',
-				group: 'Support',
-				customer: 'customer@example.com',
-			});
+			);
 		});
 
 		it('should throw error when creating ticket without article', async () => {
@@ -729,15 +787,19 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', '/tickets/1', {
-				title: 'Updated Ticket',
-				article: {
-					body: 'Adding a note',
-					internal: true,
-					type: 'note',
-					content_type: 'text/html',
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				requestPath`/tickets/1`,
+				{
+					title: 'Updated Ticket',
+					article: {
+						body: 'Adding a note',
+						internal: true,
+						type: 'note',
+						content_type: 'text/html',
+					},
 				},
-			});
+			);
 			expect(result).toEqual([[{ json: mockTicket, itemData: { item: 0 } }]]);
 		});
 
@@ -768,9 +830,13 @@ describe('Zammad Node', () => {
 
 			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', '/tickets/1', {
-				title: 'Test Ticket',
-			});
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				requestPath`/tickets/1`,
+				{
+					title: 'Test Ticket',
+				},
+			);
 		});
 	});
 
@@ -808,9 +874,13 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/organizations', {
-				name: 'Test Org',
-			});
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'POST',
+				requestPath`/organizations`,
+				{
+					name: 'Test Org',
+				},
+			);
 			expect(result).toEqual([[{ json: mockOrg, itemData: { item: 0 } }]]);
 		});
 
@@ -843,7 +913,7 @@ describe('Zammad Node', () => {
 
 			expect(GenericFunctions.zammadApiRequestAllItems).toHaveBeenCalledWith(
 				'GET',
-				'/organizations',
+				requestPath`/organizations`,
 				{},
 				{},
 				10,
@@ -886,7 +956,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/groups', {
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', requestPath`/groups`, {
 				name: 'Test Group',
 			});
 			expect(result).toEqual([[{ json: mockGroup, itemData: { item: 0 } }]]);
@@ -921,7 +991,7 @@ describe('Zammad Node', () => {
 
 			expect(GenericFunctions.zammadApiRequestAllItems).toHaveBeenCalledWith(
 				'GET',
-				'/groups',
+				requestPath`/groups`,
 				{},
 				{},
 				5,
@@ -994,7 +1064,7 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/users', {
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', requestPath`/users`, {
 				firstname: 'John',
 				lastname: 'Doe',
 				Custom_field: 'value',
@@ -1030,9 +1100,13 @@ describe('Zammad Node', () => {
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
-			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('PUT', '/tickets/1', {
-				Custom_priority: 'high',
-			});
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith(
+				'PUT',
+				requestPath`/tickets/1`,
+				{
+					Custom_priority: 'high',
+				},
+			);
 			expect(result).toEqual([[{ json: mockTicket, itemData: { item: 0 } }]]);
 		});
 	});

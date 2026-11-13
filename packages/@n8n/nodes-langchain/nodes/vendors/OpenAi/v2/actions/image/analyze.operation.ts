@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { ResponseInputImage } from 'openai/resources/responses/responses';
 import type { ChatContent, ChatResponse, ChatResponseRequest } from '../../../helpers/interfaces';
@@ -201,7 +201,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		max_output_tokens: (options.maxTokens as number) || 300,
 	};
 
-	const response = (await apiRequest.call(this, 'POST', '/responses', {
+	const response = (await apiRequest.call(this, 'POST', requestPath`/responses`, {
 		body,
 	})) as ChatResponse;
 

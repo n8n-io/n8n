@@ -7,8 +7,11 @@ import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IPollFunctions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { isResourceLocatorValue } from 'n8n-workflow';
+import { NodeOperationError, isResourceLocatorValue, requestPath, requestUrl } from 'n8n-workflow';
 
 import { prepareApiError, validateMailbox } from '../helpers/utils';
 
@@ -72,13 +75,13 @@ export function resolveMailbox(
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json' | 'encoding' | 'resolveWithFullResponse'> = { json: true },
 ) {
 	const credentialType = getOutlookCredentialType.call(this);
 	const credentials = await this.getCredentials(credentialType);
@@ -89,29 +92,38 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	const mailbox = resolveMailbox.call(this, credentialType, itemIndex);
-
-	let apiUrl: string;
-	if (mailbox !== undefined) {
-		// Service Principal (app-only): target the chosen mailbox. The single
-		// encodeURIComponent call lives here; the value was already validated.
-		apiUrl = `${baseUrl}/v1.0/users/${encodeURIComponent(mailbox)}${resource}`;
-	} else if (credentials.useShared && credentials.userPrincipalName) {
-		// OAuth2 accessing a shared mailbox (existing behavior).
-		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
-	} else {
-		// OAuth2 default (existing behavior).
-		apiUrl = `${baseUrl}/v1.0/me${resource}`;
+	if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
+		throw new NodeOperationError(this.getNode(), 'The Graph API base URL is not a valid URL');
+	}
+	if (uri && (!URL.canParse(uri) || new URL(uri).origin !== new URL(baseUrl).origin)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
 	}
 
-	const options: IRequestOptions = {
+	const mailbox = resolveMailbox.call(this, credentialType, itemIndex);
+
+	let apiUrl: RequestUrl;
+	if (mailbox !== undefined) {
+		// Service Principal (app-only): target the chosen mailbox. The value was already validated.
+		apiUrl = requestUrl`${baseUrl}/v1.0/users/${mailbox}${resource}`;
+	} else if (credentials.useShared && credentials.userPrincipalName) {
+		// OAuth2 accessing a shared mailbox (existing behavior).
+		apiUrl = requestUrl`${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	} else {
+		// OAuth2 default (existing behavior).
+		apiUrl = requestUrl`${baseUrl}/v1.0/me${resource}`;
+	}
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		uri: apiUrl,
 	};
 	try {
 		Object.assign(options, option);
@@ -124,7 +136,11 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			uri ? { ...options, uri } : options,
+		);
 	} catch (error) {
 		if (
 			((error.message || '').toLowerCase().includes('bad request') ||
@@ -151,7 +167,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -201,7 +217,7 @@ export async function downloadAttachments(
 				this,
 				'value',
 				'GET',
-				`/messages/${message.id}/attachments`,
+				requestPath`/messages/${message.id}/attachments`,
 				itemIndex,
 				{},
 			);
@@ -209,7 +225,7 @@ export async function downloadAttachments(
 				const response = await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/messages/${message.id}/attachments/${attachment.id}/$value`,
+					requestPath`/messages/${message.id}/attachments/${attachment.id}/$value`,
 					itemIndex,
 					undefined,
 					{},
@@ -244,7 +260,7 @@ export async function getMimeContent(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}/$value`,
+		requestPath`/messages/${messageId}/$value`,
 		itemIndex,
 		undefined,
 		{},
@@ -283,7 +299,7 @@ export async function getSubfolders(
 				this,
 				'value',
 				'GET',
-				`/mailFolders/${folder.id}/childFolders`,
+				requestPath`/mailFolders/${folder.id}/childFolders`,
 				itemIndex,
 			);
 

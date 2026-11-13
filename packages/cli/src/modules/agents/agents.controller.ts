@@ -1,4 +1,9 @@
-import { type AgentCapabilitySummary, CreateAgentDto, ListAgentsQueryDto } from '@n8n/api-types';
+import {
+	type AgentCapabilitySummary,
+	CreateAgentDto,
+	ListAgentsQueryDto,
+	UpdateAgentDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -7,6 +12,7 @@ import {
 	Param,
 	Post,
 	ProjectScope,
+	Put,
 	Query,
 	RestController,
 } from '@n8n/decorators';
@@ -15,17 +21,19 @@ import type { Response } from 'express';
 import { NotFoundError } from '@n8n/errors';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 
-import { AgentRunnableStateService } from './agent-runnable-state.service';
+import { AgentConfigService } from './agent-config.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
+import { AgentResponseMapper } from './agent-response.mapper';
 import { AgentsService } from './agents.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentsController {
 	constructor(
 		private readonly agentsService: AgentsService,
-		private readonly agentRunnableStateService: AgentRunnableStateService,
+		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
 		private readonly collaborationService: CollaborationService,
+		private readonly agentConfigService: AgentConfigService,
 	) {}
 
 	@Post('/')
@@ -53,6 +61,7 @@ export class AgentsController {
 				pushRef: req.headers?.['push-ref'],
 				id: payload.id,
 				config: payload.config,
+				tagIds: payload.tags,
 				...(defaultModel ? { defaultModel } : {}),
 				// Keep the config name in sync with the entity name so the list and
 				// builder never disagree on a directly-seeded create. Narrowing
@@ -68,8 +77,8 @@ export class AgentsController {
 			},
 		);
 		return {
-			...(await this.agentRunnableStateService.addRunnableState(agent, projectId, req.user)),
-			...creationState,
+			...(await this.agentResponseMapper.toAgentDto(agent, projectId, req.user)),
+			adopted: creationState.adopted,
 		};
 	}
 
@@ -85,7 +94,40 @@ export class AgentsController {
 		res: Response,
 		@Query query: ListAgentsQueryDto,
 	) {
-		res.json(await this.agentsService.findByProjectIdPaginated(req.params.projectId, query));
+		const page = await this.agentsService.findByProjectIdPaginated(req.params.projectId, query);
+		res.json({
+			count: page.count,
+			data: page.data.map((agent) => this.agentResponseMapper.toAgentListItem(agent)),
+		});
+	}
+
+	@Put('/:agentId')
+	@ProjectScope('agent:update')
+	async update(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentDto,
+	) {
+		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'update',
+		);
+		await this.agentConfigService.updateConfig(agentId, projectId, payload.config, req.user, {
+			baseConfigHash: payload.baseConfigHash,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		return await this.agentResponseMapper.toAgentDto(agent, projectId, req.user);
 	}
 
 	@Get('/:agentId')
@@ -101,11 +143,7 @@ export class AgentsController {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		return await this.agentRunnableStateService.addRunnableState(
-			agent,
-			req.params.projectId,
-			req.user,
-		);
+		return await this.agentResponseMapper.toAgentDto(agent, req.params.projectId, req.user);
 	}
 
 	/** Capability metadata for the canvas node card (model + chip labels). */

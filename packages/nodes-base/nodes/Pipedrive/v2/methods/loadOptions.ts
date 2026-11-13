@@ -1,4 +1,5 @@
-import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { pipedriveApiRequest, sortOptionParameters } from '../transport';
 
@@ -13,7 +14,7 @@ export async function getActivityTypes(
 	const { data } = await pipedriveApiRequest.call(
 		this,
 		'GET',
-		'/activityTypes',
+		requestPath`/activityTypes`,
 		{},
 		{},
 		{ apiVersion: 'v1' },
@@ -44,7 +45,7 @@ export async function getFilters(this: ILoadOptionsFunctions): Promise<INodeProp
 	const { data } = await pipedriveApiRequest.call(
 		this,
 		'GET',
-		'/filters',
+		requestPath`/filters`,
 		{},
 		{ type: type[resource] },
 		{ apiVersion: 'v1' },
@@ -66,7 +67,7 @@ export async function getOrganizationIds(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizations', {});
+	const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/organizations`, {});
 	for (const org of data as Array<{ name: string; id: number }>) {
 		returnData.push({
 			name: org.name,
@@ -86,7 +87,7 @@ export async function getUserIds(this: ILoadOptionsFunctions): Promise<INodeProp
 	const { data } = await pipedriveApiRequest.call(
 		this,
 		'GET',
-		'/users',
+		requestPath`/users`,
 		{},
 		{},
 		{ apiVersion: 'v1' },
@@ -115,7 +116,7 @@ export async function getUserIds(this: ILoadOptionsFunctions): Promise<INodeProp
  * Uses v2 endpoint: /deals
  */
 export async function getDeals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/deals', {});
+	const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/deals`, {});
 	const deals = data as Array<{ id: string; title: string }>;
 	return sortOptionParameters(deals.map(({ id, title }) => ({ value: id, name: title })));
 }
@@ -125,7 +126,7 @@ export async function getDeals(this: ILoadOptionsFunctions): Promise<INodeProper
  * Uses v2 endpoint: /products
  */
 export async function getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/products', {});
+	const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/products`, {});
 	const products = data as Array<{ id: string; name: string }>;
 	return sortOptionParameters(products.map(({ id, name }) => ({ value: id, name })));
 }
@@ -138,7 +139,12 @@ export async function getProductsDeal(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const dealId = this.getCurrentNodeParameter('dealId');
-	const { data } = await pipedriveApiRequest.call(this, 'GET', `/deals/${dealId}/products`, {});
+	const { data } = await pipedriveApiRequest.call(
+		this,
+		'GET',
+		requestPath`/deals/${dealId}/products`,
+		{},
+	);
 	const products = data as Array<{ id: string; name: string }>;
 	return sortOptionParameters(products.map(({ id, name }) => ({ value: id, name })));
 }
@@ -149,7 +155,7 @@ export async function getProductsDeal(
  */
 export async function getStageIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/stages', {});
+	const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/stages`, {});
 	for (const stage of data as Array<{ name: string; id: number; pipeline_name: string }>) {
 		returnData.push({
 			name: `${stage.pipeline_name} > ${stage.name}`,
@@ -161,7 +167,7 @@ export async function getStageIds(this: ILoadOptionsFunctions): Promise<INodePro
 
 async function getLabelsForResource(
 	this: ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const { data } = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
@@ -187,13 +193,13 @@ async function getLabelsForResource(
 export async function getPersonLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return await getLabelsForResource.call(this, '/personFields');
+	return await getLabelsForResource.call(this, requestPath`/personFields`);
 }
 
 export async function getOrganizationLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return await getLabelsForResource.call(this, '/organizationFields');
+	return await getLabelsForResource.call(this, requestPath`/organizationFields`);
 }
 
 /**
@@ -201,7 +207,7 @@ export async function getOrganizationLabels(
  * Uses v2 endpoint: /persons
  */
 export async function getPersons(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/persons', {});
+	const { data } = await pipedriveApiRequest.call(this, 'GET', requestPath`/persons`, {});
 	const persons = data as Array<{ id: string; name: string }>;
 	return sortOptionParameters(persons.map(({ id, name }) => ({ value: id, name })));
 }
@@ -214,7 +220,7 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 	const { data } = await pipedriveApiRequest.call(
 		this,
 		'GET',
-		'/leadLabels',
+		requestPath`/leadLabels`,
 		{},
 		{},
 		{ apiVersion: 'v1' },
@@ -224,5 +230,5 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 }
 
 export async function getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	return await getLabelsForResource.call(this, '/dealFields');
+	return await getLabelsForResource.call(this, requestPath`/dealFields`);
 }

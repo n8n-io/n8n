@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DataSource, EntityManager, ObjectLiteral, QueryRunner } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { BaseRepository } from '../../repositories/base-repository';

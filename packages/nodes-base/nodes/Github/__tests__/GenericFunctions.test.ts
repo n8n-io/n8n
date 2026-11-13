@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IHookFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	githubApiRequest,
@@ -42,7 +42,7 @@ describe('GenericFunctions', () => {
 	describe('githubApiRequest', () => {
 		it('should make a successful API request', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo';
+			const endpoint = requestPath`/repos/test-owner/test-repo`;
 			const body = {};
 			const responseData = { id: 123, name: 'test-repo' };
 
@@ -59,15 +59,41 @@ describe('GenericFunctions', () => {
 					method: 'GET',
 					body: {},
 					qs: undefined,
-					uri: 'https://api.github.com/repos/test-owner/test-repo',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo',
+					}),
 					json: true,
 				},
 			);
 		});
 
+		it('should encode path values and join them with the credentials base URL', async () => {
+			(mockExecuteHookFunctions.getCredentials as Mock).mockResolvedValueOnce({
+				server: 'https://github.example.com/api/v3/',
+			});
+			const issueNumber = '42/lock?x=1';
+
+			await githubApiRequest.call(
+				mockExecuteHookFunctions,
+				'GET',
+				requestPath`/repos/test-owner/test-repo/issues/${issueNumber}`,
+				{},
+			);
+
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value:
+							'https://github.example.com/api/v3/repos/test-owner/test-repo/issues/42%2Flock%3Fx=1',
+					}),
+				}),
+			);
+		});
+
 		it('should throw a NodeApiError on API failure', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo';
+			const endpoint = requestPath`/repos/test-owner/test-repo`;
 			const body = {};
 			const error = new Error('API Error');
 
@@ -106,11 +132,50 @@ describe('GenericFunctions', () => {
 					method: 'GET',
 					body: {},
 					qs: { ref: 'main' },
-					uri: 'https://api.github.com/repos/test-owner/test-repo/contents/README.md',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/contents/README.md',
+					}),
 					json: true,
 				},
 			);
 		});
+
+		it('should keep the folders of the file path and encode each segment', async () => {
+			(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+				sha: 'abc123',
+			});
+
+			await getFileSha.call(mockExecuteHookFunctions, 'test-owner', 'test-repo', 'docs/a?b#c.md');
+
+			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'githubApi',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/contents/docs/a%3Fb%23c.md',
+					}),
+				}),
+			);
+		});
+
+		it.each(['/docs/README.md', 'docs//README.md'])(
+			'should drop empty parts of the file path %s',
+			async (filePath) => {
+				(mockExecuteHookFunctions.helpers.requestWithAuthentication as Mock).mockResolvedValue({
+					sha: 'abc123',
+				});
+
+				await getFileSha.call(mockExecuteHookFunctions, 'test-owner', 'test-repo', filePath);
+
+				expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+					'githubApi',
+					expect.objectContaining({
+						uri: expect.objectContaining({
+							value: 'https://api.github.com/repos/test-owner/test-repo/contents/docs/README.md',
+						}),
+					}),
+				);
+			},
+		);
 
 		it('should throw a NodeOperationError if SHA is missing', async () => {
 			const owner = 'test-owner';
@@ -131,7 +196,7 @@ describe('GenericFunctions', () => {
 	describe('githubApiRequestAllItems', () => {
 		it('should fetch all items with pagination', async () => {
 			const method = 'GET';
-			const endpoint = '/repos/test-owner/test-repo/issues';
+			const endpoint = requestPath`/repos/test-owner/test-repo/issues`;
 			const body = {};
 			const query = { state: 'open' };
 			const responseData1 = [{ id: 1, title: 'Issue 1' }];
@@ -278,14 +343,21 @@ describe('GenericFunctions', () => {
 				key: 'base64-public-key',
 			});
 
-			const result = await getRepositoryPublicKey.call(mockExecuteHookFunctions, 'owner', 'repo');
+			const result = await getRepositoryPublicKey.call(
+				mockExecuteHookFunctions,
+				'owner/name',
+				'repo?name#section',
+			);
 
 			expect(result).toEqual({ key_id: '012345678912345678', key: 'base64-public-key' });
 			expect(mockExecuteHookFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/repos/owner/repo/actions/secrets/public-key',
+					uri: expect.objectContaining({
+						value:
+							'https://api.github.com/repos/owner%2Fname/repo%3Fname%23section/actions/secrets/public-key',
+					}),
 				}),
 			);
 		});

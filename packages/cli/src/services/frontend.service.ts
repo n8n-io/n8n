@@ -105,6 +105,9 @@ export type PublicFrontendSettings = {
 	/** Used to fetch community nodes on preview instance */
 	communityNodesEnabled: FrontendSettings['communityNodesEnabled'];
 
+	/** Lets the editor know the active backend modules before its first request */
+	activeModules: FrontendSettings['activeModules'];
+
 	mfa?: {
 		enabled: boolean;
 		enforced: boolean;
@@ -720,6 +723,7 @@ export class FrontendService {
 			enterprise: { saml, ldap, oidc },
 			mfa,
 			communityNodesEnabled,
+			activeModules,
 		} = await this.getSettings();
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
@@ -744,6 +748,7 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 			communityNodesEnabled,
+			activeModules,
 		};
 		if (includeMfaSettings) {
 			publicSettings.mfa = mfa;

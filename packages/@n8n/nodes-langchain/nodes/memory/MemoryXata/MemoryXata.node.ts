@@ -9,7 +9,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 
-import { coerceSessionIdToString, getSessionId } from '@utils/helpers';
+import { coerceSessionIdToString, getSessionId, getRequiredApiKey } from '@utils/helpers';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
@@ -117,7 +117,7 @@ export class MemoryXata implements INodeType {
 		}
 
 		const xataClient = new BaseClient({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			branch: (credentials.branch as string) || 'main',
 			databaseURL: credentials.databaseEndpoint as string,
 		});
@@ -137,7 +137,7 @@ export class MemoryXata implements INodeType {
 			table: table[1],
 			sessionId,
 			client: xataClient,
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 		});
 
 		const memClass = this.getNode().typeVersion < 1.3 ? BufferMemory : BufferWindowMemory;

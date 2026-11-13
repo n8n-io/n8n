@@ -101,7 +101,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi', // credential name or function - ignore for test
 				{
 					method: 'POST',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls',
+					}),
 					body: {
 						title: 'Add new feature',
 						body: 'This is the description',
@@ -290,7 +292,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'PATCH',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					}),
 					body: { title: 'New title' },
 				}),
 			);
@@ -485,7 +489,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'PATCH',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					}),
 					body: { state: 'closed' },
 				}),
 			);
@@ -547,7 +553,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'PATCH',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					}),
 					body: { state: 'open' },
 				}),
 			);
@@ -609,7 +617,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/1',
+					}),
 				}),
 			);
 			expect(result[0][0].json).toEqual(pr);
@@ -644,7 +654,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/issues/42/comments',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/issues/42/comments',
+					}),
 					body: { body: 'Looks good to me!' },
 				}),
 			);
@@ -667,7 +679,7 @@ describe('Github Node - Pull Request Operations', () => {
 				headers?: Record<string, string>;
 				json?: boolean;
 			};
-			expect(callArgs.uri).toBe(
+			expect(String(callArgs.uri)).toBe(
 				'https://api.github.com/repos/test-owner/test-repo/issues/7/comments',
 			);
 		});
@@ -702,7 +714,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'PATCH',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/issues/comments/555',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/issues/comments/555',
+					}),
 					body: { body: 'Edited body' },
 				}),
 			);
@@ -725,7 +739,7 @@ describe('Github Node - Pull Request Operations', () => {
 				headers?: Record<string, string>;
 				json?: boolean;
 			};
-			expect(callArgs.uri).toBe(
+			expect(String(callArgs.uri)).toBe(
 				'https://api.github.com/repos/test-owner/test-repo/issues/comments/123',
 			);
 		});
@@ -762,7 +776,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/42',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/42',
+					}),
 					headers: { Accept: 'application/vnd.github.v3.diff' },
 					json: false,
 				}),
@@ -801,7 +817,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/7',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/7',
+					}),
 					headers: { Accept: 'application/vnd.github.v3.patch' },
 					json: false,
 				}),
@@ -844,7 +862,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'PUT',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/1/merge',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/1/merge',
+					}),
 					body: { merge_method: 'merge' },
 				}),
 			);
@@ -1056,7 +1076,11 @@ describe('Github Node - Pull Request Operations', () => {
 			'pullRequest:getPatch',
 		])('should register %s in overwriteDataOperations', async (fullOp) => {
 			const [, op] = fullOp.split(':');
-			const mock = createMockExecuteFunction({ operation: op });
+			const mock = createMockExecuteFunction({
+				operation: op,
+				pullRequestNumber: 7,
+				commentId: 123,
+			});
 			mock.helpers.requestWithAuthentication.mockResolvedValue(
 				op === 'getDiff' ? 'diff' : op === 'getPatch' ? 'patch' : { ok: true },
 			);
@@ -1086,7 +1110,9 @@ describe('Github Node - Pull Request Operations', () => {
 				'githubApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/repos/test-owner/test-repo/pulls/5',
+					uri: expect.objectContaining({
+						value: 'https://api.github.com/repos/test-owner/test-repo/pulls/5',
+					}),
 				}),
 			);
 		});

@@ -6,6 +6,7 @@ import {
 	type IWorkflowMetadata,
 	type NodeOperationError,
 	type NodeParameterValueType,
+	requestPath,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -269,7 +270,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users/jane%40example.com',
+			requestPath`/v1.0/users/jane@example.com`,
 			{},
 			RESOLVE_QS,
 		);
@@ -283,7 +284,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		[
 			'a guest UPN containing #EXT#',
 			'jane_example.com#EXT#@tenant.onmicrosoft.com',
-			'jane_example.com%23EXT%23%40tenant.onmicrosoft.com',
+			'jane_example.com%23EXT%23@tenant.onmicrosoft.com',
 		],
 		[
 			'a bare user id',
@@ -296,7 +297,12 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		await resolveMentions.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', `/v1.0/users/${path}`, {}, RESOLVE_QS);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			expect.objectContaining({ value: `/v1.0/users/${path}` }),
+			{},
+			RESOLVE_QS,
+		);
 	});
 
 	it.each([
@@ -331,7 +337,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users/jane%40example.com',
+			requestPath`/v1.0/users/jane@example.com`,
 			{},
 			RESOLVE_QS,
 		);
@@ -409,7 +415,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/v1.0/users',
+			requestPath`/v1.0/users`,
 			{},
 			{
 				$filter: "mail eq 'alex@contoso.com'",
@@ -514,7 +520,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/v1.0/users/714c1202-cbac-40ff-9160-53ab5c4df9b8',
+			requestPath`/v1.0/users/714c1202-cbac-40ff-9160-53ab5c4df9b8`,
 			{},
 			RESOLVE_QS,
 		);
@@ -584,7 +590,7 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/tag-1');
+			expect(apiRequest).toHaveBeenCalledWith('GET', requestPath`/v1.0/teams/team-1/tags/tag-1`);
 			expect(mentions).toEqual([tagMention('tag-1', 'Engineering')]);
 		});
 
@@ -592,8 +598,12 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 		// accepted here even though the By ID field rejects it in the editor. The user branch
 		// diverges the other way and rejects `jane%40example.com` outright.
 		it.each([
-			['leaves base64 padding unencoded', 'YWJjZA==', '/v1.0/teams/team-1/tags/YWJjZA=='],
-			['decodes a percent-encoded ID', 'abc%3D', '/v1.0/teams/team-1/tags/abc='],
+			[
+				'leaves base64 padding unencoded',
+				'YWJjZA==',
+				requestPath`/v1.0/teams/team-1/tags/YWJjZA==`,
+			],
+			['decodes a percent-encoded ID', 'abc%3D', requestPath`/v1.0/teams/team-1/tags/abc=`],
 		])('%s in the path', async (_label, tagId, expected) => {
 			tagRow(tagId);
 			apiRequest.mockResolvedValue({ id: tagId, displayName: 'Engineering' });
@@ -611,7 +621,10 @@ describe('Test MicrosoftTeamsV2, resolveMentions', () => {
 
 			const mentions = await resolveMentions.call(ctx, 0, 'team-1');
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', '/v1.0/teams/team-1/tags/REQUESTED=');
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/v1.0/teams/team-1/tags/REQUESTED=`,
+			);
 			expect(mentions).toEqual([tagMention('RESPONSE=', 'Engineering')]);
 		});
 

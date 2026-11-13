@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveApiRequestAllItemsOffset } from '../../transport';
@@ -130,14 +131,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				responseData = await pipedriveApiRequestAllItemsOffset.call(
 					this,
 					'GET',
-					'/products/search',
+					requestPath`/products/search`,
 					{},
 					qs,
 				);
 			} else {
-				responseData = await pipedriveApiRequest.call(this, 'GET', '/products/search', {}, qs, {
-					apiVersion: 'v1',
-				});
+				responseData = await pipedriveApiRequest.call(
+					this,
+					'GET',
+					requestPath`/products/search`,
+					{},
+					qs,
+					{
+						apiVersion: 'v1',
+					},
+				);
 			}
 
 			const data = parseSearchResponse(responseData);

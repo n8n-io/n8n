@@ -5,7 +5,12 @@ import type {
 	INode,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { isResourceLocatorValue, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	isResourceLocatorValue,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 import {
@@ -99,7 +104,7 @@ async function findUsersByMail(this: IExecuteFunctions, address: string): Promis
 	const response = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/users',
+		requestPath`/v1.0/users`,
 		{},
 		{
 			$filter: `mail eq '${escapeODataValue(address)}'`,
@@ -239,7 +244,7 @@ export async function resolveUserTarget(
 		user = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/users/${encodeURIComponent(value)}`,
+			requestPath`/v1.0/users/${value}`,
 			{},
 			{ $select: 'id,displayName,userPrincipalName' },
 		)) as IDataObject;

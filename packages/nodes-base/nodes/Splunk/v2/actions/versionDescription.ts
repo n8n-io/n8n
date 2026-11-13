@@ -11,7 +11,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'splunk',
 	icon: 'file:splunk.svg',
 	group: ['transform'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Splunk Enterprise API',
 	defaults: {

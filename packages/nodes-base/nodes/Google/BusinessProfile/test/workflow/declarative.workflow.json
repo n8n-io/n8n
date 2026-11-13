@@ -1,0 +1,94 @@
+{
+	"name": "Google Business Profile request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5c2d9e1a-7b3f-4a68-9d0e-1a2b3c4d5e01",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "review",
+				"account": {
+					"__rl": true,
+					"value": "accounts/104578213969250394851",
+					"mode": "name"
+				},
+				"location": {
+					"__rl": true,
+					"value": "locations/7183021945602238911",
+					"mode": "name"
+				},
+				"review": {
+					"__rl": true,
+					"value": "AbFvOqk3Lm9",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleBusinessProfile",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "5c2d9e1a-7b3f-4a68-9d0e-1a2b3c4d5e02",
+			"name": "Get review",
+			"credentials": {
+				"googleBusinessProfileOAuth2Api": {
+					"id": "gbp-cred-1",
+					"name": "Google Business Profile account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "post",
+				"operation": "get",
+				"account": {
+					"__rl": true,
+					"value": "accounts/104578213969250394851",
+					"mode": "name"
+				},
+				"location": {
+					"__rl": true,
+					"value": "locations/7183021945602238911",
+					"mode": "name"
+				},
+				"post": {
+					"__rl": true,
+					"value": "accounts/104578213969250394851/locations/7183021945602238911/localPosts/3",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.googleBusinessProfile",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "5c2d9e1a-7b3f-4a68-9d0e-1a2b3c4d5e03",
+			"name": "Get post",
+			"credentials": {
+				"googleBusinessProfileOAuth2Api": {
+					"id": "gbp-cred-1",
+					"name": "Google Business Profile account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": { "main": [[{ "node": "Get review", "type": "main", "index": 0 }]] },
+		"Get review": { "main": [[{ "node": "Get post", "type": "main", "index": 0 }]] }
+	},
+	"pinData": {
+		"Get review": [{ "json": { "reviewId": "AbFvOqk3Lm9" } }],
+		"Get post": [
+			{
+				"json": {
+					"name": "accounts/104578213969250394851/locations/7183021945602238911/localPosts/3"
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

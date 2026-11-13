@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/base/getAll.operation';
 import { apiRequest } from '../../../../v2/transport';
@@ -44,7 +44,7 @@ describe('NocoDB base getAll action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'GET',
-			'/api/v3/meta/workspaces/testWorkspaceId/bases',
+			requestPath`/api/v3/meta/workspaces/testWorkspaceId/bases`,
 			{},
 			{},
 		);
@@ -63,7 +63,7 @@ describe('NocoDB base getAll action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			expect.anything(),
 			'GET',
-			'/api/v2/meta/bases/',
+			requestPath`/api/v2/meta/bases/`,
 			{},
 			{},
 		);

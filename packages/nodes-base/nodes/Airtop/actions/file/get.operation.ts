@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 import { ERROR_MESSAGES } from '../../constants';
@@ -49,7 +49,7 @@ export async function execute(
 	const response = (await apiRequest.call(
 		this,
 		'GET',
-		`/files/${fileId}`,
+		requestPath`/files/${fileId}`,
 	)) as IAirtopResponseWithFiles;
 
 	const { fileName = '', downloadUrl = '', status = '' } = response?.data ?? {};

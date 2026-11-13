@@ -1,14 +1,21 @@
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
+	EngineRequest,
 	EngineResponse,
 	WorkflowExecuteMode,
 	IExecuteFunctions,
+<<<<<<< HEAD
+=======
+	IPairedItemData,
+	INode,
+>>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 	INodeExecutionData,
 	INodeType,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
@@ -760,6 +767,122 @@ describe('processRunExecutionData', () => {
 			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json;
 			expect(agentFinalOutput?.actionResponsesCount).toBe(1);
 		});
+
+		test.each([
+			{ maxIterations: 2, retryOnFail: true },
+			{ maxIterations: 1, retryOnFail: false },
+			{ maxIterations: 1, retryOnFail: true },
+		])(
+			'preserves agent tool context with maxIterations=$maxIterations and retryOnFail=$retryOnFail',
+			async ({ maxIterations, retryOnFail }) => {
+				const maxTries = 2;
+				const errorMessage = `Max iterations (${maxIterations}) reached. The agent could not complete the task within the allowed number of iterations.`;
+				const triggerNode = createNodeData({ name: 'trigger', type: types.passThrough });
+				const toolNode = createNodeData({ name: 'tool', type: types.passThrough });
+				const agentNode: INode = {
+					...createNodeData({ name: 'agent', type: 'agentNodeType' }),
+					retryOnFail,
+					maxTries,
+					waitBetweenTries: 1,
+					onError: 'continueErrorOutput',
+				};
+				const request: EngineRequest = {
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'test input' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'action_1',
+							metadata: { itemIndex: 0 },
+						},
+					],
+					metadata: {
+						iterationCount: 1,
+						previousRequests: [
+							{ tool: toolNode.name, toolInput: { query: 'test input' }, toolCallId: 'action_1' },
+						],
+					},
+				};
+				const responses: Array<EngineResponse<{ iterationCount?: number }> | undefined> = [];
+				let toolRequests = 0;
+				const agentNodeType: INodeType = {
+					...passThroughNode,
+					async execute(
+						this: IExecuteFunctions,
+						response?: EngineResponse<{ iterationCount?: number }>,
+					): Promise<INodeExecutionData[][] | EngineRequest> {
+						responses.push(response);
+						if ((response?.metadata?.iterationCount ?? 0) >= maxIterations) {
+							// AGENT-832: V3 returns an error item at the limit when error continuation is enabled.
+							const error = new NodeOperationError(this.getNode(), errorMessage);
+							return [[{ json: { error: error.message }, pairedItem: { item: 0 } }]];
+						}
+						if (response?.actionResponses.length) {
+							return [[{ json: { output: 'agent completed' } }]];
+						}
+
+						// Bound the test if lost context keeps starting new tool cycles.
+						if (toolRequests === maxTries + 1) {
+							return [[{ json: { output: 'stopped after repeated restarts' } }]];
+						}
+						toolRequests++;
+						return request;
+					},
+				};
+				const customNodeTypes = NodeTypes({
+					...nodeTypeArguments,
+					agentNodeType: { type: agentNodeType, sourcePath: '' },
+				});
+				const workflow = new DirectedGraph()
+					.addNodes(triggerNode, agentNode, toolNode)
+					.addConnections(
+						{ from: triggerNode, to: agentNode },
+						{ from: toolNode, to: agentNode, type: NodeConnectionTypes.AiTool },
+					)
+					.toWorkflow({
+						name: '',
+						active: false,
+						nodeTypes: customNodeTypes,
+						settings: { executionOrder: 'v1' },
+					});
+
+				const result = await new WorkflowExecute(additionalData, executionMode).run({
+					workflow,
+					startNode: triggerNode,
+				});
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(responses[1]).toMatchObject({
+					metadata: request.metadata,
+					actionResponses: [
+						{
+							action: request.actions[0],
+							data: {
+								data: {
+									ai_tool: [[{ json: { query: 'test input', toolCallId: 'action_1' } }]],
+								},
+							},
+						},
+					],
+				});
+				for (const response of responses.slice(1)) {
+					expect(response).toEqual(responses[1]);
+				}
+				expect(responses).toHaveLength(maxIterations === 1 && retryOnFail ? maxTries + 1 : 2);
+				expect(toolRequests).toBe(1);
+				const runData = result.data.resultData.runData;
+				expect(runData[toolNode.name]).toHaveLength(1);
+				const output = runData[agentNode.name][0].data?.main;
+				if (maxIterations === 1) {
+					expect(output?.[0]).toEqual([]);
+					expect(output?.[1]?.[0].json).toMatchObject({ error: errorMessage });
+				} else {
+					expect(output?.[0]?.[0].json).toEqual({ output: 'agent completed' });
+					expect(output?.[1]).toEqual([]);
+				}
+			},
+		);
 
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE

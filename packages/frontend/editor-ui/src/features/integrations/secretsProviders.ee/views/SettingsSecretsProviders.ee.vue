@@ -17,10 +17,17 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
+	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+<<<<<<< HEAD
 import { computed, onMounted } from 'vue';
+=======
+import * as externalSecretsApi from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref } from 'vue';
+>>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 import { I18nT } from 'vue-i18n';
 
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
@@ -198,6 +205,31 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
+<<<<<<< HEAD
+=======
+				<div
+					v-if="isRoleBasedAccessEnabled"
+					:class="$style.systemRolesToggle"
+					class="mt-xl"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
+					<div :class="$style.systemRolesToggleInfo">
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
+						</N8nText>
+					</div>
+					<N8nSwitch
+						size="large"
+						:model-value="systemRolesEnabled"
+						:disabled="systemRolesToggleLoading"
+						data-test-id="external-secrets-system-roles-switch"
+						@update:model-value="onSystemRolesToggle"
+					/>
+				</div>
+>>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"

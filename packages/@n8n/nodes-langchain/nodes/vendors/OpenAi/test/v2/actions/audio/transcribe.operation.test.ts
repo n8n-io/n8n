@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -110,7 +111,7 @@ describe('Audio Transcribe Operation', () => {
 		const mockFormDataInstance = lastFormDataInstance.current;
 
 		expect(mockFormDataAppend).toHaveBeenCalledWith('model', 'whisper-1');
-		expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/audio/transcriptions', {
+		expect(apiRequestSpy).toHaveBeenCalledWith('POST', requestPath`/audio/transcriptions`, {
 			option: { formData: mockFormDataInstance },
 			headers: { 'content-type': 'multipart/form-data' },
 		});

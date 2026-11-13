@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -27,7 +27,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const conversationId = this.getNodeParameter('conversationId', i, '') as string;
 
-	const response = await apiRequest.call(this, 'GET', `/conversations/${conversationId}`);
+	const response = await apiRequest.call(
+		this,
+		'GET',
+		requestPath`/conversations/${conversationId}`,
+	);
 
 	return [
 		{

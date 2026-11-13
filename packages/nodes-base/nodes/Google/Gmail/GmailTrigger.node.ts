@@ -8,7 +8,11 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
+<<<<<<< HEAD
 import { isSafeObjectProperty, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+=======
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
+>>>>>>> 9d82d35cb2b4b5d5c410908eb0be496ef956139a
 
 import {
 	googleApiRequest,
@@ -294,7 +298,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					this,
 					'labels',
 					'GET',
-					'/gmail/v1/users/me/labels',
+					requestPath`/gmail/v1/users/me/labels`,
 				)) as Label[];
 
 				for (const label of labels) {
@@ -413,7 +417,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 			const fullMessage = (await googleApiRequest.call(
 				this,
 				'GET',
-				`/gmail/v1/users/me/messages/${messageId}`,
+				requestPath`/gmail/v1/users/me/messages/${messageId}`,
 				{},
 				fetchQs,
 			)) as Message;
@@ -641,7 +645,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
 					'GET',
-					'/gmail/v1/users/me/messages',
+					requestPath`/gmail/v1/users/me/messages`,
 					{},
 					pageToken ? { ...qs, pageToken } : qs,
 				);

@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { customerFields, customerOperations } from './descriptions';
@@ -105,7 +106,7 @@ export class WooCommerce implements INodeType {
 				const categories = await woocommerceApiRequestAllItems.call(
 					this,
 					'GET',
-					'/products/categories',
+					requestPath`/products/categories`,
 					{},
 				);
 				for (const category of categories) {
@@ -122,7 +123,12 @@ export class WooCommerce implements INodeType {
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const tags = await woocommerceApiRequestAllItems.call(this, 'GET', '/products/tags', {});
+				const tags = await woocommerceApiRequestAllItems.call(
+					this,
+					'GET',
+					requestPath`/products/tags`,
+					{},
+				);
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.id;
@@ -171,7 +177,12 @@ export class WooCommerce implements INodeType {
 							Object.assign(body, adjustMetadata(additionalFields));
 						}
 
-						responseData = await woocommerceApiRequest.call(this, 'POST', '/customers', body);
+						responseData = await woocommerceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/customers`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//             customer: delete
@@ -184,7 +195,7 @@ export class WooCommerce implements INodeType {
 
 						qs.force = true; // required, customers do not support trashing
 
-						const endpoint = `/customers/${customerId}`;
+						const endpoint = requestPath`/customers/${customerId}`;
 						responseData = await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, qs);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -196,7 +207,7 @@ export class WooCommerce implements INodeType {
 						const customerId = this.getNodeParameter('customerId', i);
 						assertResourceId(this, customerId, 'Customer ID', i);
 
-						const endpoint = `/customers/${customerId}`;
+						const endpoint = requestPath`/customers/${customerId}`;
 						responseData = await woocommerceApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -216,13 +227,19 @@ export class WooCommerce implements INodeType {
 							responseData = await woocommerceApiRequestAllItems.call(
 								this,
 								'GET',
-								'/customers',
+								requestPath`/customers`,
 								{},
 								{},
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
+							responseData = await woocommerceApiRequest.call(
+								this,
+								'GET',
+								requestPath`/customers`,
+								{},
+								qs,
+							);
 						}
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -241,7 +258,7 @@ export class WooCommerce implements INodeType {
 						const customerId = this.getNodeParameter('customerId', i);
 						assertResourceId(this, customerId, 'Customer ID', i);
 
-						const endpoint = `/customers/${customerId}`;
+						const endpoint = requestPath`/customers/${customerId}`;
 						responseData = await woocommerceApiRequest.call(this, 'PUT', endpoint, body);
 					}
 				} else if (resource === 'product') {
@@ -276,7 +293,12 @@ export class WooCommerce implements INodeType {
 						if (metadata) {
 							body.meta_data = metadata;
 						}
-						responseData = await woocommerceApiRequest.call(this, 'POST', '/products', body);
+						responseData = await woocommerceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/products`,
+							body,
+						);
 					}
 					//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-a-product
 					if (operation === 'update') {
@@ -305,7 +327,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'PUT',
-							`/products/${productId}`,
+							requestPath`/products/${productId}`,
 							body,
 						);
 					}
@@ -316,7 +338,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'GET',
-							`/products/${productId}`,
+							requestPath`/products/${productId}`,
 							{},
 							qs,
 						);
@@ -380,13 +402,19 @@ export class WooCommerce implements INodeType {
 							responseData = await woocommerceApiRequestAllItems.call(
 								this,
 								'GET',
-								'/products',
+								requestPath`/products`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await woocommerceApiRequest.call(this, 'GET', '/products', {}, qs);
+							responseData = await woocommerceApiRequest.call(
+								this,
+								'GET',
+								requestPath`/products`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-a-product
@@ -396,7 +424,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'DELETE',
-							`/products/${productId}`,
+							requestPath`/products/${productId}`,
 							{},
 							{ force: true },
 						);
@@ -455,7 +483,12 @@ export class WooCommerce implements INodeType {
 							setMetadata(shippingLines);
 							toSnakeCase(shippingLines);
 						}
-						responseData = await woocommerceApiRequest.call(this, 'POST', '/orders', body);
+						responseData = await woocommerceApiRequest.call(
+							this,
+							'POST',
+							requestPath`/orders`,
+							body,
+						);
 					}
 					//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-an-order
 					if (operation === 'update') {
@@ -538,7 +571,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'PUT',
-							`/orders/${orderId}`,
+							requestPath`/orders/${orderId}`,
 							body,
 						);
 					}
@@ -549,7 +582,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'GET',
-							`/orders/${orderId}`,
+							requestPath`/orders/${orderId}`,
 							{},
 							qs,
 						);
@@ -592,13 +625,19 @@ export class WooCommerce implements INodeType {
 							responseData = await woocommerceApiRequestAllItems.call(
 								this,
 								'GET',
-								'/orders',
+								requestPath`/orders`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
-							responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
+							responseData = await woocommerceApiRequest.call(
+								this,
+								'GET',
+								requestPath`/orders`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://woocommerce.github.io/woocommerce-rest-api-docs/#delete-an-order
@@ -608,7 +647,7 @@ export class WooCommerce implements INodeType {
 						responseData = await woocommerceApiRequest.call(
 							this,
 							'DELETE',
-							`/orders/${orderId}`,
+							requestPath`/orders/${orderId}`,
 							{},
 							{ force: true },
 						);

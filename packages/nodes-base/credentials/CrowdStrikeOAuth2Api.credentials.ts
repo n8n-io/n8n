@@ -1,10 +1,11 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 export class CrowdStrikeOAuth2Api implements ICredentialType {
@@ -60,10 +61,9 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const url = credentials.url as string;
 		const { access_token } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${url.endsWith('/') ? url.slice(0, -1) : url}/oauth2/token`,
+			url: requestUrl`${credentials.url}/oauth2/token`,
 			body: {
 				client_id: credentials.clientId,
 				client_secret: credentials.clientSecret,

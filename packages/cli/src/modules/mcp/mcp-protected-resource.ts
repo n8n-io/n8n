@@ -11,9 +11,8 @@ import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 
 import type { ProtectedResource, ResourcePrincipal, ResourceUser } from '@n8n/inbound-auth';
-import { UrlService } from '@n8n/backend-services';
+import { UrlService, PostHogClient } from '@n8n/backend-services';
 import { SkillsGate } from '@/modules/skills';
-import { PostHogClient } from '@/posthog';
 
 import {
 	ACTIVITY_LOG_TOOLS,
@@ -22,7 +21,12 @@ import {
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from './mcp-scopes';
-import { areAgentToolsAvailable, isCommunityNodeInstallAvailable } from './mcp-tool-availability';
+import {
+	areAgentToolsAvailable,
+	canReadMigrationReport,
+	isCommunityNodeInstallAvailable,
+	isMigrationReportAvailable,
+} from './mcp-tool-availability';
 import { McpConfig } from './mcp.config';
 import { McpSettingsService } from './mcp.settings.service';
 
@@ -33,6 +37,10 @@ import { McpSettingsService } from './mcp.settings.service';
 export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 const AGENT_SCOPES = new Set<string>(MCP_AGENT_SCOPES);
 const SKILL_SCOPES = new Set<string>(MCP_SKILL_SCOPES);
+const MIGRATION_REPORT_SCOPES = new Set<string>([
+	'breakingChanges:list',
+	'breakingChanges:migrate',
+]);
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -75,10 +83,12 @@ export class McpProtectedResource implements ProtectedResource {
 	get scopes(): string[] {
 		const agentsAvailable = areAgentToolsAvailable(this.globalConfig, this.moduleRegistry);
 		const skillsAvailable = Container.get(SkillsGate).isEnabled;
+		const migrationReportAvailable = isMigrationReportAvailable(this.moduleRegistry);
 		return SUPPORTED_SCOPES.filter(
 			(scope) =>
 				(agentsAvailable || !AGENT_SCOPES.has(scope)) &&
-				(skillsAvailable || !SKILL_SCOPES.has(scope)),
+				(skillsAvailable || !SKILL_SCOPES.has(scope)) &&
+				(migrationReportAvailable || !MIGRATION_REPORT_SCOPES.has(scope)),
 		);
 	}
 
@@ -173,6 +183,10 @@ export class McpProtectedResource implements ProtectedResource {
 	 * nothing. Delegates to the same predicate registration uses rather than
 	 * re-checking one of its conditions: the screen pre-checks every offered
 	 * scope on first consent, so a scope offered here is a scope granted.
+	 *
+	 * `breakingChanges:list` and `breakingChanges:migrate` are dropped for a user
+	 * whose role cannot read the migration report, for the first reason:
+	 * registration checks the same permission, so the grant could do nothing.
 	 */
 	async getGrantableScopes(user: ResourceUser): Promise<string[]> {
 		const { CommunityPackagesConfig } = await import(
@@ -185,8 +199,13 @@ export class McpProtectedResource implements ProtectedResource {
 			this.mcpConfig,
 			user,
 		);
+		const migrationReportReadable = canReadMigrationReport(this.moduleRegistry, user);
 
-		return this.scopes.filter((scope) => installAvailable || scope !== 'communityPackage:install');
+		return this.scopes.filter(
+			(scope) =>
+				(installAvailable || scope !== 'communityPackage:install') &&
+				(migrationReportReadable || !MIGRATION_REPORT_SCOPES.has(scope)),
+		);
 	}
 
 	async isAvailable(): Promise<boolean> {

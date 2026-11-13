@@ -23,6 +23,7 @@ export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
+	type AiGatewayPromotion,
 } from './ai/ai-gateway-config-response.dto';
 export {
 	AiGatewayMcpServersResponse,
@@ -253,6 +254,7 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export {
+	DEPENDENCY_PUBLIC_TYPES,
 	DependencyListPublicDto,
 	ListDependenciesQueryDto,
 	type DependencyPublicType,

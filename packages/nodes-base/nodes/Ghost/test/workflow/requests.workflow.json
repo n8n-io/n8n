@@ -1,0 +1,372 @@
+{
+	"name": "Ghost Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking 'Execute Workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"source": "contentApi",
+				"resource": "post",
+				"operation": "get",
+				"by": "id",
+				"identifier": "5f2a1b3c4d5e6f7a8b9c0d1e"
+			},
+			"id": "node-0",
+			"name": "Content Post Get",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"ghostContentApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "contentApi",
+				"resource": "post",
+				"operation": "get",
+				"by": "slug",
+				"identifier": "welcome"
+			},
+			"id": "node-1",
+			"name": "Content Post Get By Slug",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"ghostContentApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "contentApi",
+				"resource": "post",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-2",
+			"name": "Content Post Get Many",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"ghostContentApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "contentApi",
+				"resource": "post",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "node-3",
+			"name": "Content Post Get Many All",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"ghostContentApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "create",
+				"title": "Welcome",
+				"contentFormat": "html",
+				"content": "<p>Hi</p>"
+			},
+			"id": "node-4",
+			"name": "Admin Post Create",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "delete",
+				"postId": "5f2a1b3c4d5e6f7a8b9c0d1e"
+			},
+			"id": "node-5",
+			"name": "Admin Post Delete",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "get",
+				"by": "id",
+				"identifier": "5f2a1b3c4d5e6f7a8b9c0d1e"
+			},
+			"id": "node-6",
+			"name": "Admin Post Get",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "get",
+				"by": "slug",
+				"identifier": "welcome"
+			},
+			"id": "node-7",
+			"name": "Admin Post Get By Slug",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "node-8",
+			"name": "Admin Post Get Many",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "adminApi",
+				"resource": "post",
+				"operation": "update",
+				"postId": "5f2a1b3c4d5e6f7a8b9c0d1e",
+				"contentFormat": "html",
+				"updateFields": {
+					"title": "Welcome"
+				}
+			},
+			"id": "node-9",
+			"name": "Admin Post Update",
+			"type": "n8n-nodes-base.ghost",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"ghostAdminApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Content Post Get": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Content Post Get By Slug": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Content Post Get Many": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Content Post Get Many All": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Admin Post Create": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Admin Post Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Admin Post Get": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Admin Post Get By Slug": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Admin Post Get Many": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		],
+		"Admin Post Update": [
+			{
+				"json": {
+					"id": "5f2a1b3c4d5e6f7a8b9c0d1e",
+					"slug": "welcome",
+					"title": "Welcome",
+					"updated_at": "2025-09-01T10:00:00.000Z"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Content Post Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Post Get By Slug",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Post Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Post Get Many All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Get By Slug",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Admin Post Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

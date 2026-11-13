@@ -3923,6 +3923,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4438,6 +4439,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4575,6 +4577,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4598,6 +4601,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4624,6 +4628,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 
 		const { data } = response.body;
@@ -4751,6 +4756,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 	});
 
@@ -4765,6 +4771,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate', undefined, {
 			actor: expect.objectContaining({ kind: 'user' }),
+			publisherId: owner.id,
 		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',

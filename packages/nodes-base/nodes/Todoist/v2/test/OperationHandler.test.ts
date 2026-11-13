@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	todoistApiRequest,
@@ -101,7 +102,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/tasks',
+					requestPath`/tasks`,
 					expect.objectContaining({
 						content: 'Test task',
 						project_id: '123456',
@@ -132,7 +133,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/tasks',
+					requestPath`/tasks`,
 					expect.objectContaining({
 						content: 'Task with due date',
 						project_id: '123456',
@@ -156,7 +157,10 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('POST', '/tasks/123456/close');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/tasks/123456/close`,
+				);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -172,7 +176,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', '/tasks/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/tasks/123456`);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -194,7 +198,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', '/tasks/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', requestPath`/tasks/123456`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -222,7 +226,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/tasks',
+					requestPath`/tasks`,
 					expect.objectContaining({
 						project_id: '123456',
 						label: '789',
@@ -244,7 +248,12 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, '/tasks', {}, undefined);
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					requestPath`/tasks`,
+					{},
+					undefined,
+				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 
@@ -269,7 +278,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/tasks/filter',
+					requestPath`/tasks/filter`,
 					expect.objectContaining({ query: 'today' }),
 					5,
 				);
@@ -297,7 +306,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/tasks',
+					requestPath`/tasks`,
 					expect.objectContaining({ filter: 'today' }),
 					5,
 				);
@@ -316,7 +325,10 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('POST', '/tasks/123456/reopen');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/tasks/123456/reopen`,
+				);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -340,7 +352,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/tasks/123456',
+					requestPath`/tasks/123456`,
 					expect.objectContaining({
 						content: 'Updated task',
 						description: 'Updated description',
@@ -439,7 +451,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/projects',
+					requestPath`/projects`,
 					expect.objectContaining({
 						name: 'Test Project',
 						color: 'blue',
@@ -468,7 +480,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', '/projects/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', requestPath`/projects/123456`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -487,7 +499,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, '/projects');
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, requestPath`/projects`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -510,7 +522,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/projects/123456',
+					requestPath`/projects/123456`,
 					expect.objectContaining({
 						name: 'Updated Project',
 						color: 'red',
@@ -532,7 +544,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', '/projects/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/projects/123456`);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -548,7 +560,10 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('POST', '/projects/123456/archive');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/projects/123456/archive`,
+				);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -564,7 +579,10 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('POST', '/projects/123456/unarchive');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
+					'POST',
+					requestPath`/projects/123456/unarchive`,
+				);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -587,7 +605,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/projects/123456/collaborators',
+					requestPath`/projects/123456/collaborators`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -619,7 +637,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/sections',
+					requestPath`/sections`,
 					expect.objectContaining({
 						name: 'Test Section',
 						project_id: '123456',
@@ -647,7 +665,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', '/sections/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', requestPath`/sections/123456`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -672,7 +690,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/sections',
+					requestPath`/sections`,
 					expect.objectContaining({
 						project_id: '123456',
 					}),
@@ -697,7 +715,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/sections/123456',
+					requestPath`/sections/123456`,
 					expect.objectContaining({
 						name: 'Updated Section',
 					}),
@@ -717,7 +735,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', '/sections/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/sections/123456`);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -750,7 +768,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/labels',
+					requestPath`/labels`,
 					expect.objectContaining({
 						name: 'Test Label',
 						color: 'red',
@@ -779,7 +797,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', '/labels/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', requestPath`/labels/123456`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -798,7 +816,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, '/labels');
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, requestPath`/labels`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -821,7 +839,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/labels/123456',
+					requestPath`/labels/123456`,
 					expect.objectContaining({
 						name: 'Updated Label',
 						color: 'green',
@@ -843,7 +861,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', '/labels/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/labels/123456`);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -871,7 +889,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/comments',
+					requestPath`/comments`,
 					expect.objectContaining({
 						task_id: '123456',
 						content: 'Test comment',
@@ -898,7 +916,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', '/comments/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('GET', requestPath`/comments/123456`);
 				expect(result).toEqual({ data: expectedResponse });
 			});
 		});
@@ -923,7 +941,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/comments',
+					requestPath`/comments`,
 					expect.objectContaining({
 						task_id: '123456',
 					}),
@@ -947,7 +965,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
-					'/comments',
+					requestPath`/comments`,
 					expect.objectContaining({
 						project_id: '789',
 					}),
@@ -972,7 +990,7 @@ describe('OperationHandler', () => {
 
 				expect(mockTodoistApiRequest).toHaveBeenCalledWith(
 					'POST',
-					'/comments/123456',
+					requestPath`/comments/123456`,
 					expect.objectContaining({
 						content: 'Updated comment',
 					}),
@@ -992,7 +1010,7 @@ describe('OperationHandler', () => {
 
 				const result = await handler.handleOperation(mockCtx, 0);
 
-				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', '/comments/123456');
+				expect(mockTodoistApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/comments/123456`);
 				expect(result).toEqual({ success: true });
 			});
 		});
@@ -1025,7 +1043,7 @@ describe('OperationHandler', () => {
 				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Buy milk tomorrow @shopping' },
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1064,7 +1082,7 @@ describe('OperationHandler', () => {
 						auto_reminder: true,
 					},
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1094,7 +1112,7 @@ describe('OperationHandler', () => {
 						note: 'Check the quarterly reports',
 					},
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1124,7 +1142,7 @@ describe('OperationHandler', () => {
 						reminder: 'next Monday at 9am',
 					},
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1159,7 +1177,7 @@ describe('OperationHandler', () => {
 						auto_reminder: true,
 					},
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1189,7 +1207,7 @@ describe('OperationHandler', () => {
 				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Simple task' },
 					{},
-					'/quick/add',
+					requestPath`/quick/add`,
 				);
 				expect(result).toEqual({ data: expectedResponse });
 			});
@@ -1209,7 +1227,7 @@ describe('OperationHandler', () => {
 				expect(mockTodoistSyncRequest).toHaveBeenCalledWith(
 					{ text: 'Buy milk' },
 					{},
-					'/tasks/quick',
+					requestPath`/tasks/quick`,
 				);
 			});
 		});

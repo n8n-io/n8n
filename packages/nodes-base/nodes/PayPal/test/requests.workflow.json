@@ -1,0 +1,192 @@
+{
+	"name": "PayPal Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "payout",
+				"operation": "create",
+				"senderBatchId": "Payouts_2024_100007",
+				"jsonParameters": true,
+				"itemsJson": "[{\"recipient_type\":\"EMAIL\",\"receiver\":\"nathan@example.com\"}]",
+				"additionalFields": {}
+			},
+			"id": "paypal-0",
+			"name": "Payout Create",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payout",
+				"operation": "get",
+				"payoutBatchId": "5UXD2E8A7EBQJ",
+				"returnAll": true
+			},
+			"id": "paypal-1",
+			"name": "Payout Get All",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payout",
+				"operation": "get",
+				"payoutBatchId": "5UXD2E8A7EBQJ",
+				"limit": 2
+			},
+			"id": "paypal-2",
+			"name": "Payout Get",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payoutItem",
+				"operation": "get",
+				"payoutItemId": "8AELMXH8UB2P8"
+			},
+			"id": "paypal-3",
+			"name": "Payout Item Get",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "payoutItem",
+				"operation": "cancel",
+				"payoutItemId": "8AELMXH8UB2P8"
+			},
+			"id": "paypal-4",
+			"name": "Payout Item Cancel",
+			"type": "n8n-nodes-base.payPal",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"payPalApi": {
+					"id": "1",
+					"name": "PayPal account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Payout Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payout Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payout Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payout Item Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Payout Item Cancel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Payout Create": [
+			{
+				"json": {
+					"batch_header": {
+						"payout_batch_id": "5UXD2E8A7EBQJ"
+					}
+				}
+			}
+		],
+		"Payout Get All": [
+			{
+				"json": {
+					"payout_item_id": "ITEM1"
+				}
+			},
+			{
+				"json": {
+					"payout_item_id": "ITEM2"
+				}
+			}
+		],
+		"Payout Get": [
+			{
+				"json": {
+					"payout_item_id": "ITEM1"
+				}
+			},
+			{
+				"json": {
+					"payout_item_id": "ITEM2"
+				}
+			}
+		],
+		"Payout Item Get": [
+			{
+				"json": {
+					"payout_item_id": "8AELMXH8UB2P8",
+					"transaction_status": "UNCLAIMED"
+				}
+			}
+		],
+		"Payout Item Cancel": [
+			{
+				"json": {
+					"payout_item_id": "8AELMXH8UB2P8",
+					"transaction_status": "UNCLAIMED"
+				}
+			}
+		]
+	}
+}

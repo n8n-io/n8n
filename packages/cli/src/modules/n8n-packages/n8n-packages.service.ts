@@ -1,9 +1,8 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
@@ -392,7 +391,7 @@ export class N8nPackagesService {
 		const agentEntries = agentExportResult?.agentEntries ?? [];
 		const written = {
 			packageFormatVersion: FORMAT_VERSION,
-			sourceN8nVersion: N8N_VERSION,
+			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
 			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),

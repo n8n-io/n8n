@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, provide, watch } from 'vue';
 import { deepCopy } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import NodeView from '@/app/views/NodeView.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import {
@@ -120,7 +120,7 @@ onUnmounted(() => {
 			<div :class="$style.canvas">
 				<NodeView />
 				<div v-if="preview.isLoading.value" :class="$style.loadingOverlay">
-					<N8nIcon icon="loader-circle" :size="48" spin />
+					<N8nSpinner type="brand" size="xxlarge" />
 				</div>
 			</div>
 			<LogsPanel v-if="hasExecutionData" :class="$style.logs" :is-read-only="true" />
@@ -136,7 +136,7 @@ onUnmounted(() => {
 			</N8nText>
 		</div>
 		<div v-else :class="$style.centerState">
-			<N8nIcon icon="loader-circle" :size="80" spin />
+			<N8nSpinner type="brand" size="xxlarge" />
 		</div>
 	</div>
 </template>

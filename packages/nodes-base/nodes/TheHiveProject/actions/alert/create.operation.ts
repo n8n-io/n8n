@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -173,7 +174,7 @@ export async function execute(
 		responseData = await theHiveApiRequest.call(
 			this,
 			'POST',
-			'/v1/alert',
+			requestPath`/v1/alert`,
 			undefined,
 			undefined,
 			undefined,
@@ -185,7 +186,7 @@ export async function execute(
 			},
 		);
 	} else {
-		responseData = await theHiveApiRequest.call(this, 'POST', '/v1/alert' as string, body);
+		responseData = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/alert`, body);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {

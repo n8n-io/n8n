@@ -89,3 +89,6 @@ export const roleSchema = z.object({
 });
 
 export type Role = z.infer<typeof roleSchema>;
+
+/** The kind of an account: a person, or a service account. */
+export const principalTypeSchema = z.enum(['person', 'service']);
