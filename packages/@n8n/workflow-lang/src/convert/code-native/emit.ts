@@ -6,8 +6,9 @@
  * input list and the lists of the other nodes that the code reads, so the
  * user code cannot see or change the variables of the workflow. It copies the
  * lists as JSON, as the fallback host gets them, and wraps the items as
- * `{ json }`. The user code runs in an inner function, so its `return` gives
- * the result, which `codeItems` turns into the result list.
+ * `{ json, pairedItem }`, with the position of the item as v1's paired item.
+ * The user code runs in an inner function, so its `return` gives the result,
+ * which `codeItems` turns into the result list.
  */
 import type { Translation } from './translate.ts';
 import { ALL_NODES, MATCHES, FIRST_JSON, INDEX, ITEM, ITEMS, nodeVar, P } from './translate.ts';
@@ -39,9 +40,13 @@ export function emitExpression(
 	].join(', ');
 	const head: string[] = [];
 	t.nodes.forEach((_, k) => {
-		head.push(`const ${nodeVar(k)}: Json[] = codeClone(${raw(k)}).map(codeWrapJson);`);
+		head.push(
+			`const ${nodeVar(k)}: Json[] = codeClone(${raw(k)}).map((${P}j: Json, ${P}k: number) => codeWrapJson(${P}j, ${P}k));`,
+		);
 	});
-	head.push(`let ${ITEMS}: Json[] = codeClone(${P}in).map(codeWrap);`);
+	head.push(
+		`let ${ITEMS}: Json[] = codeClone(${P}in).map((${P}j: Json, ${P}k: number) => codeWrap(${P}j, ${P}k));`,
+	);
 	if (t.usesMatchProps) head.push(`const ${MATCHES}: Json[] = [];`);
 	// The user code keeps its text: indenting it would change multi-line template literals.
 	const body = t.body;

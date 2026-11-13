@@ -28,21 +28,22 @@ function codeClone(list: Json[]): Json[] {
 	},
 	codeWrap: {
 		uses: [],
-		source: `/** An input item as the Code node gets it: \`{ json }\`, with \`binary\` from \`$binary\`. */
-function codeWrap(j: Json): Json {
+		source: `/** An input item as the Code node gets it: \`{ json, pairedItem }\`, with \`binary\` from \`$binary\`. */
+function codeWrap(j: Json, index: number): Json {
+	const pairedItem: Json = { item: index };
 	if (j !== null && typeof j === 'object' && j.$binary) {
 		const json: Json = {};
 		for (const k of Object.keys(j)) if (k !== '$binary') json[k] = j[k];
-		return { json, binary: j.$binary };
+		return { json, binary: j.$binary, pairedItem };
 	}
-	return { json: j };
+	return { json: j, pairedItem };
 }`,
 	},
 	codeWrapJson: {
 		uses: [],
 		source: `/** An item of another node as the Code node gets it from \`$('Node')\`. */
-function codeWrapJson(j: Json): Json {
-	return { json: j };
+function codeWrapJson(j: Json, index: number): Json {
+	return { json: j, pairedItem: { item: index } };
 }`,
 	},
 	codeItem: {
