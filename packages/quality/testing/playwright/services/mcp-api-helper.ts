@@ -994,6 +994,16 @@ export class McpApiHelper {
 	}
 
 	/**
+	 * Calls create_side_panel_view tool on the internal MCP service.
+	 */
+	async internalMcpCreateSidePanelView(
+		apiKey: string,
+		args: { title: string; source: string; viewId?: string; icon?: string },
+	): Promise<{ viewId: string; title: string; created: boolean }> {
+		return await this.callInternalMcpTool(apiKey, 'create_side_panel_view', args);
+	}
+
+	/**
 	 * Calls get_workflow_details tool on the internal MCP service.
 	 */
 	async internalMcpGetWorkflowDetails(
