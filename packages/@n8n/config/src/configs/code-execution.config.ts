@@ -42,6 +42,7 @@ export class CodeSandboxConfig {
 export class CodeExecutionConfig {
 	/**
 	 * Where n8n runs the code of Code nodes. One of `task-runners` or `sandbox`.
+	 * The `sandbox` backend is experimental and isn't ready for production use.
 	 * When set to `sandbox`, you must also set `N8N_CODE_SANDBOX_URL` and
 	 * `N8N_CODE_SANDBOX_API_KEY`. n8n doesn't start if the value is invalid.
 	 */
