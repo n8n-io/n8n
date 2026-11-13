@@ -155,15 +155,28 @@ it('shows empty added and removed files and only links files in the new revision
 	);
 });
 
-it('skips immediately and reloads without accepting another update', async () => {
+it('accepts only checked updates and disables acceptance when none are selected', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('first'), update('later')],
+		commit: null,
+	});
 	const view = render();
-	const skip = await view.findByTestId('skill-update-skip');
-	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({ updates: [], commit: null });
-	await userEvent.click(skip);
-	await view.findByText('There are no updates to review.');
-	expect(store.skipSourceUpdate).toHaveBeenCalledWith('source-1', 'docx', 'a'.repeat(64));
+	const first = await view.findByRole('checkbox', { name: 'first' });
+	const later = view.getByRole('checkbox', { name: 'later' });
+	const accept = view.getByTestId('skill-updates-accept');
+	expect(view.queryByRole('button', { name: 'Skip this update' })).not.toBeInTheDocument();
+	await userEvent.click(first);
+	await userEvent.click(later);
+	expect(accept).toBeDisabled();
 	expect(store.acceptSourceUpdates).not.toHaveBeenCalled();
-	expect(view.emitted().changed).toHaveLength(1);
+	await userEvent.click(first);
+	expect(accept).toHaveTextContent('Update 1 skill');
+	await userEvent.click(accept);
+	expect(store.acceptSourceUpdates).toHaveBeenCalledWith('source-1', {
+		updates: [{ skillId: 'first', contentHash: 'a'.repeat(64), baseVersionId: 'v1' }],
+		reviewedWarnings: false,
+	});
+	await waitFor(() => expect(view.emitted().close).toHaveLength(1));
 });
 
 it('keeps review usable when commit metadata fails', async () => {
@@ -197,7 +210,6 @@ it('does not write when the dialog closes', async () => {
 	await userEvent.click(view.getByRole('button', { name: 'Cancel' }));
 	expect(view.emitted().close).toHaveLength(1);
 	expect(store.acceptSourceUpdates).not.toHaveBeenCalled();
-	expect(store.skipSourceUpdate).not.toHaveBeenCalled();
 });
 
 it('reloads the selection after a stale accept and clears the warning acknowledgment', async () => {

@@ -4089,7 +4089,6 @@
 	"settings.context.skills.updates.description": "Review the changes before you update your skills.",
 	"settings.context.skills.updates.title": "Review updates",
 	"settings.context.skills.updates.accept": "Update {count} skill | Update {count} skills",
-	"settings.context.skills.updates.skip": "Skip this update",
 	"settings.context.skills.updates.lines": "+{added} / −{removed} lines",
 	"settings.context.skills.updates.nextVersion": "{name} · v{version} after update",
 	"settings.context.skills.updates.noFollowers": "No agents follow these skills yet.",

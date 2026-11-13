@@ -201,6 +201,41 @@ describe('Skill source checks', () => {
 			expect(github.requests).toEqual(requests);
 		});
 
+		it('keeps unselected updates pending and compares newer content with the saved version', async () => {
+			const { sourceId, docx, xlsx, reviewed } = await changed();
+			await accept(sourceId, {
+				...reviewed,
+				updates: reviewed.updates.filter((update) => update.skillId === docx),
+			});
+			expect((await findLatestSkillVersion(docx))?.version).toBe(2);
+			expect((await findLatestSkillVersion(xlsx))?.version).toBe(1);
+			expect((await review(sourceId)).updates).toEqual(
+				reviewed.updates.filter((update) => update.skillId === xlsx),
+			);
+
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated xlsx.\nNew instructions.') });
+			await sync().checkAll();
+			const newer = await review(sourceId);
+			expect(newer.updates).toHaveLength(1);
+			const update = newer.updates[0];
+			const detail = await editor
+				.get(`/skill-sources/${sourceId}/updates/${xlsx}`)
+				.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+				.expect(200);
+			expect(detail.body.data.files).toEqual([
+				expect.objectContaining({
+					path: 'SKILL.md',
+					before: expect.stringContaining('Follow xlsx.'),
+					after: expect.stringContaining('Updated xlsx.\nNew instructions.'),
+				}),
+			]);
+			await accept(sourceId, newer);
+			expect(await findLatestSkillVersion(xlsx)).toMatchObject({
+				version: 2,
+				instructions: 'Updated xlsx.\nNew instructions.',
+			});
+		});
+
 		it('rejects the whole selection when one pending update changed', async () => {
 			const { sourceId, docx, xlsx, reviewed } = await changed();
 			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'A newer update.') });

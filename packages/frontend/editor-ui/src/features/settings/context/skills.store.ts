@@ -180,9 +180,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillSourceUpdatesDto) {
 		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
 	}
-	async function skipSourceUpdate(sourceId: string, skillId: string, contentHash: string) {
-		await api.skipSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, contentHash);
-	}
 
 	return {
 		skills,
@@ -214,6 +211,5 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSourceUpdate,
 		fetchSourceCommit,
 		acceptSourceUpdates,
-		skipSourceUpdate,
 	};
 });

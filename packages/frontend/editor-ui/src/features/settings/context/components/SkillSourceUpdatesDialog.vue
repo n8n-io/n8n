@@ -198,23 +198,6 @@ function close() {
 	emit('close');
 }
 
-async function skip(skillId: string) {
-	const update = byId.value.get(skillId);
-	if (!update || saving.value) return;
-	saving.value = true;
-	error.value = '';
-	try {
-		await store.skipSourceUpdate(props.source.id, skillId, update.contentHash);
-		emit('changed');
-		await load();
-	} catch (cause) {
-		error.value = errorText(cause);
-		if (isStale(cause)) await load();
-	} finally {
-		saving.value = false;
-	}
-}
-
 async function accept() {
 	if (saving.value || !selectedUpdates.value.length || (needsReview.value && !reviewed.value))
 		return;
@@ -329,16 +312,6 @@ void load();
 							},
 						})
 					}}</N8nText>
-				</template>
-				<template #row-action="{ skill }">
-					<N8nButton
-						variant="ghost"
-						size="small"
-						:disabled="saving"
-						:label="i18n.baseText('settings.context.skills.updates.skip')"
-						data-test-id="skill-update-skip"
-						@click="skip(skill.key)"
-					/>
 				</template>
 				<template #preview="{ skill }">
 					<div :class="$style.detailHeader">

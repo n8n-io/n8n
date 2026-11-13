@@ -246,17 +246,3 @@ export async function acceptSkillSourceUpdates(
 		payload,
 	);
 }
-
-export async function skipSkillSourceUpdate(
-	context: IRestApiContext,
-	sourceId: string,
-	skillId: string,
-	contentHash: string,
-) {
-	await makeRestApiRequest(
-		context,
-		'POST',
-		`${SOURCES_ENDPOINT}/${sourceId}/updates/${skillId}/skip`,
-		{ contentHash },
-	);
-}

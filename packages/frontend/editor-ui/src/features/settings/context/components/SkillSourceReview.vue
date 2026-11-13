@@ -225,7 +225,6 @@ function noteOf(skill: DiscoveredSkill): string {
 										{{ noteOf(item) }}
 									</N8nText>
 								</button>
-								<slot name="row-action" :skill="item" />
 							</li>
 						</ul>
 					</li>
