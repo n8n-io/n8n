@@ -12,12 +12,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { NodeApiError, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { NodeApiError, decodePathValue, requestPath, requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { NodeApiError, UserError, decodePathValue, requestPath, requestUrl } from 'n8n-workflow';
 
 import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 

@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-import {
-	OperationalError,
-	type IHttpRequestMethods,
-	type IDataObject,
-	type IExecuteFunctions,
-	type IHookFunctions,
-	type ILoadOptionsFunctions,
-	type IWebhookFunctions,
-	type IRequestOptions,
-} from 'n8n-workflow';
-=======
-import { OperationalError } from '@n8n/errors';
 import type {
 	IHttpRequestMethods,
 	IDataObject,
@@ -22,8 +9,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { OperationalError, requestUrl } from 'n8n-workflow';
 
 import { BASE_URL } from './constants';
 

@@ -7,12 +7,9 @@ import {
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
-<<<<<<< HEAD
-	UserError,
-=======
 	requestPath,
 	requestUrl,
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+	UserError,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';

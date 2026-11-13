@@ -7,18 +7,13 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import type { PublicUser } from '@n8n/db';
-<<<<<<< HEAD
 import {
 	User,
 	UserRepository,
 	PersonRepository,
 	AuthenticatedRequest,
-	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-=======
-import { User, PersonRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import {
 	GlobalScope,
 	Delete,

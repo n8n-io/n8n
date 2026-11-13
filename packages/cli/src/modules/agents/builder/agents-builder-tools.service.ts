@@ -50,13 +50,10 @@ import { z } from 'zod';
 import { CredentialTypes } from '@/credential-types';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ConflictError, LockedError, UnexpectedError, UserError } from '@n8n/errors';
-import { CredentialsFinderService, NodeTypesProxy } from '@n8n/backend-services';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-<<<<<<< HEAD
 import { NodeTypes } from '@/node-types';
-=======
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -535,11 +532,7 @@ export class AgentsBuilderToolsService {
 		private readonly telemetry: Telemetry,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
-<<<<<<< HEAD
-=======
 		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 	) {}
 
 	/**

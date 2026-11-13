@@ -1,15 +1,6 @@
 import FormData from 'form-data';
 import { IncomingMessage } from 'http';
-<<<<<<< HEAD
-import { NodeHelpers } from 'n8n-workflow';
-=======
-import {
-	NodeApiError,
-	NodeHelpers,
-	READ_ONLY_ANNOTATIONS,
-	resolveNodeAnnotations,
-} from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { NodeApiError, NodeHelpers } from 'n8n-workflow';
 import { Socket } from 'net';
 import type {
 	IExecuteFunctions,

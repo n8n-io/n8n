@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-import * as nacl_factory from 'js-nacl';
-import get from 'lodash/get';
-=======
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -126,30 +121,16 @@ export async function encryptPassphrase(
 		pubKey = pubKeyResponse.key;
 	}
 
-	let encryptedKeyPass = '';
-	let encryptedKeyStorePass = '';
+	const { default: nacl_factory } = await import('js-nacl');
+	const nacl = await nacl_factory.instantiate(() => {});
 
-	const promise = async () => {
-		return await new Promise((resolve, reject) => {
-			nacl_factory.instantiate((nacl: any) => {
-				try {
-					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
-					const keyPassBuffer = nacl.crypto_box_seal(passphraseUTF8, Buffer.from(pubKey, 'base64'));
-					encryptedKeyPass = Buffer.from(keyPassBuffer as Buffer).toString('base64');
+	const keyBytes = new Uint8Array(Buffer.from(pubKey, 'base64'));
+	const encryptedKeyPass = Buffer.from(
+		nacl.crypto_box_seal(nacl.encode_utf8(passphrase), keyBytes),
+	).toString('base64');
+	const encryptedKeyStorePass = Buffer.from(
+		nacl.crypto_box_seal(nacl.encode_utf8(storePassphrase), keyBytes),
+	).toString('base64');
 
-					const storePassphraseUTF8 = nacl.encode_utf8(storePassphrase) as string;
-					const keyStorePassBuffer = nacl.crypto_box_seal(
-						storePassphraseUTF8,
-						Buffer.from(pubKey, 'base64'),
-					);
-					encryptedKeyStorePass = Buffer.from(keyStorePassBuffer as Buffer).toString('base64');
-
-					return resolve([encryptedKeyPass, encryptedKeyStorePass]);
-				} catch (error) {
-					return reject(error);
-				}
-			});
-		});
-	};
-	return await promise();
+	return [encryptedKeyPass, encryptedKeyStorePass];
 }

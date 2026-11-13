@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { searchWorkflows } from '../../shared/WorkflowLocator';
+import { searchWorkflows } from '../../WorkflowLocator';
 
 describe('n8n workflow list search', () => {
 	it.each([

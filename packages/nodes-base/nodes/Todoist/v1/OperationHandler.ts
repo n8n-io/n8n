@@ -1,10 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-<<<<<<< HEAD
-import { jsonParse, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { jsonParse, requestPath } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { jsonParse, requestPath, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { Section, TodoistResponse } from './Service';

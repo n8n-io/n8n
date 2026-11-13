@@ -14,11 +14,14 @@ import type {
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
+	encryptSecret,
 	getFileSha,
+	getRepositoryPublicKey,
 	githubApiRequest,
 	githubApiRequestAllItems,
 	isBase64,
 	validateJSON,
+	validateSecretName,
 } from './GenericFunctions';
 import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFunctions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
@@ -2997,8 +3000,6 @@ export class Github implements INodeType {
 
 						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					}
-<<<<<<< HEAD
-=======
 				} else if (resource === 'secret') {
 					if (operation === 'createOrUpdate') {
 						// ----------------------------------
@@ -3027,7 +3028,6 @@ export class Github implements INodeType {
 
 						endpoint = requestPath`/repos/${owner}/${repository}/actions/secrets/${secretName}`;
 					}
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 				} else if (resource === 'user') {
 					if (operation === 'getRepositories') {
 						// ----------------------------------

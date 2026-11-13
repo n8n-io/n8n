@@ -4,12 +4,12 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
-=======
-import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
-import { UnexpectedError } from '@n8n/errors';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import {
+	NodeOperationError,
+	UnexpectedError,
+	requestPath,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';

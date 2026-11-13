@@ -1,10 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-<<<<<<< HEAD
-import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { NodeApiError, NodeOperationError, requestUrl, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,

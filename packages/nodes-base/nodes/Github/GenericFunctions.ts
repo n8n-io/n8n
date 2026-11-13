@@ -130,8 +130,6 @@ export function validateJSON(json: string | undefined): any {
 	}
 	return result;
 }
-<<<<<<< HEAD
-=======
 
 /**
  * Validates a secret name against GitHub's naming rules, so an invalid name fails
@@ -170,9 +168,6 @@ export async function encryptSecret(secretValue: string, publicKey: string): Pro
 	// pulled in on this path rather than by every node that imports this module.
 	const { default: nacl_factory } = await import('js-nacl');
 
-	// `instantiate` resolves to the same instance it passes to the callback, so awaiting it
-	// surfaces initialisation failures as a rejection instead of never invoking the callback.
-	// The callback is still required: js-nacl throws if it is not a function.
 	const nacl = await nacl_factory.instantiate(() => {});
 
 	const secretBytes = nacl.encode_utf8(secretValue);
@@ -206,4 +201,3 @@ export async function getRepositoryPublicKey(
 		key: responseData.key,
 	};
 }
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))

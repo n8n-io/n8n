@@ -1,9 +1,10 @@
-<<<<<<< HEAD
-import { NodeApiError, UserError, type ILoadOptionsFunctions, type INode } from 'n8n-workflow';
-=======
-import { NodeApiError, type ILoadOptionsFunctions, type INode, requestPath } from 'n8n-workflow';
-import { UserError } from '@n8n/errors';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import {
+	NodeApiError,
+	UserError,
+	requestPath,
+	type ILoadOptionsFunctions,
+	type INode,
+} from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';

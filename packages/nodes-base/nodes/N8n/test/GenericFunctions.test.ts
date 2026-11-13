@@ -2,7 +2,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { requestPath } from 'n8n-workflow';
 
-import { apiRequest } from '../shared/GenericFunctions';
+import { apiRequest } from '../GenericFunctions';
 
 describe('apiRequest', () => {
 	it('should encode path values', async () => {

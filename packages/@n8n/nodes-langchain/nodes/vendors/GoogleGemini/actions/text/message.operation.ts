@@ -531,9 +531,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		...(toolConfig && { toolConfig }),
 	};
 
-	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-		body,
-	})) as GenerateContentResponse;
+	let response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+		{
+			body,
+		},
+	)) as GenerateContentResponse;
 
 	const captureUsage = () => {
 		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
@@ -547,36 +552,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			);
 		}
 	};
-
-<<<<<<< HEAD
 	captureUsage();
-=======
-	const requestedModel = model.replace(/^models\//, '');
-	const generateContent = async () => {
-		const response = (await apiRequest.call(
-			this,
-			'POST',
-			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
-			{
-				body,
-			},
-		)) as GenerateContentResponse;
-		captureUsage(response);
-		if (
-			requestedModel.startsWith('gemma-') &&
-			response.modelVersion &&
-			response.modelVersion.replace(/^models\//, '') !== requestedModel
-		) {
-			throw new NodeOperationError(this.getNode(), 'Google returned a different model', {
-				itemIndex: i,
-				description: `Requested "${model}", but Google returned "${response.modelVersion}". Check that the selected model is available for your API key.`,
-			});
-		}
-		return response;
-	};
-
-	let response = await generateContent();
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -619,9 +595,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
-			body,
-		})) as GenerateContentResponse;
+		response = (await apiRequest.call(
+			this,
+			'POST',
+			requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
+			{
+				body,
+			},
+		)) as GenerateContentResponse;
 		captureUsage();
 		toolCalls = getToolCalls(response);
 		currentIteration++;

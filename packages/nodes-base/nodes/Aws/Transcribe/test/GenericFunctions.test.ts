@@ -1,11 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-<<<<<<< HEAD
-import { NodeApiError, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { NodeApiError, requestPath } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { NodeApiError, requestPath, UserError } from 'n8n-workflow';
 
 import type * as awsUtils from '../../../../credentials/common/aws/utils';
 

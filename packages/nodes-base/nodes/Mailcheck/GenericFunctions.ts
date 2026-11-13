@@ -9,12 +9,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { OperationalError } from 'n8n-workflow';
-=======
-import { OperationalError } from '@n8n/errors';
-import { requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { OperationalError, requestUrl } from 'n8n-workflow';
 
 export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

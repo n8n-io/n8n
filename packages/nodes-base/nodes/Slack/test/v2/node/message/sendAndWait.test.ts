@@ -1,15 +1,11 @@
-<<<<<<< HEAD
 import { Container } from '@n8n/di';
 import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
-import { type INode, SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
-=======
 import {
 	type INode,
 	requestPath,
 	SEND_AND_WAIT_OPERATION,
 	type IExecuteFunctions,
 } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 import type { MockInstance } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';

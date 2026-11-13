@@ -10,12 +10,7 @@ import type {
 	RequestUrl,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { jsonParse, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { jsonParse, requestPath, requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
+import { jsonParse, requestPath, requestUrl, UserError } from 'n8n-workflow';
 
 import { Eq } from './QueryFunctions';
 

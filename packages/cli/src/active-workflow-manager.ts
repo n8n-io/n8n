@@ -75,8 +75,6 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
-<<<<<<< HEAD
-=======
 /**
  * The reason for an activation refusal that holds until someone changes the
  * policy, the workflow or the credential access, or `null` for any other error.
@@ -89,14 +87,6 @@ function getPermanentRefusalReason(error: unknown): string | null {
 	return null;
 }
 
-/** The wait before the last reactivation attempt, so a quick failure continues the backoff. */
-interface RecentReactivation {
-	lastTimeout: number;
-	/** When the activation call returned. Unset while it still runs. */
-	activatedAt?: number;
-}
-
->>>>>>> 9d82d35cb (chore: Bundle/2.x (#43761))
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
