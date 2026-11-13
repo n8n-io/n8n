@@ -1,0 +1,22 @@
+{
+	"description": "HTTP Request 4.4 with an error status under continueErrorOutput: the item goes to the error output with v1's error item",
+	"trigger": {
+		"body": { "label": "row-1", "name": "bob" }
+	},
+	"http": {
+		"Do Thing": {
+			"path": "rpc",
+			"responses": [
+				{
+					"status": 400,
+					"body": {
+						"code": "PGRST202",
+						"message": "Could not find the function",
+						"details": null,
+						"hint": "Perhaps you meant to call another one"
+					}
+				}
+			]
+		}
+	}
+}

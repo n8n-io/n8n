@@ -178,11 +178,12 @@ describe('convertWorkflow', () => {
 		expect(r.source).toContain('for (let tryIndex = 0; tryIndex < 3; tryIndex++) {');
 		expect(r.source).toContain('duration: 1000 });');
 		expect(r.source).not.toContain('retry: { max: 2, delayMs: 1000 }');
-		// The host gives the error output as v1 makes it; a failure of the host fills it too.
+		// The host gives the error output as v1 makes it; a failure of the whole node passes
+		// the input on output 0 and fills no error item (v1's handleNodeExecutionError).
 		expect(r.source).toContain(
 			'for (const r of result[result.length - 1]?.items ?? []) fetchErrors.push(r);',
 		);
-		expect(r.source).toContain('fetchErrors.push({ ...e, error: error.message })');
+		expect(r.source).toContain('for (const e of webhookItems) fetch.push(e);');
 		expect(r.source).toContain('const onceFirstItem: Json[] = fetch.slice(0, 1);');
 		// v1 adds the empty item when the node ran (its input had items) and output 0 is empty.
 		expect(r.source).toContain('if (fetch.length > 0 && once.length === 0) once.push({});');

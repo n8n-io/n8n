@@ -1,0 +1,6 @@
+{
+	"description": "Two nodes in the fallback host with alwaysOutputData and continueErrorOutput that succeed with one item: the error output stays empty and no error branch runs",
+	"trigger": {
+		"body": { "label": "row-1" }
+	}
+}

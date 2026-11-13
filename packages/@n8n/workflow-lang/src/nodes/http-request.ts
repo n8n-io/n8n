@@ -11,7 +11,7 @@
  *   (text in `outputPropertyName` in place of `body`).
  * `version` is the node version: before 3 the format is JSON unless set.
  */
-import { defineNode, type Item } from '@n8n/workflow-lang';
+import { defineNode, type HttpResponse, type Item } from '@n8n/workflow-lang';
 
 interface ResponseOptions {
 	fullResponse?: boolean;
@@ -129,12 +129,14 @@ function formParts(p: HttpRequestParameters): Part[] {
 	return parts;
 }
 
-/** The headers and body of the request: a file body has the MIME type of the file. */
-function requestParts(p: HttpRequestParameters): {
+interface RequestParts {
 	headers: Record<string, string>;
 	body: unknown;
 	multipart?: Part[];
-} {
+}
+
+/** The headers and body of the request: a file body has the MIME type of the file. */
+function requestParts(p: HttpRequestParameters): RequestParts {
 	const headers = p.headers ?? {};
 	if (!p.sendBody) return { headers, body: undefined };
 	if (p.multipart !== undefined) return { headers, body: undefined, multipart: formParts(p) };
@@ -319,6 +321,68 @@ function errorDescription(body: unknown): string | undefined {
 	return undefined;
 }
 
+/** Three digits as a number, or undefined when the text is not exactly three digits. */
+function digits3(text: string): number | undefined {
+	if (text.length !== 3) return undefined;
+	for (const c of text) {
+		if (c < '0' || c > '9') return undefined;
+	}
+	return Number(text);
+}
+
+/**
+ * The status that a failed request reports in its message: the AxiosError of v1 writes
+ * `<status> - "<body>"`, and a client error writes `... status code <status>`.
+ */
+function failureStatus(message: string): number | undefined {
+	const head = digits3(message.slice(0, 3));
+	if (head !== undefined && (message.length === 3 || message.charAt(3) === ' ')) return head;
+	const marker = 'status code ';
+	const at = message.indexOf(marker);
+	if (at < 0) return undefined;
+	return digits3(message.slice(at + marker.length, at + marker.length + 3));
+}
+
+/**
+ * The reason of a failed request, as v1's item carries it: the AxiosError with the status,
+ * its code, the message and the body of the response. A failure without a status (a
+ * network error) keeps the name that the runtime gives it.
+ */
+function requestReason(status: number | undefined, message: string, body?: unknown): Item {
+	const reason: Item = { name: status === undefined ? 'Error' : 'AxiosError', message };
+	if (status !== undefined) {
+		reason.code = status >= 500 ? 'ERR_BAD_RESPONSE' : 'ERR_BAD_REQUEST';
+		reason.status = status;
+		reason.statusCode = status;
+		if (body !== undefined) reason.error = bodyText(body);
+	}
+	return reason;
+}
+
+/**
+ * The item of a request that failed under "continue on fail", as v1's node gives it: the
+ * reason object in `error`, and from version 4.5 the `details` of `createErrorDetails`.
+ */
+function requestFailureItem(
+	reason: Item,
+	status: number | undefined,
+	body: unknown,
+	version: number,
+): Item {
+	const item: Item = { error: reason };
+	if (version < 4.5 || status === undefined) return item;
+	const details: Item = {
+		message: apiErrorMessage(status),
+		httpCode: String(status),
+		context: { itemIndex: 0 },
+	};
+	if (body !== undefined) details.body = body;
+	const description = errorDescription(body);
+	if (description !== undefined) details.description = description;
+	item.details = details;
+	return item;
+}
+
 /** The items of one response, as the v1 node makes them for the response options. */
 function responseItems(
 	responseBody: unknown,
@@ -370,6 +434,9 @@ export default defineNode<HttpRequestParameters>({
 		const method = parameters.method ?? 'GET';
 		const options = parameters.response ?? {};
 		const version = parameters.version ?? 4;
+		// v1's node catches a failed request for each item (`this.continueOnFail()`), so it
+		// gives the reason object as the item instead of failing the node.
+		const continues = parameters.errorItems === true;
 		if (parameters.page !== undefined) {
 			// applyPaginationRequestData of n8n-core.
 			const page = parameters.page;
@@ -422,15 +489,21 @@ export default defineNode<HttpRequestParameters>({
 			return [pageItem];
 		}
 		const sent = requestParts(parameters);
-		let response = await ctx.http<unknown>({
-			method,
-			url: parameters.url,
-			headers: sent.headers,
-			qs: parameters.qs ?? {},
-			body: sent.body,
-			multipart: sent.multipart,
-			credential,
-		});
+		let response: HttpResponse<unknown>;
+		try {
+			response = await ctx.http<unknown>({
+				method,
+				url: parameters.url,
+				headers: sent.headers,
+				qs: parameters.qs ?? {},
+				body: sent.body,
+				multipart: sent.multipart,
+				credential,
+			});
+		} catch (error) {
+			if (!continues) throw error;
+			return [failedRequestItem(error, version)];
+		}
 		// The v1 node follows redirects (axios, at most 21). 303 changes the method to GET;
 		// 307 and 308 keep the method and the body.
 		let url = parameters.url;
@@ -442,36 +515,30 @@ export default defineNode<HttpRequestParameters>({
 			url = resolveUrl(url, location);
 			const keep = status === 307 || status === 308;
 			current = keep ? current : status === 303 || current !== 'HEAD' ? 'GET' : current;
-			response = await ctx.http<unknown>({
-				method: current,
-				url,
-				headers: sent.headers,
-				qs: {},
-				body: keep ? sent.body : undefined,
-				multipart: keep ? sent.multipart : undefined,
-				credential,
-			});
+			try {
+				response = await ctx.http<unknown>({
+					method: current,
+					url,
+					headers: sent.headers,
+					qs: {},
+					body: keep ? sent.body : undefined,
+					multipart: keep ? sent.multipart : undefined,
+					credential,
+				});
+			} catch (error) {
+				if (!continues) throw error;
+				return [failedRequestItem(error, version)];
+			}
 		}
 		const status = response.status;
 		if (status >= 400 && options.neverError !== true) {
-			if (parameters.errorItems === true) {
-				const error: Item = {
-					message: `${status} - ${JSON.stringify(bodyText(response.body))}`,
-					name: 'AxiosError',
+			if (continues) {
+				const reason = requestReason(
 					status,
-					statusCode: status,
-					error: bodyText(response.body),
-				};
-				if (version < 4.5) return [{ error }];
-				const details: Item = {
-					message: apiErrorMessage(status),
-					httpCode: String(status),
-					body: response.body,
-					context: { itemIndex: 0 },
-				};
-				const description = errorDescription(response.body);
-				if (description !== undefined) details.description = description;
-				return [{ error, details }];
+					`${status} - ${JSON.stringify(bodyText(response.body))}`,
+					response.body,
+				);
+				return [requestFailureItem(reason, status, response.body, version)];
 			}
 			// n8n's NodeApiError: the message and the description are separate fields.
 			const description = errorDescription(response.body);
@@ -487,3 +554,13 @@ export default defineNode<HttpRequestParameters>({
 		return responseItems(response.body, response.headers, status, options, version);
 	},
 });
+
+/** The item of a request that the runtime reports as a failure (`ctx.http` throws). */
+function failedRequestItem(error: unknown, version: number): Item {
+	const message =
+		typeof error === 'object' && error !== null && 'message' in error
+			? String(error.message)
+			: String(error);
+	const status = failureStatus(message);
+	return requestFailureItem(requestReason(status, message), status, undefined, version);
+}

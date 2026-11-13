@@ -106,6 +106,22 @@ const CASES: Case[] = [
 		body: '{"error":"nope","code":7}',
 	},
 	{
+		name: '404 error output 4.4',
+		version: 4.4,
+		onError: 'continueErrorOutput',
+		status: 404,
+		contentType: 'application/json',
+		body: '{"error":"nope","code":7}',
+	},
+	{
+		name: '400 error output 4.5 with details',
+		version: 4.5,
+		onError: 'continueErrorOutput',
+		status: 400,
+		contentType: 'application/json',
+		body: '{"message":"bad request"}',
+	},
+	{
 		name: 'follows a 307 redirect',
 		version: 4.2,
 		status: 200,
@@ -216,9 +232,19 @@ describe('HTTP Request library node and v1', () => {
 			return;
 		}
 		expect(out.status).toBe('ok');
-		const trace = (out.trace ?? [])
+		// A node with several outputs traces one list for each output.
+		const lists = (out.trace ?? [])
 			.filter((t) => t.step === 'H')
-			.flatMap((t) => t.items as unknown[]);
-		expect(comparable(trace)).toEqual(comparable(v1.nodes.H?.[0] ?? []));
+			.flatMap((t) => {
+				const items = (t.items ?? []) as unknown[];
+				return items.length > 0 && items.every((x) => Array.isArray(x))
+					? (items as unknown[][])
+					: [items];
+			});
+		expect(comparable(lists[0] ?? [])).toEqual(comparable(v1.nodes.H?.[0] ?? []));
+		// Under "continue (using error output)", v1 gives the reason object on the error output.
+		if (c.onError === 'continueErrorOutput') {
+			expect(comparable(lists[1] ?? [])).toEqual(comparable(v1.nodes.H?.[1] ?? []));
+		}
 	});
 });
