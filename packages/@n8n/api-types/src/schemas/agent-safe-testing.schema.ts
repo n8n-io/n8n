@@ -3,6 +3,14 @@ import { z } from 'zod';
 /** PostHog flag: agent draft runs are test runs that send nothing to real services. */
 export const AGENT_SAFE_TESTING_FLAG = '140_agent_safe_testing';
 
+/**
+ * How a preview chat runs, chosen when it starts. `test` sends every tool call to a
+ * simulation; `live` runs the draft against real services, as before safe testing.
+ * Live is the default until the panel can show test runs.
+ */
+export const agentChatModeSchema = z.enum(['test', 'live']);
+export type AgentChatMode = z.infer<typeof agentChatModeSchema>;
+
 /** How one tool call ran in a test run. */
 export const toolCallRouteSchema = z.enum([
 	// A read sent to the real service, on purpose.
