@@ -1,4 +1,8 @@
-import { acceptedMimeTypesFromCapabilities, resolvePromptCaching } from '../provider-capabilities';
+import {
+	acceptedMimeTypesFromCapabilities,
+	getModelServiceTierCapability,
+	resolvePromptCaching,
+} from '../provider-capabilities';
 
 describe('acceptedMimeTypesFromCapabilities', () => {
 	it('joins every accepted media-type family', () => {
@@ -51,5 +55,21 @@ describe('resolvePromptCaching', () => {
 		expect(resolvePromptCaching({ enabled: true, anthropic: {} }, 'ttl')).toEqual({
 			enabled: true,
 		});
+	});
+});
+
+describe('getModelServiceTierCapability', () => {
+	it.each(['openai/gpt-6.1-sol', 'openai/gpt-5.1'])('is on for %s', (modelId) => {
+		expect(getModelServiceTierCapability(modelId)).toBe(true);
+	});
+
+	it.each([
+		'anthropic/claude-sonnet-4-5',
+		'google/gemini-2.5-pro',
+		'azure-openai/my-deployment',
+		'openrouter/openai/gpt-5.1',
+		'unknown/model',
+	])('is off for %s', (modelId) => {
+		expect(getModelServiceTierCapability(modelId)).toBe(false);
 	});
 });
