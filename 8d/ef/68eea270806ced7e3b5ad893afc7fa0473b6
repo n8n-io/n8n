@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/App.vue
+  s_b4641ea02956ba::t_3b2282e94c767a 38,87
+packages/frontend/editor-ui/src/app/composables/useEffectiveLocale.ts
+  s_b4641ea02956ba::t_3b2282e94c767a 1-22
+packages/frontend/editor-ui/src/app/composables/useEffectiveLocale.test.ts
+  s_b4641ea02956ba::t_3b2282e94c767a 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8def68eea270806ced7e3b5ad893afc7fa0473b6",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b4641ea02956ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90f52e92-c34d-4756-acf2-4adb62793353",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
