@@ -28,6 +28,8 @@ class ExecutionListCtx {
 		readonly v2Reader: EngineV2ExecutionReader,
 		/** `null` keeps the data plane out of this request. */
 		readonly v2Scopes: V2Scope | null,
+		/** `false` keeps the control plane out of this request. */
+		readonly includesV1: boolean,
 		readonly cursor?: Readonly<ExecutionCursor>,
 	) {}
 }
@@ -85,7 +87,7 @@ export class ExecutionListV2Service {
 
 	private async findCurrentMerged(ctx: ExecutionListCtx) {
 		const [v1Current, v2Current] = await Promise.all([
-			this.executionListV1Service.findCurrentExecutions(ctx.query),
+			this.findCurrentExecutionsV1(ctx),
 			this.findCurrentExecutionsV2(ctx),
 		]);
 
@@ -147,6 +149,8 @@ export class ExecutionListV2Service {
 	}
 
 	private async v1Page(ctx: ExecutionListCtx) {
+		if (!ctx.includesV1) return { items: [], hasMore: false, count: 0, estimated: false };
+
 		const { range: _, ...countQuery } = ctx.query;
 
 		const [rows, executionCount] = await Promise.all([
@@ -208,6 +212,12 @@ export class ExecutionListV2Service {
 		for (const item of v2Results) item.workflowName = namesById.get(item.workflowId);
 	}
 
+	private async findCurrentExecutionsV1(ctx: ExecutionListCtx) {
+		if (!ctx.includesV1) return [];
+
+		return await this.executionListV1Service.findCurrentExecutions(ctx.query);
+	}
+
 	private async findCurrentExecutionsV2(ctx: ExecutionListCtx) {
 		if (!ctx.v2Scopes) return [];
 
@@ -228,6 +238,11 @@ export class ExecutionListV2Service {
 		// The router only picks this provider while the data plane is up.
 		assert(this.dataPlane.isAvailable());
 
-		return new ExecutionListCtx(query, this.reader, await this.resolveV2Scope(query), cursor);
+		// An engine filter skips the other store instead of filtering its rows, so
+		// the count and the cursor come from the requested store alone.
+		const v2Scopes = query.engine === 'v1' ? null : await this.resolveV2Scope(query);
+		const includesV1 = query.engine !== 'v2';
+
+		return new ExecutionListCtx(query, this.reader, v2Scopes, includesV1, cursor);
 	}
 }

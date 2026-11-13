@@ -1,5 +1,5 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
-import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import { EXECUTION_ENGINES, ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -88,6 +88,7 @@ export const schemaGetExecutionsQueryFilter = {
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
 		workflowVersionId: { type: 'string' },
+		engine: { type: 'string', enum: [...EXECUTION_ENGINES] },
 	},
 	$defs: {
 		metadata: {
@@ -436,6 +437,11 @@ export class ExecutionService {
 
 	async delete(user: User, payload: DeleteExecutionsDto, sharedWorkflowIds: string[]) {
 		const { deleteBefore, ids, filters: requestFiltersRaw } = payload;
+
+		// A delete by date reaches only the engine v1 table, so an engine v2 filter
+		// matches nothing there. Read the raw filter: if another field fails the
+		// schema, the filters are dropped and the delete would match every v1 row.
+		if (deleteBefore && requestFiltersRaw?.engine === 'v2') return;
 
 		let requestFilters: IGetExecutionsQueryFilter | undefined;
 		if (requestFiltersRaw) {

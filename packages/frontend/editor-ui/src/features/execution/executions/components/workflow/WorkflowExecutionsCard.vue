@@ -12,6 +12,7 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
+import ExecutionEngineBadge from '../ExecutionEngineBadge.vue';
 import {
 	N8nActionDropdown,
 	N8nIcon,
@@ -107,6 +108,7 @@ function onRetryMenuItemSelect(action: string): void {
 				<N8nText v-else color="text-dark" :bold="true" size="medium" data-test-id="execution-time">
 					{{ executionUIDetails.startTime }}
 				</N8nText>
+				<ExecutionEngineBadge :execution-id="execution.id" class="ml-3xs" />
 				<div :class="$style.executionStatus">
 					<N8nSpinner
 						v-if="executionUIDetails.name === 'running'"
