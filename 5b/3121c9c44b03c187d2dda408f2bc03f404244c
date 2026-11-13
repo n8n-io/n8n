@@ -1,0 +1,29 @@
+packages/cli/src/modules/mcp/tools/create-side-panel-view.tool.ts
+  s_85c95d3931e97d::t_82dcd86a2bb81a 120-121
+  s_85c95d3931e97d::t_a67fce68b23895 17,122
+  s_85c95d3931e97d::t_9f1d8f0abb11ce 39
+packages/modules/ui-extensions/backend/src/ui-extension-views.service.ts
+  s_85c95d3931e97d::t_bb38aaaa9498a5 100-103,114-115,121-127
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.controller.test.ts
+  s_85c95d3931e97d::t_bb38aaaa9498a5 20,26-33
+packages/cli/src/modules/mcp/__tests__/create-side-panel-view.tool.test.ts
+  s_85c95d3931e97d::t_a67fce68b23895 106-107,114-117
+packages/modules/ui-extensions/backend/src/__tests__/ui-extension-views.service.test.ts
+  s_85c95d3931e97d::t_bb38aaaa9498a5 67,75-82,182-183,188-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b3121c9c44b03c187d2dda408f2bc03f404244c",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
