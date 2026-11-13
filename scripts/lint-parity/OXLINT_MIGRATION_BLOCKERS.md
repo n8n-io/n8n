@@ -78,10 +78,10 @@ Reconsider this exception only if the package removal plan changes.
 
 ## Frontend: Oxlint and Vize
 
-The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`) do not run ESLint. They run two tools:
+The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`) do not run ESLint. Each one runs Oxlint. The packages that have Vue SFCs also run Vize:
 
-- Oxlint lints the TypeScript files and the `<script>` blocks of each SFC, through `@n8n/oxlint-config/frontend`.
-- Native `vize lint` lints the Vue templates and the SFC structure, through `@n8n/oxlint-config/vize`. Each package passes a config file to `vize lint -c`. Vize does not read a file named `vize.config.*` as a `-c` file.
+- Oxlint lints the TypeScript files and the `<script>` blocks of each SFC, through `@n8n/oxlint-config/frontend`. `@n8n/eslint-plugin-design-system` extends no layer, because `@n8n/oxlint-config` depends on it.
+- Native `vize lint` lints the Vue templates and the SFC structure, through `@n8n/oxlint-config/vize`. Each of these packages passes a config file to `vize lint -c`. Vize does not read a file named `vize.config.*` as a `-c` file.
 
 Vize is pinned exactly (`vize: 0.715.0` in the catalog), because Vize is alpha software and releases often.
 

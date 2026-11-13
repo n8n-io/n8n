@@ -313,9 +313,11 @@ config picks exactly one:
 
 The frontend packages (`packages/frontend/` and `packages/modules/*/frontend`)
 do not run ESLint. Their `oxlint.config.mts` extends
-`@n8n/oxlint-config/frontend`, and `vize lint` checks their Vue templates with a
-config from `@n8n/oxlint-config/vize`. The same layering rules apply to these
-configs.
+`@n8n/oxlint-config/frontend`, and the same layering rules apply to it. The
+packages that have Vue files also run `vize lint` on their templates, with a
+config from `@n8n/oxlint-config/vize`. `@n8n/eslint-plugin-design-system` is the
+exception: `@n8n/oxlint-config` depends on it, so its config extends no layer.
+Do not add a layer import to it.
 
 A package config may add `ignores`, an additive plugin config, a block that
 raises rules to `error`, and blocks scoped to `files`. It must not turn a rule
