@@ -1,0 +1,21 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment-lock.service.test.ts
+  s_517e260d7b1c7c::t_cb35cab5e689e3 171
+packages/cli/src/modules/promotions.ee/promotion-environment-lock.service.ts
+  s_517e260d7b1c7c::t_cb35cab5e689e3 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "104f74b216a09c198d83a9f3ff9144a9e44200f7",
+  "prompts": {},
+  "sessions": {
+    "s_517e260d7b1c7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f165d2f-168a-4ff8-839d-a6a4938b5d7a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
