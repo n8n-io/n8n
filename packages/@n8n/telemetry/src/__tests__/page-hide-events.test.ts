@@ -3,7 +3,7 @@ import { TELEMETRY_EVENT } from '../telemetry-events';
 
 describe('findPageHideEvent', () => {
 	it('finds an allowed event by its emitted name', () => {
-		const event = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING;
+		const event = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN;
 
 		expect(findPageHideEvent(event.name)).toBe(event);
 	});

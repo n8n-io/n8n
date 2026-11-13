@@ -42,6 +42,11 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+/** Shared by the events that fire when the user leaves with an active run. */
+const isAwaitingUser = z
+	.boolean()
+	.describe('The run is paused until the user answers a confirmation or question');
+
 /** The runtimes that run an n8n Assistant thread. */
 export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
 export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
@@ -907,18 +912,21 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
-	USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING: {
-		name: 'User left AI Assistant thread while it was running',
+	USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN: {
+		name: 'User left AI Assistant thread with an active run',
 		description:
-			'The user left an n8n Assistant thread, for another thread or another page in n8n, while the Assistant was still running in it.',
-		properties: z.object({ thread_id: z.string() }),
+			'The user left an n8n Assistant thread, for another thread or another page in n8n, while a run was active in it. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question.',
+		properties: z.object({ thread_id: z.string(), is_awaiting_user: isAwaitingUser }),
 	},
 	USER_RETURNED_TO_AI_ASSISTANT_THREAD: {
 		name: 'User returned to AI Assistant thread',
 		description:
-			'The user came back to an n8n Assistant thread that they left while the Assistant was still running in it.',
+			'The user came back to an n8n Assistant thread that they left with an active run. Match it to "User left AI Assistant thread with an active run" by thread_id.',
 		properties: z.object({
 			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run was paused until the user answered, when the user left the thread',
+			),
 			time_away_ms: z
 				.number()
 				.int()
@@ -926,18 +934,25 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe('Milliseconds between leaving the thread and returning to it'),
 		}),
 	},
-	USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING: {
-		name: 'User left n8n while AI Assistant was running',
+	USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User left n8n with an active AI Assistant run',
 		description:
-			'The browser tab with n8n became hidden while the Assistant was still running. This happens when the user switches to another browser tab or app, or closes the tab. The backend emits this event, because the browser cannot reliably send events while a tab closes.',
-		properties: z.object({ thread_id: z.string(), user_id: z.string() }),
-	},
-	USER_RETURNED_TO_N8N_WHILE_AI_ASSISTANT_RUNNING: {
-		name: 'User returned to n8n after leaving while AI Assistant was running',
-		description:
-			'The browser tab with n8n became visible again after a "User left n8n while AI Assistant was running" event.',
+			'The browser tab with n8n became hidden while an n8n Assistant run was active. This happens when the user switches to another browser tab or app, or closes the tab. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question. The backend emits this event, because the browser cannot reliably send events while a tab closes.',
 		properties: z.object({
 			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			user_id: z.string(),
+		}),
+	},
+	USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User returned to n8n after leaving with an active AI Assistant run',
+		description:
+			'The browser tab with n8n became visible again after a "User left n8n with an active AI Assistant run" event. The run can have finished while the user was away.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run was paused until the user answered, when the tab became hidden',
+			),
 			time_away_ms: z
 				.number()
 				.int()

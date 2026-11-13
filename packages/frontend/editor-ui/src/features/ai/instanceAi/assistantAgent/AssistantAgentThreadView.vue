@@ -102,8 +102,8 @@ const props = defineProps<{ threadId: string; projectId: string }>();
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
 useAssistantAwayTelemetry({
 	threadId: () => props.threadId,
-	// Waiting on the user is not running.
 	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
+	isAwaitingUser: () => panel.value?.hasOpenInteraction ?? false,
 });
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 

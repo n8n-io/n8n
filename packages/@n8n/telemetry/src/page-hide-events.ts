@@ -10,7 +10,7 @@ import { TELEMETRY_EVENT } from './telemetry-events';
  * rejects every other event name.
  */
 export const PAGE_HIDE_EVENTS = [
-	TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING,
+	TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
 ];
 
 export type PageHideEvent = (typeof PAGE_HIDE_EVENTS)[number];

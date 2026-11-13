@@ -1614,6 +1614,8 @@ defineExpose({
 	isStreaming: computed(() => isStreaming.value),
 	/** A message is sent and the server has not started the reply yet. */
 	isSubmitting: computed(() => isSubmitting.value),
+	/** The chat waits for the user to answer a card, such as an approval or a question. */
+	hasOpenInteraction: computed(() => hasOpenInteraction.value),
 	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
 	isBusy: computed(
 		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,

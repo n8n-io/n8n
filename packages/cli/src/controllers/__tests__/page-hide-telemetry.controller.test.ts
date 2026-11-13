@@ -15,15 +15,19 @@ describe('PageHideTelemetryController', () => {
 	const controller = new PageHideTelemetryController(telemetry);
 	const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
 	const res = mock<Response>();
-	const allowed = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING;
+	const allowed = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN;
 
 	beforeEach(() => vi.clearAllMocks());
 
 	it('tracks an allowed event with the id of the signed-in user', () => {
-		controller.track(req, res, { event: allowed.name, properties: { thread_id: 'thread-1' } });
+		controller.track(req, res, {
+			event: allowed.name,
+			properties: { thread_id: 'thread-1', is_awaiting_user: true },
+		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
+			is_awaiting_user: expect.any(Boolean),
 			user_id: 'user-1',
 		});
 	});
@@ -31,11 +35,12 @@ describe('PageHideTelemetryController', () => {
 	it('ignores a user id that the client sends', () => {
 		controller.track(req, res, {
 			event: allowed.name,
-			properties: { thread_id: 'thread-1', user_id: 'someone-else' },
+			properties: { thread_id: 'thread-1', is_awaiting_user: false, user_id: 'someone-else' },
 		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
+			is_awaiting_user: expect.any(Boolean),
 			user_id: 'user-1',
 		});
 	});
@@ -43,11 +48,12 @@ describe('PageHideTelemetryController', () => {
 	it('drops properties that the event does not define', () => {
 		controller.track(req, res, {
 			event: allowed.name,
-			properties: { thread_id: 'thread-1', extra: 'ignored' },
+			properties: { thread_id: 'thread-1', is_awaiting_user: false, extra: 'ignored' },
 		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
+			is_awaiting_user: expect.any(Boolean),
 			user_id: 'user-1',
 		});
 	});

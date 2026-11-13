@@ -80,8 +80,9 @@ const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
 useAssistantAwayTelemetry({
 	threadId: () => props.threadId,
-	// Waiting on the user is not running.
+	// A run that waits for the user is still active.
 	isRunning: () => thread.isStreaming || thread.isSendingMessage,
+	isAwaitingUser: () => thread.isAwaitingConfirmation,
 });
 const rootStore = useRootStore();
 const i18n = useI18n();

@@ -26,12 +26,20 @@ vi.mock('vue-router', () => ({
 
 const { INSTANCE_AI } = TELEMETRY_EVENT;
 
-function mountHarness(threadId: string, isRunning: { value: boolean }) {
+function mountHarness(
+	threadId: string,
+	isRunning: { value: boolean },
+	isAwaitingUser: { value: boolean } = { value: false },
+) {
 	routeParams.value = { threadId };
 	return render(
 		defineComponent({
 			setup() {
-				useAssistantAwayTelemetry({ threadId: () => threadId, isRunning: () => isRunning.value });
+				useAssistantAwayTelemetry({
+					threadId: () => threadId,
+					isRunning: () => isRunning.value,
+					isAwaitingUser: () => isAwaitingUser.value,
+				});
 				return () => h('div');
 			},
 		}),
@@ -60,9 +68,13 @@ describe('useAssistantAwayTelemetry', () => {
 			routeParams.value = { threadId: 'other' };
 			view.unmount();
 
-			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING, {
-				thread_id: 't-leave',
-			});
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN,
+				{
+					thread_id: 't-leave',
+					is_awaiting_user: false,
+				},
+			);
 		});
 
 		it('tracks leaving when the running state comes from a child template ref', () => {
@@ -78,6 +90,7 @@ describe('useAssistantAwayTelemetry', () => {
 					useAssistantAwayTelemetry({
 						threadId: () => 't-ref',
 						isRunning: () => child.value?.isStreaming ?? false,
+						isAwaitingUser: () => false,
 					});
 					return () => h(Child, { ref: 'child' });
 				},
@@ -87,9 +100,13 @@ describe('useAssistantAwayTelemetry', () => {
 			routeParams.value = { threadId: 'other' };
 			view.unmount();
 
-			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WHILE_RUNNING, {
-				thread_id: 't-ref',
-			});
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN,
+				{
+					thread_id: 't-ref',
+					is_awaiting_user: false,
+				},
+			);
 		});
 
 		it('does not track leaving when the Assistant is idle', () => {
@@ -118,8 +135,32 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD, {
 				thread_id: 't-return',
+				is_awaiting_user: false,
 				time_away_ms: 5000,
 			});
+		});
+
+		it('reports that the run waited for the user when the user left, on leave and on return', () => {
+			const awaiting = { value: true };
+			const first = mountHarness('t-await', { value: true }, awaiting);
+			routeParams.value = { threadId: 'other' };
+			first.unmount();
+
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN,
+				{
+					thread_id: 't-await',
+					is_awaiting_user: true,
+				},
+			);
+
+			// The user answers while away, so the new view reports idle. The return keeps the leave-time value.
+			mountHarness('t-await', { value: false }, { value: false });
+
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD,
+				expect.objectContaining({ thread_id: 't-await', is_awaiting_user: true }),
+			);
 		});
 
 		it('tracks the return only once', () => {
@@ -141,11 +182,32 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(trackOnPageHide).toHaveBeenCalledWith(
 				{ baseUrl: '/rest' },
-				INSTANCE_AI.USER_LEFT_N8N_WHILE_AI_ASSISTANT_RUNNING,
-				{ thread_id: 't-tab' },
+				INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				{ thread_id: 't-tab', is_awaiting_user: false },
 			);
 			// The backend emits this event, so the SDK must not send it a second time.
 			expect(track).not.toHaveBeenCalled();
+		});
+
+		it('reports that the run waited for the user when the tab became hidden, on leave and on return', () => {
+			const awaiting = { value: true };
+			mountHarness('t-tab-await', { value: true }, awaiting);
+			setTabHidden(true);
+
+			expect(trackOnPageHide).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				{ thread_id: 't-tab-await', is_awaiting_user: true },
+			);
+
+			// The user answers on another device while away. The return keeps the leave-time value.
+			awaiting.value = false;
+			setTabHidden(false);
+
+			expect(track).toHaveBeenLastCalledWith(
+				INSTANCE_AI.USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				expect.objectContaining({ thread_id: 't-tab-await', is_awaiting_user: true }),
+			);
 		});
 
 		it('does not track hiding the tab when the Assistant is idle', () => {
@@ -165,8 +227,8 @@ describe('useAssistantAwayTelemetry', () => {
 			setTabHidden(false);
 
 			expect(track).toHaveBeenLastCalledWith(
-				INSTANCE_AI.USER_RETURNED_TO_N8N_WHILE_AI_ASSISTANT_RUNNING,
-				{ thread_id: 't-tab-back', time_away_ms: 3000 },
+				INSTANCE_AI.USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				{ thread_id: 't-tab-back', is_awaiting_user: false, time_away_ms: 3000 },
 			);
 		});
 
