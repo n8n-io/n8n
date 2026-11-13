@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_1d71d0bc0304f3::t_f793f24e4a8d2c 132,466
+packages/frontend/editor-ui/src/features/agents/components/AgentTestsList.vue
+  s_1d71d0bc0304f3::t_1f3cda238baba4 2-4,17-23,170-180,252-268
+  s_1d71d0bc0304f3::t_54d8ea1caee6ec 1,5-13,15-16,24-123,125-132,134-165,167-169,181-183,185-206,211-215,220-251,269
+  s_1d71d0bc0304f3::t_4a52af9cf4ec67 184
+  s_1d71d0bc0304f3::t_6758cfa7d9295a 14
+  s_1d71d0bc0304f3::t_2d4cdeb281e45d 124
+  s_1d71d0bc0304f3::t_c7caa2bb263d74 133
+  s_1d71d0bc0304f3::t_1c0b222cbfaca6 166
+  s_1d71d0bc0304f3::t_b78ff9327a79cc 207-210
+  s_1d71d0bc0304f3::t_ed1926d19ecd0a 216-219
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_1d71d0bc0304f3::t_0d1d88d24535e9 1271
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalsSection.test.ts
+  s_1d71d0bc0304f3::t_52911419bf6c46 2,6,20-23,142,192,195,285-286,329,331-334,338,360,379-383,413-416
+  s_1d71d0bc0304f3::t_c53c1f141a5b37 417
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalsSection.vue
+  s_1d71d0bc0304f3::t_69541f62af8fc1 18,38,40,131,226-228,281
+  s_1d71d0bc0304f3::t_45305e353b791b 278
+  s_1d71d0bc0304f3::t_6a1e13a0413683 229-231,233-241,243-251,253,256-266,268,270-272,274-277,279-280,282,284-305
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_1d71d0bc0304f3::t_89275fc86762c8 2231-2237,2765,3803
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestsList.test.ts
+  s_1d71d0bc0304f3::t_6b000754d7dfa5 1,3-4,6-17,19-25,27-46,49-51,53-61,63-71,112-114,116,118,120-129
+  s_1d71d0bc0304f3::t_8132bfaed0a255 2,5,26,72-111
+  s_1d71d0bc0304f3::t_b8d1d397d04411 52,62
+  s_1d71d0bc0304f3::t_a5fce68c35414f 18,47-48,115,117,119,130-135
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1d71d0bc0304f3::t_c0d5e7c3a2da9e 9977-9991
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_1d71d0bc0304f3::t_14254b8d30f941 184,186,1363
+  s_1d71d0bc0304f3::t_5153c475bed7a5 205
+  s_1d71d0bc0304f3::t_e4783aa2b45739 185
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_1d71d0bc0304f3::t_648c6e4688640b 6633,6635,6637,6641-6645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f43394543536117c995dc616c2c46da712c42b8e",
+  "prompts": {},
+  "sessions": {
+    "s_1d71d0bc0304f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18df2-ccb6-71df-9e22-818af293550a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
