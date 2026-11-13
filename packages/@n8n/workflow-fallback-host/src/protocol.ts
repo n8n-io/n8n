@@ -34,6 +34,8 @@ export interface StepRequest {
 	 * (spec 9.4). `clockOffsetMs` comes only when it is not 0.
 	 */
 	execution?: JsonObject;
+	/** The run clock offset of the step (CLOCK-OFFSET), on every step frame when it is not 0. */
+	clockOffsetMs?: number;
 }
 
 export interface FrameCredential {
@@ -201,5 +203,8 @@ export function parseRequest(body: Buffer): StepRequest {
 		}
 	}
 	if (isJsonObject(parsed.execution)) request.execution = parsed.execution;
+	const clock = parsed.clockOffsetMs;
+	if (typeof clock === 'number' && Number.isInteger(clock) && clock !== 0)
+		request.clockOffsetMs = clock;
 	return request;
 }

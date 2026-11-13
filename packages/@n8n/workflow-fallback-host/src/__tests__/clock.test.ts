@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 
 import { runCodeStep, runWithClockOffset } from '../code-step';
 import { disposeExpressionEngine, NodeStepRunner, parseNodeStepArgs } from '../node-step';
-import { readClockOffset, type JsonObject } from '../protocol';
+import { parseRequest, readClockOffset, type JsonObject } from '../protocol';
 import { runPythonStep } from '../python-step';
 
 const DAY = 86_400_000;
@@ -233,5 +233,24 @@ describe('the clock offset of a step frame', () => {
 		expect(readClockOffset({ id: 'e', clockOffsetMs: 0 })).toBe(0);
 		expect(readClockOffset({ id: 'e', clockOffsetMs: 'x' })).toBe(0);
 		expect(readClockOffset({ id: 'e', clockOffsetMs: 1.5 })).toBe(0);
+	});
+});
+
+describe('the clock offset on a step frame', () => {
+	it('reads `clockOffsetMs` at the top level of every step frame', () => {
+		const frame = (extra: JsonObject) =>
+			Buffer.from(
+				JSON.stringify({
+					id: '1:1',
+					kind: 'code',
+					step: 'Code',
+					key: 'k',
+					args: { code: '', items: [] },
+					...extra,
+				}),
+			);
+		expect(parseRequest(frame({ clockOffsetMs: -86400000 })).clockOffsetMs).toBe(-86400000);
+		expect(parseRequest(frame({})).clockOffsetMs).toBeUndefined();
+		expect(parseRequest(frame({ clockOffsetMs: 1.5 })).clockOffsetMs).toBeUndefined();
 	});
 });

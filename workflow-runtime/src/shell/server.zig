@@ -2243,6 +2243,13 @@ pub const Runner = struct {
         try w.appendSliceBounded(args);
         try r.appendFrameCredential(w, a.module, args);
         if (send) try r.appendExecution(w, a);
+        // Every step of a test bed run reads its own start clock in the host (CLOCK-OFFSET);
+        // `execution` above carries it only for a send frame.
+        const clock = r.sh.st.clockOffsetOf(a.exec_id);
+        if (clock != 0) {
+            var cb: [40]u8 = undefined;
+            try w.appendSliceBounded(std.fmt.bufPrint(&cb, ",\"clockOffsetMs\":{d}", .{clock}) catch unreachable);
+        }
         try w.appendBounded('}');
         const len: u32 = @intCast(w.items.len - start - 4);
         std.mem.writeInt(u32, w.items[start..][0..4], len, .little);

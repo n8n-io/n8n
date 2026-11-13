@@ -248,7 +248,7 @@ function main(): void {
 		scope.run(step, () => {
 			const handle = async () => await handler.handle(request);
 			// The step reads its own run clock (`CLOCK-OFFSET`, spec 9) through this context.
-			const clockOffsetMs = readClockOffset(request.execution);
+			const clockOffsetMs = request.clockOffsetMs ?? readClockOffset(request.execution);
 			void runWithClockOffset(clockOffsetMs, async () =>
 				channel ? await withServiceChannel(channel, handle) : await handle(),
 			).then(settle);
