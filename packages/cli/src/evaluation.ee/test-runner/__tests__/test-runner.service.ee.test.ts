@@ -27,6 +27,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type {
+	LangfuseExperimentReporter,
+	ReporterRun,
+} from '@/evaluation.ee/langfuse/langfuse-experiment-reporter.ee';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -78,6 +82,7 @@ describe('TestRunnerService', () => {
 	const workflowCompiler = mock<WorkflowCompilerService>();
 	const ownershipService = mock<OwnershipService>();
 	const txRunner = mock<TransactionRunner>();
+	const langfuseReporter = mock<LangfuseExperimentReporter>();
 	// Sentinel the mocked runner hands to every `run` callback. Asserting it on
 	// repository calls proves the service threads the transaction ctx through.
 	const TRX_CTX = { trx: { id: 'trx-sentinel' } } as unknown as OperationContext;
@@ -110,6 +115,7 @@ describe('TestRunnerService', () => {
 			workflowCompiler,
 			ownershipService,
 			txRunner,
+			langfuseReporter,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -604,6 +610,7 @@ describe('TestRunnerService', () => {
 				workflowCompiler,
 				ownershipService,
 				txRunner,
+				langfuseReporter,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -930,6 +937,7 @@ describe('TestRunnerService', () => {
 					workflowCompiler,
 					ownershipService,
 					txRunner,
+					langfuseReporter,
 				);
 			});
 
@@ -1017,6 +1025,126 @@ describe('TestRunnerService', () => {
 							resumeToken: expect.any(String),
 						},
 					}),
+				);
+			});
+		});
+	});
+
+	describe('validateEvaluationTriggerNode', () => {
+		const triggerWorkflow = (
+			parameters: Record<string, unknown>,
+			extra: { credentials?: Record<string, unknown> } = {},
+		) =>
+			({
+				nodes: [
+					{
+						id: 'trigger',
+						name: 'Dataset Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0],
+						parameters,
+						credentials: extra.credentials,
+					},
+				],
+				connections: {},
+			}) as unknown as IWorkflowBase;
+
+		const expectNotConfigured = (workflow: IWorkflowBase) => {
+			try {
+				(testRunnerService as any).validateEvaluationTriggerNode(workflow);
+				expect.unreachable('should have thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(TestRunError);
+				expect(error.code).toBe('EVALUATION_TRIGGER_NOT_CONFIGURED');
+			}
+		};
+
+		const rlc = (value: string) => ({ __rl: true, mode: 'list', value });
+
+		describe('dataTable', () => {
+			it('passes when a data table is selected', () => {
+				const workflow = triggerWorkflow({ source: 'dataTable', dataTableId: rlc('dt-1') });
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws when no data table is selected', () => {
+				expectNotConfigured(triggerWorkflow({ source: 'dataTable', dataTableId: rlc('') }));
+			});
+		});
+
+		describe('googleSheets', () => {
+			const sheetsParameters = {
+				source: 'googleSheets',
+				documentId: rlc('doc-1'),
+				sheetName: rlc('sheet-1'),
+			};
+
+			it('passes with credentials, document and sheet', () => {
+				const workflow = triggerWorkflow(sheetsParameters, {
+					credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } },
+				});
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws without credentials', () => {
+				expectNotConfigured(triggerWorkflow(sheetsParameters));
+			});
+
+			it('throws without a sheet', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ ...sheetsParameters, sheetName: rlc('') },
+						{ credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } } },
+					),
+				);
+			});
+		});
+
+		describe('langfuse', () => {
+			const langfuseCredentials = { langfuseApi: { id: '1', name: 'Langfuse' } };
+
+			it('passes with the langfuseApi credential and a dataset', () => {
+				const workflow = triggerWorkflow(
+					{ source: 'langfuse', langfuseDataset: rlc('my-dataset') },
+					{ credentials: langfuseCredentials },
+				);
+				expect(() =>
+					(testRunnerService as any).validateEvaluationTriggerNode(workflow),
+				).not.toThrow();
+			});
+
+			it('throws without credentials', () => {
+				expectNotConfigured(
+					triggerWorkflow({ source: 'langfuse', langfuseDataset: rlc('my-dataset') }),
+				);
+			});
+
+			it('throws when only another credential is set', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ source: 'langfuse', langfuseDataset: rlc('my-dataset') },
+						{ credentials: { googleSheetsOAuth2Api: { id: '1', name: 'Google' } } },
+					),
+				);
+			});
+
+			it('throws when the dataset is empty', () => {
+				expectNotConfigured(
+					triggerWorkflow(
+						{ source: 'langfuse', langfuseDataset: rlc('') },
+						{ credentials: langfuseCredentials },
+					),
+				);
+			});
+
+			it('throws when the dataset is missing', () => {
+				expectNotConfigured(
+					triggerWorkflow({ source: 'langfuse' }, { credentials: langfuseCredentials }),
 				);
 			});
 		});
@@ -2325,6 +2453,364 @@ describe('TestRunnerService', () => {
 			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: 'evaluation' });
 		});
 
+		describe('Langfuse reporting', () => {
+			const reporterRun = { testRunId: 'test-run-id' } as unknown as ReporterRun;
+
+			const successUpdates = () =>
+				testCaseExecutionRepository.update.mock.calls.filter(
+					([, update]) => (update as { status?: string }).status === 'success',
+				);
+
+			test('starts before the cases, reports each persisted case and finishes after the run is completed', async () => {
+				setupHappyPathMocks(3);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+				expect(langfuseReporter.startRun).toHaveBeenCalledTimes(1);
+				const [startParams] = langfuseReporter.startRun.mock.calls[0];
+				expect(startParams.testRun.id).toBe('test-run-id');
+				expect(startParams.workflow.id).toBe(WORKFLOW_ID);
+				expect(startParams.triggerNode.name).toBe(TRIGGER_NODE_NAME);
+				expect(startParams.userId).toBe('user-1');
+				expect(startParams.testCases.map((c) => c.json.caseId)).toEqual([0, 1, 2]);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(3);
+				const persisted = successUpdates();
+				expect(persisted).toHaveLength(3);
+				for (const [run, params] of langfuseReporter.reportCase.mock.calls) {
+					expect(run).toBe(reporterRun);
+					expect(params.status).toBe('success');
+					const [, update] = persisted.find(([id]) => id === params.testCaseExecutionId) as [
+						string,
+						Record<string, unknown>,
+					];
+					expect(params.metrics).toBe(update.metrics);
+					expect(params.inputs).toBe(update.inputs);
+					expect(params.outputs).toBe(update.outputs);
+					expect(params.runAt).toBe(update.runAt);
+					expect(params.completedAt).toBe(update.completedAt);
+					expect(params.executionId).toBe(update.executionId);
+					expect(params.testCase.json.prompt).toBe(`prompt ${params.testCase.json.caseId}`);
+					expect(params.executionData).toBeDefined();
+				}
+
+				expect(langfuseReporter.finishRun).toHaveBeenCalledTimes(1);
+				const [finishedRun, finishParams] = langfuseReporter.finishRun.mock.calls[0];
+				expect(finishedRun).toBe(reporterRun);
+				expect(finishParams).toEqual({
+					status: 'success',
+					aggregatedMetrics: (testRunRepository.markAsCompleted.mock.calls[0] as unknown[])[1],
+					totalCases: 3,
+					successCases: 3,
+				});
+
+				const order = (fn: { mock: { invocationCallOrder: number[] } }, index = 0) =>
+					fn.mock.invocationCallOrder[index];
+				expect(order(langfuseReporter.startRun)).toBeLessThan(
+					order(testCaseExecutionRepository.tryMarkCaseAsRunning),
+				);
+				expect(order(langfuseReporter.finishRun)).toBeGreaterThan(
+					order(testRunRepository.markAsCompleted),
+				);
+			});
+
+			test('reports failed cases with their error code and counts them as not successful', async () => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+					if (executionId === 'dataset-exec') return buildDatasetExecution(2);
+					throw new Error('synthetic per-case failure');
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(2);
+				for (const [, params] of langfuseReporter.reportCase.mock.calls) {
+					expect(params.status).toBe('error');
+					expect(params.errorCode).toBe(TestCaseExecutionErrorCode.UNKNOWN_ERROR);
+					expect(params.inputs).toEqual(params.testCase.json);
+				}
+				expect(langfuseReporter.finishRun).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({ totalCases: 2, successCases: 0 }),
+				);
+			});
+
+			test('reports a case whose execution errored', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const failedExecution = {
+					data: { resultData: { runData: {}, error: new Error('boom') } },
+				} as unknown as IRun;
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : failedExecution,
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						status: 'error',
+						errorCode: TestCaseExecutionErrorCode.FAILED_TO_EXECUTE_WORKFLOW,
+						executionData: failedExecution,
+						metrics: {},
+					}),
+				);
+			});
+
+			test('does not report or finish when startRun opts out', async () => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockResolvedValue(undefined);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).not.toHaveBeenCalled();
+				expect(langfuseReporter.finishRun).not.toHaveBeenCalled();
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+			});
+
+			test('a reporter that throws everywhere does not change the run outcome', async () => {
+				setupHappyPathMocks(3);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				langfuseReporter.reportCase.mockImplementation(() => {
+					throw new Error('report boom');
+				});
+				langfuseReporter.finishRun.mockRejectedValue(new Error('finish boom'));
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 2),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(successUpdates()).toHaveLength(3);
+				expect(langfuseReporter.finishRun).toHaveBeenCalledTimes(1);
+			});
+
+			test('a startRun that rejects does not fail the run and disables reporting', async () => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockRejectedValue(new Error('start boom'));
+
+				await expect(
+					testRunnerService.runTest(USER as never, WORKFLOW_ID, 1),
+				).resolves.toBeUndefined();
+
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+				expect(testRunRepository.markAsError).not.toHaveBeenCalled();
+				expect(langfuseReporter.reportCase).not.toHaveBeenCalled();
+				expect(langfuseReporter.finishRun).not.toHaveBeenCalled();
+			});
+
+			test('does not wait for case reports before scheduling the next case', async () => {
+				setupHappyPathMocks(3);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				let releaseReports: () => void = () => {};
+				const blockedReport = new Promise<void>((resolve) => (releaseReports = resolve));
+				langfuseReporter.reportCase.mockImplementation((async () => await blockedReport) as never);
+
+				const finished = testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				await vi.waitFor(() => expect(successUpdates()).toHaveLength(3));
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(3);
+				expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+
+				releaseReports();
+				await finished;
+			});
+
+			test('reports a case without metrics with NO_METRICS_COLLECTED', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const noMetricsExecution = {
+					data: { resultData: { runData: {} } },
+				} as unknown as IRun;
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : noMetricsExecution,
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						status: 'error',
+						errorCode: TestCaseExecutionErrorCode.NO_METRICS_COLLECTED,
+						executionData: noMetricsExecution,
+						executionId: 'case-exec-1',
+						metrics: {},
+					}),
+				);
+				expect(langfuseReporter.finishRun).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({ totalCases: 1, successCases: 0 }),
+				);
+			});
+
+			test('reports a TestCaseExecutionError with its own code', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const invalidMetricsExecution = {
+					data: {
+						resultData: {
+							runData: {
+								[METRICS_NODE_NAME]: [
+									{ data: { [NodeConnectionTypes.Main]: [[{ json: { score: 'abc' } }]] } },
+								],
+							},
+						},
+					},
+				} as unknown as IRun;
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : invalidMetricsExecution,
+				);
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						status: 'error',
+						errorCode: TestCaseExecutionErrorCode.INVALID_METRICS,
+						executionId: 'case-exec-1',
+						executionData: invalidMetricsExecution,
+					}),
+				);
+			});
+
+			test('reports the execution data of a case that ran and then failed with an unknown error', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				const caseExecution = buildCaseExecution(0.5);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) =>
+					executionId === 'dataset-exec' ? buildDatasetExecution(1) : caseExecution,
+				);
+				testCaseExecutionRepository.update.mockImplementationOnce(async () => {
+					throw new Error('db boom');
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						status: 'error',
+						errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
+						executionId: 'case-exec-1',
+						executionData: caseExecution,
+					}),
+				);
+			});
+
+			test('passes no execution data when the failure happens before the case ran', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+					if (executionId === 'dataset-exec') return buildDatasetExecution(1);
+					throw new Error('run boom');
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({
+						errorCode: TestCaseExecutionErrorCode.UNKNOWN_ERROR,
+						executionData: undefined,
+					}),
+				);
+			});
+
+			test.each([
+				['the execution throws a cancellation error', 'throw'],
+				['the execution resolves with a cancellation error', 'resolve'],
+			])('does not report or count a case cancelled mid-run when %s', async (_label, mode) => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+					if (executionId === 'dataset-exec') return buildDatasetExecution(2);
+					(
+						testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
+					).abortControllers
+						.get('test-run-id')
+						?.abort();
+					const cancelled = new ManualExecutionCancelledError(executionId);
+					if (mode === 'throw') throw cancelled;
+					return { data: { resultData: { runData: {}, error: cancelled } } } as unknown as IRun;
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(testRunRepository.markAsCancelled).toHaveBeenCalledTimes(1);
+				expect(langfuseReporter.reportCase).not.toHaveBeenCalled();
+				expect(langfuseReporter.finishRun).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({ status: 'cancelled', totalCases: 0, successCases: 0 }),
+				);
+			});
+
+			test('a cancellation error without an abort is still reported as a failure', async () => {
+				setupHappyPathMocks(1);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+					if (executionId === 'dataset-exec') return buildDatasetExecution(1);
+					throw new ManualExecutionCancelledError(executionId);
+				});
+
+				await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+				expect(langfuseReporter.reportCase).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({ status: 'error' }),
+				);
+			});
+
+			test.each([
+				[
+					'clearInstanceTracking',
+					() =>
+						testRunRepository.clearInstanceTracking.mockRejectedValue(new Error('cleanup boom')),
+				],
+				[
+					'telemetry.track',
+					() =>
+						telemetry.track.mockImplementation((event) => {
+							if (event === 'Test run finished') throw new Error('cleanup boom');
+						}),
+				],
+			])('still finishes the reporter when %s throws', async (_label, breakCleanup) => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				breakCleanup();
+
+				await expect(testRunnerService.runTest(USER as never, WORKFLOW_ID, 1)).rejects.toThrow(
+					'cleanup boom',
+				);
+
+				expect(langfuseReporter.finishRun).toHaveBeenCalledTimes(1);
+			});
+
+			test('still finishes the reporter when the run fails after cases were reported', async () => {
+				setupHappyPathMocks(2);
+				langfuseReporter.startRun.mockResolvedValue(reporterRun);
+				testRunRepository.markAsCompleted.mockRejectedValue(new Error('db down'));
+
+				await expect(testRunnerService.runTest(USER as never, WORKFLOW_ID, 1)).rejects.toThrow(
+					'db down',
+				);
+
+				expect(langfuseReporter.finishRun).toHaveBeenCalledWith(
+					reporterRun,
+					expect.objectContaining({ status: 'fail', totalCases: 2, successCases: 2 }),
+				);
+			});
+		});
+
 		test('release is called even when runTestCase throws', async () => {
 			// `setupHappyPathMocks` wires the dataset-trigger execution; the
 			// override below replaces only the per-case execution path so each
@@ -2426,6 +2912,7 @@ describe('TestRunnerService', () => {
 				workflowCompiler,
 				ownershipService,
 				txRunner,
+				langfuseReporter,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2507,6 +2994,7 @@ describe('TestRunnerService', () => {
 				workflowCompiler,
 				ownershipService,
 				txRunner,
+				langfuseReporter,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2615,6 +3103,7 @@ describe('TestRunnerService', () => {
 				workflowCompiler,
 				ownershipService,
 				txRunner,
+				langfuseReporter,
 			);
 
 			setupHappyPathMocks(4);
@@ -2928,6 +3417,7 @@ describe('TestRunnerService', () => {
 				workflowCompiler,
 				ownershipService,
 				txRunner,
+				langfuseReporter,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);

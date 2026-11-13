@@ -16,7 +16,7 @@ import { document, sheet } from '../../Google/Sheet/GoogleSheetsTrigger.node';
 import { readFilter as googleSheetFilters } from '../../Google/Sheet/v2/actions/sheet/read.operation';
 import { authentication } from '../../Google/Sheet/v2/actions/versionDescription';
 import type { ILookupValues } from '../../Google/Sheet/v2/helpers/GoogleSheets.types';
-import { sourcePicker } from '../Evaluation/Description.node';
+import { triggerSourcePicker } from '../Evaluation/Description.node';
 import { listSearch, loadOptions, credentialTest } from '../methods';
 import {
 	getGoogleSheet,
@@ -25,6 +25,15 @@ import {
 	getNumberOfRowsLeftFiltered,
 	getSheet,
 } from '../utils/evaluationTriggerUtils';
+import {
+	buildLangfuseRow,
+	findLangfuseActiveItem,
+	getAllLangfuseDatasetItems,
+	getLangfuseDataset,
+	parseLangfuseDatasetVersion,
+	parseLangfuseOptions,
+} from '../utils/langfuse';
+import type { LangfuseRowState, LangfuseTriggerOptions } from '../utils/langfuse';
 
 export const DEFAULT_STARTING_ROW = 2;
 
@@ -47,12 +56,12 @@ export class EvaluationTrigger implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
 			{
-				...sourcePicker,
+				...triggerSourcePicker,
 				default: 'dataTable',
 				displayOptions: { show: { '@version': [{ _cnd: { gte: 4.7 } }] } },
 			},
 			{
-				...sourcePicker,
+				...triggerSourcePicker,
 				default: 'googleSheets',
 				displayOptions: { show: { '@version': [{ _cnd: { lte: 4.6 } }] } },
 			},
@@ -62,33 +71,29 @@ export class EvaluationTrigger implements INodeType {
 				name: 'notice',
 				type: 'notice',
 				default: '',
-				displayOptions: { hide: { source: ['dataTable'] } },
+				displayOptions: { show: { source: ['googleSheets'] } },
 			},
 			{
 				displayName: 'Credentials',
 				name: 'credentials',
 				type: 'credentials',
 				default: '',
-				displayOptions: { hide: { source: ['dataTable'] } },
+				displayOptions: { show: { source: ['googleSheets'] } },
 			},
 			{
 				...authentication,
-				displayOptions: {
-					hide: {
-						source: ['dataTable'],
-					},
-				},
+				displayOptions: { show: { source: ['googleSheets'] } },
 			},
 			{
 				...document,
 				displayName: 'Document Containing Dataset',
 				hint: 'Example dataset format <a href="https://docs.google.com/spreadsheets/d/1vD_IdeFUg7sHsK9okL6Doy1rGOkWTnPJV3Dro4FBUsY/edit?gid=0#gid=0">here</a>',
-				displayOptions: { hide: { source: ['dataTable'] } },
+				displayOptions: { show: { source: ['googleSheets'] } },
 			},
 			{
 				...sheet,
 				displayName: 'Sheet Containing Dataset',
-				displayOptions: { hide: { source: ['dataTable'] } },
+				displayOptions: { show: { source: ['googleSheets'] } },
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -117,6 +122,40 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { source: ['dataTable'] } },
 			},
 			{
+				displayName: 'Dataset',
+				name: 'langfuseDataset',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'langfuseDatasetSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+					},
+				],
+				displayOptions: { show: { source: ['langfuse'] } },
+			},
+			{
+				displayName: 'Dataset Version',
+				name: 'langfuseDatasetVersion',
+				type: 'string',
+				default: '',
+				placeholder: '2026-01-21T14:35:42Z',
+				description:
+					'Pin the dataset to its state at this time (ISO 8601, UTC). Leave empty for the latest version.',
+				displayOptions: { show: { source: ['langfuse'] } },
+			},
+			{
 				displayName: 'Limit Rows',
 				name: 'limitRows',
 				type: 'boolean',
@@ -133,7 +172,7 @@ export class EvaluationTrigger implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { limitRows: [true] } },
 			},
-			{ ...googleSheetFilters, displayOptions: { hide: { source: ['dataTable'] } } },
+			{ ...googleSheetFilters, displayOptions: { show: { source: ['googleSheets'] } } },
 			{
 				displayName: 'Filter Rows',
 				name: 'filterRows',
@@ -144,6 +183,107 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: { show: { source: ['dataTable'] } },
 			},
 			...dataTableFilters({ show: { filterRows: [true] } }),
+			{
+				displayName: 'Options',
+				name: 'langfuseOptions',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: { show: { source: ['langfuse'] } },
+				options: [
+					{
+						displayName: 'Expected Output Field',
+						name: 'expectedOutputField',
+						type: 'string',
+						default: 'expectedOutput',
+						description:
+							"Name of the field that holds the dataset item's expected output, for example 'criteria' if that is where grading criteria are stored",
+					},
+					{
+						displayName: 'Flatten Input',
+						name: 'flattenInput',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to also expose the keys of an object input at the top level of each row',
+					},
+					{
+						displayName: 'Include Metadata',
+						name: 'includeMetadata',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to expose the dataset item metadata in each row',
+					},
+				],
+			},
+			{
+				displayName: 'Report Runs as Langfuse Experiments',
+				name: 'reportToLangfuse',
+				type: 'boolean',
+				default: true,
+				noDataExpression: true,
+				description:
+					'Whether to report every test run to Langfuse as an experiment, with one item per dataset item',
+				displayOptions: { show: { source: ['langfuse'] } },
+			},
+			{
+				displayName: 'Reporting',
+				name: 'langfuseReporting',
+				type: 'collection',
+				placeholder: 'Add option',
+				default: {},
+				displayOptions: { show: { source: ['langfuse'], reportToLangfuse: [true] } },
+				options: [
+					{
+						displayName: 'Environment',
+						name: 'environment',
+						type: 'string',
+						default: '',
+						description:
+							'Langfuse environment for the experiment traces. Lowercase letters, digits, hyphens and underscores only, and it must not start with "langfuse".',
+					},
+					{
+						displayName: 'Include Node Outputs',
+						name: 'includeNodeOutputs',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to include each node's first output item in its observation. This sends node data to Langfuse.",
+					},
+					{
+						displayName: 'Include Node Spans',
+						name: 'includeNodeSpans',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to add one child observation per executed node, with LLM token usage',
+					},
+					{
+						displayName: 'Run Description',
+						name: 'runDescription',
+						type: 'string',
+						typeOptions: { rows: 2 },
+						default: '',
+					},
+					{
+						displayName: 'Run Metadata',
+						name: 'runMetadata',
+						type: 'json',
+						default: '{}',
+						description:
+							'Metadata attached to every experiment item. n8n adds its own workflow and test run IDs.',
+					},
+					{
+						displayName: 'Run Name',
+						name: 'runName',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+						description:
+							"Experiment run name. Defaults to '&lt;workflow name&gt; - &lt;test run ID&gt;'. Each run name must be unique per dataset.",
+					},
+				],
+			},
 		],
 		codex: {
 			alias: ['Test', 'Metrics', 'Evals', 'Set Output', 'Set Metrics'],
@@ -165,6 +305,15 @@ export class EvaluationTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
+					},
+				},
+			},
+			{
+				name: 'langfuseApi',
+				required: true,
+				displayOptions: {
+					show: {
+						source: ['langfuse'],
 					},
 				},
 			},
@@ -320,6 +469,92 @@ export class EvaluationTrigger implements INodeType {
 			}
 		}
 
+		if (source === 'langfuse') {
+			const maxRows = this.getNodeParameter('limitRows', 0, false)
+				? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
+				: MAX_ROWS;
+
+			const datasetName = this.getNodeParameter('langfuseDataset', 0, undefined, {
+				extractValue: true,
+			}) as string;
+			const version = parseLangfuseDatasetVersion(
+				this.getNode(),
+				this.getNodeParameter('langfuseDatasetVersion', 0, ''),
+			);
+			const options = parseLangfuseOptions(
+				this.getNode(),
+				this.getNodeParameter('langfuseOptions', 0, {}) as LangfuseTriggerOptions,
+			);
+
+			const carried =
+				typeof previousRunRowNumber === 'number' && previousRunRowsLeft !== 0
+					? (inputData?.[0]?.json?._langfuse as LangfuseRowState | undefined)
+					: undefined;
+
+			const sameDataset =
+				carried?.datasetName === datasetName && typeof carried.datasetId === 'string';
+
+			const previous = sameDataset ? carried : undefined;
+
+			const rowNumber = previous ? (previousRunRowNumber as number) + 1 : 0;
+			const start = typeof previous?.position === 'number' ? previous.position + 1 : rowNumber;
+			const fetchedAt =
+				typeof previous?.fetchedAt === 'string' ? previous.fetchedAt : new Date().toISOString();
+
+			const dataset = previous
+				? { id: previous.datasetId as string, name: previous.datasetName as string }
+				: await getLangfuseDataset.call(this, datasetName);
+
+			const requestVersion = version ?? fetchedAt;
+
+			const current =
+				rowNumber < maxRows
+					? await findLangfuseActiveItem.call(this, {
+							datasetName,
+							version: requestVersion,
+							start,
+						})
+					: null;
+
+			if (!current) throw new NodeOperationError(this.getNode(), 'No row found');
+
+			let rowsLeft = 0;
+
+			if (rowNumber + 1 < maxRows && (current.totalItems ?? Infinity) > current.position + 1) {
+				const next = await findLangfuseActiveItem.call(this, {
+					datasetName,
+					version: requestVersion,
+					start: current.position + 1,
+				});
+
+				if (next) {
+					rowsLeft = Math.max(
+						1,
+						Math.min((current.totalItems ?? Infinity) - next.position, maxRows - rowNumber - 1),
+					);
+				}
+			}
+
+			return [
+				[
+					{
+						json: {
+							...buildLangfuseRow({
+								item: current.item,
+								dataset,
+								rowNumber,
+								datasetVersion: version,
+								fetchedAt,
+								options,
+								position: current.position,
+							}),
+							_rowsLeft: rowsLeft,
+						},
+					},
+				],
+			];
+		}
+
 		throw new NodeOperationError(this.getNode(), `Unknown source "${source}"`);
 	}
 
@@ -374,6 +609,44 @@ export class EvaluationTrigger implements INodeType {
 
 						const results = await getResults.call(this, [], googleSheetInstance, googleSheet, {});
 						const result = results.slice(0, maxRows - 1);
+
+						return [result];
+					} else if (source === 'langfuse') {
+						const maxRows = this.getNodeParameter('limitRows', 0, false)
+							? (this.getNodeParameter('maxRows', 0, MAX_ROWS) as number)
+							: MAX_ROWS;
+
+						const datasetName = this.getNodeParameter('langfuseDataset', 0, undefined, {
+							extractValue: true,
+						}) as string;
+						const version = parseLangfuseDatasetVersion(
+							this.getNode(),
+							this.getNodeParameter('langfuseDatasetVersion', 0, ''),
+						);
+						const options = parseLangfuseOptions(
+							this.getNode(),
+							this.getNodeParameter('langfuseOptions', 0, {}) as LangfuseTriggerOptions,
+						);
+
+						const dataset = await getLangfuseDataset.call(this, datasetName);
+						const fetchedAt = new Date().toISOString();
+						const items = await getAllLangfuseDatasetItems.call(this, {
+							datasetName,
+							version: version ?? fetchedAt,
+							maxItems: maxRows,
+						});
+
+						const result: INodeExecutionData[] = items.map((item, i) => ({
+							json: buildLangfuseRow({
+								item,
+								dataset,
+								rowNumber: i,
+								datasetVersion: version,
+								fetchedAt,
+								options,
+							}),
+							pairedItem: { item: 0 },
+						}));
 
 						return [result];
 					}
