@@ -39,6 +39,7 @@ import { createAgent, ensureInstanceAgent } from '@test-integration/db/agents';
 import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-telemetry.service';
 import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
 import type { Publisher } from '@n8n/backend-services';
+import { testCluster } from '@/modules/agents/__tests__/test-utils/cluster';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -286,6 +287,9 @@ describe('AgentExecutionRepository', () => {
 			steering,
 			settingsService,
 			systemAgents,
+			testCluster(),
+			mock<Publisher>(),
+			mockLogger(),
 		);
 		const chatExecutionService = mock<AgentChatExecutionService>();
 		chatExecutionService.withTurnLock.mockImplementation(

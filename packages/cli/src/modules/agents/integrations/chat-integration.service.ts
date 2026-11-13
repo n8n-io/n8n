@@ -5,7 +5,6 @@ import {
 	type AgentIntegrationSettings,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
 	LOWEST_SHUTDOWN_PRIORITY,
@@ -31,6 +30,7 @@ import {
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
 import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
+import { AgentClusterService } from '../agent-cluster.service';
 import type { CallbackMetadata } from './callback-store';
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
@@ -193,7 +193,7 @@ export class ChatIntegrationService {
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly changePublisher: AgentChangePublisher,
-		private readonly globalConfig: GlobalConfig,
+		private readonly cluster: AgentClusterService,
 		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 		private readonly statusReporter: AgentChannelStatusReporter,
 		private readonly leaderChannelRelay: LeaderChannelRelayService,
@@ -953,7 +953,7 @@ export class ChatIntegrationService {
 	 */
 	private shouldRouteToLeader(type: string, ingressEnabled: boolean): boolean {
 		return (
-			this.globalConfig.multiMainSetup.enabled &&
+			this.cluster.hasMultipleMains() &&
 			!this.instanceSettings.isLeader &&
 			this.integrationRegistry.get(type)?.requiresLeader({ ingressEnabled }) === true
 		);

@@ -1,7 +1,7 @@
 import { AGENT_CHAT_ERROR_CODES, type AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
@@ -63,6 +63,12 @@ export class AgentMessageQueueConsumer {
 		this.stopped = true;
 		clearInterval(this.timer);
 		this.queue.onAvailable = undefined;
+	}
+
+	/** Another process accepted work. Try to claim it here at once, not on the next scan. */
+	@OnPubSubEvent('agent-queue-available', { instanceType: 'main' })
+	handleQueueAvailable({ threadId }: PubSubCommandMap['agent-queue-available']): void {
+		this.kick(threadId);
 	}
 
 	/** Find queued sessions after a missed notification, a restart, or acceptance on another main. */

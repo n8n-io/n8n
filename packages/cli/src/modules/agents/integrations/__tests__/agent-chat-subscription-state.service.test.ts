@@ -1,5 +1,4 @@
 import type { Mocked } from 'vitest';
-import type { GlobalConfig } from '@n8n/config';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import type { StateAdapter, Lock, QueueEntry } from 'chat';
@@ -45,19 +44,16 @@ function makeDelegate(): Mocked<StateAdapter> {
 	return delegate as unknown as Mocked<StateAdapter>;
 }
 
-function makeService(multiMainEnabled = true) {
+function makeService() {
 	const repository = mock<AgentChatSubscriptionRepository>();
 	repository.listThreadIdsForConnection.mockResolvedValue([]);
 	repository.isSubscribed.mockResolvedValue(false);
 	const publisher = mock<Publisher>();
 	publisher.publishCommand.mockResolvedValue(undefined);
-	const globalConfig = mock<GlobalConfig>({
-		multiMainSetup: { enabled: multiMainEnabled },
-	} as Partial<GlobalConfig>);
 	const logger = mockLogger();
 	const service = new AgentChatSubscriptionStateService(
 		repository,
-		new AgentChangePublisher(publisher, globalConfig, logger),
+		new AgentChangePublisher(publisher, logger),
 	);
 
 	return { service, repository, publisher, logger };
@@ -186,7 +182,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('persists and broadcasts subscriptions in multi-main mode', async () => {
-		const { service, repository, publisher } = makeService(true);
+		const { service, repository, publisher } = makeService();
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({
 			agentId: 'agent-1',
@@ -218,22 +214,8 @@ describe('AgentChatSubscriptionStateService', () => {
 		});
 	});
 
-	it('does not publish subscription changes when multi-main is disabled', async () => {
-		const { service, publisher } = makeService(false);
-		const state = service.createStateAdapter({
-			agentId: 'agent-1',
-			integration: slackIntegration,
-			delegate: makeDelegate(),
-		});
-		await state.connect();
-
-		await state.subscribe('thread-1');
-
-		expect(publisher.publishCommand).not.toHaveBeenCalled();
-	});
-
 	it('applies remote subscription changes to active local state without rebroadcasting', async () => {
-		const { service, publisher } = makeService(true);
+		const { service, publisher } = makeService();
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({
 			agentId: 'agent-1',
@@ -255,7 +237,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('persists the removal and broadcasts an unsubscribe in multi-main mode', async () => {
-		const { service, repository, publisher } = makeService(true);
+		const { service, repository, publisher } = makeService();
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({
 			agentId: 'agent-1',
@@ -291,7 +273,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('applies a remote unsubscribe to active local state without rebroadcasting', async () => {
-		const { service, publisher } = makeService(true);
+		const { service, publisher } = makeService();
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({
 			agentId: 'agent-1',
@@ -315,7 +297,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('ignores remote subscription changes before the adapter is connected', async () => {
-		const { service } = makeService(true);
+		const { service } = makeService();
 		const delegate = makeDelegate();
 		// Deliberately skip connect() — the adapter is registered but not live yet.
 		service.createStateAdapter({
@@ -335,7 +317,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('unregisters the adapter on disconnect so later remote changes are dropped', async () => {
-		const { service } = makeService(true);
+		const { service } = makeService();
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({
 			agentId: 'agent-1',
@@ -359,7 +341,7 @@ describe('AgentChatSubscriptionStateService', () => {
 	});
 
 	it('swallows and logs a failure to publish a subscription change', async () => {
-		const { service, repository, publisher, logger } = makeService(true);
+		const { service, repository, publisher, logger } = makeService();
 		publisher.publishCommand.mockRejectedValueOnce(new Error('redis down'));
 		const delegate = makeDelegate();
 		const state = service.createStateAdapter({

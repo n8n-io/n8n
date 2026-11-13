@@ -73,7 +73,7 @@ export class AgentTaskCancellationService {
 				await this.recordStopResults(stop, [...foregroundFailures, ...backgroundFailures], signal);
 
 				this.updates.notifyBackgroundJobsUpdated(thread.agentId, threadId);
-				this.messages.onAvailable?.(threadId);
+				this.messages.announceAvailable(threadId);
 
 				return (await this.state(threadId))!;
 			},

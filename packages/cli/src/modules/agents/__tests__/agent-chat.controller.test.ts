@@ -18,7 +18,7 @@ import type { AgentChatAttachmentService } from '../agent-chat-attachment.servic
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { InstanceSettings } from 'n8n-core';
+import { testCluster } from './test-utils/cluster';
 import type { Publisher, Subscriber } from '@n8n/backend-services';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
@@ -101,7 +101,7 @@ function makeController() {
 	});
 	const previewStreams = new AgentQueuedTestStreamService(
 		mock<Publisher>(),
-		mock<InstanceSettings>({ isMultiMain: false }),
+		testCluster(),
 		mock<AgentMessageQueueRepository>(),
 		mockLogger(),
 		mock<Subscriber>(),

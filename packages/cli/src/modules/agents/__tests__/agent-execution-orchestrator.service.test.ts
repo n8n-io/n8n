@@ -32,7 +32,7 @@ import type { UserRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { OperationalError, UserError } from '@n8n/errors';
-import type { InstanceSettings } from 'n8n-core';
+import { testCluster } from './test-utils/cluster';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -243,7 +243,7 @@ function makeService(sandboxEnabled = false) {
 		executionService,
 		checkpointStorage,
 		mock<Publisher>(),
-		mock<InstanceSettings>(),
+		testCluster(),
 		mock<AgentExecutionUpdateBroadcaster>(),
 		mock<AgentMessageSteeringService>(),
 		backgroundJobs,

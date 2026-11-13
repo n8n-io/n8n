@@ -1,10 +1,12 @@
 import type { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
-import type { ExecutionsConfig } from '@n8n/config';
+import type { ExecutionsConfig, GlobalConfig } from '@n8n/config';
+import type { InstanceSettings } from 'n8n-core';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher } from '@n8n/backend-services';
 
+import { AgentClusterService } from '../agent-cluster.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -28,7 +30,7 @@ describe('AgentSessionStopService', () => {
 		executionService,
 		queue,
 		publisher,
-		config,
+		new AgentClusterService(config, mock<GlobalConfig>(), mock<InstanceSettings>()),
 		systemAgents,
 		chatExecutions,
 		streams,

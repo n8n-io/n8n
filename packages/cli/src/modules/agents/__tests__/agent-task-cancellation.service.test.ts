@@ -120,7 +120,7 @@ it('saves a stop between tasks and requests an acknowledgement without changing 
 	);
 	expect(work[0]).toMatchObject({ status: 'completed', result: 'Saved result' });
 	expect(state).toMatchObject({ status: 'stopped' });
-	expect(messages.onAvailable).toHaveBeenCalledWith('thread');
+	expect(messages.announceAvailable).toHaveBeenCalledWith('thread');
 });
 
 it('interrupts the current response through runtime coordination after saving the boundary', async () => {

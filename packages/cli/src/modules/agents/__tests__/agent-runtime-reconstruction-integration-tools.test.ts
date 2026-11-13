@@ -223,7 +223,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 	let agentExecutionService: Mocked<AgentExecutionService>;
 	let agentKnowledgeService: Mocked<AgentKnowledgeService>;
 	let publisher: Mocked<Publisher>;
-	let globalConfig: Mocked<GlobalConfig>;
 	let telemetry: Mocked<TelemetryProxy>;
 	let runtimeCacheService: AgentRuntimeCacheService;
 	let agentConfigService: AgentConfigService;
@@ -251,9 +250,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		agentKnowledgeService = mock<AgentKnowledgeService>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
-		globalConfig = mock<GlobalConfig>({
-			multiMainSetup: { enabled: false },
-		} as Partial<GlobalConfig>);
 		telemetry = mock<TelemetryProxy>();
 		const logger = mockLogger();
 
@@ -270,7 +266,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		runtimeCacheService = new AgentRuntimeCacheService(
 			logger,
 			agentRepository,
-			new AgentChangePublisher(publisher, globalConfig, logger),
+			new AgentChangePublisher(publisher, logger),
 			agentRuntimeReconstructionService,
 			credentialsService,
 			agentSandboxRuntimeService,

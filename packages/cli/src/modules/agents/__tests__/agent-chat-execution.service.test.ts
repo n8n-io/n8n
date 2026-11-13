@@ -2,7 +2,6 @@ import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@n8n/errors';
@@ -10,6 +9,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import { testCluster } from './test-utils/cluster';
 import { PARENT_TASK_CANCELLED_REASON } from '../background/sub-agent-background-state';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
@@ -67,7 +67,7 @@ function registerSystemAgent(systemAgents: SystemAgentRegistry) {
 	systemAgents.register(mock<SystemAgentProvider>({ agentId: 'agent-1', name: 'System agent' }));
 }
 
-function makeService(isMultiMain = true) {
+function makeService(queue = true) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
@@ -82,7 +82,7 @@ function makeService(isMultiMain = true) {
 		executionService,
 		checkpointStorage,
 		publisher,
-		mock<InstanceSettings>({ isMultiMain }),
+		testCluster({ queue }),
 		updates,
 		steering,
 		backgroundJobs,

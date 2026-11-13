@@ -1,13 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Redis } from 'ioredis';
-import type { InstanceSettings } from 'n8n-core';
 import { EventEmitter } from 'node:events';
 import { mock } from 'vitest-mock-extended';
 
 import type { Publisher, Subscriber } from '@n8n/backend-services';
 
 import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
+import { testCluster } from './test-utils/cluster';
 import type { initSseStream } from '../agent-sse-stream';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
@@ -40,7 +40,7 @@ describe('AgentQueuedTestStreamService', () => {
 		});
 		service = new AgentQueuedTestStreamService(
 			publisher,
-			mock<InstanceSettings>({ isMultiMain: true }),
+			testCluster({ queue: true }),
 			repository,
 			mockLogger(),
 			subscriber,
@@ -174,7 +174,7 @@ describe('AgentQueuedTestStreamService', () => {
 			vi.useFakeTimers();
 			const receiver = new AgentQueuedTestStreamService(
 				mock<Publisher>({ getClient: vi.fn(() => mock<Redis>({ status: 'ready' })) }),
-				mock<InstanceSettings>({ isMultiMain: true }),
+				testCluster({ queue: true }),
 				repository,
 				mockLogger(),
 				mock<Subscriber>({ getClient: vi.fn(() => mock<Redis>()) }),
