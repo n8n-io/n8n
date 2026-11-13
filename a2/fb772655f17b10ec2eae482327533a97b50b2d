@@ -1,0 +1,25 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/LmChatGoogleGemini.node.ts
+  s_b242f9c6b78e37::t_51949bfa048d7e 320-321
+patches/@google__generative-ai@0.24.0.patch
+  s_b242f9c6b78e37::t_d645ad34704362 14,26-39,41,53-66
+packages/@n8n/nodes-langchain/nodes/llms/LmChatGoogleGemini/test/LmChatGoogleGemini.test.ts
+  s_b242f9c6b78e37::t_809449a31fb8c5 170-206
+pnpm-lock.yaml
+  ai_agent 1106,3749,28458,29034
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a2fb772655f17b10ec2eae482327533a97b50b2d",
+  "prompts": {},
+  "sessions": {
+    "s_b242f9c6b78e37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c47c8ce-9dd8-4b9f-b5c7-7cd4ea9db2a7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

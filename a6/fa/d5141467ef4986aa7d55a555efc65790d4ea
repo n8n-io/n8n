@@ -1,0 +1,100 @@
+packages/modules/apps/frontend/src/components/publish/AppPublishResources.vue
+  s_6c2341b8f2ea7f::t_9796bc27d6c4c4 1-13,15-18,20-28,31-34,40-77
+  s_6c2341b8f2ea7f::t_fe0e06dbdc8aae 14,19,29-30,35-39
+packages/modules/apps/backend/src/bindings/__tests__/app-bindings.service.test.ts
+  s_6c2341b8f2ea7f::t_2f9981115a1620 329-390
+  s_6c2341b8f2ea7f::t_6a758a38bbf1c8 440
+  s_6c2341b8f2ea7f::t_018951fe9e8c91 296-297,308-310,312-319,321-325,391-413,472-483,485-490
+  s_6c2341b8f2ea7f::t_1d31213e47a98f 279-295,298-307,326-328,414-439,441-471,493-514,516,518-519,521-526
+  s_6c2341b8f2ea7f::t_78855043a2271f 311,320,484,491-492,515,517,520
+packages/modules/apps/backend/src/publication/__tests__/app-publication.controller.test.ts
+  s_6c2341b8f2ea7f::t_4dee63c6eacc08 37-40,121-179,184,190
+  s_6c2341b8f2ea7f::t_2b1117f47a604a 180-183,185-189,191-194
+  s_6c2341b8f2ea7f::t_fcb264215e8ab0 195
+packages/@n8n/api-types/src/schemas/app-binding.schema.ts
+  s_6c2341b8f2ea7f::t_291141495acb57 125
+  s_6c2341b8f2ea7f::t_76c79b1e2ba57b 128-129
+  s_6c2341b8f2ea7f::t_549c2976400779 122-124,126-127,130-137
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6c2341b8f2ea7f::t_fe0e06dbdc8aae 363
+  h_44f8d1c0f2f8c4 364
+  s_6c2341b8f2ea7f::t_135098a625eeaa 362
+packages/modules/apps/backend/src/publication/app-publication.controller.ts
+  s_6c2341b8f2ea7f::t_49adad7cdbe689 39-45,64-67
+packages/@n8n/api-types/src/dto/app/publish-app.dto.ts
+  s_6c2341b8f2ea7f::t_53561492bf1cca 1-2
+  s_6c2341b8f2ea7f::t_1c80a6d35df320 17
+packages/modules/apps/backend/src/bindings/app-bindings.service.ts
+  s_6c2341b8f2ea7f::t_2f9981115a1620 26-27
+  s_6c2341b8f2ea7f::t_f1ad0417348736 28-38,250,253,271
+  s_6c2341b8f2ea7f::t_da71133fbaefc9 266
+  s_6c2341b8f2ea7f::t_76c79b1e2ba57b 169,284-295
+  s_6c2341b8f2ea7f::t_b78f39148de6fa 8-9,16,39,142,158-168,172-180,184-193,245-249,251-252,254-262,264-265,267-270,272-283,296-318
+  s_6c2341b8f2ea7f::t_291141495acb57 170-171,181-183,263
+  s_6c2341b8f2ea7f::t_08b32d33b6d0ce 319
+packages/cli/src/modules/apps/bindings/app-agent.adapter.ts
+  s_6c2341b8f2ea7f::t_dfb1aec3bc7fc6 111-117,127
+  s_6c2341b8f2ea7f::t_498ce4ff3576e2 18,61-65,107-110,118-126
+  s_6c2341b8f2ea7f::t_307a4a3c0f8f15 128
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_6c2341b8f2ea7f::t_dfb1aec3bc7fc6 168-175,180
+  s_6c2341b8f2ea7f::t_498ce4ff3576e2 51,126,161-167,176-179
+  s_6c2341b8f2ea7f::t_92a0a5dbd144c3 181
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_6c2341b8f2ea7f::t_2736f8403ef503 136-147
+packages/cli/src/modules/apps/bindings/__tests__/app-agent.adapter.test.ts
+  s_6c2341b8f2ea7f::t_da71133fbaefc9 137-155
+  s_6c2341b8f2ea7f::t_3808acd16f819f 4,6,10,18,119-136,156-179
+  s_6c2341b8f2ea7f::t_9a8ada7b8d8967 180-181
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_6c2341b8f2ea7f::t_3808acd16f819f 4,16,66,73,82,334-353,377-395
+  s_6c2341b8f2ea7f::t_da71133fbaefc9 354-376
+  s_6c2341b8f2ea7f::t_d83894699b0202 396-397
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.vue
+  s_6c2341b8f2ea7f::t_9796bc27d6c4c4 26,162,164-165,167
+  s_6c2341b8f2ea7f::t_fe0e06dbdc8aae 47,53-55,58-72,163,166,169
+  s_6c2341b8f2ea7f::t_da71133fbaefc9 50-52
+  s_6c2341b8f2ea7f::t_ae2fa99a646e17 45-46
+  s_6c2341b8f2ea7f::t_252a388eb9484f 48
+  s_6c2341b8f2ea7f::t_d3334239f55f0f 73-75
+  s_6c2341b8f2ea7f::t_e0c7c57676f2c3 159-161
+  s_6c2341b8f2ea7f::t_50d5be011d7618 168
+  s_6c2341b8f2ea7f::t_e36dc8d11b033a 170
+  h_44f8d1c0f2f8c4 5,11-12,24,80-83,88,97,102-103,156-158
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_6c2341b8f2ea7f::t_a6804017be2605 127,133,136-137,145-173
+  s_6c2341b8f2ea7f::t_6703c3b7d7056b 6,15-18,49,71,93-96,101-102,107-110,112-113,115-119,121-122,124-126,128-130,138-144,174-175,187-189,192,197-198,221-229,231-248,250,252,254-255,259,261,268-281
+  s_6c2341b8f2ea7f::t_2f9981115a1620 176-185
+  s_6c2341b8f2ea7f::t_da71133fbaefc9 114,123,200-204,207,213,218-219
+  s_6c2341b8f2ea7f::t_ee41a902cc622e 283
+  s_6c2341b8f2ea7f::t_4293dc7fc3044f 111,120,131-132,134-135,186,190-191,193-196,199,205-206,208-212,214-217,220,230,249,251,253,256-258,260,262-267,282
+packages/modules/apps/backend/src/bindings/app-binding-ports.ts
+  s_6c2341b8f2ea7f::t_2b1117f47a604a 88
+  s_6c2341b8f2ea7f::t_1ab100200b6f44 89,93-95
+  s_6c2341b8f2ea7f::t_76c79b1e2ba57b 90-92,139-141
+  s_6c2341b8f2ea7f::t_eb0b3e9364e65b 138,142-145
+packages/modules/apps/frontend/src/apps.api.ts
+  s_6c2341b8f2ea7f::t_40d30bd0ad07f1 6,114-123
+  s_6c2341b8f2ea7f::t_b5f9cca07b25a5 124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6fad5141467ef4986aa7d55a555efc65790d4ea",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c2341b8f2ea7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95848dd9-6fd9-47d0-92e9-82bbc662db10",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

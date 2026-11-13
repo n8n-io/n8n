@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_03242bc77e8480::t_673c53961519a5 1930,1950
+  s_03242bc77e8480::t_ad42b1d5057019 1980-2020
+packages/@n8n/agents/docs/prompt-caching.md
+  s_03242bc77e8480::t_f26b2c8811aa2b 27,34,39-46,53-55
+  s_03242bc77e8480::t_43afaf86b23487 35-38
+  s_03242bc77e8480::t_900e1b03df489f 48-49
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_03242bc77e8480::t_43afaf86b23487 452-460,462-465,1474,1609
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_03242bc77e8480::t_6fc5dee92417e1 70-72,75-76
+  s_03242bc77e8480::t_43afaf86b23487 73-74
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89f2e65aee2fd020357a4cd22c33afa8a7fff472",
+  "prompts": {},
+  "sessions": {
+    "s_03242bc77e8480": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38786288-1f81-4749-98a2-d6dd28a0a827",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

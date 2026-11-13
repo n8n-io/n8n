@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/evaluations/clients/assistant-agents-api.ts
+  s_f31807e8ae1d38::t_7d656c1680859f 1-340
+packages/@n8n/instance-ai/evaluations/harness/assistant-v2.ts
+  s_f31807e8ae1d38::t_61295296ee53dc 1-18,20-125,130-143,169-239,248-262,268-329
+  s_f31807e8ae1d38::t_8ca265b8e3c12f 19
+  s_f31807e8ae1d38::t_1d0b1c13fefa5c 126-129
+  s_f31807e8ae1d38::t_7b42a04f0fff24 144-168
+  s_f31807e8ae1d38::t_f98d6cf8edfa53 240-247
+  s_f31807e8ae1d38::t_8633ba706f5c39 263-267
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-v2-wait.test.ts
+  s_f31807e8ae1d38::t_39a48366c3de33 1-101,127-197
+  s_f31807e8ae1d38::t_41d8ddc9c5c4dc 102-126
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-agents-api.test.ts
+  s_f31807e8ae1d38::t_282f9c6994e465 1-349
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-v2-events.test.ts
+  s_f31807e8ae1d38::t_1d567613d3ba48 1-115,148-243,251-372
+  s_f31807e8ae1d38::t_944fb41baa1bd0 116-147
+  s_f31807e8ae1d38::t_d3de7eaeb8d686 244-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6df38a8220962ac974bae2d5a7b2ce27757db3f9",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

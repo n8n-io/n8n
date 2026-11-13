@@ -1,0 +1,99 @@
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_b86bd8b73ec329::t_6ada8262c922ac 31-32
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_b86bd8b73ec329::t_6ada8262c922ac 73
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResourceDetail.generated.yml
+  ai_agent 126-131,150-155,492-521
+packages/cli/src/modules/n8n-packages/entities/folder/folder.serializer.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 12,34
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_b86bd8b73ec329::t_87d9992044b459 8-11
+packages/modules/promotions/frontend/src/promotionPreview.tree.ts
+  ai_agent 40,65
+packages/cli/src/modules/n8n-packages/entities/agent/agent-export.types.ts
+  s_b86bd8b73ec329::t_6ada8262c922ac 12,24-25,40
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_b86bd8b73ec329::t_2294601482e307 21,47-52,79,88-95,98,108,158,215-241,382-386
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_b86bd8b73ec329::t_bc527dc2be3796 660,1971
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_b86bd8b73ec329::t_c56749f6f69d73 49
+packages/cli/src/modules/n8n-packages/engine/package-layout.ts
+  s_b86bd8b73ec329::t_1ab8eb454c79d3 154,156,158,161,167
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_b86bd8b73ec329::t_16bc7c062e6496 93-95,99-103,105-111,381
+  s_b86bd8b73ec329::t_e9de6128b4dd6f 96
+  s_b86bd8b73ec329::t_1ab8eb454c79d3 104
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  ai_agent 11-12,17
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b86bd8b73ec329::t_16bc7c062e6496 231,506,513-516
+packages/cli/src/modules/n8n-packages/entities/agent/agent-import.types.ts
+  s_b86bd8b73ec329::t_16bc7c062e6496 53
+packages/cli/src/modules/promotions.ee/import-manifest-bridge.ts
+  s_b86bd8b73ec329::t_87d9992044b459 28-29,86,135-136,172-173,320,346-356
+  s_b86bd8b73ec329::t_1ab8eb454c79d3 68,278-284,363,368,373
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  s_b86bd8b73ec329::t_2294601482e307 29,185
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  ai_agent 119-144
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  ai_agent 492-532
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_b86bd8b73ec329::t_87d9992044b459 32-33,140-146,194-195,209-210,523-527
+packages/cli/src/public-api/v1/shared/spec/schemas/promotionResource.generated.yml
+  ai_agent 11
+packages/cli/src/modules/promotions.ee/instance-package.ts
+  ai_agent 36,61
+packages/modules/promotions/frontend/src/promotionPreview.content.ts
+  ai_agent 71
+packages/cli/src/modules/n8n-packages/entities/folder/folder-import.types.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 9,23
+packages/modules/promotions/frontend/src/promotionPreview.content.test.ts
+  s_b86bd8b73ec329::t_c20e4a71eeb80e 31-32
+packages/cli/src/modules/n8n-packages/entities/agent/agent-importer.ts
+  s_b86bd8b73ec329::t_d06f50a7baadb0 205-219
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_b86bd8b73ec329::t_1ab8eb454c79d3 119,194
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_b86bd8b73ec329::t_2294601482e307 393-395
+packages/cli/src/modules/n8n-packages/__tests__/agent-import-application.integration.test.ts
+  s_b86bd8b73ec329::t_1312ed22d6edc6 14,161,1438-1502
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  ai_agent 264-265
+packages/cli/src/modules/n8n-packages/__tests__/import-agent-package.integration.test.ts
+  s_b86bd8b73ec329::t_c56749f6f69d73 142,155
+packages/modules/promotions/frontend/src/components/preview/PromotionChangeCard.test.ts
+  s_b86bd8b73ec329::t_c20e4a71eeb80e 60-61
+packages/@n8n/api-types/src/dto/packages/folder.schema.ts
+  s_b86bd8b73ec329::t_76dfd2fac28427 2,8
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_b86bd8b73ec329::t_bc337fca7371d8 1,42-49
+  s_b86bd8b73ec329::t_76dfd2fac28427 21,69-72,129-147,159-163
+  s_b86bd8b73ec329::t_6ada8262c922ac 209
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_b86bd8b73ec329::t_16bc7c062e6496 2,28-29,44-45,64,94-99,101-110,112-140
+  s_b86bd8b73ec329::t_d06f50a7baadb0 111
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  ai_agent 364-370
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-importer.test.ts
+  ai_agent 5,38,53,73,80,100,128,140,163
+packages/cli/src/modules/promotions.ee/promotion-preview.ts
+  s_b86bd8b73ec329::t_2294601482e307 51,62,140-143,196-197,210-213,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6f3c4230fd1c2cb2adcafdd13849b690f03a1e2",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

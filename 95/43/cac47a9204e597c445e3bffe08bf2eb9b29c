@@ -1,0 +1,34 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1002c4e88ae523::t_9d3b912b7a8a1a 1998-1999,2011-2012
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_9d3b912b7a8a1a 1103-1104,1114-1115,1125-1126,1148-1149,1158-1159,1168-1169,1189-1190,1206-1207,1217-1218,1237-1238,1247-1248,1257-1258,1292-1293,1721-1722,1749-1750
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_0416b7d414e006 61-62
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1002c4e88ae523::t_488bda100beb13 1093-1094,1103-1104
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_1002c4e88ae523::t_0cf4c9973f8402 350-354
+  s_1002c4e88ae523::t_88a5c219d22a94 372-373
+  s_1002c4e88ae523::t_5f261f6db384d1 82-87
+  s_1002c4e88ae523::t_6f32ae07c57b92 259
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1002c4e88ae523::t_b505e8f9d4efdc 516-517
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1002c4e88ae523::t_7a36f001851a39 300-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9543cac47a9204e597c445e3bffe08bf2eb9b29c",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

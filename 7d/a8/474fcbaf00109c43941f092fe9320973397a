@@ -1,0 +1,22 @@
+packages/cli/src/modules/agent-evals/agent-test-mode.service.ts
+  s_59738df80b2ddb::t_2d2d8f74d97d56 7,9,82-85
+packages/cli/src/modules/agent-evals/__tests__/agent-test-mode.service.test.ts
+  s_59738df80b2ddb::t_e74675b9ddcc78 10-11,20,70
+  s_59738df80b2ddb::t_e87b43ba2b5281 163-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7da8474fcbaf00109c43941f092fe9320973397a",
+  "prompts": {},
+  "sessions": {
+    "s_59738df80b2ddb": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a19ca9-1031-71df-9e22-8193ddb93a5f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

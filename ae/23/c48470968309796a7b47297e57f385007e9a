@@ -1,0 +1,9 @@
+packages/cli/src/telemetry/index.ts
+  ai_agent 603-604
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae23c48470968309796a7b47297e57f385007e9a",
+  "prompts": {}
+}

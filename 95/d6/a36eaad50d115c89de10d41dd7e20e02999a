@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/index.ts
+  h_8a472ace01776f 949-954,971-975
+packages/@n8n/api-types/src/schemas/agent-eval-assignment.schema.ts
+  h_8a472ace01776f 177-178,182-257
+packages/cli/src/modules/agent-evals/assignment/__tests__/agent-eval-assignment.service.test.ts
+  h_8a472ace01776f 4,53-55,207-287
+packages/cli/src/modules/agent-evals/assignment/__tests__/assignment-coaching.test.ts
+  h_8a472ace01776f 1-48
+packages/cli/src/modules/agent-evals/assignment/agent-eval-assignment.controller.ts
+  h_8a472ace01776f 2-3,5-7,14-15,31-32,39,62-113
+packages/cli/src/modules/agent-evals/assignment/agent-eval-assignment.service.ts
+  h_8a472ace01776f 3-4,10,12,14,19,25,31-37,55-57,179,184-273,281-301,305
+packages/cli/src/modules/agent-evals/assignment/assignment-coaching.ts
+  h_8a472ace01776f 1-69
+packages/cli/src/modules/agent-evals/assignment/assignment-judge.ts
+  h_8a472ace01776f 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95d6a36eaad50d115c89de10d41dd7e20e02999a",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

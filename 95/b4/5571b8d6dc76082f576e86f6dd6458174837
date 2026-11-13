@@ -1,0 +1,14 @@
+packages/cli/test/integration/task-runners/task-runner-module.internal.test.ts
+  h_8fb27e0cdf6d1e 45-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95b45571b8d6dc76082f576e86f6dd6458174837",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

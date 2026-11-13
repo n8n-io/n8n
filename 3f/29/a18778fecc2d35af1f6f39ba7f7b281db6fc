@@ -1,0 +1,40 @@
+packages/@n8n/api-types/src/index.ts
+  h_8a472ace01776f 938-939
+packages/@n8n/api-types/src/schemas/__tests__/agent-eval-assignment.schema.test.ts
+  h_8a472ace01776f 23
+packages/@n8n/api-types/src/schemas/agent-eval-assignment.schema.ts
+  h_8a472ace01776f 18,21-25,64,95-98,100-104,226,239,250,282
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  h_8a472ace01776f 4,84-89
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.integration.test.ts
+  h_8a472ace01776f 28,78-79
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  h_8a472ace01776f 30,59-61,64,68-81,161,196-199,248,529-692
+packages/cli/src/modules/agent-evals/__tests__/agent-eval.service.test.ts
+  h_8a472ace01776f 102-126
+packages/cli/src/modules/agent-evals/agent-eval-judge.ts
+  h_8a472ace01776f 1-9,19-22,29-30,58,60,65,84,88-190
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  h_8a472ace01776f 1-5,39,42,70-82,117,134-135,216,240-241,295-301,325-331,638,673,712-714,718-719,721-729,731,734-735,745-746,752,755-760
+packages/cli/src/modules/agent-evals/assignment/agent-eval-assignment.service.ts
+  h_8a472ace01776f 52-58,160,163
+packages/cli/src/modules/agent-evals/assignment/assignment-coaching.ts
+  h_8a472ace01776f 14
+packages/cli/src/modules/agent-evals/scorecard/__tests__/run-evidence.test.ts
+  h_8a472ace01776f 3
+packages/cli/src/modules/agent-evals/scorecard/__tests__/scorecard-judge.test.ts
+  h_8a472ace01776f 4,6-10,47,51-54,62,68-74,77,80,82,84-85,94,96,98-107,116,122-124,128,130,134-155,158,160,180,209,224,230-242,246
+packages/cli/src/modules/agent-evals/scorecard/scorecard-judge.ts
+  h_8a472ace01776f 13-14,23,25,28-29,32-40,42-43,46,48,54,63-65,75-81,85-86,88-89,91-92,94,96-98,100,116-118,120-126,128-139,141-143,146-169,173-174,177-193,200,202-203,220,229-230,232-236,241,249,251,253-265,267-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3f29a18778fecc2d35af1f6f39ba7f7b281db6fc",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

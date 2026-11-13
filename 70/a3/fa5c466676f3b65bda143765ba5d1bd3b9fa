@@ -1,0 +1,21 @@
+packages/@n8n/cli/src/commands/package/import.ts
+  s_1281c45e639724::t_4c2a71912bd60e 87
+packages/@n8n/cli/docs/commands/package.md
+  s_1281c45e639724::t_d69b0911e82c74 101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70a3fa5c466676f3b65bda143765ba5d1bd3b9fa",
+  "prompts": {},
+  "sessions": {
+    "s_1281c45e639724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ef74ca2-bc09-4202-a6fb-0cfb36b86f56",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

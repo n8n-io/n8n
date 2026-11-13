@@ -1,0 +1,90 @@
+packages/frontend/@n8n/frontend-test-utils/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 16-17,35,41-42
+packages/frontend/@n8n/rest-api-client/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 33-34,47,53-54
+packages/frontend/@n8n/design-system/oxlint.config.mts
+  s_68552a9f52920e::t_4dcf06bd44e8af 1-27
+packages/frontend/@n8n/frontend-utils/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 24-25,34,39-40
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_68552a9f52920e::t_ea8abd6959fd00 3,5,11,13-15
+packages/modules/promotions/frontend/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 16-17,46,61-62,70
+packages/frontend/@n8n/storybook/oxlint.config.mts
+  s_68552a9f52920e::t_cdc4a68929e96a 1-27
+packages/frontend/@n8n/frontend-test-utils/oxlint.config.mts
+  s_68552a9f52920e::t_5a8b7aa2206a67 1-37
+packages/frontend/@n8n/rest-api-client/oxlint.config.mts
+  s_68552a9f52920e::t_92d6849d27f468 1-8
+packages/frontend/@n8n/chat/vize-lint.config.mjs
+  s_68552a9f52920e::t_723fff2404d307 1-3
+packages/frontend/@n8n/frontend-constants/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 24-25,30,33-34
+packages/frontend/@n8n/chat/oxlint.config.mts
+  s_68552a9f52920e::t_9aa964998bca11 4-8
+  s_68552a9f52920e::t_723fff2404d307 1-3
+packages/frontend/@n8n/design-system/vize-lint.config.mjs
+  s_68552a9f52920e::t_4dcf06bd44e8af 1-3
+packages/frontend/@n8n/frontend-utils/oxlint.config.mts
+  s_68552a9f52920e::t_5a8b7aa2206a67 1-4
+scripts/lint-parity/oxlint-parity.mjs
+  s_68552a9f52920e::t_0de52a61c82d0c 140-143,147-150,205-228
+packages/modules/promotions/frontend/vize-lint.config.mjs
+  s_68552a9f52920e::t_723fff2404d307 1-3
+packages/frontend/@n8n/composables/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 25-26,42,53-54
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_68552a9f52920e::t_46ee3feb834d80 20-21,37-38
+packages/@n8n/oxlint-config/src/configs/frontend.ts
+  s_68552a9f52920e::t_7f7b8a04953e7a 66-72,114
+  s_68552a9f52920e::t_08a194504c3978 25-27
+  s_68552a9f52920e::t_a6cd3aae22b111 65
+packages/frontend/@n8n/eslint-plugin-design-system/oxlint.config.mts
+  s_68552a9f52920e::t_119d9fe80e0728 1-38
+.code-health-baseline.json
+  s_68552a9f52920e::t_72cb4a3b04b933 1917-1946
+packages/frontend/@n8n/i18n/oxlint.config.mts
+  s_68552a9f52920e::t_5a8b7aa2206a67 1-11
+packages/frontend/@n8n/frontend-constants/README.md
+  s_68552a9f52920e::t_58c4f1bc3a9fe6 33
+packages/frontend/@n8n/stores/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 33-34,53,59-60
+packages/modules/promotions/frontend/README.md
+  s_68552a9f52920e::t_58c4f1bc3a9fe6 42
+packages/frontend/@n8n/frontend-constants/oxlint.config.mts
+  s_68552a9f52920e::t_5a8b7aa2206a67 1-20
+packages/frontend/@n8n/composables/oxlint.config.mts
+  s_68552a9f52920e::t_92d6849d27f468 1-8
+packages/frontend/@n8n/frontend-test-utils/README.md
+  s_68552a9f52920e::t_58c4f1bc3a9fe6 22
+packages/frontend/@n8n/design-system/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 47-48,54,76-77,90
+packages/frontend/@n8n/i18n/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 33-34,44,50-51
+packages/frontend/@n8n/stores/oxlint.config.mts
+  s_68552a9f52920e::t_5a8b7aa2206a67 1-11
+packages/frontend/@n8n/storybook/package.json
+  s_68552a9f52920e::t_46ee3feb834d80 12-13,30,44-45
+packages/frontend/@n8n/chat/package.json
+  s_68552a9f52920e::t_841fa07e3379b8 16-17,54,68-69,75
+packages/modules/promotions/frontend/oxlint.config.mts
+  s_68552a9f52920e::t_723fff2404d307 1-4
+pnpm-lock.yaml
+  s_68552a9f52920e::t_b2d117fb153749 5653,5655,5695-5700,5716-5718,5753,5755,5786-5791,5928,5930,5994-5999,6036-6038,6076-6081,6103,6105,6112,6114-6117,6231-6233,6246,6248-6251,6277,6279,6292-6297,6338,6340,6356-6361,6402-6404,6417-6422,6478,6480,6496-6501,6560,6562,6602-6607,8325-8327,8364,8366-8369,8391-8393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf8c10e97944a57ca5eea80e9b1312e58ad55987",
+  "prompts": {},
+  "sessions": {
+    "s_68552a9f52920e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "424aaa33-3efb-4f86-9fb6-e82fb9d32897",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

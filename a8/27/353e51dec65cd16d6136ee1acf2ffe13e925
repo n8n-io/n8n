@@ -1,0 +1,31 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-chat-tests.repository.integration.test.ts
+  s_1d71d0bc0304f3::t_8eccdf9428a07d 2,46,129-136,138-152,157-161,163,166-169,181-186,188-189,196
+  s_1d71d0bc0304f3::t_a7a9e3492fe70d 170-180,190
+  s_1d71d0bc0304f3::t_2ae21a7ff09081 137,153-156,162,164-165,187,191-195,197-198
+packages/@n8n/api-types/src/schemas/__tests__/agent-eval-checks.schema.test.ts
+  s_1d71d0bc0304f3::t_0ef6fb41d698bf 18-24,29
+  s_1d71d0bc0304f3::t_8b630d690a86db 25-28,30
+packages/cli/src/modules/agent-evals/agent-chat-tests.repository.ts
+  s_1d71d0bc0304f3::t_3bfe5776040d5f 19,26,28-33,107,134,180-203,228,249
+  s_1d71d0bc0304f3::t_c21133bf87b0f3 27
+  s_1d71d0bc0304f3::t_13168f529622ca 204-227,229-248,250-251
+packages/@n8n/api-types/src/schemas/agent-eval-checks.schema.ts
+  s_1d71d0bc0304f3::t_18281f1051f2da 69-70
+  s_1d71d0bc0304f3::t_50e53dd0d73599 71-75,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a827353e51dec65cd16d6136ee1acf2ffe13e925",
+  "prompts": {},
+  "sessions": {
+    "s_1d71d0bc0304f3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18df2-ccb6-71df-9e22-818af293550a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

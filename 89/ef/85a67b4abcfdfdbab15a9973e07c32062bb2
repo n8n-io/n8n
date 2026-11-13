@@ -1,0 +1,23 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-workflow-setup-route.ts
+  s_e6bc03f3b6a348::t_6526f6185865fb 173,176,190-205
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-workflow-setup-route.test.ts
+  s_e6bc03f3b6a348::t_6526f6185865fb 79-89
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/workflow-loop-memory.ts
+  s_e6bc03f3b6a348::t_6526f6185865fb 17-20,39-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89ef85a67b4abcfdfdbab15a9973e07c32062bb2",
+  "prompts": {},
+  "sessions": {
+    "s_e6bc03f3b6a348": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d68426f4-86c4-43b0-9258-139f622d1b32",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

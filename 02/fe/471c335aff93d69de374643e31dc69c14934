@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_59270bcc1c75b9::t_10bdcafb412427 172,416-440
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 158
+packages/frontend/editor-ui/src/features/core/folders/components/ProjectBreadcrumb.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 3,15-16,24,68-71
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 37
+  s_b86bd8b73ec329::t_c64e9add7c628b 144
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_59270bcc1c75b9::t_5df0961e5e3c32 154,158,183,187
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderToolbar.test.ts
+  s_59270bcc1c75b9::t_5df0961e5e3c32 1-77
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderToolbar.vue
+  s_b86bd8b73ec329::t_91d0414c35013b 73,81
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 2-3,7-9,12,27,29-37,41,48,50,53,58-72,74-80,82-85,93
+  s_b86bd8b73ec329::t_c64e9add7c628b 4,28
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_59270bcc1c75b9::t_f4287440e58b18 466
+  s_b86bd8b73ec329::t_48569da980674f 307
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 42,67-68,298-304,306,418,428,440,447,465,467-474,521-523
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02fe471c335aff93d69de374643e31dc69c14934",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

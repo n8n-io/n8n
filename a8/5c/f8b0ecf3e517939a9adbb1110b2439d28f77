@@ -1,0 +1,21 @@
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_5f5efe371ad2e2::t_ad71f93e620c60 2822,2828
+  s_5f5efe371ad2e2::t_efbe83cf73c3e9 2636,2642
+  s_5f5efe371ad2e2::t_665c89b6b71d55 2740
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a85cf8b0ecf3e517939a9adbb1110b2439d28f77",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+docker/docker-bake.hcl
+  s_41907d02bf220e::t_230b0cb908647a 18,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65cd976b4c1a52d1e7fdae8361c24602bc6ca311",
+  "prompts": {},
+  "sessions": {
+    "s_41907d02bf220e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2fe4a8caffeRBdSnlemwRh4dX",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

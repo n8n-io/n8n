@@ -1,0 +1,25 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_08690fb8a4caf5::t_d8023672b7ab14 358-389
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_08690fb8a4caf5::t_d3a21d2d32ab07 486-500
+packages/@n8n/telemetry/src/events/agents.ts
+  s_08690fb8a4caf5::t_ae0d08191821ab 683
+packages/cli/src/modules/agents/agent-integration-persistence.service.ts
+  s_08690fb8a4caf5::t_a7bb7b775c250a 37,282
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66f7c66013689e952b3d9c8cee25dd88e13138e1",
+  "prompts": {},
+  "sessions": {
+    "s_08690fb8a4caf5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33b03ae9-9b4e-49ba-ac90-ae160b5918c5",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

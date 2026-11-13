@@ -1,0 +1,39 @@
+packages/cli/package.json
+  s_bbdff09dde7545::t_4effe2a846a3ca 95,274
+packages/cli/src/utils/request-path.ts
+  s_bbdff09dde7545::t_45596e024ea498 1,3,72-79
+  s_bbdff09dde7545::t_df1175459c2226 80
+packages/cli/src/websocket-paths.ts
+  s_bbdff09dde7545::t_45596e024ea498 4,9,13
+packages/cli/src/__tests__/websocket-paths.test.ts
+  s_bbdff09dde7545::t_3cc9b9f8b04910 38-40
+  s_bbdff09dde7545::t_45596e024ea498 42
+  s_bbdff09dde7545::t_c82a2e2ef1b155 41
+  s_bbdff09dde7545::t_fe5ba0c2d70012 75
+packages/cli/src/chat/chat-server.ts
+  s_bbdff09dde7545::t_45596e024ea498 12,26,38
+packages/cli/src/modules/instance-ai/browser/browser-use-server.ts
+  s_bbdff09dde7545::t_45596e024ea498 13,15,31,55-56
+packages/cli/src/push/index.ts
+  s_bbdff09dde7545::t_45596e024ea498 17,68,77
+pnpm-workspace.yaml
+  s_bbdff09dde7545::t_4effe2a846a3ca 309-310
+pnpm-lock.yaml
+  s_bbdff09dde7545::t_ac77d39099e2c4 482-484,725-727,1431,3767,5149-5151,5312-5314,15849-15851,28851,28921,32809-32812
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3c28c1690a9ad483e87b6bc8aa9e70af61c1946",
+  "prompts": {},
+  "sessions": {
+    "s_bbdff09dde7545": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9be07d-342d-4c2d-b886-410aa08a5488",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

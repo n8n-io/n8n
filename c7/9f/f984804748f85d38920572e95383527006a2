@@ -1,0 +1,25 @@
+packages/cli/src/modules/instance-ai/eval/__tests__/thread-restore-seed-artifacts.test.ts
+  s_f31807e8ae1d38::t_33fd3453f2f4e6 1-67,85-86,89-129,132-149,151-283
+packages/cli/src/modules/instance-ai/eval/thread-restore.service.ts
+  s_f31807e8ae1d38::t_2fb5785f56b88d 3-4,8
+  s_f31807e8ae1d38::t_06dc9395f34c7d 274-276
+  s_f31807e8ae1d38::t_8f3ea5b8284368 125-246
+  s_f31807e8ae1d38::t_7780aadc95b0d3 82-105
+  s_f31807e8ae1d38::t_d4181aab5480fe 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c79ff984804748f85d38920572e95383527006a2",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

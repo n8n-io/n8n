@@ -1,0 +1,61 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_8bc76ea676b193::t_2244f4158efbf0 1241
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_8bc76ea676b193::t_c782bbd6c2adbd 884-887
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_8bc76ea676b193::t_c782bbd6c2adbd 1501-1504
+  s_8bc76ea676b193::t_850a2d19cbdf8f 1500
+packages/cli/src/modules/agents/__tests__/agent-execution.repository.test.ts
+  s_8bc76ea676b193::t_438c4a46c8840d 39
+  s_8bc76ea676b193::t_7cc0b20663c69b 4,21-38,40-90,94,96,98,106,108,116-117,136,178,224
+packages/cli/test/integration/agents/system-agent-user-deletion.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 9,13,35,47,64,90,109
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_8bc76ea676b193::t_c782bbd6c2adbd 1028-1032,1165-1167
+  s_8bc76ea676b193::t_669b1ec8455b36 388,411,430,440,458,480,497,516,538,546,549,630,704,839,907,913,943,995,1027,1099,1130,1209,1248,1282,1305,1378,1426,1463,1501,1534,1582,1609,1631,1650,1747,1796,2264
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_8bc76ea676b193::t_850a2d19cbdf8f 786,840
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-usage-relay.test.ts
+  s_8bc76ea676b193::t_850a2d19cbdf8f 67
+packages/cli/test/integration/database/repositories/agent-execution-thread-n8n-chat.repository.test.ts
+  s_8bc76ea676b193::t_3f5bde0c830e58 8,21,31
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 320
+  s_8bc76ea676b193::t_c782bbd6c2adbd 300-303
+packages/cli/test/integration/agents/system-agent-turn-abort.test.ts
+  s_8bc76ea676b193::t_c782bbd6c2adbd 177-178
+packages/cli/test/integration/agents/agent-chat-cancellation.api.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 5,10
+  s_8bc76ea676b193::t_c782bbd6c2adbd 56-63
+packages/cli/test/integration/agents/n8n-chat-production.api.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 6,8,86
+packages/cli/test/integration/agents/n8n-chat-page.api.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 6,8,96
+packages/cli/test/integration/agents/agent-thread-repository-queries.test.ts
+  s_8bc76ea676b193::t_3f5bde0c830e58 8,25,42
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_8bc76ea676b193::t_c782bbd6c2adbd 601-604
+  s_8bc76ea676b193::t_2244f4158efbf0 92-93,314-315,344-345,383,397,428,614,635,651,672
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_8bc76ea676b193::t_5c21df8a61cf1b 8,13,29,42
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_8bc76ea676b193::t_ff91ee755e95b7 119,132,134,161,178,186,190,199,225,651,719,827,1138,1142,1213,1221,1279,1355,1418,1424,1472,1474-1475,1479,1560,1563,1570,1630,1634,1648,1657,1941,2079,2081-2082,2129,2331,2351,2356-2357,2364,2421,2485,2487,2673,2726,2748,3255,3304,3355-3356,3400,3415,3418-3419,3421,3472,3482,3485,3850,3951,4028,4047,4064,4133,4165,4171,4465,4492,4513,4519,4533,4560,4581,4587,4601,4625,4689,4840,4849,4860,4870,4878,4883,4900,4903,4909,4913-4914,4920,4923
+  s_8bc76ea676b193::t_edf1764a70c00d 93
+  s_8bc76ea676b193::t_c782bbd6c2adbd 1603-1605,2221-2223,2830-2832,3377-3379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "117c996237659c17228cb032ac100cbf3f5f4ec6",
+  "prompts": {},
+  "sessions": {
+    "s_8bc76ea676b193": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95bdee18-e058-48ae-a35e-e279fb97c915",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

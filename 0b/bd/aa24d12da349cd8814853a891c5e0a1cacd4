@@ -1,0 +1,23 @@
+packages/cli/src/telemetry/__tests__/telemetry-shutdown.test.ts
+  s_b605b692be0ba9::t_bb1ea5ce2c1e39 18,23,33,42,48
+  s_b605b692be0ba9::t_2b238f62661772 84-105
+packages/cli/src/telemetry/index.ts
+  s_b605b692be0ba9::t_02b0cec9d49cd8 599,603-605,607,610-617
+  s_b605b692be0ba9::t_04404a9b390acd 36-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0bbdaa24d12da349cd8814853a891c5e0a1cacd4",
+  "prompts": {},
+  "sessions": {
+    "s_b605b692be0ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73fef18a-e96c-41e0-9b79-5671c3ecbbed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

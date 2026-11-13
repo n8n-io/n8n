@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.ts
+  s_4f200781c74595::t_ed0800fcb99ce1 8,29
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.test.ts
+  s_4f200781c74595::t_c95a32e40911c2 10,66,71,363-364,418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "77514064e9702653c252370859bb2c1e641f116f",
+  "prompts": {},
+  "sessions": {
+    "s_4f200781c74595": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc94b91f-9919-4f67-b0cb-88c2b42606ab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

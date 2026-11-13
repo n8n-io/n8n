@@ -1,0 +1,26 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentMessageTelemetry.ts
+  s_013e1480e11471::t_2d67d135e6cfbc 84
+  s_013e1480e11471::t_6ba7d1d4d775f4 41-42,45,47-49
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_013e1480e11471::t_e2834e8504d301 197
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_013e1480e11471::t_943a372162fb3d 1607-1614
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentMessageTelemetry.test.ts
+  s_013e1480e11471::t_cb215c8f68bfa7 120-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "456ecb29d3ca3fa74b93c0bd6c58ab0e6149e4e7",
+  "prompts": {},
+  "sessions": {
+    "s_013e1480e11471": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4351bcd2-837d-4594-8d50-950380193f11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

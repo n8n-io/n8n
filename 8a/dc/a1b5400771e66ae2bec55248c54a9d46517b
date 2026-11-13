@@ -1,0 +1,34 @@
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_f31807e8ae1d38::t_f20595e60c63ab 114-126
+  s_f31807e8ae1d38::t_4f6136b8023dda 145-147
+packages/cli/src/modules/instance-ai/assistant-agent/eval/assistant-eval-thread-memory.service.ts
+  s_f31807e8ae1d38::t_e8827f2c8ed478 1-35
+packages/cli/src/modules/instance-ai/assistant-agent/eval/__tests__/eval-assistant-turn-overrides.test.ts
+  s_f31807e8ae1d38::t_64823c2b2aa8ee 1-76
+packages/cli/src/modules/instance-ai/assistant-agent/eval/__tests__/assistant-agent-eval.controller.test.ts
+  s_f31807e8ae1d38::t_6f98ae3d9cc941 1-160,162-335
+packages/cli/test/integration/instance-ai/assistant-agent-eval.api.test.ts
+  s_f31807e8ae1d38::t_fb1e9e7b6bc4de 2-39,41-127,129-130,132-171
+packages/cli/src/modules/instance-ai/assistant-agent/eval/eval-assistant-turn-overrides.ts
+  s_f31807e8ae1d38::t_93905ef0d887d5 1-65
+packages/cli/src/modules/instance-ai/assistant-agent/eval/__tests__/assistant-eval-thread-memory.service.test.ts
+  s_f31807e8ae1d38::t_1d2c89edf87582 1-28,30-61
+packages/cli/src/modules/instance-ai/assistant-agent/eval/assistant-agent-eval.controller.ts
+  s_f31807e8ae1d38::t_0d91a66e1dc7ee 1-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8adca1b5400771e66ae2bec55248c54a9d46517b",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

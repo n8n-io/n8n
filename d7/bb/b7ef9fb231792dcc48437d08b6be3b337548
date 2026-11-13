@@ -1,0 +1,47 @@
+packages/nodes-base/nodes/Postgres/v2/actions/database/select.operation.ts
+  s_9b3403f33f27bc::t_1c2586e8e8914a 2,22,24-26,34,67,91,96,124,127-128,135,137-138,140-150
+  s_9b3403f33f27bc::t_009521578eed08 129-130,151-161
+  s_9b3403f33f27bc::t_f6357ac837cb42 131-134,136
+  s_9b3403f33f27bc::t_8152f4713369b1 139,162
+packages/nodes-base/nodes/Postgres/test/v2/startAfter.integration.test.ts
+  s_9b3403f33f27bc::t_8152f3af5fb18d 28,84-85,106-109,111,280-281
+  s_9b3403f33f27bc::t_37c18a507d4c4b 122
+  s_9b3403f33f27bc::t_ef5aeda9f1e89d 15,37
+  s_9b3403f33f27bc::t_a090a42c1a1592 1-14,16-27,29-36,38-83,86-105,110,112-121,123-279,282-288
+packages/nodes-base/nodes/Postgres/test/v2/descriptions.test.ts
+  s_9b3403f33f27bc::t_ce37c590306d80 64-70,75,78-85,87,89-90
+  s_9b3403f33f27bc::t_e2e37dc2a25960 71-74,76-77,86,88
+packages/nodes-base/nodes/Postgres/v2/actions/common.descriptions.ts
+  s_9b3403f33f27bc::t_f6357ac837cb42 375-376,405
+  s_9b3403f33f27bc::t_8c6b8ff7543756 364-374,377-404,406-411
+packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts
+  s_9b3403f33f27bc::t_7338f003d336f8 10,254-260,278-281,284,288-292,297-313,316,323,325-326,328-335,357-368,381-387,392,394,399-400,421-426
+  s_9b3403f33f27bc::t_009521578eed08 211,218-221
+  s_9b3403f33f27bc::t_ed8cc3b437a3e0 214
+  s_9b3403f33f27bc::t_86696768d65081 23-24
+  s_9b3403f33f27bc::t_a4cd8c1592ed40 147,152,156,159,180-210,212-213,215-217,222-224,226-232,234-241,243-250,252-253,261-276,282-283,286,293-296,314-315,317-321,327,336,338-349,351-356,369-373,375-380,388-391,393,395-398,401-420,427-433
+  s_9b3403f33f27bc::t_9141234796ce4f 322,324
+  s_9b3403f33f27bc::t_13fba7267379c9 233,242,251,277,287,350,374
+packages/nodes-base/nodes/Postgres/v2/helpers/interfaces.ts
+  s_9b3403f33f27bc::t_ba4996fb3dc61a 14-21,23-25
+  s_9b3403f33f27bc::t_7338f003d336f8 22
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_9b3403f33f27bc::t_05940915065177 17-22,1129,1190,1252,1258-1310,1312-1335,1339-1673,1675-1725,1727-1769
+  s_9b3403f33f27bc::t_b423e8ff14e78b 1311,1336-1338,1674,1726,1770-1771
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7bbb7ef9fb231792dcc48437d08b6be3b337548",
+  "prompts": {},
+  "sessions": {
+    "s_9b3403f33f27bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b824e7d0-3e6b-453b-803b-35e874412684",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

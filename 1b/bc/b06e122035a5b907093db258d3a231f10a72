@@ -1,0 +1,20 @@
+packages/cli/test/integration/instance-ai/assistant-agent-eval.api.test.ts
+  s_f31807e8ae1d38::t_27088e8b085a7d 8
+  s_f31807e8ae1d38::t_58d6b5b840bfa6 210-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bbcb06e122035a5b907093db258d3a231f10a72",
+  "prompts": {},
+  "sessions": {
+    "s_f31807e8ae1d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21450f3-8c62-4fc8-9200-ea83fc876d2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+packages/modules/code-sandbox/backend/src/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 25-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01d7bc0127e9b31d184c306b0cf7de8fd4d31d33",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

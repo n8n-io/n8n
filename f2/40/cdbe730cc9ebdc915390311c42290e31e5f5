@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/utils/source-control-helper.ts
+  s_4e6b8b32d9f345::t_f11d0f60f7547c 59-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f240cdbe730cc9ebdc915390311c42290e31e5f5",
+  "prompts": {},
+  "sessions": {
+    "s_4e6b8b32d9f345": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2b8d4f0bffe2NYmX8nVpJVkHx",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

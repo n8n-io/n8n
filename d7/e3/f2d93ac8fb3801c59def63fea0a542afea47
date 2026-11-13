@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatModeBadge.vue
+  s_9af1b09aa006a5::t_046c9b9a304331 1-163
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatModeResetNotice.vue
+  s_9af1b09aa006a5::t_2501ab916100bd 1-35
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMode.test.ts
+  s_9af1b09aa006a5::t_4234147dcf9a6f 1-398
+  s_9af1b09aa006a5::t_6eecc68367eabf 399-441
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatGoLiveOptions.vue
+  s_9af1b09aa006a5::t_8497945094d0e2 1-156
+  s_9af1b09aa006a5::t_f9f09feccc0d8a 157-162
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatModeExplainer.vue
+  s_9af1b09aa006a5::t_0a9e9c9d1b4708 1-99
+  s_9af1b09aa006a5::t_b18cabbb5b78e5 100
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatModeSwitch.vue
+  s_9af1b09aa006a5::t_297d816b17a1f0 1-113
+  s_9af1b09aa006a5::t_e4f4917a2ef131 114-132
+packages/frontend/editor-ui/src/features/agents/components/chatMode/chatMode.types.ts
+  s_9af1b09aa006a5::t_dcecf47eeb5a9f 1-27
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentChatLiveGate.vue
+  s_9af1b09aa006a5::t_dc79966768c6ec 1-86
+  s_9af1b09aa006a5::t_b480e276c5128c 87-96
+packages/frontend/editor-ui/src/features/agents/components/chatMode/AgentGoLiveConfirmModal.vue
+  s_9af1b09aa006a5::t_60e023329c8e58 1-182
+  s_9af1b09aa006a5::t_51617dcf4fe5ee 183-198
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9af1b09aa006a5::t_3eec742d53bc07 9370-9410
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7e3f2d93ac8fb3801c59def63fea0a542afea47",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

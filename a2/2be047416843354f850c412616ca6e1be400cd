@@ -1,0 +1,26 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_686a719dabc59f::t_c257028c6f9fcd 326-328
+packages/@n8n/nodes-langchain/utils/tests/require-api-key-nodes.test.ts
+  s_686a719dabc59f::t_8d5d7460425d17 1-2,4-63,71-73,75-76,79,82-97
+  s_686a719dabc59f::t_4a942370f882d0 68
+  s_686a719dabc59f::t_eed2f731cf388b 3,64-67,69-70,74,77-78,80
+  s_686a719dabc59f::t_2f1c62cfee76bd 81
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node.ts
+  s_686a719dabc59f::t_c257028c6f9fcd 345-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a22be047416843354f850c412616ca6e1be400cd",
+  "prompts": {},
+  "sessions": {
+    "s_686a719dabc59f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05586da7-f526-45fe-be04-6e4f1f240987",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

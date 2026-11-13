@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.test.ts
+  s_8874afab5b0f89::t_bef6b8549ee44e 26
+  s_8874afab5b0f89::t_647dba6f322e07 339-340,346
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.ts
+  s_8874afab5b0f89::t_bef6b8549ee44e 21-25
+  s_8874afab5b0f89::t_647dba6f322e07 598
+packages/frontend/editor-ui/src/features/agents/utils/agentNode.ts
+  s_8874afab5b0f89::t_e41c681dc1b074 16-21
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasMapping.ts
+  s_8874afab5b0f89::t_bef6b8549ee44e 30
+  s_8874afab5b0f89::t_647dba6f322e07 139-140
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_8874afab5b0f89::t_bef6b8549ee44e 163
+  s_8874afab5b0f89::t_647dba6f322e07 453,790
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_8874afab5b0f89::t_647dba6f322e07 1325,1917,1930,1934,1997,2001,2389
+  s_8874afab5b0f89::t_bef6b8549ee44e 116-117,1979
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_8874afab5b0f89::t_bef6b8549ee44e 25,317
+  s_8874afab5b0f89::t_647dba6f322e07 30
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasLayout.test.ts
+  s_8874afab5b0f89::t_bef6b8549ee44e 24
+  s_8874afab5b0f89::t_647dba6f322e07 368-369,371,380,665,1532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d20caf65db5a946f46f75d01b801c879fcf8f154",
+  "prompts": {},
+  "sessions": {
+    "s_8874afab5b0f89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44ab86b8-eddb-4bc5-9a93-98ac43e6ec99",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

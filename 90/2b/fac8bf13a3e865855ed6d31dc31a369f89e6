@@ -1,0 +1,34 @@
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_5f5efe371ad2e2::t_71d95c7a1e2afc 146
+  s_5f5efe371ad2e2::t_52666f1e439bf1 158-162
+packages/cli/test/integration/public-api/projects.test.ts
+  s_5f5efe371ad2e2::t_9856132892c85f 4,494,513-516
+packages/cli/src/modules/source-control.ee/source-control.service.ee.ts
+  s_5f5efe371ad2e2::t_71d95c7a1e2afc 533,536,543,551
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_5f5efe371ad2e2::t_af6c87d0661589 673-677,679-682
+packages/cli/src/services/project.service.ee.ts
+  s_5f5efe371ad2e2::t_3849d8ce1f95e1 150-153,225
+  s_5f5efe371ad2e2::t_1efb0a0f890f68 42
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_5f5efe371ad2e2::t_1efb0a0f890f68 47
+  s_5f5efe371ad2e2::t_3849d8ce1f95e1 163,168-170
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_5f5efe371ad2e2::t_71d95c7a1e2afc 119-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "902bfac8bf13a3e865855ed6d31dc31a369f89e6",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

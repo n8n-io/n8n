@@ -1,0 +1,43 @@
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_b86bd8b73ec329::t_b6997b272b978a 216
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,217
+  s_b86bd8b73ec329::t_b6997b272b978a 218
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_b86bd8b73ec329::t_f9d3575f10db3e 48
+  s_b86bd8b73ec329::t_db28245fd1a73c 757-771,773-776
+  s_b86bd8b73ec329::t_737f5950768b29 772,777
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1
+  s_b86bd8b73ec329::t_b6997b272b978a 6,154-157,183-184,189-190,226-238,245,247,251-257,263-268,277,279,284-304,306
+  s_b86bd8b73ec329::t_db28245fd1a73c 239-244,246,248-250,258-262,269-276,278,280-283
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_b86bd8b73ec329::t_1d2d80c02ed242 165
+  s_b86bd8b73ec329::t_6c864afc02202e 188-190
+packages/cli/src/modules/agents/agents.service.ts
+  s_b86bd8b73ec329::t_db28245fd1a73c 47,49,51-54,50
+  s_b86bd8b73ec329::t_0233eb11307f95 97,112,171,214-215,218-220,232,526-529,531-533,570-573,583-588,595
+  s_b86bd8b73ec329::t_d72769ba2be830 537-543,546-549,560-565,569,753-762,217,575,578-579,582,594,596
+  s_b86bd8b73ec329::t_1d2d80c02ed242 650,24,172,216,574,576-577,580-581,591-593
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_b86bd8b73ec329::t_1d2d80c02ed242 76,567-571
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_b86bd8b73ec329::t_9cf10c86100125 1,414
+  s_b86bd8b73ec329::t_b6997b272b978a 415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b818e5d9bdf6ba36750d9406dffc15a47fa1930f",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
