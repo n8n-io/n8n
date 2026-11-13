@@ -331,6 +331,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  integer credentialVersion
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -338,6 +339,7 @@ erDiagram
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  boolean requiresCredential
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt

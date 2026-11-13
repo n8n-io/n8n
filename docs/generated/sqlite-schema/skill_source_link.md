@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill_source_link" ("skillId" varchar(36) PRIMARY KEY NOT NULL, "sourceId" varchar NOT NULL, "remoteRef" text NOT NULL, "baseRevision" varchar(255) NOT NULL, "baseContentHash" varchar(64) NOT NULL, "pendingContent" text, "pendingContentHash" varchar(64), "pendingScan" text, "pendingRevision" varchar(255), "skippedContentHash" varchar(64), "state" varchar(32) NOT NULL DEFAULT ('up_to_date'), "skippedFiles" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_source_link_state" CHECK ("state" IN ('up_to_date', 'update_available', 'update_blocked', 'source_unavailable')), CONSTRAINT "FK_019d7a720d470af7c820fbb01ed" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_8828a788906bc11d5a3dc6d87a0" FOREIGN KEY ("sourceId") REFERENCES "skill_source" ("id") ON DELETE CASCADE)
+CREATE TABLE "skill_source_link" ("skillId" varchar(36) PRIMARY KEY NOT NULL, "sourceId" varchar NOT NULL, "remoteRef" text NOT NULL, "baseRevision" varchar(255) NOT NULL, "baseContentHash" varchar(64) NOT NULL, "pendingContent" text, "pendingContentHash" varchar(64), "pendingScan" text, "pendingRevision" varchar(255), "skippedContentHash" varchar(64), "state" varchar(32) NOT NULL DEFAULT ('up_to_date'), "skippedFiles" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "sourceUnavailable" BOOLEAN NOT NULL DEFAULT false, CONSTRAINT "CHK_skill_source_link_state" CHECK ("state" IN ('up_to_date', 'update_available', 'update_blocked', 'source_unavailable')), CONSTRAINT "FK_019d7a720d470af7c820fbb01ed" FOREIGN KEY ("skillId") REFERENCES "skill" ("id") ON DELETE CASCADE, CONSTRAINT "FK_8828a788906bc11d5a3dc6d87a0" FOREIGN KEY ("sourceId") REFERENCES "skill_source" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -27,6 +27,7 @@ CREATE TABLE "skill_source_link" ("skillId" varchar(36) PRIMARY KEY NOT NULL, "s
 | skippedContentHash | varchar(64) |  | true |  |  |  |
 | skippedFiles | TEXT |  | false |  |  |  |
 | sourceId | varchar |  | false |  | [skill_source](skill_source.md) |  |
+| sourceUnavailable | BOOLEAN | false | false |  |  |  |
 | state | varchar(32) | 'up_to_date' | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -68,6 +69,7 @@ erDiagram
   varchar_64_ skippedContentHash
   TEXT skippedFiles
   varchar sourceId FK
+  BOOLEAN sourceUnavailable
   varchar_32_ state
   datetime_3_ updatedAt
 }
@@ -85,6 +87,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  INTEGER credentialVersion
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -92,6 +95,7 @@ erDiagram
   TEXT locator
   TEXT probeCursor
   varchar_36_ projectId FK
+  BOOLEAN requiresCredential
   varchar_32_ status
   varchar_16_ type
   datetime_3_ updatedAt

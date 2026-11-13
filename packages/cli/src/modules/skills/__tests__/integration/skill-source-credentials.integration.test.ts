@@ -4,6 +4,7 @@ import {
 	type SkillSourceCredentialOption,
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -26,6 +27,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { deleteAllSkills } from '../../testing';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -37,6 +39,7 @@ import {
 	shareCredentialWithProjects,
 } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import type { SuperAgentTest } from '@test-integration/types';
 import { initCredentialsTypes, setupTestServer } from '@test-integration/utils';
 
@@ -691,6 +694,177 @@ describe('Skill Sync with credentials', () => {
 			expect(await db().findOneByOrFail(SkillSourceLink, { skillId })).toMatchObject({
 				state: 'update_available',
 			});
+		});
+
+		it('saves an expired credential and recovers after a working replacement', async () => {
+			const { sourceId, skillId } = await importPrivate();
+			const before = await db().findOneByOrFail(SkillSourceLink, { skillId });
+			const updated = vi.spyOn(Container.get(SkillsTelemetry), 'updatedSourceCredential');
+			const health = vi.spyOn(Container.get(SkillsTelemetry), 'sourceHealthChanged');
+			try {
+				await post(editor, `/skill-sources/${sourceId}/credential`, {
+					credentialId: badCredential.id,
+				});
+				expect(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).toMatchObject({
+					credentialId: badCredential.id,
+					lastErrorReason: 'credential_invalid',
+				});
+				expect(updated).toHaveBeenCalledWith(expect.objectContaining({ status: 'success' }));
+				const { data } = await get<SkillSourceListItem[]>(editor, '/skill-sources');
+				expect(data[0]).toMatchObject({ health: 'credential_issue' });
+				expect(data[0]).not.toHaveProperty('credentialId');
+				expect(data[0]).not.toHaveProperty('credentialName');
+				await Container.get(SkillSyncService).checkAll();
+				expect(health).toHaveBeenCalledTimes(1);
+				await post(editor, `/skill-sources/${sourceId}/credential`, {
+					credentialId: teamCredential.id,
+				});
+				expect(await lastErrorOf(sourceId)).toBeNull();
+				expect(health).toHaveBeenLastCalledWith({
+					provider: 'github',
+					from: 'credential_issue',
+					to: 'connected',
+				});
+				expect((await db().findOneByOrFail(SkillSourceLink, { skillId })).baseContentHash).toBe(
+					before.baseContentHash,
+				);
+			} finally {
+				updated.mockRestore();
+				health.mockRestore();
+			}
+		});
+
+		it('saves a GitHub App credential even when token creation fails', async () => {
+			const { sourceId } = await importPrivate();
+			const invalidApp = await saveCredential(
+				{
+					name: 'App to configure',
+					type: 'githubAppApi',
+					data: { appId: '1', installationId: '42', privateKey: 'invalid', accessToken: '' },
+				},
+				{ project: team, role: 'credential:owner' },
+			);
+			await post(editor, `/skill-sources/${sourceId}/credential`, { credentialId: invalidApp.id });
+			expect(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).toMatchObject({
+				credentialId: invalidApp.id,
+				lastErrorReason: 'credential_invalid',
+			});
+		});
+
+		it('keeps the replacement when GitHub is unavailable', async () => {
+			const { sourceId } = await importPrivate();
+			github.failWith = 503;
+			await post(editor, `/skill-sources/${sourceId}/credential`, {
+				credentialId: oauthCredential.id,
+			});
+			expect(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).toMatchObject({
+				credentialId: oauthCredential.id,
+			});
+			expect(await lastErrorOf(sourceId)).not.toBeNull();
+		});
+
+		it('reports a deleted credential without trying public access', async () => {
+			const { sourceId } = await importPrivate();
+			const temporary = await saveCredential(ghCredential('Temporary', TOKEN), {
+				project: team,
+				role: 'credential:owner',
+			});
+			await post(editor, `/skill-sources/${sourceId}/credential`, { credentialId: temporary.id });
+			await Container.get(CredentialsRepository).delete(temporary.id);
+			const requests = github.requests.refs;
+			await Container.get(SkillSyncService).checkAll();
+			expect(await lastErrorOf(sourceId)).toBe('credential_missing');
+			expect(github.requests.refs).toBe(requests);
+		});
+
+		it('refuses an out-of-scope replacement without changing the source', async () => {
+			const { sourceId } = await importPrivate();
+			await post(
+				editor,
+				`/skill-sources/${sourceId}/credential`,
+				{ credentialId: otherTeamCredential.id },
+				403,
+			);
+			expect(
+				(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).credentialId,
+			).toBe(teamCredential.id);
+		});
+
+		it('shows health to viewers but refuses credential choices and replacement', async () => {
+			const { sourceId } = await importPrivate();
+			const viewerUser = await createMember();
+			await linkUserToProject(viewerUser, team, 'project:viewer');
+			const viewer = server.authAgentFor(viewerUser);
+			await post(editor, `/skill-sources/${sourceId}/credential`, {
+				credentialId: badCredential.id,
+			});
+			const { data } = await get<SkillSourceListItem[]>(viewer, '/skill-sources');
+			expect(data[0]).toMatchObject({ health: 'credential_issue', canReview: false });
+			expect(JSON.stringify(data)).not.toContain(badCredential.name);
+			await get(viewer, `/skill-sources/${sourceId}/credentials`, 403);
+			await post(
+				viewer,
+				`/skill-sources/${sourceId}/credential`,
+				{ credentialId: teamCredential.id },
+				403,
+			);
+			await post(
+				member,
+				`/skill-sources/${sourceId}/credential`,
+				{ credentialId: memberCredential.id },
+				404,
+			);
+		});
+
+		it('allows replacement with update and credential-read access but no create access', async () => {
+			const { sourceId } = await importPrivate();
+			const updater = await createMember();
+			const role = await createCustomRoleWithScopeSlugs(
+				['projectSkill:list', 'projectSkill:read', 'projectSkill:update', 'credential:read'],
+				{ roleType: 'project' },
+			);
+			await linkUserToProject(updater, team, role.slug);
+			const agent = server.authAgentFor(updater);
+			const { data } = await get<SkillSourceCredentialOption[]>(
+				agent,
+				`/skill-sources/${sourceId}/credentials`,
+			);
+			expect(data.map(({ id }) => id)).toContain(badCredential.id);
+			await post(agent, `/skill-sources/${sourceId}/credential`, {
+				credentialId: badCredential.id,
+			});
+			expect(await lastErrorOf(sourceId)).toBe('credential_invalid');
+		});
+
+		it('hides replacement routes when Skill Sync is off, before validating the body', async () => {
+			const { sourceId } = await importPrivate();
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await get(editor, `/skill-sources/${sourceId}/credentials`, 404);
+			await post(editor, `/skill-sources/${sourceId}/credential`, {}, 404);
+			expect(
+				(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).credentialId,
+			).toBe(teamCredential.id);
+		});
+
+		it('ignores health and folder results from an earlier credential selection', async () => {
+			const { sourceId, skillId } = await importPrivate();
+			const old = await db().findOneByOrFail(SkillSourceConnection, { id: sourceId });
+			await post(editor, `/skill-sources/${sourceId}/credential`, {
+				credentialId: oauthCredential.id,
+			});
+			await Container.get(SkillSourceRepository).recordCheck(
+				sourceId,
+				{
+					checkedAt: new Date(Date.now() + 60_000),
+					errorReason: 'credential_invalid',
+					availability: [{ skillId, missing: true }],
+				},
+				old,
+			);
+			expect(await lastErrorOf(sourceId)).toBeNull();
+			expect((await db().findOneByOrFail(SkillSourceLink, { skillId })).sourceUnavailable).toBe(
+				false,
+			);
 		});
 
 		it('reports credential_missing when the scope no longer accepts the credential', async () => {

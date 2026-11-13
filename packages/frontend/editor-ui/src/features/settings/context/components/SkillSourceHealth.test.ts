@@ -12,31 +12,31 @@ describe('SkillSourceHealth', () => {
 	beforeEach(() => createTestingPinia());
 
 	it.each<{ health: SkillSourceHealth; label: string; description: string }>([
-		{ health: 'connected', label: 'Connected', description: 'Not checked yet.' },
+		{ health: 'connected', label: 'Source health', description: 'Not checked yet.' },
 		{
 			health: 'credential_issue',
-			label: 'Credential issue',
+			label: 'Credential expired',
 			description: "n8n can't use this source's credential.",
 		},
 		{
 			health: 'source_unavailable',
 			label: 'Source unavailable',
 			description:
-				"The repository or branch is missing, or n8n doesn't have access. Your skills keep their last accepted version.",
+				"n8n can't find or access part of this source. Your skills keep their last accepted version.",
 		},
 		{
 			health: 'unreachable',
-			label: 'Unreachable',
+			label: 'Source unavailable',
 			description: "n8n couldn't reach this source. Your skills keep their last accepted version.",
 		},
 		{
 			health: 'delayed',
-			label: 'Delayed',
+			label: 'Checking delayed',
 			description: 'GitHub has limited requests. n8n will check again later.',
 		},
 		{
 			health: 'check_failed',
-			label: 'Check failed',
+			label: 'Source unavailable',
 			description:
 				"n8n couldn't complete the update check. Your skills keep their last accepted version.",
 		},
@@ -48,7 +48,7 @@ describe('SkillSourceHealth', () => {
 		expect(getByRole('button', { name: label })).toHaveFocus();
 		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(description);
 		expect(getByRole('button', { name: label })).toHaveAccessibleDescription(
-			expect.stringContaining('n8n checks every hour by default.'),
+			expect.stringContaining('n8n checks this source every hour'),
 		);
 	});
 
@@ -61,8 +61,31 @@ describe('SkillSourceHealth', () => {
 		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(
 			'Last check: Oct 1, 2026',
 		);
-		expect(getByRole('button', { name: 'Connected' })).toHaveAccessibleDescription(
+		expect(getByRole('button', { name: 'Source health' })).toHaveAccessibleDescription(
 			expect.stringContaining('Last check: Oct 1, 2026'),
 		);
+	});
+	it('shows missing folders in the tooltip', async () => {
+		render({
+			props: {
+				source: {
+					health: 'source_unavailable',
+					lastCheckedAt: null,
+					missingSkills: ['pdf', 'docx'],
+				},
+			},
+		});
+		await userEvent.tab();
+		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(
+			'Missing skill folders: pdf, docx',
+		);
+	});
+
+	it('shows a tooltip control without a healthy badge', () => {
+		const { queryByText, getByRole } = render({
+			props: { source: { health: 'connected', lastCheckedAt: null } },
+		});
+		expect(queryByText('Connected')).toBeNull();
+		expect(getByRole('button', { name: 'Source health' })).toBeInTheDocument();
 	});
 });

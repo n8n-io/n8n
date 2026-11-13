@@ -148,8 +148,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
-| [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 15 |  | BASE TABLE |
+| [public.skill_source_link](public.skill_source_link.md) | 15 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
@@ -1911,6 +1911,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  integer credentialVersion
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -1918,6 +1919,7 @@ erDiagram
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  boolean requiresCredential
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt
@@ -1935,6 +1937,7 @@ erDiagram
   varchar_64_ skippedContentHash
   json skippedFiles
   uuid sourceId FK
+  boolean sourceUnavailable
   varchar_32_ state
   timestamp_3__with_time_zone updatedAt
 }

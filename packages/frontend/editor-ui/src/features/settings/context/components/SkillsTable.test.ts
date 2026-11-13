@@ -388,6 +388,7 @@ describe('SkillsTable', () => {
 			updatesAvailable: 0,
 			updatesBlocked: 0,
 			health: 'connected',
+			missingSkills: [],
 			lastCheckedAt: null,
 			canReview: true,
 			canDelete: true,
@@ -442,7 +443,7 @@ describe('SkillsTable', () => {
 			});
 
 			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
-			expect(getByRole('button', { name: 'Unreachable' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument();
 			expect(queryByTestId('skill-group-updates')).toBeNull();
 		});
 
@@ -529,6 +530,7 @@ describe('SkillsTable', () => {
 			);
 			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
 			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
 		});
 
 		it('offers Delete source with delete permission even without update permission', async () => {
@@ -549,6 +551,18 @@ describe('SkillsTable', () => {
 				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
 			);
 			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+		});
+
+		it('replaces a source credential from its menu', async () => {
+			const { getByTestId, emitted } = renderGrouped();
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(
+					document.querySelector('[data-test-id="action-replaceCredential"]'),
+				).toHaveTextContent('Replace credential'),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
+			expect(emitted('replaceCredential')).toEqual([[source()]]);
 		});
 
 		it('checks a source for updates from its menu', async () => {

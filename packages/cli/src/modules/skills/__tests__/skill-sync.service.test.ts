@@ -141,6 +141,8 @@ describe('SkillSyncService', () => {
 					id,
 					type: 'github',
 					credentialId: null,
+					requiresCredential: false,
+					credentialVersion: 0,
 					probeCursor: 'current',
 					lastCheckedAt: null,
 				}),
@@ -164,7 +166,26 @@ describe('SkillSyncService', () => {
 			await expect(sync.checkNow(user, secondId)).rejects.toThrow();
 
 			expect(probe).toHaveBeenCalledTimes(2);
-			expect(sources.recordDelayed).toHaveBeenCalledWith(secondId);
+			expect(sources.recordCheck).toHaveBeenCalledWith(
+				secondId,
+				expect.objectContaining({ errorReason: 'rate_limited', preserveCheckedAt: true }),
+				expect.anything(),
+			);
+
+			// A deleted credential must not inherit the wait for public access.
+			sources.findById.mockResolvedValue(
+				mock<SkillSourceConnection>({
+					id: secondId,
+					type: 'github',
+					credentialId: null,
+					requiresCredential: true,
+					credentialVersion: 1,
+				}),
+			);
+			await expect(sync.checkNow(user, secondId)).rejects.toMatchObject({
+				reason: 'credential_missing',
+			});
+			expect(probe).toHaveBeenCalledTimes(2);
 		},
 	);
 });

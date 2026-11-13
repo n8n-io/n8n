@@ -60,6 +60,7 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
@@ -793,6 +794,15 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
+const replacingCredential = ref<SkillSourceListItem>();
+async function onCredentialReplaced() {
+	replacingCredential.value = undefined;
+	showMessage({
+		title: i18n.baseText('settings.context.skills.sources.credential.saved'),
+		type: 'success',
+	});
+	await loadSources();
+}
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
 
@@ -834,6 +844,14 @@ async function onCheckSource(source: SkillSourceListItem) {
 		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+		if (reason === 'rate_limited') {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.sources.health.delayed'),
+				message: reasonText(reason),
+				type: 'warning',
+			});
+			return;
+		}
 		// The user cannot pick another credential here, so that reason gets its own text.
 		const text =
 			reason === 'credential_missing'
@@ -1063,6 +1081,7 @@ onMounted(async () => {
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
 			@delete-source="sourceToDelete = $event"
+			@replace-credential="replacingCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1102,6 +1121,12 @@ onMounted(async () => {
 			</template>
 		</SkillsTable>
 
+		<SkillSourceCredentialDialog
+			v-if="replacingCredential"
+			:source="replacingCredential"
+			@close="replacingCredential = undefined"
+			@saved="onCredentialReplaced"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"

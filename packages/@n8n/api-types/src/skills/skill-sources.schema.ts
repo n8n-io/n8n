@@ -297,7 +297,9 @@ export type SkillSourceListItem = {
 	updatesBlocked: number;
 	health: SkillSourceHealth;
 	lastCheckedAt: string | null;
-	/** Whether the user may review updates and check the source now. */
+	/** Names of synced skills whose folders are missing from the source. */
+	missingSkills: string[];
+	/** Whether the user may review updates, check the source, and replace its credential. */
 	canReview: boolean;
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
@@ -318,3 +320,7 @@ export const skillSourceDeleteBlockSchema = z.object({
 });
 
 export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;
+
+export class ReplaceSkillSourceCredentialDto extends Z.class({
+	credentialId: z.string().min(1).max(36),
+}) {}

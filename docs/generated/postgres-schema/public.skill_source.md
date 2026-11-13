@@ -7,6 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Creator. The check task reads the feature flag of this user. NULL after the user is deleted |
 | credentialId | varchar(36) |  | true |  | [public.credentials_entity](public.credentials_entity.md) | Credential that reads a private source. NULL = public access |
+| credentialVersion | integer | 0 | false |  |  | Credential selection revision used to reject older check results |
 | id | uuid |  | false | [public.skill_source_link](public.skill_source_link.md) |  | UUIDv7, made by the application |
 | identityKey | varchar(255) |  | false |  |  | Source type, host, owner and repository in lower case, e.g. "github:github.com/acme/skills". The duplicate rules compare it |
 | lastCheckedAt | timestamp(3) with time zone |  | true |  |  | End of the last check. NULL before the first check |
@@ -14,6 +15,7 @@
 | locator | json |  | false |  |  | Where the skills are, as the client parsed it from the link. Opaque to the core |
 | probeCursor | text |  | true |  |  | Opaque value of the last change probe, e.g. a commit SHA. NULL before the first check |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | The scope: a team or personal project. NULL = Global |
+| requiresCredential | boolean | false | false |  |  | True when the source requires a credential, including after credential deletion |
 | status | varchar(32) | 'connected'::character varying | false |  |  | Health of the source, set by the last check |
 | type | varchar(16) |  | false |  |  | Source type, "github". Selects the client |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -28,9 +30,11 @@
 | FK_b3474e16029bf15a015e3f3a8d6 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE SET NULL |
 | PK_c121774d21c9f67119b1d0d865a | PRIMARY KEY | PRIMARY KEY (id) |
 | skill_source_createdAt_not_null | n | NOT NULL "createdAt" |
+| skill_source_credentialVersion_not_null | n | NOT NULL "credentialVersion" |
 | skill_source_id_not_null | n | NOT NULL id |
 | skill_source_identityKey_not_null | n | NOT NULL "identityKey" |
 | skill_source_locator_not_null | n | NOT NULL locator |
+| skill_source_requiresCredential_not_null | n | NOT NULL "requiresCredential" |
 | skill_source_status_not_null | n | NOT NULL status |
 | skill_source_type_not_null | n | NOT NULL type |
 | skill_source_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -58,6 +62,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  integer credentialVersion
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -65,6 +70,7 @@ erDiagram
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  boolean requiresCredential
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt
@@ -116,6 +122,7 @@ erDiagram
   varchar_64_ skippedContentHash
   json skippedFiles
   uuid sourceId FK
+  boolean sourceUnavailable
   varchar_32_ state
   timestamp_3__with_time_zone updatedAt
 }

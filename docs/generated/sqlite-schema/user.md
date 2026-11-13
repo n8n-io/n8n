@@ -500,6 +500,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  INTEGER credentialVersion
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
@@ -507,6 +508,7 @@ erDiagram
   TEXT locator
   TEXT probeCursor
   varchar_36_ projectId FK
+  BOOLEAN requiresCredential
   varchar_32_ status
   varchar_16_ type
   datetime_3_ updatedAt

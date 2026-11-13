@@ -54,6 +54,10 @@ export class SkillSourceLink extends WithTimestamps {
 	@Column({ type: 'varchar', length: 32, default: 'up_to_date' })
 	state: SkillSourceLinkState;
 
+	/** Remote availability does not change the pending update or the accepted version. */
+	@Column({ default: false })
+	sourceUnavailable: boolean;
+
 	/** Paths of the files that the import left out. */
 	@JsonColumn()
 	skippedFiles: string[];

@@ -5,6 +5,7 @@ import {
 	isUniqueConstraintError,
 	type OperationContext,
 } from '@n8n/db';
+import type { SkillSourceReason } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -30,6 +31,8 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 
 /** A source with the same identity in some scope, for the duplicate rules. */
 export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
+
+type CheckState = { errorReason: string | null; hasMissingSkills: boolean };
 
 /** The source of a synced skill, and where the skill is in it. */
 export type SyncedFromRow = Pick<
@@ -63,7 +66,10 @@ export class SkillSourceRepository {
 
 	private readonly links: SkillSourceLinkTable;
 
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
 		this.sources = new SkillSourceTable(dataSource, transactionRunner);
 		this.links = new SkillSourceLinkTable(dataSource, transactionRunner);
 	}
@@ -101,6 +107,7 @@ export class SkillSourceRepository {
 			await manager.save(
 				manager.create(SkillSourceConnection, {
 					...source,
+					requiresCredential: source.credentialId !== null,
 					status: 'connected',
 					lastCheckedAt: new Date(),
 					lastErrorReason: null,
@@ -311,48 +318,122 @@ export class SkillSourceRepository {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/**
-	 * A check that did not read the source, because its access still waits after a rate limit.
-	 * Only the reason changes: `lastCheckedAt` keeps the time of the last read.
-	 */
-	async recordDelayed(sourceId: string): Promise<void> {
-		await this.sources
-			.managerFor({})
-			.update(SkillSourceConnection, { id: sourceId }, { lastErrorReason: 'rate_limited' });
+	/** Saves the selection without decrypting or testing it. */
+	async replaceCredential(sourceId: string, credentialId: string): Promise<boolean> {
+		const result = await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{ id: sourceId },
+			{
+				credentialId,
+				requiresCredential: true,
+				credentialVersion: () => '"credentialVersion" + 1',
+			},
+		);
+		return (result.affected ?? 0) > 0;
 	}
 
-	/**
-	 * The result of one check of a source. `lastCheckedAt` and `lastErrorReason` change only
-	 * when no check that started later wrote them first, so a slow check never hides a newer
-	 * result. `probeCursor` moves only from the cursor that the check started from. When
-	 * another check moved it first, the cursor is cleared instead, so the next check reads
-	 * every skill again and fixes a link that the slower check could not write.
-	 */
+	/** Missing folders are independent of pending updates. */
+	async findMissingSkills(sourceIds: string[], ctx: OperationContext = {}) {
+		const rows: Pick<SkillSourceLink, 'sourceId' | 'skillId'>[] = [];
+		for (const chunk of chunkIds(sourceIds)) {
+			rows.push(
+				...(await this.links.managerFor(ctx).find(SkillSourceLink, {
+					select: ['sourceId', 'skillId'],
+					where: { sourceId: In(chunk), sourceUnavailable: true },
+				})),
+			);
+		}
+		return rows;
+	}
+
+	/** Stores health only for the credential selection that this check read. */
 	async recordCheck(
 		sourceId: string,
 		result: {
 			checkedAt: Date;
-			errorReason: string | null;
-			/** `to` null clears the cursor, so the next check reads every skill again. */
+			errorReason: SkillSourceReason | 'unexpected' | null;
 			probeCursor?: { from: string | null; to: string | null };
+			availability?: { skillId: string; missing: boolean }[];
+			preserveCheckedAt?: boolean;
 		},
-	): Promise<void> {
-		const manager = this.sources.managerFor({});
-		const { checkedAt, errorReason, probeCursor } = result;
-		await manager.update(
-			SkillSourceConnection,
-			{ id: sourceId, lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)) },
-			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
-		);
-		if (!probeCursor) return;
-		const moved = await manager.update(
-			SkillSourceConnection,
-			{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
-			{ probeCursor: probeCursor.to },
-		);
-		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
-		}
+		expected?: Pick<SkillSourceConnection, 'credentialId' | 'credentialVersion'>,
+	): Promise<{ before: CheckState; after: CheckState } | undefined> {
+		return await this.transactionRunner.run({}, async (ctx) => {
+			const manager = this.sources.managerFor(ctx);
+			// Serialize health transitions across mains. SQLite already serializes write transactions.
+			const current = await manager.findOne(SkillSourceConnection, {
+				where: { id: sourceId },
+				lock:
+					manager.connection.options.type === 'postgres'
+						? { mode: 'pessimistic_write' }
+						: undefined,
+			});
+			if (
+				!current ||
+				(expected &&
+					(current.credentialId !== expected.credentialId ||
+						current.credentialVersion !== expected.credentialVersion))
+			)
+				return undefined;
+			const missingBefore = await this.findMissingSkills([sourceId], ctx);
+			const before = {
+				errorReason: current.lastErrorReason,
+				hasMissingSkills: missingBefore.length > 0,
+			};
+			const { checkedAt, errorReason, probeCursor } = result;
+			const saved = await manager.update(
+				SkillSourceConnection,
+				{
+					id: sourceId,
+					lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
+					lastErrorReason: current.lastErrorReason ?? IsNull(),
+					...(expected
+						? {
+								credentialId: expected.credentialId ?? IsNull(),
+								credentialVersion: expected.credentialVersion,
+							}
+						: {}),
+				},
+				{
+					...(!result.preserveCheckedAt ? { lastCheckedAt: checkedAt } : {}),
+					lastErrorReason: errorReason,
+				},
+			);
+			// A slower check can still require a reread after concurrent link writes.
+			if (probeCursor) {
+				const moved = await manager.update(
+					SkillSourceConnection,
+					{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
+					{ probeCursor: probeCursor.to },
+				);
+				if (!moved.affected)
+					await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+			}
+			if (!saved.affected) return undefined;
+			for (const missing of [true, false]) {
+				const ids =
+					result.availability
+						?.filter((item) => item.missing === missing)
+						.map(({ skillId }) => skillId) ?? [];
+				for (const chunk of chunkIds(ids)) {
+					await this.links
+						.managerFor(ctx)
+						.update(
+							SkillSourceLink,
+							{ sourceId, skillId: In(chunk) },
+							{ sourceUnavailable: missing },
+						);
+				}
+			}
+			const missingAfter = result.availability
+				? await this.findMissingSkills([sourceId], ctx)
+				: missingBefore;
+			const after = { errorReason, hasMissingSkills: missingAfter.length > 0 };
+			return before.errorReason === after.errorReason &&
+				before.hasMissingSkills === after.hasMissingSkills
+				? undefined
+				: { before, after };
+		});
 	}
 
 	/**

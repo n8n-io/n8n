@@ -99,6 +99,7 @@ erDiagram
   varchar_64_ skippedContentHash
   json skippedFiles
   uuid sourceId FK
+  boolean sourceUnavailable
   varchar_32_ state
   timestamp_3__with_time_zone updatedAt
 }
