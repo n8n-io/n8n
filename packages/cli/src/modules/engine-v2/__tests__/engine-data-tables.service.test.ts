@@ -239,6 +239,53 @@ describe('EngineDataTablesService', () => {
 			});
 		});
 
+		it('gives a date column filter value in JSON date form to the service as a Date', async () => {
+			const columns: DataTableColumn[] = [
+				{ id: 'col-1', name: 'wait_until', type: 'date', index: 0, dataTableId: 'dt-1' },
+				{ id: 'col-2', name: 'label', type: 'string', index: 1, dataTableId: 'dt-1' },
+			];
+			vi.mocked(table.getColumns).mockResolvedValue(columns);
+			vi.mocked(table.getManyRowsAndCount).mockResolvedValue({ count: 0, data: [] });
+			const at = '2026-01-02T03:04:05.006Z';
+
+			await service.call(
+				requestFor({
+					kind: 'getManyRowsAndCount',
+					dataTableId: 'dt-1',
+					options: {
+						filter: {
+							type: 'and',
+							filters: [
+								{ columnName: 'wait_until', condition: 'gt', value: at },
+								{ columnName: 'label', condition: 'eq', value: at },
+							],
+						},
+					},
+				}),
+			);
+
+			expect(table.getManyRowsAndCount).toHaveBeenCalledWith({
+				filter: {
+					type: 'and',
+					filters: [
+						{ columnName: 'wait_until', condition: 'gt', value: new Date(at) },
+						{ columnName: 'label', condition: 'eq', value: at },
+					],
+				},
+			});
+		});
+
+		it('does not read the columns when no filter value is in JSON date form', async () => {
+			vi.mocked(table.deleteRows).mockResolvedValue(true);
+
+			await service.call(
+				requestFor({ kind: 'deleteRows', dataTableId: 'dt-1', options: { filter } }),
+			);
+
+			expect(table.getColumns).not.toHaveBeenCalled();
+			expect(table.deleteRows).toHaveBeenCalledWith({ filter });
+		});
+
 		it('reports a missing column as a user error, because the node shows that message', async () => {
 			vi.mocked(table.deleteColumn).mockRejectedValue(new NotFoundError('no such column'));
 

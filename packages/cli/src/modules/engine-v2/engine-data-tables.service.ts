@@ -8,6 +8,8 @@ import {
 	isAllowedNode,
 } from '@n8n/backend-module-data-table';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import type { DataTableFilter, IDataTableProjectService } from 'n8n-workflow';
+
 import { OwnershipService } from '@/services/ownership.service';
 
 import type {
@@ -18,6 +20,34 @@ import type {
 
 /** What the node says when its helpers are missing. The data plane raises the same text. */
 const MODULE_DISABLED_MESSAGE = 'Attempted to use Data table node but the module is disabled';
+
+/** The text `Date.toJSON` gives: the form a Date filter value has after JSON transport. */
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+/**
+ * Gives each filter value on a `date` column that is the JSON form of a Date
+ * back as a Date. A v1 node gives the service a Date object, and the database
+ * then compares the column as a time. The same instant as text compares as
+ * text, which gives other rows. Only a filter with such a value reads the columns.
+ */
+async function withDateFilterValues(
+	table: IDataTableProjectService,
+	filter: DataTableFilter,
+): Promise<DataTableFilter> {
+	const isDateText = (value: unknown): value is string =>
+		typeof value === 'string' && ISO_DATE_TIME.test(value);
+	if (!filter.filters.some((f) => isDateText(f.value))) return filter;
+	const dateColumns = new Set(
+		(await table.getColumns()).filter((c) => c.type === 'date').map((c) => c.name),
+	);
+	if (dateColumns.size === 0) return filter;
+	return {
+		...filter,
+		filters: filter.filters.map((f) =>
+			isDateText(f.value) && dateColumns.has(f.columnName) ? { ...f, value: new Date(f.value) } : f,
+		),
+	};
+}
 
 /**
  * Runs one data table operation for the engine v2 data plane.
@@ -108,15 +138,28 @@ export class EngineDataTablesService {
 			case 'deleteColumn':
 				return await table.deleteColumn(call.columnId);
 			case 'getManyRowsAndCount':
-				return await table.getManyRowsAndCount(call.options);
+				return await table.getManyRowsAndCount(
+					call.options.filter
+						? { ...call.options, filter: await withDateFilterValues(table, call.options.filter) }
+						: call.options,
+				);
 			case 'insertRows':
 				return await table.insertRows(call.rows, call.returnType);
 			case 'updateRows':
-				return await table.updateRows(call.options);
+				return await table.updateRows({
+					...call.options,
+					filter: await withDateFilterValues(table, call.options.filter),
+				});
 			case 'upsertRow':
-				return await table.upsertRow(call.options);
+				return await table.upsertRow({
+					...call.options,
+					filter: await withDateFilterValues(table, call.options.filter),
+				});
 			case 'deleteRows':
-				return await table.deleteRows(call.options);
+				return await table.deleteRows({
+					...call.options,
+					filter: await withDateFilterValues(table, call.options.filter),
+				});
 			case 'clearRows':
 				return await table.clearRows();
 		}
