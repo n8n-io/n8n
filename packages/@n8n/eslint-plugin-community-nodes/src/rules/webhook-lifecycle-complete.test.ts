@@ -8,11 +8,13 @@ function createTriggerNode(options: {
 	group?: string;
 	hasWebhooks?: boolean;
 	webhookMethods?: string | null;
+	trigger?: string;
 }): string {
-	const { group = 'trigger', hasWebhooks = true, webhookMethods } = options;
+	const { group = 'trigger', hasWebhooks = true, webhookMethods, trigger } = options;
 	const webhooksProp = hasWebhooks
 		? "webhooks: [{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' }],"
 		: '';
+	const triggerProp = trigger ? `trigger: ${trigger},` : '';
 	const methodsProp = webhookMethods === null ? '' : `\n\twebhookMethods = ${webhookMethods};`;
 
 	return `
@@ -29,6 +31,7 @@ export class TestTrigger implements INodeType {
 		inputs: [],
 		outputs: ['main'],
 		${webhooksProp}
+		${triggerProp}
 		properties: [],
 	};${methodsProp}
 }`;
@@ -44,6 +47,14 @@ const completeWebhookMethods = `{
 
 ruleTester.run('webhook-lifecycle-complete', WebhookLifecycleCompleteRule, {
 	valid: [
+		{
+			name: 'declarative webhook trigger without webhookMethods',
+			code: createTriggerNode({
+				webhookMethods: null,
+				trigger:
+					"{ type: 'webhook', lifecycle: { create: { routing: { request: { method: 'POST', url: '/hooks' } } } } }",
+			}),
+		},
 		{
 			name: 'trigger node with all three webhook lifecycle methods',
 			code: createTriggerNode({ webhookMethods: completeWebhookMethods }),
@@ -164,6 +175,14 @@ export class RegularClass {
 		},
 	],
 	invalid: [
+		{
+			name: 'polling declarative trigger with webhooks array and without webhookMethods',
+			code: createTriggerNode({
+				webhookMethods: null,
+				trigger: "{ type: 'polling', request: { method: 'GET', url: '/items' } }",
+			}),
+			errors: [{ messageId: 'missingWebhookMethods' }],
+		},
 		{
 			name: 'trigger node missing webhookMethods entirely',
 			code: createTriggerNode({ webhookMethods: null }),
