@@ -11,7 +11,7 @@ import {
 
 import { shuffleArray } from '@utils/utilities';
 
-import { compareSortValues, sortByCode } from './utils';
+import { compareSortValues, isNumericString, sortByCode } from './utils';
 
 export class Sort implements INodeType {
 	description: INodeTypeDescription = {
@@ -223,11 +223,24 @@ export class Sort implements INodeType {
 				dir: field.order === 'ascending' ? 1 : -1,
 			}));
 
+			const numericStringFields = new Set<string>();
+			if (numericStrings) {
+				for (const field of sortFieldsWithDirection) {
+					const allNumericStrings = items.every((item) =>
+						isNumericString(
+							disableDotNotation ? item.json[field.name] : get(item.json, field.name),
+						),
+					);
+
+					if (allNumericStrings) numericStringFields.add(field.name);
+				}
+			}
+
 			returnData.sort((a, b) => {
 				for (const field of sortFieldsWithDirection) {
 					const aValue = disableDotNotation ? a.json[field.name] : get(a.json, field.name);
 					const bValue = disableDotNotation ? b.json[field.name] : get(b.json, field.name);
-					const comparison = compareSortValues(aValue, bValue, numericStrings);
+					const comparison = compareSortValues(aValue, bValue, numericStringFields.has(field.name));
 
 					if (comparison !== 0) {
 						return comparison * field.dir;
