@@ -10,6 +10,7 @@ import { createDataSource, WorkflowExecution, WorkflowStepExecution } from '../.
 import { generateId } from '../../database/generate-id';
 import type { IStepExecutor } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
+import type { LifecycleEvent } from '../../lifecycle-events';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime, type EngineRuntime } from '../../runtime';
 import type { StartExecutionResult } from '../start-execution.service';
@@ -68,7 +69,8 @@ describe('a step that starts to wait after its execution ended (integration)', (
 		executor: IStepExecutor;
 		stepConcurrency?: number;
 		spyOn: (stepStore: StepStore) => void;
-	}): EngineRuntime {
+	}): { runtime: EngineRuntime; events: LifecycleEvent[] } {
+		const events: LifecycleEvent[] = [];
 		const runtime = createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
@@ -77,14 +79,22 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			concurrency: { step: stepConcurrency },
 			externalDependencies: ({ stepStore }) => {
 				spyOn(stepStore);
-				return { v1StepExecutor: executor };
+				return {
+					v1StepExecutor: executor,
+					lifecycleEventCallback: async (batch) => {
+						events.push(...batch);
+					},
+				};
 			},
 		});
 		runtime.start();
-		return runtime;
+		return { runtime, events };
 	}
 
-	/** Runs `scenario` against a started runtime and stops the runtime afterwards. */
+	/**
+	 * Runs `scenario` against a started runtime and stops the runtime afterwards.
+	 * Stopping flushes the lifecycle events.
+	 */
 	async function runThenStop<T>(runtime: EngineRuntime, scenario: () => Promise<T>) {
 		try {
 			return await scenario();
@@ -104,6 +114,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 				triggerOutputs: [{}],
 				executionId: generateId(),
 				callerContext: { hostMode: 'trigger' },
+				lifecycleEventSubscription: { kind: 'all' },
 			})
 			.expect(201);
 		return (response.body as StartExecutionResult).executionId;
@@ -120,6 +131,15 @@ describe('a step that starts to wait after its execution ended (integration)', (
 		return { executionStatus: execution.status, statusOf };
 	}
 
+	function expectEndWithoutWait(
+		events: LifecycleEvent[],
+		endEvent: 'execution:cancelled' | 'execution:failed',
+	) {
+		const types = events.map(({ type }) => type);
+		expect(types).toContain(endEvent);
+		expect(types).not.toContain('step:waiting');
+	}
+
 	it('cancels a step that starts to wait after the execution was cancelled', async () => {
 		// The cancel request does not go through the step queue, so it ends the
 		// execution while the step still runs.
@@ -134,7 +154,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			},
 		};
 
-		const runtime = createRuntime({
+		const { runtime, events } = createRuntime({
 			executor,
 			spyOn: (stepStore) => resolveAfterSuspend(stepStore, suspended),
 		});
@@ -153,6 +173,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			return id;
 		});
 
+		expectEndWithoutWait(events, 'execution:cancelled');
 		const { executionStatus, statusOf } = await loadState(executionId);
 		expect(executionStatus).toBe('cancelled');
 		expect(statusOf(nodeA.id)).toBe('cancelled');
@@ -177,7 +198,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			},
 		};
 
-		const runtime = createRuntime({
+		const { runtime, events } = createRuntime({
 			executor,
 			stepConcurrency: 4,
 			spyOn: (stepStore) => {
@@ -198,6 +219,7 @@ describe('a step that starts to wait after its execution ended (integration)', (
 			return id;
 		});
 
+		expectEndWithoutWait(events, 'execution:failed');
 		const { executionStatus, statusOf } = await loadState(executionId);
 		expect(executionStatus).toBe('failed');
 		expect(statusOf(nodeB.id)).toBe('failed');

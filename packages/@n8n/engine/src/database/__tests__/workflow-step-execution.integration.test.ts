@@ -495,9 +495,15 @@ describe('workflow_step_execution table (integration)', () => {
 		]);
 
 		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
-		await waitUntilQueryBlocksOnLock('FOR SHARE');
-		await cancellation.commitTransaction();
-		await cancellation.release();
+		try {
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
+			await cancellation.commitTransaction();
+		} finally {
+			// An open transaction keeps its lock, and `suspend` would never settle.
+			if (cancellation.isTransactionActive) await cancellation.rollbackTransaction();
+			await cancellation.release();
+			await Promise.allSettled([suspend]);
+		}
 
 		expect(await suspend).toBe(false);
 		expect((await store.loadStep(id)).status).toBe('cancelled');
