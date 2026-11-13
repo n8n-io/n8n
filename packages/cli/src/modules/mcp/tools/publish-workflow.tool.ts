@@ -34,10 +34,10 @@ const inputSchema = z.object({
 			'Optional version ID to publish. If not provided, publishes the current draft version.',
 		),
 	name: workflowVersionNameSchema.describe(
-		'Optional name for the published version. Workflow history shows this name. Use a short label that identifies the version, for example "Add Slack notification".',
+		'Optional name for the published version. Workflow history shows this name. Use a short label that identifies the version, for example "Add Slack notification". If the version already has a name, this value replaces it.',
 	),
 	description: workflowVersionDescriptionSchema.describe(
-		'Optional description for the published version. Workflow history shows this description. Summarize what changed in this version and why.',
+		'Optional description for the published version. Workflow history shows this description. Summarize what changed in this version and why. If the version already has a description, this value replaces it.',
 	),
 });
 
