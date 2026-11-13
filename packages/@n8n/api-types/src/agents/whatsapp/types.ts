@@ -19,6 +19,10 @@ export interface WhatsAppBusinessProfile {
  *
  * - `incomplete`: a required field is empty.
  * - `temporaryToken`: the access token expires soon, like the one on API Setup.
+ * - `employeeSystemUser`: the access token belongs to an Employee system user,
+ *   not an Admin one.
+ * - `insufficientAccess`: the token cannot manage the WhatsApp account, and Meta
+ *   does not say if the user is an Employee. The user may also lack the account.
  * - `mismatch`: Meta refuses the token, the IDs, or the app secret.
  * - `unreachable`: n8n could not reach Meta.
  */
@@ -26,12 +30,23 @@ export type WhatsAppCredentialCheck =
 	| { status: 'ok'; profile: WhatsAppBusinessProfile }
 	| {
 			status: 'failed';
-			reason: 'incomplete' | 'temporaryToken' | 'mismatch' | 'unreachable';
+			reason:
+				| 'incomplete'
+				| 'temporaryToken'
+				| 'employeeSystemUser'
+				| 'insufficientAccess'
+				| 'mismatch'
+				| 'unreachable';
 	  };
 
 /** Whether Meta has completed the webhook handshake with this agent. */
 export interface WhatsAppWebhookStatus {
 	verified: boolean;
+	/**
+	 * The handshake arrived, but the callback URL is saved in a different Meta app
+	 * than the credential's. Set only when the request names a credential.
+	 */
+	appMismatch?: boolean;
 }
 
 /**

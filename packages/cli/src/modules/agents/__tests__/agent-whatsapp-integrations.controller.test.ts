@@ -95,7 +95,7 @@ describe('AgentWhatsAppIntegrationsController', () => {
 			agentRepository.existsBy.mockResolvedValue(false);
 
 			await expect(
-				controller.webhookStatus(request, undefined as never, 'agent-1'),
+				controller.webhookStatus(request, undefined as never, 'agent-1', {}),
 			).rejects.toThrow(NotFoundError);
 
 			expect(agentRepository.existsBy).toHaveBeenCalledWith({
@@ -110,10 +110,47 @@ describe('AgentWhatsAppIntegrationsController', () => {
 			agentRepository.existsBy.mockResolvedValue(true);
 			webhookVerification.isVerified.mockResolvedValue(verified);
 
-			const result = await controller.webhookStatus(request, undefined as never, 'agent-1');
+			const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {});
 
 			expect(webhookVerification.isVerified).toHaveBeenCalledWith('agent-1');
 			expect(result).toEqual({ verified });
+		});
+
+		it.each([true, false])(
+			'reports appMismatch %s when the handshake is verified for a credential',
+			async (appMismatch) => {
+				const { controller, agentRepository, webhookVerification, credentialCheckService } =
+					makeController();
+				agentRepository.existsBy.mockResolvedValue(true);
+				webhookVerification.isVerified.mockResolvedValue(true);
+				credentialCheckService.isCallbackInOtherApp.mockResolvedValue(appMismatch);
+
+				const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {
+					credentialId: 'cred-1',
+				});
+
+				expect(credentialCheckService.isCallbackInOtherApp).toHaveBeenCalledWith(
+					user,
+					'project-1',
+					'cred-1',
+					'agent-1',
+				);
+				expect(result).toEqual({ verified: true, appMismatch });
+			},
+		);
+
+		it('skips the app check when the handshake is not verified', async () => {
+			const { controller, agentRepository, webhookVerification, credentialCheckService } =
+				makeController();
+			agentRepository.existsBy.mockResolvedValue(true);
+			webhookVerification.isVerified.mockResolvedValue(false);
+
+			const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {
+				credentialId: 'cred-1',
+			});
+
+			expect(credentialCheckService.isCallbackInOtherApp).not.toHaveBeenCalled();
+			expect(result).toEqual({ verified: false });
 		});
 	});
 
