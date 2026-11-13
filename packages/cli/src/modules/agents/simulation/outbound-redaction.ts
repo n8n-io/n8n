@@ -76,6 +76,17 @@ export class OutboundRedactor {
 			this.collectString(value, key, known);
 			return;
 		}
+		// A numeric secret (a PIN in custom auth JSON) goes out as its string form.
+		if (typeof value === 'number' || typeof value === 'bigint') {
+			if (
+				known ||
+				(key !== undefined && (isSensitiveKey(key) || GENERIC_AUTH_SECRET_KEYS.has(key)))
+			) {
+				const text = String(value);
+				if (text.length >= MIN_SECRET_LENGTH) this.secrets.add(text);
+			}
+			return;
+		}
 		if (Array.isArray(value)) {
 			for (const item of value) this.collect(item, key, known);
 		} else if (isRecord(value)) {
