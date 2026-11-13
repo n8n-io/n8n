@@ -26,6 +26,10 @@ import {
 	hostParameters,
 	settingsField,
 } from './steps.ts';
+import {
+	NODE_MAIN_OUTPUTS,
+	NODE_MAIN_OUTPUTS_ANY_VERSION,
+} from '../generated/main-outputs.generated.ts';
 import { resolveCallee } from './subworkflow.ts';
 import type { N8nNode, N8nWorkflow } from './types.ts';
 import { isRecord } from './types.ts';
@@ -182,17 +186,24 @@ export interface HostCall {
 
 /**
  * Emits a host call that keeps all inputs and outputs of the node.
- * `mainCount` is the number of main outputs of the node, when the converter
- * knows it. Under `continueErrorOutput` the error output comes after them.
+ * `mainCount` is the number of main outputs of the node, or undefined when the
+ * converter does not know it. Under `continueErrorOutput` the error output
+ * comes after the main outputs.
  */
-export function emitHostCall(c: NodeContext, call: HostCall, mainCount: number): void {
+export function emitHostCall(c: NodeContext, call: HostCall, mainCount: number | undefined): void {
 	const { w } = c;
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	const inputs = c.inputs.length > 0 ? c.inputs : [c.input];
-	const connected = connectedOutputs(c);
-	const errorIndex = onError === 'continueErrorOutput' ? Math.max(mainCount, connected - 1) : -1;
-	const dataCount = errorIndex >= 0 ? errorIndex : Math.max(mainCount, connected);
+	// A connection from an output that the node does not have (a stale connection) gives no
+	// output, so it adds no list either. Without a known count, the connections size the result.
+	// A count of 0 means that the parameters give no output, so it is no count either.
+	const count = mainCount !== undefined && mainCount > 0 ? mainCount : undefined;
+	const connected =
+		count === undefined ? connectedOutputs(c) : Math.min(connectedOutputs(c), count);
+	const known = count ?? 1;
+	const errorIndex = onError === 'continueErrorOutput' ? Math.max(known, connected - 1) : -1;
+	const dataCount = errorIndex >= 0 ? errorIndex : Math.max(known, connected);
 	const outs = Array.from({ length: errorIndex >= 0 ? errorIndex + 1 : dataCount }, (_, k) =>
 		c.output(k, k === errorIndex ? 'Errors' : k === 0 ? undefined : `Output${k}`),
 	);
@@ -327,7 +338,7 @@ function baseFields(c: NodeContext, parameters: TranslatedValue): Array<[string,
  */
 export function lowerHostNode(
 	c: NodeContext,
-	mainCount = 1,
+	mainCount?: number,
 	extra: Array<[string, Code]> = [],
 ): void {
 	const parameters = hostParameters(c, c.parameters, '');
@@ -411,7 +422,7 @@ export function lowerCluster(c: NodeContext, members: ClusterMember[], runData?:
 			usesIndex: usage.index,
 			subRuns: subNodes.length > 0 && c.traceAll === true,
 		},
-		wholeNodeOutputs(c.node) ?? 1,
+		knownMainOutputs(c.node),
 	);
 }
 
@@ -421,6 +432,23 @@ export function lowerAiNode(c: NodeContext): void {
 }
 
 const BASE = 'n8n-nodes-base.';
+
+/**
+ * The number of main outputs of a node, when the converter knows it: from the
+ * parameters that `wholeNodeOutputs` reads, or else from the fixed output list
+ * of the node type's description (`main-outputs.generated.ts`). Undefined when
+ * the outputs depend on a parameter that neither reads.
+ */
+export function knownMainOutputs(node: N8nNode): number | undefined {
+	// The Switch in expression mode gives the outputs that its expression names, so a
+	// connection from another output is not stale there.
+	if (node.type === `${BASE}switch` && node.parameters?.mode === 'expression') return undefined;
+	const count = wholeNodeOutputs(node);
+	// A count of 0 means that the parameters give no output, so neither source knows the number.
+	if (count !== undefined) return count > 0 ? count : undefined;
+	const version = node.typeVersion ?? 1;
+	return NODE_MAIN_OUTPUTS[`${node.type}@${version}`] ?? NODE_MAIN_OUTPUTS_ANY_VERSION[node.type];
+}
 
 /**
  * The number of main outputs of a core node that can run whole in the host
