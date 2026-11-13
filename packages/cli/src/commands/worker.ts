@@ -234,6 +234,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// execution contexts are available.
 		this.scalingService.setupWorker(this.concurrency);
 
+		await this.moduleRegistry.readyModules();
+
 		workerServer?.markAsReady();
 
 		const poolName = resolveWorkerPoolName(this.globalConfig.queue.workerPool);

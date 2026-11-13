@@ -798,6 +798,9 @@ describe('GlobalConfig', () => {
 			channelReconcileIntervalSeconds: 60,
 			webhookChannelRateLimit: 300,
 			whatsAppAllowTemporaryToken: false,
+			queueModeEnabled: false,
+			workerEnabled: false,
+			workerConcurrency: 5,
 		},
 	} satisfies GlobalConfigShape;
 

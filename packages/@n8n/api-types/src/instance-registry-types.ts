@@ -19,6 +19,11 @@ const InstanceRegistrationSchemaV1 = z
 		memoryLimit: z.number().nullable().optional(),
 		/** CPU limit in CPUs. `null` means no limit. Absent on registrations from older versions. */
 		cpuLimit: z.number().nullable().optional(),
+		/**
+		 * Optional work that this process takes part in, for example `agent-turns` on a
+		 * worker that runs agent turns. Absent on registrations from older versions.
+		 */
+		capabilities: z.array(z.string()).optional(),
 	})
 	.passthrough();
 
@@ -28,6 +33,12 @@ export const instanceRegistrationSchema = z.discriminatedUnion('schemaVersion', 
 ]);
 
 export type InstanceRegistration = z.infer<typeof instanceRegistrationSchema>;
+
+/** Capability of a worker that runs agent turns. */
+export const AGENT_TURNS_CAPABILITY = 'agent-turns';
+
+/** Capability of a main that sends agent turns to workers (`N8N_AGENTS_QUEUE_MODE_ENABLED`). */
+export const AGENT_QUEUE_DISPATCH_CAPABILITY = 'agent-queue-dispatch';
 
 const ClusterVersionMismatchSchema = z.object({
 	versions: z.array(

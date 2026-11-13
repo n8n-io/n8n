@@ -85,4 +85,28 @@ describe('InstanceRegistryProxyService', () => {
 			expect(secondProvider.getAllInstances).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('capabilities', () => {
+		it('writes the registration at once when a capability changes', async () => {
+			const provider = mock<InstanceRegistryProvider>();
+			provider.refreshRegistration?.mockResolvedValue();
+			service.registerProvider(provider);
+
+			await service.advertiseCapability('b');
+			await service.advertiseCapability('a');
+			await service.advertiseCapability('a');
+			expect(service.localCapabilities()).toEqual(['a', 'b']);
+			expect(provider.refreshRegistration).toHaveBeenCalledTimes(2);
+
+			await service.withdrawCapability('b');
+			await service.withdrawCapability('b');
+			expect(service.localCapabilities()).toEqual(['a']);
+			expect(provider.refreshRegistration).toHaveBeenCalledTimes(3);
+		});
+
+		it('keeps capabilities without a provider, for the first registration to write', async () => {
+			await service.advertiseCapability('agent-turns');
+			expect(service.localCapabilities()).toEqual(['agent-turns']);
+		});
+	});
 });

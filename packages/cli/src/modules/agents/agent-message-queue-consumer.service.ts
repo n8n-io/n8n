@@ -15,6 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
@@ -24,6 +25,8 @@ import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
+import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
+import { AgentTurnQueue } from './queue/agent-turn-queue.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { canUseSystemAgent } from './system-agents/system-agent-access';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
@@ -51,16 +54,46 @@ export class AgentMessageQueueConsumer {
 		private readonly logger: Logger,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly systemAgentExecution: SystemAgentExecutionService,
+		private readonly placement: AgentTurnPlacement,
+		private readonly turnQueue: AgentTurnQueue,
+		private readonly cluster: AgentClusterService,
 	) {}
 
+	/** Start on a main: scan the queue, claim local work, and send worker turns to workers. */
 	start(): void {
 		this.stopped = false;
-		this.queue.onAvailable = (threadId) => this.kick(threadId);
+		this.queue.onAvailable = (threadId) => this.kick(threadId, { dispatch: true });
 		this.timer = setInterval(() => {
 			void this.scan();
 		}, 5_000);
 		this.timer.unref();
 		void this.scan();
+	}
+
+	/**
+	 * Start on a worker. Workers do not scan: they only drain the threads that
+	 * drain jobs name. Messages accepted on a worker, for example a stop
+	 * report, are announced to mains, which dispatch them.
+	 */
+	startOnWorker(): void {
+		this.stopped = false;
+		// Work accepted here, for example a steer or a stop report, goes back on the agent queue.
+		this.queue.onAvailable = (threadId) => {
+			this.turnQueue.enqueueDrain(threadId).catch((error: unknown) => {
+				this.logger.warn('Failed to send an agent turn to the agent queue', { threadId, error });
+			});
+		};
+	}
+
+	/** Run a drain job: claim and run the messages of one thread that this worker may run. */
+	async drainForJob(threadId: string): Promise<void> {
+		if (this.stopped || this.activeThreads.has(threadId)) return;
+		this.activeThreads.add(threadId);
+		try {
+			await this.drain(threadId);
+		} finally {
+			this.activeThreads.delete(threadId);
+		}
 	}
 
 	/** Stop claiming at once, while running turns drain. See `AgentShutdownDrain`. */
@@ -74,7 +107,8 @@ export class AgentMessageQueueConsumer {
 	/** Another process accepted work. Try to claim it here at once, not on the next scan. */
 	@OnPubSubEvent('agent-queue-available', { instanceType: 'main' })
 	handleQueueAvailable({ threadId }: PubSubCommandMap['agent-queue-available']): void {
-		this.kick(threadId);
+		// The process that accepted the work sends the drain job. Only claim local work here.
+		this.kick(threadId, { dispatch: false });
 	}
 
 	/** Find queued sessions after a missed notification, a restart, or acceptance on another main. */
@@ -82,7 +116,15 @@ export class AgentMessageQueueConsumer {
 		if (this.stopped || this.scanning) return;
 		this.scanning = true;
 		try {
-			for (const threadId of await this.repository.findThreadIds()) this.kick(threadId);
+			for (const threadId of await this.repository.findThreadIds()) {
+				this.kick(threadId, { dispatch: false });
+			}
+			// One main sends drain jobs for missed notifications, so mains do not race to send them.
+			if (this.placement.dispatchEnabled && this.cluster.isLeader) {
+				for (const threadId of await this.repository.findDispatchableThreadIds()) {
+					await this.dispatch(threadId);
+				}
+			}
 			await this.previewStreams.closeSettledStreams();
 		} catch (error) {
 			this.logger.warn('Failed to scan queued agent messages', { error });
@@ -91,9 +133,28 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
-	/** Start a local drain attempt. Database claims coordinate ownership across mains. */
-	private kick(threadId: string): void {
-		if (this.stopped || this.activeThreads.has(threadId)) return;
+	/**
+	 * Send a drain job when an agent worker is registered. Without one, mains
+	 * run the turn, so do nothing here.
+	 */
+	private async dispatch(threadId: string): Promise<void> {
+		if (!this.placement.dispatchEnabled || !(await this.placement.workersAvailable())) return;
+		try {
+			await this.turnQueue.enqueueDrain(threadId);
+		} catch (error) {
+			// The leader scan sends it again, and after the fallback wait a main runs it.
+			this.logger.warn('Failed to send an agent turn to a worker', { threadId, error });
+		}
+	}
+
+	/**
+	 * Start a local drain attempt, and send a drain job when asked. Database
+	 * claims coordinate ownership across processes.
+	 */
+	private kick(threadId: string, { dispatch }: { dispatch: boolean }): void {
+		if (this.stopped) return;
+		if (dispatch) void this.dispatch(threadId);
+		if (this.activeThreads.has(threadId)) return;
 		this.activeThreads.add(threadId);
 		void this.drain(threadId)
 			.catch((error: unknown) => {
@@ -119,6 +180,7 @@ export class AgentMessageQueueConsumer {
 
 				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
+					if (!(await this.placement.mayClaim(item.payload.kind, item.createdAt))) return false;
 					if (item.payload.kind !== 'integration') return true;
 
 					const source = item.message.origin?.source;

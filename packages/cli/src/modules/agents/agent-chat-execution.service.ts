@@ -165,12 +165,12 @@ export class AgentChatExecutionService {
 		});
 	}
 
-	@OnPubSubEvent('cancel-agent-chat-execution', { instanceType: 'main' })
+	@OnPubSubEvent('cancel-agent-chat-execution')
 	async onCancelExecution(payload: CancelExecutionPayload): Promise<void> {
 		await this.cancelExecution(payload, 'all');
 	}
 
-	@OnPubSubEvent('cancel-agent-chat-foreground', { instanceType: 'main' })
+	@OnPubSubEvent('cancel-agent-chat-foreground')
 	async onCancelForegroundExecution(payload: CancelExecutionPayload): Promise<void> {
 		await this.cancelExecution(payload, 'foreground');
 	}
@@ -187,6 +187,8 @@ export class AgentChatExecutionService {
 		};
 
 		if (await this.cancelLocalWithChildren(context)) return;
+		// Mains clean up recorded suspensions. A worker only stops the turns it runs.
+		if (this.cluster.isWorker) return;
 
 		await this.withTurnLock(context.threadId, async () => {
 			if (await this.cancelLocalWithChildren(context)) return;

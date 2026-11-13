@@ -8,6 +8,11 @@ import { Publisher, Subscriber } from '@n8n/backend-services';
 import { AgentClusterService } from './agent-cluster.service';
 
 import type { initSseStream } from './agent-sse-stream';
+import {
+	AgentStreamChannel,
+	type AgentStreamBatch,
+	type AgentStreamEntry,
+} from './queue/agent-stream-channel.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 
 type QueueStreamEvent = PubSubCommandMap['relay-agent-queued-chat'];
@@ -17,6 +22,10 @@ export class AgentQueuedTestStreamService {
 	private static readonly RECOVERY_GRACE_MS = 10_000;
 	private static readonly RELAY_HEARTBEAT_MS = 5_000;
 	private static readonly RELAY_TIMEOUT_MS = 30_000;
+	/** Deltas on the stream channel are batched for this long. */
+	static readonly BATCH_WINDOW_MS = 50;
+	/** A batch is sent early once it holds this many bytes. */
+	private static readonly BATCH_MAX_BYTES = 256 * 1024;
 
 	private readonly listeners = new Map<
 		string,
@@ -37,14 +46,26 @@ export class AgentQueuedTestStreamService {
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly logger: Logger,
 		subscriber: Subscriber,
+		private readonly streamChannel: AgentStreamChannel,
 	) {
 		if (!this.cluster.shouldRelayAcrossProcesses()) return;
-		subscriber.getClient().on('close', () => {
+		const closeListeners = () => {
 			for (const listener of this.listeners.values()) listener.close();
-		});
-		this.publisher.getClient().on('close', () => {
+		};
+		const stopRelays = () => {
 			for (const stop of this.stopRelays) stop();
-		});
+		};
+		subscriber.getClient().on('close', closeListeners);
+		this.publisher.getClient().on('close', stopRelays);
+		if (!this.streamChannel.enabled) return;
+		this.streamChannel.onPublisherClose(stopRelays);
+		if (!this.cluster.isMain) return;
+		this.streamChannel
+			.subscribe((batch) => this.handleBatch(batch))
+			.then(() => this.streamChannel.onSubscriberClose(closeListeners))
+			.catch((error: unknown) => {
+				this.logger.error('Failed to subscribe to the agent stream channel', { error });
+			});
 	}
 
 	/** Attach the browser stream to a queue item. Disconnecting detaches delivery only. */
@@ -80,18 +101,54 @@ export class AgentQueuedTestStreamService {
 		let pending = Promise.resolve();
 		let failed = false;
 		let heartbeat: NodeJS.Timeout | undefined;
+		let batch: AgentStreamEntry[] = [];
+		let batchStart = 0;
+		let batchBytes = 0;
+		let flushTimer: NodeJS.Timeout | undefined;
 		const stopped = createDeferredPromise();
 		const stop = () => {
 			failed = true;
 			clearInterval(heartbeat);
+			clearTimeout(flushTimer);
+			batch = [];
 			this.listeners.get(queueId)?.close();
 			stopped.resolve();
 		};
 		const relay = this.cluster.shouldRelayAcrossProcesses();
+		const useChannel = relay && this.streamChannel.enabled;
 		if (relay) {
 			this.stopRelays.add(stop);
-			if (this.publisher.getClient().status !== 'ready') stop();
+			const ready = useChannel
+				? this.streamChannel.publisherReady
+				: this.publisher.getClient().status === 'ready';
+			if (!ready) stop();
 		}
+		const flush = () => {
+			clearTimeout(flushTimer);
+			flushTimer = undefined;
+			if (batch.length === 0) return;
+			const message: AgentStreamBatch = { queueId, sequence: batchStart, entries: batch };
+			batch = [];
+			batchBytes = 0;
+			pending = pending
+				.then(async () => await this.streamChannel.publish(message))
+				.catch((error: unknown) => {
+					stop();
+					this.logger.warn('Failed to relay queued agent output', { queueId, error });
+				});
+		};
+		const enqueue = (payload: QueueStreamEvent) => {
+			const entry: AgentStreamEntry =
+				payload.event === null ? { end: true } : payload.event ? { event: payload.event } : {};
+			if (batch.length === 0) batchStart = payload.sequence;
+			batch.push(entry);
+			batchBytes += entry.event ? Buffer.byteLength(JSON.stringify(entry.event)) : 2;
+			if (payload.event === null || batchBytes >= AgentQueuedTestStreamService.BATCH_MAX_BYTES) {
+				flush();
+				return;
+			}
+			flushTimer ??= setTimeout(flush, AgentQueuedTestStreamService.BATCH_WINDOW_MS);
+		};
 		const send = (event: QueueStreamEvent['event']) => {
 			if (failed) return;
 			let payload: QueueStreamEvent = { queueId, sequence: ++sequence, event };
@@ -107,6 +164,10 @@ export class AgentQueuedTestStreamService {
 			}
 			this.handleRelay(payload);
 			if (!relay) return;
+			if (useChannel) {
+				if (!failed || payload.event === null) enqueue(payload);
+				return;
+			}
 			pending = pending
 				.then(async () => {
 					if (!failed || payload.event === null)
@@ -149,6 +210,17 @@ export class AgentQueuedTestStreamService {
 		listener.recoveryDeadline = undefined;
 		listener.relayDeadline = Date.now() + AgentQueuedTestStreamService.RELAY_TIMEOUT_MS;
 		if (event !== undefined) listener.send(event);
+	}
+
+	/** Expand a batch from the stream channel into single relayed events. */
+	handleBatch({ queueId, sequence, entries }: AgentStreamBatch): void {
+		for (const [index, entry] of entries.entries()) {
+			this.handleRelay({
+				queueId,
+				sequence: sequence + index,
+				event: entry.end ? null : entry.event,
+			});
+		}
 	}
 
 	/** A lost producer cannot send EOF. Let the client recover from recorded history. */

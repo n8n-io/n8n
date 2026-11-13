@@ -268,6 +268,14 @@ export class ModuleRegistry {
 		}
 	}
 
+	/** Calls `ready` on each active module. Call it once the process can take work. */
+	async readyModules() {
+		for (const [moduleName, moduleEntry] of this.moduleMetadata.getEntries()) {
+			if (!this.activeModules.includes(moduleName)) continue;
+			await Container.get(moduleEntry.class).ready?.();
+		}
+	}
+
 	/**
 	 * Refreshes the settings for a specific module by calling its `settings` method.
 	 * This will make sure that any changes to the module's settings are reflected in the registry

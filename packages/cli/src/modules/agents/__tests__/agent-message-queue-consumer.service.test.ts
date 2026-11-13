@@ -25,6 +25,9 @@ import type { SystemAgentExecutionService } from '../system-agents/system-agent-
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
+import type { AgentClusterService } from '../agent-cluster.service';
+import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -40,6 +43,9 @@ describe('AgentMessageQueueConsumer', () => {
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	const systemAgentExecution = mock<SystemAgentExecutionService>();
+	let placement: ReturnType<typeof mock<AgentTurnPlacement>>;
+	const turnQueue = mock<AgentTurnQueue>();
+	let cluster: ReturnType<typeof mock<AgentClusterService>>;
 	let systemAgents: SystemAgentRegistry;
 	let consumer: AgentMessageQueueConsumer;
 
@@ -114,6 +120,11 @@ describe('AgentMessageQueueConsumer', () => {
 			response: '',
 			executionId: 'execution-session',
 		});
+		placement = mock<AgentTurnPlacement>({ dispatchEnabled: false });
+		placement.mayClaim.mockResolvedValue(true);
+		placement.workersAvailable.mockResolvedValue(false);
+		turnQueue.enqueueDrain.mockResolvedValue();
+		cluster = mock<AgentClusterService>({ isLeader: true, isWorker: false });
 		consumer = new AgentMessageQueueConsumer(
 			queue,
 			repository,
@@ -128,10 +139,94 @@ describe('AgentMessageQueueConsumer', () => {
 			mockLogger(),
 			systemAgents,
 			systemAgentExecution,
+			placement,
+			turnQueue,
+			cluster,
 		);
 	});
 
 	afterEach(() => consumer.stop());
+
+	describe('agent queue mode', () => {
+		it('leaves a message pending when placement keeps it for a worker', async () => {
+			const item = claim('session');
+			placement.mayClaim.mockResolvedValue(false);
+			repository.findThreadIds.mockResolvedValue(['session']);
+			let accepted: boolean | undefined;
+			queue.claimNext.mockImplementation(async (_threadId, canConsume) => {
+				accepted = await canConsume(item.item, item.thread, {});
+				return null;
+			});
+			consumer.start();
+			await vi.waitFor(() => expect(accepted).toBe(false));
+			expect(chatExecutions.register).not.toHaveBeenCalled();
+		});
+
+		it('sends a drain job for new work when workers are registered', async () => {
+			placement = mock<AgentTurnPlacement>({ dispatchEnabled: true });
+			placement.workersAvailable.mockResolvedValue(true);
+			placement.mayClaim.mockResolvedValue(false);
+			consumer = new AgentMessageQueueConsumer(
+				queue,
+				repository,
+				executions,
+				streams,
+				testRuns,
+				users,
+				mock<CredentialsService>(),
+				chatExecutions,
+				integrations,
+				orchestrator,
+				mockLogger(),
+				systemAgents,
+				systemAgentExecution,
+				placement,
+				turnQueue,
+				cluster,
+			);
+			queue.claimNext.mockResolvedValue(null);
+			repository.findDispatchableThreadIds.mockResolvedValue(['missed']);
+			consumer.start();
+			queue.onAvailable?.('session');
+
+			await vi.waitFor(() => {
+				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
+				// The leader scan also sends jobs for missed notifications.
+				expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('missed');
+			});
+		});
+
+		it('does not send drain jobs when no agent worker is registered', async () => {
+			queue.claimNext.mockResolvedValue(null);
+			consumer.start();
+			queue.onAvailable?.('session');
+			await vi.waitFor(() => expect(queue.claimNext).toHaveBeenCalled());
+			expect(turnQueue.enqueueDrain).not.toHaveBeenCalled();
+		});
+
+		it('runs the messages of a drain job on a worker', async () => {
+			const item = claim('session');
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+			consumer.startOnWorker();
+			await consumer.drainForJob('session');
+
+			expect(repository.findThreadIds).not.toHaveBeenCalled();
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId);
+		});
+
+		it('puts work accepted on a worker back on the agent queue', () => {
+			consumer.startOnWorker();
+			queue.onAvailable?.('session');
+			expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
+		});
+
+		it('ignores drain jobs after shutdown starts', async () => {
+			consumer.startOnWorker();
+			consumer.stop();
+			await consumer.drainForJob('session');
+			expect(queue.claimNext).not.toHaveBeenCalled();
+		});
+	});
 
 	it('registers the claimed execution under the lock and releases it before preparation', async () => {
 		const item = claim('session');

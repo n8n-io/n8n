@@ -12,6 +12,9 @@ import type { initSseStream } from '../agent-sse-stream';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
+import type { AgentStreamBatch, AgentStreamChannel } from '../queue/agent-stream-channel.service';
+
+const disabledChannel = () => mock<AgentStreamChannel>({ enabled: false });
 
 describe('AgentQueuedTestStreamService', () => {
 	const publisher = mock<Publisher>();
@@ -44,6 +47,7 @@ describe('AgentQueuedTestStreamService', () => {
 			repository,
 			mockLogger(),
 			subscriber,
+			disabledChannel(),
 		);
 		stream = mock<ReturnType<typeof initSseStream>>({ abortSignal: new AbortController().signal });
 	});
@@ -178,6 +182,7 @@ describe('AgentQueuedTestStreamService', () => {
 				repository,
 				mockLogger(),
 				mock<Subscriber>({ getClient: vi.fn(() => mock<Redis>()) }),
+				disabledChannel(),
 			);
 			publisher.publishCommand.mockImplementation(async (command) => {
 				if (command.command === 'relay-agent-queued-chat') receiver.handleRelay(command.payload);
@@ -232,5 +237,104 @@ describe('AgentQueuedTestStreamService', () => {
 		publish.resolve();
 		expect(stream.close).toHaveBeenCalledOnce();
 		expect(publisher.publishCommand).toHaveBeenCalledOnce();
+	});
+
+	describe('dedicated stream channel', () => {
+		let channel: ReturnType<typeof mock<AgentStreamChannel>>;
+		let deliver: ((batch: AgentStreamBatch) => void) | undefined;
+
+		beforeEach(() => {
+			channel = mock<AgentStreamChannel>({ enabled: true, publisherReady: true });
+			deliver = undefined;
+			channel.subscribe.mockImplementation(async (handler) => {
+				deliver = handler;
+			});
+			channel.publish.mockImplementation(async (batch) => deliver?.(batch));
+			service = new AgentQueuedTestStreamService(
+				publisher,
+				testCluster({ queue: true }),
+				repository,
+				mockLogger(),
+				subscriber,
+				channel,
+			);
+		});
+
+		it('batches deltas inside the batch window and sends no command', async () => {
+			vi.useFakeTimers();
+			const sender = service.createSender('queue');
+			sender.send({ type: 'text-delta', id: 'text', delta: 'a' });
+			sender.send({ type: 'text-delta', id: 'text', delta: 'b' });
+			expect(channel.publish).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(AgentQueuedTestStreamService.BATCH_WINDOW_MS);
+			expect(channel.publish).toHaveBeenCalledOnce();
+			expect(channel.publish).toHaveBeenCalledWith({
+				queueId: 'queue',
+				sequence: 1,
+				entries: [
+					{ event: { type: 'text-delta', id: 'text', delta: 'a' } },
+					{ event: { type: 'text-delta', id: 'text', delta: 'b' } },
+				],
+			});
+			await sender.close();
+			expect(channel.publish).toHaveBeenLastCalledWith({
+				queueId: 'queue',
+				sequence: 3,
+				entries: [{ end: true }],
+			});
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('delivers batched events in order to the browser stream on the receiving main', async () => {
+			await Promise.resolve();
+			const received: string[] = [];
+			const sendEvents = vi.fn((event: { type: string; delta?: string }) => {
+				received.push(event.delta ?? event.type);
+			});
+			const subscription = service.subscribe(
+				'queue',
+				mock<ReturnType<typeof initSseStream>>({
+					abortSignal: new AbortController().signal,
+					send: sendEvents,
+				}),
+			);
+			service.handleBatch({
+				queueId: 'queue',
+				sequence: 1,
+				entries: [
+					{ event: { type: 'text-delta', id: 'text', delta: 'a' } },
+					{},
+					{ event: { type: 'text-delta', id: 'text', delta: 'b' } },
+					{ end: true },
+				],
+			});
+			await subscription.done;
+			expect(received).toEqual(['a', 'b']);
+		});
+
+		it('closes the browser stream when a batch skips a sequence', async () => {
+			const subscription = service.subscribe('queue', stream);
+			service.handleBatch({
+				queueId: 'queue',
+				sequence: 2,
+				entries: [{ event: { type: 'text-delta', id: 'text', delta: 'b' } }],
+			});
+			await subscription.done;
+			expect(stream.send).not.toHaveBeenCalled();
+			expect(stream.close).toHaveBeenCalledOnce();
+		});
+
+		it('stops relaying when a batch publish fails', async () => {
+			vi.useFakeTimers();
+			channel.publish.mockRejectedValue(new Error('Redis unavailable'));
+			const sender = service.createSender('queue');
+			sender.send({ type: 'text-delta', id: 'text', delta: 'a' });
+			await vi.advanceTimersByTimeAsync(AgentQueuedTestStreamService.BATCH_WINDOW_MS);
+			sender.send({ type: 'text-delta', id: 'text', delta: 'b' });
+			await vi.advanceTimersByTimeAsync(AgentQueuedTestStreamService.BATCH_WINDOW_MS);
+			await sender.close();
+			expect(channel.publish).toHaveBeenCalledOnce();
+		});
 	});
 });

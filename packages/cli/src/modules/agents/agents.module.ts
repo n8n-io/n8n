@@ -193,6 +193,13 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentMessageQueueConsumer } = await import(
 				'./agent-message-queue-consumer.service.js'
 			);
+			// Open the agent queue before the first scan, so that the scan can send drain jobs.
+			const { AgentQueueLifecycle } = await import('./queue/agent-queue-lifecycle.service.js');
+			try {
+				await Container.get(AgentQueueLifecycle).startOnMain();
+			} catch (error) {
+				logger.error('[Agents] Failed to open the agent queue. Mains run agent turns.', { error });
+			}
 			Container.get(AgentMessageQueueConsumer).start();
 			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
@@ -256,6 +263,19 @@ export class AgentsModule implements ModuleInterface {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
+		}
+	}
+
+	/** A worker pulls agent turns only once it can run them. */
+	async ready() {
+		if (Container.get(InstanceSettings).instanceType !== 'worker') return;
+		const { AgentQueueLifecycle } = await import('./queue/agent-queue-lifecycle.service.js');
+		try {
+			await Container.get(AgentQueueLifecycle).startOnWorker();
+		} catch (error) {
+			Container.get(Logger).error('[Agents] Failed to start running agent turns on this worker', {
+				error,
+			});
 		}
 	}
 

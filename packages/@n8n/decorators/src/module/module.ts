@@ -44,6 +44,13 @@ export interface ModuleInterface {
 	init?(): Promise<void>;
 	shutdown?(): Promise<void>;
 
+	/**
+	 * Called once the process can take work: after every module ran `init()`
+	 * and nodes finished loading. Only workers call it today. Start pulling
+	 * jobs here, not in `init()`.
+	 */
+	ready?(): Promise<void>;
+
 	commands?(): Promise<void>;
 
 	/**

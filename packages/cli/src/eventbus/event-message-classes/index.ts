@@ -164,6 +164,8 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.hostid-clash.resolved',
 	'n8n.audit.cluster.split-brain.detected',
 	'n8n.audit.cluster.split-brain.resolved',
+	'n8n.audit.cluster.agent-queue-mode-mismatch.detected',
+	'n8n.audit.cluster.agent-queue-mode-mismatch.resolved',
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
 	'n8n.audit.oauth.callback.binding.rejected',

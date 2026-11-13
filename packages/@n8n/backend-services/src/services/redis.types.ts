@@ -16,7 +16,8 @@ type N8nRedisClientType =
 	| 'leader(n8n)'
 	| 'lock(n8n)'
 	| 'rate-limit(n8n)'
-	| 'work-queue-consumer(n8n)';
+	| 'work-queue-consumer(n8n)'
+	| 'agent-stream(n8n)';
 
 /**
  * Redis client used internally by Bull. Suffixed with `(bull)` at `ScalingService.setupQueue`.

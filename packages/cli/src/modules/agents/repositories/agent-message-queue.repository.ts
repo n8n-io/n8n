@@ -233,6 +233,28 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return rows.map(({ threadId }) => threadId);
 	}
 
+	/**
+	 * Threads with a pending message and no turn in progress. The leader sends
+	 * a drain job only for these, so a busy thread does not get a job each scan.
+	 */
+	async findDispatchableThreadIds(ctx: OperationContext = {}): Promise<string[]> {
+		const manager = this.managerFor(ctx);
+		const active = manager
+			.createQueryBuilder(AgentMessageQueue, 'active')
+			.select('1')
+			.where('active.threadId = queue.threadId')
+			.andWhere('active.executionId IS NOT NULL');
+		const rows = await manager
+			.createQueryBuilder(AgentMessageQueue, 'queue')
+			.select('queue.threadId', 'threadId')
+			.distinct(true)
+			.where('queue.executionId IS NULL')
+			.andWhere('queue.steeringExecutionId IS NULL')
+			.andWhere(`NOT EXISTS (${active.getQuery()})`)
+			.getRawMany<{ threadId: string }>();
+		return rows.map(({ threadId }) => threadId);
+	}
+
 	async linkExecution(
 		id: string,
 		previousId: string | null,

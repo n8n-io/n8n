@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
-import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
+import type { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -22,6 +22,7 @@ import { testCluster } from './test-utils/cluster';
 import type { Publisher, Subscriber } from '@n8n/backend-services';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
+import type { AgentStreamChannel } from '../queue/agent-stream-channel.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -105,6 +106,7 @@ function makeController() {
 		mock<AgentMessageQueueRepository>(),
 		mockLogger(),
 		mock<Subscriber>(),
+		mock<AgentStreamChannel>({ enabled: false }),
 	);
 
 	const taskCancellation = mock<AgentTaskCancellationService>();

@@ -224,7 +224,7 @@ export class AgentRuntimeCacheService {
 	 * every other main so the next request rebuilds the runtime from the
 	 * current DB state.
 	 */
-	@OnPubSubEvent('agent-config-changed', { instanceType: 'main' })
+	@OnPubSubEvent('agent-config-changed')
 	handleAgentConfigChanged(payload: PubSubCommandMap['agent-config-changed']): void {
 		this.clearRuntimes(payload.agentId, { skipBroadcast: true });
 	}

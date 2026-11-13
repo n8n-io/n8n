@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
-import { nonnegativeIntSchema } from '../schemas';
+import { nonnegativeIntSchema, positiveIntSchema } from '../schemas';
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -174,4 +174,27 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_WHATSAPP_ALLOW_TEMPORARY_TOKEN')
 	whatsAppAllowTemporaryToken: boolean = false;
+
+	/**
+	 * In queue mode, lets main instances send agent turns to workers that have
+	 * `N8N_AGENTS_WORKER_ENABLED` set. Use the same value on every main instance.
+	 * When no agent worker is running, main instances run the turns themselves.
+	 */
+	@Env('N8N_AGENTS_QUEUE_MODE_ENABLED')
+	queueModeEnabled: boolean = false;
+
+	/**
+	 * Lets this worker run agent turns that main instances send to it. Only has
+	 * an effect in queue mode, when `N8N_AGENTS_QUEUE_MODE_ENABLED` is set on
+	 * your main instances.
+	 */
+	@Env('N8N_AGENTS_WORKER_ENABLED')
+	workerEnabled: boolean = false;
+
+	/**
+	 * Maximum number of agent turns that one worker runs at the same time. Only
+	 * applies when `N8N_AGENTS_WORKER_ENABLED` is set.
+	 */
+	@Env('N8N_AGENTS_WORKER_CONCURRENCY', positiveIntSchema)
+	workerConcurrency: number = 5;
 }

@@ -1,5 +1,6 @@
 import type { InstanceRegistration } from '@n8n/api-types';
 import { getN8nVersion, Logger } from '@n8n/backend-common';
+import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import { ExecutionsConfig, ScalingModeConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -29,6 +30,7 @@ export class InstanceRegistryService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly scalingModeConfig: ScalingModeConfig,
 		private readonly logger: Logger,
+		private readonly proxy: InstanceRegistryProxyService = new InstanceRegistryProxyService(),
 	) {
 		this.logger = this.logger.scoped('instance-registry');
 	}
@@ -94,6 +96,16 @@ export class InstanceRegistryService {
 		await this.storage.heartbeat(this.buildRegistration());
 	}
 
+	/** Writes the registration now, so a new capability does not wait for the next heartbeat. */
+	async refreshRegistration(): Promise<void> {
+		if (!this.storage) return;
+		try {
+			await this.heartbeat();
+		} catch (error) {
+			this.logger.warn('Failed to refresh the instance registration', { error });
+		}
+	}
+
 	/** Returns an empty list when the storage read fails. */
 	async getAllInstances(): Promise<InstanceRegistration[]> {
 		try {
@@ -153,6 +165,9 @@ export class InstanceRegistryService {
 			memoryLimit: getMemoryLimit(),
 			cpuLimit: getCpuLimit().limit,
 		};
+
+		const capabilities = this.proxy.localCapabilities();
+		if (capabilities.length > 0) base.capabilities = capabilities;
 
 		if (this.instanceSettings.instanceType === 'worker') {
 			return { ...base, poolName: resolveWorkerPoolName(this.scalingModeConfig.workerPool) };
