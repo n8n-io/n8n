@@ -24,6 +24,53 @@ async function withServer(check: (port: number) => Promise<void>): Promise<void>
 	}
 }
 
+/**
+ * A local server for the tests of `helpers.httpRequest`: `/missing` answers
+ * 404 with JSON, `/bytes` answers binary data, `/echo` answers the body, and
+ * any other path answers its own path and query.
+ */
+async function withHttpServer(check: (port: number) => Promise<void>): Promise<void> {
+	const { createServer } = await import('node:http');
+	const server = createServer((request, response) => {
+		if (request.url?.startsWith('/missing') === true) {
+			response.writeHead(404, { 'content-type': 'application/json' });
+			response.end(JSON.stringify({ reason: 'gone' }));
+			return;
+		}
+		if (request.url?.startsWith('/bytes') === true) {
+			response.writeHead(200, { 'content-type': 'application/octet-stream' });
+			response.end(Buffer.from([1, 2, 3]));
+			return;
+		}
+		if (request.url?.startsWith('/echo') === true) {
+			let body = '';
+			request.on('data', (chunk: Buffer) => {
+				body += chunk.toString();
+			});
+			request.on('end', () => {
+				response.writeHead(200, { 'content-type': 'application/json' });
+				response.end(
+					JSON.stringify({
+						method: request.method,
+						body: body === '' ? null : (JSON.parse(body) as unknown),
+					}),
+				);
+			});
+			return;
+		}
+		response.writeHead(200, { 'content-type': 'application/json' });
+		response.end(JSON.stringify({ path: request.url }));
+	});
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	const address = server.address();
+	const port = typeof address === 'object' && address ? address.port : 0;
+	try {
+		await check(port);
+	} finally {
+		server.close();
+	}
+}
+
 describe('runCodeStep', () => {
 	it('returns the array that the code returns', () => {
 		expect(run('return items.map((i) => ({ n: i.n * 2 }));', [{ n: 1 }, { n: 2 }])).toEqual([
@@ -51,8 +98,37 @@ describe('runCodeStep', () => {
 		).toEqual([{ n: 1 }]);
 	});
 
-	it('blocks $env as n8n does by default', () => {
-		expect(() => run('return { home: $env.HOME };')).toThrow('access to env vars denied');
+	it('gives $env the environment of the host, as v1 does by default', () => {
+		process.env.CODE_PARITY_ENV = 'yes';
+		try {
+			expect(run('return { v: $env.CODE_PARITY_ENV };')).toEqual([{ v: 'yes' }]);
+		} finally {
+			delete process.env.CODE_PARITY_ENV;
+		}
+	});
+
+	it('keeps the settings of the host out of $env', () => {
+		process.env.WF_FALLBACK_SECRET = 'host-secret';
+		process.env.N8N_COMPILED_ENGINE_ADMIN_SECRET = 'engine-secret';
+		try {
+			expect(
+				run(
+					'return { fallback: $env.WF_FALLBACK_SECRET ?? null, engine: $env.N8N_COMPILED_ENGINE_ADMIN_SECRET ?? null };',
+				),
+			).toEqual([{ fallback: null, engine: null }]);
+		} finally {
+			delete process.env.WF_FALLBACK_SECRET;
+			delete process.env.N8N_COMPILED_ENGINE_ADMIN_SECRET;
+		}
+	});
+
+	it('blocks $env with v1\u2019s message when the instance blocks it', () => {
+		process.env.WF_FALLBACK_BLOCK_ENV_ACCESS = 'true';
+		try {
+			expect(() => run('return { home: $env.HOME };')).toThrow('access to env vars denied');
+		} finally {
+			delete process.env.WF_FALLBACK_BLOCK_ENV_ACCESS;
+		}
 	});
 
 	it("gives this.helpers.httpRequest, as n8n's Code node does", async () => {
@@ -94,6 +170,123 @@ return [await req({ method: 'POST', url: 'http://127.0.0.1:${port}/x', qs: { a: 
 				'const nested = (function () { return this === globalThis; })(); return { top: this === globalThis, nested };',
 			),
 		).toEqual([{ top: true, nested: true }]);
+	});
+
+	it("gives n8n's error fields for an error status", async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `try {
+	await helpers.httpRequest({ method: 'GET', url: 'http://127.0.0.1:${port}/missing' });
+	return [{ json: { threw: false } }];
+} catch (e) {
+	return [{ json: {
+		isError: e instanceof Error,
+		message: e.message,
+		name: e.name,
+		code: e.code,
+		status: e.status,
+		httpCode: e.httpCode ?? null,
+		description: e.description ?? null,
+		responseStatus: e.response.status,
+		responseText: e.response.statusText,
+		responseData: e.response.data,
+	} }];
+}`,
+				items: [],
+			});
+			expect(out).toEqual([
+				{
+					isError: false,
+					message: 'Request failed with status code 404',
+					name: 'AxiosError',
+					code: 'ERR_BAD_REQUEST',
+					status: 404,
+					httpCode: null,
+					description: null,
+					responseStatus: 404,
+					responseText: 'Not Found',
+					responseData: { reason: 'gone' },
+				},
+			]);
+		});
+	});
+
+	it('fails the step with the message of an error status', async () => {
+		await withHttpServer(async (port) => {
+			await expect(
+				runCodeStepAsync({
+					name: 'test',
+					code: `await helpers.httpRequest({ url: 'http://127.0.0.1:${port}/missing' });`,
+					items: [],
+				}),
+			).rejects.toThrow('Request failed with status code 404');
+		});
+	});
+
+	it('returns the body of an error status with ignoreHttpStatusErrors', async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `return [await helpers.httpRequest({ url: 'http://127.0.0.1:${port}/missing', ignoreHttpStatusErrors: true })];`,
+				items: [],
+			});
+			expect(out).toEqual([{ reason: 'gone' }]);
+		});
+	});
+
+	it('returns the full response with returnFullResponse', async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `const r = await helpers.httpRequest({ url: 'http://127.0.0.1:${port}/full', ignoreHttpStatusErrors: true, returnFullResponse: true });
+return [{ body: r.body, statusCode: r.statusCode, statusMessage: r.statusMessage, type: r.headers['content-type'] }];`,
+				items: [],
+			});
+			expect(out).toEqual([
+				{
+					body: { path: '/full' },
+					statusCode: 200,
+					statusMessage: 'OK',
+					type: 'application/json',
+				},
+			]);
+		});
+	});
+
+	it("writes an array in qs as v1's default does", async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `const r = await helpers.httpRequest({ url: 'http://127.0.0.1:${port}/list', qs: { a: ['1', '2'] } });
+return [{ search: decodeURIComponent(r.path) }];`,
+				items: [],
+			});
+			expect(out).toEqual([{ search: '/list?a[0]=1&a[1]=2' }]);
+		});
+	});
+
+	it('returns binary data as a Buffer with encoding arraybuffer', async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `const r = await helpers.httpRequest({ url: 'http://127.0.0.1:${port}/bytes', encoding: 'arraybuffer' });
+return [{ isBuffer: Buffer.isBuffer(r), bytes: [...r] }];`,
+				items: [],
+			});
+			expect(out).toEqual([{ isBuffer: true, bytes: [1, 2, 3] }]);
+		});
+	});
+
+	it('sends a JSON body for an object', async () => {
+		await withHttpServer(async (port) => {
+			const out = await runCodeStepAsync({
+				name: 'test',
+				code: `return [await helpers.httpRequest({ method: 'POST', url: 'http://127.0.0.1:${port}/echo', body: { b: 2 }, json: true })];`,
+				items: [],
+			});
+			expect(out).toEqual([{ method: 'POST', body: { b: 2 } }]);
+		});
 	});
 
 	it("gives helpers without this, as n8n's Code node does", async () => {
@@ -190,8 +383,10 @@ return [{ json: r }];`,
 		expect(items).toEqual([{ n: 1 }]);
 	});
 
-	it('blocks code generation from strings', () => {
-		expect(() => run('return eval("1");')).toThrow(/Code generation from strings/);
+	it('runs code that it generates from a string, as v1 does', () => {
+		expect(run('return { eval: eval("1 + 1"), fn: new Function("return 2")() };')).toEqual([
+			{ eval: 2, fn: 2 },
+		]);
 	});
 
 	it('rejects a result that is not a list of objects', () => {

@@ -6,7 +6,7 @@ import { Script, createContext } from 'node:vm';
 
 import { readItems, StepInputError, toResultItems } from './items';
 import { jmespathText } from './jmespath';
-import { isJsonObject, type JsonObject } from './protocol';
+import { isJsonObject, type JsonObject, type JsonValue } from './protocol';
 
 export const DEFAULT_CODE_TIMEOUT_MS = 5_000;
 
@@ -192,7 +192,16 @@ const HELPERS = new Script(
 	// n8n's \`httpRequest\` helper (no credential). Options and result cross the realm as JSON.
 	async httpRequest(options) {
 		if (typeof __wfHttpRequest !== 'function') throw new Error('httpRequest is not available here');
-		return JSON.parse(await __wfHttpRequest(JSON.stringify(options || {})));
+		const reply = JSON.parse(await __wfHttpRequest(JSON.stringify(options || {})));
+		if (reply.ok === true) {
+			return reply.base64 === undefined ? reply.value : Buffer.from(reply.base64, 'base64');
+		}
+		// As v1 gives it: a plain object with the fields of the error, so the code reads
+		// \`message\`, \`status\`, \`response.status\` and the other fields it knows.
+		const error = reply.error;
+		const out = { message: typeof error?.message === 'string' ? error.message : 'httpRequest failed' };
+		for (const key of Object.keys(error)) if (key !== 'message') out[key] = error[key];
+		throw out;
 	},
 };
 // $jmespath of n8n (jmespath.ts). Data and result cross the context as JSON.
@@ -201,7 +210,7 @@ if (typeof __wfJmespath === 'function') {
 }
 // The variables of the instance (\`WF_FALLBACK_VARIABLES\`), as \`$vars\` of n8n.
 globalThis.$vars = Object.freeze(JSON.parse(__wfVars));
-// $env as n8n gives it: by default (N8N_BLOCK_ENV_ACCESS_IN_NODE not "false") a read throws.
+// $env as n8n gives it: a read throws only when the instance blocks env access.
 globalThis.$env = __wfEnv === null
 	? new Proxy({}, { get(_, name) {
 		if (typeof name !== 'string') return undefined;
@@ -225,6 +234,33 @@ globalThis.$getWorkflowStaticData = (type) => {
 };`,
 	{ filename: 'helpers.js' },
 );
+
+/**
+ * True when the instance blocks `$env` in nodes (`WF_FALLBACK_BLOCK_ENV_ACCESS`).
+ * n8n blocks env access only when `N8N_BLOCK_ENV_ACCESS_IN_NODE` is not `false`,
+ * so the host passes `true` unless the instance allows access.
+ */
+function envAccessBlocked(): boolean {
+	return process.env.WF_FALLBACK_BLOCK_ENV_ACCESS === 'true';
+}
+
+/**
+ * The host settings that carry its own secrets and must not reach the code.
+ * `WF_FALLBACK_` holds the settings of the host; `N8N_COMPILED_ENGINE_` holds
+ * the settings of the compiled engine, which n8n does not give to nodes.
+ */
+const HOST_SECRET_PREFIXES = ['WF_FALLBACK_', 'N8N_COMPILED_ENGINE_'];
+
+/** The environment of the host without its own settings, as JSON object text. */
+function environmentText(): string {
+	const env: Record<string, string> = {};
+	for (const [name, value] of Object.entries(process.env)) {
+		if (value === undefined) continue;
+		if (HOST_SECRET_PREFIXES.some((prefix) => name.startsWith(prefix))) continue;
+		env[name] = value;
+	}
+	return JSON.stringify(env);
+}
 
 /** `WF_FALLBACK_VARIABLES` as JSON object text, `{}` when it is not set or not an object. */
 function variablesText(): string {
@@ -370,10 +406,7 @@ function stepGlobals(args: CodeStepArgs): Record<string, string | null> {
 		__wfStatic: args.staticData === undefined ? null : JSON.stringify(args.staticData),
 		__wfNodeName: args.name,
 		// The environment only when the code reads it and access is not blocked.
-		__wfEnv:
-			process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'false' && args.code.includes('$env')
-				? JSON.stringify(process.env)
-				: null,
+		__wfEnv: !envAccessBlocked() && args.code.includes('$env') ? environmentText() : null,
 	};
 }
 
@@ -444,8 +477,8 @@ function prepare(args: CodeStepArgs, timers: boolean): { script: Script; context
 		});
 	// Without timers the context drains its own microtasks before `runInContext` returns, so the
 	// timeout covers the whole code. With timers, the code goes on in the event loop.
+	// As n8n's task runner: `eval` and `new Function` work, and the context has no options.
 	const context = createContext(globals, {
-		codeGeneration: { strings: false, wasm: false },
 		...(timers ? {} : { microtaskMode: 'afterEvaluate' as const }),
 	});
 	try {
@@ -479,64 +512,130 @@ const USES_TIMERS = /\b(?:setTimeout|setInterval|setImmediate)\s*\(|\bhttpReques
 
 const USES_HTTP = /\bhttpRequest\b/;
 
-/**
- * `httpRequest` of n8n's helpers, with `fetch`: `method`, `url`, `qs`, `headers`,
- * `body` (JSON for an object), `json`, `returnFullResponse`. A status of 400 or
- * more fails, as in n8n. The result is JSON text, so no host object reaches the code.
- */
-function textOf(value: unknown): string {
-	return typeof value === 'string' ? value : JSON.stringify(value);
+/** The outbound HTTP client of n8n (`OutboundHttp.requests()`). */
+interface OutboundRequests {
+	request(options: object): Promise<unknown>;
 }
 
+function isOutboundRequests(value: unknown): value is OutboundRequests {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof Reflect.get(value, 'request') === 'function'
+	);
+}
+
+/** The DI container of n8n (`@n8n/di`). */
+interface DiContainer {
+	get(type: unknown): unknown;
+}
+
+function isDiContainer(value: unknown): value is DiContainer {
+	return (
+		typeof value === 'object' && value !== null && typeof Reflect.get(value, 'get') === 'function'
+	);
+}
+
+let requests: OutboundRequests | undefined;
+
+/**
+ * n8n's outbound HTTP, the client of `helpers.httpRequest` of the Code node
+ * (`packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts`).
+ * It loads from the modules of n8n-core, so the host and the node steps share
+ * one DI container, one SSRF policy and one proxy configuration.
+ */
+function outboundRequests(): OutboundRequests {
+	if (requests) return requests;
+	const load = createRequire(hostRequire.resolve('n8n-core'));
+	const di: unknown = load('@n8n/di');
+	const network: unknown = load('@n8n/backend-network');
+	const container =
+		typeof di === 'object' && di !== null ? Reflect.get(di, 'Container') : undefined;
+	const outboundHttp =
+		typeof network === 'object' && network !== null
+			? Reflect.get(network, 'OutboundHttp')
+			: undefined;
+	// n8n applies its global axios defaults when it loads its request helpers
+	// (`request-helpers/index.ts`), so the host does the same here.
+	const configureDefaults =
+		typeof network === 'object' && network !== null
+			? Reflect.get(network, 'configureGlobalAxiosDefaults')
+			: undefined;
+	if (typeof configureDefaults === 'function') Reflect.apply(configureDefaults, undefined, []);
+	if (!isDiContainer(container) || typeof outboundHttp !== 'function') {
+		throw new CodeStepError("n8n's outbound HTTP did not load");
+	}
+	const service: unknown = Reflect.apply(Reflect.get(container, 'get'), container, [outboundHttp]);
+	const makeRequests =
+		typeof service === 'object' && service !== null ? Reflect.get(service, 'requests') : undefined;
+	if (typeof makeRequests !== 'function')
+		throw new CodeStepError("n8n's outbound HTTP did not load");
+	const client: unknown = Reflect.apply(makeRequests, service, []);
+	if (!isOutboundRequests(client)) throw new CodeStepError("n8n's outbound HTTP did not load");
+	requests = client;
+	return client;
+}
+
+/** A property of a value from another module, or undefined for a value that is not an object. */
+function propertyOf(value: unknown, name: string): unknown {
+	return typeof value === 'object' && value !== null ? Reflect.get(value, name) : undefined;
+}
+
+/** The JSON form of a property, or undefined when the value has no JSON form. */
+function jsonProperty(value: unknown, name: string): JsonValue | undefined {
+	const text = JSON.stringify(propertyOf(value, name));
+	if (text === undefined) return undefined;
+	const parsed: JsonValue = JSON.parse(text);
+	return parsed;
+}
+
+/** The fields of an error that the Code node reads, as JSON. */
+function httpErrorFields(error: unknown): JsonObject {
+	const message = propertyOf(error, 'message');
+	const out: JsonObject = { message: typeof message === 'string' ? message : String(error) };
+	for (const name of ['name', 'description', 'code', 'httpCode', 'status', 'isAxiosError']) {
+		const value = jsonProperty(error, name);
+		if (value !== undefined) out[name] = value;
+	}
+	const response = propertyOf(error, 'response');
+	if (typeof response === 'object' && response !== null) {
+		const fields: JsonObject = {};
+		for (const name of ['status', 'statusText', 'headers', 'data']) {
+			const value = jsonProperty(response, name);
+			if (value !== undefined) fields[name] = value;
+		}
+		out.response = fields;
+	}
+	return out;
+}
+
+/**
+ * `httpRequest` of n8n's helpers, as the Code node gives it: n8n's own outbound
+ * HTTP (`OutboundHttp`), with every option of `IHttpRequestOptions`.
+ *
+ * Options and result cross the realm as JSON. A binary result (`encoding:
+ * 'arraybuffer'`) comes back as base64. An error comes back as its fields, so
+ * the code gets v1's error and no host object reaches it.
+ */
 async function httpRequestText(optionsText: string): Promise<string> {
 	const options: unknown = JSON.parse(optionsText);
-	if (typeof options !== 'object' || options === null) throw new Error('httpRequest needs options');
-	const read = (key: string): unknown => Reflect.get(options, key);
-	const address = read('url') ?? read('uri');
-	const url = new URL(typeof address === 'string' ? address : '');
-	const qs = read('qs');
-	if (typeof qs === 'object' && qs !== null) {
-		for (const [k, v] of Object.entries(qs)) url.searchParams.set(k, textOf(v));
+	if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+		throw new CodeStepError('httpRequest needs options');
 	}
-	const headers: Record<string, string> = {};
-	const given = read('headers');
-	if (typeof given === 'object' && given !== null) {
-		for (const [k, v] of Object.entries(given)) headers[k] = textOf(v);
+	let result: unknown;
+	try {
+		result = await outboundRequests().request(options);
+	} catch (error) {
+		return JSON.stringify({ ok: false, error: httpErrorFields(error) });
 	}
-	const body = read('body');
-	let payload: string | undefined;
-	if (body !== undefined && body !== null) {
-		if (typeof body === 'string') payload = body;
-		else {
-			payload = JSON.stringify(body);
-			headers['content-type'] ??= 'application/json';
-		}
+	if (Buffer.isBuffer(result)) {
+		return JSON.stringify({ ok: true, base64: result.toString('base64') });
 	}
-	const verb = read('method');
-	const method = typeof verb === 'string' ? verb : 'GET';
-	const response = await fetch(url, { method, headers, body: payload });
-	const text = await response.text();
-	let parsed: unknown = text;
-	const type = response.headers.get('content-type') ?? '';
-	if (read('json') === true || type.includes('application/json')) {
-		try {
-			parsed = text === '' ? '' : JSON.parse(text);
-		} catch {
-			parsed = text;
-		}
+	if (typeof result === 'object' && result !== null && 'pipe' in result) {
+		// n8n's task runner cannot return a stream either.
+		throw new CodeStepError('httpRequest cannot return a stream');
 	}
-	if (response.status >= 400) {
-		throw new Error(`Request failed with status code ${response.status}`);
-	}
-	if (read('returnFullResponse') === true) {
-		return JSON.stringify({
-			body: parsed,
-			headers: Object.fromEntries(response.headers.entries()),
-			statusCode: response.status,
-			statusMessage: response.statusText,
-		});
-	}
-	return JSON.stringify(parsed);
+	return `{"ok":true,"value":${JSON.stringify(result === undefined ? null : result)}}`;
 }
 
 /**
