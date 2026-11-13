@@ -33,6 +33,45 @@ async function createWorkflow(api: ApiHelpers, options: { availableInMCP?: boole
 	return { id: String(workflow.id), name };
 }
 
+/**
+ * A view that sends the editor a command to replace the open workflow, then
+ * waits, so that a command the editor took would show on the canvas by the time
+ * the view says that it is done.
+ */
+const INJECTING_VIEW_SOURCE = `export default {
+	setup() {
+		const context = n8n.useContext();
+		const state = Vue.ref('waiting');
+		Vue.watchEffect(() => {
+			if (context.value.page !== 'workflow' || state.value !== 'waiting') return;
+			state.value = 'sent';
+			window.parent.postMessage(
+				JSON.stringify({
+					command: 'openWorkflow',
+					workflow: {
+						name: 'Replaced by a side panel view',
+						nodes: [
+							{
+								id: 'injected',
+								name: 'Injected by view',
+								type: 'n8n-nodes-base.manualTrigger',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					},
+				}),
+				'*',
+			);
+			setTimeout(() => { state.value = 'done'; }, 1500);
+		});
+		return { state };
+	},
+	template: '<p data-test-id="injector-state">{{ state }}</p>',
+};`;
+
 /** A view that shows its context and whether it can reach n8n over the network. */
 const PROBE_VIEW_SOURCE = `export default {
 	setup() {
@@ -142,14 +181,42 @@ test.describe(
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflow');
 			await expect(n8n.sidePanel.getViewElement('probe-workflow')).toHaveText(exposed.name);
 
+			// The built-in view shows the name once the workflow has loaded. A view frame
+			// renders only from the context it gets when it opens, so the probe that opens
+			// next sees the loaded workflow and not the empty context of the page load.
 			await n8n.navigate.toWorkflow(hidden.id);
 			await n8n.sidePanel.open();
+			await n8n.sidePanel.selectTab('Page summary');
+			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
+				hidden.name,
+			);
+			await n8n.sidePanel.selectTab(title);
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflow');
 			await expect(n8n.sidePanel.getViewElement('probe-workflow')).toHaveText('hidden');
 
 			await n8n.page.reload();
 			await n8n.sidePanel.open();
 			await expect(n8n.sidePanel.getTab(title)).toBeVisible();
+		});
+
+		test('ignores a command from a view to replace the open workflow', async ({ n8n, api }) => {
+			const workflow = await createWorkflow(api, { availableInMCP: false });
+			await api.setMcpAccess(true);
+			const { apiKey } = await api.rotateMcpApiKey();
+			const title = `Injector ${nanoid(6)}`;
+			await api.mcp.internalMcpCreateSidePanelView(apiKey, {
+				title,
+				source: INJECTING_VIEW_SOURCE,
+			});
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
+			await n8n.sidePanel.open();
+			await n8n.sidePanel.selectTab(title);
+
+			await expect(n8n.sidePanel.getViewElement('injector-state')).toHaveText('done');
+			await expect(n8n.canvas.nodeByName('Injected by view')).toHaveCount(0);
+			await expect(n8n.canvas.nodeByName('Start here')).toBeVisible();
 		});
 	},
 );
