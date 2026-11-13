@@ -492,12 +492,18 @@ function togglePreviewExpanded(): void {
 const isArtifactsPanelInLayout = computed(
 	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
+// The first message shows as a preview before the chat has messages. Keep the panel
+// until they arrive, so the layout does not shift while the message is sent.
+const isSendingFirstMessage = computed(
+	() => handoff.firstMessage !== undefined && (panel.value?.messages.length ?? 0) === 0,
+);
 // A loading thread shows the panel too, so its loading state shows in place.
 const canShowArtifactsPanel = computed(
 	() =>
 		thread.artifactTurns.length > 0 ||
 		preview.openTabs.value.length > 0 ||
-		thread.isHydratingThread,
+		thread.isHydratingThread ||
+		isSendingFirstMessage.value,
 );
 const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
 	useArtifactsPanelToggle({
