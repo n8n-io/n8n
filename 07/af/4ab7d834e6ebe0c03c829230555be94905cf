@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/skills/__tests__/skills.test.ts
+  s_533928157a8193::t_587f317dcfbb11 528
+packages/@n8n/instance-ai/skills/workflow-builder/references/post-build-flow.md
+  s_533928157a8193::t_587f317dcfbb11 5,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "07af4ab7d834e6ebe0c03c829230555be94905cf",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_533928157a8193": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bcbe6dc-5ae1-495a-9404-b1516a45ba9b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
