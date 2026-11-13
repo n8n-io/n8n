@@ -18,7 +18,9 @@ directory, never write outside it): {assets_dir}
 ## Prerequisite (every change type)
 
 Get {head_branch} into a working tree: if it is not already checked out, use a temporary worktree
-(git worktree add), never switch the user's checkout. Run every section below from that tree.
+(git worktree add), never switch the user's checkout. If the head exists only as `FETCH_HEAD` (a fork PR
+fetched with `git fetch origin pull/<n>/head`), add the worktree from its commit instead:
+`git worktree add --detach <path> $(git rev-parse FETCH_HEAD)`. Run every section below from that tree.
 When a section needs the app, use an instance that serves that tree: check that the process
 listening on the port has that tree as its working directory (`lsof -a -p <pid> -d cwd -Fn`). If it
 does not, or nothing is running, launch your own on a free port (project's launch skill if one
