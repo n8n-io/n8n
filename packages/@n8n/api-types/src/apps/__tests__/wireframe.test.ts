@@ -1,7 +1,7 @@
 import { appPlanSchema, listPlanComponents } from '../../schemas/app-plan.schema';
 import { appBlueprintSchema } from '../../schemas/instance-ai.schema';
 import {
-	collectDetailCss,
+	renderDetailModule,
 	describePlanComponent,
 	sanitizeDetailHtml,
 	planOverlayScript,
@@ -147,10 +147,11 @@ describe('detailed parts', () => {
 		],
 	};
 
-	it('renders the detail HTML instead of the sketch, marked as sample data', () => {
+	it('renders the detail in a shadow root instead of the sketch, marked as sample data', () => {
 		const html = renderWireframeBody(detailed);
-		expect(html).toContain('wf-hifi');
+		expect(html).toContain('<template shadowrootmode="open">');
 		expect(html).toContain('<b>12</b>');
+		expect(html).toContain('Sample data');
 		expect(html).not.toContain('wf-kpi-value');
 	});
 
@@ -160,17 +161,75 @@ describe('detailed parts', () => {
 		expect(clean).toContain('<b>12</b>');
 	});
 
-	it('scopes the detail CSS to its part', () => {
-		const css = collectDetailCss(detailed);
-		expect(css).toContain('@scope ([data-plan-id="kpi-pending"] .wf-hifi-body)');
-		expect(css).not.toMatch(/<\/?style/i);
-	});
+	it('keeps the detail out of Vue templates and ships it as a module', () => {
+		const vue = renderWireframeBody(detailed, { vue: true });
+		expect(vue).not.toContain('<b>12</b>');
+		expect(vue).toContain('class="wf-block wf-hifi');
 
-	it('leaves the CSS out of Vue templates', () => {
-		expect(renderWireframeBody(detailed, { vue: true })).not.toContain('<style>');
+		const module = renderDetailModule(detailed);
+		expect(module).toContain('"kpi-pending"');
+		expect(module).toContain('attachShadow');
+		expect(module).not.toMatch(/<script|<\/style><script/i);
 	});
 
 	it('marks the part as detailed in the hover info', () => {
 		expect(describePlanComponent(detailed.screens[0].components[0], {}).detailed).toBe(true);
+	});
+});
+
+describe('pages', () => {
+	const pages = appPlanSchema.parse({
+		nav: { id: 'nav', kind: 'nav', label: 'Desk' },
+		screens: [
+			{
+				id: 'queue',
+				name: 'Queue',
+				path: '/',
+				components: [{ id: 'drafts', kind: 'table', label: 'Drafts', opens: 'draft' }],
+			},
+			{
+				id: 'draft',
+				name: 'Draft',
+				path: '/drafts/:id',
+				components: [{ id: 'body', kind: 'detail', label: 'Draft' }],
+			},
+		],
+	});
+
+	it('leaves pages with a parameter out of the nav and links back from them', () => {
+		const html = renderWireframeBody(pages);
+		const nav = html.slice(
+			html.indexOf('wf-nav-items'),
+			html.indexOf('</div>', html.indexOf('wf-nav-items')),
+		);
+		expect(nav).toContain('Queue');
+		expect(nav).not.toContain('>Draft<');
+		expect(html).toContain('class="wf-back" data-plan-screen-link="queue"');
+		expect(html).toContain('/drafts/:id');
+	});
+
+	it('marks the part that opens a page', () => {
+		expect(renderWireframeBody(pages)).toContain('data-plan-opens="draft"');
+	});
+
+	it('lists every page with its path in the document', () => {
+		const doc = renderWireframeDocument(pages);
+		expect(doc).toContain('class="wf-pages"');
+		expect(doc).toContain('<code>/drafts/:id</code>');
+	});
+
+	it('rejects a path that is not a URL path', () => {
+		expect(
+			appPlanSchema.safeParse({
+				screens: [
+					{
+						id: 'a',
+						name: 'A',
+						path: 'drafts',
+						components: [{ id: 'x', kind: 'text', label: 'X' }],
+					},
+				],
+			}).success,
+		).toBe(false);
 	});
 });

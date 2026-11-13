@@ -38,4 +38,23 @@ describe('createPlanScaffold', () => {
 		expect(JSON.parse(text('public/plan.json'))).toEqual(plan);
 		expect(text('src/plan/wireframe.css')).toContain('.wf-block');
 	});
+
+	it('mounts detailed parts from a module instead of inlining them in App.vue', () => {
+		const detailed = appPlanSchema.parse({
+			screens: [
+				{
+					id: 'home',
+					name: 'Home',
+					components: [
+						{ id: 'drafts', kind: 'table', label: 'Drafts', detail: { html: '<p>Sample row</p>' } },
+					],
+				},
+			],
+		});
+		const files = createPlanScaffold(detailed);
+		const app = files.get('src/App.vue')?.toString('utf8') ?? '';
+		expect(app).toContain('onMounted(mountPlanDetails)');
+		expect(app).not.toContain('Sample row');
+		expect(files.get('src/plan/details.js')?.toString('utf8')).toContain('Sample row');
+	});
 });

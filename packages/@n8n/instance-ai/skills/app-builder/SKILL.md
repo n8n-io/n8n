@@ -145,6 +145,15 @@ The `plan` is the wireframe of the app. Keep it short and concrete:
 
 Use the same resource names in the plan and in `bindings`.
 
+### Pages
+
+Give each screen a `path`. Use a separate page when the user opens one
+record, for example a list at `/` and one draft at `/drafts/:id`, instead of a
+detail panel next to the list. Set `opens` on the part that leads there, for
+example the drafts table. The nav lists only pages without a `:param`. Keep
+the detail panel on the same page only when the user wants to review many
+records quickly in one view.
+
 ### Detailed parts
 
 Leave `detail` out by default. Add it only when the user asks to see a part in
@@ -180,9 +189,17 @@ watches the preview, so the first commit must come fast:
   `planId` of the step. The user then sees which part you build.
 
 1. **Shell.** Replace the `wf-app` class with your own app classes and
-   styles: background, colors and type of the theme, page grid. Keep
-   `data-plan-id="shell"` on that element. Leave every `wf-block` as it is.
-   The blocks keep their wireframe look until you replace them.
+   styles: background, colors and type of the theme. The user approved the
+   layout of the wireframe, so keep it: the same order of parts, the same
+   main and aside columns, and the same spans. Restyle the existing structure
+   with CSS instead of rewriting it. Keep `data-plan-id="shell"` on that
+   element. Leave every `wf-block` element exactly as it is, character for
+   character: do not retype or shorten them. A detailed part is an empty
+   `wf-hifi` element, and `mountPlanDetails()` from `src/plan/details.js` fills
+   it. Keep that call until the last detailed part is built.
+   If the plan has pages with a `path`, set up Vue Router with those paths in
+   this step, one route component per page, and move each page's blocks into
+   its route component unchanged.
 2. **Each component, in `buildOrder`.** If the component has a `detail`, the
    user approved that design: build the real component to look like it, with
    real data instead of the sample data. Replace exactly one `wf-block` element
@@ -199,7 +216,8 @@ watches the preview, so the first commit must come fast:
 Do not add sample or mock data. An empty table shows its empty state. Tell the
 user in one short line which part you build next. Keep `public/plan.json`
 when you are done: the preview uses it to show what each part is connected to.
-Remove `src/plan/` once no `wf-block` is left.
+Remove `src/plan/` once no `wf-block` is left. When you build a detailed
+part, remove its entry from `src/plan/details.js`.
 
 ## Build order for a new app
 

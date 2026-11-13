@@ -1,7 +1,7 @@
 import {
 	WIREFRAME_CSS,
 	WIREFRAME_FONT_URL,
-	collectDetailCss,
+	renderDetailModule,
 	renderWireframeBody,
 	type AppPlan,
 	type WireframeRenderOptions,
@@ -27,7 +27,11 @@ export function createPlanScaffold(
 		'src/App.vue',
 		[
 			'<script setup>',
+			"import { onMounted } from 'vue';",
 			"import './plan/wireframe.css';",
+			"import { mountPlanDetails } from './plan/details.js';",
+			'',
+			'onMounted(mountPlanDetails);',
 			'</script>',
 			'',
 			'<template>',
@@ -36,11 +40,9 @@ export function createPlanScaffold(
 			'',
 		].join('\n'),
 	);
-	add(
-		'src/plan/wireframe.css',
-		`@import url('${WIREFRAME_FONT_URL}');\n${WIREFRAME_CSS}\n${collectDetailCss(plan)}`,
-	);
+	add('src/plan/wireframe.css', `@import url('${WIREFRAME_FONT_URL}');\n${WIREFRAME_CSS}`);
 	add('src/style.css', '* { box-sizing: border-box; }\nbody { margin: 0; }\n');
+	add('src/plan/details.js', renderDetailModule(plan));
 	add('public/plan.json', JSON.stringify(plan, null, 2) + '\n');
 	return files;
 }

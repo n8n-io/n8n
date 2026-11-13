@@ -125,6 +125,7 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 	switch (component.kind) {
 		case 'nav': {
 			const links = plan.screens
+				.filter((screen) => !screen.path?.includes(':'))
 				.map(
 					(screen, i) =>
 						`<span class="wf-nav-item${i === 0 ? ' active' : ''}" data-plan-screen-link="${screen.id}">${escapeHtml(screen.name)}</span>`,
@@ -197,15 +198,48 @@ export function sanitizeDetailHtml(html: string): string {
 		.replace(/(href|src|action|formaction)\s*=\s*("|')?\s*javascript:[^"'\s>]*("|')?/gi, '$1="#"');
 }
 
-/** The CSS of a detailed part, scoped to that part. */
-export function scopedDetailCss(component: AppPlanComponent): string {
-	const css = component.detail?.css?.replace(/<\/?style/gi, '');
-	return css ? `@scope ([data-plan-id="${component.id}"] .wf-hifi-body) {\n${css}\n}\n` : '';
+/** Base styles inside the shadow root of a detailed part. */
+const DETAIL_BASE_CSS =
+	':host{display:block;position:relative}' +
+	'.wf-sample{position:absolute;top:-9px;right:12px;z-index:2;padding:1px 7px;border-radius:999px;background:#fff4e5;' +
+	'color:#b25e00;font:600 10px/16px system-ui,sans-serif;pointer-events:none}' +
+	'.wf-hifi-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400}';
+
+/**
+ * The content of the shadow root of a detailed part: its own styles, the sample
+ * data tag and the sanitized markup. The shadow root keeps the app styles out and
+ * the detail styles in.
+ */
+export function detailShadowContent(component: AppPlanComponent): string {
+	if (!component.detail) return '';
+	// CSS never needs `<`, so dropping it keeps the text from closing the style element.
+	const css = (component.detail.css ?? '').replace(/</g, '');
+	return `<style>${DETAIL_BASE_CSS}${css}</style><span class="wf-sample">Sample data</span><div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div>`;
 }
 
-/** The scoped CSS of every detailed part, for a stylesheet next to the wireframe. */
-export function collectDetailCss(plan: AppPlan): string {
-	return listPlanComponents(plan).map(scopedDetailCss).join('');
+/**
+ * A module for the generated app: the shadow content of each detailed part and a
+ * function that attaches it to the empty placeholder elements, also after Vue re-renders.
+ */
+export function renderDetailModule(plan: AppPlan): string {
+	const details: Record<string, string> = {};
+	for (const c of listPlanComponents(plan)) if (c.detail) details[c.id] = detailShadowContent(c);
+	return [
+		'// Detailed parts of the plan, with sample data. Remove a part when you build it.',
+		`export const details = ${JSON.stringify(details, null, 2)};`,
+		'',
+		'export function mountPlanDetails() {',
+		'\tconst attach = () => {',
+		"\t\tfor (const host of document.querySelectorAll('.wf-hifi[data-plan-id]')) {",
+		"\t\t\tconst content = details[host.getAttribute('data-plan-id')];",
+		"\t\t\tif (content && !host.shadowRoot) host.attachShadow({ mode: 'open' }).innerHTML = content;",
+		'\t\t}',
+		'\t};',
+		'\tattach();',
+		'\tnew MutationObserver(attach).observe(document.body, { childList: true, subtree: true });',
+		'}',
+		'',
+	].join('\n');
 }
 
 export function renderWireframeBlock(
@@ -214,27 +248,29 @@ export function renderWireframeBlock(
 	options: WireframeRenderOptions = {},
 ): string {
 	if (component.detail) {
-		// In a Vue template a <style> tag is dropped, so the caller ships the CSS separately.
-		const style = options.vue ? '' : `<style>${scopedDetailCss(component)}</style>`;
+		// In the app the host stays empty: `mountPlanDetails()` attaches the content.
 		return [
 			`<div class="wf-block wf-hifi wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 			component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
-			options.vue ? ' v-pre' : '',
-			'>',
-			style,
-			`<div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div>`,
+			component.opens ? ` data-plan-opens="${component.opens}"` : '',
+			options.vue ? ' v-pre>' : '>',
+			options.vue
+				? ''
+				: `<template shadowrootmode="open">${detailShadowContent(component)}</template>`,
 			'</div>',
 		].join('');
 	}
 	const markers = [
 		component.data ? '<span class="wf-mark" title="Data">▤</span>' : '',
 		component.action ? '<span class="wf-mark" title="Workflow">⚡</span>' : '',
+		component.opens ? '<span class="wf-mark" title="Opens a page">↗</span>' : '',
 	].join('');
 	const showLabel = component.kind !== 'button' && component.kind !== 'nav';
 	const showHead = component.kind !== 'button' && (showLabel || markers);
 	return [
 		`<div class="wf-block wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 		component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
+		component.opens ? ` data-plan-opens="${component.opens}"` : '',
 		options.vue ? ' v-pre' : '',
 		'>',
 		showHead
@@ -260,7 +296,13 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 				.join('\n      ');
 			return [
 				`  <section class="wf-screen" data-plan-screen="${screen.id}"${i === 0 ? '' : ' hidden'}>`,
-				`    <h1 class="wf-screen-title">${escapeHtml(screen.name)}</h1>`,
+				`    <div class="wf-screen-head">${
+					screen.path?.includes(':') && plan.screens[0].id !== screen.id
+						? `<span class="wf-back" data-plan-screen-link="${plan.screens[0].id}">← ${escapeHtml(plan.screens[0].name)}</span>`
+						: ''
+				}<h1 class="wf-screen-title">${escapeHtml(screen.name)}</h1>${
+					screen.path ? `<span class="wf-path">${escapeHtml(screen.path)}</span>` : ''
+				}</div>`,
 				'    <div class="wf-columns">',
 				`      <div class="wf-grid">\n      ${main}\n      </div>`,
 				aside ? `      <aside class="wf-aside">\n      ${aside}\n      </aside>` : '',
@@ -304,7 +346,17 @@ export const WIREFRAME_CSS = `
 .wf-app.wf-layout-sidebar { flex-direction: row; }
 .wf-app *, .wf-block * { box-sizing: border-box; }
 .wf-content { flex: 1; padding: 20px 24px 40px; min-width: 0; }
-.wf-screen-title { font-family: var(--wf-font); font-size: 20px; font-weight: 400; margin: 0 0 14px; }
+.wf-screen-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; flex-wrap: wrap; }
+.wf-screen-title { font-family: var(--wf-font); font-size: 20px; font-weight: 400; margin: 0; }
+.wf-path { font: 11px ui-monospace, Menlo, monospace; color: var(--wf-ink-soft); border: 1px solid var(--wf-line-soft); border-radius: 6px; padding: 1px 6px; }
+.wf-back { flex-basis: 100%; font-size: 12px; color: var(--wf-ink-soft); cursor: pointer; }
+[data-plan-opens] { cursor: pointer; }
+.wf-pages { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 16px; border-bottom: 1px dashed #c9c9c9;
+  background: #f4f4f1; font: 12px system-ui, sans-serif; color: #6f6f6f; }
+.wf-pages b { font-weight: 600; margin-right: 4px; }
+.wf-page { padding: 3px 10px; border-radius: 999px; border: 1px solid #d6d6d2; background: #fff; cursor: pointer; color: #2b2b2b; }
+.wf-page.active { background: #2b2b2b; color: #fff; border-color: #2b2b2b; }
+.wf-page code { font: 11px ui-monospace, Menlo, monospace; opacity: .7; margin-left: 4px; }
 .wf-columns { display: flex; gap: 14px; align-items: flex-start; }
 .wf-grid { flex: 1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .wf-aside { width: 32%; display: flex; flex-direction: column; gap: 14px; }
@@ -323,10 +375,7 @@ export const WIREFRAME_CSS = `
 .wf-nav-item { padding: 3px 10px; border-radius: 999px; cursor: pointer; color: var(--wf-ink-soft); }
 .wf-nav-item.active { background: var(--wf-wash); color: var(--wf-ink); font-weight: 400; }
 .wf-block.wf-hifi { position: relative; padding: 0; background: transparent; border: 1.5px dashed var(--wf-line-soft);
-  box-shadow: none; overflow: hidden; }
-.wf-hifi-body { font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 400; }
-.wf-block.wf-hifi::after { content: 'Sample data'; position: absolute; top: 6px; right: 6px; z-index: 1; padding: 1px 7px;
-  border-radius: 999px; background: #fff4e5; color: #b25e00; font: 600 10px/16px system-ui, sans-serif; pointer-events: none; }
+  box-shadow: none; overflow: visible; }
 .wf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .wf-kpis .wf-kpi { border: 1.5px solid var(--wf-line-soft); border-radius: 8px; padding: 8px 10px; }
 .wf-kpi-value { display: block; font-size: 28px; font-weight: 700; color: var(--wf-ink-faint); line-height: 1.2; }
@@ -476,6 +525,7 @@ export function planOverlayMain(
 		shell: '▢',
 	};
 	let byId: Record<string, AppPlanComponent> = {};
+	let screens: Record<string, { name: string; path?: string }> = {};
 	let order: string[] = [];
 	// The step the builder announced. Without it, the next unbuilt step counts as current.
 	let buildingId: string | null = null;
@@ -495,6 +545,8 @@ export function planOverlayMain(
 		byId = {};
 		const all = [...(plan.nav ? [plan.nav] : []), ...plan.screens.flatMap((s) => s.components)];
 		all.forEach((c) => (byId[c.id] = c));
+		screens = {};
+		plan.screens.forEach((sc) => (screens[sc.id] = { name: sc.name, path: sc.path }));
 		order = plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
 	}
 
@@ -587,7 +639,16 @@ export function planOverlayMain(
 			sec.append(resourceRow(info.action), el('div', 'plan-ov-text', info.action.does));
 			tip.append(sec);
 		}
-		if (!info.data && !info.action)
+		if (comp.opens) {
+			const target = screens[comp.opens];
+			const sec = section('Opens page');
+			const row = el('div', 'plan-ov-res');
+			row.append(el('span', 'plan-ov-chip', `↗ ${target?.name ?? comp.opens}`));
+			if (target?.path) row.append(el('span', 'plan-ov-field', target.path));
+			sec.append(row);
+			tip.append(sec);
+		}
+		if (!info.data && !info.action && !comp.opens)
 			tip.append(el('div', 'plan-ov-empty', 'Layout only. No data or workflow behind this part.'));
 		if (config.selectable && id !== 'shell') {
 			const foot = el('div', 'plan-ov-foot');
@@ -645,18 +706,31 @@ export function planOverlayMain(
 	});
 	window.addEventListener('scroll', hideTip, true);
 
-	// Screen switching for wireframe navs (built navs bring their own routing).
-	doc.addEventListener('click', (event) => {
-		const link =
-			event.target instanceof Element ? event.target.closest('[data-plan-screen-link]') : null;
-		if (!link || !link.closest('.wf-block')) return;
-		const id = link.getAttribute('data-plan-screen-link');
+	// Screen switching in the wireframe: nav links, the page strip, back links and parts that open a page.
+	// A built nav or list brings its own routing.
+	function showScreen(id: string) {
 		doc.querySelectorAll('[data-plan-screen]').forEach((s) => {
 			(s as HTMLElement).hidden = s.getAttribute('data-plan-screen') !== id;
 		});
 		doc.querySelectorAll('[data-plan-screen-link]').forEach((l) => {
-			l.classList.toggle('active', l === link);
+			l.classList.toggle('active', l.getAttribute('data-plan-screen-link') === id);
 		});
+		window.scrollTo(0, 0);
+	}
+	doc.addEventListener('click', (event) => {
+		if (selecting || !(event.target instanceof Element)) return;
+		const link = event.target.closest('[data-plan-screen-link]');
+		if (
+			link &&
+			(link.closest('.wf-block') || link.closest('.wf-pages') || link.classList.contains('wf-back'))
+		) {
+			showScreen(link.getAttribute('data-plan-screen-link') ?? '');
+			return;
+		}
+		const opener = event.target.closest('[data-plan-opens]');
+		if (opener && opener.classList.contains('wf-block')) {
+			showScreen(opener.getAttribute('data-plan-opens') ?? '');
+		}
 	});
 
 	let selecting = false;
@@ -793,6 +867,14 @@ export function renderWireframeDocument(
 		`<link rel="stylesheet" href="${WIREFRAME_FONT_URL}">`,
 		`<style>html,body{margin:0}${WIREFRAME_CSS}</style>`,
 		'</head><body>',
+		plan.screens.length > 1
+			? `<nav class="wf-pages"><b>Pages</b>${plan.screens
+					.map(
+						(screen, i) =>
+							`<span class="wf-page${i === 0 ? ' active' : ''}" data-plan-screen-link="${screen.id}">${escapeHtml(screen.name)}${screen.path ? `<code>${escapeHtml(screen.path)}</code>` : ''}</span>`,
+					)
+					.join('')}</nav>`
+			: '',
 		renderWireframeBody(plan, options),
 		`<script>${planOverlayScript({ ...overlay, plan })}</script>`,
 		'</body></html>',

@@ -79,12 +79,23 @@ export const appPlanComponentSchema = z.object({
 		})
 		.optional(),
 	status: appPlanComponentStatusSchema.optional(),
+	/** The id of a screen that opens when the user clicks this part, e.g. a row of a list. */
+	opens: planIdSchema.optional(),
 });
 export type AppPlanComponent = z.infer<typeof appPlanComponentSchema>;
 
 export const appPlanScreenSchema = z.object({
 	id: planIdSchema,
 	name: z.string().trim().min(1).max(60),
+	/**
+	 * The URL path of the screen, e.g. `/` or `/drafts/:id`. A screen with a `:param`
+	 * shows one record: the nav leaves it out, and a part that `opens` it leads there.
+	 */
+	path: z
+		.string()
+		.regex(/^\/[a-z0-9\-/:]*$/, 'Use a path like /drafts/:id')
+		.max(80)
+		.optional(),
 	components: z.array(appPlanComponentSchema).min(1).max(30),
 });
 export type AppPlanScreen = z.infer<typeof appPlanScreenSchema>;
