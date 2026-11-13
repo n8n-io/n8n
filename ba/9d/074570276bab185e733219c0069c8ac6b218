@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatEmptyState.vue
+  s_4658d66498e898::t_1f6e601895c787 2,12-13,19,21
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_4658d66498e898::t_1f6e601895c787 248
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentCard.vue
+  s_4658d66498e898::t_9d051a7cfdcdc0 123-132
+  s_4658d66498e898::t_1f6e601895c787 5,57-58,62-64
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_4658d66498e898::t_1f6e601895c787 707
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_4658d66498e898::t_9e9aed200e8b59 25
+  s_4658d66498e898::t_1f6e601895c787 117-118,1747
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba9d074570276bab185e733219c0069c8ac6b218",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4658d66498e898": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2bf723cf-ceac-4f79-be71-10f7d0abfde9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
