@@ -95,41 +95,52 @@ describe('RestrictedNodeSetupCard', () => {
 						ContactAdminModal: {
 							props: ['open', 'kind', 'typeName', 'audience'],
 							template:
-								'<div data-test-id="contact-admin-modal" :data-kind="kind">{{ typeName }}</div>',
+								'<div v-if="open" data-test-id="contact-admin-modal" :data-kind="kind">{{ typeName }}</div>',
 						},
 					},
 				},
 			});
 
 		beforeEach(() => {
-			mockedStore(useNodeTypesStore).getNodeType = vi
-				.fn()
-				.mockReturnValue({ displayName: 'Bitly' });
+			const displayNames: Record<string, string> = {
+				'n8n-creds-base.bitlyApi': 'Bitly',
+				'n8n-nodes-base.httpRequest': 'HTTP Request',
+			};
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn((type: string) => ({
+				displayName: displayNames[type],
+			})) as unknown as ReturnType<typeof useNodeTypesStore>['getNodeType'];
 			mockedStore(useCredentialsStore).getCredentialTypeByName = vi
 				.fn()
 				.mockReturnValue({ displayName: 'Bitly API' });
 		});
 
-		it('names the credential type when the credential type is restricted', () => {
-			const { getByTestId } = renderWithModal({
+		it('names the credential type when the credential type is restricted', async () => {
+			const { getByTestId, queryByTestId } = renderWithModal({
 				name: 'bitlyApi',
 				available: false,
 				scope: 'instance',
 			});
+			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('setup-card-contact-admin'));
 
 			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'credential');
 			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Bitly API');
 		});
 
-		it('names the node when HTTP Request itself is restricted', () => {
-			const { getByTestId } = renderWithModal({
+		it('names the node when HTTP Request itself is restricted', async () => {
+			const { getByTestId, queryByTestId } = renderWithModal({
 				name: 'n8n-nodes-base.httpRequest',
 				available: false,
 				scope: 'instance',
 			});
+			expect(queryByTestId('contact-admin-modal')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('setup-card-contact-admin'));
 
 			expect(getByTestId('contact-admin-modal')).toHaveAttribute('data-kind', 'node');
-			expect(getByTestId('contact-admin-modal')).toHaveTextContent('Bitly');
+			expect(getByTestId('contact-admin-modal')).toHaveTextContent('HTTP Request');
+			expect(getByTestId('contact-admin-modal')).not.toHaveTextContent('Bitly');
 		});
 	});
 });

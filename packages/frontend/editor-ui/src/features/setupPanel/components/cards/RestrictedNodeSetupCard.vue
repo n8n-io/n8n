@@ -44,11 +44,12 @@ const description = computed(() =>
 const highlightNodeIds = computed(() => [props.node.id]);
 
 const contactKind = computed(() => getNodeTypeRestrictionKind(props.node.type, props.restriction));
+// The admin allows the type the policy names, e.g. HTTP Request for a credential-only node.
 const contactTypeName = computed(() =>
 	contactKind.value === 'credential'
 		? (credentialsStore.getCredentialTypeByName(props.restriction.name)?.displayName ??
 			props.restriction.name)
-		: nodeTypeName.value,
+		: (nodeTypesStore.getNodeType(props.restriction.name)?.displayName ?? nodeTypeName.value),
 );
 
 function onReplaceNode() {
