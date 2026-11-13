@@ -20,11 +20,11 @@ import type {
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
-	AgentFileDto,
 	AgentMemoryEntriesPageDto,
 	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
+	AgentWebhookUrlResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
 	AgentN8nChatAgentDetails,
@@ -41,6 +41,7 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	UpdateAgentVersionDto,
+	PublishAgentDto,
 	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
 	SkillDetail,
@@ -57,7 +58,8 @@ import type {
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import type { AgentListItem } from '../agent.types';
 import type {
 	AgentCreationResource,
 	AgentResource,
@@ -129,6 +131,7 @@ export type ListAgentsOptions = {
 		query?: string;
 		ids?: string[];
 		availableInMCP?: boolean;
+		includeArchived?: boolean;
 	};
 };
 
@@ -138,8 +141,8 @@ export const listAgentsPage = async (
 	context: IRestApiContext,
 	projectId: string,
 	options: ListAgentsOptions,
-): Promise<{ count: number; data: AgentResource[] }> => {
-	return await getFullApiResponse<AgentResource[]>(
+): Promise<{ count: number; data: AgentListItem[] }> => {
+	return await getFullApiResponse<AgentListItem[]>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2`,
@@ -150,8 +153,8 @@ export const listAgentsPage = async (
 export const listAgentsPageGlobal = async (
 	context: IRestApiContext,
 	options: ListAgentsOptions,
-): Promise<{ count: number; data: AgentResource[] }> => {
-	return await getFullApiResponse<AgentResource[]>(context, 'GET', '/agents/v2', options);
+): Promise<{ count: number; data: AgentListItem[] }> => {
+	return await getFullApiResponse<AgentListItem[]>(context, 'GET', '/agents/v2', options);
 };
 
 /** One agent as the n8n Chat page needs it (see the backend route's doc for why `getAgent` won't do). */
@@ -271,8 +274,8 @@ export const deleteN8nChatThread = async (
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
-): Promise<AgentResource[]> => {
-	const agents: AgentResource[] = [];
+): Promise<AgentListItem[]> => {
+	const agents: AgentListItem[] = [];
 	let total = 0;
 
 	do {
@@ -337,17 +340,17 @@ export const duplicateAgent = async (
 	agentId: string,
 	name: string,
 ): Promise<AgentResource> => {
-	const [agent, configResponse] = await Promise.all([
-		getAgent(context, projectId, agentId),
-		getAgentConfig(context, projectId, agentId),
-	]);
+	const agent = await getAgent(context, projectId, agentId);
+	if (!agent.config) {
+		throw new UnexpectedError('Agent has no JSON config yet.');
+	}
 	// Task bodies live in a separate table we don't copy, so drop the refs —
 	// otherwise the clone carries dangling task ids and cannot be published.
 	// Channels are copied without their credential: the claim check ignores
 	// publish state, so keeping the source's credentialId would 409 at publish
 	// time (and break the source's channel). Blank to drafts so the builder
 	// opens the copy with a "connect a channel" chip instead.
-	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = configResponse.config;
+	const { tasks: _tasks, integrations: sourceIntegrations, ...rest } = agent.config;
 	const draftIntegrations = (sourceIntegrations ?? []).map((integration) =>
 		integration.type === 'n8n_chat' ? integration : { ...integration, credentialId: '' },
 	);
@@ -364,50 +367,6 @@ export const deleteAgent = async (
 	agentId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
-};
-
-export const listAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<AgentFileDto[]> => {
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-	);
-};
-
-export const uploadAgentFiles = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	files: File[],
-): Promise<AgentFileDto[]> => {
-	const formData = new FormData();
-	for (const file of files) {
-		formData.append('files', file);
-	}
-
-	return await makeRestApiRequest<AgentFileDto[]>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/files`,
-		formData,
-	);
-};
-
-export const deleteAgentFile = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-	fileId: string,
-): Promise<void> => {
-	await makeRestApiRequest(
-		context,
-		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
-	);
 };
 
 export type AgentMemorySourceSelection = Pick<
@@ -467,18 +426,6 @@ export const deleteAgentMemoryCapture = async (
 	);
 };
 
-export const warmAgentKnowledgeSandbox = async (
-	context: IRestApiContext,
-	projectId: string,
-	agentId: string,
-): Promise<{ accepted: true }> => {
-	return await makeRestApiRequest<{ accepted: true }>(
-		context,
-		'POST',
-		`/projects/${projectId}/agents/v2/${agentId}/sandbox/knowledge/warmup`,
-	);
-};
-
 /** `replaces` swaps a same-type channel in the same request instead of a follow-up disconnect. */
 export interface ConnectIntegrationOptions {
 	replaces?: { credentialId: string };
@@ -534,6 +481,18 @@ export const getIntegrationStatus = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
+	);
+};
+
+export const getAgentWebhookUrl = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentWebhookUrlResponse> => {
+	return await makeRestApiRequest<AgentWebhookUrlResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/webhook/url`,
 	);
 };
 
@@ -657,12 +616,13 @@ export const publishAgent = async (
 	agentId: string,
 	versionId?: string,
 	metadata?: UpdateAgentVersionDto,
+	draft?: PublishAgentDto['draft'],
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		{ versionId, ...metadata },
+		{ versionId, ...metadata, draft },
 	);
 };
 
@@ -675,6 +635,30 @@ export const unpublishAgent = async (
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/unpublish`,
+	);
+};
+
+export const archiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/archive`,
+	);
+};
+
+export const unarchiveAgent = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/unarchive`,
 	);
 };
 

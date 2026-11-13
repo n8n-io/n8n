@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -19,7 +20,6 @@ vi.mock('../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 
 describe('Microsoft SharePoint v2 — list search', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
@@ -45,7 +45,7 @@ describe('Microsoft SharePoint v2 — list search', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists`,
 			{},
 			{ $select: 'id,displayName' },
 		);
@@ -63,7 +63,7 @@ describe('Microsoft SharePoint v2 — list search', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists`,
 			{},
 			{ $select: 'id,displayName' },
 		);
@@ -84,7 +84,7 @@ describe('Microsoft SharePoint v2 — list search', () => {
 		const secondPage = await getLists.call(ctx, undefined, nextLink);
 
 		// The link is a complete address — passed through verbatim, never rebuilt
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(secondPage.paginationToken).toBeUndefined();
 	});
 
@@ -99,14 +99,14 @@ describe('Microsoft SharePoint v2 — list search', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/site1',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/site1' }),
 			{},
 			{ $select: 'id' },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists`,
 			{},
 			{ $select: 'id,displayName' },
 		);

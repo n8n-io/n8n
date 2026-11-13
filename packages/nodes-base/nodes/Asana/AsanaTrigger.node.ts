@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { verifySignature } from './AsanaTriggerHelpers';
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
@@ -120,7 +120,13 @@ export class AsanaTrigger implements INodeType {
 
 				const workspace = this.getNodeParameter('workspace') as string;
 
-				const { data } = await asanaApiRequest.call(this, 'GET', '/webhooks', {}, { workspace });
+				const { data } = await asanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/webhooks`,
+					{},
+					{ workspace },
+				);
 
 				for (const webhook of data) {
 					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
@@ -151,7 +157,7 @@ export class AsanaTrigger implements INodeType {
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', '/webhooks', body);
+				const responseData = await asanaApiRequest.call(this, 'POST', requestPath`/webhooks`, body);
 
 				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
@@ -175,7 +181,12 @@ export class AsanaTrigger implements INodeType {
 					const body = {};
 
 					try {
-						await asanaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`, body);
+						await asanaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/webhooks/${webhookData.webhookId}`,
+							body,
+						);
 					} catch (error) {
 						return false;
 					}

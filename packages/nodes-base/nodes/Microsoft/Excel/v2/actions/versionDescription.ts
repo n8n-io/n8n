@@ -11,7 +11,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'microsoftExcel',
 	icon: 'file:excel.svg',
 	group: ['input'],
-	version: [2, 2.1, 2.2],
+	version: [2, 2.1, 2.2, 2.3],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Microsoft Excel API for workbooks stored in OneDrive',
 	defaults: {

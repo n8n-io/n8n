@@ -1,0 +1,266 @@
+{
+	"name": "Wordpress request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "post",
+				"operation": "get",
+				"postId": "123",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Get Post",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "post",
+				"operation": "delete",
+				"postId": "123",
+				"options": {
+					"force": true
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Delete Post",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "create",
+				"title": "About",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Create Page",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "delete",
+				"pageId": "456",
+				"options": {
+					"force": true
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Delete Page",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "create",
+				"username": "nathan",
+				"name": "Nathan",
+				"firstName": "Nathan",
+				"lastName": "Smith",
+				"email": "nathan@example.com",
+				"password": "fake-password",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Create User",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"reassign": "1"
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Delete User",
+			"credentials": {
+				"wordpressApi": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authType": "oAuth2",
+				"resource": "post",
+				"operation": "get",
+				"postId": "123",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "OAuth2 Get Post",
+			"credentials": {
+				"wordpressOAuth2Api": {
+					"id": "1",
+					"name": "Wordpress account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Post": [
+			{
+				"json": {
+					"id": 123,
+					"title": {
+						"rendered": "Hello world"
+					}
+				}
+			}
+		],
+		"Delete Post": [
+			{
+				"json": {
+					"id": 123,
+					"title": {
+						"rendered": "Hello world"
+					}
+				}
+			}
+		],
+		"Create Page": [
+			{
+				"json": {
+					"id": 456,
+					"title": {
+						"rendered": "About"
+					}
+				}
+			}
+		],
+		"Delete Page": [
+			{
+				"json": {
+					"id": 456,
+					"title": {
+						"rendered": "About"
+					}
+				}
+			}
+		],
+		"Create User": [
+			{
+				"json": {
+					"id": 7,
+					"name": "Nathan"
+				}
+			}
+		],
+		"Delete User": [
+			{
+				"json": {
+					"id": 7,
+					"name": "Nathan"
+				}
+			}
+		],
+		"OAuth2 Get Post": [
+			{
+				"json": {
+					"id": 123,
+					"title": {
+						"rendered": "Hello world"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Post",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "OAuth2 Get Post",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

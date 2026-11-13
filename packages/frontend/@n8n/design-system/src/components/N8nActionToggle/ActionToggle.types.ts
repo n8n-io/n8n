@@ -23,6 +23,8 @@ export type ActionToggleItem<T extends string = string> = {
 } & ({ id: T; value?: T } | { id?: T; value: T });
 
 export interface ActionToggleProps<T extends string = string> {
+	/** Accessible name of the default trigger button. */
+	ariaLabel?: string;
 	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	theme?: 'default' | 'dark';

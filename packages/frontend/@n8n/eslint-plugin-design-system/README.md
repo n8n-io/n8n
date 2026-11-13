@@ -1,16 +1,18 @@
 # @n8n/eslint-plugin-design-system
 
-Internal ESLint rules for safe composition of n8n Design System components.
+Internal lint rules for safe composition of n8n Design System components. The rules use the ESLint plugin API, and Oxlint runs them as a JS plugin.
 
-Use ESLint rules to enforce Design System constraints that cannot be reliably enforced through:
+Use these rules to enforce Design System constraints that cannot be reliably enforced through:
 
 - The component API or implementation, such as safe defaults or restricting invalid prop combinations
 - Storybook documentation, such as “Do/Don’t” usage guidance
 - Established UI patterns and code review
 
-ESLint is appropriate when a constraint spans component composition or usage context and cannot be expressed through TypeScript or the component API.
+A lint rule is appropriate when a constraint spans component composition or usage context and cannot be expressed through TypeScript or the component API.
 
-`configs.recommended` enables every rule for Vue files. `configs.componentImports` enables the import bans for TypeScript files. `@n8n/eslint-config/frontend` includes both.
+`@n8n/oxlint-config/frontend` loads this package as an Oxlint JS plugin. It turns on `no-direct-component-imports` for every file and `require-teleported-tooltip-in-dropdown` for Vue files. Oxlint gives a JS plugin the `<script>` blocks of an SFC only, so the template check of `no-direct-component-imports` does not run under Oxlint (`scripts/lint-parity/oxlint-gap.json`).
+
+For packages that still lint with ESLint, `configs.recommended` enables every rule for Vue files and `configs.componentImports` enables the import bans for TypeScript files. `@n8n/eslint-config/frontend` includes both.
 
 ## Rules
 

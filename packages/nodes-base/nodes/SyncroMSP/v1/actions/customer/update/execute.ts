@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, JsonObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -25,7 +25,7 @@ export async function updateCustomer(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
-	const endpoint = `customers/${id}`;
+	const endpoint = requestPath`customers/${id}`;
 	let body = {} as IDataObject;
 	let addressData = address as IDataObject;
 

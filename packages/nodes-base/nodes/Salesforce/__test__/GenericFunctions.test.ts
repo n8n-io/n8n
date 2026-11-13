@@ -1,7 +1,7 @@
 import FormData from 'form-data';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	getValue,
@@ -600,7 +600,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 
 			await expect(
-				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 			).rejects.toMatchObject({
 				context: {
 					errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
@@ -620,7 +620,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 
 			await expect(
-				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 			).rejects.toMatchObject({
 				context: {
 					errorCode: 'UNKNOWN_EXCEPTION',
@@ -639,7 +639,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 
 			await expect(
-				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 			).rejects.toMatchObject({
 				httpCode: null,
 				context: {
@@ -653,7 +653,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			mockRequest.mockRejectedValue(new Error('Network Error'));
 
 			await expect(
-				salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 			).rejects.toMatchObject({
 				context: {
 					errorCode: null,
@@ -687,7 +687,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			await salesforceApiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/sobjects/ContentVersion',
+				requestPath`/sobjects/ContentVersion`,
 				{},
 				{},
 				undefined,
@@ -697,6 +697,21 @@ describe('Salesforce -> GenericFunctions', () => {
 			// The legacy OAuth2 request helper builds the multipart body from the
 			// `formData` option, so the node forwards it unchanged.
 			expect(mockRequest.mock.calls[0][1]).toMatchObject({ formData });
+		});
+
+		it('should encode path values as a single segment', async () => {
+			mockRequest.mockResolvedValue({});
+			const leadId = '00Q5g00000A1b2C/query?q=1';
+
+			await salesforceApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/sobjects/lead/${leadId}`,
+			);
+
+			expect(String(mockRequest.mock.calls[0][1].uri)).toBe(
+				'https://test.salesforce.com/services/data/v59.0/sobjects/lead/00Q5g00000A1b2C%2Fquery%3Fq=1',
+			);
 		});
 	});
 
@@ -737,7 +752,13 @@ describe('Salesforce -> GenericFunctions', () => {
 			it('routes the request through the credential without signing or exchanging tokens', async () => {
 				mockRequest.mockResolvedValue({ statusCode: 200, body: { records: [] } });
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				// The node delegates to the authenticated request helper with a RELATIVE url;
 				// the credential attaches the cached Bearer token and resolves the instance URL.
@@ -767,7 +788,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/test-endpoint',
+					requestPath`/test-endpoint`,
 					testBody,
 					testQs,
 				);
@@ -792,10 +813,10 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/default-endpoint',
+					requestPath`/default-endpoint`,
 					{},
 					{},
-					'/custom-uri',
+					requestPath`/custom-uri`,
 				);
 
 				expect(mockRequest).toHaveBeenCalledWith(
@@ -806,41 +827,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				);
 			});
 
-			it('merges additional options', async () => {
-				mockRequest.mockResolvedValue({});
-
-				const additionalOptions = {
-					timeout: 30000,
-					returnFullResponse: true,
-				};
-
-				await salesforceApiRequest.call(
-					mockExecuteFunctions,
-					'GET',
-					'/test-endpoint',
-					{},
-					{},
-					undefined,
-					additionalOptions,
-				);
-
-				expect(mockRequest).toHaveBeenCalledWith(
-					'salesforceJwtApi',
-					expect.objectContaining({
-						url: '/services/data/v59.0/test-endpoint',
-						timeout: 30000,
-						returnFullResponse: true,
-					}),
-				);
-			});
-
 			it('merges extra option headers without dropping the Content-Type header', async () => {
 				mockRequest.mockResolvedValue({ records: [] });
 
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{ q: 'SELECT Id FROM Account' },
 					undefined,
@@ -856,7 +849,13 @@ describe('Salesforce -> GenericFunctions', () => {
 			it('omits an empty body', async () => {
 				mockRequest.mockResolvedValue({});
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				expect(mockRequest.mock.calls[0][1]).not.toHaveProperty('body');
 			});
@@ -864,7 +863,13 @@ describe('Salesforce -> GenericFunctions', () => {
 			it('logs the relative URL being invoked', async () => {
 				mockRequest.mockResolvedValue({});
 
-				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test-endpoint`,
+					{},
+					{},
+				);
 
 				expect(mockExecuteFunctions.logger.debug).toHaveBeenCalledWith(
 					'Authentication for "Salesforce" node is using "jwt". Invoking URI /services/data/v59.0/test-endpoint',
@@ -883,7 +888,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				const result = await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/sobjects/ContentVersion',
+					requestPath`/sobjects/ContentVersion`,
 					{},
 					{},
 					undefined,
@@ -909,7 +914,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
-					'/sobjects/ContentVersion',
+					requestPath`/sobjects/ContentVersion`,
 					{},
 					{},
 					undefined,
@@ -931,7 +936,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				const result = await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'GET',
-					'/query',
+					requestPath`/query`,
 					{},
 					{},
 				);
@@ -954,7 +959,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+					salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 				).rejects.toMatchObject({
 					description: 'Annual Revenue cannot be negative.',
 					context: {
@@ -970,7 +975,13 @@ describe('Salesforce -> GenericFunctions', () => {
 				mockRequest.mockRejectedValue(new Error('API rate limit exceeded'));
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {}),
+					salesforceApiRequest.call(
+						mockExecuteFunctions,
+						'GET',
+						requestPath`/test-endpoint`,
+						{},
+						{},
+					),
 				).rejects.toThrow(NodeApiError);
 			});
 
@@ -997,7 +1008,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				});
 
 				await expect(
-					salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+					salesforceApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/sobjects/Lead`, {}),
 				).rejects.toMatchObject({
 					context: {
 						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',

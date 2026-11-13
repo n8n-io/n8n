@@ -1,0 +1,98 @@
+{
+	"name": "Mocean Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"from": "Acme",
+				"to": "60123456789",
+				"message": "Hello"
+			},
+			"id": "mocean-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.mocean",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"moceanApi": {
+					"id": "1",
+					"name": "Mocean account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "voice",
+				"operation": "send",
+				"from": "Acme",
+				"to": "60123456789",
+				"language": "en-US",
+				"message": "Hello"
+			},
+			"id": "mocean-1",
+			"name": "Voice Send",
+			"type": "n8n-nodes-base.mocean",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"moceanApi": {
+					"id": "1",
+					"name": "Mocean account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"status": 0,
+					"receiver": "60123456789",
+					"msgid": "sms-msg-1",
+					"type": "sms"
+				}
+			}
+		],
+		"Voice Send": [
+			{
+				"json": {
+					"status": 0,
+					"receiver": "60123456789",
+					"session_uuid": "voice-session-1",
+					"type": "voice"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Voice Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

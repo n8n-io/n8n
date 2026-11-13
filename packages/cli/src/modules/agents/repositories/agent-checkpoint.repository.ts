@@ -2,7 +2,7 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, LessThan, MoreThan, Not, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 

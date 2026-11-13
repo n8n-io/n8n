@@ -2,7 +2,10 @@ operationId: getSecurityPolicy
 tags:
   - SecurityPolicy
 summary: Retrieve the security policy
-description: 'Retrieve the instance security policy: personal-space publishing and sharing, the execution-data redaction enforcement floor, and the read-only usage counts shown in the UI. Requires the `securitySettings:manage` scope and the Personal Space Policy feature to be licensed.'
+description: |-
+  Retrieve the instance security policy: personal-space publishing and sharing, the execution-data redaction enforcement floor, and the read-only usage counts shown in the UI. Requires the Personal Space Policy feature to be licensed.
+
+  Requires the `securitySettings:manage` API key scope.
 x-required-scope: securitySettings:manage
 responses:
   '200':

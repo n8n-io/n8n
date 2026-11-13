@@ -13,12 +13,13 @@ export class MailerLite extends VersionedNodeType {
 			group: ['input'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume MailerLite API',
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new MailerLiteV1(baseDescription),
 			2: new MailerLiteV2(baseDescription),
+			2.1: new MailerLiteV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

@@ -126,7 +126,8 @@ describe('SkillService user actions', () => {
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
 		repository.findProjects.mockImplementation(
-			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
+			async (ids) =>
+				new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const, icon: null }])),
 		);
 		canAccess = vi.spyOn(access, 'canAccess').mockResolvedValue(true);
 		accessCheck = vi.spyOn(access, 'accessCheck').mockResolvedValue(() => true);
@@ -362,7 +363,7 @@ describe('SkillService user actions', () => {
 				],
 			});
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update');
 
@@ -376,6 +377,7 @@ describe('SkillService user actions', () => {
 				projectId: 'project-1',
 				projectName: 'Team',
 				projectType: 'team',
+				projectIcon: null,
 				source: 'ui',
 				createdBy: null,
 				latestVersion: 2,
@@ -386,7 +388,7 @@ describe('SkillService user actions', () => {
 				canDelete: false,
 				canStopSyncing: false,
 				syncState: null,
-				canCheckForUpdates: false,
+				sourceId: null,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
@@ -419,7 +421,9 @@ describe('SkillService user actions', () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			skillSyncGate.isEnabled.mockResolvedValue(on);
 			links.findSyncStates.mockResolvedValue(
-				new Map(linked ? [['skill_a', 'up_to_date' as const]] : []),
+				new Map(
+					linked ? [['skill_a', { state: 'up_to_date' as const, sourceId: 'source-1' }]] : [],
+				),
 			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
 
@@ -427,7 +431,7 @@ describe('SkillService user actions', () => {
 
 			expect(item).toMatchObject({
 				canStopSyncing: can,
-				canCheckForUpdates: can,
+				sourceId: linked ? 'source-1' : null,
 				syncState: linked ? 'up_to_date' : null,
 				canEdit: update && !linked,
 			});
@@ -842,7 +846,7 @@ describe('SkillService user actions', () => {
 		it('moves the skill and saves it in one transaction, then refreshes after the commit', async () => {
 			projectScopeService.hasScopes.mockResolvedValue(true);
 			repository.findProjects.mockResolvedValue(
-				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
+				new Map([['project-1', { name: 'Team', type: 'team' as const, icon: null }]]),
 			);
 			saveTrusted.mockResolvedValue(saved);
 			assertCanMove.mockResolvedValue({ projectId: null });

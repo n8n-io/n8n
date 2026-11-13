@@ -92,26 +92,36 @@ export class AgentMcpAccessService {
 			);
 		}
 
+		const updatedCount = await this.writeAvailability(agentIds, dto.availableInMCP);
+		if (!dto.agentIds) return { updatedCount };
+
+		// Per-id breakdown only for explicit `agentIds` requests; the caller
+		// uses it to confirm each requested agent landed in a known state.
+		const updatedIds = await this.findIdsInState(agentIds, dto.availableInMCP);
+		return {
+			updatedCount: updatedIds.length,
+			updatedIds,
+			unchangedIds: accessible
+				.filter((agent) => agent.availableInMCP === dto.availableInMCP)
+				.map((agent) => agent.id),
+		};
+	}
+
+	private async writeAvailability(agentIds: string[], availableInMCP: boolean): Promise<number> {
+		let updatedCount = 0;
 		for (let start = 0; start < agentIds.length; start += BULK_CHUNK_SIZE) {
-			await this.agentRepository.setAvailableInMCP(
+			updatedCount += await this.agentRepository.setAvailableInMCP(
 				agentIds.slice(start, start + BULK_CHUNK_SIZE),
-				dto.availableInMCP,
+				availableInMCP,
 			);
 		}
+		return updatedCount;
+	}
 
-		return {
-			updatedCount: toUpdate.length,
-			// Per-id breakdown only for explicit `agentIds` requests; the caller
-			// uses it to confirm each requested agent landed in a known state.
-			...(dto.agentIds
-				? {
-						updatedIds: agentIds,
-						unchangedIds: accessible
-							.filter((agent) => agent.availableInMCP === dto.availableInMCP)
-							.map((agent) => agent.id),
-					}
-				: {}),
-		};
+	/** The write skips an agent that was archived after the candidate lookup, so read the result back. */
+	private async findIdsInState(agentIds: string[], availableInMCP: boolean): Promise<string[]> {
+		const agents = await this.agentRepository.findMcpAvailabilityCandidates({ ids: agentIds });
+		return agents.filter((agent) => agent.availableInMCP === availableInMCP).map(({ id }) => id);
 	}
 
 	private async resolveCandidates(

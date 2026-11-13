@@ -121,7 +121,7 @@ describe('Test MicrosoftOneDrive, search query escaping', () => {
 		mockApiRequestAllItems.mockResolvedValue([]);
 	});
 
-	const sentPath = () => mockApiRequestAllItems.mock.calls[0][2] as string;
+	const sentPath = () => String(mockApiRequestAllItems.mock.calls[0][2]);
 
 	it.each(['file', 'folder'] as const)(
 		'keeps a quote in the %s query inside its literal',
@@ -130,7 +130,7 @@ describe('Test MicrosoftOneDrive, search query escaping', () => {
 
 			await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
-			expect(sentPath()).toBe("/drive/root/search(q='a''b')");
+			expect(sentPath()).toBe("/root/search(q='a''b')");
 		},
 	);
 
@@ -139,6 +139,6 @@ describe('Test MicrosoftOneDrive, search query escaping', () => {
 
 		await microsoftOneDrive.execute.call(mockExecuteFunctions);
 
-		expect(sentPath()).toBe("/drive/root/search(q='a%3Fb%23c')");
+		expect(sentPath()).toBe("/root/search(q='a%3Fb%23c')");
 	});
 });

@@ -83,6 +83,7 @@ import { WorkflowActivationBadRequestError } from '@/errors/response-errors/work
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -146,9 +147,13 @@ type WorkflowUpdateOptions = {
 	allowUnresolvedErrorWorkflow?: boolean;
 	/** The history version this update restores, so its nodes keep their credentials. */
 	restoredFromVersionId?: string;
+	/** What happens when a read-only node has edits. `restore` keeps the stored node `reject` fails the save. */
+	readOnlyNodeEdits?: 'restore' | 'reject';
+	/** Node fields the caller's payload never carries. The credential guard strips these when comparing with a saved node. */
+	unsentNodeFields?: readonly string[];
 };
 
-type PreparedWorkflowUpdate = {
+export type PreparedWorkflowUpdate = {
 	user: User;
 	previousWorkflow: WorkflowEntity;
 	workflow: WorkflowEntity;
@@ -593,6 +598,8 @@ export class WorkflowService {
 			allowArchivedUpdate = false,
 			allowUnresolvedErrorWorkflow = false,
 			restoredFromVersionId,
+			readOnlyNodeEdits = 'restore',
+			unsentNodeFields = [],
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:update',
@@ -636,7 +643,8 @@ export class WorkflowService {
 
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
-		// cannot access and revert edits to existing read-only credential nodes.
+		// cannot access and revert edits to existing read-only credential nodes. A caller that
+		// sets `readOnlyNodeEdits` to `reject` fails the save instead, because it cannot see the restore.
 		// Runs after replaceInvalidCredentials so old-format/name references are
 		// already resolved to IDs before the check.
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
@@ -668,6 +676,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
+				{ readOnlyNodeEdits, unsentNodeFields },
 			);
 		}
 
@@ -1062,6 +1071,8 @@ export class WorkflowService {
 		try {
 			await this.activeWorkflowManager.add(workflowId, mode, undefined, {
 				actor: { kind: 'user', user },
+				// The publish record for this user is written only after `add` succeeds.
+				publisherId: user.id,
 			});
 			didPublish = true;
 		} catch (error) {
@@ -1069,19 +1080,22 @@ export class WorkflowService {
 			// e.g. a Schedule Trigger before throwing; this ensures they get deregistered,
 			// which otherwise may cause them to start unintended executions.
 			// Done before the rollback below so the active version is still
-			// resolvable by `clearWebhooks`.
-			try {
-				await this.activeWorkflowManager.remove(workflowId);
+			// resolvable by `clearWebhooks`. A credential refusal registers nothing,
+			// and the teardown would call the trigger nodes with the refused credentials.
+			if (!(error instanceof TriggerCredentialAccessError)) {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
 
-				this.logger.warn(
-					`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
-					{ workflowId },
-				);
-			} catch (cleanupError) {
-				this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
-					workflowId,
-					error: cleanupError,
-				});
+					this.logger.warn(
+						`Rolled back partial activation of workflow "${workflowId}"; triggers deregistered`,
+						{ workflowId },
+					);
+				} catch (cleanupError) {
+					this.logger.error(`Failed to roll back partial activation of workflow "${workflowId}"`, {
+						workflowId,
+						error: cleanupError,
+					});
+				}
 			}
 
 			const rollbackPayload = {

@@ -10,6 +10,8 @@ import {
 	validateBedrockEndpointOverride,
 	type AWSRegion,
 } from 'n8n-nodes-base/aws-credentials';
+import type { NodeEgressFilter } from 'n8n-workflow';
+import type { AgentOptions } from 'node:http';
 
 import { ResponseLimitedNodeHttpHandler } from './ResponseLimitedNodeHttpHandler';
 
@@ -29,20 +31,29 @@ const KEEP_ALIVE_AGENT_OPTIONS = { keepAlive: true, keepAliveMsecs: 30_000 };
  * so a response idle longer than an on-path NAT/LB idle timeout is silently blackholed and
  * the node hangs. The HTTP/1.1 handler arms keepalive per request from the agent's settings.
  */
-export function createBedrockRuntimeClient(params: {
+export async function createBedrockRuntimeClient(params: {
 	region: AWSRegion;
 	credentials: AwsCredentialIdentity | AwsCredentialIdentityProvider;
 	bedrockRuntimeEndpoint?: string;
 	maxRetries?: number;
 	timeout?: number;
-}): BedrockRuntimeClient {
-	const { region, credentials, bedrockRuntimeEndpoint, maxRetries, timeout } = params;
+	egressFilter: NodeEgressFilter;
+}): Promise<BedrockRuntimeClient> {
+	const { region, credentials, bedrockRuntimeEndpoint, maxRetries, timeout, egressFilter } = params;
 
 	// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
 	const endpoint = bedrockRuntimeEndpoint
 		? validateBedrockEndpointOverride(bedrockRuntimeEndpoint, region)
 		: `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
 	const proxyAgent = getNodeProxyAgent(endpoint, KEEP_ALIVE_AGENT_OPTIONS);
+
+	// An override is checked up front because Node never passes an IP-literal host to `lookup`.
+	let agentOptions: AgentOptions = KEEP_ALIVE_AGENT_OPTIONS;
+	if (bedrockRuntimeEndpoint) {
+		const validation = await egressFilter.validateUrl(endpoint);
+		if (!validation.ok) throw validation.error;
+		agentOptions = { ...KEEP_ALIVE_AGENT_OPTIONS, lookup: egressFilter.createSecureLookup() };
+	}
 
 	const clientConfig: BedrockRuntimeClientConfig = {
 		region,
@@ -55,8 +66,8 @@ export function createBedrockRuntimeClient(params: {
 	if (maxRetries !== undefined) clientConfig.maxAttempts = maxRetries + 1;
 
 	const requestHandlerOptions: NodeHttpHandlerOptions = {
-		httpAgent: proxyAgent ?? KEEP_ALIVE_AGENT_OPTIONS,
-		httpsAgent: proxyAgent ?? KEEP_ALIVE_AGENT_OPTIONS,
+		httpAgent: proxyAgent ?? agentOptions,
+		httpsAgent: proxyAgent ?? agentOptions,
 	};
 	if (timeout !== undefined) {
 		requestHandlerOptions.requestTimeout = timeout;

@@ -202,6 +202,8 @@ export {
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
 } from './schemas/workflow-version.schema';
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
@@ -214,6 +216,7 @@ export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
 export type {
 	DependencyType,
 	DependencyResourceType,
+	DependencyVersion,
 	ResolvedDependency,
 	ResolvedDependenciesResult,
 	DependenciesBatchResponse,
@@ -224,11 +227,7 @@ export type {
 	DependencyCountsBatchResponse,
 } from './schemas/dependency-counts.schema';
 
-export type {
-	ProjectType,
-	ProjectIcon,
-	ProjectRelation,
-} from './schemas/project.schema';
+export type { ProjectType, ProjectIcon, ProjectRelation } from './schemas/project.schema';
 
 export {
 	isSourceControlledFileStatus,
@@ -369,7 +368,10 @@ export type {
 
 export {
 	MIGRATION_REPORT_TARGET_VERSION,
+	breakingChangeAssistantActionSchema,
+	breakingChangeInstanceIssueSchema,
 	breakingChangeRuleImpactSchema,
+	breakingChangeWorkflowIssueSchema,
 	breakingChangeVersionSchema,
 	migrationFindingStatusSchema,
 	migrationFindingTriageStatusSchema,
@@ -776,6 +778,17 @@ export type {
 } from './schemas/assistant-thread-tabs.schema';
 
 export {
+	assistantAgentTargetSchema,
+	assistantAgentPreviewSessionSchema,
+} from './schemas/assistant-agent-targets.schema';
+export type {
+	AssistantAgentTarget,
+	AssistantAgentPreviewSession,
+	AssistantAgentTargetsState,
+	AssistantAgentTargetsResponse,
+} from './schemas/assistant-agent-targets.schema';
+
+export {
 	instanceAiSetupCredentialSelectionKey,
 	instanceAiSetupCredentialAppliedKey,
 	readPendingInstanceAiSetupCredentialSelections,
@@ -1067,3 +1080,10 @@ export {
 	type ScimTransferTargetProject,
 	type ScimTransferTargetsResponse,
 } from './schemas/scim-config.schema';
+export {
+	EXECUTION_LIMIT_MAX_EXECUTIONS_CEILING,
+	EXECUTION_LIMIT_PERIOD_UNITS,
+	executionLimitSettingsSchema,
+	type ExecutionLimitPeriodUnit,
+	type ExecutionLimitSettings,
+} from './schemas/execution-limit-settings.schema';

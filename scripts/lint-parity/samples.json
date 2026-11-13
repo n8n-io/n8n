@@ -380,6 +380,12 @@
 		"src/__tests__/setup.ts",
 		"src/index.ts"
 	],
+	"packages/modules/promotions/frontend": [
+		"src/__tests__/bindings.fixtures.ts",
+		"src/__tests__/design-system-icons.test.ts",
+		"src/components/ApplyInstanceDialog.vue",
+		"src/composables/useInstancePromotionConnection.ts"
+	],
 	"packages/node-dev": ["src/Build.ts"],
 	"packages/nodes-base": [
 		"credentials/ActionNetworkApi.credentials.ts",

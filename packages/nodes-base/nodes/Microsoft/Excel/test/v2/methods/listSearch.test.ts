@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -27,7 +27,7 @@ const FOLDER = {
 	folder: { childCount: 2 },
 };
 
-const DEFAULT_QUERY = "/drive/root/search(q='.xlsx OR .xlsm')";
+const DEFAULT_QUERY = requestPath`/root/search(q='.xlsx%20OR%20.xlsm')`;
 const DEFAULT_QS = { select: 'id,name,webUrl,file', $top: 100 };
 
 describe('Microsoft Excel V2 - listSearch', () => {
@@ -72,7 +72,7 @@ describe('Microsoft Excel V2 - listSearch', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				"/drive/root/search(q='q4')",
+				requestPath`/root/search(q='q4')`,
 				undefined,
 				DEFAULT_QS,
 				undefined,
@@ -89,7 +89,23 @@ describe('Microsoft Excel V2 - listSearch', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				"/drive/root/search(q='a''b%3F%23')",
+				requestPath`/root/search(q='a''b%3F%23')`,
+				undefined,
+				DEFAULT_QS,
+				undefined,
+				undefined,
+				0,
+			);
+		});
+
+		it('sends a dot-only search as quoted search text', async () => {
+			apiRequest.mockResolvedValue({ value: [] });
+
+			await searchWorkbooks.call(ctx, '..');
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/root/search(q='..')`,
 				undefined,
 				DEFAULT_QS,
 				undefined,
@@ -131,7 +147,15 @@ describe('Microsoft Excel V2 - listSearch', () => {
 
 			const result = await searchWorkbooks.call(ctx, undefined, token);
 
-			expect(apiRequest).toHaveBeenCalledWith('GET', '', undefined, undefined, token, undefined, 0);
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath``,
+				undefined,
+				undefined,
+				token,
+				undefined,
+				0,
+			);
 			expect(result).toEqual({
 				results: [{ name: 'Budget', value: 'wb1', url: 'https://c/wb1' }],
 				paginationToken: nextLink,

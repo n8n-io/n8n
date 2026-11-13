@@ -1,10 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { stampItemIndexOnError } from '../../../../GenericFunctions';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest, toWorkbookId } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
 const properties: INodeProperties[] = [workbookRLC];
@@ -25,15 +25,18 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = this.getNodeParameter('workbook', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const workbookId = toWorkbookId.call(
+				this,
+				this.getNodeParameter('workbook', i, undefined, {
+					extractValue: true,
+				}) as string,
+			);
 
 			try {
 				await microsoftApiRequest.call(
 					this,
 					'DELETE',
-					`/drive/items/${workbookId}`,
+					requestPath`/items/${workbookId}`,
 					undefined,
 					undefined,
 					undefined,

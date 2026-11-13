@@ -1,0 +1,80 @@
+name: 'Release: Setup Trusted Publishing for unpublished packages'
+
+on:
+  workflow_call:
+    inputs:
+      setup_required:
+        description: 'Whether to find and configure unpublished packages'
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      packages:
+        description: 'JSON array of packages that required an initial publish'
+        value: ${{ jobs.detect-new-packages.outputs.packages }}
+    secrets:
+      NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      setup_required:
+        description: 'Whether to find and configure unpublished packages'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  detect-new-packages:
+    name: Find unpublished packages
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.detect.outputs.packages-json || '[]' }}
+    steps:
+      - name: Skip setup for non-minor release
+        if: inputs.setup_required == false
+        run: echo 'Trusted publishing setup is only required for minor releases.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout
+        if: inputs.setup_required
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        if: inputs.setup_required
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Find unpublished packages
+        id: detect
+        if: inputs.setup_required
+        run: node .github/scripts/detect-new-packages.mjs --report-only --strict
+
+      - name: Summarize unpublished packages
+        if: inputs.setup_required
+        env:
+          PACKAGES: ${{ steps.detect.outputs.packages }}
+        run: |
+          if [ -z "$PACKAGES" ]; then
+            echo 'All public packages are already published.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Packages that require trusted publishing setup: $PACKAGES" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  setup-trusted-publishing:
+    name: Setup ${{ matrix.package.name }}
+    needs: [detect-new-packages]
+    if: needs.detect-new-packages.outputs.packages != '[]'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        package: ${{ fromJSON(needs.detect-new-packages.outputs.packages) }}
+    uses: ./.github/workflows/release-publish-new-package.yml
+    with:
+      package-path: ${{ matrix.package.path }}
+    secrets: inherit

@@ -25,7 +25,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/v3/contacts/attributes/{{$parameter.attributeCategory}}/{{encodeURI($parameter.attributeName)}}',
+						url: '=/v3/contacts/attributes/{{ toPathSegment($parameter.attributeCategory) }}/{{ toPathSegment($parameter.attributeName) }}',
 					},
 					output: {
 						postReceive: [
@@ -62,7 +62,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/v3/contacts/attributes/{{$parameter.updateAttributeCategory}}/{{encodeURI($parameter.updateAttributeName)}}',
+						url: '=/v3/contacts/attributes/{{ toPathSegment($parameter.updateAttributeCategory) }}/{{ toPathSegment($parameter.updateAttributeName) }}',
 					},
 				},
 				action: 'Update an attribute',
@@ -73,7 +73,7 @@ export const attributeOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/v3/contacts/attributes/{{$parameter.deleteAttributeCategory}}/{{encodeURI($parameter.deleteAttributeName)}}',
+						url: '=/v3/contacts/attributes/{{ toPathSegment($parameter.deleteAttributeCategory) }}/{{ toPathSegment($parameter.deleteAttributeName) }}',
 					},
 					output: {
 						postReceive: [

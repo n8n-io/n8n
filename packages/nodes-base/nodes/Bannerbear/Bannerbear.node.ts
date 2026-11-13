@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
 import { imageFields, imageOperations } from './ImageDescription';
@@ -67,7 +67,7 @@ export class Bannerbear implements INodeType {
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const templates = await bannerbearApiRequest.call(this, 'GET', '/templates');
+				const templates = await bannerbearApiRequest.call(this, 'GET', requestPath`/templates`);
 				for (const template of templates) {
 					const templateName = template.name;
 					const templateId = template.uid;
@@ -87,7 +87,7 @@ export class Bannerbear implements INodeType {
 				const { available_modifications } = await bannerbearApiRequest.call(
 					this,
 					'GET',
-					`/templates/${templateId}`,
+					requestPath`/templates/${templateId}`,
 				);
 				for (const modification of available_modifications) {
 					const modificationName = modification.name;
@@ -137,7 +137,7 @@ export class Bannerbear implements INodeType {
 							}
 						}
 					}
-					responseData = await bannerbearApiRequest.call(this, 'POST', '/images', body);
+					responseData = await bannerbearApiRequest.call(this, 'POST', requestPath`/images`, body);
 					if (additionalFields.waitForImage && responseData.status !== 'completed') {
 						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
 
@@ -145,7 +145,7 @@ export class Bannerbear implements INodeType {
 							let data: IDataObject = {};
 							return await new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {
-									data = await bannerbearApiRequest.call(this, 'GET', `/images/${uid}`);
+									data = await bannerbearApiRequest.call(this, 'GET', requestPath`/images/${uid}`);
 
 									if (data.status === 'completed') {
 										clearInterval(timeout);
@@ -165,18 +165,26 @@ export class Bannerbear implements INodeType {
 				//https://developers.bannerbear.com/#get-a-specific-image
 				if (operation === 'get') {
 					const imageId = this.getNodeParameter('imageId', i) as string;
-					responseData = await bannerbearApiRequest.call(this, 'GET', `/images/${imageId}`);
+					responseData = await bannerbearApiRequest.call(
+						this,
+						'GET',
+						requestPath`/images/${imageId}`,
+					);
 				}
 			}
 			if (resource === 'template') {
 				//https://developers.bannerbear.com/#get-a-specific-template
 				if (operation === 'get') {
 					const templateId = this.getNodeParameter('templateId', i) as string;
-					responseData = await bannerbearApiRequest.call(this, 'GET', `/templates/${templateId}`);
+					responseData = await bannerbearApiRequest.call(
+						this,
+						'GET',
+						requestPath`/templates/${templateId}`,
+					);
 				}
 				//https://developers.bannerbear.com/#list-templates
 				if (operation === 'getAll') {
-					responseData = await bannerbearApiRequest.call(this, 'GET', '/templates');
+					responseData = await bannerbearApiRequest.call(this, 'GET', requestPath`/templates`);
 				}
 			}
 			if (Array.isArray(responseData)) {

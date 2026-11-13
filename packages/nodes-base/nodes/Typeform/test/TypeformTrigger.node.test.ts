@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../GenericFunctions';
 import { TypeformTrigger } from '../TypeformTrigger.node';
@@ -84,7 +84,7 @@ describe('TypeformTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(apiRequest).toHaveBeenCalledWith('GET', `forms/${formId}/webhooks`, {});
+			expect(apiRequest).toHaveBeenCalledWith('GET', requestPath`forms/${formId}/webhooks`, {});
 			expect(mockHookFunctions.getWorkflowStaticData).toHaveBeenCalledWith('node');
 		});
 
@@ -156,7 +156,9 @@ describe('TypeformTrigger', () => {
 			expect(randomBytes).toHaveBeenCalledWith(32);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'PUT',
-				expect.stringContaining(`forms/${formId}/webhooks/n8n-`),
+				expect.objectContaining({
+					value: expect.stringContaining(`forms/${formId}/webhooks/n8n-`),
+				}),
 				{
 					url: webhookUrl,
 					enabled: true,
@@ -217,7 +219,7 @@ describe('TypeformTrigger', () => {
 			expect(result).toBe(true);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'DELETE',
-				`forms/${formId}/webhooks/${webhookId}`,
+				requestPath`forms/${formId}/webhooks/${webhookId}`,
 				{},
 			);
 			expect(webhookData.webhookId).toBeUndefined();
