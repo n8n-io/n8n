@@ -2752,7 +2752,7 @@ describe('Promotions in Public API', () => {
 				expect(initial).toHaveBeenCalledWith(
 					id,
 					expect.objectContaining({ id: owner.id }),
-					undefined,
+					{},
 					'other',
 					undefined,
 				);
@@ -2824,25 +2824,26 @@ describe('Promotions in Public API', () => {
 				const service = Container.get(PromotionsService);
 				const initial = vi.spyOn(service, 'apply').mockResolvedValue(result);
 				const continuation = vi.spyOn(service, 'continueApply').mockResolvedValue(result);
+				const reviewedBody = { ...continueBody, expectedPreviewRevision: 'b'.repeat(64) };
 				try {
 					for (const route of ['apply', 'apply/continue']) {
 						const response = await agent
 							.post(`/promotions/environments/${id}/${route}`)
-							.send(continueBody);
+							.send(reviewedBody);
 						expect(response.status, JSON.stringify(response.body)).toBe(200);
 						expect(response.body).toEqual(result);
 					}
 					expect(initial).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody.expectedSource,
+						reviewedBody,
 						'other',
 						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
-						continueBody,
+						reviewedBody,
 						'other',
 						undefined,
 					);

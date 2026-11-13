@@ -607,9 +607,14 @@ it('answers for a destination that has only an apply environment', async () => {
 	await agent.get(endpoint).expect(404);
 }, 30_000);
 
-it.each([{ tags: 'enabled' }, { tags: 'disabled' }])(
-	'lists nothing after apply, although the destination mints its own version, with workflow tags $tags',
-	async ({ tags }) => {
+it.each([
+	{ scope: 'project', tags: 'enabled' },
+	{ scope: 'project', tags: 'disabled' },
+	{ scope: 'instance', tags: 'enabled' },
+	{ scope: 'instance', tags: 'disabled' },
+])(
+	'lists nothing after apply in the $scope preview with workflow tags $tags',
+	async ({ scope, tags }) => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Destination', owner);
 		const workflow = await createWorkflow({ name: 'Orders', nodes: [], connections: {} }, project);
@@ -640,7 +645,10 @@ it.each([{ tags: 'enabled' }, { tags: 'disabled' }])(
 		// The destination still runs the previous content under a version of its own.
 		await workflows.update(workflow.id, { versionId: 'destination-version', nodes: [] });
 		const agent = server.publicApiAgentWithCookie(owner);
-		const endpoint = `/promotions/projects/${project.id}/changes/apply`;
+		const endpoint =
+			scope === 'instance'
+				? `/promotions/environments/${environments.apply.id}/changes`
+				: `/promotions/projects/${project.id}/changes/apply`;
 		const changed = async () => changedResources((await agent.get(endpoint).expect(200)).body);
 		const summary = (await agent.get(endpoint).expect(200)).body;
 		expect(changedResources(summary)).toEqual([
@@ -1080,6 +1088,10 @@ describe('resources in the preview', () => {
 			// With workflow tags disabled, Apply changes no tag and no tag mapping.
 			Container.get(GlobalConfig).tags.disabled = true;
 			expect(changedResources((await agent.get(endpoint).expect(200)).body)).toEqual([]);
+			const instancePreview = await agent
+				.get(`/promotions/environments/${environments.apply.id}/changes`)
+				.expect(200);
+			expect(changedResources(instancePreview.body)).toEqual([]);
 		},
 		30_000,
 	);

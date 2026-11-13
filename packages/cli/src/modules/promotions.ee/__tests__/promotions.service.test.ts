@@ -2580,7 +2580,7 @@ describe('PromotionsService', () => {
 
 				const attempt =
 					method === 'apply'
-						? service.apply(ENVIRONMENT_ID, actor, request.expectedSource)
+						? service.apply(ENVIRONMENT_ID, actor, request)
 						: service.continueApply(ENVIRONMENT_ID, actor, request);
 
 				await expect(attempt).rejects.toThrow(PromotionLockLostError);

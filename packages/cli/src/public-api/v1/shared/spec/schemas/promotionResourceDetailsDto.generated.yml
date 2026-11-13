@@ -1,0 +1,13 @@
+type: object
+properties:
+  details:
+    type: array
+    items:
+      $ref: promotionResourceDetail.generated.yml
+  missingKeys:
+    type: array
+    items:
+      type: string
+required:
+  - details
+  - missingKeys
