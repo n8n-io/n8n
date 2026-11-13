@@ -125,7 +125,11 @@ export type {
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,
+	RedisWorkQueueOptions,
+	WorkQueueConsumerClient,
+	WorkQueuePublisherClient,
 } from './queue';
+export { RedisWorkQueue, orchestrationMessageSchema, stepMessageSchema } from './queue';
 
 export {
 	attachStepErrorDetails,
