@@ -9,6 +9,7 @@ import {
 	N8nLink,
 	N8nText,
 } from '@n8n/design-system';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
@@ -210,6 +211,7 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
+const { canScrollBottom } = useScrollEdges(scrollRef, { axis: 'vertical' });
 const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
 
 /** True when the bubble of `message` shows something besides host events. */
@@ -708,7 +710,12 @@ watch(
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+	<div
+		ref="scrollRef"
+		:class="$style.messages"
+		:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+		@scroll.passive="onScroll"
+	>
 		<template v-for="group in displayGroups" :key="group.id">
 			<div
 				v-if="dividerLabels.has(group.id)"
@@ -1133,6 +1140,8 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/mixins' as scroll-mask;
+
 .messages {
 	flex: 1;
 	width: 100%;
@@ -1145,11 +1154,8 @@ watch(
 	gap: var(--spacing--sm);
 	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
+	@include scroll-mask.scroll-mask-when-bottom;
 
-	// AGENT: use mixin instead
-	mask-image: linear-gradient(to bottom, black 0%, black 95%, transparent 100%);
-
-	// AGENT: Use mixin insteasd
 	scrollbar-width: none;
 	&::-webkit-scrollbar {
 		display: none;
