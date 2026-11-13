@@ -277,9 +277,9 @@ pnpm dev
    pnpm start
    ```
 4. Create tests
-5. Run all [tests](#test-suite):
+5. Run the [tests](#test-suite) for the packages that you changed and for the packages that depend on them:
    ```
-   pnpm test
+   pnpm test:affected
    ```
 6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
@@ -652,15 +652,28 @@ We use AI tools ourselves and we welcome AI-assisted contributions. The problem 
 
 #### Unit tests
 
-Unit tests can be started via:
+To run the tests of one package, use one of these commands:
 
 ```
-pnpm test
+pnpm --filter <package-name> test
+pnpm --filter <package-name> test <test-file>
 ```
 
-If that gets executed in one of the package folders it will only run the tests
-of this package. If it gets executed in the n8n-root folder it will run all
-tests of all packages.
+You can also run `pnpm test` in the package folder. The package name is the
+`name` field in the `package.json` of the package. For example, `packages/cli`
+is `n8n`.
+
+To run the tests of the packages that you changed and of all packages that
+depend on them, run this command in the root folder:
+
+```
+pnpm test:affected
+```
+
+In the root folder, `pnpm test` runs the tests of all packages. This takes a
+long time, and some packages need Docker. On each pull request, CI runs the
+tests of the packages that your change affects. Run `pnpm test:affected`
+locally to get the same coverage before you push.
 
 If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
 
