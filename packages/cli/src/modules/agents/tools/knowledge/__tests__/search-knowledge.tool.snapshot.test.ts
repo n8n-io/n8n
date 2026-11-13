@@ -2,6 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { mock } from 'vitest-mock-extended';
 
+import type { KnowledgeRetriever } from '@/modules/knowledge/knowledge-retriever';
 import type {
 	AgentKnowledgeFileReference,
 	GlobKnowledgeFilesResult,
@@ -9,15 +10,14 @@ import type {
 	SearchKnowledgeResult,
 } from '@/modules/knowledge/retrieval/retrieval-schemas';
 
-import type { AgentKnowledgeMirrorService } from '../../../agent-knowledge-mirror.service';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 /**
  * The contract of the knowledge tools with the model: what the model sees of
- * each tool, and what it gets back for a given result. Moving the retrieval
- * code into the knowledge module must not change any of it, so the snapshot
- * file is the proof. Update it only together with a deliberate change to a
- * tool, never to make a move pass.
+ * each tool, and what it gets back for a given result. The snapshot was taken
+ * before the retrieval code moved into the knowledge module and must stay
+ * byte-identical across moves. Update it only together with a deliberate
+ * change to a tool, never to make a move pass.
  */
 
 const projectId = 'project-1';
@@ -114,11 +114,10 @@ const fixtures: {
 
 const failure = new Error('sandbox unavailable');
 
-function buildTools(knowledgeMirrorService: AgentKnowledgeMirrorService): BuiltTool[] {
+function buildTools(retriever: KnowledgeRetriever): BuiltTool[] {
 	return createKnowledgeRetrievalTools({
-		projectId,
-		agentId,
-		knowledgeMirrorService,
+		scope: { kind: 'agent', projectId, agentId },
+		retriever,
 		startToolCall: () => () => {},
 	}).map((builder) => builder.build());
 }
@@ -154,15 +153,15 @@ async function callTool(tool: BuiltTool, input: unknown) {
 
 describe('knowledge retrieval tools contract', () => {
 	it('exposes the same tools, in the same order, with the same definitions', () => {
-		const tools = buildTools(mock<AgentKnowledgeMirrorService>());
+		const tools = buildTools(mock<KnowledgeRetriever>());
 
 		expect(tools.map(toModelFacingDefinition)).toMatchSnapshot();
 	});
 
 	it('returns the same find_file output and model output', async () => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.globKnowledgeFiles.mockResolvedValue(fixtures.findFiles);
-		const tool = getTool(buildTools(knowledgeMirrorService), 'find_file');
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.findFiles.mockResolvedValue(fixtures.findFiles);
+		const tool = getTool(buildTools(retriever), 'find_file');
 
 		await expect(
 			callTool(tool, { pattern: '*.txt', limit: 20, offset: 0 }),
@@ -172,9 +171,9 @@ describe('knowledge retrieval tools contract', () => {
 	it.each(['content', 'files_with_matches', 'count'] as const)(
 		'returns the same search_text output and model output in %s mode',
 		async (outputMode) => {
-			const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-			knowledgeMirrorService.searchKnowledge.mockResolvedValue(fixtures.searchText[outputMode]);
-			const tool = getTool(buildTools(knowledgeMirrorService), 'search_text');
+			const retriever = mock<KnowledgeRetriever>();
+			retriever.searchText.mockResolvedValue(fixtures.searchText[outputMode]);
+			const tool = getTool(buildTools(retriever), 'search_text');
 
 			await expect(
 				callTool(tool, { pattern: 'refund', path: [fileReference.file], output_mode: outputMode }),
@@ -183,9 +182,9 @@ describe('knowledge retrieval tools contract', () => {
 	);
 
 	it('returns the same read_file output and model output', async () => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.readKnowledge.mockResolvedValue(fixtures.readFile);
-		const tool = getTool(buildTools(knowledgeMirrorService), 'read_file');
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.readFile.mockResolvedValue(fixtures.readFile);
+		const tool = getTool(buildTools(retriever), 'read_file');
 
 		await expect(
 			callTool(tool, { file: fileReference.file, ranges: [{ startLine: 1, endLine: 3 }] }),
@@ -197,11 +196,11 @@ describe('knowledge retrieval tools contract', () => {
 		['search_text', { pattern: 'refund' }],
 		['read_file', { file: fileReference.file }],
 	] as const)('returns the same %s error output when the retrieval fails', async (name, input) => {
-		const knowledgeMirrorService = mock<AgentKnowledgeMirrorService>();
-		knowledgeMirrorService.globKnowledgeFiles.mockRejectedValue(failure);
-		knowledgeMirrorService.searchKnowledge.mockRejectedValue(failure);
-		knowledgeMirrorService.readKnowledge.mockRejectedValue(failure);
-		const tool = getTool(buildTools(knowledgeMirrorService), name);
+		const retriever = mock<KnowledgeRetriever>();
+		retriever.findFiles.mockRejectedValue(failure);
+		retriever.searchText.mockRejectedValue(failure);
+		retriever.readFile.mockRejectedValue(failure);
+		const tool = getTool(buildTools(retriever), name);
 
 		await expect(callTool(tool, input)).resolves.toMatchSnapshot();
 	});
