@@ -22,7 +22,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
-import { redactMcpUrl } from './outbound-redaction';
+import { simulatorMcpUrls } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
@@ -130,9 +130,8 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
-			mcpServers: agent.tools.flatMap((tool) =>
-				tool.kind === 'mcp' && tool.url ? [{ name: tool.toolName, url: tool.url }] : [],
-			),
+			// Real URLs, to name the server of each request; the simulator gets its own URL.
+			mcpServers: described.mcpServers,
 			recordTestChat: async (current, executionId) => {
 				await this.saveTestChat(current);
 				// Before the agent runs, so the execution is a test run even if the turn never ends.
@@ -211,6 +210,7 @@ export class SimulationSessionService {
 		const hostGaps = new Map<string, string>();
 
 		const tools: SimulatedTool[] = [];
+		const mcpUrls = simulatorMcpUrls(config.mcpServers ?? []);
 		// The runtime leaves disabled tools out, so the list does too.
 		const enabledConfig = {
 			...config,
@@ -220,18 +220,19 @@ export class SimulationSessionService {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
 			const server =
 				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
+			const simulatorUrl = server ? mcpUrls.get(server.name) : undefined;
 			// A server without a description is described by its URL, which can carry a key.
 			const description =
-				server && tool.description
-					? tool.description.split(server.url).join(redactMcpUrl(server.url))
+				server && simulatorUrl && tool.description
+					? tool.description.split(server.url).join(simulatorUrl)
 					: tool.description;
 			tools.push({
 				toolName: tool.name,
 				kind,
 				...(description ? { description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
-				// The simulator matches requests to servers by this URL, redacted the same way.
-				...(server ? { url: redactMcpUrl(server.url) } : {}),
+				// The simulator matches requests to servers by this URL; the session sends the same one.
+				...(simulatorUrl ? { url: simulatorUrl } : {}),
 			});
 			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
@@ -270,6 +271,11 @@ export class SimulationSessionService {
 				instructions: config.instructions ?? '',
 				tools,
 			},
+			mcpServers: (config.mcpServers ?? []).map((server) => ({
+				name: server.name,
+				url: server.url,
+				simulatorUrl: mcpUrls.get(server.name) ?? '',
+			})),
 			hostGaps,
 		};
 	}
@@ -372,6 +378,8 @@ export class SimulationSessionService {
 
 interface DescribedAgent {
 	agent: SimulatedAgent;
+	/** Configured MCP servers with their real URL and the URL the simulator sees. */
+	mcpServers: Array<{ name: string; url: string; simulatorUrl: string }>;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
 }

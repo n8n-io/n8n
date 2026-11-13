@@ -208,3 +208,28 @@ function isPlainObject(value: object): boolean {
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
 }
+
+/**
+ * The URL the simulator sees for each MCP server, by server name. Servers whose redacted URLs
+ * are the same (one endpoint, two keys) get the server name added, so their requests stay apart.
+ */
+export function simulatorMcpUrls(
+	servers: Array<{ name: string; url: string }>,
+): Map<string, string> {
+	const redacted = servers.map((server) => ({ ...server, redacted: redactMcpUrl(server.url) }));
+	const counts = new Map<string, number>();
+	for (const { redacted: url } of redacted) counts.set(url, (counts.get(url) ?? 0) + 1);
+	return new Map(
+		redacted.map(({ name, redacted: url }) => [
+			name,
+			(counts.get(url) ?? 0) > 1 ? withServerName(url, name) : url,
+		]),
+	);
+}
+
+function withServerName(url: string, name: string): string {
+	if (url === REDACTED_MCP_URL) return `mcp-server://${encodeURIComponent(name)}`;
+	const parsed = new URL(url);
+	parsed.searchParams.set('n8n_mcp_server', name);
+	return parsed.toString();
+}
