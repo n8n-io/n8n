@@ -187,6 +187,7 @@ two levels, one step at a time:
   labels, columns and states, and believable sample content (names, numbers,
   dates) that matches the plan. Neutral grays, a plain system font, simple
   borders. No brand colors, shadows or decoration.
+  Write it for a white background. In a dark theme, n8n inverts the grays.
 - `fidelity: "high"` (only when asked): the same structure and content with
   the colors, type and style of the finished app, matching the theme of the
   blueprint.

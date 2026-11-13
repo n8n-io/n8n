@@ -2,6 +2,7 @@ import { appPlanSchema, listPlanComponents } from '../../schemas/app-plan.schema
 import { appBlueprintSchema } from '../../schemas/instance-ai.schema';
 import {
 	renderDetailModule,
+	WIREFRAME_CSS,
 	describePlanComponent,
 	sanitizeDetailHtml,
 	planOverlayScript,
@@ -314,7 +315,10 @@ describe('detail fidelity and states', () => {
 		});
 
 	it('keeps mid fidelity in grays and lets high fidelity show colors', () => {
-		expect(renderWireframeBody(part({ html: '<p>Row</p>' }))).toContain('filter:grayscale(1)');
+		expect(renderWireframeBody(part({ html: '<p>Row</p>' }))).toContain(
+			'filter:var(--wf-mid-filter,grayscale(1))',
+		);
+		expect(WIREFRAME_CSS).toMatch(/\.wf-theme-dark \{[^}]*--wf-mid-filter: grayscale\(1\) invert/);
 		expect(renderWireframeBody(part({ html: '<p>Row</p>', fidelity: 'high' }))).not.toContain(
 			'grayscale',
 		);

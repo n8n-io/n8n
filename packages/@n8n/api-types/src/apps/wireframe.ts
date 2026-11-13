@@ -211,8 +211,8 @@ const DETAIL_BASE_CSS =
 	'.wf-hifi-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400}' +
 	'.wf-states-radio{position:absolute;opacity:0;pointer-events:none}' +
 	'.wf-states{position:absolute;top:-11px;left:10px;z-index:2;display:flex;gap:2px;padding:2px;border-radius:999px;' +
-	'background:#fff;border:1px solid #d6d6d2;font:500 10.5px/16px system-ui,sans-serif}' +
-	'.wf-states label{padding:0 8px;border-radius:999px;color:#6f6f6f;cursor:pointer}' +
+	'background:var(--wf-panel,#fff);border:1px solid var(--wf-line-soft,#d6d6d2);font:500 10.5px/16px system-ui,sans-serif}' +
+	'.wf-states label{padding:0 8px;border-radius:999px;color:var(--wf-ink-soft,#6f6f6f);cursor:pointer}' +
 	'.wf-state{display:none}';
 
 /**
@@ -224,8 +224,12 @@ export function detailShadowContent(component: AppPlanComponent): string {
 	if (!component.detail) return '';
 	// CSS never needs `<`, so dropping it keeps the text from closing the style element.
 	const css = (component.detail.css ?? '').replace(/</g, '');
-	// Mid fidelity stays in grays, also when the markup brings colors.
-	const mid = component.detail.fidelity !== 'high' ? '.wf-hifi-body{filter:grayscale(1)}' : '';
+	// Mid fidelity stays in grays, also when the markup brings colors. The custom property
+	// comes from the host block and inverts the grays in a dark theme.
+	const mid =
+		component.detail.fidelity !== 'high'
+			? '.wf-hifi-body{filter:var(--wf-mid-filter,grayscale(1))}'
+			: '';
 	const states = [
 		{ name: 'With data', html: component.detail.html },
 		...(component.detail.states ?? []),
@@ -237,7 +241,7 @@ export function detailShadowContent(component: AppPlanComponent): string {
 	const switcher = states
 		.map(
 			(_, n) =>
-				`#wf-s${n}:checked~.wf-hifi-body .wf-s${n}{display:block}#wf-s${n}:checked~.wf-states label[for=wf-s${n}]{background:#2b2b2b;color:#fff}`,
+				`#wf-s${n}:checked~.wf-hifi-body .wf-s${n}{display:block}#wf-s${n}:checked~.wf-states label[for=wf-s${n}]{background:var(--wf-ink,#2b2b2b);color:var(--wf-panel,#fff)}`,
 		)
 		.join('');
 	return [
@@ -421,14 +425,17 @@ export const WIREFRAME_CSS = `
 .wf-app, .wf-block {
   --wf-ink: #2b2b2b; --wf-ink-soft: #6f6f6f; --wf-ink-faint: #a8a8a8;
   --wf-paper: #fbfbf9; --wf-panel: #ffffff; --wf-line: #2b2b2b; --wf-line-soft: #c9c9c9; --wf-wash: #f0efeb;
+  --wf-mid-filter: grayscale(1);
   --wf-font: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
 }
 @media (prefers-color-scheme: dark) { .wf-theme-both {
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
-  --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e; } }
+  --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e;
+  --wf-mid-filter: grayscale(1) invert(0.86) hue-rotate(180deg); } }
 .wf-theme-dark {
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
-  --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e; }
+  --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e;
+  --wf-mid-filter: grayscale(1) invert(0.86) hue-rotate(180deg); }
 .wf-app { font-family: var(--wf-font); font-weight: 300; font-size: 13px; color: var(--wf-ink); background: var(--wf-paper);
   min-height: 100vh; display: flex; flex-direction: column; }
 .wf-app.wf-layout-sidebar { flex-direction: row; }
