@@ -1,7 +1,7 @@
 import {
 	flexRetryDelayMs,
 	isFlexUnavailable,
-	MAX_FLEX_UNAVAILABLE_RETRIES,
+	DEFAULT_FLEX_UNAVAILABLE_RETRIES,
 } from '../flex-unavailable';
 
 describe('isFlexUnavailable', () => {
@@ -45,7 +45,7 @@ describe('flexRetryDelayMs', () => {
 	});
 
 	it('keeps the total wait within a few minutes', () => {
-		const total = Array.from({ length: MAX_FLEX_UNAVAILABLE_RETRIES }, (_, i) =>
+		const total = Array.from({ length: DEFAULT_FLEX_UNAVAILABLE_RETRIES }, (_, i) =>
 			flexRetryDelayMs(i),
 		).reduce((sum, ms) => sum + ms, 0);
 		expect(total).toBeLessThanOrEqual(5 * 60_000);

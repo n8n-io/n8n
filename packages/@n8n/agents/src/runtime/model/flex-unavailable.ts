@@ -1,8 +1,8 @@
 import { errorChain } from '@n8n/utils/errors/error-chain';
 import { isRecord } from '@n8n/utils/is-record';
 
-/** How often a turn is re-issued while OpenAI has no Flex capacity. */
-export const MAX_FLEX_UNAVAILABLE_RETRIES = 10;
+/** How often a turn is re-issued while OpenAI has no Flex capacity, unless `flexUnavailableRetries` says otherwise. */
+export const DEFAULT_FLEX_UNAVAILABLE_RETRIES = 10;
 
 const FLEX_RETRY_BASE_DELAY_MS = 1000;
 const FLEX_RETRY_MAX_DELAY_MS = 30_000;

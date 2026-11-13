@@ -2,7 +2,7 @@ import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 
 import type { StreamWriterGuard } from '../../streaming/stream-writer-guard';
 import type { RunServices } from '../run-output-sink';
-import { MAX_FLEX_UNAVAILABLE_RETRIES } from '../../model/flex-unavailable';
+import { DEFAULT_FLEX_UNAVAILABLE_RETRIES } from '../../model/flex-unavailable';
 import { StreamSink } from '../stream-sink';
 
 type MockStreamResult = Awaited<ReturnType<MockLanguageModelV3['doStream']>>;
@@ -42,13 +42,16 @@ function makeFlexUnavailableTurn(): MockStreamResult {
 	};
 }
 
-function makeSink(write = vi.fn<StreamWriterGuard['write']>().mockResolvedValue(undefined)) {
+function makeSink(
+	write = vi.fn<StreamWriterGuard['write']>().mockResolvedValue(undefined),
+	options: { flexUnavailableRetries?: number } = {},
+) {
 	const sink = new StreamSink(
 		{ write } as unknown as StreamWriterGuard,
 		{
 			modelId: 'mock/scripted',
 		} as RunServices,
-		{ modelStreamIdleTimeoutMs: 0, smoothStream: false },
+		{ modelStreamIdleTimeoutMs: 0, smoothStream: false, ...options },
 	);
 	return { sink, write };
 }
@@ -158,7 +161,7 @@ describe('StreamSink', () => {
 			const model = new MockLanguageModelV3({
 				provider: 'mock',
 				modelId: 'scripted',
-				doStream: Array.from({ length: MAX_FLEX_UNAVAILABLE_RETRIES + 1 }, () =>
+				doStream: Array.from({ length: DEFAULT_FLEX_UNAVAILABLE_RETRIES + 1 }, () =>
 					makeFlexUnavailableTurn(),
 				),
 			});
@@ -169,7 +172,39 @@ describe('StreamSink', () => {
 			await vi.advanceTimersByTimeAsync(5 * 60_000);
 			await assertion;
 
-			expect(model.doStreamCalls).toHaveLength(MAX_FLEX_UNAVAILABLE_RETRIES + 1);
+			expect(model.doStreamCalls).toHaveLength(DEFAULT_FLEX_UNAVAILABLE_RETRIES + 1);
+		});
+
+		it('retries as often as flexUnavailableRetries says', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: Array.from({ length: 4 }, () => makeFlexUnavailableTurn()),
+			});
+			const { sink } = makeSink(undefined, { flexUnavailableRetries: 2 });
+
+			const pending = sink.callModel(callContext(model));
+			const assertion = expect(pending).rejects.toHaveProperty('code', 'flex_unavailable');
+			await vi.advanceTimersByTimeAsync(5 * 60_000);
+			await assertion;
+
+			expect(model.doStreamCalls).toHaveLength(3);
+		});
+
+		it('does not retry when flexUnavailableRetries is 0', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: [makeFlexUnavailableTurn(), makeTextTurn('never reached')],
+			});
+			const { sink } = makeSink(undefined, { flexUnavailableRetries: 0 });
+
+			await expect(sink.callModel(callContext(model))).rejects.toHaveProperty(
+				'code',
+				'flex_unavailable',
+			);
+
+			expect(model.doStreamCalls).toHaveLength(1);
 		});
 
 		it('stops waiting when the run is aborted', async () => {

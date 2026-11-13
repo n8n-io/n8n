@@ -21,7 +21,7 @@ import { isEncryptedReasoningRejected } from '../model/encrypted-reasoning';
 import {
 	flexRetryDelayMs,
 	isFlexUnavailable,
-	MAX_FLEX_UNAVAILABLE_RETRIES,
+	DEFAULT_FLEX_UNAVAILABLE_RETRIES,
 } from '../model/flex-unavailable';
 import { toPromptCacheParamsError } from '../model/prompt-cache-params-error';
 import { loadAi } from '../model/lazy-ai';
@@ -221,6 +221,10 @@ export class StreamSink implements RunOutputSink<void> {
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
 		const deadlines = this.getStreamDeadlines();
+		const maxFlexRetries = Math.max(
+			0,
+			Math.floor(this.options?.flexUnavailableRetries ?? DEFAULT_FLEX_UNAVAILABLE_RETRIES),
+		);
 		let flexRetries = 0;
 		for (let attempt = 0; ; attempt++) {
 			this.resetRawReaders();
@@ -239,7 +243,7 @@ export class StreamSink implements RunOutputSink<void> {
 				// OpenAI Flex without free capacity: wait, then re-issue the turn. The rejected request is not billed.
 				if (
 					isFlexUnavailable(error) &&
-					flexRetries < MAX_FLEX_UNAVAILABLE_RETRIES &&
+					flexRetries < maxFlexRetries &&
 					!attemptState.streamedContent &&
 					!ctx.abortSignal.aborted
 				) {
