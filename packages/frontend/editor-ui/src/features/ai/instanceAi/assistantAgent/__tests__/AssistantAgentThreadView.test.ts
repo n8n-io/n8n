@@ -546,6 +546,30 @@ describe('AssistantAgentThreadView', () => {
 		]);
 	});
 
+	it('reports the response to a sent message with the context of that message', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					is_first_user_message: true,
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',

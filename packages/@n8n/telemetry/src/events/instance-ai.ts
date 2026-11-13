@@ -560,6 +560,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			tab_visible: z
 				.boolean()
 				.describe('Whether the document was visible when the response rendered'),
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
