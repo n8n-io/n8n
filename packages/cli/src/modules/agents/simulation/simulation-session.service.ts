@@ -40,6 +40,11 @@ export interface OpenSimulationInput {
 	testChatId: string;
 	/** Seeds a new world. */
 	message: string;
+	/**
+	 * The caller asked for a test run (preview chat in `test` mode). Without it a new chat runs
+	 * live even with the flag on, so nothing changes until the panel lets users choose.
+	 */
+	testRunRequested?: boolean;
 }
 
 /** Decides whether a draft run is a test run. A marked test chat stays one, also with the flag off. */
@@ -93,7 +98,10 @@ export class SimulationSessionService {
 	private async openNew(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		const thread = await this.threadRepository.findOneBy({ id: input.testChatId });
 		const stored = thread?.simulation ?? undefined;
-		if (!stored && !(await this.flagGate.isEnabled(input.user))) return undefined;
+		// A test chat stays one. A new chat is a test run only when asked for, with the flag on.
+		if (!stored && (!input.testRunRequested || !(await this.flagGate.isEnabled(input.user)))) {
+			return undefined;
+		}
 		const savedWorld = stored?.world;
 
 		const described = await this.describeAgent(input.agentId, input.projectId);

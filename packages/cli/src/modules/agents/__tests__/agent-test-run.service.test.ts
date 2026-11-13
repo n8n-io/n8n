@@ -600,10 +600,38 @@ describe('AgentTestRunService', () => {
 				projectId,
 				testChatId: 'session-1',
 				message: 'Hi',
+				testRunRequested: false,
 			});
 			expect(simulationSessions.markExecutionSimulated).not.toHaveBeenCalled();
 			expect(simulationSessions.saveTestChat).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			{ chatMode: 'test' as const, requested: true },
+			{ chatMode: 'live' as const, requested: false },
+			{ chatMode: undefined, requested: false },
+		])(
+			'asks for a test run only in test mode (mode: $chatMode)',
+			async ({ chatMode, requested }) => {
+				const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
+				agentExecutionOrchestratorService.executeForChat.mockImplementation(
+					async function* (config) {
+						await config.simulation?.(config.memory.threadId);
+						yield* [];
+						config.onExecutionRecorded?.('execution-1');
+					},
+				);
+
+				await service.executePreparedDraftRun({
+					...preparedDraftRunInput,
+					...(chatMode ? { chatMode } : {}),
+				});
+
+				expect(simulationSessions.openForDraftRun).toHaveBeenCalledWith(
+					expect.objectContaining({ testRunRequested: requested }),
+				);
+			},
+		);
 
 		it('streams each tool result with its route, marks the execution and saves the world', async () => {
 			const { service, agentExecutionOrchestratorService, simulationSessions } = makeService();
