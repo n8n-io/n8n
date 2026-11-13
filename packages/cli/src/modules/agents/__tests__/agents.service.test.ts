@@ -1,7 +1,11 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
-import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	N8N_CHAT_INTEGRATION_TYPE,
+	type ListAgentsOptions,
+} from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Telemetry } from '@/telemetry';
 import type { GlobalConfig } from '@n8n/config';
@@ -1214,7 +1218,7 @@ describe('AgentsService', () => {
 				limit: 10,
 				filter: { availableInChat: true },
 				sortBy: 'usage:desc',
-			};
+			} satisfies ListAgentsOptions;
 
 			await service.findChatReachableByUserPaginated(user, options);
 
