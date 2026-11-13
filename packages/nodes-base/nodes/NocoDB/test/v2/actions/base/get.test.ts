@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/base/get.operation';
@@ -60,28 +61,28 @@ describe('NocoDB  base get action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				`/api/v3/meta/bases/${mockBaseId}`,
+				requestPath`/api/v3/meta/bases/${mockBaseId}`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				`/api/v3/meta/bases/${mockBaseId}/tables`,
+				requestPath`/api/v3/meta/bases/${mockBaseId}/tables`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				`/api/v3/meta/bases/${mockBaseId}/tables/table1`,
+				requestPath`/api/v3/meta/bases/${mockBaseId}/tables/table1`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				expect.anything(),
 				'GET',
-				`/api/v3/meta/bases/${mockBaseId}/tables/table2`,
+				requestPath`/api/v3/meta/bases/${mockBaseId}/tables/table2`,
 				{},
 				{},
 			);

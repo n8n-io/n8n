@@ -5,11 +5,18 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	INodeParameterResourceLocator,
-	IRequestOptions,
 	JsonObject,
+	LegacyRequestOptions,
+	RequestPath,
+	RequestUrl,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import {
+	decodePathValue,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 export type ExcelCredentialType =
 	| 'microsoftExcelOAuth2Api'
@@ -26,6 +33,10 @@ export function getExcelCredentialType(
 		return selected;
 	}
 	return 'microsoftExcelOAuth2Api';
+}
+
+export function toWorkbookId(this: IExecuteFunctions | ILoadOptionsFunctions, id: string): string {
+	return this.getNode().typeVersion < 2.3 ? decodePathValue(id) : id.replaceAll('%21', '!');
 }
 
 // Validate the id shape BEFORE encoding — encodeURIComponent leaves `..` intact, so shape
@@ -68,21 +79,21 @@ export function getServicePrincipalResourceRoot(
 	target: string,
 	rawId: string,
 	node: INode,
-): string {
+): RequestPath {
 	const id = String(rawId ?? '').trim();
 	validateResourceTargetId(target, id, node);
 	switch (target) {
 		case 'drive':
-			return `/drives/${encodeURIComponent(id)}`;
+			return requestPath`/drives/${id}`;
 		case 'user':
 		default:
-			return `/users/${encodeURIComponent(id)}`;
+			return requestPath`/users/${id}`;
 	}
 }
 
 /** Appends `/drive` to a user root; `/drives/{id}` is already a drive and used as-is. */
-export function driveEndpoint(root: string): string {
-	return root.startsWith('/drives/') ? root : `${root}/drive`;
+export function driveEndpoint(root: RequestPath): RequestPath {
+	return root.value.startsWith('/drives/') ? root : requestPath`${root}/drive`;
 }
 
 /**
@@ -95,7 +106,7 @@ export function driveEndpoint(root: string): string {
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
-): string | undefined {
+): RequestPath | undefined {
 	if (getExcelCredentialType.call(this) !== 'microsoftEntraServicePrincipalApi') {
 		return undefined;
 	}
@@ -108,6 +119,17 @@ export function resolveScopeRoot(
 	return getServicePrincipalResourceRoot(target, id, this.getNode());
 }
 
+function driveResourceUri(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	apiUrl: string,
+	resource: RequestPath,
+	itemIndex: number,
+): RequestUrl {
+	const scopeRoot = resolveScopeRoot.call(this, itemIndex);
+	const drive = scopeRoot ? driveEndpoint(scopeRoot) : requestPath`/me/drive`;
+	return requestUrl`${apiUrl}${drive}${resource}`;
+}
+
 // `itemIndex` is REQUIRED so the compiler enforces the per-item contract: execute
 // call sites pass the loop index (batch ops pass a literal 0, matching their item-0
 // param reads); loadOptions/listSearch call sites pass a literal 0, where
@@ -115,7 +137,7 @@ export function resolveScopeRoot(
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
 	uri: string | undefined,
@@ -131,30 +153,23 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
-	// App-only has no `/me`; rebase page-1 onto the item's user/drive root. Absolute `@odata.nextLink` pages pass through.
-	if (!uri && isServicePrincipal) {
-		const driveScopeRoot = resolveScopeRoot.call(this, itemIndex);
-		if (driveScopeRoot) {
-			// Programmer error, not user input: every Excel resource is `/drive`-rooted.
-			if (!resource.startsWith('/drive')) {
-				throw new OperationalError(
-					`microsoftApiRequest: scoped resource must start with "/drive" (got "${resource}")`,
-				);
-			}
-			// driveEndpoint already lands on the drive, so drop the leading `/drive` from resource.
-			uriToUse = `${baseUrl}/v1.0${driveEndpoint(driveScopeRoot)}${resource.slice('/drive'.length)}`;
-		}
+	if (uri && (!URL.canParse(uri) || new URL(uri).origin !== new URL(baseUrl).origin)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
 	}
 
-	const options: IRequestOptions = {
+	const options: LegacyRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: uriToUse,
+		...(uri
+			? { uri }
+			: { uri: driveResourceUri.call(this, `${baseUrl}/v1.0`, resource, itemIndex) }),
 		json: true,
 	};
 	try {
@@ -176,7 +191,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 	itemIndex: number,
@@ -212,7 +227,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 	itemIndex: number,

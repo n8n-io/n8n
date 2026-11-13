@@ -3,6 +3,7 @@ import {
 	type IExecuteFunctions,
 	type IDataObject,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
@@ -153,7 +154,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const me = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/me',
+		requestPath`/v1.0/me`,
 		{},
 		// `userType` is not in the default `/me` property set, so it has to be selected. The
 		// principal name is the dedupe seed below, so it has to come along.
@@ -255,5 +256,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// Graph rejects a topic on a one-on-one chat.
 	if (chatType === 'group' && topic) body.topic = topic;
 
-	return await microsoftApiRequest.call(this, 'POST', '/v1.0/chats', body);
+	return await microsoftApiRequest.call(this, 'POST', requestPath`/v1.0/chats`, body);
 }

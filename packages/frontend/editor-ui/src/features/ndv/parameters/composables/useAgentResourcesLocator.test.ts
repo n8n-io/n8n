@@ -290,7 +290,7 @@ describe('useAgentResourcesLocator', () => {
 		};
 		listAgentsPage.mockResolvedValue({
 			count: 1,
-			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1', schema: { personalisation } }],
+			data: [{ id: 'a1', name: 'Agent 1', projectId: 'proj-1', personalisation }],
 		});
 
 		const { setAgentsResources, agentsResources } = useAgentResourcesLocator(

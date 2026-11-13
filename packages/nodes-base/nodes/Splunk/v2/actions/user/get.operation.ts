@@ -1,7 +1,9 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { userRLC } from '../../helpers/descriptions';
+import { toPathValue } from '../../helpers/utils';
 import { splunkApiJsonRequest } from '../../transport';
 
 const properties: INodeProperties[] = [userRLC];
@@ -22,7 +24,7 @@ export async function execute(
 	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
 
 	const userId = this.getNodeParameter('userId', i, '', { extractValue: true }) as string;
-	const endpoint = `/services/authentication/users/${userId}`;
+	const endpoint = requestPath`/services/authentication/users/${toPathValue(this.getNode().typeVersion, userId)}`;
 
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint);
 

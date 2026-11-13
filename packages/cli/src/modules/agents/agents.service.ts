@@ -57,6 +57,7 @@ import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentServiceAccountService } from './agent-service-account.service';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -74,6 +75,7 @@ import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-f
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
@@ -138,6 +140,23 @@ type DraftAgentCreateOptions = {
 
 export type AgentCreationResult = AgentCreationState & { agent: ProjectAgent };
 
+/**
+ * Metadata of a deleted agent, captured before the row is removed.
+ * `Repository.remove` clears the entity's id, so the snapshot must be
+ * composed first.
+ */
+export type DeletedAgentSnapshot = Pick<
+	ProjectAgent,
+	| 'id'
+	| 'name'
+	| 'projectId'
+	| 'availableInMCP'
+	| 'versionId'
+	| 'activeVersionId'
+	| 'createdAt'
+	| 'updatedAt'
+>;
+
 @Service()
 export class AgentsService {
 	constructor(
@@ -165,6 +184,7 @@ export class AgentsService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
 	/**
@@ -308,6 +328,7 @@ export class AgentsService {
 		options: DraftAgentCreateOptions,
 	) {
 		return await this.transactionRunner.run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			// Insert-only: a reused client id must not overwrite the winning draft.
 			await this.agentRepository.insertNew(agent, ctx);
 			if (options.tagIds !== undefined) {
@@ -441,6 +462,7 @@ export class AgentsService {
 			{ projectId },
 		);
 		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			try {
 				await this.agentRepository.insertNew(agent, ctx);
 			} catch (error) {
@@ -489,9 +511,14 @@ export class AgentsService {
 				(credential) => credential.id,
 			),
 		);
+		// A copy adds every credential it keeps, so each one needs usage rights, not only read access.
+		const referencedIds = new Set<string>();
+		visitAgentCredentialReferences(schema, ({ id }) => {
+			if (accessibleCredentialIds.has(id)) referencedIds.add(id);
+		});
 		const sanitized = sanitizeUnknownAgentCredentials(
 			sanitizeAgentJsonConfig(schema),
-			accessibleCredentialIds,
+			await this.configPreparation.filterUsableCredentialIds(referencedIds, user),
 		) as AgentJsonConfig;
 
 		const { schemaConfig, integrations } = decomposeJsonConfig(sanitized);
@@ -853,24 +880,51 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	/** `requireArchived`: reject the delete of an agent that a user did not archive first. */
+	/**
+	 * Deletes an agent and its associated resources, and returns the removed
+	 * agent's metadata so callers can report what was deleted. `projectId`
+	 * scopes the lookup to a project (internal REST); without it the agent is
+	 * resolved by ID alone (Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project). Returns `null` when
+	 * the agent does not exist or is an instance agent.
+	 *
+	 * `requireArchived`: reject the delete of an agent that a user did not
+	 * archive first.
+	 */
 	async delete(
 		agentId: string,
-		projectId: string,
+		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
-	): Promise<boolean> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	): Promise<DeletedAgentSnapshot | null> {
+		const agent = projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findById(agentId);
 
 		if (!agent) {
-			return false;
+			return null;
 		}
 		if (requireArchived && !agent.isArchived) {
 			throw new BadRequestError('Agent must be archived before it can be deleted.');
 		}
 
-		await this.deleteKnowledgeFiles(projectId, agentId);
+		const snapshot: DeletedAgentSnapshot = {
+			id: agent.id,
+			name: agent.name,
+			projectId: agent.projectId,
+			availableInMCP: agent.availableInMCP,
+			versionId: agent.versionId,
+			activeVersionId: agent.activeVersionId,
+			createdAt: agent.createdAt,
+			updatedAt: agent.updatedAt,
+		};
 
-		await this.agentKnowledgeService.destroyKnowledgeSandbox(projectId, agentId);
+		// Cleanup is keyed to the agent's own project, so the Public API path
+		// (no `projectId` argument) cleans up the same as the project-scoped one.
+		const { projectId: agentProjectId } = agent;
+
+		await this.deleteKnowledgeFiles(agentProjectId, agentId);
+
+		await this.agentKnowledgeService.destroyKnowledgeSandbox(agentProjectId, agentId);
 
 		await this.deleteChatAttachments(agentId);
 
@@ -887,17 +941,17 @@ export class AgentsService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, projectId);
+		await this.subAgentCleanupService.removeSubAgentFromParents(agentId, agentProjectId);
 
-		this.eventService.emit('agent-deleted', { agentId, projectId });
+		this.eventService.emit('agent-deleted', { agentId, projectId: agentProjectId });
 
 		await this.stopDeletedAgentTasks(agentId);
 
 		await this.clearDeletedAgentTestChats(agentId);
 
-		this.logger.debug('Deleted SDK agent', { agentId, projectId });
+		this.logger.debug('Deleted SDK agent', { agentId, projectId: agentProjectId });
 
-		return true;
+		return snapshot;
 	}
 
 	private async prepareInitialConfig(

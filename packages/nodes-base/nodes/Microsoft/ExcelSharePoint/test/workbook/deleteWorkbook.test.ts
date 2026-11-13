@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 
 describe('Microsoft Excel (SharePoint) — Workbook: Delete', () => {
 	let node: MicrosoftExcelSharePoint;

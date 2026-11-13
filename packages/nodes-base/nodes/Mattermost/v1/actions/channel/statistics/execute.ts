@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -11,7 +12,7 @@ export async function statistics(
 	const body = {} as IDataObject;
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endpoint = `channels/${channelId}/stats`;
+	const endpoint = requestPath`channels/${channelId}/stats`;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 

@@ -29,22 +29,22 @@ vi.mock('../transport', async () => {
 		...originalModule,
 		apiRequest: vi.fn(async (method: string, endpoint: string, params: { fail?: boolean }) => {
 			// return failed request
-			if (endpoint.endsWith('/sessions') && params.fail) {
+			if (String(endpoint).endsWith('/sessions') && params.fail) {
 				return {};
 			}
 
 			// create session
-			if (method === 'POST' && endpoint.endsWith('/sessions')) {
+			if (method === 'POST' && String(endpoint).endsWith('/sessions')) {
 				return { ...mockCreatedSession };
 			}
 
 			// get session status - general case
-			if (method === 'GET' && endpoint.includes('/sessions')) {
+			if (method === 'GET' && String(endpoint).includes('/sessions')) {
 				return { ...mockCreatedSession };
 			}
 
 			// create window
-			if (method === 'POST' && endpoint.endsWith('/windows')) {
+			if (method === 'POST' && String(endpoint).endsWith('/windows')) {
 				return { data: { windowId: 'new-window-123' } };
 			}
 

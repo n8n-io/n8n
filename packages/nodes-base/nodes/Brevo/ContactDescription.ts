@@ -324,7 +324,7 @@ const getOperations: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'GET',
-				url: '=/v3/contacts/{{encodeURIComponent($value)}}',
+				url: '=/v3/contacts/{{ toPathSegment($value) }}',
 			},
 		},
 		required: true,
@@ -347,7 +347,7 @@ const deleteOperations: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'DELETE',
-				url: '=/v3/contacts/{{encodeURIComponent($parameter.identifier)}}',
+				url: '=/v3/contacts/{{ toPathSegment($parameter.identifier) }}',
 			},
 			output: {
 				postReceive: [
@@ -455,7 +455,7 @@ const updateOperations: INodeProperties[] = [
 		routing: {
 			request: {
 				method: 'PUT',
-				url: '=/v3/contacts/{{encodeURIComponent($parameter.identifier)}}',
+				url: '=/v3/contacts/{{ toPathSegment($parameter.identifier) }}',
 			},
 		},
 		type: 'fixedCollection',

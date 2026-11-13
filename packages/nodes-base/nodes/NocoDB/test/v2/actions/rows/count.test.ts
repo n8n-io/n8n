@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/count.operation';
@@ -55,7 +56,7 @@ describe('NocoDB Rows Count Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			mockExecuteFunctions,
 			'GET',
-			'/api/v3/data/base1/table1/count',
+			requestPath`/api/v3/data/base1/table1/count`,
 			{},
 			{},
 		);
@@ -84,7 +85,7 @@ describe('NocoDB Rows Count Action', () => {
 		expect(apiRequest.call).toHaveBeenCalledWith(
 			mockExecuteFunctions,
 			'GET',
-			'/api/v3/data/base1/table1/count',
+			requestPath`/api/v3/data/base1/table1/count`,
 			{},
 			options,
 		);

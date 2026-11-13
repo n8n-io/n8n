@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
@@ -16,23 +18,11 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 export async function githubApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: object,
 	query?: IDataObject,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'headers' | 'json' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
-		method,
-		body,
-		qs: query,
-		uri: '',
-		json: true,
-	};
-
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
-	}
-
 	try {
 		const authenticationMethod = this.getNodeParameter(
 			'authentication',
@@ -42,23 +32,25 @@ export async function githubApiRequest(
 		let credentialType = '';
 
 		if (authenticationMethod === 'accessToken') {
-			const credentials = await this.getCredentials('githubApi');
 			credentialType = 'githubApi';
-
-			const baseUrl = credentials.server || 'https://api.github.com';
-			options.uri = `${baseUrl}${endpoint}`;
 		} else if (authenticationMethod === 'githubAppApi') {
-			const credentials = await this.getCredentials('githubAppApi');
 			credentialType = 'githubAppApi';
-
-			const baseUrl = credentials.server || 'https://api.github.com';
-			options.uri = `${baseUrl}${endpoint}`;
 		} else {
-			const credentials = await this.getCredentials('githubOAuth2Api');
 			credentialType = 'githubOAuth2Api';
+		}
 
-			const baseUrl = credentials.server || 'https://api.github.com';
-			options.uri = `${baseUrl}${endpoint}`;
+		const credentials = await this.getCredentials(credentialType);
+		const baseUrl = credentials.server || 'https://api.github.com';
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			method,
+			body,
+			qs: query,
+			uri: requestUrl`${baseUrl}${endpoint}`,
+			json: true,
+		};
+
+		if (Object.keys(option).length !== 0) {
+			Object.assign(options, option);
 		}
 
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
@@ -84,7 +76,13 @@ export async function getFileSha(
 		query.ref = branch;
 	}
 
-	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
+	const getEndpoint = filePath
+		.split('/')
+		.filter(Boolean)
+		.reduce(
+			(path, segment) => requestPath`${path}/${segment}`,
+			requestPath`/repos/${owner}/${repository}/contents`,
+		);
 	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
 
 	if (responseData.sha === undefined) {
@@ -96,7 +94,7 @@ export async function getFileSha(
 export async function githubApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -194,7 +192,7 @@ export async function getRepositoryPublicKey(
 	owner: string,
 	repository: string,
 ): Promise<{ key_id: string; key: string }> {
-	const endpoint = `/repos/${owner}/${repository}/actions/secrets/public-key`;
+	const endpoint = requestPath`/repos/${owner}/${repository}/actions/secrets/public-key`;
 	const responseData = await githubApiRequest.call(this, 'GET', endpoint, {});
 
 	if (!responseData.key_id || !responseData.key) {

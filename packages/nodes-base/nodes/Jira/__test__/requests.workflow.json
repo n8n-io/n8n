@@ -1,0 +1,691 @@
+{
+	"name": "Jira request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "create",
+				"project": {
+					"__rl": true,
+					"mode": "id",
+					"value": "10000"
+				},
+				"issueType": {
+					"__rl": true,
+					"mode": "id",
+					"value": "10004"
+				},
+				"summary": "Fix login",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Issue",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "update",
+				"issueKey": "NODE-123",
+				"updateFields": {
+					"summary": "Fix login",
+					"statusId": {
+						"__rl": true,
+						"mode": "id",
+						"value": "31"
+					}
+				}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Update Issue",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "get",
+				"issueKey": "NODE-123",
+				"simplifyOutput": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Issue",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 5,
+				"options": {
+					"jql": "project = NODE"
+				}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get Many Issues",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "changelog",
+				"issueKey": "NODE-123",
+				"returnAll": false,
+				"limit": 5
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Get Changelog",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "notify",
+				"issueKey": "NODE-123",
+				"jsonParameters": false,
+				"additionalFields": {
+					"textBody": "Please check"
+				},
+				"notificationRecipientsUi": {},
+				"notificationRecipientsRestrictionsUi": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Notify",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "transitions",
+				"issueKey": "NODE-123",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Get Transitions",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issue",
+				"operation": "delete",
+				"issueKey": "NODE-123",
+				"deleteSubtasks": true
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Delete Issue",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueAttachment",
+				"operation": "get",
+				"attachmentId": "10200",
+				"download": false
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Get Attachment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueAttachment",
+				"operation": "getAll",
+				"issueKey": "NODE-123",
+				"returnAll": true,
+				"download": false
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Many Attachments",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueAttachment",
+				"operation": "remove",
+				"attachmentId": "10200"
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Remove Attachment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "add",
+				"issueKey": "NODE-123",
+				"comment": "Looks good",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Add Comment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "get",
+				"issueKey": "NODE-123",
+				"commentId": "10500",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Get Comment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "getAll",
+				"issueKey": "NODE-123",
+				"returnAll": false,
+				"limit": 5,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Get Many Comments",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "update",
+				"issueKey": "NODE-123",
+				"commentId": "10500",
+				"comment": "Looks good",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 2800],
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "Update Comment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "issueComment",
+				"operation": "remove",
+				"issueKey": "NODE-123",
+				"commentId": "10500"
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3000],
+			"id": "00000000-0000-4000-8000-000000000016",
+			"name": "Remove Comment",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "user",
+				"operation": "create",
+				"username": "nathan",
+				"emailAddress": "nathan@n8n.io",
+				"displayName": "Nathan",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3200],
+			"id": "00000000-0000-4000-8000-000000000017",
+			"name": "Create User",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "user",
+				"operation": "get",
+				"accountId": "5b10ac8d82e05b22cc7d4ef5",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3400],
+			"id": "00000000-0000-4000-8000-000000000018",
+			"name": "Get User",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jiraVersion": "cloud",
+				"resource": "user",
+				"operation": "delete",
+				"accountId": "5b10ac8d82e05b22cc7d4ef5"
+			},
+			"type": "n8n-nodes-base.jira",
+			"typeVersion": 1,
+			"position": [220, 3600],
+			"id": "00000000-0000-4000-8000-000000000019",
+			"name": "Delete User",
+			"credentials": {
+				"jiraSoftwareCloudApi": {
+					"id": "cred1",
+					"name": "Jira account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Issue": [
+			{
+				"json": {
+					"id": "10001",
+					"key": "NODE-123"
+				}
+			}
+		],
+		"Update Issue": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Issue": [
+			{
+				"json": {
+					"id": "10001",
+					"key": "NODE-123",
+					"fields": {
+						"summary": "Fix login"
+					}
+				}
+			}
+		],
+		"Get Many Issues": [
+			{
+				"json": {
+					"id": "10001",
+					"key": "NODE-123",
+					"fields": {
+						"summary": "Fix login"
+					}
+				}
+			}
+		],
+		"Get Changelog": [
+			{
+				"json": {
+					"id": "20001"
+				}
+			}
+		],
+		"Notify": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Transitions": [
+			{
+				"json": {
+					"id": "31",
+					"name": "Done"
+				}
+			}
+		],
+		"Delete Issue": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Attachment": [
+			{
+				"json": {
+					"id": "10200",
+					"filename": "report.pdf",
+					"mimeType": "application/pdf",
+					"content": "https://acme.atlassian.net/rest/api/3/attachment/content/10200"
+				}
+			}
+		],
+		"Get Many Attachments": [
+			{
+				"json": {
+					"id": "10200",
+					"filename": "report.pdf",
+					"mimeType": "application/pdf",
+					"content": "https://acme.atlassian.net/rest/api/3/attachment/content/10200"
+				}
+			}
+		],
+		"Remove Attachment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Add Comment": [
+			{
+				"json": {
+					"id": "10500",
+					"body": "Looks good"
+				}
+			}
+		],
+		"Get Comment": [
+			{
+				"json": {
+					"id": "10500",
+					"body": "Looks good"
+				}
+			}
+		],
+		"Get Many Comments": [
+			{
+				"json": {
+					"id": "10500",
+					"body": "Looks good"
+				}
+			}
+		],
+		"Update Comment": [
+			{
+				"json": {
+					"id": "10500",
+					"body": "Looks good"
+				}
+			}
+		],
+		"Remove Comment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Create User": [
+			{
+				"json": {
+					"accountId": "5b10ac8d82e05b22cc7d4ef5",
+					"displayName": "Nathan"
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"accountId": "5b10ac8d82e05b22cc7d4ef5",
+					"displayName": "Nathan"
+				}
+			}
+		],
+		"Delete User": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Issues",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Changelog",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notify",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Transitions",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Issue",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Attachment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Attachments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Attachment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Comments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

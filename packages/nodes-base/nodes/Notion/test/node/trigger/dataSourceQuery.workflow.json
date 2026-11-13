@@ -1,0 +1,49 @@
+{
+	"name": "Notion Trigger v1.1 request paths",
+	"nodes": [
+		{
+			"parameters": {
+				"pollTimes": {
+					"item": [
+						{
+							"mode": "everyMinute"
+						}
+					]
+				},
+				"event": "pageAddedToDatabase",
+				"dataSourceId": {
+					"__rl": true,
+					"value": "248fb9cb-4cf0-804c-8663-d8ecdd5e6922",
+					"mode": "id"
+				},
+				"simple": false
+			},
+			"id": "4d2c9e1a-7b3f-4a8e-9c6d-000000000001",
+			"name": "Notion Trigger",
+			"type": "n8n-nodes-base.notionTrigger",
+			"typeVersion": 1.1,
+			"position": [0, 0],
+			"credentials": {
+				"notionApi": {
+					"id": "1",
+					"name": "Notion account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Notion Trigger": [
+			{
+				"json": {
+					"object": "page",
+					"id": "15bfb9cb-4cf0-81c7-aab4-c5855b8cb622"
+				}
+			}
+		]
+	},
+	"connections": {},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

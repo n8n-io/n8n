@@ -18,9 +18,7 @@ const credentials = {
 describe('Microsoft Excel (SharePoint), Service Principal table => getAll smoke', () => {
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/tables',
-		)
+		.get('/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/tables')
 		.query({ $top: '10' })
 		.reply(200, {
 			value: [{ id: '{00000000-0000-0000-0000-000000000011}', name: 'Table1' }],

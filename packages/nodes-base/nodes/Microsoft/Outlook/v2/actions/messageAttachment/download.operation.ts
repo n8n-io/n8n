@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -42,7 +43,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	const attachmentDetails = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}/attachments/${attachmentId}`,
+		requestPath`/messages/${messageId}/attachments/${attachmentId}`,
 		index,
 		undefined,
 		{ $select: 'id,name,contentType' },
@@ -57,7 +58,7 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}/attachments/${attachmentId}/$value`,
+		requestPath`/messages/${messageId}/attachments/${attachmentId}/$value`,
 		index,
 		undefined,
 		{},

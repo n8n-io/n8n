@@ -52,6 +52,7 @@ function buildSandbox(
 			language: 'typescript',
 			timeout: config.timeout ?? 300_000,
 			createTimeoutSeconds: config.createTimeoutSeconds ?? 300,
+			...(config.quickStart ? { quickStart: true } : {}),
 			errorReporter: options.errorReporter,
 			createStrategyMode: mode,
 		});

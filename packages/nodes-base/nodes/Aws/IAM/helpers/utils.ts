@@ -120,7 +120,6 @@ export async function deleteGroupMembers(
 			try {
 				await awsApiRequest.call(this, {
 					method: 'POST',
-					url: '',
 					body: {
 						Action: 'RemoveUserFromGroup',
 						GroupName: groupName,
@@ -309,7 +308,6 @@ export async function removeUserFromGroups(
 	for (const group of userGroups.results) {
 		await awsApiRequest.call(this, {
 			method: 'POST',
-			url: '',
 			body: {
 				Action: 'RemoveUserFromGroup',
 				Version: CURRENT_VERSION,

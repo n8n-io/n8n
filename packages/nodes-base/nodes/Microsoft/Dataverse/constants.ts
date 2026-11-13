@@ -1,3 +1,5 @@
+import { requestPath } from 'n8n-workflow';
+
 /**
  * Shared constants for the Microsoft Dataverse node.
  *
@@ -7,7 +9,7 @@
  */
 
 /** Web API base path. Update here when Microsoft ships a new version. */
-export const DATAVERSE_API_PATH = '/api/data/v9.2';
+export const DATAVERSE_API_PATH = requestPath`/api/data/v9.2`;
 
 /**
  * Product token for the `User-Agent` sent on every Dataverse Web API request.

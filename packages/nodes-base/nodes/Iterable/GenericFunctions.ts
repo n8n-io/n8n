@@ -5,31 +5,35 @@ import type {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, decodePathValue, requestUrl } from 'n8n-workflow';
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 export async function iterableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('iterableApi');
 
-	const options: IHttpRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		body,
-		qs,
-		url: uri || `${credentials.region}/api${resource}`,
-		json: true,
-	};
 	try {
+		const options: WithRequestTarget<IHttpRequestOptions> = {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			method,
+			body,
+			qs,
+			url: requestUrl`${credentials.region}/api${resource}`,
+			json: true,
+		};
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
@@ -46,7 +50,7 @@ export async function iterableApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

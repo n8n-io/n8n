@@ -5,7 +5,7 @@ import type {
 	INode,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/get.operation';
@@ -62,7 +62,7 @@ describe('Confluence page:get operation', () => {
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/123',
+				requestPath`/wiki/api/v2/pages/123`,
 				{},
 				{ 'body-format': 'storage' },
 			);
@@ -84,7 +84,7 @@ describe('Confluence page:get operation', () => {
 			expect(ctx.getNodeParameter).toHaveBeenCalledWith('page', 0, '', { extractValue: true });
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/456',
+				requestPath`/wiki/api/v2/pages/456`,
 				{},
 				{ 'body-format': 'storage' },
 			);
@@ -102,7 +102,7 @@ describe('Confluence page:get operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/123',
+				requestPath`/wiki/api/v2/pages/123`,
 				{},
 				{ 'body-format': 'atlas_doc_format' },
 			);
@@ -166,7 +166,7 @@ describe('Confluence page:get operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/123',
+				requestPath`/wiki/api/v2/pages/123`,
 				{},
 				{ 'body-format': 'atlas_doc_format' },
 			);
@@ -273,11 +273,12 @@ describe('Confluence page:get operation', () => {
 	describe('get by title', () => {
 		it('resolves a unique site-wide match without a space', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					expect(qs).toEqual({ title: 'Project plan', limit: 250 });
 					return { results: [{ id: '77', title: 'Project plan', spaceId: '5' }] };
 				}
-				if (endpoint === '/wiki/api/v2/pages/77') return { id: '77', title: 'Project plan' };
+				if (String(endpoint) === '/wiki/api/v2/pages/77')
+					return { id: '77', title: 'Project plan' };
 				throw new Error(`unexpected endpoint ${endpoint}`);
 			});
 			const ctx = createContext({
@@ -291,11 +292,11 @@ describe('Confluence page:get operation', () => {
 
 		it('scopes the lookup to a space picked from the list', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					expect(qs).toEqual({ title: 'Project plan', limit: 250, 'space-id': '999' });
 					return { results: [{ id: '77' }] };
 				}
-				if (endpoint === '/wiki/api/v2/pages/77') return { id: '77' };
+				if (String(endpoint) === '/wiki/api/v2/pages/77') return { id: '77' };
 				throw new Error(`unexpected endpoint ${endpoint}`);
 			});
 			const ctx = createContext({
@@ -310,11 +311,11 @@ describe('Confluence page:get operation', () => {
 
 		it('scopes the lookup to a space given by ID', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					expect(qs).toEqual({ title: 'Project plan', limit: 250, 'space-id': '42' });
 					return { results: [{ id: '77' }] };
 				}
-				if (endpoint === '/wiki/api/v2/pages/77') return { id: '77' };
+				if (String(endpoint) === '/wiki/api/v2/pages/77') return { id: '77' };
 				throw new Error(`unexpected endpoint ${endpoint}`);
 			});
 			const ctx = createContext({
@@ -369,7 +370,7 @@ describe('Confluence page:get operation', () => {
 		/** Answers the page lookup with `duplicates` and the space lookup with `spaces`. */
 		function mockAmbiguousTitle(spaces?: IDataObject[]) {
 			apiRequest.mockImplementation(async (_method, endpoint) => {
-				if (endpoint !== '/wiki/api/v2/spaces') return { results: duplicates };
+				if (String(endpoint) !== '/wiki/api/v2/spaces') return { results: duplicates };
 				if (spaces === undefined) throw new Error('space lookup unavailable');
 				return { results: spaces };
 			});
@@ -413,7 +414,7 @@ describe('Confluence page:get operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/spaces',
+				requestPath`/wiki/api/v2/spaces`,
 				{},
 				{ ids: '0,1,2,3,4', limit: 250 },
 			);
@@ -455,11 +456,11 @@ describe('Confluence page:get operation', () => {
 			} = {},
 		) {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				const descendantsOf = /^\/wiki\/api\/v2\/pages\/(\d+)\/descendants$/.exec(endpoint);
+				const descendantsOf = /^\/wiki\/api\/v2\/pages\/(\d+)\/descendants$/.exec(String(endpoint));
 				if (descendantsOf) return { results: descendantsByNode[descendantsOf[1]] ?? [] };
-				const single = /^\/wiki\/api\/v2\/pages\/(\d+)$/.exec(endpoint);
+				const single = /^\/wiki\/api\/v2\/pages\/(\d+)$/.exec(String(endpoint));
 				if (single) return options.root ?? stubPage(single[1]);
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					const ids = String((qs as IDataObject).id).split(',');
 					return { results: (options.hydrate ?? ((batch) => batch.map(stubPage)))(ids) };
 				}
@@ -487,21 +488,21 @@ describe('Confluence page:get operation', () => {
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/wiki/api/v2/pages/100',
+				requestPath`/wiki/api/v2/pages/100`,
 				{},
 				{ 'body-format': 'storage' },
 			);
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				2,
 				'GET',
-				'/wiki/api/v2/pages/100/descendants',
+				requestPath`/wiki/api/v2/pages/100/descendants`,
 				{},
 				{ depth: 10, limit: 250 },
 			);
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				3,
 				'GET',
-				'/wiki/api/v2/pages',
+				requestPath`/wiki/api/v2/pages`,
 				{},
 				{ id: '101,102', 'body-format': 'storage', limit: 250 },
 			);
@@ -551,8 +552,8 @@ describe('Confluence page:get operation', () => {
 
 		it('follows the discovery cursor and deduplicates repeated records', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages/100') return { id: '100' };
-				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
+				if (String(endpoint) === '/wiki/api/v2/pages/100') return { id: '100' };
+				if (String(endpoint) === '/wiki/api/v2/pages/100/descendants') {
 					if ((qs as IDataObject).cursor === undefined) {
 						return {
 							results: [{ id: '101', type: 'page', depth: 1 }],
@@ -567,7 +568,7 @@ describe('Confluence page:get operation', () => {
 						],
 					};
 				}
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					const ids = String((qs as IDataObject).id).split(',');
 					return { results: ids.map((id) => ({ id })) };
 				}
@@ -585,8 +586,8 @@ describe('Confluence page:get operation', () => {
 
 		it('stops discovery when the server echoes a cursor it already returned', async () => {
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages/100') return { id: '100' };
-				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
+				if (String(endpoint) === '/wiki/api/v2/pages/100') return { id: '100' };
+				if (String(endpoint) === '/wiki/api/v2/pages/100/descendants') {
 					return {
 						results:
 							(qs as IDataObject).cursor === undefined
@@ -595,7 +596,7 @@ describe('Confluence page:get operation', () => {
 						_links: { next: '/wiki/api/v2/pages/100/descendants?cursor=same' },
 					};
 				}
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					const ids = String((qs as IDataObject).id).split(',');
 					return { results: ids.map((id) => ({ id })) };
 				}
@@ -609,7 +610,7 @@ describe('Confluence page:get operation', () => {
 			const result = (await execute.call(ctx, 0)) as IDataObject[];
 
 			const descendantCalls = apiRequest.mock.calls.filter(([, endpoint]) =>
-				endpoint.endsWith('/descendants'),
+				String(endpoint).endsWith('/descendants'),
 			);
 			expect(descendantCalls).toHaveLength(2);
 			expect(result.map((page) => page.id)).toEqual(['100', '101']);
@@ -634,11 +635,11 @@ describe('Confluence page:get operation', () => {
 
 			const descendantCalls = apiRequest.mock.calls
 				.map(([, endpoint]) => endpoint)
-				.filter((endpoint) => endpoint.endsWith('/descendants'));
+				.filter((endpoint) => String(endpoint).endsWith('/descendants'));
 			expect(descendantCalls).toEqual([
-				'/wiki/api/v2/pages/100/descendants',
-				'/wiki/api/v2/pages/101/descendants',
-				'/wiki/api/v2/pages/555/descendants',
+				requestPath`/wiki/api/v2/pages/100/descendants`,
+				requestPath`/wiki/api/v2/pages/101/descendants`,
+				requestPath`/wiki/api/v2/pages/555/descendants`,
 			]);
 			// The folder and whiteboard are traversal-only records, never hydrated
 			expect(result.map((page) => page.id)).toEqual(['100', '101', '201', '301']);
@@ -665,7 +666,7 @@ describe('Confluence page:get operation', () => {
 
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages',
+				requestPath`/wiki/api/v2/pages`,
 				{},
 				{ id: '101,103,104', 'body-format': 'storage', limit: 250 },
 			);
@@ -785,7 +786,7 @@ describe('Confluence page:get operation', () => {
 			expect(apiRequest).toHaveBeenCalledTimes(1);
 			expect(apiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/wiki/api/v2/pages/100',
+				requestPath`/wiki/api/v2/pages/100`,
 				{},
 				{ 'body-format': 'storage' },
 			);
@@ -809,7 +810,7 @@ describe('Confluence page:get operation', () => {
 			const result = (await execute.call(ctx, 0)) as IDataObject[];
 
 			const bulkCalls = apiRequest.mock.calls.filter(
-				([, endpoint]) => endpoint === '/wiki/api/v2/pages',
+				([, endpoint]) => String(endpoint) === '/wiki/api/v2/pages',
 			);
 			expect(bulkCalls).toHaveLength(2);
 			expect(String((bulkCalls[0][3] as IDataObject).id).split(',')).toHaveLength(250);
@@ -823,14 +824,14 @@ describe('Confluence page:get operation', () => {
 				content: [{ type: 'paragraph', content: [{ type: 'text', text: 'body text' }] }],
 			});
 			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
-				if (endpoint === '/wiki/api/v2/pages/100') {
+				if (String(endpoint) === '/wiki/api/v2/pages/100') {
 					expect((qs as IDataObject)['body-format']).toBe('atlas_doc_format');
 					return { id: '100', body: { atlas_doc_format: { value: adf } } };
 				}
-				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
+				if (String(endpoint) === '/wiki/api/v2/pages/100/descendants') {
 					return { results: [{ id: '101', type: 'page', depth: 1 }] };
 				}
-				if (endpoint === '/wiki/api/v2/pages') {
+				if (String(endpoint) === '/wiki/api/v2/pages') {
 					expect((qs as IDataObject)['body-format']).toBe('atlas_doc_format');
 					const ids = String((qs as IDataObject).id).split(',');
 					return {

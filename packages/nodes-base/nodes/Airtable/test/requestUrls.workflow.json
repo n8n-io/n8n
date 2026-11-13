@@ -1,0 +1,399 @@
+{
+	"name": "Airtable request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a01",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 600]
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "tblR8kQ2mN4pL6sT0", "mode": "id" },
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": { "Name": "Alice" },
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "Name",
+							"displayName": "Name",
+							"required": false,
+							"defaultMatch": false,
+							"canBeUsedToMatch": true,
+							"display": true,
+							"type": "string",
+							"readOnly": false,
+							"removed": false
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a02",
+			"name": "Create Record",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 0],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "tblR8kQ2mN4pL6sT0", "mode": "id" },
+				"id": "recA1b2C3d4E5f6G7",
+				"options": { "downloadFields": ["Files"] }
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a03",
+			"name": "Get Record",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 120],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"operation": "deleteRecord",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "tblR8kQ2mN4pL6sT0", "mode": "id" },
+				"id": "recH8i9J0k1L2m3N4"
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a04",
+			"name": "Delete Record",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 240],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "Contacts List", "mode": "list" },
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a05",
+			"name": "Search Records",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 360],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "tblR8kQ2mN4pL6sT0", "mode": "id" },
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": { "id": "recA1b2C3d4E5f6G7", "Name": "Bob" },
+					"matchingColumns": ["id"],
+					"schema": [
+						{
+							"id": "id",
+							"displayName": "id",
+							"required": false,
+							"defaultMatch": true,
+							"canBeUsedToMatch": true,
+							"display": true,
+							"type": "string",
+							"readOnly": true,
+							"removed": false
+						},
+						{
+							"id": "Name",
+							"displayName": "Name",
+							"required": false,
+							"defaultMatch": false,
+							"canBeUsedToMatch": true,
+							"display": true,
+							"type": "string",
+							"readOnly": false,
+							"removed": false
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a06",
+			"name": "Update Record",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 480],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" },
+				"table": { "__rl": true, "value": "tblR8kQ2mN4pL6sT0", "mode": "id" },
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": { "Name": "Carol" },
+					"matchingColumns": ["Name"],
+					"schema": [
+						{
+							"id": "Name",
+							"displayName": "Name",
+							"required": false,
+							"defaultMatch": false,
+							"canBeUsedToMatch": true,
+							"display": true,
+							"type": "string",
+							"readOnly": false,
+							"removed": false
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a07",
+			"name": "Upsert Record",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 600],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"resource": "base",
+				"returnAll": true,
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a08",
+			"name": "Get Many Bases",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 720],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"resource": "base",
+				"operation": "getSchema",
+				"base": { "__rl": true, "value": "appB7xQ3mK9pL2nR4", "mode": "id" }
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a09",
+			"name": "Get Base Schema",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 2.2,
+			"position": [300, 840],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"authentication": "airtableTokenApi",
+				"operation": "append",
+				"application": { "__rl": true, "value": "appC4dE5fG6hI7jK8", "mode": "id" },
+				"table": { "__rl": true, "value": "tblL9mN0oP1qR2sT3", "mode": "id" },
+				"addAllFields": true,
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a10",
+			"name": "V1 Append",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [300, 960],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"authentication": "airtableTokenApi",
+				"operation": "read",
+				"application": { "__rl": true, "value": "appC4dE5fG6hI7jK8", "mode": "id" },
+				"table": { "__rl": true, "value": "tblL9mN0oP1qR2sT3", "mode": "id" },
+				"id": "recU4vW5xY6zA7bC8"
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a11",
+			"name": "V1 Read",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [300, 1080],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"authentication": "airtableTokenApi",
+				"operation": "list",
+				"application": { "__rl": true, "value": "appC4dE5fG6hI7jK8", "mode": "id" },
+				"table": { "__rl": true, "value": "Tasks Table", "mode": "list" },
+				"returnAll": false,
+				"limit": 5,
+				"additionalOptions": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a12",
+			"name": "V1 List",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"authentication": "airtableTokenApi",
+				"operation": "update",
+				"application": { "__rl": true, "value": "appC4dE5fG6hI7jK8", "mode": "id" },
+				"table": { "__rl": true, "value": "tblL9mN0oP1qR2sT3", "mode": "id" },
+				"id": "recU4vW5xY6zA7bC8",
+				"updateAllFields": true,
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a13",
+			"name": "V1 Update",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [300, 1320],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		},
+		{
+			"parameters": {
+				"authentication": "airtableTokenApi",
+				"operation": "delete",
+				"application": { "__rl": true, "value": "appC4dE5fG6hI7jK8", "mode": "id" },
+				"table": { "__rl": true, "value": "tblL9mN0oP1qR2sT3", "mode": "id" },
+				"id": "recD9eF0gH1iJ2kL3",
+				"options": {}
+			},
+			"id": "0b1f6a51-1c55-4c3b-9d77-3a0f8d6d2a14",
+			"name": "V1 Delete",
+			"type": "n8n-nodes-base.airtable",
+			"typeVersion": 1,
+			"position": [300, 1440],
+			"credentials": { "airtableTokenApi": { "id": "1", "name": "Airtable account" } }
+		}
+	],
+	"pinData": {
+		"Create Record": [
+			{
+				"json": {
+					"id": "recA1b2C3d4E5f6G7",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Alice" }
+				}
+			}
+		],
+		"Get Record": [
+			{
+				"json": {
+					"id": "recA1b2C3d4E5f6G7",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": {
+						"Name": "Alice",
+						"Files": [
+							{
+								"id": "attQ1w2E3r4T5y6U7",
+								"url": "https://v5.airtableusercontent.com/v3/u/30/30/1714557600000/aBcDeFgHiJ/kLmNoPqRsT/report.pdf",
+								"filename": "report.pdf",
+								"type": "application/pdf"
+							}
+						]
+					}
+				}
+			}
+		],
+		"Delete Record": [{ "json": { "id": "recH8i9J0k1L2m3N4", "deleted": true } }],
+		"Search Records": [
+			{
+				"json": {
+					"id": "recM5n6O7p8Q9r0S1",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Dave" }
+				}
+			}
+		],
+		"Update Record": [
+			{
+				"json": {
+					"id": "recA1b2C3d4E5f6G7",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Bob" }
+				}
+			}
+		],
+		"Upsert Record": [
+			{
+				"json": {
+					"id": "recT2u3V4w5X6y7Z8",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Carol" }
+				}
+			}
+		],
+		"Get Many Bases": [
+			{ "json": { "id": "appB7xQ3mK9pL2nR4", "name": "Sales", "permissionLevel": "create" } }
+		],
+		"Get Base Schema": [
+			{
+				"json": {
+					"id": "tblR8kQ2mN4pL6sT0",
+					"name": "Contacts",
+					"primaryFieldId": "fldA1b2C3d4E5f6G7"
+				}
+			}
+		],
+		"V1 Append": [
+			{
+				"json": {
+					"id": "recE1f2G3h4I5j6K7",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": {}
+				}
+			}
+		],
+		"V1 Read": [
+			{
+				"json": {
+					"id": "recU4vW5xY6zA7bC8",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Eve" }
+				}
+			}
+		],
+		"V1 List": [
+			{
+				"json": {
+					"id": "recF3g4H5i6J7k8L9",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Frank" }
+				}
+			}
+		],
+		"V1 Update": [
+			{
+				"json": {
+					"id": "recU4vW5xY6zA7bC8",
+					"createdTime": "2024-05-01T10:00:00.000Z",
+					"fields": { "Name": "Eve" }
+				}
+			}
+		],
+		"V1 Delete": [{ "json": { "id": "recD9eF0gH1iJ2kL3", "deleted": true } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Create Record", "type": "main", "index": 0 },
+					{ "node": "Get Record", "type": "main", "index": 0 },
+					{ "node": "Delete Record", "type": "main", "index": 0 },
+					{ "node": "Search Records", "type": "main", "index": 0 },
+					{ "node": "Update Record", "type": "main", "index": 0 },
+					{ "node": "Upsert Record", "type": "main", "index": 0 },
+					{ "node": "Get Many Bases", "type": "main", "index": 0 },
+					{ "node": "Get Base Schema", "type": "main", "index": 0 },
+					{ "node": "V1 Append", "type": "main", "index": 0 },
+					{ "node": "V1 Read", "type": "main", "index": 0 },
+					{ "node": "V1 List", "type": "main", "index": 0 },
+					{ "node": "V1 Update", "type": "main", "index": 0 },
+					{ "node": "V1 Delete", "type": "main", "index": 0 }
+				]
+			]
+		}
+	}
+}

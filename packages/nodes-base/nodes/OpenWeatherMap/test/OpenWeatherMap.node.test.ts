@@ -1,5 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { OpenWeatherMap } from '../OpenWeatherMap.node';
 import { currentWeatherResponse } from './apiResponses';
@@ -57,7 +58,7 @@ describe('OpenWeatherMap Node - request building', () => {
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('openWeatherMapApi', {
 				method: 'GET',
 				qs: { units: 'metric', q: 'berlin,de', lang: 'en' },
-				url: 'https://gateway.example.com/v1/gateway/openweathermap/data/2.5/weather',
+				url: requestUrl`https://gateway.example.com/v1/gateway/openweathermap/data/2.5/weather`,
 				json: true,
 			});
 			expect(result).toEqual([[{ json: currentWeatherResponse, pairedItem: { item: 0 } }]]);
@@ -74,7 +75,7 @@ describe('OpenWeatherMap Node - request building', () => {
 			expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'openWeatherMapApi',
 				expect.objectContaining({
-					url: 'https://api.openweathermap.org/data/2.5/forecast',
+					url: requestUrl`https://api.openweathermap.org/data/2.5/forecast`,
 				}),
 			);
 		},

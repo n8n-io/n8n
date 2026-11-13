@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AppCallContext, AppsConfig } from '@n8n/backend-module-apps';
 import type { GlobalConfig } from '@n8n/config';
-import type { WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { IRun } from 'n8n-workflow';
@@ -13,6 +13,7 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import { AppWorkflowAdapter } from '../app-workflow.adapter';
@@ -62,12 +63,14 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 	const executions = mock<ExecutionPersistence>();
 	const runner = mock<WorkflowRunner>();
 	const finder = mock<WorkflowFinderService>();
+	const workflowService = mock<WorkflowService>();
 	const activeExecutions = mock<ActiveExecutions>();
 	activeExecutions.has.mockReturnValue(false);
 	const logger = mock<Logger>();
 	const adapter = new AppWorkflowAdapter(
 		loader,
 		finder,
+		workflowService,
 		mock<SubworkflowPolicyChecker>(),
 		runner,
 		activeExecutions,
@@ -76,7 +79,7 @@ function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
 		mock<GlobalConfig>(),
 		logger,
 	);
-	return { adapter, loader, executions, runner, finder, activeExecutions, logger };
+	return { adapter, loader, executions, runner, finder, workflowService, activeExecutions, logger };
 }
 
 const passthroughTrigger = {
@@ -325,6 +328,93 @@ describe('AppWorkflowAdapter', () => {
 				status: 'success',
 				output: [{ id: 1, ok: true }],
 			});
+		});
+	});
+
+	describe('publishing', () => {
+		const binding = { key: 'submit', kind: 'workflow' as const, workflowId: 'workflow-1' };
+
+		it('can publish when the user has the workflow:publish scope', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(workflow());
+
+			await expect(adapter.canPublish(mock(), 'project-1', binding)).resolves.toBe(true);
+			expect(finder.findWorkflowForUser).toHaveBeenCalledWith('workflow-1', expect.anything(), [
+				'workflow:publish',
+			]);
+		});
+
+		it('cannot publish without the workflow:publish scope', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(adapter.canPublish(mock(), 'project-1', binding)).resolves.toBe(false);
+		});
+
+		it.each([
+			['is not published', null, 'v1', { published: false, hasChanges: false }],
+			[
+				'has a draft that differs from the published version',
+				'v1',
+				'v2',
+				{ published: true, hasChanges: true },
+			],
+			[
+				'has a draft that matches the published version',
+				'v1',
+				'v1',
+				{ published: true, hasChanges: false },
+			],
+		])('reports a workflow that %s', async (_, activeId, draftId, expected) => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockResolvedValue(
+				workflow({ versionId: draftId, activeVersionId: activeId }),
+			);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toEqual({
+				name: 'Flow',
+				...expected,
+			});
+			expect(loader.loadWorkflow).toHaveBeenCalledWith('project-1', {
+				workflowId: 'workflow-1',
+				workflowName: '',
+			});
+		});
+
+		it('reports nothing for a draft that cannot run from an app', async () => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockResolvedValue(
+				workflow({ nodes: [], versionId: 'v2', activeVersionId: 'v1' }),
+			);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
+		});
+
+		it('reports nothing for a workflow that is not in the project', async () => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockResolvedValue(null);
+
+			await expect(adapter.getPublishState('project-1', binding)).resolves.toBeNull();
+		});
+
+		it('publishes the current draft as the acting user', async () => {
+			const { adapter, workflowService } = setup();
+			const user = mock<User>();
+
+			await adapter.publish(user, 'project-1', binding);
+
+			expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'workflow-1', {
+				publishHistory: 'latestActivation',
+			});
+		});
+
+		it('passes on the error of a workflow that cannot be published', async () => {
+			const { adapter, workflowService } = setup();
+			workflowService.activateWorkflow.mockRejectedValue(new BadRequestError('Missing credential'));
+
+			await expect(adapter.publish(mock(), 'project-1', binding)).rejects.toThrow(
+				'Missing credential',
+			);
 		});
 	});
 

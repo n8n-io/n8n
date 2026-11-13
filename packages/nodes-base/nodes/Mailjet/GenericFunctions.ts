@@ -5,17 +5,19 @@ import type {
 	IHookFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function mailjetApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
@@ -34,7 +36,7 @@ export async function mailjetApiRequest(
 		credentialType = 'mailjetSmsApi';
 	}
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -42,7 +44,7 @@ export async function mailjetApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.mailjet.com${path}`,
+		uri: requestUrl`https://api.mailjet.com${path}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -56,7 +58,7 @@ export async function mailjetApiRequest(
 export async function mailjetApiRequestAllItems(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -69,7 +71,7 @@ export async function mailjetApiRequestAllItems(
 	query.Offset = 0;
 
 	do {
-		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, undefined, {
+		responseData = await mailjetApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);

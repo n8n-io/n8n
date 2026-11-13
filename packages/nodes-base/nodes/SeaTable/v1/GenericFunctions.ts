@@ -6,20 +6,23 @@ import type {
 	IRequestOptions,
 	IHttpRequestMethods,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,
-	IEndpointVariables,
 	IName,
 	IRow,
 	IRowObject,
 } from './Interfaces';
 import { schema } from './Schema';
-import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
+import type { TDtableMetadataColumns, TDtableViewColumns } from './types';
+
+export type SeaTableEndpoint = RequestPath | ((dtableUuid?: string) => RequestPath);
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) {
@@ -51,11 +54,11 @@ export async function getBaseAccessToken(
 		return;
 	}
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
-		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
+		uri: requestUrl`${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
 		json: true,
 	};
 
@@ -66,28 +69,13 @@ export async function getBaseAccessToken(
 	}
 }
 
-function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
-	const endpointVariables: IEndpointVariables = {};
-	endpointVariables.access_token = ctx?.base?.access_token;
-	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
-
-	return endpoint.replace(
-		/{{ *(access_token|dtable_uuid|server) *}}/g,
-		(match: string, name: TEndpointVariableName) => {
-			return endpointVariables[name] || match;
-		},
-	);
-}
-
 export async function seaTableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	ctx: ICtx,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: SeaTableEndpoint,
 	body: any = {},
 	qs: IDataObject = {},
-	url: string | undefined = undefined,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('seaTableApi');
 
@@ -95,23 +83,21 @@ export async function seaTableApiRequest(
 
 	await getBaseAccessToken.call(this, ctx);
 
-	const options: IRequestOptions = {
+	const path = typeof endpoint === 'function' ? endpoint(ctx.base?.dtable_uuid) : endpoint;
+
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Authorization: `Token ${ctx?.base?.access_token}`,
 		},
 		method,
 		qs,
 		body,
-		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+		uri: requestUrl`${resolveBaseUri(ctx)}${path}`,
 		json: true,
 	};
 
 	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
-	}
-
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
 	}
 
 	try {
@@ -126,7 +112,7 @@ export async function setableApiRequestAllItems(
 	ctx: ICtx,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: SeaTableEndpoint,
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
@@ -169,7 +155,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
+		(dtableUuid) => requestPath`/dtable-server/api/v1/dtables/${dtableUuid}/metadata`,
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {
@@ -188,7 +174,7 @@ export async function getTableViews(
 		this,
 		ctx,
 		'GET',
-		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
+		(dtableUuid) => requestPath`/dtable-server/api/v1/dtables/${dtableUuid}/views`,
 		{},
 		{ table_name: tableName },
 	);

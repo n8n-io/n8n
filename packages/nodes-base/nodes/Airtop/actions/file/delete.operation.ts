@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { ERROR_MESSAGES } from '../../constants';
 import { apiRequest } from '../../transport';
@@ -34,7 +34,7 @@ export async function execute(
 		);
 	}
 
-	await apiRequest.call(this, 'DELETE', `/files/${fileId}`);
+	await apiRequest.call(this, 'DELETE', requestPath`/files/${fileId}`);
 
 	return this.helpers.returnJsonArray({ data: { message: 'File deleted successfully' } });
 }

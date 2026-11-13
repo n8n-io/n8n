@@ -1,5 +1,6 @@
 import {
 	NodeConnectionTypes,
+	requestPath,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -292,7 +293,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					const response = await googleApiRequest.call(
 						this,
 						'POST',
-						'/v1/documents:analyzeSentiment',
+						requestPath`/v1/documents:analyzeSentiment`,
 						body,
 					);
 					responseData.push(response);

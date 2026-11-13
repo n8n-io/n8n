@@ -1780,6 +1780,9 @@ export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfi
 
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
 
+// Shared by the send-message request and the eval overrides of an Assistant agent thread.
+const instanceAiPromptVersionSchema = z.string().trim().min(1).max(128);
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z
@@ -1798,7 +1801,7 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	/** Explicit override for evals. Omit to use the backend experiment assignment. */
 	mode: instanceAiBuildModeSchema.optional(),
 	/** Pin a published prompt profile. Takes precedence over mode. */
-	promptVersion: z.string().trim().min(1).max(128).optional(),
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
@@ -1841,7 +1844,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
-	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	'workflow_error_nudge',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -3099,6 +3102,24 @@ export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
 	baseUrl: z.string().url(),
 	/** Credential field the stand-in URL is written into. */
 	urlField: z.string().min(1),
+}) {}
+
+/**
+ * Creates an Assistant agent thread before its first message, so the eval
+ * harness can set up the thread before the first turn.
+ */
+export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	projectId: z.string().min(1),
+}) {}
+
+/**
+ * The turn overrides of an Assistant agent thread. The request replaces all
+ * overrides of the thread, so an omitted field clears its override.
+ */
+export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
+	mode: instanceAiBuildModeSchema.optional(),
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

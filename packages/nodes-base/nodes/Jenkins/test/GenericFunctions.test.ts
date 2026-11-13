@@ -1,10 +1,10 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { jenkinsApiRequest } from '../GenericFunctions';
+import { jenkinsApiRequest, jobPath } from '../GenericFunctions';
 
-const CRUMB_URI = 'https://jenkins.example.com/crumbIssuer/api/json';
+const CRUMB_URI = requestUrl`https://jenkins.example.com/crumbIssuer/api/json`;
 
 function createExecuteFunctions() {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
@@ -48,10 +48,10 @@ describe('jenkinsApiRequest', () => {
 			baseUrl: 'https://jenkins.example.com/',
 		});
 
-		await jenkinsApiRequest.call(executeFunctions, 'GET', '/api/json');
+		await jenkinsApiRequest.call(executeFunctions, 'GET', requestPath`/api/json`);
 
 		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
-			expect.objectContaining({ uri: 'https://jenkins.example.com/api/json' }),
+			expect.objectContaining({ uri: requestUrl`https://jenkins.example.com/api/json` }),
 		);
 	});
 
@@ -62,10 +62,10 @@ describe('jenkinsApiRequest', () => {
 			apiKey: 'key',
 		});
 
-		await jenkinsApiRequest.call(executeFunctions, 'GET', '/api/json');
+		await jenkinsApiRequest.call(executeFunctions, 'GET', requestPath`/api/json`);
 
 		expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
-			expect.objectContaining({ uri: '/api/json' }),
+			expect.objectContaining({ baseURL: '', uri: requestPath`/api/json` }),
 		);
 	});
 
@@ -74,13 +74,13 @@ describe('jenkinsApiRequest', () => {
 			const executeFunctions = createExecuteFunctions();
 			executeFunctions.helpers.request.mockResolvedValue(undefined);
 
-			await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+			await jenkinsApiRequest.call(executeFunctions, 'POST', requestPath`/job/my-job/build`);
 
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 			expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://jenkins.example.com/job/my-job/build',
+					uri: requestUrl`https://jenkins.example.com/job/my-job/build`,
 					sendCredentialsOnCrossOriginRedirect: false,
 					headers: { Accept: 'application/json' },
 				}),
@@ -105,7 +105,7 @@ describe('jenkinsApiRequest', () => {
 			await jenkinsApiRequest.call(
 				executeFunctions,
 				'POST',
-				'/job/my-job/buildWithParameters',
+				requestPath`/job/my-job/buildWithParameters`,
 				{},
 				{},
 				{ headers: { 'content-type': 'application/x-www-form-urlencoded' } },
@@ -124,7 +124,7 @@ describe('jenkinsApiRequest', () => {
 				3,
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://jenkins.example.com/job/my-job/buildWithParameters',
+					uri: requestUrl`https://jenkins.example.com/job/my-job/buildWithParameters`,
 					headers: {
 						Accept: 'application/json',
 						'Jenkins-Crumb': 'test-crumb-value-123',
@@ -142,7 +142,7 @@ describe('jenkinsApiRequest', () => {
 			);
 
 			await expect(
-				jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build'),
+				jenkinsApiRequest.call(executeFunctions, 'POST', requestPath`/job/my-job/build`),
 			).rejects.toThrow(NodeApiError);
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
 		});
@@ -154,7 +154,7 @@ describe('jenkinsApiRequest', () => {
 				.mockRejectedValueOnce(httpError(401, 'Unauthorized'));
 
 			const error = await jenkinsApiRequest
-				.call(executeFunctions, 'POST', '/job/my-job/build')
+				.call(executeFunctions, 'POST', requestPath`/job/my-job/build`)
 				.catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(NodeApiError);
@@ -169,7 +169,7 @@ describe('jenkinsApiRequest', () => {
 				.mockResolvedValueOnce({ body: {}, headers: {} });
 
 			const error = await jenkinsApiRequest
-				.call(executeFunctions, 'POST', '/job/my-job/build')
+				.call(executeFunctions, 'POST', requestPath`/job/my-job/build`)
 				.catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(NodeApiError);
@@ -187,7 +187,11 @@ describe('jenkinsApiRequest', () => {
 				})
 				.mockRejectedValueOnce(redirectError(303, 'https://jenkins.example.com/queue/item/42/'));
 
-			const result = await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+			const result = await jenkinsApiRequest.call(
+				executeFunctions,
+				'POST',
+				requestPath`/job/my-job/build`,
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -206,7 +210,7 @@ describe('jenkinsApiRequest', () => {
 				.mockRejectedValueOnce(missingCrumbError());
 
 			const error = await jenkinsApiRequest
-				.call(executeFunctions, 'POST', '/job/my-job/build')
+				.call(executeFunctions, 'POST', requestPath`/job/my-job/build`)
 				.catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(NodeApiError);
@@ -221,7 +225,7 @@ describe('jenkinsApiRequest', () => {
 				.mockRejectedValueOnce(Object.assign(new Error('ETIMEDOUT'), { code: 'ETIMEDOUT' }));
 
 			await expect(
-				jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build'),
+				jenkinsApiRequest.call(executeFunctions, 'POST', requestPath`/job/my-job/build`),
 			).rejects.toThrow(NodeApiError);
 			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(2);
 		});
@@ -236,7 +240,7 @@ describe('jenkinsApiRequest', () => {
 				})
 				.mockResolvedValueOnce(undefined);
 
-			await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+			await jenkinsApiRequest.call(executeFunctions, 'POST', requestPath`/job/my-job/build`);
 
 			expect(executeFunctions.helpers.request).toHaveBeenNthCalledWith(
 				3,
@@ -259,7 +263,7 @@ describe('jenkinsApiRequest', () => {
 				const result = await jenkinsApiRequest.call(
 					executeFunctions,
 					'POST',
-					'/job/my-job/buildWithParameters',
+					requestPath`/job/my-job/buildWithParameters`,
 				);
 
 				expect(result).toEqual({
@@ -280,7 +284,11 @@ describe('jenkinsApiRequest', () => {
 				redirectError(303, '/jenkins/queue/item/7'),
 			);
 
-			const result = await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+			const result = await jenkinsApiRequest.call(
+				executeFunctions,
+				'POST',
+				requestPath`/job/my-job/build`,
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -297,7 +305,11 @@ describe('jenkinsApiRequest', () => {
 				}),
 			);
 
-			const result = await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+			const result = await jenkinsApiRequest.call(
+				executeFunctions,
+				'POST',
+				requestPath`/job/my-job/build`,
+			);
 
 			expect(result).toEqual({
 				success: true,
@@ -319,7 +331,7 @@ describe('jenkinsApiRequest', () => {
 			executeFunctions.helpers.request.mockRejectedValue(redirectError(302, location));
 
 			const error = await jenkinsApiRequest
-				.call(executeFunctions, 'POST', '/job/my-job/build')
+				.call(executeFunctions, 'POST', requestPath`/job/my-job/build`)
 				.catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(NodeApiError);
@@ -336,7 +348,11 @@ describe('jenkinsApiRequest', () => {
 				const executeFunctions = createExecuteFunctions();
 				executeFunctions.helpers.request.mockRejectedValue(redirectError(303, location));
 
-				const result = await jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build');
+				const result = await jenkinsApiRequest.call(
+					executeFunctions,
+					'POST',
+					requestPath`/job/my-job/build`,
+				);
 
 				expect(result).toEqual({ success: true, queueUrl: location });
 			},
@@ -347,8 +363,39 @@ describe('jenkinsApiRequest', () => {
 			executeFunctions.helpers.request.mockRejectedValue(httpError(500, 'Internal Server Error'));
 
 			await expect(
-				jenkinsApiRequest.call(executeFunctions, 'POST', '/job/my-job/build'),
+				jenkinsApiRequest.call(executeFunctions, 'POST', requestPath`/job/my-job/build`),
 			).rejects.toThrow(NodeApiError);
 		});
+	});
+});
+
+describe('jobPath', () => {
+	it('keeps each folder level as its own path segment', () => {
+		expect(String(jobPath('platform/job/deploy-app', 1.1))).toBe('/job/platform/job/deploy-app');
+	});
+
+	it('encodes special characters in each path segment', () => {
+		expect(String(jobPath('platform/deploy app?x=1#top', 1.1))).toBe(
+			'/job/platform/deploy%20app%3Fx=1%23top',
+		);
+	});
+
+	it.each([
+		[1, '/job/My%20Folder/job/My%20Job'],
+		[1.1, '/job/My%2520Folder/job/My%2520Job'],
+	])('handles a job path with encoded values in node version %s', (nodeVersion, expected) => {
+		expect(String(jobPath('My%20Folder/job/My%20Job', nodeVersion))).toBe(expected);
+	});
+
+	it('keeps an encoded slash in one path segment in node version 1', () => {
+		expect(String(jobPath('feature%2Ffoo', 1))).toBe('/job/feature%2Ffoo');
+	});
+
+	it('ignores a trailing slash', () => {
+		expect(String(jobPath('folder/job/app/', 1.1))).toBe('/job/folder/job/app');
+	});
+
+	it('rejects relative path segments', () => {
+		expect(() => jobPath('platform/../restart', 1.1)).toThrow();
 	});
 });

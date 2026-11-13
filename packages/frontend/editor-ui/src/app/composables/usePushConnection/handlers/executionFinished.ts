@@ -25,14 +25,12 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 import {
 	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
 	dismissWorkflowErrorNudge,
 	releaseWorkflowErrorNudge,
-	useSurfaceAssistantOnWorkflowError,
-} from '@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError';
-// EOF Experiment cleanup
+	useWorkflowErrorNudge,
+} from '@/features/ai/instanceAi/workflowErrorNudge/composables/useWorkflowErrorNudge';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import {
 	clearPopupWindowState,
@@ -121,9 +119,7 @@ export async function executionFinished({ data }: ExecutionFinished, options: Pu
 		return;
 	}
 
-	// Experiment cleanup (119_surface_assistant_on_workflow_error)
 	dismissWorkflowErrorNudge();
-	// EOF Experiment cleanup
 
 	// A run using an n8n-managed credential consumes credits; invalidate the wallet
 	// cache so any balance pill reflects them. Gated on managed credentials so
@@ -465,17 +461,13 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 					message,
 					type: 'error',
 					duration: 0,
-					// Experiment cleanup (119_surface_assistant_on_workflow_error)
 					customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
 					onClose: () => releaseWorkflowErrorNudge(execution.id),
-					// EOF Experiment cleanup
 				});
-				// Experiment cleanup (119_surface_assistant_on_workflow_error)
-				useSurfaceAssistantOnWorkflowError().triggerOnWorkflowError(
+				useWorkflowErrorNudge().triggerOnWorkflowError(
 					execution.id,
 					execution.workflowId ?? execution.workflowData.id,
 				);
-				// EOF Experiment cleanup
 			}
 		}
 

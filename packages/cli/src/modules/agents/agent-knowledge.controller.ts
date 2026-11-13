@@ -12,7 +12,6 @@ import { KnowledgeUploadError } from '@/modules/knowledge/files/knowledge-upload
 import {
 	KnowledgeUploadMiddleware,
 	cleanupUploadedTempFiles,
-	describeMulterError,
 	multerFailureReason,
 } from '@/modules/knowledge/files/knowledge-upload.middleware';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
@@ -71,7 +70,7 @@ export class AgentKnowledgeController {
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
-					const message = `File upload error: ${describeMulterError(error)}`;
+					const message = `File upload error: ${knowledgeUploadMiddleware.describeMulterError(error)}`;
 					const reason = multerFailureReason(error, KNOWLEDGE_FILES_FIELD);
 					throw reason ? new KnowledgeUploadError(message, reason) : new BadRequestError(message);
 				}
