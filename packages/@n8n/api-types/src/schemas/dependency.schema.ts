@@ -9,6 +9,9 @@ export type DependencyType =
 
 export type DependencyResourceType = 'workflow' | 'credential' | 'dataTable';
 
+/** The workflow version that holds a dependency link: the draft or the published version. */
+export type DependencyVersion = 'draft' | 'published';
+
 export interface ResolvedDependency {
 	type: DependencyType;
 	id: string;
@@ -16,6 +19,13 @@ export interface ResolvedDependency {
 	/** Project ID — included for agents and data tables so the frontend can build a direct link */
 	projectId?: string;
 	unavailable?: boolean;
+	/**
+	 * The workflow versions that hold the link. Set only when the caller asks for it, and only on
+	 * links read from the workflow dependency index (not on agent usage).
+	 */
+	versions?: DependencyVersion[];
+	/** Set only on a workflow item whose workflow is archived. */
+	archived?: true;
 }
 
 export interface ResolvedDependenciesResult {

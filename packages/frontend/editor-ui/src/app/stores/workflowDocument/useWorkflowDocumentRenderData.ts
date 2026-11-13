@@ -31,7 +31,6 @@ import {
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
-	CanvasNode,
 	CanvasNodeAddNodesRender,
 	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
@@ -250,11 +249,33 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			return undefined;
 		}
 
-		if (executionStateStore.isExecutionDataDisplayed) {
-			return executionStateStore.activeExecutionPinDataByNodeId.get(nodeId)?.value;
+		return (
+			workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value ??
+			getDisplayedExecutionPinData(nodeId)
+		);
+	}
+
+	// Returns the pin data that the displayed execution used for the node. The
+	// workflow pin data wins on the canvas, because the user can edit it after the
+	// run. A pin that the user removed after the run start is not returned.
+	function getDisplayedExecutionPinData(nodeId: string) {
+		if (!executionStateStore.isExecutionDataDisplayed) {
+			return undefined;
 		}
 
-		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const node = getNode(nodeId);
+		const pinData = executionStateStore.activeExecutionPinDataByNodeId.get(nodeId)?.value;
+		if (!node || !pinData) {
+			return undefined;
+		}
+
+		const removedAt = workflowDocumentStore.getPinnedDataLastRemovedAt(node.name);
+		const startedAt = executionStateStore.activeExecution?.startedAt;
+		if (removedAt !== undefined && startedAt && removedAt > new Date(startedAt).getTime()) {
+			return undefined;
+		}
+
+		return pinData;
 	}
 
 	// --- renderTypeByNodeId --------------------------------------------------
@@ -512,7 +533,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			}
 		}
 
-		const result: Record<string, Partial<CanvasNode>> = {};
+		const result: Record<string, { style: { zIndex: number } }> = {};
 		for (const box of stickyBoxes) {
 			result[box.id] = { style: { zIndex: box.zIndex } };
 		}
@@ -570,12 +591,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		get executionIssuesByNodeId() {
 			return executionStateStore.activeExecutionIssuesByNodeId;
 		},
-		get executionPinDataByNodeId() {
-			return executionStateStore.activeExecutionPinDataByNodeId;
-		},
-		get isExecutionDataDisplayed() {
-			return executionStateStore.isExecutionDataDisplayed;
-		},
+		getDisplayedExecutionPinData,
 		get executionStatusByNodeId() {
 			return executionStateStore.activeExecutionStatusByNodeId;
 		},

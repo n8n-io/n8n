@@ -7,6 +7,7 @@ import type {
 	NodeOperationError,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -65,13 +66,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.us/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -87,13 +88,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: '',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -108,13 +109,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					},
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -130,13 +131,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com/',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -152,13 +153,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.com///',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -174,13 +175,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://graph.microsoft.us/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -196,13 +197,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://dod-graph.microsoft.us',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://dod-graph.microsoft.us/v1.0/me/drive',
+						uri: expect.objectContaining({ value: 'https://dod-graph.microsoft.us/v1.0/me/drive' }),
 						json: true,
 					}),
 				);
@@ -218,13 +219,15 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					graphApiBaseUrl: 'https://microsoftgraph.chinacloudapi.cn',
 				});
 
-				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+				await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 				expect(mockRequestOAuth2).toHaveBeenCalledWith(
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/drive',
+						uri: expect.objectContaining({
+							value: 'https://microsoftgraph.chinacloudapi.cn/v1.0/me/drive',
+						}),
 						json: true,
 					}),
 				);
@@ -243,7 +246,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('should use the generic microsoftOAuth2Api credential when selected', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 			expect(mockRequestOAuth2).toHaveBeenCalledWith('microsoftOAuth2Api', expect.anything());
@@ -254,7 +257,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('should use the microsoftOneDriveOAuth2Api credential when selected', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('microsoftOneDriveOAuth2Api');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'microsoftOneDriveOAuth2Api',
@@ -269,7 +272,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('should fall back to microsoftOneDriveOAuth2Api when authentication is not set', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'microsoftOneDriveOAuth2Api',
@@ -283,7 +286,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 		it('should fall back to microsoftOneDriveOAuth2Api when authentication is an empty string', async () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
 
-			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/drive');
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', requestPath``);
 
 			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
 				'microsoftOneDriveOAuth2Api',
@@ -317,7 +320,9 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.us/v1.0/me/drive/items/item-id-123',
+						uri: expect.objectContaining({
+							value: 'https://graph.microsoft.us/v1.0/me/drive/items/item-id-123',
+						}),
 						json: true,
 					}),
 				);
@@ -343,7 +348,9 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive/items/item-id-123',
+						uri: expect.objectContaining({
+							value: 'https://graph.microsoft.com/v1.0/me/drive/items/item-id-123',
+						}),
 						json: true,
 					}),
 				);
@@ -369,11 +376,38 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 					'microsoftOneDriveOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://graph.microsoft.com/v1.0/me/drive/items/item-id-123',
+						uri: expect.objectContaining({
+							value: 'https://graph.microsoft.com/v1.0/me/drive/items/item-id-123',
+						}),
 						json: true,
 					}),
 				);
 			});
+		});
+
+		it('should encode a slash in the item id as one path segment', async () => {
+			mockRequestOAuth2.mockResolvedValue({ name: 'f', folder: {}, parentReference: { path: '' } });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+			});
+
+			await getPath.call(mockExecuteFunctions, 'folder/other');
+
+			expect(String(mockRequestOAuth2.mock.calls[0][1].uri)).toBe(
+				'https://graph.microsoft.com/v1.0/me/drive/items/folder%2Fother',
+			);
+		});
+
+		it('should reject an item id with a dot segment', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+			});
+
+			await expect(getPath.call(mockExecuteFunctions, 'folder/../other')).rejects.toThrow(
+				'Invalid identifier',
+			);
+
+			expect(mockRequestOAuth2).not.toHaveBeenCalled();
 		});
 
 		describe('credential type selection', () => {
@@ -473,21 +507,19 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 
 	describe('getServicePrincipalResourceRoot', () => {
 		it('builds a pluralized /drives/{id} root (catches singular/plural mutation)', () => {
-			expect(getServicePrincipalResourceRoot('drive', 'b!abc123', mockNode)).toBe(
+			expect(getServicePrincipalResourceRoot('drive', 'b!abc123', mockNode).value).toBe(
 				'/drives/b!abc123',
 			);
 		});
 
-		it('encodes a user UPN exactly once (@ becomes %40, encoded a single time)', () => {
-			// A space-bearing UPN is rejected by validation (see validateResourceTargetId),
-			// so the encoding-once property is proven with the `@` separator instead.
-			expect(getServicePrincipalResourceRoot('user', 'jane@contoso.com', mockNode)).toBe(
-				'/users/jane%40contoso.com',
+		it('keeps the @ of a user UPN in the path', () => {
+			expect(getServicePrincipalResourceRoot('user', 'jane@contoso.com', mockNode).value).toBe(
+				'/users/jane@contoso.com',
 			);
 		});
 
 		it('trims surrounding whitespace before validating and encoding', () => {
-			expect(getServicePrincipalResourceRoot('drive', '  b!abc123  ', mockNode)).toBe(
+			expect(getServicePrincipalResourceRoot('drive', '  b!abc123  ', mockNode).value).toBe(
 				'/drives/b!abc123',
 			);
 		});
@@ -509,19 +541,21 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			// A number id (e.g. a poll fallback) must be coerced, validated, and used. Asserted
 			// on the drive target: a bare numeric label is a legal drive id but not a valid user
 			// id (the user branch requires a GUID or UPN), so this isolates the coercion behavior.
-			expect(getServicePrincipalResourceRoot('drive', 12345 as unknown as string, mockNode)).toBe(
-				'/drives/12345',
-			);
+			expect(
+				getServicePrincipalResourceRoot('drive', 12345 as unknown as string, mockNode).value,
+			).toBe('/drives/12345');
 		});
 	});
 
 	describe('driveEndpoint', () => {
 		it('returns a /drives/{id} root unchanged (already a drive)', () => {
-			expect(driveEndpoint('/drives/b!abc')).toBe('/drives/b!abc');
+			expect(driveEndpoint(requestPath`/drives/b!abc`).value).toBe('/drives/b!abc');
 		});
 
 		it('appends /drive to a user root (default-drive navigation property)', () => {
-			expect(driveEndpoint('/users/jane%40contoso.com')).toBe('/users/jane%40contoso.com/drive');
+			expect(driveEndpoint(requestPath`/users/jane@contoso.com`).value).toBe(
+				'/users/jane@contoso.com/drive',
+			);
 		});
 	});
 
@@ -663,20 +697,22 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/drive/items/x',
+				requestPath`/items/x`,
 				{},
 				{},
 				undefined,
 				{},
 				{ json: true },
-				'/users/jane%40contoso.com',
+				requestPath`/users/jane@contoso.com`,
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/items/x',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/items/x',
+					}),
 				}),
 			);
 			expect(mockRequestOAuth2).not.toHaveBeenCalled();
@@ -692,7 +728,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/drive/items/x',
+				requestPath`/items/x`,
 				{},
 				{},
 				undefined,
@@ -704,7 +740,10 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/drive/items/x',
+					uri: expect.objectContaining({
+						value:
+							'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23@tenant.onmicrosoft.com/drive/items/x',
+					}),
 				}),
 			);
 		});
@@ -715,7 +754,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/drive/items/x',
+				requestPath`/items/x`,
 				{},
 				{},
 				undefined,
@@ -727,7 +766,9 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/joe%5Esmith%40contoso.com/drive/items/x',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/users/joe%5Esmith@contoso.com/drive/items/x',
+					}),
 				}),
 			);
 		});
@@ -736,23 +777,25 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'DELETE',
-				'/drive/items/x',
+				requestPath`/items/x`,
 				{},
 				{},
 				undefined,
 				{},
 				{ json: true },
-				'/drives/b!abc',
+				requestPath`/drives/b!abc`,
 			);
 
 			// A /drives/{id} root IS already a drive — no extra `/drive` segment.
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/x',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/x',
+					}),
 				}),
 			);
-			const calledUri = mockRequestWithAuthentication.mock.calls[0][1].uri as string;
+			const calledUri = String(mockRequestWithAuthentication.mock.calls[0][1].uri);
 			expect(calledUri).not.toContain('/drives/b!abc/drive');
 		});
 
@@ -760,19 +803,22 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'PUT',
-				'/drive/items/parent:/file.txt:/content',
+				requestPath`/items/parent:/file.txt:/content`,
 				Buffer.from('x'),
 				{},
 				undefined,
 				{ 'Content-Type': 'text/plain' },
 				{},
-				'/users/jane',
+				requestPath`/users/jane`,
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/jane/drive/items/parent:/file.txt:/content',
+					uri: expect.objectContaining({
+						value:
+							'https://graph.microsoft.com/v1.0/users/jane/drive/items/parent:/file.txt:/content',
+					}),
 				}),
 			);
 		});
@@ -781,19 +827,21 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'PUT',
-				'/drive/items/parent:/file.txt:/content',
+				requestPath`/items/parent:/file.txt:/content`,
 				Buffer.from('x'),
 				{},
 				undefined,
 				{ 'Content-Type': 'text/plain' },
 				{},
-				'/drives/b!abc',
+				requestPath`/drives/b!abc`,
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/parent:/file.txt:/content',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.com/v1.0/drives/b!abc/items/parent:/file.txt:/content',
+					}),
 				}),
 			);
 		});
@@ -802,13 +850,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{},
 				'https://graph.microsoft.com/v1.0/some/absolute/deltaLink',
 				{},
 				{ json: true },
-				'/users/jane',
+				requestPath`/users/jane`,
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
@@ -827,16 +875,16 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'',
+				requestPath``,
 				{},
 				{},
-				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+				'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta',
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/root/delta',
+					uri: 'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/root/delta',
 				}),
 			);
 			expect(mockRequestOAuth2).not.toHaveBeenCalled();
@@ -851,38 +899,23 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			await microsoftApiRequest.call(
 				mockExecuteFunctions,
 				'GET',
-				'/drive/items/x',
+				requestPath`/items/x`,
 				{},
 				{},
 				undefined,
 				{},
 				{ json: true },
-				'/drives/b!abc',
+				requestPath`/drives/b!abc`,
 			);
 
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.us/v1.0/drives/b!abc/items/x',
+					uri: expect.objectContaining({
+						value: 'https://graph.microsoft.us/v1.0/drives/b!abc/items/x',
+					}),
 				}),
 			);
-		});
-
-		it('throws an internal error when a scoped resource does not start with /drive', async () => {
-			await expect(
-				microsoftApiRequest.call(
-					mockExecuteFunctions,
-					'GET',
-					'/users/x',
-					{},
-					{},
-					undefined,
-					{},
-					{ json: true },
-					'/users/jane',
-				),
-			).rejects.toThrow('must start with "/drive"');
-			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
 
 		it('delegates to requestWithAuthentication once with no node-side retry, surfacing a rejection as NodeApiError', async () => {
@@ -897,13 +930,13 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				.call(
 					mockExecuteFunctions,
 					'GET',
-					'/drive/items/x',
+					requestPath`/items/x`,
 					{},
 					{},
 					undefined,
 					{},
 					{ json: true },
-					'/users/jane',
+					requestPath`/users/jane`,
 				)
 				.catch((e) => e);
 
@@ -939,7 +972,10 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 				'microsoftEntraServicePrincipalApi',
 				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/drive/items/item-id-123',
+					uri: expect.objectContaining({
+						value:
+							'https://graph.microsoft.com/v1.0/users/jane@contoso.com/drive/items/item-id-123',
+					}),
 				}),
 			);
 			expect(mockRequestOAuth2).not.toHaveBeenCalled();
@@ -969,7 +1005,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				},
 			} as unknown as IExecuteFunctions;
 
-			expect(resolveDriveScopeRoot.call(ctx, false)).toBe('/users/jane%40contoso.com');
+			expect(resolveDriveScopeRoot.call(ctx, false)?.value).toBe('/users/jane@contoso.com');
 		});
 
 		it('extracts the RLC id in POLL context and returns the scoped root', () => {
@@ -984,7 +1020,7 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 				},
 			} as unknown as IPollFunctions;
 
-			expect(resolveDriveScopeRoot.call(ctx, true)).toBe('/drives/b!abc');
+			expect(resolveDriveScopeRoot.call(ctx, true)?.value).toBe('/drives/b!abc');
 		});
 	});
 });

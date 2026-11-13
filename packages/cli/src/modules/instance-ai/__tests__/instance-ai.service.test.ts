@@ -1589,6 +1589,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			workflowId: 'workflow-1',
 			projectId: 'project-1',
 		}),
+		configurationId: 1,
+		includeSubWorkflows: false,
 		executionId: 'execution-1',
 	};
 	const lifecycle = {
@@ -6117,6 +6119,23 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 			service.getWorkflowSetupSuspensionWorkflowId('credentials', {
 				workflowId: 'wf-1',
 				setupRequests: [],
+			}),
+		).toBeUndefined();
+	});
+
+	it('extracts workflow setup suspension ids from a setup card that call_tool ran', () => {
+		const service = createSetupFollowUpService({});
+
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				setupRequests: [],
+			}),
+		).toBe('wf-1');
+		expect(
+			service.getWorkflowSetupSuspensionWorkflowId('call_tool', {
+				workflowId: 'wf-1',
+				message: 'Publish workflow?',
 			}),
 		).toBeUndefined();
 	});

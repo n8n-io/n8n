@@ -6,15 +6,28 @@ import type { JSONObject, JSONValue } from '../../types/utils/json';
 import { isToolResultPath } from '../../workspace/tool-result-storage';
 import { isContentToolResultOutput, type ContentToolResultOutput } from '../model/messages';
 
-export const EXPIRED_OFFLOADED_TOOL_RESULT = {
+// Memory and the observer read this marker during the originating run too, so the
+// message must stay true while the run can still read the stored result.
+export const RUN_SCOPED_OFFLOADED_TOOL_RESULT = {
 	_offloaded: true,
-	expired: true,
-	message: 'The stored tool result expired with its originating run.',
+	runScoped: true,
+	message:
+		'A large tool result was stored only for its originating run. It is not available in later runs.',
 } satisfies JSONObject;
 
-const EXPIRED_OFFLOADED_TOOL_RESULT_JSON = JSON.stringify(EXPIRED_OFFLOADED_TOOL_RESULT);
+type OffloadedToolResult = Record<string, unknown> & { _offloaded: true; path: string };
 
-function isOffloadedToolResult(value: unknown): boolean {
+/** Keeps the size of the stored result so a reader knows what the run received. */
+function toMemoryMarker(envelope: OffloadedToolResult): JSONObject {
+	const marker: JSONObject = { ...RUN_SCOPED_OFFLOADED_TOOL_RESULT };
+	for (const key of ['originalCharCount', 'estimatedTokenCount'] as const) {
+		const value = envelope[key];
+		if (typeof value === 'number') marker[key] = value;
+	}
+	return marker;
+}
+
+function isOffloadedToolResult(value: unknown): value is OffloadedToolResult {
 	return (
 		isRecord(value) &&
 		value._offloaded === true &&
@@ -23,12 +36,13 @@ function isOffloadedToolResult(value: unknown): boolean {
 	);
 }
 
-function isSerializedOffloadedToolResult(value: string): boolean {
+/** Returns the serialized memory marker, or undefined when `value` is not an offloaded result. */
+function serializedMemoryMarker(value: string): string | undefined {
 	try {
 		const parsed: unknown = JSON.parse(value);
-		return isOffloadedToolResult(parsed);
+		return isOffloadedToolResult(parsed) ? JSON.stringify(toMemoryMarker(parsed)) : undefined;
 	} catch {
-		return false;
+		return undefined;
 	}
 }
 
@@ -46,18 +60,20 @@ export function sanitizeOffloadedToolResultsForMemory(
 function sanitizeOffloadedContentBlock(block: MessageContent): MessageContent {
 	if (block.type === 'tool-call') {
 		if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
-			return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
+			return { ...block, output: toMemoryMarker(block.output) };
 		}
 		if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
 			return { ...block, output: sanitizeOffloadedContentResult(block.output) };
 		}
-		if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
-			return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+		if (block.state === 'rejected') {
+			const error = serializedMemoryMarker(block.error);
+			if (error !== undefined) return { ...block, error };
 		}
 	}
 
-	if (block.type === 'text' && isSerializedOffloadedToolResult(block.text)) {
-		return { ...block, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+	if (block.type === 'text') {
+		const text = serializedMemoryMarker(block.text);
+		if (text !== undefined) return { ...block, text };
 	}
 
 	return { ...block };
@@ -67,8 +83,8 @@ function sanitizeOffloadedContentResult(output: ContentToolResultOutput): JSONVa
 	return toJsonValue({
 		type: 'content',
 		value: output.value.map((part) => {
-			if (!('text' in part) || !isSerializedOffloadedToolResult(part.text)) return part;
-			return { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
+			const text = 'text' in part ? serializedMemoryMarker(part.text) : undefined;
+			return text === undefined ? part : { ...part, text };
 		}),
 	});
 }

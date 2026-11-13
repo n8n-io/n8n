@@ -1007,6 +1007,32 @@ describe('AgentChatToolSteps — output files', () => {
 		]);
 	});
 
+	it('does not render the reply files of n8n Chat below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'chat_action',
+			toolCallId: 'tc-respond',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				ok: true,
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="tool-output-files"]').exists()).toBe(false);
+	});
+
 	it('renders the files of a tool output in a group of tool steps', () => {
 		const toolCalls: ToolCall[] = [
 			{

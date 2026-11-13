@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -63,7 +64,11 @@ export async function execute(
 
 	try {
 		const returnAll = this.getNodeParameter('returnAll', 0, false);
-		let response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
+		let response = await discordApiRequest.call(
+			this,
+			'GET',
+			requestPath`/guilds/${guildId}/channels`,
+		);
 
 		if (!returnAll) {
 			const limit = this.getNodeParameter('limit', 0);

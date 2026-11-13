@@ -67,7 +67,8 @@ export async function setupAgentCredentials(
 	if (!target) {
 		return {
 			error: 'no_agent_target',
-			message: 'No Agent is selected. Call agent_builder_select_agent first, then retry.',
+			message:
+				'No Agent is selected. Run agent_builder_select_agent through call_tool first, then retry.',
 		};
 	}
 

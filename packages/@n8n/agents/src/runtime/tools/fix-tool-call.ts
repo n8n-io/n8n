@@ -2,7 +2,11 @@ import type { ToolCall } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils/is-record';
 import type { InvalidToolInputError, NoSuchToolError, ToolCallRepairFunction, ToolSet } from 'ai';
 
-import { isResolvedByLegacyAction, resolveToolForCall } from './tool-adapter';
+import {
+	findDispatcherForCall,
+	isResolvedByLegacyAction,
+	resolveToolForCall,
+} from './tool-adapter';
 import type { BuiltTool } from '../../types';
 import { isZodSchema } from '../../utils/zod';
 
@@ -44,8 +48,27 @@ export const fixToolCall = async (
 	toolMap: Map<string, BuiltTool>,
 	// eslint-disable-next-line @typescript-eslint/require-await
 ): ReturnType<ToolCallRepairFunction<NoInfer<ToolSet>>> => {
+	if (options.toolCall.providerExecuted) return null;
 	const tool = resolveToolForCall(toolMap, options.toolCall.toolName, options.toolCall.input);
-	if (!tool || options.toolCall.providerExecuted) return null;
+	if (!tool) {
+		// A direct call to a tool from the tool catalog, by its name or a former name, for
+		// example after the model reads an older conversation. Run it through its dispatcher.
+		if (options.error.name !== 'AI_NoSuchToolError') return null;
+		const routed = findDispatcherForCall(
+			toolMap,
+			options.toolCall.toolName,
+			options.toolCall.input,
+		);
+		if (!routed) return null;
+		return {
+			type: 'tool-call' as const,
+			toolCallId: options.toolCall.toolCallId,
+			toolName: routed.dispatcher.name,
+			input: JSON.stringify(routed.input),
+			providerExecuted: false,
+			dynamic: options.toolCall.dynamic,
+		};
+	}
 
 	// The tool map also registers former tool names. A model can still call a
 	// tool by a former name, for example after it reads an older conversation.

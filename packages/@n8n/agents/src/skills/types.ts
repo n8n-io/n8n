@@ -38,7 +38,8 @@ export interface RuntimeSkillLinkedFiles {
 export interface RuntimeSkillIndexEntry {
 	name: string;
 	description: string;
-	recommendedTools?: string[];
+	/** Tool groups in the tool catalog whose tools this skill uses, such as `workflows` or `credentials`. */
+	recommendedToolGroups?: string[];
 }
 
 export interface RuntimeSkillInterfaceContract {
@@ -215,7 +216,7 @@ export interface RuntimeSkillSource {
 	/**
 	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
 	 * It must not change catalog fields (id, name, description, category,
-	 * recommendedTools), because the catalog is rendered before it runs.
+	 * recommendedToolGroups), because the catalog is rendered before it runs.
 	 * Only load_skill calls it, so loadSkill and loadFile must not depend on it.
 	 */
 	prepare?: () => Promise<void>;

@@ -9,8 +9,8 @@ import {
 	type ILoadOptionsFunctions,
 	type ISupplyDataFunctions,
 	NodeApiError,
-	OperationalError,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 

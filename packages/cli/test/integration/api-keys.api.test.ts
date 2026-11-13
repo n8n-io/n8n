@@ -1,7 +1,7 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { Person, User } from '@n8n/db';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -62,7 +62,7 @@ describe('When public API is disabled', () => {
 });
 
 describe('Owner shell', () => {
-	let ownerShell: User;
+	let ownerShell: Person;
 
 	beforeEach(async () => {
 		ownerShell = await createUserShell(GLOBAL_OWNER_ROLE);
@@ -391,7 +391,7 @@ describe('Owner shell', () => {
 
 describe('Member', () => {
 	const memberPassword = randomValidPassword();
-	let member: User;
+	let member: Person;
 
 	beforeEach(async () => {
 		member = await createUser({

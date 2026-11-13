@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import type { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import { createInstallCommunityNodeTool } from '../tools/workflow-builder/install-community-node.tool';
@@ -46,7 +46,7 @@ describe('install_community_node MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let communityNodeTypesService: Mocked<CommunityNodeTypesService>;
 	let lifecycleService: Mocked<CommunityPackagesLifecycleService>;
-	let nodeTypes: Mocked<NodeTypes>;
+	let nodeTypes: Mocked<NodeTypesProxy>;
 	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
@@ -54,7 +54,7 @@ describe('install_community_node MCP tool', () => {
 		hasGlobalScope.mockReturnValue(true);
 		communityNodeTypesService = mock<CommunityNodeTypesService>();
 		lifecycleService = mock<CommunityPackagesLifecycleService>();
-		nodeTypes = mock<NodeTypes>();
+		nodeTypes = mock<NodeTypesProxy>();
 		// Default: nothing installed yet, so an install actually happens.
 		nodeTypes.getByNameAndVersion.mockImplementation(() => {
 			throw new Error('Unrecognized node type');

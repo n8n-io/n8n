@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User, PersonRepository } from '@n8n/db';
@@ -68,12 +69,13 @@ describe('UserManagementMailer', () => {
 		});
 		const urlService = mock<UrlService>();
 		const personRepository = mock<PersonRepository>();
+		const eventService = mock<EventService>();
 		const userManagementMailer = new UserManagementMailer(
 			config,
 			mock(),
 			personRepository,
 			urlService,
-			mock(),
+			eventService,
 		);
 
 		beforeEach(() => {
@@ -364,7 +366,7 @@ describe('UserManagementMailer', () => {
 			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2,3} \d{4}/);
 		});
 
-		it('should send project share notifications', async () => {
+		it('should send project share notifications and report them with the public API client', async () => {
 			const sharer = Object.assign(new Person(), { firstName: 'Sharer', email: 'sharer@user.com' });
 			const newSharees = [
 				{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG },
@@ -385,9 +387,15 @@ describe('UserManagementMailer', () => {
 				sharer,
 				newSharees,
 				project,
+				publicApi: 'other',
 			});
 
 			expect(result.emailSent).toBe(true);
+			expect(eventService.emit).toHaveBeenCalledWith('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Project shared',
+				publicApi: 'other',
+			});
 			expect(nodeMailer.sendMail).toHaveBeenCalledTimes(2);
 			newSharees.forEach((sharee, index) => {
 				expect(nodeMailer.sendMail).toHaveBeenCalledWith({

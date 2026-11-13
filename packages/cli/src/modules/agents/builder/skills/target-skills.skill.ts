@@ -12,13 +12,7 @@ export function targetSkillsSkill(): RuntimeSkill {
 		name: 'Agent Builder Target Skills',
 		description:
 			'Use when creating or editing target-agent skills: the user asks for skills, the agent has two or more separate jobs with their own procedures, or an existing skill needs a change; not for an agent with one job, builder guidance, or universal target-agent instructions.',
-		recommendedTools: [
-			'agent-context',
-			'agent_builder_update_skill',
-			'agent_builder_create_skills',
-			'ask_user',
-			'agent_builder_patch_config',
-		],
+		recommendedToolGroups: ['agents'],
 		allowedTools: [
 			'agent-context',
 			'agent_builder_update_skill',

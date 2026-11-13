@@ -5,8 +5,12 @@ import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
  * always-active toolset. Loading them only when the skill activates would
  * change the tool list mid-conversation. Anthropic renders tools first, so
  * that change rewrites the whole cached prompt.
+ *
+ * Tool catalog mode skips this: the toolset is fixed for the whole run, and a skill
+ * reaches its deferred tools through `call_tool`.
  */
 export function activateSkillDependencyTools(config: AgentRuntimeConfig): AgentRuntimeConfig {
+	if (config.toolDeferral?.mode === 'tool-catalog') return config;
 	const deferredTools = config.deferredTools ?? [];
 	const dependencyNames = new Set(
 		config.skillSource?.registry.skills.flatMap((skill) => skill.dependencies?.tools ?? []),

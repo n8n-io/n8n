@@ -11,6 +11,7 @@ import {
 	getViolationVerdict,
 	SCOPE_LABEL_KEY,
 } from '@n8n/frontend-module-type-availability-policies';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -58,7 +59,14 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
 const outputFilesByToolCallId = computed(
-	() => new Map(props.toolCalls.map((tc) => [tc.toolCallId, getToolOutputAttachments(tc.output)])),
+	() =>
+		new Map(
+			props.toolCalls.map((tc) => [
+				tc.toolCallId,
+				// The reply files of n8n Chat show on the message, not under the step.
+				tc.tool === N8N_CHAT_ACTION_TOOL_NAME ? [] : getToolOutputAttachments(tc.output),
+			]),
+		),
 );
 
 function outputFiles(tc: ToolCall) {

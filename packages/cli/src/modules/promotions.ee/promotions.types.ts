@@ -98,6 +98,7 @@ export type PackageCommit = Readonly<{
 export type PromotionCacheDescriptor = {
 	schemaVersion: 1;
 	environmentId: string;
+	providerId: string;
 	remoteUrl: string;
 	checkoutBranchName: string;
 };

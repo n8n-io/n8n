@@ -13,7 +13,7 @@ import { PublicFormPage } from '../../../pages/PublicFormPage';
  */
 test.describe(
 	'Waiting Endpoint Security',
-	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
+	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
 		test.describe('webhook-waiting signature validation', () => {
 			test('should reject unsigned and tampered requests, accept valid signature @engine:v2', async ({

@@ -2,7 +2,10 @@ operationId: changeUserRoleInProject
 tags:
   - Projects
 summary: Change a user's role in a project
-description: Change a user's role in a project.
+description: |-
+  Change a user's role in a project.
+
+  Requires the `project:manageMembers` API key scope.
 x-required-scope: project:manageMembers
 parameters:
   - schema:

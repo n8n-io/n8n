@@ -24,7 +24,7 @@ test.use({
 test.describe(
 	'Poll Trigger (durable scheduler)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should fire the activation-time seed poll and provision a durable job', async ({

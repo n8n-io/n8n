@@ -35,7 +35,7 @@ import {
 	columnIdConflictError,
 	DataTableImporter,
 } from '../entities/data-table/data-table-importer';
-import { reconcileSharedWrites, shareRevisionRaises } from '../entities/skill/skill-import.types';
+import { reconcileSharedWrites } from '../entities/skill/skill-import.types';
 import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
@@ -112,6 +112,8 @@ import {
 	assertArchiveTransitionsAllowed,
 	assertCredentialUpdatesAllowed,
 	assertDataTableWritesAllowed,
+	assertFolderWritesAllowed,
+	assertWorkflowRemovalsAllowed,
 	assertSharedSkillWritesAllowed,
 	assertTagWritesAllowed,
 	assertVariableWritesAllowed,
@@ -240,6 +242,11 @@ export class ImportOrchestrator {
 		assertDataTableWritesAllowed(
 			options.apiKeyScopes,
 			plans.map((plan) => plan.dataTablePlan),
+		);
+		assertFolderWritesAllowed(this.licenseState, options.apiKeyScopes, plans);
+		assertWorkflowRemovalsAllowed(
+			options.apiKeyScopes,
+			plans.map((plan) => plan.removalPlan),
 		);
 		if (
 			plans.some(
@@ -404,7 +411,6 @@ export class ImportOrchestrator {
 		);
 		const skillPlans = scopes.map(({ skills }) => skills);
 		const issues = reconcileSharedWrites(skillPlans);
-		shareRevisionRaises(skillPlans);
 		for (const [index, { agentPlan }] of scopes.entries()) agentPlan.issues.push(...issues[index]);
 	}
 

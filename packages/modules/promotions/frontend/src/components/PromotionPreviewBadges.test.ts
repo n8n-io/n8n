@@ -144,7 +144,6 @@ describe('PromotionPreviewBadges', () => {
 				direction === 'promote'
 					? billingPreview({
 							resources: [],
-							changes: [],
 							blocker: { code: 'reviewOpen', reviewId: 'review-1' },
 						})
 					: billingPreview({ resources: [] }),

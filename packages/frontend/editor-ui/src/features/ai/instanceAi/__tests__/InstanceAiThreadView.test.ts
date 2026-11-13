@@ -5,10 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import { mock } from 'vitest-mock-extended';
 import type {
 	AgentEvalVerdict,
 	InstanceAiAgentNode,
 	InstanceAiHandoffContext,
+	SkillDetail,
 } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
@@ -34,6 +36,7 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import {
 	defaultModuleSettings,
 	InstanceAiInputStub,
@@ -584,6 +587,209 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-app-preview-stub')).toHaveAttribute('data-app-id', 'app-2');
 		});
+	});
+
+	describe('skill drafts', () => {
+		async function renderSkillArtifacts() {
+			const skillsStore = mockedStore(useSkillsStore);
+			skillsStore.fetchSkill.mockImplementation(async (id) =>
+				mock<SkillDetail>({
+					id,
+					name: id,
+					canEdit: true,
+					skillHash: `hash-${id}`,
+					skill: {
+						name: id,
+						description: 'When to use this skill',
+						instructions: 'Original instructions',
+						references: [{ path: 'references/tone.md', content: 'Original reference' }],
+					},
+				}),
+			);
+			skillsStore.saveSkill.mockImplementation(async (id, payload) => ({
+				id,
+				versionId: 'version-2',
+				version: 2,
+				created: true,
+				skill: {
+					name: payload.name ?? id,
+					description: payload.description ?? '',
+					instructions: payload.instructions ?? '',
+					references: payload.references,
+				},
+				skillHash: `saved-hash-${id}`,
+			}));
+			thread.producedArtifacts = new Map([
+				['skill-1', { type: 'skill', id: 'skill-1', name: 'skill-1' }],
+				['skill-2', { type: 'skill', id: 'skill-2', name: 'skill-2' }],
+				['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Workflow' }],
+			]);
+			storedThreadTabs.set('thread-1', {
+				tabs: [...thread.producedArtifacts.values()],
+				closedTabs: [],
+				activeTab: { type: 'skill', id: 'skill-1' },
+				previewOpen: true,
+			});
+			const rendered = renderView({
+				props: { threadId: 'thread-1' },
+				global: {
+					stubs: {
+						...defaultViewStubs,
+						MarkdownEditor: {
+							props: ['modelValue', 'disabled'],
+							emits: ['update:modelValue'],
+							template:
+								'<textarea :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+						},
+					},
+				},
+			});
+			await rendered.findByRole('button', { name: 'Save skill' });
+			const field = (testId: string) =>
+				rendered.container.querySelector<HTMLElement>(`[data-testid="${testId}"]`)!;
+			const nameInput = () => field('agent-skill-name-input').querySelector('input')!;
+			const selectTab = async (id: string) => {
+				await userEvent.click(
+					rendered.container.querySelector<HTMLElement>(`[data-tab-id="${id}"]`)!,
+				);
+				await flushPromises();
+			};
+			return { ...rendered, skillsStore, field, nameInput, selectTab };
+		}
+
+		it.each(['skill-2', 'workflow-1', 'hidden panel'])(
+			'preserves unsaved fields and references after visiting %s',
+			async (destination) => {
+				const { getByRole, getAllByTestId, skillsStore, field, nameInput, selectTab } =
+					await renderSkillArtifacts();
+				await fireEvent.update(nameInput(), 'Unsaved name');
+				await fireEvent.update(field('agent-skill-instructions-editor'), 'Unsaved instructions');
+				await userEvent.click(field('agent-skill-reference-nav-item-references-tone-md'));
+				await fireEvent.update(field('agent-skill-reference-editor'), 'Unsaved reference');
+
+				if (destination === 'hidden panel') {
+					const toggle = () =>
+						getAllByTestId('instance-ai-artifacts-preview-toggle').find((element) =>
+							element.hasAttribute('aria-pressed'),
+						)!;
+					await userEvent.click(toggle());
+					await userEvent.click(toggle());
+				} else {
+					await selectTab(destination);
+					if (destination === 'skill-2') {
+						expect(nameInput()).toHaveValue('skill-2');
+						await fireEvent.update(nameInput(), 'Other unsaved name');
+					}
+					await selectTab('skill-1');
+				}
+
+				expect(field('agent-skill-reference-editor')).toHaveValue('Unsaved reference');
+				const save = getByRole('button', { name: 'Save skill' });
+				expect(save).toBeEnabled();
+				await userEvent.click(save);
+				await flushPromises();
+				expect(skillsStore.saveSkill).toHaveBeenCalledExactlyOnceWith('skill-1', {
+					name: 'Unsaved name',
+					description: 'When to use this skill',
+					instructions: 'Unsaved instructions',
+					references: [{ path: 'references/tone.md', content: 'Unsaved reference' }],
+					baseSkillHash: 'hash-skill-1',
+				});
+				expect(save).toBeDisabled();
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(destination === 'skill-2' ? 2 : 1);
+				if (destination === 'skill-2') {
+					await selectTab('skill-2');
+					expect(nameInput()).toHaveValue('Other unsaved name');
+				}
+			},
+		);
+
+		it.each(['skill-2', 'workflow-1'])(
+			'reloads a cached skill after an Assistant save while %s is pinned',
+			async (pinnedTabId) => {
+				const { getByRole, getByTestId, skillsStore, field, nameInput, selectTab } =
+					await renderSkillArtifacts();
+				thread.isStreaming = true;
+				await selectTab(pinnedTabId);
+				if (pinnedTabId === 'skill-2') {
+					await fireEvent.update(nameInput(), 'Pinned skill draft');
+				}
+				const fetchCount = skillsStore.fetchSkill.mock.calls.length;
+				skillsStore.fetchSkill.mockResolvedValueOnce({
+					...mock<SkillDetail>(),
+					id: 'skill-1',
+					name: 'Updated skill',
+					canEdit: true,
+					skillHash: 'assistant-saved-hash',
+					skill: {
+						name: 'Updated skill',
+						description: 'Updated description',
+						instructions: 'Updated instructions',
+						references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					},
+				});
+				thread.messages = [
+					{
+						id: 'assistant-skill-update',
+						role: 'assistant',
+						content: '',
+						reasoning: '',
+						isStreaming: false,
+						createdAt: '2026-04-01T00:00:00.000Z',
+						agentTree: {
+							agentId: 'orchestrator',
+							role: 'orchestrator',
+							status: 'completed',
+							textContent: '',
+							reasoning: '',
+							children: [],
+							timeline: [],
+							toolCalls: [
+								{
+									toolCallId: 'skill-update',
+									toolName: 'skills',
+									args: { action: 'update', skillId: 'skill-1' },
+									isLoading: false,
+									result: { success: true, saved: { id: 'skill-1', created: true } },
+								},
+							],
+						},
+					},
+				];
+				await flushPromises();
+
+				if (pinnedTabId === 'skill-2') {
+					expect(nameInput()).toHaveValue('Pinned skill draft');
+					expect(getByRole('button', { name: 'Save skill' })).toBeEnabled();
+				} else {
+					expect(getByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+						'data-workflow-id',
+						'workflow-1',
+					);
+				}
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount);
+
+				thread.isStreaming = false;
+				await selectTab('skill-1');
+
+				expect(skillsStore.fetchSkill).toHaveBeenCalledTimes(fetchCount + 1);
+				expect(skillsStore.fetchSkill).toHaveBeenLastCalledWith('skill-1');
+				expect(nameInput()).toHaveValue('Updated skill');
+				expect(field('agent-skill-instructions-editor')).toHaveValue('Updated instructions');
+				expect(getByRole('button', { name: 'Save skill' })).toBeDisabled();
+				await fireEvent.update(field('agent-skill-instructions-editor'), 'User instructions');
+				await userEvent.click(getByRole('button', { name: 'Save skill' }));
+				await flushPromises();
+
+				expect(skillsStore.saveSkill).toHaveBeenCalledExactlyOnceWith('skill-1', {
+					name: 'Updated skill',
+					description: 'Updated description',
+					instructions: 'User instructions',
+					references: [{ path: 'references/tone.md', content: 'Updated reference' }],
+					baseSkillHash: 'assistant-saved-hash',
+				});
+			},
+		);
 	});
 
 	it('registers an explicit workflow open without a project as unscoped', async () => {
@@ -1967,32 +2173,14 @@ describe('InstanceAiThreadView', () => {
 				textContent: '',
 				reasoning: '',
 				timeline: [],
-				children: [
-					{
-						agentId: 'agent-builder-child',
-						role: 'agent-builder',
-						kind: 'agent-builder',
-						status: 'completed',
-						textContent: '',
-						reasoning: '',
-						timeline: [],
-						children: [],
-						toolCalls: [],
-						targetResource: {
-							type: 'agent',
-							id: 'agent-1',
-							projectId: 'proj-1',
-							name: 'SEO Auditor',
-						},
-					},
-				],
+				children: [],
 				toolCalls: [
 					{
 						toolCallId: 'tc-create-agent',
-						toolName: 'agent_builder_build_agent',
-						args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
+						toolName: 'agent_builder_select_agent',
+						args: { name: 'SEO Auditor' },
 						isLoading: false,
-						result: { ok: true, builderReply: 'Created the agent.' },
+						result: { ok: true, agentId: 'agent-1', projectId: 'proj-1', agentChange: 'created' },
 					},
 				],
 			},

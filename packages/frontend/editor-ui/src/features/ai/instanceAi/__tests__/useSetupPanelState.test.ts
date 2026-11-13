@@ -87,6 +87,8 @@ function createHarness(
 				},
 			},
 		],
+		// The editing check is mocked, so the turns are never read.
+		artifactTurns: [],
 		setupItemsByWorkflowId: { [WORKFLOW_ID]: eventItems },
 	});
 

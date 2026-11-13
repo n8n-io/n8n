@@ -69,7 +69,7 @@ Keep additional workflows as later roadmap items.
 4. After setup, offer only a live run for manual or schedule triggers. The execution
    approval card supplies consent. For event triggers, explain how to start
    listening for a test event and perform the event, then ask the user to report
-   back. Inspect the resulting execution with `get_execution` and `get_execution_node_output`.
+   back. Inspect the resulting execution by running `get_execution` and `get_execution_node_output` through `call_tool`.
 5. Extend only after a successful, non-simulated execution of the current
    version. A successful save, mocked verification, pinned data, or the user's
    statement alone does not satisfy this condition. Confirm that every required

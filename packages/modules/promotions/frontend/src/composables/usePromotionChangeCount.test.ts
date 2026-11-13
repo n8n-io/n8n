@@ -7,7 +7,7 @@ import * as api from '../promotions.api';
 import { resource } from '../__tests__/preview.fixtures';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
-	useRootStore: () => ({ restApiContext: {} }),
+	useRootStore: () => ({ publicApiContext: {} }),
 }));
 
 vi.mock('../promotions.api');
@@ -28,16 +28,6 @@ const preview = (count: number): PromotionPreview => ({
 		}),
 	),
 	dependencies: [],
-	changes: Array.from({ length: count }, (_, index) => ({
-		id: `workflow-${index}`,
-		name: `Workflow ${index}`,
-		type: 'workflow',
-		status: 'new',
-		version: null,
-		updatedAt: null,
-		updatedBy: null,
-		dependencyCount: 0,
-	})),
 });
 
 describe('usePromotionChangeCount blocker', () => {

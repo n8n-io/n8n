@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeItemRestriction } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nSwitch,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
-import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -150,8 +156,9 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 							: i18n.baseText('chatHub.toolsManager.enableTool')
 					"
 				>
-					<ElSwitch
+					<N8nSwitch
 						:model-value="enabled"
+						size="large"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
 					/>

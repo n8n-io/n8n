@@ -24,6 +24,8 @@ describe('permissions', () => {
 			externalSecret: {},
 			eventBusDestination: {},
 			execution: {},
+			executionLimit: {},
+			projectExecutionLimit: {},
 			testRun: {},
 			ldap: {},
 			license: {},
@@ -60,6 +62,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		});
@@ -185,6 +188,8 @@ describe('permissions', () => {
 			},
 			dataTable: {},
 			execution: {},
+			executionLimit: {},
+			projectExecutionLimit: {},
 			testRun: {},
 			workflowTags: {},
 			role: {},
@@ -201,6 +206,7 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			workflowSettings: {},
 			scim: {},
 			trustedSource: {},
 		};

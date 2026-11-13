@@ -15,6 +15,8 @@ export class SkillSourceCheckTask implements SystemTask {
 
 	readonly schedule: SystemTaskSchedule;
 
+	readonly initialDelaySeconds: number;
+
 	readonly target = clusterTarget({
 		// A failed run is not retried: the next run checks every source again. A run may take
 		// half an hour, and the sources it did not reach go first next time.
@@ -27,6 +29,8 @@ export class SkillSourceCheckTask implements SystemTask {
 		private readonly skillSync: SkillSyncService,
 	) {
 		this.schedule = intervalFromSeconds(config.checkIntervalSeconds);
+		// Spread checks across the interval when instances start together.
+		this.initialDelaySeconds = Math.floor(Math.random() * config.checkIntervalSeconds);
 	}
 
 	async run(signal: AbortSignal): Promise<void> {

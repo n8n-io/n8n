@@ -127,7 +127,7 @@ const i18n = useI18n();
 		<template #trailingContent>
 			<N8nIcon
 				icon="x"
-				title="Dismiss"
+				:title="i18n.baseText('generic.dismiss')"
 				size="medium"
 				type="secondary"
 				@click="emit('dismissCreditsCallout')"

@@ -58,8 +58,16 @@ describe('DropdownMenu utils', () => {
 			expect(getNextValidIndex(createItems(4, [1]), 2, -1)).toBe(0);
 		});
 
-		it('should return -1 when all items above are disabled', () => {
-			expect(getNextValidIndex(createItems(3, [0]), 1, -1)).toBe(-1);
+		it('should stay on the current item when all items above are disabled', () => {
+			expect(getNextValidIndex(createItems(3, [0]), 1, -1)).toBe(1);
+		});
+
+		it('should stay on the first navigable item when a header is above it', () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'h', label: 'Section', header: true },
+				{ id: 'a', label: 'A' },
+			];
+			expect(getNextValidIndex(items, 1, -1)).toBe(1);
 		});
 
 		it('should skip header items when navigating down', () => {

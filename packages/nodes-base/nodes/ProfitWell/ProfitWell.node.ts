@@ -7,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { companyOperations } from './CompanyDescription';
@@ -70,7 +71,7 @@ export class ProfitWell implements INodeType {
 		loadOptions: {
 			async getPlanIds(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const planIds = await profitWellApiRequest.call(this, 'GET', '/metrics/plans');
+				const planIds = await profitWellApiRequest.call(this, 'GET', requestPath`/metrics/plans`);
 				for (const planId of planIds.plan_ids) {
 					returnData.push({
 						name: planId,
@@ -94,7 +95,11 @@ export class ProfitWell implements INodeType {
 			try {
 				if (resource === 'company') {
 					if (operation === 'getSetting') {
-						responseData = await profitWellApiRequest.call(this, 'GET', '/company/settings/');
+						responseData = await profitWellApiRequest.call(
+							this,
+							'GET',
+							requestPath`/company/settings/`,
+						);
 					}
 				}
 				if (resource === 'metric') {
@@ -120,7 +125,13 @@ export class ProfitWell implements INodeType {
 							delete qs.monthlyMetrics;
 						}
 
-						responseData = await profitWellApiRequest.call(this, 'GET', `/metrics/${type}`, {}, qs);
+						responseData = await profitWellApiRequest.call(
+							this,
+							'GET',
+							requestPath`/metrics/${type}`,
+							{},
+							qs,
+						);
 						responseData = responseData.data as Metrics;
 
 						if (simple) {

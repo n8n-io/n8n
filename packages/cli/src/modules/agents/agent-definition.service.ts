@@ -38,6 +38,7 @@ export class AgentDefinitionService {
 		savedBy: User | string,
 		ctx: OperationContext,
 		source?: AgentActor,
+		skillPins?: Map<string, string>,
 	): Promise<AgentHistory> {
 		if (!agent.versionId) throw new ConflictError('Agent has no saved version');
 
@@ -50,7 +51,7 @@ export class AgentDefinitionService {
 		if (existing) return existing;
 
 		// Capture skill versions
-		const pins = await this.agentSkillRefs.versionSnapshot(agent, ctx);
+		const pins = skillPins ?? (await this.agentSkillRefs.versionSnapshot(agent, ctx));
 
 		// Insert a new history row
 		const history = await this.historyRepository.saveVersion(

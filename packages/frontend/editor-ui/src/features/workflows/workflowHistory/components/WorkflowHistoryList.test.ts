@@ -178,6 +178,53 @@ describe('WorkflowHistoryList', () => {
 		]);
 	});
 
+	test.each(['clone', 'restore', 'download'])(
+		'should not emit disabled %s action from item',
+		async (action) => {
+			const items = Array.from({ length: 2 }, namedWorkflowHistoryDataFactory);
+			const { getAllByTestId, emitted } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions: actionTypes.map((value) => ({
+						label: value,
+						value,
+						disabled: value !== 'open',
+					})),
+					selectedItem: null,
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 2,
+					evaluatedPruneTimeInHours: -1,
+				},
+			});
+
+			const listItem = getAllByTestId('workflow-history-list-item')[1];
+			const toggleButton = within(within(listItem).getByTestId('action-toggle')).getByRole(
+				'button',
+			);
+			await userEvent.click(toggleButton);
+			const dropdown = document.getElementById(
+				toggleButton.getAttribute('aria-controls') as string,
+			);
+			expect(dropdown).toBeInTheDocument();
+			const entry = within(dropdown as HTMLElement).getByTestId(`action-${action}`);
+			expect(entry).toHaveAttribute('data-disabled');
+			expect(entry).toHaveAttribute('aria-disabled', 'true');
+			await userEvent.click(entry);
+			expect(emitted().action).toBeUndefined();
+
+			await userEvent.click(within(dropdown as HTMLElement).getByTestId('action-open'));
+			expect(emitted().action).toEqual([
+				[
+					expect.objectContaining({
+						action: 'open',
+						id: items[1].versionId,
+					}),
+				],
+			]);
+		},
+	);
+
 	it('should delegate compare event from item', async () => {
 		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
 		const index = 1;

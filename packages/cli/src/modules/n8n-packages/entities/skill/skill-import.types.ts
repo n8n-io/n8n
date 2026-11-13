@@ -15,6 +15,8 @@ export interface SkillWrite {
 
 /** A project or instance skill write, with the Agents that use the skill. */
 export interface SharedSkillWrite extends SkillWrite {
+	/** The skill ID in the package. The import can write a copy under a different ID. */
+	packageSkillId?: string;
 	usedBy: string[];
 }
 
@@ -23,11 +25,6 @@ export interface SkillImportPlan {
 	shared: SharedSkillWrite[];
 	/** The Agents that use a project or instance skill that the import writes. */
 	sharedUsers: Set<string>;
-	/**
-	 * How many times the import raised the revision of each Agent, keyed by Agent ID.
-	 * All plans of one package share this map.
-	 */
-	raisedRevisions: Map<string, number>;
 }
 
 export function skillIssue(
@@ -69,21 +66,16 @@ export function reconcileSharedWrites(plans: SkillImportPlan[]): AgentImportIssu
 }
 
 /** An Agent can use only the skills of its own project and instance skills. */
-function foreignSkill({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
+function foreignSkill({ skill, packageSkillId, usedBy }: SharedSkillWrite): AgentImportIssue[] {
 	const message = `Skill "${skill.skill.name}" belongs to another project of this package. An Agent can use only the skills of its own project and instance skills. Use an instance skill, or a copy of the skill in this project.`;
-	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
+	return usedBy.map((agentId) => skillIssue(agentId, packageSkillId ?? skill.id, message));
 }
 
-function instanceNameClash({ skill, usedBy }: SharedSkillWrite): AgentImportIssue[] {
+function instanceNameClash({
+	skill,
+	packageSkillId,
+	usedBy,
+}: SharedSkillWrite): AgentImportIssue[] {
 	const message = `Another instance skill of this package has the same name "${skill.skill.name}". Rename one of the skills.`;
-	return usedBy.map((agentId) => skillIssue(agentId, skill.id, message));
-}
-
-/**
- * A skill write in one project raises the revision of the Agents in all projects that
- * follow the skill. Give all plans of the package one map, so each plan knows these raises.
- */
-export function shareRevisionRaises(plans: SkillImportPlan[]): void {
-	const raisedRevisions = new Map<string, number>();
-	for (const plan of plans) plan.raisedRevisions = raisedRevisions;
+	return usedBy.map((agentId) => skillIssue(agentId, packageSkillId ?? skill.id, message));
 }

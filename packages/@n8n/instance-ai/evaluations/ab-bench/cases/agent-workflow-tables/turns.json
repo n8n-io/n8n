@@ -1,0 +1,6 @@
+[
+	"Create a data table called \"support_tickets\" with the columns subject (text), priority (text) and status (text). Add three example rows: one high-priority open ticket, one low-priority open ticket and one closed ticket.",
+	"Build a workflow with a webhook that receives a ticket with subject and priority, saves it in support_tickets with status \"open\", and replies with the saved row. Tag the workflow \"support\" and put it in a folder called \"Support\".",
+	"Now build an n8n Agent called \"Ticket helper\". It answers questions about open tickets from the support_tickets table, and it can create a new ticket by calling the workflow you just built.",
+	"Which projects do I have, which folder is the ticket workflow in, and what tags does it have?"
+]

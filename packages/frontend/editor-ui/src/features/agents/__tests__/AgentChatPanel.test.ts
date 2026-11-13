@@ -4601,7 +4601,11 @@ describe('AgentChatPanel', () => {
 
 	describe('host extension API', () => {
 		type HostPanelVm = {
-			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendMessageFromOutside: (
+				message: string,
+				files?: File[],
+				clientContext?: Record<string, unknown>,
+			) => void;
 			isDirty: () => boolean;
 			setDraft: (text: string) => void;
 			openFilePicker: () => void;
@@ -4796,6 +4800,70 @@ describe('AgentChatPanel', () => {
 			});
 		});
 
+		describe('draft-cleared', () => {
+			it('emits when typed text that cancels an open question leaves the composer', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+				const input = composer(wrapper);
+
+				input.vm.$emit('update:modelValue', 'go another direction');
+				await nextTick();
+				input.vm.$emit('submit');
+				await flushPromises();
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+
+				cancelAndSteerMock.mock.lastCall?.[1]?.();
+				await flushPromises();
+
+				expect(wrapper.emitted('draft-cleared')).toHaveLength(1);
+			});
+		});
+
+		describe('message-sending', () => {
+			it('emits each new message on send, also when the server does not accept it', async () => {
+				sendMessageMock.mockResolvedValueOnce('busy');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('hello', [], { attachments: [] });
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'hello', files: [], clientContext: { attachments: [] }, isFirstMessage: true }],
+				]);
+			});
+
+			it('emits typed text that cancels an open question, without its files', async () => {
+				messagesMock.value = [
+					{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage,
+					openInteractiveMessage(),
+				];
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('go another direction', [
+					new File(['a'], 'a.png', { type: 'image/png' }),
+				]);
+				await flushPromises();
+
+				expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'go another direction', files: [], isFirstMessage: false }],
+				]);
+			});
+
+			it('marks a message as not the first once the thread has a user message', async () => {
+				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+				sendMessageMock.mockResolvedValueOnce('sent');
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('again');
+				await flushPromises();
+
+				expect(wrapper.emitted('message-sending')?.[0]?.[0]).toMatchObject({
+					isFirstMessage: false,
+				});
+			});
+		});
+
 		describe('exposed API', () => {
 			it('sets the draft without sending it and reports it as dirty', async () => {
 				const wrapper = mountPanel();
@@ -4853,6 +4921,11 @@ describe('AgentChatPanel', () => {
 			) => void;
 			removeComposerAttachment: (id: string) => void;
 			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendHostMessage: (
+				message: string,
+				clientContext?: Record<string, unknown>,
+			) => Promise<'sent' | 'busy' | 'rejected'>;
+			composerAttachments: Array<{ chip: { id: string } }>;
 		};
 		const composerVm = (wrapper: ReturnType<typeof mountPanel>) =>
 			wrapper.vm as unknown as ComposerVm;
@@ -5047,6 +5120,46 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
 			]);
+		});
+
+		describe('sendHostMessage', () => {
+			it('sends past the composer, so the draft and the staged chips stay', async () => {
+				acceptOnSend();
+				const wrapper = mountPanel({ clientContext: () => ({ timeZone: 'Europe/Helsinki' }) });
+				const vm = composerVm(wrapper);
+				vm.setDraft('half-typed');
+				vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { workflowId: 'wf-1' });
+				await nextTick();
+
+				const result = await vm.sendHostMessage('fix it', { attachments: [{ id: 'wf-2' }] });
+				await flushPromises();
+
+				expect(result).toBe('sent');
+				const clientContext = { timeZone: 'Europe/Helsinki', attachments: [{ id: 'wf-2' }] };
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'fix it',
+					undefined,
+					expect.any(Function),
+					clientContext,
+				);
+				expect(wrapper.emitted('message-accepted')).toEqual([
+					[{ text: 'fix it', files: [], clientContext }],
+				]);
+				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(wrapper.emitted('draft-cleared')).toBeUndefined();
+				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
+			});
+
+			it('does not answer an open card', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+
+				const result = await composerVm(wrapper).sendHostMessage('fix it');
+
+				expect(result).toBe('busy');
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('replaces a chip with the same id and drops a removed chip from the next send', async () => {

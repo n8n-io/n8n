@@ -1,6 +1,6 @@
-// Shared by `executions(action="run")` and `verify_built_workflow`. Both tools are
-// always loaded, so these descriptions go into every model call. Keep them to the
-// field contract. Do not append usage rules here: put them in the
+// Shared by `run_workflow` and `workflow_builder_verify_built_workflow`. Both tools
+// are deferred, so these descriptions reach the model through `find_tools`. Keep
+// them to the field contract. Do not append usage rules here: put them in the
 // `trigger-input-data-shapes` skill reference, a skill, an SDK check, or a hint on
 // the tool result. A unit test enforces the length.
 

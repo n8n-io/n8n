@@ -23,7 +23,7 @@ export const senderOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/v3/senders/{{$parameter.id}}',
+						url: '=/v3/senders/{{ toPathSegment($parameter.id) }}',
 					},
 					output: {
 						postReceive: [

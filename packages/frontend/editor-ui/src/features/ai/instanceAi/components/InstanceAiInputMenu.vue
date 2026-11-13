@@ -18,15 +18,19 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 
-const props = withDefaults(defineProps<{ disabled?: boolean; isStreaming?: boolean }>(), {
-	disabled: false,
-	isStreaming: false,
-});
+const props = withDefaults(
+	defineProps<{ disabled?: boolean; isStreaming?: boolean; projectId?: string }>(),
+	{
+		disabled: false,
+		isStreaming: false,
+	},
+);
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount } = useInstanceAiInputMenuItems(() =>
-	emit('attachFiles'),
+const { menuItems, disconnectedConnectionCount, refreshSkills } = useInstanceAiInputMenuItems(
+	() => emit('attachFiles'),
+	() => props.projectId,
 );
 
 const tooltip = computed(() => {
@@ -76,6 +80,7 @@ watch(
 function handleUpdateDropdownModelValue(open: boolean) {
 	isOpen.value = open;
 	if (open) {
+		void refreshSkills();
 		trackInputPlusButtonClick();
 	}
 }

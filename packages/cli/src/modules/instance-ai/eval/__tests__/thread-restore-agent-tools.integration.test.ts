@@ -64,7 +64,7 @@ describe('EvalThreadRestoreService.restoreAgents with custom tools', () => {
 		});
 		const state = await restored?.getState();
 		expect(state?.tools).toEqual(tools);
-		expect(state?.schema?.tools).toEqual([{ type: 'custom', id: 'lookup_order' }]);
+		expect(state?.config?.tools).toEqual([{ type: 'custom', id: 'lookup_order' }]);
 		await drafts.deleteDraft(owner, project.id, agentId);
 	});
 });

@@ -52,7 +52,12 @@ export const IMPORT_DESCRIPTION =
 	'Credential and dependency references are resolved before writes. Request bindings support ' +
 	'credential overrides only. Agent and workflow identities are matched automatically.\n\n' +
 	'Agent packages require `agent:import` and `agent:read`. Workflow packages require ' +
-	'`workflow:import`. Mixed packages require both import grants. Planned Agent actions also ' +
+	'`workflow:import`. Mixed packages require both import grants. A project package requires ' +
+	'`project:create` when it creates a project, and `project:update` when ' +
+	'`projectConflictPolicy=overwrite` changes the details of an existing project. It requires ' +
+	'`folder:create` only when it creates a folder, and a license that supports folders only ' +
+	'when it creates, changes or removes a folder. A workflow package with folders always ' +
+	'requires `folder:create`, `folder:update` and that license. Planned Agent actions also ' +
 	'require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents ' +
 	'do not require write grants. Creating a project or instance skill requires `skill:create`, ' +
 	'and saving a new version of one requires `skill:update`. ' +
@@ -61,7 +66,8 @@ export const IMPORT_DESCRIPTION =
 	'one, the key needs `workflow:deactivate`. Skipped workflows and workflows marked as ' +
 	'archived in the package need neither publication scope. Archiving or restoring a matched ' +
 	'workflow needs `workflow:delete`. Restoring and publishing a workflow requires both ' +
-	'`workflow:delete` and `workflow:activate`. ' +
+	'`workflow:delete` and `workflow:activate`. Archiving or restoring a matched Agent needs ' +
+	'`agent:delete`. ' +
 	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +
@@ -112,7 +118,11 @@ export const IMPORT_SELECTION_DESCRIPTION =
 	'cherry-pick conflict policies (folder, tag, and project) are fixed and are not accepted ' +
 	'here; only `conflictPolicy`, `idPolicy`, and `overwriteDeletionPolicy` ' +
 	'are configurable. Maximum upload size is `N8N_ENDPOINTS_PAYLOAD_SIZE_MAX` MB (default ' +
-	'16). The caller is authorised through the `workflow:import` scope. ' +
+	'16). ' +
+	'The API key also needs `project:create` when the selected project does not exist. The ' +
+	'import never changes an existing project, so it never needs `project:update`. It needs ' +
+	'`folder:create` and a license that supports folders only when it creates a folder for a ' +
+	'selected workflow, or a folder above it. ' +
 	'Packages that contain Agents are rejected before writes. Use the ordinary import endpoint ' +
 	'for selected-Agent exports. `conflictPolicy` replaces `workflowConflictPolicy`, and ' +
 	'`idPolicy` replaces `workflowIdPolicy`. The old fields are rejected. ' +

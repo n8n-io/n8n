@@ -2,9 +2,13 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { getStringFromEnv } from '@opentelemetry/core';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { OperationalError } from '@n8n/errors';
+import { readFile } from 'node:fs/promises';
+import { request } from 'node:http';
 
 import { parseOtlpHeaders, type OtelConnectionParams } from './otel-settings.service';
 
@@ -37,7 +41,46 @@ export class OtelExporterFactory {
 		const headers = this.parseHeaders(connection.exporterHeaders);
 		const url = this.resolveExporterUrl(connection);
 
-		return new OTLPTraceExporter({ url, headers, timeoutMillis });
+		return new OTLPTraceExporter({
+			url,
+			headers,
+			timeoutMillis,
+			httpAgentOptions: async (protocol) => await this.createExportAgent(protocol),
+		});
+	}
+
+	private async createExportAgent(protocol: string) {
+		const transport = this.exportTransport();
+		if (protocol === 'http:') return transport.getNodeAgent({ keepAlive: true }).httpAgent;
+
+		const [ca, cert, key] = await Promise.all(
+			['CERTIFICATE', 'CLIENT_CERTIFICATE', 'CLIENT_KEY'].map(
+				async (name) => await this.readOtlpTracesFile(name),
+			),
+		);
+		return transport.getNodeAgent({ keepAlive: true, ca, cert, key }).httpsAgent;
+	}
+
+	private async readOtlpTracesFile(name: string) {
+		const path =
+			getStringFromEnv(`OTEL_EXPORTER_OTLP_TRACES_${name}`) ??
+			getStringFromEnv(`OTEL_EXPORTER_OTLP_${name}`);
+		if (!path) return undefined;
+
+		try {
+			return await readFile(path);
+		} catch (error) {
+			this.logger.warn(`Failed to read the OTLP ${name} file "${path}". Exporting without it.`, {
+				error: getErrorMessage(error),
+			});
+			return undefined;
+		}
+	}
+
+	private exportTransport() {
+		// SSRF is disabled: the OTLP endpoint is admin-configured observability
+		// infrastructure and is commonly an internal/localhost collector.
+		return this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' });
 	}
 
 	private async createGrpcTraceExporter(
@@ -116,11 +159,18 @@ export class OtelExporterFactory {
 	}
 
 	private async probeHttpEndpoint(url: string, timeoutMs: number): Promise<void> {
-		// SSRF is disabled: the OTLP endpoint is admin-configured observability
-		// infrastructure and is commonly an internal/localhost collector.
-		await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
-			method: 'HEAD',
-			signal: AbortSignal.timeout(timeoutMs),
+		const agent = await this.createExportAgent(new URL(url).protocol);
+		await new Promise<void>((resolve, reject) => {
+			request(
+				url,
+				{ method: 'HEAD', agent, signal: AbortSignal.timeout(timeoutMs) },
+				(response) => {
+					response.resume();
+					resolve();
+				},
+			)
+				.on('error', reject)
+				.end();
 		});
 	}
 

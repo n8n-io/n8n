@@ -19,9 +19,6 @@ import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
 
-import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
-
-import { SelfHealingResult } from './self-healing-result.entity';
 import { SelfHealingConfiguration } from './self-healing-configuration.entity';
 import { SelfHealingConfigurationReviewer } from './self-healing-configuration-reviewer.entity';
 import { SelfHealingConfigurationWorkflow } from './self-healing-configuration-workflow.entity';
@@ -61,7 +58,7 @@ function sharedWorkflowEditQuery<T extends ObjectLiteral>(
 		.where('shareMember.userId = projectMember.userId')
 		.andWhere('shareMember.role IN (:...projectRoleSlugs)', { projectRoleSlugs })
 		.andWhere('share.role IN (:...workflowRoleSlugs)', { workflowRoleSlugs })
-		.andWhere('owner.projectId = projectMember.projectId')
+		.andWhere('owner.projectId = :projectId')
 		.andWhere('owner.role = :ownerRole', { ownerRole: 'workflow:owner' });
 }
 
@@ -183,15 +180,20 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		const [workflows, reviewers, activity] = await Promise.all([
 			this.manager.findBy(SelfHealingConfigurationWorkflow, { configurationId }),
 			this.manager.findBy(SelfHealingConfigurationReviewer, { configurationId }),
-			this.manager
-				.createQueryBuilder(SelfHealingInvestigation, 'investigation')
-				.select('investigation.configurationId', 'configurationId')
-				.addSelect('MAX(investigation.createdAt)', 'lastActivity')
-				.where('investigation.configurationId IN (:...ids)', {
-					ids: configurationIds,
-				})
-				.groupBy('investigation.configurationId')
-				.getRawMany<{ configurationId: number; lastActivity: Date | string }>(),
+			this.createQueryBuilder('configuration')
+				.select('configuration.id', 'configurationId')
+				.addSelect(
+					(query) =>
+						query
+							.select('investigation.createdAt')
+							.from(SelfHealingInvestigation, 'investigation')
+							.where('investigation.configurationId = configuration.id')
+							.orderBy('investigation.createdAt', 'DESC')
+							.limit(1),
+					'lastActivity',
+				)
+				.where('configuration.id IN (:...ids)', { ids: configurationIds })
+				.getRawMany<{ configurationId: number; lastActivity: Date | string | null }>(),
 		]);
 
 		const workflowsByConfiguration = groupBy(workflows, 'configurationId');
@@ -206,6 +208,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				scope: configuration.scope,
 				enabled: configuration.enabled,
 				includeAllProjectMembers: configuration.includeAllProjectMembers,
+				includeSubWorkflows: configuration.includeSubWorkflows,
 				enabledById: configuration.enabledById,
 				workflowIds: (workflowsByConfiguration[configuration.id] ?? []).map(
 					(row) => row.workflowId,
@@ -286,7 +289,10 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 		return await query.getMany();
 	}
 
-	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
+	private reviewerMembers(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		ctx: OperationContext,
+	) {
 		const query = this.managerFor(ctx)
 			.createQueryBuilder(Person, 'user')
 			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
@@ -326,6 +332,31 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 		const covered = whereCoversWorkflow(sharedWorkflowEdit, 'configuration', 'share.workflowId');
 		return await query.andWhere(`EXISTS ${covered.getQuery()}`).getExists();
+	}
+
+	/** Call with workflows of the configuration's project. */
+	async hasReviewerWhoCanEditAll(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		roles: ReviewerRoles,
+		workflowIds: string[],
+		ctx: OperationContext,
+	) {
+		const query = this.reviewerMembers(configuration, ctx);
+		const shares = workflowIds.map((workflowId, index) =>
+			sharedWorkflowEditQuery(query, roles)?.andWhere(
+				`share.workflowId = :sharedWorkflow${index}`,
+				{
+					[`sharedWorkflow${index}`]: workflowId,
+				},
+			),
+		);
+		const editAccess = [
+			editRoleCondition(roles),
+			shares.every(Boolean) && shares.map((share) => `EXISTS ${share?.getQuery()}`).join(' AND '),
+		].filter(Boolean);
+		if (editAccess.length === 0) return false;
+
+		return await query.andWhere(`(${editAccess.join(' OR ')})`, roles).getExists();
 	}
 
 	async replaceSelections(
@@ -386,21 +417,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	}
 
 	async deleteConfiguration(id: number, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const linkedSuggestions = manager
-			.createQueryBuilder(SelfHealingResult, 'result')
-			.select('result.suggestionId')
-			.where('result.configurationId = :id', { id });
-
-		// Delete suggestions first. Deleting a result does not delete its suggestion.
-		await manager
-			.createQueryBuilder()
-			.delete()
-			.from(WorkflowSuggestion)
-			.where(`id IN (${linkedSuggestions.getQuery()})`)
-			.setParameters(linkedSuggestions.getParameters())
-			.execute();
-		await manager.delete(SelfHealingConfiguration, { id });
+		await this.managerFor(ctx).delete(SelfHealingConfiguration, { id });
 	}
 
 	async isReviewer(configurationId: number, userId: string, ctx: OperationContext) {

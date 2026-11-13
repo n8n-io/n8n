@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import { MqttClient } from 'mqtt';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { createClient, type MqttCredential } from '../GenericFunctions';
 

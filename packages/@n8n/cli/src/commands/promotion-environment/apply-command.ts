@@ -40,11 +40,7 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 		}
 
 		if (!flags.quiet) {
-			this.logToStderr(
-				result.status === 'blocked'
-					? blockedMessage(result, result.check, continueCommand)
-					: sourceChangedMessage(result),
-			);
+			this.logToStderr(stopMessage(result, continueCommand));
 		}
 		this.exit(exitCodeFor(result));
 	}
@@ -53,6 +49,17 @@ export abstract class PromotionApplyCommand extends BaseCommand {
 function exitCodeFor(result: ApplyPackageResult): number {
 	if (result.status === 'applied') return EXIT_SUCCESS;
 	return result.status === 'blocked' ? EXIT_BLOCKED : EXIT_SOURCE_CHANGED;
+}
+
+function stopMessage(result: ApplyPackageResult, continueCommand: ContinueCommand): string {
+	if (result.status === 'blocked') return blockedMessage(result, result.check, continueCommand);
+	if (result.status === 'preview-changed') {
+		return [
+			'The Apply preview changed since you reviewed it. Nothing was imported.',
+			'Run list-changes again. Review the changes. Then apply with the new revision.',
+		].join('\n');
+	}
+	return sourceChangedMessage(result);
 }
 
 function sourceChangedMessage(result: ApplyPackageResult): string {
@@ -122,7 +129,10 @@ export function environmentContinueCommand(environmentId: string): ContinueComma
 		expectedSourceArgs(result);
 }
 
-/** The command that resumes a blocked selection Apply. It resends the same selection. */
+/**
+ * The command that resumes a blocked selection Apply. It resends the same selection. It leaves
+ * out the preview revision: setting up a binding changes the preview, so the old one never matches.
+ */
 export function selectionContinueCommand(
 	projectId: string,
 	{ workflowIds = [], folderIds = [] }: PromotionSelection,

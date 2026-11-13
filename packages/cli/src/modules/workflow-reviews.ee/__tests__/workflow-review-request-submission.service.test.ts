@@ -41,7 +41,7 @@ import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.s
 const user = mock<User>({ id: 'user-1' });
 
 /** Build a loaded person with the computed pending state. */
-function loadedUser(fields: Partial<User> & { id: string; email: string }): Person {
+function loadedUser(fields: Partial<Person> & { id: string; email: string }): Person {
 	const loaded = Object.assign(new Person(), { password: 'hashed', authIdentities: [], ...fields });
 	loaded.computeIsPending();
 	return loaded;

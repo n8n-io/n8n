@@ -3,6 +3,7 @@ import type {
 	INodeTypeDescription,
 	ISupplyDataFunctions,
 	IDataObject,
+	RequestUrl,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { ProviderTool, supplyModel } from '@n8n/ai-node-sdk';
@@ -69,7 +70,7 @@ export class ExampleChatModel implements INodeType {
 		const model = new OpenAIChatModel(
 			modelName,
 			{
-				httpRequest: async (method, url, body, headers) => {
+				httpRequest: async (method, url: RequestUrl, body, headers) => {
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'exampleApi',
@@ -84,7 +85,7 @@ export class ExampleChatModel implements INodeType {
 						body: response,
 					};
 				},
-				openStream: async (method, url, body, headers) => {
+				openStream: async (method, url: RequestUrl, body, headers) => {
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'exampleApi',

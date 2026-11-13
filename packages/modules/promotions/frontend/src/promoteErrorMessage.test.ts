@@ -1,28 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
 	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
-	type PromotableResource,
+	type PromotionResource,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { i18n } from '@n8n/i18n';
 
 import { getPromoteErrorMessage } from './promoteErrorMessage';
 
-const changes: PromotableResource[] = [
-	{
-		id: 'wf-1',
-		name: 'Slack trigger flow',
-		type: 'workflow',
-		status: 'modified',
-		version: 1,
-		updatedAt: null,
-		updatedBy: null,
-		dependencyCount: 0,
-	},
+const resource = (overrides: Partial<PromotionResource>): PromotionResource => ({
+	key: 'workflow:wf-1',
+	type: 'workflow',
+	id: 'wf-1',
+	name: 'Slack trigger flow',
+	parentKey: 'project:p1',
+	change: 'modified',
+	selectable: true,
+	revision: { before: 'a', after: 'b' },
+	...overrides,
+});
+
+const resources = [
+	resource({}),
+	// A resource of another type with the same ID must not supply the workflow name.
+	resource({ key: 'credential:wf-1', type: 'credential', name: 'Slack account' }),
 ];
 
 describe('getPromoteErrorMessage', () => {
-	it('returns i18n text with workflow titles from the change list', () => {
+	it('returns i18n text with workflow titles from the preview resources', () => {
 		const error = new ResponseError('Workflows moved to another project', {
 			httpStatusCode: 400,
 			meta: {
@@ -31,7 +36,7 @@ describe('getPromoteErrorMessage', () => {
 			},
 		});
 
-		expect(getPromoteErrorMessage(error, changes, i18n)).toBe(
+		expect(getPromoteErrorMessage(error, resources, i18n)).toBe(
 			i18n.baseText('promotions.operation.promoteError.workflowsMovedCrossProject', {
 				interpolate: { workflows: 'Slack trigger flow' },
 			}),
@@ -39,7 +44,7 @@ describe('getPromoteErrorMessage', () => {
 	});
 
 	it('returns undefined for unrelated errors', () => {
-		expect(getPromoteErrorMessage(new Error('offline'), changes, i18n)).toBeUndefined();
+		expect(getPromoteErrorMessage(new Error('offline'), resources, i18n)).toBeUndefined();
 	});
 
 	it('returns undefined when meta does not match the cross-project code', () => {
@@ -48,6 +53,6 @@ describe('getPromoteErrorMessage', () => {
 			meta: { code: 'other-error', workflowIds: ['wf-1'] },
 		});
 
-		expect(getPromoteErrorMessage(error, changes, i18n)).toBeUndefined();
+		expect(getPromoteErrorMessage(error, resources, i18n)).toBeUndefined();
 	});
 });

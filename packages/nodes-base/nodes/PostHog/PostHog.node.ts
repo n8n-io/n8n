@@ -6,7 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { aliasFields, aliasOperations } from './AliasDescription';
 import { eventFields, eventOperations } from './EventDescription';
@@ -115,7 +115,7 @@ export class PostHog implements INodeType {
 							).toISOString();
 						}
 
-						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+						responseData = await posthogApiRequest.call(this, 'POST', requestPath`/batch`, event);
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
@@ -167,7 +167,9 @@ export class PostHog implements INodeType {
 						events.push(event);
 					}
 
-					responseData = await posthogApiRequest.call(this, 'POST', '/capture', { batch: events });
+					responseData = await posthogApiRequest.call(this, 'POST', requestPath`/capture`, {
+						batch: events,
+					});
 
 					returnData.push(responseData as IDataObject);
 				} catch (error) {
@@ -211,7 +213,7 @@ export class PostHog implements INodeType {
 						//@ts-ignore
 						delete event.propertiesUi;
 
-						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+						responseData = await posthogApiRequest.call(this, 'POST', requestPath`/batch`, event);
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {
@@ -267,7 +269,7 @@ export class PostHog implements INodeType {
 						//@ts-ignore
 						delete event.propertiesUi;
 
-						responseData = await posthogApiRequest.call(this, 'POST', '/batch', event);
+						responseData = await posthogApiRequest.call(this, 'POST', requestPath`/batch`, event);
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {

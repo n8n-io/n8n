@@ -3,6 +3,8 @@ import type { ToolsAgentAction } from '@langchain/classic/agents/openai/output_p
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { BedrockRuntimeClient, type ConverseCommandInput } from '@aws-sdk/client-bedrock-runtime';
+import { ChatBedrockConverse } from '@langchain/aws';
 import { HumanMessage, isDataContentBlock } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
@@ -26,6 +28,7 @@ import {
 	prepareMessages,
 	preparePrompt,
 	getTools,
+	toDocumentName,
 	getAgentStepsParser,
 	handleAgentFinishOutput,
 } from '../../agents/ToolsAgent/common';
@@ -213,13 +216,28 @@ describe('extractBinaryMessages', () => {
 			passthroughBinaryPdfs: true,
 		});
 		expect(Array.isArray(humanMsg.content)).toBe(true);
-		expect(humanMsg.content[0]).toEqual({
+		expect(humanMsg.content[1]).toEqual({
 			type: 'file',
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'samplePdfData',
-			metadata: { filename: 'attachment.pdf' },
+			metadata: { filename: 'attachment.pdf', name: 'attachment' },
 		});
+		expect(humanMsg.content[0]).toEqual({ type: 'text', text: 'Attached file: attachment.pdf' });
+	});
+
+	it('should strip control characters from the attached file label', async () => {
+		mockContext.getInputData.mockReturnValue([
+			{
+				json: {},
+				binary: {
+					doc1: { mimeType: 'application/pdf', fileName: 'a\nb.pdf', data: 'samplePdfData' },
+				},
+			},
+		]);
+
+		const humanMsg = await extractBinaryMessages(mockContext, 0, { passthroughBinaryPdfs: true });
+		expect(humanMsg.content[0]).toEqual({ type: 'text', text: 'Attached file: a b.pdf' });
 	});
 
 	it('should produce a valid LangChain standard data content block for PDFs', async () => {
@@ -242,7 +260,7 @@ describe('extractBinaryMessages', () => {
 			passthroughBinaryImages: true,
 			passthroughBinaryPdfs: true,
 		});
-		expect(isDataContentBlock(humanMsg.content[0] as object)).toBe(true);
+		expect(isDataContentBlock(humanMsg.content[1] as object)).toBe(true);
 	});
 
 	it('should emit an OpenAI input_file block for PDFs when content format is openai-responses', async () => {
@@ -264,7 +282,7 @@ describe('extractBinaryMessages', () => {
 			{ passthroughBinaryImages: true, passthroughBinaryPdfs: true },
 			'openai-responses',
 		);
-		expect(humanMsg.content[0]).toEqual({
+		expect(humanMsg.content[1]).toEqual({
 			type: 'input_file',
 			file_data: 'data:application/pdf;base64,samplePdfData',
 			filename: 'report.pdf',
@@ -318,7 +336,7 @@ describe('extractBinaryMessages', () => {
 			passthroughBinaryPdfs: true,
 		});
 		expect(Array.isArray(humanMsg.content)).toBe(true);
-		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toHaveLength(3);
 		expect(humanMsg.content).toEqual(
 			expect.arrayContaining([
 				{
@@ -330,7 +348,7 @@ describe('extractBinaryMessages', () => {
 					source_type: 'base64',
 					mime_type: 'application/pdf',
 					data: 'pdfData456',
-					metadata: { filename: 'test.pdf' },
+					metadata: { filename: 'test.pdf', name: 'test' },
 				},
 			]),
 		);
@@ -358,12 +376,12 @@ describe('extractBinaryMessages', () => {
 		});
 		expect(mockHelpers.getBinaryStream).toHaveBeenCalledWith('pdf-123');
 		expect(mockHelpers.binaryToBuffer).toHaveBeenCalled();
-		expect(humanMsg.content[0]).toEqual({
+		expect(humanMsg.content[1]).toEqual({
 			type: 'file',
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: Buffer.from('fakepdfdata').toString(BINARY_ENCODING),
-			metadata: { filename: 'attachment.pdf' },
+			metadata: { filename: 'attachment.pdf', name: 'attachment' },
 		});
 	});
 
@@ -391,13 +409,13 @@ describe('extractBinaryMessages', () => {
 			passthroughBinaryPdfs: true,
 		});
 
-		expect(humanMsg.content).toHaveLength(1);
-		expect(humanMsg.content[0]).toEqual({
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content[1]).toEqual({
 			type: 'file',
 			source_type: 'base64',
 			mime_type: 'application/pdf',
 			data: 'pdfData456',
-			metadata: { filename: 'test.pdf' },
+			metadata: { filename: 'test.pdf', name: 'test' },
 		});
 	});
 
@@ -826,7 +844,7 @@ describe('prepareMessages', () => {
 		});
 		const binaryMessage = messages.find((m) => m instanceof HumanMessage) as HumanMessage;
 		expect(binaryMessage).toBeDefined();
-		expect(binaryMessage.content[0]).toEqual({
+		expect(binaryMessage.content[1]).toEqual({
 			type: 'input_file',
 			file_data: 'data:application/pdf;base64,samplePdfData',
 			filename: 'report.pdf',
@@ -900,6 +918,73 @@ describe('prepareMessages', () => {
 
 		expect(messages.length).toBe(4);
 		expect(messages).toContainEqual(['system', '{formatting_instructions}']);
+	});
+});
+
+describe('toDocumentName', () => {
+	it.each([
+		['invoice.pdf', 'invoice'],
+		['Q3 report (final) v1.2.pdf', 'Q3 report (final) v1 2'],
+		['a__b..c  d.pdf', 'a b c d'],
+		['.pdf', 'attachment'],
+		['???', 'attachment'],
+		[undefined, 'attachment'],
+		[`${'a'.repeat(250)}.pdf`, 'a'.repeat(200)],
+	])('should map %s to %s', (fileName, expected) => {
+		expect(toDocumentName(fileName)).toBe(expected);
+	});
+});
+
+describe('Bedrock PDF passthrough', () => {
+	it('should send a text block and a valid name with the PDF document', async () => {
+		const helpers = mock<IExecuteFunctions['helpers']>();
+		const ctx = mock<IExecuteFunctions>({ helpers });
+		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 3.1 }));
+		ctx.getInputData.mockReturnValue([
+			{
+				json: {},
+				binary: {
+					data: {
+						mimeType: 'application/pdf',
+						fileName: 'invoice.2024.pdf',
+						data: Buffer.from('%PDF-1.4 fake').toString('base64'),
+					},
+				},
+			},
+		]);
+
+		const messages = await prepareMessages(ctx, 0, {
+			systemMessage: 'You are helpful',
+			passthroughBinaryPdfs: true,
+		});
+		const formatted = await preparePrompt(messages).formatMessages({
+			system_message: 'You are helpful',
+			input: 'Check the attachment please',
+			chat_history: [],
+			agent_scratchpad: [],
+		});
+
+		const client = new BedrockRuntimeClient({
+			region: 'eu-central-1',
+			credentials: { accessKeyId: 'x', secretAccessKey: 'y' },
+		});
+		let sent: ConverseCommandInput | undefined;
+		vi.spyOn(client, 'send').mockImplementation(async (cmd) => {
+			sent = cmd.input as ConverseCommandInput;
+			return { output: { message: { role: 'assistant', content: [{ text: 'ok' }] } } };
+		});
+		const model = new ChatBedrockConverse({
+			model: 'eu.anthropic.claude-sonnet-4',
+			region: 'eu-central-1',
+			client,
+		});
+		await model.invoke(formatted);
+
+		const docMessage = sent?.messages?.find((m) => m.content?.some((c) => c.document));
+		expect(docMessage?.content).toEqual([
+			{ text: 'Attached file: invoice.2024.pdf' },
+			{ document: expect.objectContaining({ name: 'invoice 2024', format: 'pdf' }) },
+		]);
 	});
 });
 
@@ -1211,6 +1296,25 @@ describe('getAgentStepsParser', () => {
 });
 
 describe('handleAgentFinishOutput', () => {
+	// Mistral streams one text block per delta (no `index`), so blocks are fragments
+	it('should concatenate streamed text fragments without adding newlines', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ type: 'text', text: 'Here' },
+					{ type: 'text', text: '’s what' },
+					{ type: 'text', text: '’s in your dataset' },
+					{ type: 'text', text: ':\n\n## Overview' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('Here’s what’s in your dataset:\n\n## Overview');
+	});
+
 	it('should merge multi-output text arrays into a single string', () => {
 		const steps: AgentFinish = {
 			returnValues: {
@@ -1227,7 +1331,7 @@ describe('handleAgentFinishOutput', () => {
 		expect(result).toEqual({
 			log: '',
 			returnValues: {
-				output: 'First part\nSecond part',
+				output: 'First partSecond part',
 			},
 		});
 	});
@@ -1309,7 +1413,7 @@ describe('handleAgentFinishOutput', () => {
 
 		const result = handleAgentFinishOutput(steps) as AgentFinish;
 
-		expect(result.returnValues.output).toBe('Only thinking content\nMore thinking');
+		expect(result.returnValues.output).toBe('Only thinking contentMore thinking');
 	});
 
 	it('should return empty string when no text or thinking blocks exist', () => {

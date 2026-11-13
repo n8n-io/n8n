@@ -107,7 +107,7 @@ describe('Microsoft Dataverse operations', () => {
 			expect(result).toEqual({ id: 'row-1' });
 			const [, method, path, body, , headers, credType] = singleCall();
 			expect(method).toBe('POST');
-			expect(path).toBe('/accounts');
+			expect(String(path)).toBe('/accounts');
 			expect(body).toEqual({ name: 'Acme' });
 			expect(headers?.Prefer).toBe('return=representation');
 			expect(credType).toBe(CREDENTIAL_TYPE);
@@ -182,7 +182,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, , qs, , credType] = singleCall();
 			expect(method).toBe('GET');
-			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(String(path)).toBe(`/accounts(${ROW_ID})`);
 			expect(qs).toMatchObject({
 				$select: 'name',
 				$expand: 'primarycontactid',
@@ -220,7 +220,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			await getRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
-			expect(singleCall()[2]).toBe(`/accounts(${ROW_ID})`);
+			expect(String(singleCall()[2])).toBe(`/accounts(${ROW_ID})`);
 		});
 
 		it('rejects a table name containing path traversal before dispatching', async () => {
@@ -262,7 +262,7 @@ describe('Microsoft Dataverse operations', () => {
 			expect(result).toEqual([{ id: 'row-1' }]);
 			const [, method, path, qs, limit, credType] = pagedCall();
 			expect(method).toBe('GET');
-			expect(path).toBe('/accounts');
+			expect(String(path)).toBe('/accounts');
 			expect(qs).toMatchObject({ $orderby: 'name desc', $filter: 'statecode eq 0' });
 			// Limit is mapped to a server-side $top so a full page isn't fetched.
 			expect(qs).toMatchObject({ $top: 25 });
@@ -381,7 +381,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, qs, limit] = pagedCall();
 			expect(method).toBe('GET');
-			expect(path).toBe('/accounts');
+			expect(String(path)).toBe('/accounts');
 			expect(qs).toEqual({ fetchXml: '<fetch>x</fetch>' });
 			expect(limit).toBe(25);
 		});
@@ -437,7 +437,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, body, , headers, credType] = singleCall();
 			expect(method).toBe('PATCH');
-			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(String(path)).toBe(`/accounts(${ROW_ID})`);
 			expect(body).toEqual({ name: 'New' });
 			expect(headers?.['If-Match']).toBe('*');
 			expect(headers?.Prefer).toBe('return=representation');
@@ -502,7 +502,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path, body, , headers, credType] = singleCall();
 			expect(method).toBe('PATCH');
-			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(String(path)).toBe(`/accounts(${ROW_ID})`);
 			expect(body).toEqual({ name: 'Acme' });
 			expect(headers?.['If-Match']).toBeUndefined();
 			expect(headers?.['If-None-Match']).toBeUndefined();
@@ -577,7 +577,7 @@ describe('Microsoft Dataverse operations', () => {
 
 			const [, method, path] = singleCall();
 			expect(method).toBe('PATCH');
-			expect(path).toBe(`/sensordatas(${ROW_ID})`);
+			expect(String(path)).toBe(`/sensordatas(${ROW_ID})`);
 			expect(resolveTableMetadata).not.toHaveBeenCalled();
 		});
 
@@ -594,8 +594,27 @@ describe('Microsoft Dataverse operations', () => {
 			await upsertRow.execute(ctx, 0, CREDENTIAL_TYPE);
 
 			const [, , path, body] = singleCall();
-			expect(path).toBe("/accounts(accountnumber='ACC-001')");
+			expect(String(path)).toBe("/accounts(accountnumber='ACC-001')");
 			expect(body).toEqual({ name: 'Acme' });
+		});
+
+		it.each([
+			[1, "/accounts(accountnumber='AB%2F12')"],
+			[1.1, "/accounts(accountnumber='AB%252F12')"],
+		])('handles a pre-encoded alternate key in node version %s', async (typeVersion, expected) => {
+			ctx.getNode.mockReturnValue({ ...node, typeVersion });
+			withParams({
+				entitySet: 'accounts',
+				identifierType: 'alternateKey',
+				alternateKey: "accountnumber='AB%2F12'",
+				inputMode: 'json',
+				fieldsJson: '{"name":"Acme"}',
+				upsertOptions: {},
+			});
+
+			await upsertRow.execute(ctx, 0, CREDENTIAL_TYPE);
+
+			expect(String(singleCall()[2])).toBe(expected);
 		});
 
 		it('throws with the upsert-specific message when the body is empty', async () => {
@@ -662,7 +681,7 @@ describe('Microsoft Dataverse operations', () => {
 			expect(result).toEqual({ success: true, id: ROW_ID });
 			const [, method, path, , qs, , credType] = singleCall();
 			expect(method).toBe('DELETE');
-			expect(path).toBe(`/accounts(${ROW_ID})`);
+			expect(String(path)).toBe(`/accounts(${ROW_ID})`);
 			expect(qs).toEqual({ partitionId: 'partition-1' });
 			expect(credType).toBe(CREDENTIAL_TYPE);
 		});

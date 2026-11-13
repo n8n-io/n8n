@@ -1,6 +1,6 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { User, UserRepository } from '@n8n/db';
+import type { Person, User, UserRepository } from '@n8n/db';
 import { CredentialResolverError } from '@n8n/decorators';
 import type { TrustedSourceGate } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
@@ -24,7 +24,7 @@ describe('N8NIdentifier', () => {
 	let mockTrustedSourceGate: Mocked<TrustedSourceGate>;
 	let mockUserRepository: Mocked<UserRepository>;
 
-	const mockUser = mock<User>({ id: 'user-123' });
+	const mockPerson = mock<Person>({ id: 'user-123' });
 
 	beforeEach(() => {
 		mockLogger = mock<Logger>();
@@ -58,7 +58,7 @@ describe('N8NIdentifier', () => {
 	describe('resolve', () => {
 		describe('successful resolution', () => {
 			it('should resolve user ID with browserId string', async () => {
-				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'valid-jwt-token',
@@ -83,7 +83,7 @@ describe('N8NIdentifier', () => {
 			});
 
 			it('should resolve user ID with browserId undefined', async () => {
-				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'valid-jwt-token',
@@ -108,7 +108,7 @@ describe('N8NIdentifier', () => {
 			});
 
 			it('should resolve user ID without browserId in metadata', async () => {
-				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'valid-jwt-token',
@@ -205,7 +205,7 @@ describe('N8NIdentifier', () => {
 
 		describe('chat-hub branch with explicit source', () => {
 			it('should call authenticateUserBasedOnToken when source is chat-hub-injected', async () => {
-				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'cookie-jwt',
@@ -233,7 +233,7 @@ describe('N8NIdentifier', () => {
 
 		describe('cookie-source branch', () => {
 			it('should call authenticateUserBasedOnToken when source is cookie-source', async () => {
-				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'cookie-jwt',
@@ -295,7 +295,7 @@ describe('N8NIdentifier', () => {
 
 		describe('manual-execution branch', () => {
 			it('should resolve user via authenticateUserByCookie and skip the request-bound path', async () => {
-				mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+				mockAuthService.authenticateUserByCookie.mockResolvedValue(mockPerson);
 
 				const context = {
 					identity: 'n8n-auth-cookie-jwt',
@@ -341,7 +341,7 @@ describe('N8NIdentifier', () => {
 
 		describe('n8n-oauth branch', () => {
 			it('should verify the token for the resource audience and resolve the user', async () => {
-				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockPerson });
 
 				const context = {
 					identity: 'oauth-access-token',
@@ -365,7 +365,7 @@ describe('N8NIdentifier', () => {
 			});
 
 			it('should pass the sealed grant through, for a run that outlived its trigger', async () => {
-				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser });
+				mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockPerson });
 
 				const grant = {
 					audiences: ['https://host/mcp/workflow-a'],
@@ -647,7 +647,7 @@ describe('N8NIdentifier', () => {
 
 	describe('identify', () => {
 		it('validates the cookie for a manual-execution carrier', async () => {
-			mockAuthService.authenticateUserByCookie.mockResolvedValue(mockUser);
+			mockAuthService.authenticateUserByCookie.mockResolvedValue(mockPerson);
 
 			const userId = await identifier.identify({
 				identity: 'cookie-jwt',
@@ -775,7 +775,7 @@ describe('N8NIdentifier', () => {
 		);
 
 		it('verifies the token for an n8n-oauth carrier without a subject', async () => {
-			mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockUser } as never);
+			mockOAuthVerifier.verifyOAuthAccessToken.mockResolvedValue({ user: mockPerson } as never);
 
 			const userId = await identifier.identify({
 				identity: 'token',
@@ -792,7 +792,7 @@ describe('N8NIdentifier', () => {
 		});
 
 		it('validates the request-bound JWT for a chat-hub carrier', async () => {
-			mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
+			mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockPerson);
 
 			const userId = await identifier.identify({
 				identity: 'token',

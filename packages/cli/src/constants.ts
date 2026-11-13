@@ -1,3 +1,4 @@
+import { setN8nVersion } from '@n8n/backend-common';
 import { MISSING_SCOPE_ERROR_MESSAGE, Time } from '@n8n/constants';
 import { readFileSync, statSync } from 'fs';
 import type { n8n } from 'n8n-core';
@@ -33,6 +34,7 @@ const workflowSdkPackageJson = jsonParse<n8n.PackageJson>(
 	readFileSync(workflowSdkPackageJsonPath, 'utf8'),
 );
 export const N8N_VERSION = n8nPackageJson.version;
+setN8nVersion(N8N_VERSION);
 export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
@@ -129,6 +131,9 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
+/** The longest time that an editor page request waits for the settings to embed. */
+export const EMBEDDED_SETTINGS_TIMEOUT_MS = Time.seconds.toMilliseconds;
+
 export const TEST_WEBHOOK_TIMEOUT = 2 * Time.minutes.toMilliseconds;
 
 export const TEST_WEBHOOK_TIMEOUT_BUFFER = 30 * Time.seconds.toMilliseconds;
@@ -203,12 +208,6 @@ export const TRIMMED_TASK_DATA_CONNECTIONS: ITaskDataConnections = {
 		],
 	],
 };
-
-/** Lowest priority, meaning shut down happens after other groups */
-export const LOWEST_SHUTDOWN_PRIORITY = 0;
-export const DEFAULT_SHUTDOWN_PRIORITY = 100;
-/** Highest priority, meaning shut down happens before all other groups */
-export const HIGHEST_SHUTDOWN_PRIORITY = 200;
 
 export const WsStatusCodes = {
 	CloseNormal: 1000,

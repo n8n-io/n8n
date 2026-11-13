@@ -36,7 +36,7 @@ export function usePromotionChangeCount(
 		loading.value = true;
 		try {
 			const preview = await getPromotionPreview(
-				rootStore.restApiContext,
+				rootStore.publicApiContext,
 				requestedProjectId,
 				direction,
 			);

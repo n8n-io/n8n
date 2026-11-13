@@ -122,7 +122,7 @@ describe('getSystemPrompt — browser discoverability', () => {
 		it('does not offer n8n docs as a search_tools discovery example', () => {
 			const prompt = getSystemPrompt(toolSearchOptions);
 
-			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).toContain('## Tool Catalog');
 			expect(prompt).not.toMatch(/search "n8n docs"/i);
 		});
 

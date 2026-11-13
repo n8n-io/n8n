@@ -261,7 +261,7 @@ describe('project shell import', () => {
 		});
 
 		it('leaves the existing project details untouched under merge, still importing its contents', async () => {
-			const result = await importProjects(owner, await reimportPackage(), undefined, {
+			const result = await importProjects(owner, await reimportPackage(), ['workflow:import'], {
 				projectConflictPolicy: 'merge',
 			});
 
@@ -272,6 +272,37 @@ describe('project shell import', () => {
 			expect(project?.name).toBe('brie');
 			expect(project?.description).toBeNull();
 			expect(result.workflows[0]).toMatchObject({ projectId: 'P1', status: 'created' });
+		});
+
+		it('requires project:update under overwrite only when the package changes the project details', async () => {
+			const overwrite = {
+				projectConflictPolicy: 'overwrite',
+				folderConflictPolicy: 'merge',
+			} as const;
+
+			await expect(
+				importProjects(owner, await reimportPackage(), ['workflow:import'], overwrite),
+			).rejects.toBeInstanceOf(ForbiddenError);
+			expect((await findProject('P1'))?.name).toBe('brie');
+			expect(await Container.get(WorkflowRepository).count()).toBe(0);
+
+			await importProjects(
+				owner,
+				await reimportPackage(),
+				['workflow:import', 'project:update'],
+				overwrite,
+			);
+			expect((await findProject('P1'))?.name).toBe('brie renamed');
+
+			const unchanged = await importProjects(
+				owner,
+				await reimportPackage(),
+				['workflow:import'],
+				overwrite,
+			);
+			expect(unchanged.projects).toEqual([
+				expect.objectContaining({ sourceProjectId: 'P1', status: 'skipped' }),
+			]);
 		});
 
 		it('refuses the whole package under fail, writing nothing for any project', async () => {
@@ -459,6 +490,14 @@ describe('project shell import', () => {
 			expect((await findWorkflow(kept.id))?.isArchived).toBe(false);
 		});
 
+		it('needs the folders license to remove an empty folder', async () => {
+			const empty = await createFolder(project, { name: 'empty' });
+			licenseMocker.disable('feat:folders');
+
+			await expect(reconcile('overwrite')).rejects.toBeInstanceOf(ForbiddenError);
+			expect(await findFolder(empty.id)).not.toBeNull();
+		});
+
 		it('shelters a target-only folder holding only an archived workflow', async () => {
 			const shelved = await createFolder(project, { name: 'shelved' });
 			const archived = await createWorkflow(
@@ -511,15 +550,27 @@ describe('project shell import', () => {
 			expect((await reconcile('overwrite')).removedWorkflows).toEqual([]);
 		});
 
-		it('rejects the import when the API key lacks the workflow:delete scope', async () => {
-			await expect(
-				importProjects(
-					owner,
-					await projectPackage(),
-					['project:create', 'project:update', 'folder:create', 'folder:update', 'workflow:import'],
-					{ projectConflictPolicy: 'overwrite' },
-				),
-			).rejects.toBeInstanceOf(ForbiddenError);
+		it('requires workflow:delete and folder:delete only when the import removes one', async () => {
+			const overwrite = async (apiKeyScopes: string[]) =>
+				await importProjects(owner, await projectPackage(), apiKeyScopes, {
+					projectConflictPolicy: 'overwrite',
+				});
+
+			await overwrite(['workflow:import']);
+
+			const stale = await createWorkflow({ name: 'Stale' }, project);
+			await expect(overwrite(['workflow:import'])).rejects.toBeInstanceOf(ForbiddenError);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(false);
+			await overwrite(['workflow:import', 'workflow:delete']);
+			expect((await findWorkflow(stale.id))?.isArchived).toBe(true);
+
+			const empty = await createFolder(project, { name: 'empty' });
+			await expect(overwrite(['workflow:import', 'workflow:delete'])).rejects.toBeInstanceOf(
+				ForbiddenError,
+			);
+			expect(await findFolder(empty.id)).not.toBeNull();
+			await overwrite(['workflow:import', 'folder:delete']);
+			expect(await findFolder(empty.id)).toBeNull();
 		});
 
 		it.each(['merge', 'fail'] as const)(
@@ -566,7 +617,7 @@ describe('project shell import', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
 	});
 
-	it('rejects a project package when the API key lacks the project:create scope', async () => {
+	it('requires only project:create for a package that creates projects', async () => {
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [
 				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
@@ -576,6 +627,10 @@ describe('project shell import', () => {
 		await expect(importProjects(owner, packageBuffer, ['workflow:import'])).rejects.toBeInstanceOf(
 			ForbiddenError,
 		);
+		expect(await findProject('P1')).toBeNull();
+
+		await importProjects(owner, packageBuffer, ['project:create']);
+		expect(await findProject('P1')).not.toBeNull();
 	});
 
 	it('refuses to import over an existing personal project id', async () => {

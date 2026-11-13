@@ -8,6 +8,8 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
+import { requestPath } from 'n8n-workflow';
+
 import { BitbucketTrigger } from '../BitbucketTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
 import type { MockInstance } from 'vitest';
@@ -198,7 +200,7 @@ describe('BitbucketTrigger', () => {
 				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'values',
 					'GET',
-					'/hook_events/workspace',
+					requestPath`/hook_events/workspace`,
 				);
 
 				expect(result).toEqual([
@@ -250,7 +252,7 @@ describe('BitbucketTrigger', () => {
 				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'values',
 					'GET',
-					'/hook_events/repository',
+					requestPath`/hook_events/repository`,
 				);
 
 				expect(result).toEqual([
@@ -291,7 +293,7 @@ describe('BitbucketTrigger', () => {
 				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'values',
 					'GET',
-					'/repositories/test-workspace',
+					requestPath`/repositories/test-workspace`,
 				);
 
 				expect(result).toEqual([
@@ -335,7 +337,7 @@ describe('BitbucketTrigger', () => {
 				expect(bitbucketApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'values',
 					'GET',
-					'/user/workspaces',
+					requestPath`/user/workspaces`,
 				);
 
 				expect(result).toEqual([
@@ -392,7 +394,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/workspaces/test-workspace/hooks',
+					requestPath`/workspaces/test-workspace/hooks`,
 				);
 				expect(result).toBe(true);
 
@@ -426,7 +428,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/repositories/test-workspace/test-repo/hooks',
+					requestPath`/repositories/test-workspace/test-repo/hooks`,
 				);
 				expect(result).toBe(true);
 			});
@@ -503,7 +505,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/workspaces/test-workspace/hooks',
+					requestPath`/workspaces/test-workspace/hooks`,
 					{
 						description: 'n8n webhook',
 						url: 'https://test.n8n.io/webhook/test',
@@ -540,7 +542,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/repositories/test-workspace/test-repo/hooks',
+					requestPath`/repositories/test-workspace/test-repo/hooks`,
 					{
 						description: 'n8n webhook',
 						url: 'https://test.n8n.io/webhook/test',
@@ -570,7 +572,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'DELETE',
-					'/workspaces/test-workspace/hooks/12345678-1234-1234-1234-123456789012',
+					requestPath`/workspaces/test-workspace/hooks/12345678-1234-1234-1234-123456789012`,
 				);
 
 				expect(result).toBe(true);
@@ -594,7 +596,7 @@ describe('BitbucketTrigger', () => {
 
 				expect(bitbucketApiRequestSpy).toHaveBeenCalledWith(
 					'DELETE',
-					'/repositories/test-workspace/test-repo/hooks/12345678-1234-1234-1234-123456789012',
+					requestPath`/repositories/test-workspace/test-repo/hooks/12345678-1234-1234-1234-123456789012`,
 				);
 
 				expect(result).toBe(true);

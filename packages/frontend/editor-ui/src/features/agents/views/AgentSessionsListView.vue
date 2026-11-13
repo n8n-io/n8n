@@ -122,9 +122,12 @@ function formatDuration(ms: number): string {
 	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
-function statusColor(status: AgentSessionStatus): 'success' | 'danger' | 'warning' | 'text-base' {
+function statusColor(
+	status: AgentSessionStatus,
+): 'success' | 'danger' | 'warning' | 'secondary' | 'text-base' {
 	if (status === 'succeeded') return 'success';
 	if (status === 'error') return 'danger';
+	if (status === 'awaiting') return 'secondary';
 	if (status === 'running') return 'text-base';
 	return 'warning';
 }
@@ -141,6 +144,8 @@ function statusLabel(status: AgentSessionStatus): string {
 			return i18n.baseText('agentSessions.status.cancelled');
 		case 'interrupted':
 			return i18n.baseText('agentSessions.status.interrupted');
+		case 'awaiting':
+			return i18n.baseText('agentSessions.status.awaiting');
 	}
 }
 
@@ -612,6 +617,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 		border-left-color: var(--border-color--warning);
 	}
 
+	&[data-status='awaiting'] .titleCell {
+		border-left-color: var(--color--secondary);
+	}
+
 	&:hover {
 		background-color: var(--execution-card--color--background--hover);
 	}
@@ -685,6 +694,10 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			border-left-color: var(--border-color--warning);
 		}
 
+		&[data-status='awaiting'] {
+			border-left-color: var(--color--secondary);
+		}
+
 		td {
 			display: block;
 			width: auto;
@@ -726,6 +739,13 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			display: block;
 			width: 100%;
 		}
+	}
+
+	// A block td treats `height` as fixed, not as a minimum like a table cell does.
+	// Let the two-line empty state grow instead of being clipped.
+	.wrapper .sessionsTable .lastRow td {
+		height: auto;
+		min-height: var(--height--2xl);
 	}
 
 	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {

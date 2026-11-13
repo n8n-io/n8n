@@ -3,7 +3,7 @@ import { test, expect } from '../../../../fixtures/base';
 test.describe(
 	'Editor zoom should work after route changes',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should maintain zoom functionality after switching between Editor and Workflow history and Workflow list', async ({

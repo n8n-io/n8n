@@ -1,4 +1,6 @@
+import type { BreakingChangeAssistantAction } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
+import { computed, ref } from 'vue';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
@@ -15,6 +17,16 @@ import MigrateWorkflowModal from './MigrateWorkflowModal.vue';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	migrateWorkflowForRule: vi.fn(),
+}));
+
+const assistant = vi.hoisted(() => ({ open: vi.fn() }));
+const assistantAvailable = ref(false);
+
+vi.mock('./useMigrationFindingAssistant', () => ({
+	useMigrationFindingAssistant: () => ({
+		available: computed(() => assistantAvailable.value),
+		open: assistant.open,
+	}),
 }));
 
 const workflow = {
@@ -81,12 +93,19 @@ const secondWorkflow = {
 	issues: [{ ...workflow.issues[0], nodeId: 'node-2', nodeName: 'Other AI Transform' }],
 };
 
-function render(workflows = [workflow]) {
+function render(workflows = [workflow], assistantAction: BreakingChangeAssistantAction = 'fix') {
 	eventBus = createEventBus();
 	return renderComponent({
 		props: {
 			modalName: MIGRATE_WORKFLOW_MODAL_KEY,
-			data: { ruleId: 'rule-1', workflows, recommendations, eventBus },
+			data: {
+				ruleId: 'rule-1',
+				ruleTitle: 'AI Transform node is deprecated',
+				assistantAction,
+				workflows,
+				recommendations,
+				eventBus,
+			},
 		},
 	});
 }
@@ -98,6 +117,7 @@ describe('MigrateWorkflowModal', () => {
 		rootStore.restApiContext = { baseUrl: 'http://localhost:5678', pushRef: 'test' };
 		workflowsStore = mockedStore(useWorkflowsStore);
 		vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockResolvedValue(migrationResult);
+		assistantAvailable.value = false;
 	});
 
 	it('closes without migrating when cancelled', async () => {
@@ -198,6 +218,97 @@ describe('MigrateWorkflowModal', () => {
 
 		expect(await screen.findByText('This node has no generated code yet.')).toBeInTheDocument();
 		expect(screen.getByTestId('migrate-modal-close-button')).toBeInTheDocument();
+	});
+
+	describe('continue in n8n Assistant', () => {
+		beforeEach(() => {
+			assistantAvailable.value = true;
+		});
+
+		it('hands a refused migration to the Assistant with the refusal', async () => {
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockRejectedValue(
+				new ResponseError('This node has no generated code yet.', {
+					httpStatusCode: 400,
+					meta: { nodeId: 'node-1', nodeName: 'AI Transform' },
+				}),
+			);
+			render();
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+			await userEvent.click(
+				await screen.findByTestId('migrate-modal-continue-in-assistant-button'),
+			);
+
+			expect(assistant.open).toHaveBeenCalledWith({
+				rule: expect.objectContaining({
+					ruleId: 'rule-1',
+					ruleTitle: 'AI Transform node is deprecated',
+				}),
+				workflow: expect.objectContaining({ id: 'workflow-1' }),
+				action: 'fix',
+				automatedMigration: {
+					outcome: 'refused',
+					message: 'This node has no generated code yet.',
+					nodeName: 'AI Transform',
+				},
+			});
+		});
+
+		it('hands a migration with warnings to the Assistant with its notes and unmapped parameters', async () => {
+			vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockResolvedValue({
+				...migrationResult,
+				notes: ['Output now contains file metadata.'],
+				unmapped: ['options.customRetryScript'],
+			});
+			render();
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+			await userEvent.click(
+				await screen.findByTestId('migrate-modal-continue-in-assistant-button'),
+			);
+
+			expect(assistant.open).toHaveBeenCalledWith(
+				expect.objectContaining({
+					automatedMigration: {
+						outcome: 'partial',
+						notes: ['Output now contains file metadata.'],
+						unmapped: ['options.customRetryScript'],
+					},
+				}),
+			);
+		});
+
+		it('offers no Assistant after a clean migration', async () => {
+			render();
+
+			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+			await screen.findByTestId('migrate-modal-done-button');
+			expect(
+				screen.queryByTestId('migrate-modal-continue-in-assistant-button'),
+			).not.toBeInTheDocument();
+		});
+
+		it.each([
+			{ when: 'the rule declares none', assistantAction: 'none', available: true },
+			{ when: 'the Assistant is unavailable', assistantAction: 'fix', available: false },
+		] as const)(
+			'offers no Assistant after a refusal when $when',
+			async ({ assistantAction, available }) => {
+				assistantAvailable.value = available;
+				vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockRejectedValue(
+					new ResponseError('Refused.', { httpStatusCode: 400 }),
+				);
+				render([workflow], assistantAction);
+
+				await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+
+				await screen.findByText('Refused.');
+				expect(
+					screen.queryByTestId('migrate-modal-continue-in-assistant-button'),
+				).not.toBeInTheDocument();
+			},
+		);
 	});
 
 	describe('bulk', () => {

@@ -43,7 +43,8 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:tab': [tab: 'activity' | 'changes'] }>();
 
 const store = useSelfHealingResultStore();
-const { detail, workflow, loading, error, workflowError, pendingAction } = storeToRefs(store);
+const { detail, workflows, workflowIds, loading, error, workflowError, pendingAction } =
+	storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -53,15 +54,36 @@ const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? fals
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
 
-const workflowName = computed(
-	() =>
-		workflow.value?.name ??
-		detail.value?.suggestion?.payload.original.name ??
-		props.selection.workflowId,
-);
+const workflowNames = computed(() => {
+	const listed = detail.value?.workflows ?? [];
+	const ids = new Set([...workflowIds.value, ...listed.map(({ workflowId }) => workflowId)]);
+	return new Map(
+		[...ids].map((id) => [
+			id,
+			workflows.value.get(id)?.name ??
+				listed.find(({ workflowId }) => workflowId === id)?.name ??
+				detail.value?.suggestions.find(({ workflowId }) => workflowId === id)?.payload.original
+					.name ??
+				id,
+		]),
+	);
+});
+const projectName = computed(() => {
+	const project = detail.value && workflows.value.get(detail.value.workflowId)?.homeProject;
+	if (!project) return undefined;
+	return project.type === 'personal'
+		? i18n.baseText('projects.menu.personal')
+		: (project.name ?? undefined);
+});
+// Approval publishes every workflow of the fix.
 const publishAccess = computed<SelfHealingPublishAccess>(() => {
-	if (!workflow.value) return 'unknown';
-	return workflow.value.scopes.includes('workflow:publish') ? 'allowed' : 'denied';
+	const metadata = (detail.value?.suggestions ?? []).map(({ workflowId }) =>
+		workflows.value.get(workflowId),
+	);
+	if (metadata.some((workflow) => workflow && !workflow.scopes.includes('workflow:publish'))) {
+		return 'denied';
+	}
+	return metadata.every(Boolean) ? 'allowed' : 'unknown';
 });
 const errorKind = computed(() => {
 	if (error.value instanceof ResponseError) {
@@ -145,7 +167,7 @@ async function retryDetail() {
 	if (pendingAction.value) return;
 
 	const reconcile = reconcileOnRetry;
-	await store.refreshDetail(async (result) => {
+	await store.retryDetail(async (result) => {
 		if (!reconcile || reconcileOnRetry !== reconcile) return;
 
 		reconcileOnRetry = null;
@@ -174,7 +196,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 	let reviewAction: SelfHealingReviewAction;
 	if (isContinuation) {
-		reviewAction = before.suggestion ? 'apply' : 'dismiss';
+		reviewAction = before.suggestions.length > 0 ? 'apply' : 'dismiss';
 	} else {
 		reviewAction = action;
 	}
@@ -189,9 +211,7 @@ async function onAction(action: SelfHealingResultAction) {
 		responseLost: boolean,
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
-		const closed =
-			result.reviewState === closedState ||
-			(action === 'dismiss' && result.reviewState === 'discarded');
+		const closed = result.reviewState === closedState;
 		if (!isSelected(target.id) || !closed) return false;
 
 		if (action === 'chat') {
@@ -210,9 +230,27 @@ async function onAction(action: SelfHealingResultAction) {
 				showMessage({
 					type: 'warning',
 					duration: 0,
-					title: i18n.baseText('inbox.selfHealing.action.publishError'),
+					title: i18n.baseText(
+						result.suggestions.length > 1
+							? 'inbox.selfHealing.action.publishErrorMultiple'
+							: 'inbox.selfHealing.action.publishError',
+					),
 					message: result.publishError,
 				});
+				if (result.restorationError) {
+					showMessage({
+						type: 'error',
+						duration: 0,
+						title: i18n.baseText('inbox.selfHealing.action.restorationError', {
+							interpolate: {
+								workflow:
+									workflowNames.value.get(result.restorationError.workflowId) ??
+									result.restorationError.workflowId,
+							},
+						}),
+						message: result.restorationError.error,
+					});
+				}
 			}
 
 			await openEditor(result.workflowId);
@@ -239,7 +277,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 			const continued = await reconcile(current);
 			store.acceptResult(current);
-			if (isSelected(target.id)) void store.refreshWorkflow();
+			if (isSelected(target.id)) void store.refreshWorkflows();
 			if (continued) return;
 		} catch (readError) {
 			store.setError(target, readError);
@@ -275,7 +313,8 @@ async function onAction(action: SelfHealingResultAction) {
 		<template v-else>
 			<SelfHealingResultContent
 				:detail="detail"
-				:workflow-name="workflowName"
+				:workflow-names="workflowNames"
+				:project-name="projectName"
 				:tab="tab"
 				:pending-action="pendingAction"
 				:publish-access="publishAccess"
@@ -287,7 +326,7 @@ async function onAction(action: SelfHealingResultAction) {
 					<N8nCallout v-if="workflowError" theme="warning">
 						{{ i18n.baseText('inbox.selfHealing.detail.metadataError') }}
 						<template #trailingContent>
-							<N8nButton variant="ghost" @click="store.refreshWorkflow()">{{
+							<N8nButton variant="ghost" @click="store.refreshWorkflows()">{{
 								i18n.baseText('generic.retry')
 							}}</N8nButton>
 						</template>

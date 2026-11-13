@@ -1,6 +1,14 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type Person,
+	PersonRepository,
+	ProjectRelationRepository,
+	ServiceAccountRepository,
+	type User,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import {
@@ -50,9 +58,9 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('createUserWithProject()', () => {
+	describe('PersonRepository.createPersonWithProject()', () => {
 		test('should create personal project for a user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:member' },
 			});
@@ -71,7 +79,7 @@ describe('UserRepository', () => {
 		});
 
 		test('should create personal project for a chat user', async () => {
-			const { user, project } = await userRepository.createUserWithProject({
+			const { user, project } = await Container.get(PersonRepository).createPersonWithProject({
 				email: randomEmail(),
 				role: { slug: 'global:chatUser' },
 			});
@@ -266,7 +274,7 @@ describe('UserRepository', () => {
 			const findOptions = findSpy.mock.calls[0][0];
 			findSpy.mockRestore();
 
-			const byId = new Map(users.map((user) => [user.id, user]));
+			const byId = new Map(users.map((user) => [user.id, user as Person]));
 			expect([...byId.keys()].sort()).toEqual(
 				[owner.id, member.id, ldapUser.id, pendingUser.id].sort(),
 			);
@@ -283,6 +291,77 @@ describe('UserRepository', () => {
 				.getQueryAndParameters();
 			expect(sql).not.toContain('role_scope');
 			expect(await userRepository.query(sql, parameters)).toHaveLength(4);
+		});
+	});
+
+	describe('account kind', () => {
+		let person: User;
+		let serviceAccount: User;
+
+		beforeAll(async () => {
+			await testDb.truncate(['AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+			person = await createMember();
+			serviceAccount = await Container.get(ServiceAccountRepository).create({
+				name: 'Deploy bot',
+				role: GLOBAL_MEMBER_ROLE,
+			});
+		});
+
+		const idsOf = (users: User[]) => users.map(({ id }) => id).sort();
+
+		test('countUsersByRole() should count only the given kind', async () => {
+			await expect(userRepository.countUsersByRole('person')).resolves.toEqual({
+				'global:member': 1,
+			});
+			await expect(userRepository.countUsersByRole()).resolves.toEqual({ 'global:member': 2 });
+		});
+
+		test('countAccounts() should count only the given kind', async () => {
+			await expect(userRepository.countAccounts({ kind: 'person' })).resolves.toBe(1);
+			await expect(userRepository.countAccounts()).resolves.toBe(2);
+		});
+
+		test('findMany() should return only the given kind', async () => {
+			expect(idsOf(await userRepository.findMany({ kind: 'person' }))).toEqual([person.id]);
+			expect(idsOf(await userRepository.findMany())).toEqual([person.id, serviceAccount.id].sort());
+		});
+
+		test('findManyByIds() should return only the given kind', async () => {
+			const ids = [person.id, serviceAccount.id];
+
+			expect(idsOf(await userRepository.findManyByIds(ids, { kind: 'person' }))).toEqual([
+				person.id,
+			]);
+			expect(idsOf(await userRepository.findManyByIds(ids))).toEqual([...ids].sort());
+		});
+
+		test('buildUserQuery() should return only the given kind', async () => {
+			const options: UsersListFilterDto = { filter: {}, take: 10, skip: 0 };
+
+			const [persons, personCount] = await userRepository
+				.buildUserQuery(options, undefined, 'person')
+				.getManyAndCount();
+			expect(idsOf(persons)).toEqual([person.id]);
+			expect(personCount).toBe(1);
+
+			const [accounts, accountCount] = await userRepository
+				.buildUserQuery(options)
+				.getManyAndCount();
+			expect(idsOf(accounts)).toEqual([person.id, serviceAccount.id].sort());
+			expect(accountCount).toBe(2);
+		});
+
+		test('buildUserQuery() should return only the given kind without list options', async () => {
+			const persons = await userRepository.buildUserQuery(undefined, undefined, 'person').getMany();
+
+			expect(idsOf(persons)).toEqual([person.id]);
+		});
+
+		test('countUsersListStatuses() should count only the given kind', async () => {
+			await expect(userRepository.countUsersListStatuses({}, undefined, 'person')).resolves.toEqual(
+				{ all: 1, active: 1, deactivated: 0 },
+			);
+			await expect(userRepository.countUsersListStatuses({})).resolves.toMatchObject({ all: 2 });
 		});
 	});
 });

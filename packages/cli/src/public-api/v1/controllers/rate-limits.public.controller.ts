@@ -50,7 +50,7 @@ export class RateLimitsPublicController {
 	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Retrieve the Public API rate-limit settings')
 	@ApiDescription(
-		"Retrieve the Public API rate-limit settings. `envManagedFields` lists the fields that are set by environment variables and can't be changed through the API. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.",
+		"Retrieve the Public API rate-limit settings. `envManagedFields` lists the fields that are set by environment variables and can't be changed through the API. Requests to this route count against the rate limits.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)
@@ -68,7 +68,7 @@ export class RateLimitsPublicController {
 	@GlobalScope('securitySettings:manage')
 	@ApiSummary('Set the Public API rate-limit settings')
 	@ApiDescription(
-		"Set the Public API rate-limit settings. You can send a GET response back as the body, and `envManagedFields` is ignored. When rate limiting is enabled, at least one limit must be greater than `0`. Fields set by environment variables can't be changed: a different value is rejected with 409, but sending the current value is accepted. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.",
+		"Set the Public API rate-limit settings. You can send a GET response back as the body, and `envManagedFields` is ignored. When rate limiting is enabled, at least one limit must be greater than `0`. Fields set by environment variables can't be changed: a different value is rejected with 409, but sending the current value is accepted. Requests to this route count against the rate limits.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, RateLimitSettingsPublicDto)

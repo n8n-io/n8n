@@ -53,7 +53,7 @@ export const databasesOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/api/database/" + $parameter.databaseId + "/fields"}}',
+						url: '=/api/database/{{ toPathSegment($parameter.databaseId) }}/fields',
 					},
 				},
 				action: 'Get Fields a databases',

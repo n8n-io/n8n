@@ -1,5 +1,6 @@
 import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	type AssistantAgentTargetsState,
 	type AssistantThreadTabsState,
 	type InstanceAiElementAttachment,
 	type InstanceAiNodesAttachment,
@@ -13,8 +14,10 @@ import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, type Ref } from 'vue';
 
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
+import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
 import type { ArtifactThread } from '../../artifactThread';
 import type { WorkflowFailuresReport } from '../../components/InstanceAiWorkflowPreview.vue';
 import { INSTANCE_AI_VIEW } from '../../constants';
@@ -43,6 +46,7 @@ const {
 	panelProps,
 	panelSlots,
 	sendMessageFromOutside,
+	sendHostMessage,
 	telemetryTrack,
 	previewProps,
 	previewThread,
@@ -52,10 +56,13 @@ const {
 	openFilePicker,
 	composerBlocked,
 	setDraft,
+	isDirty,
+	agentPreview,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	panelSlots: { current: [] as string[] },
 	sendMessageFromOutside: vi.fn(),
+	sendHostMessage: vi.fn(),
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
@@ -65,6 +72,13 @@ const {
 	openFilePicker: vi.fn(),
 	composerBlocked: { current: false },
 	setDraft: vi.fn(),
+	isDirty: vi.fn(() => false),
+	agentPreview: {
+		props: undefined as Record<string, unknown> | undefined,
+		emit: undefined as ((event: string, ...args: unknown[]) => void) | undefined,
+		targets: undefined as ArtifactAgentTargets | undefined,
+		thread: undefined as ArtifactThread | undefined,
+	},
 }));
 
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
@@ -74,6 +88,17 @@ const { fetchTabs, saveTabs } = vi.hoisted(() => ({
 vi.mock('../assistantAgentTabs.api', () => ({
 	fetchAssistantAgentThreadTabs: fetchTabs,
 	saveAssistantAgentThreadTabs: saveTabs,
+}));
+
+const { fetchTargets, bindTarget, persistAgent } = vi.hoisted(() => ({
+	fetchTargets: vi.fn(),
+	bindTarget: vi.fn(),
+	persistAgent: vi.fn(),
+}));
+vi.mock('../assistantAgentTargets.api', () => ({
+	fetchAssistantAgentTargets: fetchTargets,
+	bindAssistantAgentTarget: bindTarget,
+	persistAssistantPendingAgent: persistAgent,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -117,9 +142,11 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 			};
 			expose({
 				sendMessageFromOutside,
+				sendHostMessage,
 				focusInput,
 				openFilePicker,
 				setDraft,
+				isDirty,
 				addComposerAttachment,
 				removeComposerAttachment,
 				composerAttachments,
@@ -184,6 +211,27 @@ vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
 	}),
 }));
 
+// The real preview renders the Agent Builder, which has its own tests.
+vi.mock('../../components/InstanceAiAgentPreview.vue', async () => {
+	const { useArtifactThread } = await import('../../artifactThread');
+	const { useArtifactAgentTargets } = await import('../../artifactAgentTargets');
+	return {
+		default: defineComponent({
+			inheritAttrs: false,
+			emits: ['preview-open-change', 'assistant-handoff'],
+			setup(_props, { attrs, emit }) {
+				agentPreview.thread = useArtifactThread();
+				agentPreview.targets = useArtifactAgentTargets();
+				agentPreview.emit = emit as (event: string, ...args: unknown[]) => void;
+				return () => {
+					agentPreview.props = { ...attrs };
+					return h('div', { 'data-test-id': 'agent-preview-stub' });
+				};
+			},
+		}),
+	};
+});
+
 vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
@@ -196,12 +244,20 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+// The tab that the `tab-bar-open-tab` button opens.
+const { tabBarTabToOpen } = vi.hoisted(() => ({
+	tabBarTabToOpen: { current: undefined as unknown },
+}));
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({
-		emits: ['togglePreview', 'toggleExpanded'],
+		emits: ['togglePreview', 'toggleExpanded', 'openTab'],
 		setup:
 			(_props, { emit }) =>
 			() => [
+				h('button', {
+					'data-test-id': 'tab-bar-open-tab',
+					onClick: () => emit('openTab', tabBarTabToOpen.current),
+				}),
 				h('button', {
 					'data-test-id': 'tab-bar-preview-toggle',
 					onClick: () => emit('togglePreview'),
@@ -310,10 +366,15 @@ function buildMessage(toolCallId: string): ChatMessage {
 	};
 }
 
+function noTargets(): AssistantAgentTargetsState {
+	return { bound: null, pending: null, targets: [], previewSession: null };
+}
+
 describe('AssistantAgentThreadView', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		sendMessageFromOutside.mockReset();
+		sendHostMessage.mockReset().mockResolvedValue('sent');
 		telemetryTrack.mockReset();
 		panelProps.current = {};
 		previewProps.current = undefined;
@@ -333,6 +394,14 @@ describe('AssistantAgentThreadView', () => {
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
 		saveTabs.mockReset().mockResolvedValue({ state: null });
+		fetchTargets.mockReset().mockResolvedValue({ targets: noTargets() });
+		bindTarget.mockReset();
+		persistAgent.mockReset();
+		isDirty.mockReset().mockReturnValue(false);
+		agentPreview.props = undefined;
+		agentPreview.emit = undefined;
+		agentPreview.targets = undefined;
+		agentPreview.thread = undefined;
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -386,6 +455,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [],
 			references: [],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 		renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
 		await flushPromises();
@@ -407,6 +478,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [file],
 			references: [reference],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-2', projectId: 'project-1' } });
@@ -429,6 +502,50 @@ describe('AssistantAgentThreadView', () => {
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
 
+	it('reports who wrote each message on send, starting with the first message of the empty view', async () => {
+		const mentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS, workflow: 1, total: 1 };
+		stashPendingAssistantAgentMessage({
+			threadId: 'thread-4',
+			text: 'Build a digest',
+			files: [],
+			references: [],
+			authorship: { kind: 'prefill', prefillType: 'suggestion_catalog', prefillId: 's-1' },
+			mentionCounts,
+		});
+		renderView({ props: { threadId: 'thread-4', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: {
+			text: string;
+			files: File[];
+			isFirstMessage: boolean;
+		}) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onMessageSending({ text: 'Add Slack', files: [], isFirstMessage: false });
+
+		expect(telemetryTrack.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					thread_id: 'thread-4',
+					is_first_message: true,
+					prefill_type: 'suggestion_catalog',
+					prefill_id: 's-1',
+					mention_counts: mentionCounts,
+					runtime: 'agents',
+				}),
+			],
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: false,
+					prefill_type: null,
+					mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS,
+				}),
+			],
+		]);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',
@@ -448,6 +565,8 @@ describe('AssistantAgentThreadView', () => {
 					],
 				},
 			],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-3', projectId: 'project-1' } });
@@ -580,11 +699,17 @@ describe('AssistantAgentThreadView', () => {
 
 		const context = { source: 'setup-panel-execute' as const, workflowId: 'wf-1' };
 		await previewThread.current?.sendMessage('Test the workflow', {
-			authorship: USER_TYPED_MESSAGE,
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
 			handoffContext: context,
 		});
 
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		onMessageSending({ text: 'Test the workflow', files: [], isFirstMessage: false });
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({ prefill_type: 'handoff_setup_panel_execute' }),
+		);
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
 	});
@@ -643,15 +768,32 @@ describe('AssistantAgentThreadView', () => {
 
 			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
 
-			expect(sendMessageFromOutside).toHaveBeenCalledOnce();
-			const [prompt, files, clientContext] = sendMessageFromOutside.mock.calls[0];
+			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			expect(sendHostMessage).toHaveBeenCalledOnce();
+			const [prompt, clientContext] = sendHostMessage.mock.calls[0];
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
-			expect(files).toEqual([]);
 			expect(clientContext).toEqual({
 				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
 			});
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: prompt, files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'handoff_fix_with_ai', prompt_modified: false }),
+			);
+		});
+
+		it('offers the fix again when the chat refuses the send', async () => {
+			sendHostMessage.mockResolvedValue('busy');
+			const user = userEvent.setup();
+			const { getByTestId } = await renderWithFailedRun();
+
+			await user.click(getByTestId('instance-ai-fix-with-ai-button'));
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
 		});
 
 		it('hides the offer after dismiss until another run fails', async () => {
@@ -777,6 +919,8 @@ describe('AssistantAgentThreadView', () => {
 				text: 'Build a digest',
 				files: [],
 				references: [],
+				authorship: USER_TYPED_MESSAGE,
+				mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 			});
 
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
@@ -1168,6 +1312,19 @@ describe('AssistantAgentThreadView', () => {
 				attachments: [reference],
 				context: credentialContext,
 			});
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({
+				text: 'Where do I find the Slack token?',
+				files: [],
+				isFirstMessage: true,
+			});
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: true,
+					prefill_type: 'handoff_credential_setup',
+				}),
+			);
 
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 			onMessageAccepted({ clientContext: clientContext() });
@@ -1204,6 +1361,15 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Suggest my preferences', files: [], isFirstMessage: true });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					prefill_type: 'preferences_suggestion',
+					prompt_modified: false,
+				}),
+			);
 		});
 
 		it('adds handed-off canvas nodes to the composer', async () => {
@@ -1262,6 +1428,289 @@ describe('AssistantAgentThreadView', () => {
 			onSessionCreated();
 
 			expect(getAssistantAgentLaunch('thread-new')).toBeUndefined();
+		});
+	});
+
+	describe('agent preview', () => {
+		const agentTabs: AssistantThreadTabsState = {
+			tabs: [{ type: 'agent', id: 'agent-1', name: 'Triage', projectId: 'project-1' }],
+			closedTabs: [],
+			activeTab: { type: 'agent', id: 'agent-1' },
+			previewOpen: true,
+		};
+		const boundTargets: AssistantAgentTargetsState = {
+			bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+			pending: null,
+			targets: [{ agentId: 'agent-1', projectId: 'project-1', name: 'Triage' }],
+			previewSession: { agentId: 'agent-1', threadId: 'session-1' },
+		};
+
+		async function renderAgentTab() {
+			fetchTabs.mockResolvedValue({ state: agentTabs });
+			fetchTargets.mockResolvedValue({ targets: boundTargets });
+			const view = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			return view;
+		}
+
+		it('shows the agent builder in an agent tab, with the stored test chat session', async () => {
+			const { getByTestId, queryByTestId } = await renderAgentTab();
+
+			expect(getByTestId('agent-preview-stub')).toBeInTheDocument();
+			expect(queryByTestId('assistant-agent-agent-preview-notice')).not.toBeInTheDocument();
+			expect(fetchTargets).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-1',
+				'project-id': 'project-1',
+				'preview-session-id': 'session-1',
+				'preview-open': false,
+			});
+		});
+
+		it('gives the preview the v2 thread, with the agent tab as the active artifact', async () => {
+			await renderAgentTab();
+
+			expect(agentPreview.thread?.id).toBe('thread-1');
+			expect(agentPreview.thread?.activeArtifactId).toBe('agent-1');
+		});
+
+		it('does not load the agents of a new thread before the server accepts its first message', async () => {
+			stashPendingAssistantAgentMessage({
+				threadId: 'thread-new',
+				text: 'Build an agent',
+				files: [],
+				references: [],
+				authorship: USER_TYPED_MESSAGE,
+			});
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+			expect(fetchTargets).not.toHaveBeenCalled();
+
+			(panelProps.current.onSessionCreated as () => void)();
+			await flushPromises();
+
+			expect(fetchTargets).toHaveBeenCalledWith(expect.anything(), 'thread-new');
+		});
+
+		it('loads the agents again after each turn', async () => {
+			await renderAgentTab();
+			fetchTargets.mockClear();
+			const onStreaming = panelProps.current['onUpdate:streaming'] as (value: boolean) => void;
+
+			onStreaming(true);
+			await flushPromises();
+			expect(fetchTargets).not.toHaveBeenCalled();
+
+			onStreaming(false);
+			await flushPromises();
+			expect(fetchTargets).toHaveBeenCalledTimes(1);
+		});
+
+		it('binds a renamed agent through the Assistant agent thread routes', async () => {
+			await renderAgentTab();
+			bindTarget.mockResolvedValue({
+				targets: { ...boundTargets, bound: { ...boundTargets.bound, name: 'Support' } },
+			});
+
+			await agentPreview.targets?.bind({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Support',
+			});
+			// The bound name is current now, so a second save sends nothing.
+			await agentPreview.targets?.bind({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Support',
+			});
+
+			expect(bindTarget).toHaveBeenCalledTimes(1);
+			expect(bindTarget).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'Support',
+			});
+		});
+
+		it('saves a pending agent through the Assistant agent thread routes', async () => {
+			await renderAgentTab();
+			const agent = { id: 'agent-2', name: 'New agent' };
+			persistAgent.mockResolvedValue({
+				agent,
+				targets: { ...boundTargets, bound: { agentId: 'agent-2', projectId: 'project-1' } },
+			});
+			const request = { projectId: 'project-1', agentId: 'agent-2', name: 'New agent' };
+
+			const result = await agentPreview.targets?.persistPendingAgent(request);
+
+			expect(persistAgent).toHaveBeenCalledWith(expect.anything(), 'thread-1', request);
+			expect(result?.agent).toBe(agent);
+		});
+
+		it('docks the test chat over the chat, and closes it when the preview closes', async () => {
+			const { getByTestId, queryByTestId } = await renderAgentTab();
+
+			agentPreview.emit?.('preview-open-change', true);
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-open': true });
+			expect(agentPreview.props?.['preview-chat-target']).toBeInstanceOf(HTMLElement);
+
+			await userEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await flushPromises();
+			expect(queryByTestId('agent-preview-stub')).not.toBeInTheDocument();
+
+			// The preview shows again with the test chat closed.
+			await userEvent.click(getByTestId('assistant-agent-preview-toggle'));
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-open': false });
+		});
+
+		it('hands a test chat off to the composer, with its context for the next message', async () => {
+			await renderAgentTab();
+			agentPreview.emit?.('preview-open-change', true);
+			await flushPromises();
+			const onAccepted = vi.fn();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+				agentName: 'Triage',
+				sessionTitle: 'Refund question',
+				initialDraft: { text: 'Why did it refuse?', prefillType: 'agent_preview' },
+				onAccepted,
+			});
+			await flushPromises();
+
+			expect(composerAttachments.value).toEqual([
+				{
+					chip: expect.objectContaining({ id: 'agent-preview-session', icon: 'bot' }),
+					clientContextPatch: {
+						context: expect.objectContaining({
+							source: 'agent-preview',
+							agentId: 'agent-1',
+							threadId: 'session-2',
+						}),
+					},
+				},
+			]);
+			expect(setDraft).toHaveBeenCalledWith('Why did it refuse?');
+			expect(onAccepted).toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Why did it refuse? Be brief.', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'agent_preview', prompt_modified: true }),
+			);
+			// A cleared composer drops the pre-fill, so the next message is the user's.
+			(panelProps.current.onDraftCleared as () => void)();
+			telemetryTrack.mockClear();
+			onMessageSending({ text: 'Thanks', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: null }),
+			);
+			// The staged session is the one that the preview shows.
+			expect(agentPreview.props).toMatchObject({
+				'preview-open': false,
+				'preview-session-id': 'session-2',
+			});
+		});
+
+		it('keeps the hand-off session after its message is sent, while the turn runs', async () => {
+			await renderAgentTab();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+
+			// The message is sent. The stored session is the one of the last turn until the turn ends.
+			composerAttachments.value = [];
+			const onStreaming = panelProps.current['onUpdate:streaming'] as (value: boolean) => void;
+			onStreaming(true);
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+
+			// A load at the end of the turn that still has the earlier session does not replace it.
+			onStreaming(false);
+			await flushPromises();
+			expect(agentPreview.props).toMatchObject({ 'preview-session-id': 'session-2' });
+		});
+
+		it('keeps the stored session of another agent after a hand-off', async () => {
+			fetchTabs.mockResolvedValue({
+				state: {
+					...agentTabs,
+					tabs: [
+						...agentTabs.tabs,
+						{ type: 'agent', id: 'agent-2', name: 'Billing', projectId: 'project-1' },
+					],
+				},
+			});
+			fetchTargets.mockResolvedValue({
+				targets: { ...boundTargets, previewSession: { agentId: 'agent-2', threadId: 'session-9' } },
+			});
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+			tabBarTabToOpen.current = {
+				type: 'agent',
+				id: 'agent-2',
+				name: 'Billing',
+				projectId: 'project-1',
+			};
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+
+			expect(agentPreview.props).toMatchObject({
+				'agent-id': 'agent-2',
+				'preview-session-id': 'session-9',
+			});
+		});
+
+		it('keeps an unsent draft and does not hand off', async () => {
+			await renderAgentTab();
+			isDirty.mockReturnValue(true);
+			const onAccepted = vi.fn();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'session-2',
+				onAccepted,
+			});
+			await flushPromises();
+
+			expect(composerAttachments.value).toEqual([]);
+			expect(onAccepted).not.toHaveBeenCalled();
+		});
+
+		it('ignores a hand-off from an agent that is no longer active', async () => {
+			await renderAgentTab();
+
+			agentPreview.emit?.('assistant-handoff', {
+				projectId: 'project-1',
+				agentId: 'agent-other',
+				threadId: 'session-2',
+			});
+			await flushPromises();
+
+			expect(composerAttachments.value).toEqual([]);
 		});
 	});
 });

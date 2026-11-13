@@ -8,14 +8,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		name: 'Agent Builder Resource Locators',
 		description:
 			'Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when agent_builder_write_config/agent_builder_patch_config rejects $fromAI on a dynamic selector.',
-		recommendedTools: [
-			'search_nodes',
-			'get_node_types',
-			'setup_credentials',
-			'get_node_parameter_options',
-			'agent-context',
-			'agent_builder_patch_config',
-		],
+		recommendedToolGroups: ['nodes', 'credentials', 'agents'],
 		allowedTools: [
 			'search_nodes',
 			'get_node_types',

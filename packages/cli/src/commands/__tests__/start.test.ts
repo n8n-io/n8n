@@ -31,9 +31,8 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
-import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
-import { JwtService, RoleCacheService } from '@n8n/backend-services';
+import { JwtService, NodeTypesProxy, PostHogClient, RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -233,6 +232,25 @@ describe('Start - AuthRolesService initialization', () => {
 			expect(roleCacheService.refreshCache).toHaveBeenCalledTimes(1);
 			expect(roleCacheService.refreshCache.mock.invocationCallOrder[0]).toBeGreaterThan(
 				authRolesService.init.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should register node types on the node types proxy before the modules initialize', async () => {
+			setupInstanceSettings('main', false, false);
+			const nodeTypes = Container.get(NodeTypes);
+			const nodeTypesProxy = mockInstance(NodeTypesProxy);
+			const initModules = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			start.moduleRegistry = { initModules };
+
+			await start.init();
+
+			expect(nodeTypesProxy.registerProvider).toHaveBeenCalledWith(nodeTypes);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeGreaterThan(
+				loadNodesAndCredentials.init.mock.invocationCallOrder[0],
+			);
+			expect(nodeTypesProxy.registerProvider.mock.invocationCallOrder[0]).toBeLessThan(
+				initModules.mock.invocationCallOrder[0],
 			);
 		});
 

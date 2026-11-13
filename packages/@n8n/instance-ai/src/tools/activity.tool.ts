@@ -89,8 +89,8 @@ export function createActivityTool(context: InstanceAiContext) {
 				'use this to look further back, to filter to one kind of entry or one resource, or to ' +
 				'open a single entry with `expand`. Expanding an entry also returns everything else the ' +
 				"log knows about the same resource, which is how you see a workflow's recent history at " +
-				'a glance. Read-only, and it returns log entries rather than live records — use ' +
-				'`get_workflow`, `get_execution` or `list_credentials` with the ids it gives you for those. An ' +
+				'a glance. Read-only, and it returns log entries rather than live records — run ' +
+				'`get_workflow`, `get_execution` or `list_credentials` through `call_tool` with the ids it gives you for those. An ' +
 				'entry may name a resource that has since been deleted.',
 		)
 		.input(activityInputSchema)

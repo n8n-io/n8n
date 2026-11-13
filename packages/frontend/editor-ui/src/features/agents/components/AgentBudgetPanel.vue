@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { getAgentBudgetSpend } from '../composables/useAgentApi';
+import { useBudgetCoverageCalloutDismissal } from '../composables/useBudgetCoverageCalloutDismissal';
 import { useAgentExecutionUpdates } from '../composables/useAgentExecutionUpdates';
 import type { AgentJsonConfig } from '../types';
 import { formatBudgetUsd, parseBudgetAmount } from '../utils/budget-config';
@@ -28,6 +29,8 @@ const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] 
 
 const i18n = useI18n();
 const rootStore = useRootStore();
+const { dismissed: coverageCaptionDismissed, dismiss: dismissCoverageCaption } =
+	useBudgetCoverageCalloutDismissal();
 const monthlyOpen = ref(false);
 const sessionOpen = ref(false);
 const spentUsd = ref<number | undefined>();
@@ -228,6 +231,25 @@ const sessionValue = computed(() => {
 					<N8nIcon icon="chevron-right" />
 				</span>
 			</button>
+
+			<N8nCallout
+				v-if="!coverageCaptionDismissed"
+				theme="info"
+				slim
+				data-testid="agent-budget-coverage-callout"
+			>
+				{{ i18n.baseText('agents.builder.budget.coverage.caption') }}
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="i18n.baseText('generic.dismiss')"
+						data-testid="agent-budget-coverage-dismiss"
+						@click="dismissCoverageCaption"
+					/>
+				</template>
+			</N8nCallout>
 		</div>
 
 		<AgentBudgetMonthlyModal

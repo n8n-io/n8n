@@ -12,7 +12,7 @@ import {
 	type Project,
 	ProjectRepository,
 	SharedCredentialsRepository,
-	type User,
+	type Person,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -35,7 +35,7 @@ vi.mock('node:fs/promises');
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
 	let sourceControlContextFactory: SourceControlContextFactory;
-	let testUser: User;
+	let testPerson: Person;
 	let personalProject: Project;
 	let teamProject: Project;
 	let exportDirectory: string;
@@ -58,9 +58,9 @@ describe('SourceControlExportService Integration', () => {
 		projectRepository = Container.get(ProjectRepository);
 
 		// Create test user
-		testUser = await createUser({ role: GLOBAL_ADMIN_ROLE });
-		personalProject = await projectRepository.getPersonalProjectForUserOrFail(testUser.id);
-		teamProject = await createTeamProject('Test Team Project', testUser);
+		testPerson = await createUser({ role: GLOBAL_ADMIN_ROLE });
+		personalProject = await projectRepository.getPersonalProjectForUserOrFail(testPerson.id);
+		teamProject = await createTeamProject('Test Team Project', testPerson);
 
 		// Setup export directory for testing (no longer creating real directories)
 		exportDirectory = path.join(process.cwd(), 'test-exports-' + uuid());
@@ -179,7 +179,7 @@ describe('SourceControlExportService Integration', () => {
 					type: 'personal',
 					projectId: personalProject.id,
 					projectName: personalProject.name,
-					personalEmail: testUser.email,
+					personalEmail: testPerson.email,
 				},
 			});
 
@@ -338,7 +338,7 @@ describe('SourceControlExportService Integration', () => {
 				type: 'personal',
 				projectId: personalProject.id,
 				projectName: personalProject.name,
-				personalEmail: testUser.email,
+				personalEmail: testPerson.email,
 			});
 		});
 
@@ -551,13 +551,13 @@ describe('SourceControlExportService Integration', () => {
 
 		async function exportTags() {
 			return await exportService.exportTagsToWorkFolder(
-				await sourceControlContextFactory.createContext(testUser),
+				await sourceControlContextFactory.createContext(testPerson),
 			);
 		}
 
 		it('should export tags and mappings across multiple teams', async () => {
-			const team1 = await createTeamProject('Team 1', testUser);
-			const team2 = await createTeamProject('Team 2', testUser);
+			const team1 = await createTeamProject('Team 1', testPerson);
+			const team2 = await createTeamProject('Team 2', testPerson);
 
 			const [workflow1, workflow2, workflow3] = await Promise.all([
 				createWorkflowWithHistory({ id: 'wf1', name: 'Workflow 1' }, team1),
@@ -626,7 +626,7 @@ describe('SourceControlExportService Integration', () => {
 		});
 
 		it('should export all mappings when multiple tags are on same workflow', async () => {
-			const team = await createTeamProject('Team', testUser);
+			const team = await createTeamProject('Team', testPerson);
 			const workflow = await createWorkflowWithHistory({ id: 'wf1', name: 'Workflow 1' }, team);
 
 			const tags = await Promise.all([

@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import {
@@ -64,7 +65,7 @@ export async function execute(
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{ fields },
 			{},
 			undefined,

@@ -15,23 +15,27 @@ import type { IRestApiContext, PublicApiContext } from '@n8n/rest-api-client';
 import { makePublicApiRequest, makeRestApiRequest } from '@n8n/rest-api-client';
 
 export async function getPromotionPreview(
-	context: IRestApiContext,
+	context: PublicApiContext,
 	projectId: string,
 	direction: PromotionDirection,
 ): Promise<PromotionPreview> {
-	return await makeRestApiRequest(context, 'GET', `/promotions/${projectId}/changes/${direction}`);
+	return await makePublicApiRequest(
+		context,
+		'GET',
+		`/promotions/projects/${projectId}/changes/${direction}`,
+	);
 }
 
 export async function getPromotionResourceDetails(
-	context: IRestApiContext,
+	context: PublicApiContext,
 	projectId: string,
 	direction: PromotionDirection,
 	payload: PromotionResourceDetailsRequestDto,
 ): Promise<PromotionResourceDetails> {
-	return await makeRestApiRequest(
+	return await makePublicApiRequest(
 		context,
 		'POST',
-		`/promotions/${projectId}/changes/${direction}/details`,
+		`/promotions/projects/${projectId}/changes/${direction}/details`,
 		payload,
 	);
 }

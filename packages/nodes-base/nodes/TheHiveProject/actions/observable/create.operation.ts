@@ -1,10 +1,11 @@
 import FormData from 'form-data';
 import {
-	NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
@@ -114,7 +115,7 @@ export async function execute(
 
 	const createIn = this.getNodeParameter('createIn', i) as string;
 	const id = this.getNodeParameter('id', i, '', { extractValue: true }) as string;
-	const endpoint = `/v1/${createIn}/${id}/observable`;
+	const endpoint = requestPath`/v1/${createIn}/${id}/observable`;
 
 	const dataMode = this.getNodeParameter('observableFields.mappingMode', i) as string;
 

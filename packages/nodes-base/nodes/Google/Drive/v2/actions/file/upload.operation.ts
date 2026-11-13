@@ -6,6 +6,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -116,7 +117,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const response = await googleApiRequest.call(
 			this,
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			multiPartBody.getBuffer(),
 			{
 				uploadType: 'multipart',
@@ -136,7 +137,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const resumableUpload = await googleApiRequest.call(
 			this,
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			metadata,
 			{
 				uploadType: 'resumable',
@@ -203,7 +204,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const response = await googleApiRequest.call(
 		this,
 		'PATCH',
-		`/drive/v3/files/${uploadId}`,
+		requestPath`/drive/v3/files/${uploadId}`,
 		body,
 		qs,
 	);

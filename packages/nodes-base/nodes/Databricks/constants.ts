@@ -1,4 +1,5 @@
-export const DATABRICKS_NODE_VERSION = 1;
+export const DATABRICKS_NODE_VERSION = 1.1;
+export const LITERAL_PATH_VERSION = 1.1;
 export const DATABRICKS_TRIGGER_NODE_VERSION = 1;
 
 /** Partner User-Agent so Databricks can attribute traffic to n8n in audit logs. */

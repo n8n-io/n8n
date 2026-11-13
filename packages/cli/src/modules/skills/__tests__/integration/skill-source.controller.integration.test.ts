@@ -3,6 +3,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -25,7 +26,6 @@ import { GitHubSkillSourceClient } from '../../sources/github/github-skill-sourc
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -40,7 +40,7 @@ const FILES = {
 	'README.md': '# Skills\n',
 	'skills/pdf/SKILL.md': skillMd('pdf'),
 	'skills/pdf/references/pages.md': '# Pages\n',
-	'skills/pdf/scripts/split.py': 'print(1)\n',
+	'skills/pdf/assets/form.pdf': '%PDF-1.4\n',
 	'skills/docx/SKILL.md': skillMd('docx'),
 	'skills/broken/SKILL.md': 'no frontmatter here\n',
 };
@@ -152,7 +152,7 @@ describe('SkillSourceController', () => {
 					location: 'skills/pdf',
 					name: 'pdf',
 					description: 'pdf description',
-					skippedFiles: ['scripts/split.py'],
+					skippedFiles: ['assets/form.pdf'],
 					nameTaken: false,
 					error: null,
 					webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
@@ -184,9 +184,20 @@ describe('SkillSourceController', () => {
 						severity: 'needs_review',
 						file: 'SKILL.md',
 						detail: expect.any(String),
+						// "Follow⟦U+200B⟧ this." is the first line of the instructions, after the
+						// license line.
+						location: { line: 7, start: 6, end: 14 },
 					},
 				],
 			});
+			const hidden = data.skills.find((skill) => skill.location === 'hidden');
+			expect(hidden?.previewFiles).toEqual([
+				{
+					path: 'SKILL.md',
+					text: '---\nname: hidden\ndescription: Hidden text\nlicense: "MIT"\n---\n\nFollow⟦U+200B⟧ this.',
+				},
+			]);
+			expect(hidden?.previewTruncated).toBe(false);
 			expect(checkOf('huge')).toEqual({
 				verdict: 'blocked',
 				findings: [
@@ -295,6 +306,7 @@ describe('SkillSourceController', () => {
 				sourceId: data.sourceId,
 				type: 'github',
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
 				canStopSyncing: true,
 			});
@@ -328,6 +340,39 @@ describe('SkillSourceController', () => {
 			expect(data.failed).toEqual([
 				{ key: expect.any(String), name: 'docx', reason: 'name_taken' },
 			]);
+		});
+
+		it('reports the skipped files of the imported skills by extension', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			github.push('acme/files', {
+				'tools/SKILL.md': skillMd('tools'),
+				'tools/scripts/run.py': 'print(1)\n',
+				'tools/scripts/Build.PY': 'print(2)\n',
+				'tools/scripts/setup.sh': 'echo 1\n',
+				'tools/assets/logo.png': 'png\n',
+				'tools/LICENSE': 'MIT\n',
+			});
+			const url = 'https://github.com/acme/files';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['tools']),
+				reviewedSkillKeys: keysOf(discovery, ['tools']),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					imported: 1,
+					skipped_files: 5,
+					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
+					skipped_script_files: 3,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
 		});
 
 		it('leaves out a skill that the security check blocks, and imports the others', async () => {
@@ -532,6 +577,9 @@ describe('SkillSourceController', () => {
 					selected: 1,
 					imported: 0,
 					name_taken: 1,
+					skipped_files: 0,
+					skipped_file_extensions: {},
+					skipped_script_files: 0,
 					status: 'failure',
 					reason: 'name_taken',
 				}),
@@ -613,7 +661,48 @@ describe('SkillSourceController', () => {
 			expect(await countSources()).toBe(0);
 		});
 
-		it('imports one of two picked skills with the same name, and reports the other', async () => {
+		// Postgres stores no NUL character, so such content must never reach the import write.
+		it('leaves out a reference that n8n cannot store, and blocks a SKILL.md it cannot store', async () => {
+			github.push('acme/binary', {
+				'binary/SKILL.md': skillMd('binary'),
+				'binary/references/data.md': 'PNG\0data',
+				'binary/references/notes.md': '# Notes\n',
+				'broken/SKILL.md': skillMd('broken', 'Broken', 'Use\0 this.'),
+			});
+			const url = 'https://github.com/acme/binary';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const binary = discovery.skills.find((skill) => skill.location === 'binary');
+			expect(binary?.skippedFiles).toEqual(['references/data.md']);
+			expect(binary?.check?.findings).toEqual([
+				expect.objectContaining({ rule: 'file_unstorable', file: 'references/data.md' }),
+			]);
+			const broken = discovery.skills.find((skill) => skill.location === 'broken');
+			expect(broken?.check).toEqual({
+				verdict: 'blocked',
+				findings: [
+					expect.objectContaining({
+						rule: 'invalid_skill',
+						detail: 'SKILL.md has a NUL character, which n8n cannot store.',
+					}),
+				],
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: discovery.skills.map((skill) => skill.key),
+			});
+
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'binary' })]);
+			expect(data.failed).toEqual([{ key: broken?.key, name: null, reason: 'blocked_by_check' }]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[0].skillId}`).expect(200);
+			expect(detail.data.skill.references).toEqual([
+				{ path: 'references/notes.md', content: '# Notes\n' },
+			]);
+		});
+
+		it('imports two picked skills with the same name, and numbers the second', async () => {
 			github.push('acme/twins', {
 				'one/SKILL.md': skillMd('twin', 'The first'),
 				'two/SKILL.md': skillMd('twin', 'The second'),
@@ -627,10 +716,10 @@ describe('SkillSourceController', () => {
 				skillKeys: discovery.skills.map((skill) => skill.key),
 			});
 
-			expect(data.imported).toEqual([expect.objectContaining({ name: 'twin' })]);
-			expect(data.failed).toEqual([
-				{ key: expect.any(String), name: 'twin', reason: 'name_taken' },
-			]);
+			expect(data.imported.map((skill) => skill.name)).toEqual(['twin', 'twin 2']);
+			expect(data.failed).toEqual([]);
+			const { body: detail } = await owner.get(`/skills/${data.imported[1].skillId}`).expect(200);
+			expect(detail.data.skill.name).toBe('twin 2');
 		});
 	});
 

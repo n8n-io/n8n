@@ -14,12 +14,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 import type { EngineAdditionalDataBuilder } from '../engine-additional-data';
 import type { EngineControlPlaneTransport } from '../engine-control-plane-transport';
 import type { EngineCredentialsClient } from '../engine-credentials-client';
 import type { EngineSubWorkflowClient } from '../engine-sub-workflow-client';
+import type { EngineMtls } from '../engine-mtls';
 import { EngineV2Runtime } from '../engine-v2.runtime';
 import { RemoteCredentialsHelper } from '../remote-credentials-helper';
 import { RemoteDataTableProxyProvider } from '../remote-data-table-proxy-provider';
@@ -42,16 +43,24 @@ const mocks = vi.hoisted(() => {
 	const listen: { error?: Error } = {};
 
 	const server = {
-		close: vi.fn((done: (error?: Error) => void) => done()),
+		get listening() {
+			return !listen.error;
+		},
+		/** The last listener per event, so a test can fire an event after `init()`. */
+		listeners: {} as Record<string, (error?: Error) => void>,
+		close: vi.fn((done?: (error?: Error) => void) => done?.()),
 		once: vi.fn((event: string, listener: (error?: Error) => void) => {
+			server.listeners[event] = listener;
 			if (event === 'listening' && !listen.error) listener();
 			if (event === 'error' && listen.error) listener(listen.error);
 			return server;
 		}),
 	};
 
+	const httpServer = { listen: vi.fn((_port: number, _host: string) => server) };
+
 	const engine = {
-		app: { listen: vi.fn((_port: number, _host: string) => server) },
+		app: {},
 		start: vi.fn(),
 		stop: vi.fn(async () => {}),
 	};
@@ -80,10 +89,12 @@ const mocks = vi.hoisted(() => {
 		dataSource,
 		listen,
 		server,
+		httpServer,
 		engine,
 		v1StepExecutor,
 		stepDataLoader,
 		createDataSource: vi.fn((_url: string) => dataSource),
+		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
 			return stepDataLoader;
@@ -121,7 +132,7 @@ describe('EngineV2Runtime', () => {
 			...overrides,
 		});
 
-	const nodeTypes = mock<NodeTypes>();
+	const nodeTypes = mock<NodeTypesProxy>();
 
 	let credentialsClient: EngineCredentialsClient;
 	let transport: EngineControlPlaneTransport;
@@ -141,6 +152,7 @@ describe('EngineV2Runtime', () => {
 	const newRuntime = (databaseUrl = 'postgres://engine', config: Partial<EngineConfig> = {}) =>
 		new EngineV2Runtime(
 			engineConfig(databaseUrl, config),
+			{ enabled: false, createServer: mocks.createServer } as unknown as EngineMtls,
 			nodeTypes,
 			mockLogger(),
 			credentialsClient,
@@ -414,7 +426,8 @@ describe('EngineV2Runtime', () => {
 		it('serves the engine API on the configured address', async () => {
 			await newRuntime().init(senders());
 
-			expect(mocks.engine.app.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
+			expect(mocks.createServer).toHaveBeenCalledWith(mocks.engine.app);
+			expect(mocks.httpServer.listen).toHaveBeenCalledWith(3000, '0.0.0.0');
 		});
 
 		it('closes the connection when migrations fail', async () => {
@@ -426,14 +439,23 @@ describe('EngineV2Runtime', () => {
 			expect(mocks.engine.stop).not.toHaveBeenCalled();
 		});
 
-		it('stops the engine and closes the connection when the server fails to listen', async () => {
+		it('closes the unbound server, stops the engine and closes the connection when the server fails to listen', async () => {
 			mocks.listen.error = new Error('listen failed');
 
 			await expect(newRuntime().init(senders())).rejects.toThrow('listen failed');
 
-			expect(mocks.server.close).not.toHaveBeenCalled();
+			// Closing it drops its subscription to TLS reloads.
+			expect(mocks.server.close).toHaveBeenCalledOnce();
 			expect(mocks.engine.stop).toHaveBeenCalled();
 			expect(mocks.dataSource.destroy).toHaveBeenCalled();
+		});
+
+		it('keeps the engine API server open when it reports an error after it bound', async () => {
+			await newRuntime().init(senders());
+
+			mocks.server.listeners.error(new Error('later error'));
+
+			expect(mocks.server.close).not.toHaveBeenCalled();
 		});
 
 		it('surfaces the startup failure even when the rollback fails', async () => {
@@ -459,7 +481,7 @@ describe('EngineV2Runtime', () => {
 		it('stops the engine and closes the connection when the server fails to close', async () => {
 			const runtime = newRuntime();
 			await runtime.init(senders());
-			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			const error = await runtime
 				.shutdown()
@@ -511,7 +533,7 @@ describe('EngineV2Runtime', () => {
 		it('releases a resource again when its first release failed', async () => {
 			const runtime = newRuntime();
 			await runtime.init(senders());
-			mocks.server.close.mockImplementationOnce((done) => done(new Error('close failed')));
+			mocks.server.close.mockImplementationOnce((done) => done?.(new Error('close failed')));
 
 			await expect(runtime.shutdown()).rejects.toThrow(AggregateError);
 			await expect(runtime.shutdown()).resolves.toBeUndefined();

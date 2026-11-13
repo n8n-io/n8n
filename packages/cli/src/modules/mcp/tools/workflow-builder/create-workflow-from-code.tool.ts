@@ -10,7 +10,7 @@ import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
-import type { NodeTypes } from '@/node-types';
+import type { INodeTypes } from 'n8n-workflow';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -30,6 +30,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { getErrorCode } from './error-code.utils';
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { topLevelItemsWarning } from './top-level-items-warning';
 import {
@@ -322,7 +323,7 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
 	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
@@ -406,6 +407,7 @@ export const createCreateWorkflowFromCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const workflowJson = result.workflow;
 			const { description: workflowDescription, truncated: descriptionTruncated } =

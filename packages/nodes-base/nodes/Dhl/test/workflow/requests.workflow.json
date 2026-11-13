@@ -1,0 +1,57 @@
+{
+	"name": "DHL Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"trackingNumber": "00340434292135100186",
+				"options": {}
+			},
+			"id": "dhl-0",
+			"name": "Shipment Get",
+			"type": "n8n-nodes-base.dhl",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"dhlApi": {
+					"id": "1",
+					"name": "DHL account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Shipment Get": [
+			{
+				"json": {
+					"id": "00340434292135100186",
+					"service": "parcel-de"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Shipment Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

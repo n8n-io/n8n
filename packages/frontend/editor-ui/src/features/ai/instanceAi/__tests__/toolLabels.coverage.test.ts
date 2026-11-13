@@ -28,6 +28,9 @@ const OTHER_INSTANCE_AI_TOOL_NAMES = [
 	'materialize-node-type',
 	'web-search',
 	'fetch-url',
+	'find_tools',
+	'call_tool',
+	// Former deferred-tool names, kept so saved threads keep their labels.
 	'search_tools',
 	'load_tool',
 	'load_skill',

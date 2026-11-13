@@ -25,7 +25,7 @@ function createArtifactThread(overrides: Partial<ArtifactThread> = {}): Artifact
 	return reactive({
 		id: 'thread-1',
 		projectId: 'project-1',
-		messages: [],
+		artifactTurns: [],
 		producedArtifacts: new Map(),
 		resourceNameIndex: new Map(),
 		pendingWorkflowAttachment: null,
@@ -33,6 +33,7 @@ function createArtifactThread(overrides: Partial<ArtifactThread> = {}): Artifact
 		isHydratingThread: false,
 		isStreaming: false,
 		isSendingMessage: false,
+		activeArtifactId: undefined,
 		currentTasks: null,
 		consumePendingHandoff: () => undefined,
 		sendMessage: async () => true,

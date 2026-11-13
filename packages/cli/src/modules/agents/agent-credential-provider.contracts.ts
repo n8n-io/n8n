@@ -1,4 +1,4 @@
-import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
+import type { CredentialProvider, FetchFn, ResolvedCredential } from '@n8n/agents';
 
 /**
  * A `CredentialProvider` that can also mint the n8n Connect (AI Gateway)
@@ -8,6 +8,8 @@ import type { CredentialProvider, ResolvedCredential } from '@n8n/agents';
  */
 export interface AiGatewayModelCredentialResolver {
 	resolveAiGatewayModelCredential(provider: string): Promise<ResolvedCredential>;
+	/** Create a model `fetch` that keeps the minted AI Gateway token current. */
+	createAiGatewayTokenRefreshFetch(baseFetch: FetchFn): FetchFn;
 }
 
 export type AgentCredentialProvider = CredentialProvider &

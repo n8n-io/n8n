@@ -16,6 +16,12 @@ export interface SystemTask {
 
 	readonly schedule: SystemTaskSchedule;
 
+	/**
+	 * Delay before the first interval occurrence, in whole seconds. Later occurrences
+	 * keep the interval. Existing durable jobs keep their stored cadence.
+	 */
+	readonly initialDelaySeconds?: number;
+
 	/** Where the occurrences run, and the options of the runner that runs them. */
 	readonly target: SystemTaskTarget;
 

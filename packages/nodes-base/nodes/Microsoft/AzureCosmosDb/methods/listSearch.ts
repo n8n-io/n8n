@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { HeaderConstants } from '../helpers/constants';
 import { azureCosmosDbApiRequest } from '../transport';
@@ -27,7 +28,7 @@ export async function searchContainers(
 	const responseData = (await azureCosmosDbApiRequest.call(
 		this,
 		'GET',
-		'/colls',
+		requestPath`/colls`,
 		{},
 		{},
 		headers,
@@ -57,7 +58,7 @@ export async function searchItems(
 	const responseData = (await azureCosmosDbApiRequest.call(
 		this,
 		'GET',
-		`/colls/${container}/docs`,
+		requestPath`/colls/${container}/docs`,
 		{},
 		{},
 		headers,

@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, mount, flushPromises } from '@vue/test-utils';
 import AgentVersionMetadataModal, {
 	type AgentVersionMetadataModalData,
 } from '../components/AgentVersionMetadataModal.vue';
@@ -11,35 +11,97 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ modalsById: { metadata: { open: true } }, closeModal }),
 }));
 
-function render(data: Partial<AgentVersionMetadataModalData> = {}) {
+enableAutoUnmount(afterEach);
+
+function render(data: Partial<AgentVersionMetadataModalData> = {}, stubModal = true) {
 	const onSubmit = vi.fn().mockResolvedValue(true);
 	const onClose = vi.fn();
 	const wrapper = mount(AgentVersionMetadataModal, {
-		props: { modalName: 'metadata', data: { mode: 'edit', onSubmit, onClose, ...data } },
-		global: { stubs: { AgentModal: AgentModalTestStub } },
+		attachTo: document.body,
+		props: {
+			modalName: 'metadata',
+			data: {
+				mode: 'edit',
+				versionId: '044574aa-1234-4567-8901-234567890123',
+				onSubmit,
+				onClose,
+				...data,
+			},
+		},
+		global: { stubs: { AgentModal: stubModal ? AgentModalTestStub : false } },
 	});
+
 	return { wrapper, onSubmit, onClose };
 }
 
 beforeEach(() => vi.clearAllMocks());
 
 describe('AgentVersionMetadataModal', () => {
-	it('reuses optional workflow fields and their character limits', () => {
+	it('requires the workflow name field and keeps the character limits', () => {
 		const { wrapper } = render({ name: 'Release', description: 'First line\nSecond line' });
-		expect(wrapper.findComponent(WorkflowVersionForm).props('nameRequired')).toBe(false);
+		expect(wrapper.findComponent(WorkflowVersionForm).props('nameRequired')).toBe(true);
 		expect(wrapper.get('input').attributes('maxlength')).toBe('128');
 		expect(wrapper.get('textarea').attributes('maxlength')).toBe('2048');
 		expect(wrapper.get('input').element.value).toBe('Release');
 		expect(wrapper.get('textarea').element.value).toBe('First line\nSecond line');
 	});
 
-	it('saves empty fields as null and closes silently', async () => {
+	it.each(['edit', 'publish'] as const)('prefills an unnamed version in %s mode', (mode) => {
+		const { wrapper } = render({ mode });
+
+		expect(wrapper.get('input').element.value).toBe('Version 044574aa');
+	});
+
+	it.each(['edit', 'publish'] as const)(
+		'blocks blank names and Enter submission in %s mode',
+		async (mode) => {
+			const { wrapper, onSubmit } = render({ mode });
+
+			for (const name of ['', '  ']) {
+				await wrapper.get('input').setValue(name);
+
+				expect(
+					wrapper.get('[data-testid="agent-version-metadata-submit"]').attributes('disabled'),
+				).toBeDefined();
+
+				await wrapper.get('input').trigger('keydown', { key: 'Enter' });
+			}
+
+			expect(onSubmit).not.toHaveBeenCalled();
+			expect(closeModal).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each(['edit', 'publish'] as const)(
+		'selects the full name when the %s dialog opens',
+		async (mode) => {
+			const { wrapper } = render({ mode, name: 'Release' }, false);
+			await flushPromises();
+
+			const form = wrapper.getComponent(WorkflowVersionForm);
+			const input = form.get('input').element;
+
+			expect(document.activeElement).toBe(input);
+			expect(input.selectionStart).toBe(0);
+			expect(input.selectionEnd).toBe('Release'.length);
+
+			input.setSelectionRange(2, 2);
+			form.get('textarea').element.focus();
+			input.focus();
+
+			expect(input.selectionStart).toBe(2);
+			expect(input.selectionEnd).toBe(2);
+		},
+	);
+
+	it('trims the name and saves an empty description as null', async () => {
 		const { wrapper, onSubmit, onClose } = render({ name: 'Release', description: 'Notes' });
-		await wrapper.get('input').setValue('  ');
+		await wrapper.get('input').setValue('  Release  ');
 		await wrapper.get('textarea').setValue('');
 		await wrapper.get('[data-testid="agent-version-metadata-submit"]').trigger('click');
 		await flushPromises();
-		expect(onSubmit).toHaveBeenCalledWith({ name: null, description: null });
+
+		expect(onSubmit).toHaveBeenCalledWith({ name: 'Release', description: null });
 		expect(closeModal).toHaveBeenCalledWith('metadata');
 		expect(onClose).toHaveBeenCalledWith(true);
 	});

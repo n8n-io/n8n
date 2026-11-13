@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { useArtifactLinks } from '@/features/ai/instanceAi/artifactLinks';
 import { N8nCodeBlock, N8nMarkdown } from '@n8n/design-system';
 import ChatResourceLink from './ChatResourceLink.vue';
 import { computed } from 'vue';
@@ -24,8 +25,10 @@ const props = withDefaults(
 		openAgentChatPreview?: (id: string, projectId: string) => boolean;
 		openSkillPreview?: (id: string) => boolean;
 		openAppPreview?: (id: string) => boolean;
-		buildAppHref?: (projectId: string, id: string) => string;
-		buildSkillHref?: (id: string) => string;
+		artifactLinks?: Pick<
+			ReturnType<typeof useArtifactLinks>,
+			'artifactHref' | 'routerPathHref' | 'toRouterPath'
+		>;
 	}>(),
 	{ options: () => ({}), singlePre: false },
 );
@@ -62,8 +65,7 @@ const markdown = useChatMarkdownOptions(() => props.options);
 				:open-agent-chat-preview="props.openAgentChatPreview"
 				:open-skill-preview="props.openSkillPreview"
 				:open-app-preview="props.openAppPreview"
-				:build-app-href="props.buildAppHref"
-				:build-skill-href="props.buildSkillHref"
+				:artifact-links="props.artifactLinks"
 			/>
 		</template>
 		<template #code-block="{ code, language }">

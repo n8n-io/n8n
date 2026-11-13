@@ -13,6 +13,11 @@ async function openMenu(container: Element) {
 }
 
 describe('N8nActionToggle', () => {
+	it('labels the default trigger', () => {
+		const { getByRole } = render(ActionToggle, { props: { ariaLabel: 'Source actions' } });
+		expect(getByRole('button', { name: 'Source actions' })).toBeInTheDocument();
+	});
+
 	it('renders labels for items with and without a tooltip', async () => {
 		const { container, getByText } = render(ActionToggle, {
 			props: {

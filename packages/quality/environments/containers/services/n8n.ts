@@ -85,6 +85,8 @@ export interface N8NInstancesOptions {
 	usePostgres: boolean;
 	engine?: EngineMode;
 	engineAuthSecret?: string;
+	/** Per-plane TLS files from `createEngineTlsFiles`. `container` engine mode only. */
+	engineTlsFiles?: Record<'main' | 'engine', FileToMount[]>;
 	/**
 	 * In `container` engine mode, do not start an engine: one from an earlier
 	 * call is still running. `replaceN8N` sets this when it swaps the main.
@@ -259,15 +261,17 @@ async function createContainer(
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
-	// The engine serves no REST API; its health route lives on the engine port.
+	// The engine serves no REST API; its health route lives on the engine port,
+	// over TLS in `container` mode.
 	const readiness =
 		role === 'engine'
-			? { path: '/healthz', port: ENGINE_PORT }
-			: { path: '/healthz/readiness', port: N8N_READINESS_PORT };
+			? { path: '/healthz', port: ENGINE_PORT, tls: true }
+			: { path: '/healthz/readiness', port: N8N_READINESS_PORT, tls: false };
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		readiness.path,
 		readiness.port,
 		{
+			tls: readiness.tls,
 			startupTimeoutMs: Math.min(
 				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
 				startupDeadline.remainingMs,
@@ -416,6 +420,7 @@ export async function createN8NInstances(
 		user,
 		startupTimeoutMs,
 		engine,
+		engineTlsFiles,
 		reuseEngine = false,
 	} = options;
 
@@ -429,7 +434,7 @@ export async function createN8NInstances(
 		environment,
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.main ?? [])],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
@@ -472,7 +477,7 @@ export async function createN8NInstances(
 		environment: engineEnvironment ?? {},
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.engine ?? [])],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,

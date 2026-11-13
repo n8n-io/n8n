@@ -21,7 +21,8 @@ export class AuthIdentityRepository extends Repository<AuthIdentity> {
 	): Promise<AuthIdentity | null> {
 		return await this.findOne({
 			where: { providerId, providerType },
-			relations: { user: { role: true, authIdentities: true } },
+			// The string form reaches `authIdentities`, which only `Person` declares.
+			relations: ['user', 'user.role', 'user.authIdentities'],
 		});
 	}
 }

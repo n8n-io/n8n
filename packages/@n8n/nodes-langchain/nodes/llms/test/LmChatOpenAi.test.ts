@@ -11,9 +11,12 @@ import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import {
+	NodeHelpers,
 	NodeOperationError,
 	type IDataObject,
 	type INode,
+	type INodeParameters,
+	type INodeProperties,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -123,6 +126,49 @@ describe('LmChatOpenAi', () => {
 						default: '{}',
 					}),
 				]),
+			});
+		});
+
+		describe('reasoning effort visibility', () => {
+			const visibleOptions = (model: string, optionValues: INodeParameters = {}) => {
+				const { description } = new LmChatOpenAi();
+				const options = description.properties.find((p) => p?.name === 'options')
+					?.options as INodeProperties[];
+				const nodeValues = {
+					model: { __rl: true, mode: 'id', value: model },
+					options: optionValues,
+				};
+				return options
+					.filter((option) =>
+						NodeHelpers.displayParameterPath(
+							nodeValues,
+							option,
+							'options',
+							{ typeVersion: 1.3 },
+							description,
+						),
+					)
+					.map((option) => option.name);
+			};
+
+			it.each(['o1', 'o3-mini', 'gpt-5-mini'])(
+				'shows it for the OpenAI reasoning model %s',
+				(model) => {
+					const visible = visibleOptions(model);
+					expect(visible.filter((name) => name === 'reasoningEffort')).toHaveLength(1);
+					expect(visible).not.toContain('modelSupportsReasoning');
+				},
+			);
+
+			it.each(['gpt-4o', 'claude-sonnet-4-5'])('hides it for %s by default', (model) => {
+				const visible = visibleOptions(model);
+				expect(visible).not.toContain('reasoningEffort');
+				expect(visible).toContain('modelSupportsReasoning');
+			});
+
+			it('shows it for a model on a custom endpoint when the user turns on reasoning support', () => {
+				const visible = visibleOptions('claude-sonnet-4-5', { modelSupportsReasoning: true });
+				expect(visible.filter((name) => name === 'reasoningEffort')).toHaveLength(1);
 			});
 		});
 	});

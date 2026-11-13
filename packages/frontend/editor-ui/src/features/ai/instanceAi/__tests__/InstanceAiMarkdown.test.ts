@@ -6,9 +6,14 @@ import InstanceAiMarkdown from '../components/InstanceAiMarkdown.vue';
 import type { ThreadRuntime } from '../instanceAi.store';
 import { computed } from 'vue';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY } from '../embed/instanceAiEmbed.types';
+import { createArtifactTestRouter } from './artifactTestRouter';
 
 let thread: ThreadRuntime;
-const renderComponent = createThreadComponentRenderer(InstanceAiMarkdown, {}, () => thread);
+const renderComponent = createThreadComponentRenderer(
+	InstanceAiMarkdown,
+	{ global: { plugins: [createArtifactTestRouter()] } },
+	() => thread,
+);
 
 describe('InstanceAiMarkdown with the shared renderer', () => {
 	beforeEach(() => {
@@ -228,5 +233,96 @@ describe('InstanceAiMarkdown with the shared renderer', () => {
 		expect(container.querySelector('code')?.textContent).toBe('My Workflow');
 		expect(container.querySelectorAll('a')).toHaveLength(1);
 		expect(container.querySelector('a')?.getAttribute('href')).toBe('https://example.org');
+	});
+
+	describe('links with a router base', () => {
+		async function renderWithBase(
+			content: string,
+			{
+				base = '/n8n/',
+				provide = {},
+			}: { base?: string; provide?: Record<string | symbol, unknown> } = {},
+		) {
+			const { container } = renderComponent({
+				props: { content },
+				global: { plugins: [createArtifactTestRouter(base)], provide },
+			});
+			await flushPromises();
+			return container;
+		}
+
+		it('resolves resource chips with the base', async () => {
+			thread.resourceNameIndex.set('credential', {
+				type: 'credential',
+				id: 'cred-1',
+				name: 'Credential',
+				projectId: 'project-1',
+			});
+
+			const links = (
+				await renderWithBase(
+					'[Credential](n8n-resource://credential/cred-1) ' +
+						'[Skill](n8n-resource://skill/skill%201%26x)',
+				)
+			).querySelectorAll('a');
+
+			expect(links[0].getAttribute('href')).toBe('/n8n/projects/project-1/credentials/cred-1');
+			expect(links[1].getAttribute('href')).toBe(
+				'/n8n/settings/context/skills?skillId=skill+1%26x',
+			);
+			expect(links[1].dataset.resourceId).toBe('skill 1&x');
+		});
+
+		it.each([
+			{ base: '/n8n/', href: '/workflow/wf-1' },
+			{ base: '/n8n/', href: '/n8n/workflow/wf-1' },
+		])('adds the base $base once to the internal link $href', async ({ base, href }) => {
+			const query = '?tab=a%20b&x=1+2#node';
+			const link = (
+				await renderWithBase(`[Workflow](${href}${query})`, {
+					base,
+				})
+			).querySelector('a');
+
+			expect(link?.getAttribute('href')).toBe(`${base}workflow/wf-1${query}`);
+			expect(link?.dataset.resourceChip).toBe('workflow');
+			expect(link?.target).toBe('_blank');
+		});
+
+		it('leaves unrecognized and cross-origin links unchanged', async () => {
+			const links = (
+				await renderWithBase(
+					'[Unknown](/n8n/unknown-page) ' + '[Other site](https://example.com/workflow/wf-1)',
+				)
+			).querySelectorAll('a');
+
+			expect(links[0].getAttribute('href')).toBe('/n8n/unknown-page');
+			expect(links[1].getAttribute('href')).toBe('https://example.com/workflow/wf-1');
+			expect(links[0].dataset.resourceChip).toBeUndefined();
+			expect(links[1].dataset.resourceChip).toBeUndefined();
+		});
+
+		it.each([
+			{ base: '/n8n/', href: '/projects/project-1/agents/agent-1/preview' },
+			{ base: '/n8n/', href: '/n8n/projects/project-1/agents/agent-1?openPreview=true' },
+		])('opens the agent Preview link $href under the base $base', async ({ base, href }) => {
+			const openAgentChatPreview = vi.fn(() => true);
+			const link = (
+				await renderWithBase(`[Preview](${href})`, {
+					base,
+					provide: { openAgentChatPreview },
+				})
+			).querySelector('a');
+			if (!link) throw new Error('expected Preview anchor');
+
+			expect(link.getAttribute('href')).toBe(
+				`${base}projects/project-1/agents/agent-1?openPreview=true`,
+			);
+			const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+			link.dispatchEvent(event);
+
+			expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+			expect(event.defaultPrevented).toBe(true);
+		});
 	});
 });
