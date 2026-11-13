@@ -1,0 +1,8 @@
+{
+	"description": "Code nodes in both modes return binary data: the JSON and the binary keys that follow",
+	"trigger": {
+		"body": {
+			"ok": true
+		}
+	}
+}

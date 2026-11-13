@@ -195,8 +195,20 @@ ${user}
 `;
 }
 
+/**
+ * The item of one result in "each item" mode, as n8n's task runner gives it:
+ * `json` is the `json` of the result (for a result with `binary` and no `json`,
+ * an empty object), and the item's binary data is the result's `binary`.
+ */
+const EACH_ITEM = `const __itemOf = (r) => {
+	if (r === null || typeof r !== 'object') return r;
+	const json = 'json' in r ? r.json : 'binary' in r ? (r.json ?? {}) : r;
+	return r.binary ? { json, binary: r.binary } : { json };
+};
+`;
+
 export function eachItemCode(user: string, nodes: boolean, functionItem: boolean): string {
-	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}const __all = items.map((j, k) => __wrap(j, k));
+	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${EACH_ITEM}const __all = items.map((j, k) => __wrap(j, k));
 const __out = [];
 for (let $itemIndex = 0; $itemIndex < __all.length; $itemIndex++) {
 	const __item = __all[$itemIndex];
@@ -211,7 +223,8 @@ ${user}
 		functionItem
 			? // As n8n: the item keeps its binary data, also the data that `setBinaryData` set.
 				'if (__result !== undefined && __result !== null) __out.push(__item.binary ? { json: __result, binary: __item.binary } : __result);'
-			: 'if (__result !== undefined && __result !== null) __out.push(__result);'
+			: // As n8n's runner: a result that is false gives no output.
+				'if (__result) __out.push(__itemOf(__result));'
 	}
 }
 return __out;

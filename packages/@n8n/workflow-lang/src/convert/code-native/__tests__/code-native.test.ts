@@ -167,6 +167,71 @@ const cases: Array<[string, CodeMode, string]> = [
 	],
 ];
 
+/** A binary entry of an item, with the sizes that the fallback host adds. */
+const BINARY = { data: 'aGk=', mimeType: 'text/plain', bytes: 2, fileSize: '2 B' };
+
+describe('binary data of Code node results', () => {
+	// Items with binary data, as the runtime holds them: the binary map in the `$binary` key.
+	const input = [{ n: 1, $binary: { file: BINARY } }, { n: 2 }];
+
+	it('keeps binary data out of the JSON of an item', () => {
+		const all =
+			'return items.map((i) => ({ json: { n: i.json.n }, binary: $input.all()[0].binary }));';
+		// `binary` in code keeps the host step, so the native rules are checked on a pass-through.
+		expect(native('return items;', 'all', input)).toEqual(host('return items;', 'all', input));
+		expect(native('return items;', 'all', input)).toEqual({
+			ok: true,
+			value: [{ n: 1, $binary: { file: BINARY } }, { n: 2 }],
+		});
+		expect(host(all, 'all', input)).toEqual({
+			ok: true,
+			value: [
+				{ n: 1, $binary: { file: BINARY } },
+				{ n: 2, $binary: { file: BINARY } },
+			],
+		});
+	});
+
+	it('gives the same items in "each item" mode', () => {
+		const code = 'return item;';
+		expect(native(code, 'each', input)).toEqual(host(code, 'each', input));
+		expect(native(code, 'each', input)).toEqual({
+			ok: true,
+			value: [{ n: 1, $binary: { file: BINARY } }, { n: 2 }],
+		});
+	});
+
+	it('rejects a mix of items with and without json, as v1 does', () => {
+		const code = 'return [{ json: { a: 1 } }, { pairedItem: { item: 0 } }];';
+		expect(native(code, 'all', input)).toEqual({ ok: false, error: 'Inconsistent item format' });
+		expect(host(code, 'all', input)).toEqual({ ok: false, error: 'Inconsistent item format' });
+	});
+
+	it('rejects a top-level key next to an n8n item key, as v1 does', () => {
+		const code = 'return [{ json: { a: 1 }, other: 2 }];';
+		expect(native(code, 'all', input)).toEqual({
+			ok: false,
+			error: 'Invalid output format [item 0]',
+		});
+		expect(host(code, 'all', input)).toEqual({
+			ok: false,
+			error: 'Invalid output format [item 0]',
+		});
+	});
+
+	it('rejects a json value that is not an object, as v1 does', () => {
+		const code = 'return [{ json: [1, 2] }];';
+		expect(native(code, 'all', input)).toEqual({
+			ok: false,
+			error: "A 'json' property isn't an object [item 0]",
+		});
+		expect(host(code, 'all', input)).toEqual({
+			ok: false,
+			error: "A 'json' property isn't an object [item 0]",
+		});
+	});
+});
+
 describe('native Code nodes', () => {
 	it.each(cases)('%s: same result as the fallback host', (_, mode, code) => {
 		const h = host(code, mode, items);

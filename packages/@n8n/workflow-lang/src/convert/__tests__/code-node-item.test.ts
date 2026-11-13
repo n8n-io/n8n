@@ -35,3 +35,37 @@ describe('$item in host code steps', () => {
 		expect(() => run(empty, false, [{}], nodes)).toThrow("Node 'Empty' hasn't been executed");
 	});
 });
+
+/** A binary entry of an item, with the sizes that the fallback host adds. */
+const BINARY = { data: 'aGk=', mimeType: 'text/plain', bytes: 2, fileSize: '2 B' };
+
+describe('binary data in host code steps', () => {
+	const bin = "{ data: { data: 'aGk=', mimeType: 'text/plain' } }";
+	const wire = { $binary: { data: BINARY } };
+
+	it('takes the binary data out of the JSON in "all items" mode', () => {
+		expect(run(`return [{ binary: ${bin} }];`, false, [], {})).toEqual([wire]);
+		expect(run(`return [{ json: { a: 1 }, binary: ${bin} }];`, false, [], {})).toEqual([
+			{ a: 1, ...wire },
+		]);
+	});
+
+	it('gives an empty json and the binary data in "each item" mode', () => {
+		expect(run(`return { binary: ${bin} };`, true, [{}, {}], {})).toEqual([wire, wire]);
+		expect(run(`return { a: 1, binary: ${bin} };`, true, [{}, {}], {})).toEqual([wire, wire]);
+		// As v1's `extractJsonData`: a result with `binary` and no `json` gives an empty `json`.
+		expect(run(`return { a: $json.a, binary: ${bin} };`, true, [{ a: 1 }], {})).toEqual([wire]);
+		expect(run('return { a: 1 };', true, [{}, {}], {})).toEqual([{ a: 1 }, { a: 1 }]);
+	});
+
+	it('takes each item of a mix on its own in "each item" mode', () => {
+		expect(
+			run(
+				`if ($itemIndex === 0) return { a: 1 };\nreturn { b: 2, binary: ${bin} };`,
+				true,
+				[{}, {}],
+				{},
+			),
+		).toEqual([{ a: 1 }, wire]);
+	});
+});
