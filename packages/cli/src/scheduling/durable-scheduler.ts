@@ -142,7 +142,8 @@ export class DurableScheduler implements Scheduler {
 		this.scheduler.registerTaskHandler(taskType, {
 			execute: async (task, report, run) => {
 				const decision = await handler.execute(task, report, run);
-				this.crashJournal.recordCompletion(task.payload);
+				// A timed-out poll keeps running in the background, so it has not completed.
+				if (!run.signal.aborted) this.crashJournal.recordCompletion(task.payload);
 				return decision;
 			},
 		});

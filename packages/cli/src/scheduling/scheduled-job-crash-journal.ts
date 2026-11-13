@@ -70,6 +70,17 @@ export class ScheduledJobCrashJournal {
 		this.write();
 	}
 
+	/** Ends the streaks of every job of the workflow, so a reactivation starts from zero. */
+	clearWorkflow(workflowId: string) {
+		let cleared = false;
+		for (const [key, streak] of this.streaks) {
+			if (streak.workflowId !== workflowId) continue;
+			this.streaks.delete(key);
+			cleared = true;
+		}
+		if (cleared) this.write();
+	}
+
 	private read(): JournalState | undefined {
 		try {
 			const parsed: unknown = JSON.parse(readFileSync(this.file, 'utf8'));

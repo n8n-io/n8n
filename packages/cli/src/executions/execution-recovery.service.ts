@@ -25,7 +25,10 @@ import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
-import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import {
+	type AutodeactivationReason,
+	UserManagementMailer,
+} from '@/user-management/email/user-management-mailer';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 
 import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
@@ -78,7 +81,7 @@ export class ExecutionRecoveryService {
 	/** Returns `false` when the workflow does not exist. */
 	async autoDeactivateWorkflow(
 		workflowId: string,
-		reason: 'crashes' | 'trigger-crashes' = 'crashes',
+		reason: Exclude<AutodeactivationReason, 'memory-pressure'> = 'crashes',
 	): Promise<boolean> {
 		// Get workflow to preserve existing meta
 		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });

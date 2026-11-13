@@ -130,4 +130,21 @@ describe('ScheduledJobCrashJournal', () => {
 			expect(existsSync(journalPath())).toBe(false);
 		});
 	});
+
+	describe('clearWorkflow', () => {
+		it('ends the streaks of every job of the workflow', () => {
+			newSession().recordCrash([
+				attempt('1', 'wf-a'),
+				attempt('2', 'wf-a', 'node-2'),
+				attempt('3', 'wf-b'),
+			]);
+
+			newSession().clearWorkflow('wf-a');
+
+			expect(readJournal()).toEqual({
+				streaks: { 'wf-b:node-1': { workflowId: 'wf-b', nodeId: 'node-1', crashes: 1 } },
+				counted: ['1:1', '2:1', '3:1'],
+			});
+		});
+	});
 });

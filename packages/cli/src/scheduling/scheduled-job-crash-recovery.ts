@@ -48,15 +48,18 @@ export class ScheduledJobCrashRecovery {
 
 		const { workflowDeactivationEnabled, maxLastExecutions } = this.executionsConfig.recovery;
 		if (!workflowDeactivationEnabled) return;
-		const workflowIds = new Set(
-			streaks.filter((streak) => streak.crashes >= maxLastExecutions).map((s) => s.workflowId),
-		);
-		for (const workflowId of workflowIds) {
+		for (const streak of streaks) {
+			if (streak.crashes < maxLastExecutions) continue;
 			this.logger.warn(
 				'Scheduled job was in flight at each of the last crashes; deactivating its workflow',
-				{ workflowId, crashes: maxLastExecutions },
+				{ ...streak },
 			);
-			await this.executionRecoveryService.autoDeactivateWorkflow(workflowId, 'trigger-crashes');
+			// A second job of a deactivated workflow finds it inactive and sends no second email.
+			await this.executionRecoveryService.autoDeactivateWorkflow(
+				streak.workflowId,
+				'trigger-crashes',
+			);
+			this.journal.clearWorkflow(streak.workflowId);
 		}
 	}
 }

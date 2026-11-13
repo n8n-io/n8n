@@ -76,8 +76,8 @@ describe('ScheduledJobCrashRecovery', () => {
 		expect(tasks.findRunningTasks).toHaveBeenCalledWith({ claimedBy: 'main-1' });
 	});
 
-	it('deactivates a workflow whose job reached the crash threshold', async () => {
-		const { recovery, executionRecoveryService } = setup({
+	it('deactivates a workflow whose job reached the crash threshold and clears its streaks', async () => {
+		const { recovery, journal, executionRecoveryService } = setup({
 			streaks: [streak('wf-a', 3), streak('wf-b', 2)],
 		});
 
@@ -88,16 +88,7 @@ describe('ScheduledJobCrashRecovery', () => {
 			'wf-a',
 			'trigger-crashes',
 		);
-	});
-
-	it('deactivates a workflow once when two of its jobs reached the threshold', async () => {
-		const { recovery, executionRecoveryService } = setup({
-			streaks: [streak('wf-a', 3), streak('wf-a', 4, 'node-2')],
-		});
-
-		await recovery.recover();
-
-		expect(executionRecoveryService.autoDeactivateWorkflow).toHaveBeenCalledTimes(1);
+		expect(journal.clearWorkflow).toHaveBeenCalledExactlyOnceWith('wf-a');
 	});
 
 	it('counts but does not deactivate when auto deactivation is off', async () => {

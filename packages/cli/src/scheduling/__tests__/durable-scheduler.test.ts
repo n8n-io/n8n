@@ -250,7 +250,7 @@ describe('DurableScheduler', () => {
 			payload: { workflowId: 'wf', nodeId: 'node' },
 		} as unknown as ClaimedTask;
 		const report = mock<DispatchReporter>();
-		const run = mock<TaskRun>();
+		const run: TaskRun = { signal: new AbortController().signal, remainingMs: () => 1000 };
 		const decision = 'dispatched' as unknown as DispatchDecision;
 
 		const registeredHandler = (inner: Scheduler, taskType: string) => {
@@ -280,6 +280,21 @@ describe('DurableScheduler', () => {
 			await expect(
 				registeredHandler(inner, 'some-task').execute(task, report, run),
 			).rejects.toThrow('poll failed');
+
+			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
+		});
+
+		it('does not record a completion when the run was aborted', async () => {
+			const { scheduler, inner, crashJournal } = makeScheduler();
+			const handler = { execute: vi.fn().mockResolvedValue(decision) };
+			scheduler.registerTaskHandler('some-task', handler);
+			const controller = new AbortController();
+			controller.abort(new Error('timed out'));
+
+			await registeredHandler(inner, 'some-task').execute(task, report, {
+				signal: controller.signal,
+				remainingMs: () => 0,
+			});
 
 			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
 		});

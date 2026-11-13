@@ -40,6 +40,8 @@ function formatRevokedBy(user: User): string {
 	return fullName || email || '';
 }
 
+export type AutodeactivationReason = 'crashes' | 'trigger-crashes' | 'memory-pressure';
+
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
@@ -333,7 +335,7 @@ export class UserManagementMailer {
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
-		reason?: 'crashes' | 'trigger-crashes' | 'memory-pressure';
+		reason?: AutodeactivationReason;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
