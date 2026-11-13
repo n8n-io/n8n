@@ -9,7 +9,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+import { deepCopy, NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
@@ -51,6 +51,67 @@ export async function githubApiRequest(
 
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
+		}
+
+		if (
+			method === 'GET' &&
+			options.json !== false &&
+			/^\/repos\/[^/]+\/[^/]+\/pulls(?:\/\d+)?$/.test(String(endpoint)) &&
+			'getWorkflowStaticData' in this
+		) {
+			// Keep validators and bodies together across scheduled executions.
+			const staticData = this.getWorkflowStaticData('node');
+			const cache: IDataObject[] = Array.isArray(staticData.githubPullRequestCache)
+				? staticData.githubPullRequestCache
+				: [];
+			const key = JSON.stringify([
+				credentialType,
+				this.getNode().credentials?.[credentialType]?.id,
+				options.uri.value,
+				query,
+				options.headers,
+			]);
+			const cached = cache.find((entry) => entry.key === key);
+			options.resolveWithFullResponse = true;
+			if (cached && typeof cached.etag === 'string') {
+				options.headers = { ...options.headers, 'If-None-Match': cached.etag };
+			}
+
+			let response: { statusCode: number; headers: IDataObject; body: IDataObject | IDataObject[] };
+			try {
+				response = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+			} catch (error) {
+				// The request helper can report 304 as a NodeApiError.
+				if (!cached || (error.statusCode !== 304 && error.httpCode !== '304')) {
+					throw error;
+				}
+				return deepCopy(
+					option.resolveWithFullResponse
+						? { statusCode: 200, headers: cached.headers, body: cached.body }
+						: cached.body,
+				);
+			}
+
+			if (response.statusCode === 304 && cached) {
+				return deepCopy(
+					option.resolveWithFullResponse
+						? { ...response, headers: cached.headers, body: cached.body }
+						: cached.body,
+				);
+			}
+
+			const entries = cache.filter((entry) => entry.key !== key);
+			if (response.statusCode === 200 && typeof response.headers.etag === 'string') {
+				entries.push({
+					key,
+					etag: response.headers.etag,
+					headers: deepCopy(response.headers),
+					body: deepCopy(response.body),
+				});
+			}
+			// Bound the data saved with the workflow when inputs select many pull requests.
+			staticData.githubPullRequestCache = entries.slice(-100);
+			return option.resolveWithFullResponse ? response : response.body;
 		}
 
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
