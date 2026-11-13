@@ -1,0 +1,9 @@
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  ai_agent 722,754,929-935
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9aee4338e989b7442abcbcdbc6d69b21d7d5e815",
+  "prompts": {}
+}

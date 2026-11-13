@@ -1,0 +1,27 @@
+packages/cli/test/integration/mcp/mcp-trusted-source-auth.test.ts
+  s_fab189ddb4bafa::t_65c5f9bd49d26f 134-138,142
+  s_fab189ddb4bafa::t_9379bd4d2a61b4 320
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication-pipeline.test.ts
+  s_fab189ddb4bafa::t_82ec9bc062c5a2 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6873b7d3861ef05dd666243b601aeab044031c59",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fab189ddb4bafa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ce61cfcd-c88f-4ca6-b3a8-73891fad8b37",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
