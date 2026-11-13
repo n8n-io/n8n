@@ -212,7 +212,7 @@ const retrieveFields: INodeProperties[] = [
 					'{\n  "OR": [\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Elis"\n    },\n    {\n        "path": ["pdf_info_Author"],\n        "operator": "Equal",\n        "valueString": "Pinnacle"\n    }    \n  ]\n}',
 				validateType: 'object',
 				description:
-					'Filter pageContent or metadata using this <a href="https://weaviate.io/" target="_blank">filtering syntax</a>',
+					'Filter pageContent or metadata using this <a href="https://docs.weaviate.io/weaviate/search/filters" target="_blank">filtering syntax</a>. Combine conditions with "AND", "OR" and "NOT". These groups can contain other groups.',
 			},
 			{
 				displayName: 'Metadata Keys',

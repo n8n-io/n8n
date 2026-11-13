@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from '@n8n/errors';
 import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
@@ -82,7 +83,12 @@ type WeaviateFilterUnit = {
 	valueGeoCoordinates?: GeoRangeFilter;
 };
 
-export type WeaviateCompositeFilter = { AND: WeaviateFilterUnit[] } | { OR: WeaviateFilterUnit[] };
+type WeaviateFilter = WeaviateFilterUnit | WeaviateCompositeFilter;
+
+export type WeaviateCompositeFilter =
+	| { AND: WeaviateFilter[] }
+	| { OR: WeaviateFilter[] }
+	| { NOT: WeaviateFilter };
 
 function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 	const { path, operator } = filter;
@@ -143,18 +149,56 @@ function buildFilter(filter: WeaviateFilterUnit): FilterValue {
 	throw new OperationalError(`No valid filter value provided for operator: ${operator}`);
 }
 
-export function parseCompositeFilter(
-	filter: WeaviateCompositeFilter | WeaviateFilterUnit,
-): FilterValue {
-	// Handle composite filters (AND/OR)
-	if (typeof filter === 'object' && ('AND' in filter || 'OR' in filter)) {
-		if ('AND' in filter) {
-			return Filters.and(...filter.AND.map(buildFilter));
-		} else if ('OR' in filter) {
-			return Filters.or(...filter.OR.map(buildFilter));
+function isFilterUnit(value: Record<string, unknown>): value is WeaviateFilterUnit {
+	return (
+		Array.isArray(value.path) &&
+		value.path.length > 0 &&
+		value.path.every((part) => typeof part === 'string') &&
+		typeof value.operator === 'string'
+	);
+}
+
+/** Parses one member of a filter. The members come from user JSON, so check each shape. */
+function parseFilterMember(value: unknown): FilterValue {
+	if (!isRecord(value)) {
+		throw new UserError('Each filter must be an object.');
+	}
+	// AND, OR and NOT can contain other groups, so parse their members recursively
+	if ('AND' in value) {
+		if (!Array.isArray(value.AND)) {
+			throw new UserError("'AND' must contain an array of filters.");
 		}
+		// An empty group has no condition, so it could match all objects
+		if (value.AND.length === 0) {
+			throw new UserError("'AND' must contain at least one filter.");
+		}
+		return Filters.and(...value.AND.map(parseFilterMember));
+	}
+	if ('OR' in value) {
+		if (!Array.isArray(value.OR)) {
+			throw new UserError("'OR' must contain an array of filters.");
+		}
+		// An empty group has no condition, so it could match all objects
+		if (value.OR.length === 0) {
+			throw new UserError("'OR' must contain at least one filter.");
+		}
+		return Filters.or(...value.OR.map(parseFilterMember));
+	}
+	if ('NOT' in value) {
+		if (!isRecord(value.NOT)) {
+			throw new UserError("'NOT' must contain exactly one filter.");
+		}
+		return Filters.not(parseFilterMember(value.NOT));
+	}
+	if (!isFilterUnit(value)) {
+		throw new UserError(
+			"Each filter must have a 'path' and an 'operator', or be an 'AND', 'OR' or 'NOT' group.",
+		);
 	}
 
-	// Handle individual filter units
-	return buildFilter(filter);
+	return buildFilter(value);
+}
+
+export function parseCompositeFilter(filter: WeaviateFilter): FilterValue {
+	return parseFilterMember(filter);
 }

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { UserError } from '@n8n/errors';
 import http2 from 'node:http2';
 import type { AddressInfo } from 'node:net';
 
@@ -8,6 +9,7 @@ import weaviate, { Filters, type WeaviateClient } from 'weaviate-client';
 import {
 	createWeaviateClient,
 	parseCompositeFilter,
+	type WeaviateCompositeFilter,
 	type WeaviateCredential,
 } from './Weaviate.utils';
 
@@ -243,6 +245,76 @@ describe('parseCompositeFilter', () => {
 				],
 			}),
 		).toEqual(Filters.or(author().equal('Elis'), author().equal('Pinnacle')));
+	});
+
+	it('should negate a single condition with NOT', () => {
+		expect(
+			parseCompositeFilter({ NOT: { path: ['author'], operator: 'Equal', valueString: 'Elis' } }),
+		).toEqual(Filters.not(author().equal('Elis')));
+	});
+
+	it('should negate a group with NOT', () => {
+		expect(
+			parseCompositeFilter({
+				NOT: {
+					OR: [
+						{ path: ['author'], operator: 'Equal', valueString: 'Elis' },
+						{ path: ['author'], operator: 'Equal', valueString: 'Pinnacle' },
+					],
+				},
+			}),
+		).toEqual(Filters.not(Filters.or(author().equal('Elis'), author().equal('Pinnacle'))));
+	});
+
+	it('should parse groups that contain other groups', () => {
+		expect(
+			parseCompositeFilter({
+				AND: [
+					{ path: ['year'], operator: 'GreaterThan', valueNumber: 2020 },
+					{
+						NOT: {
+							OR: [
+								{ path: ['author'], operator: 'Equal', valueString: 'Elis' },
+								{ AND: [{ path: ['author'], operator: 'Like', valueString: 'Pin*' }] },
+							],
+						},
+					},
+				],
+			}),
+		).toEqual(
+			Filters.and(
+				weaviate.filter.byProperty('year').greaterThan(2020),
+				Filters.not(Filters.or(author().equal('Elis'), Filters.and(author().like('Pin*')))),
+			),
+		);
+	});
+
+	it.each([
+		[
+			{ AND: { path: ['author'], operator: 'Equal', valueString: 'Elis' } },
+			"'AND' must contain an array of filters.",
+		],
+		[{ OR: 'Elis' }, "'OR' must contain an array of filters."],
+		[{ AND: [] }, "'AND' must contain at least one filter."],
+		[{ OR: [] }, "'OR' must contain at least one filter."],
+		[{ NOT: { AND: [] } }, "'AND' must contain at least one filter."],
+		[
+			{ NOT: [{ path: ['author'], operator: 'Equal', valueString: 'Elis' }] },
+			"'NOT' must contain exactly one filter.",
+		],
+		[{ NOT: null }, "'NOT' must contain exactly one filter."],
+		[{ NOT: 'Elis' }, "'NOT' must contain exactly one filter."],
+		[{ NOT: {} }, "Each filter must have a 'path' and an 'operator'"],
+		[{ AND: [null] }, 'Each filter must be an object.'],
+		[{ OR: ['Elis'] }, 'Each filter must be an object.'],
+		[{ AND: [{ operator: 'Equal', valueString: 'Elis' }] }, "Each filter must have a 'path'"],
+		[{ AND: [{ path: [], operator: 'Equal' }] }, "Each filter must have a 'path'"],
+		[{ AND: [{ path: ['author'], operator: 5 }] }, "Each filter must have a 'path'"],
+	])('should throw a user error for the malformed group %j', (filter, message) => {
+		const parse = () => parseCompositeFilter(filter as unknown as WeaviateCompositeFilter);
+
+		expect(parse).toThrow(UserError);
+		expect(parse).toThrow(message);
 	});
 });
 
