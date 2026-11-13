@@ -65,3 +65,11 @@ Add an entry when you find a new bug. Do not put customer data here: describe th
   example a Respond to Webhook body) gets invalid JSON and fails.
 - **Why it matters:** it is v1's documented output shape, but a pitfall for users.
 - **Compiled engine:** copies v1 (behaviour case `29-http-error-message-42`).
+
+## Known differences that are not v1 bugs
+
+- **Dates between nodes.** A v1 node can give a live `Date` (for example a Postgres timestamp column), and the next
+  node in the same execution gets the `Date`. The compiled engine passes items as JSON, so the next node gets the
+  `Date.toJSON` text. Targeted patches cover the cases the replay found: a Set `number` field reads that exact
+  text form as the date's time (`src/convert/helpers.ts`, `asNumber`). Other uses (for example `.getTime()` in a
+  Code node on a value from a database node) still differ.
