@@ -4221,6 +4221,52 @@ describe('AgentChatPanel', () => {
 		};
 	}
 
+	describe('isAwaitingUserAnswer', () => {
+		type AwaitingVm = { isAwaitingUserAnswer: boolean };
+
+		it('is false while a waiting card is open, because the workflow resumes the run', () => {
+			messagesMock.value = [openWaitMessage()];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('is true while a card waits for the user to answer', () => {
+			messagesMock.value = [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: '',
+					status: 'awaitingUser',
+					interactive: {
+						toolName: N8N_CHAT_ACTION_TOOL_NAME,
+						toolCallId: 'tc-1',
+						runId: 'run-1',
+						input: {
+							card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+						},
+					},
+				},
+			];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('is false when no card is open', () => {
+			messagesMock.value = [];
+
+			const wrapper = mountPanel();
+
+			expect((wrapper.vm as unknown as AwaitingVm).isAwaitingUserAnswer).toBe(false);
+			wrapper.unmount();
+		});
+	});
+
 	it('allows queue submissions while a waiting card is open', () => {
 		messagesMock.value = [openWaitMessage()];
 

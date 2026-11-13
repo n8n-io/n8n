@@ -42,6 +42,25 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+/** Shared by the events that fire when the user leaves with an active run. */
+const isAwaitingUser = z
+	.boolean()
+	.describe('The run is paused until the user answers a confirmation or question');
+
+/** The current turn of the thread when the event fires. Shared by the away events. */
+const currentTurnProps = {
+	turn_number: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('The current turn: the user messages in the thread so far. The first message is 1'),
+	turn_has_artifact: z
+		.boolean()
+		.describe(
+			'The agent built, changed or opened an artifact in the current turn so far. A resource that the user attached to the message does not count',
+		),
+};
+
 /** The runtimes that run an n8n Assistant thread. */
 export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
 export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
@@ -923,6 +942,61 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
 				),
+		}),
+	},
+	USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN: {
+		name: 'User left AI Assistant thread with an active run',
+		description:
+			'The user left an n8n Assistant thread, for another thread or another page in n8n, while a run was active in it. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
+		}),
+	},
+	USER_RETURNED_TO_AI_ASSISTANT_THREAD: {
+		name: 'User returned to AI Assistant thread',
+		description:
+			'The user came back to an n8n Assistant thread that they left with an active run. Match it to "User left AI Assistant thread with an active run" by thread_id.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run is paused until the user answers, when the user returns. Read after the thread has loaded, so it can differ from the value on the leave event',
+			),
+			...currentTurnProps,
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between leaving the thread and returning to it'),
+		}),
+	},
+	USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User left n8n with an active AI Assistant run',
+		description:
+			'The browser tab with n8n became hidden while an n8n Assistant run was active. This happens when the user switches to another browser tab or app, or closes the tab. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question. The backend emits this event, because the browser cannot reliably send events while a tab closes.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
+			user_id: z.string(),
+		}),
+	},
+	USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User returned to n8n after leaving with an active AI Assistant run',
+		description:
+			'The browser tab with n8n became visible again after a "User left n8n with an active AI Assistant run" event. The run can have finished while the user was away.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run is paused until the user answers, when the tab becomes visible. It can differ from the value on the leave event',
+			),
+			...currentTurnProps,
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between the tab becoming hidden and visible'),
 		}),
 	},
 	INSTANCE_CONTEXT_TURN: {

@@ -427,6 +427,24 @@ function collectFromToolCalls(turn: ArtifactTurn, col: Collections): void {
 }
 
 /**
+ * Whether the agent built, changed or opened an artifact in this turn, which is
+ * what the artifacts panel lists. Resources that the user attached to a
+ * message do not count: the agent did not produce them.
+ */
+export function turnHasArtifact(turn: ArtifactTurn): boolean {
+	const col: Collections = {
+		produced: new Map(),
+		byName: new Map(),
+		linkableByName: new Map(),
+		origins: new Map(),
+		intake: 'attached',
+		agentNames: new Map(),
+	};
+	collectFromToolCalls(turn, col);
+	return col.produced.size > 0;
+}
+
+/**
  * Register resource attachments on a (user) message as produced artifacts —
  * e.g. the editor hand-off attaches the current workflow or agent, which then
  * shows as an artifact tab even before the agent acts on it.
