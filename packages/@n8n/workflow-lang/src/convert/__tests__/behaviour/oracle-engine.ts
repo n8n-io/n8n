@@ -95,8 +95,16 @@ function nodeTypes() {
 async function startRunnerTask(
 	_additionalData: unknown,
 	_jobType: string,
-	settings: { code: string; nodeMode: string; chunk?: { startIndex: number; count: number } },
-	executeFunctions: { getWorkflowDataProxy(i: number): Record<string, unknown> },
+	settings: {
+		code: string;
+		nodeMode: string;
+		continueOnFail?: boolean;
+		chunk?: { startIndex: number; count: number };
+	},
+	executeFunctions: {
+		getWorkflowDataProxy(i: number): Record<string, unknown>;
+		helpers: unknown;
+	},
 	_inputData: unknown,
 	_node: unknown,
 	_workflow: unknown,
@@ -111,6 +119,8 @@ async function startRunnerTask(
 		const proxy = executeFunctions.getWorkflowDataProxy(index);
 		const context = createContext({
 			...proxy,
+			// `this.helpers` of the Code node, as n8n's task runner gives it.
+			helpers: executeFunctions.helpers,
 			items: connectionInputData,
 			item: connectionInputData[index],
 			console: { log: () => {}, warn: () => {}, error: () => {} },
@@ -129,10 +139,10 @@ async function startRunnerTask(
 		}
 		return { ok: true, result: wf.deepCopy(await run(0)) };
 	} catch (error) {
-		return {
-			ok: false,
-			error: { message: error instanceof Error ? error.message : String(error) },
-		};
+		// As n8n's task runner: a Code node in "all items" mode returns the message as the item.
+		const message = error instanceof Error ? error.message : String(error);
+		if (settings.continueOnFail) return { ok: true, result: [{ json: { error: message } }] };
+		return { ok: false, error: { message } };
 	}
 }
 

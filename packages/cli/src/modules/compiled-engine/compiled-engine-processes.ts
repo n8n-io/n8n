@@ -199,12 +199,25 @@ export class CompiledEngineProcesses {
 			[path, '--socket', this.socketPath],
 			{
 				N8N_USER_FOLDER: folder,
+				...this.hostEnvAccess(),
 				...this.hostUrls(),
 				...this.hostExtensions(),
 				...this.binaryData('N8N_BINARY_DATA_STORAGE_PATH'),
 			},
 			() => this.startHost(path),
 		);
+	}
+
+	/**
+	 * Whether code steps may read `$env`. n8n gives the environment only when
+	 * `N8N_BLOCK_ENV_ACCESS_IN_NODE` is `false`; the host reads the result as
+	 * `WF_FALLBACK_BLOCK_ENV_ACCESS`.
+	 */
+	private hostEnvAccess(): Record<string, string> {
+		return {
+			WF_FALLBACK_BLOCK_ENV_ACCESS:
+				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'false' ? 'false' : 'true',
+		};
 	}
 
 	/**

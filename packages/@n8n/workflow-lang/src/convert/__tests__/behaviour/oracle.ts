@@ -87,15 +87,15 @@ async function main() {
 				try {
 					parsed = body === '' ? undefined : JSON.parse(body);
 				} catch {}
+				if (!step) {
+					response.writeHead(404).end();
+					return;
+				}
 				captured.requests.push({
 					path: `${url.pathname}${url.search}`,
 					method: request.method ?? '',
 					body: parsed,
 				});
-				if (!step) {
-					response.writeHead(404).end();
-					return;
-				}
 				const n = counters.get(step[0]) ?? 0;
 				counters.set(step[0], n + 1);
 				const answer = step[1].responses[n % step[1].responses.length];

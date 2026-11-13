@@ -9,16 +9,19 @@
  * code, not from a fixture.
  */
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { Server } from 'node:http';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { EffectRecord, Fixture } from '../../reference/runner.ts';
 import { runReference } from '../../reference/runner.ts';
 import { convertWorkflow } from '../index.ts';
 import type { BehaviourCase } from './behaviour/case.ts';
+import { ORACLE_PORT } from './behaviour/case.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesDir = join(here, 'behaviour', 'cases');
@@ -36,20 +39,38 @@ interface Expected {
 	responses: Array<{ body: unknown; statusCode: number }>;
 }
 
-type RunCodeStep = (args: { name: string; code: string; items: unknown[] }) => unknown[];
+type RunCodeStep = (args: { name: string; code: string; items: unknown[] }) => Promise<unknown[]>;
 
 type RunNodeStep = (args: unknown, meta: { step: string; key: string }) => Promise<unknown[]>;
 
 async function loadCodeRunner(): Promise<RunCodeStep> {
-	const mod = (await import(codeStepModule)) as { runCodeStep: RunCodeStep };
-	return mod.runCodeStep;
+	const mod = (await import(codeStepModule)) as { runCodeStepAsync: RunCodeStep };
+	return mod.runCodeStepAsync;
 }
 
 let nodeRunner: RunNodeStep | undefined;
 
 let userFolder: string | undefined;
 
+/**
+ * Code steps that call `this.helpers.httpRequest` reach a local server on the
+ * port of the case URLs, as they reach the oracle's server there.
+ */
+let codeHttpServer: Server | undefined;
+
+beforeAll(async () => {
+	codeHttpServer = createServer((_request, response) => {
+		response.writeHead(404).end();
+	});
+	await new Promise<void>((resolve, reject) => {
+		codeHttpServer?.once('error', reject);
+		codeHttpServer?.listen(ORACLE_PORT, '127.0.0.1', resolve);
+	});
+});
+
 afterAll(() => {
+	codeHttpServer?.close();
+	codeHttpServer = undefined;
 	if (userFolder) rmSync(userFolder, { recursive: true, force: true });
 });
 
@@ -116,7 +137,7 @@ async function run(source: string, spec: BehaviourCase, schedule: boolean) {
 			try {
 				list[k] =
 					e.kind === 'code'
-						? runCode({ name: args.name, code: args.code, items: args.items ?? [] })
+						? await runCode({ name: args.name, code: args.code, items: args.items ?? [] })
 						: await (await loadNodeRunner())(e.args, { step: e.step, key: `${e.step}-${k}` });
 			} catch (error) {
 				list[k] = { $error: error instanceof Error ? error.message : String(error) };

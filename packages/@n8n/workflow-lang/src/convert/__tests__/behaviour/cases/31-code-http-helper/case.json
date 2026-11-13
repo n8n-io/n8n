@@ -1,0 +1,9 @@
+{
+	"description": "Code node with this.helpers.httpRequest on a 404: ignoreHttpStatusErrors returns the response, and without it the Code node fails under continueRegularOutput",
+	"trigger": {
+		"body": {
+			"label": "code-http"
+		}
+	},
+	"compare": ["Status", "Fails"]
+}

@@ -128,6 +128,30 @@ make a slow worker slower. The host does not limit file, network or
 child-process access. `node:vm` and the n8n expression sandbox are not
 security boundaries for code that the host must not trust.
 
+## Code steps
+
+A code step gives the same JavaScript environment as n8n's Code node, so a
+workflow that runs on n8n gives the same result here.
+
+- `this.helpers.httpRequest` and `helpers.httpRequest` call n8n's own outbound
+  HTTP: `OutboundHttp.requests().request()` of `@n8n/backend-network`, the
+  helper of `factory.ts` in n8n-core. Every option of `IHttpRequestOptions`
+  works, for example `ignoreHttpStatusErrors`, `encoding`, `qs`, `auth`, `form`,
+  `formData`, `timeout`, `returnFullResponse` and
+  `skipSslCertificateValidation`. The host loads this module from the module
+  tree of n8n-core, so code steps and node steps share one DI container, one
+  SSRF policy and one proxy configuration. A binary result
+  (`encoding: 'arraybuffer'`) is a `Buffer`. An error gives the code the fields
+  that v1 gives: `message`, `name`, `code`, `status`, `description`,
+  `httpCode` and `response` with `status`, `statusText`, `headers` and `data`.
+- `eval` and `new Function` work, as in n8n's task runner.
+- `$env` reads the environment of the host. `WF_FALLBACK_BLOCK_ENV_ACCESS=true`
+  blocks it with v1's message, `access to env vars denied`. n8n's cli passes
+  `N8N_BLOCK_ENV_ACCESS_IN_NODE` as this setting: n8n blocks env access unless
+  that variable is `false`. The host never gives code steps a variable that
+  starts with `WF_FALLBACK_` or `N8N_COMPILED_ENGINE_`, because those carry the
+  settings and the secrets of the host itself.
+
 ## Community and custom nodes
 
 The host runs the node types of community packages and of custom extension

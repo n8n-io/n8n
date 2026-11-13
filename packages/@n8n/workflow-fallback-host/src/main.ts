@@ -19,6 +19,7 @@
  *   WF_FALLBACK_PYTHON          Python executable for Python code steps (default python3)
  *   WF_FALLBACK_PYTHON_STDLIB_ALLOW / WF_FALLBACK_PYTHON_EXTERNAL_ALLOW  Python import allowlists
  *   WF_FALLBACK_CODE_TIMEOUT_MS longest run of one code step (default 5000)
+ *   WF_FALLBACK_BLOCK_ENV_ACCESS  `true` blocks `$env` in code steps, as n8n's N8N_BLOCK_ENV_ACCESS_IN_NODE
  *   WF_FALLBACK_STEP_TIMEOUT_MS longest wall-clock time of one step (default 300000)
  *   WF_FALLBACK_BLOCKED_MS      a worker that does not answer for this time is stopped (default 30000)
  *   WF_FALLBACK_WORKER_MEMORY_MB  heap limit of each worker process (default 4096)
