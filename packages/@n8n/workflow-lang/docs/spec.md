@@ -956,7 +956,7 @@ starts `wfrt` and the fallback host as child processes. The backend module
 
 ### 9.1 Admin API of `wfrt`
 
-`wfrt serve --admin-port <p> --admin-secret-env <VAR> --log-dir <dir>`
+`wfrt serve --admin-port <p> --admin-secret-env <VAR> --log-dir <dir> [--max-outbox-mb <n>]`
 listens on 127.0.0.1 only. The secret comes from the environment variable,
 never from the command line, and must have 16 bytes or more. Each request
 carries `authorization: Bearer <secret>`; else the answer is 401. The admin
@@ -972,6 +972,9 @@ port needs `--shards 1`. Bodies are JSON. Errors are `{ "error": s }`.
 | `POST /_admin/executions` | `{ "workflowId": s, "versionId"?: s, "executionId": s, "trigger": <value>, "trace"?: bool, "clockOffsetMs"?: int }` | 202 `{ "executionId": s }`. Starts one execution of the current version (manual run), also when the workflow is not active. 400: the id is not a numeric string, or `clockOffsetMs` has no `--test-clock`. 404: unknown workflow. 409: `versionId` is not the current version, or a live or parked execution has the id |
 | `DELETE /_admin/executions/<executionId>` | — | 202. Cancels a live or parked execution (`finished` with status `cancelled`). 404 when unknown |
 | `GET /_admin/events` | — | A stream of newline-separated JSON events (9.2), `content-type: application/x-ndjson`. One client at a time; a second gets 409 |
+| `GET /_admin/events?after=<shard>:<seq>[,<shard>:<seq>…]` | — | The same stream. It sends the stored durable events of each shard with a greater seq first, in seq order (9.2). A shard that the query does not name starts after its acked seq. 400: the query is not `<shard>:<seq>` pairs |
+| `POST /_admin/events/ack` | `{ "acks": [{ "shard": 0, "seq": 123 }] }` | 204. n8n handled these events, so wfrt may delete them. A seq below the acked seq changes nothing. 400 `{ "error": "ack beyond the last event" }`: the seq is not written yet |
+| `GET /_admin/outbox` | — | `{ "shards": [{ "shard": 0, "first": n, "last": n, "acked": n, "bytes": n, "maxBytes": n }] }`: the stored events of each shard, its acked seq, their bytes and the limit |
 | `POST /_admin/resume/<executionId>/<effectSeq>?signature=<s>` | the resume value | 202 `{ "status": "resumed" }`. Completes the waiting effect (an approval) with the body. 403: the signature is missing or wrong. 404: unknown execution |
 | `POST /_admin/resume/<executionId>?signature=<s>` | the resume value | The same, for the one approval that the execution waits for now (9.4). 409 when it waits for none or several |
 
@@ -1180,13 +1183,45 @@ binary? })` answers the webhook request.
   report): n8n writes history by execution id, so a repeat does no harm.
 
 Events are written in the order the core makes them: for one execution,
-`started` comes first and `finished` last. While no client reads the stream,
-`wfrt` keeps the events in a queue bounded by `--event-queue-mb` (64 MB) and
-1,048,576 lines. When it is full, the oldest `step` and `trace` events are
-dropped first; `started` and `finished` are dropped only when they alone
-fill four times the bound. The next client first gets a `dropped` event
-with the count. The queue is in memory: events not sent before a crash are
-lost.
+`started` comes first and `finished` last. Durable events (`started`,
+`waiting`, `finished`, `staticData` and `staticDataRejected`) go to the
+outbox, and the stream sends them from the outbox first in each pass, in seq
+order. The best-effort lines (`step`, `trace`, `service`) wait in a queue
+bounded by `--event-queue-mb` (64 MB) and 1,048,576 lines. When it is full,
+the oldest `step` and `trace` lines go, and the next client gets a `dropped`
+event with the count. That queue is in memory: best-effort lines not sent
+before a crash are lost. A durable event is never lost.
+
+**The outbox.** Each durable event line carries two more members,
+`"shard": n` and `"seq": n`. A shard numbers its durable events from 1, and
+the numbers only grow, also across a restart. `wfrt` writes each durable event
+to the log dir before its line can reach the stream:
+
+* Files: `outbox-<shard>-<first seq>.seg` and `outbox-<shard>.ack`. A segment
+  file holds length-prefixed records `{ seq u64 LE, len u32 LE, line bytes }`.
+  The ack file holds the acked seq, written to a temp file, fsynced and
+  renamed. Every file is 0600, and the log dir is 0700 when `wfrt` creates it.
+* On start, `wfrt` reads the ack file and the segments, cuts a torn last
+  record, and sets the next seq after the last stored one.
+* The sync rule follows the durability of the event's workflow: `sync` fsyncs
+  before the event counts as written, `batched` fsyncs with the batch, and
+  `none` does not fsync but still writes the record.
+* A slow stream client never loses a durable event: `wfrt` keeps a read cursor
+  into the outbox of each shard and sends less until the client reads again
+  (backpressure, not loss). Only the best-effort lines use the bounded queue,
+  so a `dropped` event counts only them.
+* `wfrt` deletes a segment file only when every record in it is acked.
+* `--max-outbox-mb <n>` (default 1024; 0 is invalid) bounds the stored events
+  of a shard. At the limit the shard refuses new work: a webhook and
+  `POST /_admin/executions` answer 503 `{ "error": "the event outbox is full" }`,
+  and a due schedule fire is skipped with a warning in the output of the shard.
+  Resumes, retries and running executions go on: a running execution can pass
+  the limit with its own events. The limit is for new work.
+* n8n stores the last seq that it handled for each shard and sends it as
+  `after=` when it connects again. It acks a seq only after its dispatcher
+  handled that event, its database writes included, and it acks in batches.
+  The same durable event can arrive twice after a restart, so handling is
+  idempotent.
 
 ### 9.3 `ctx.trace`
 

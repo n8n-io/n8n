@@ -17,6 +17,7 @@ const admin = @import("admin.zig");
 const triggers = @import("triggers.zig");
 const binary_store = @import("binary_store.zig");
 const fbf = @import("fallback_frames.zig");
+const outbox = @import("outbox.zig");
 
 /// The largest stored file that a binary reply reads.
 const binary_reply_limit: usize = 64 << 20;
@@ -75,6 +76,11 @@ pub const Options = struct {
     admin_secret: []const u8 = "",
     /// Bound of the event stream queue while no client reads it.
     event_queue_bytes: usize = 64 << 20,
+    /// `--max-outbox-mb`: bytes of durable events that one shard keeps in its
+    /// outbox until n8n acks them (spec 9.2). While it is full, new work is
+    /// refused: webhooks and manual runs answer 503, and a due schedule is
+    /// skipped. Running executions and resumes go on.
+    max_outbox_mb: u32 = 1024,
     /// Batch memory: request payloads of one batch.
     batch_bytes: usize = 64 << 20,
     /// Snapshots of executions that wait (approvals, long waits). When it
@@ -383,6 +389,25 @@ const FileLog = struct {
     }
 };
 
+/// The answer of new work while the outbox is full (spec 9.2).
+const outbox_full_body = "{\"error\":\"the event outbox is full\"}";
+/// The `after` query of the event stream is `[<shard>:<seq>,...]`.
+const after_body = "{\"error\":\"the after query takes <shard>:<seq>[,<shard>:<seq>...]\"}";
+const ack_body = "{\"error\":\"the body is {\\\"acks\\\":[{\\\"shard\\\":0,\\\"seq\\\":1}]}\"}";
+const ack_beyond_body = "{\"error\":\"ack beyond the last event\"}";
+
+/// The log dir and the files of a shard hold lifecycle events: the dir is
+/// 0700 and each file that wfrt creates is 0600.
+fn makeDirMode(path: []const u8, mode: u16) !void {
+    if (path.len >= 512) return error.LogDirPath;
+    var buf: [512]u8 = undefined;
+    @memcpy(buf[0..path.len], path);
+    buf[path.len] = 0;
+    const z = buf[0..path.len :0];
+    if (std.c.mkdir(z, @as(std.c.mode_t, @intCast(mode))) == 0) return;
+    if (std.c.errno(@as(c_int, -1)) != .EXIST) return error.LogDir;
+}
+
 pub const Runner = struct {
     gpa: std.mem.Allocator,
     id: u32,
@@ -452,6 +477,15 @@ pub const Runner = struct {
     /// The admin connection that reads the event stream.
     stream: ?u32 = null,
     queue: admin.Queue,
+    /// The durable outbox of this shard (spec 9.2); null without a log dir.
+    ob: ?outbox.Outbox = null,
+    /// The seq of the durable events when there is no outbox: the line is
+    /// numbered in memory and kept in the ring.
+    seq_mem: u64 = 0,
+    acked_mem: u64 = 0,
+    /// The stream has more durable lines than one pass sent: the loop does
+    /// not wait.
+    stream_more: bool = false,
     /// The large admin request buffer and the connection that holds it.
     admin_big: []u8 = &.{},
     admin_big_user: ?u32 = null,
@@ -503,18 +537,32 @@ pub const Runner = struct {
         // `create` does not apply field defaults: set each one used before
         // it is assigned.
         r.flog = null;
+        r.ob = null;
+        r.seq_mem = 0;
+        r.acked_mem = 0;
+        r.stream_more = false;
         var log: ?shard_mod.LogSink = null;
         var existing: []u8 = &.{};
         if (opts.log_dir) |dir| {
+            // The log dir is 0700 and its files are 0600: they hold the
+            // lifecycle events of the workflows.
+            try makeDirMode(dir, 0o700);
             var path_buf: [512]u8 = undefined;
             const path = try std.fmt.bufPrintSentinel(&path_buf, "{s}/shard-{d}.log", .{ dir, id }, 0);
             existing = readAll(gpa, path) catch &.{};
             const O = std.c.O{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true };
-            const fd = std.c.open(path, O, @as(std.c.mode_t, 0o644));
+            const fd = std.c.open(path, O, @as(std.c.mode_t, 0o600));
             if (fd < 0) return error.LogOpen;
+            _ = std.c.fchmod(fd, @as(std.c.mode_t, 0o600));
             r.flog = try gpa.create(FileLog);
             r.flog.?.* = .{ .fd = fd, .buf = try reserve(gpa, u8, 4 << 20) };
             log = .{ .ctx = r.flog.?, .appendFn = FileLog.append, .syncFn = FileLog.sync };
+            // Durable events are kept until n8n acks them. The outbox needs
+            // the admin API, which is the only reader of the stream.
+            if (opts.admin_port != null) {
+                if (opts.max_outbox_mb == 0) return error.InvalidOutboxSize;
+                r.ob = try outbox.Outbox.init(gpa, .{ .dir = dir, .shard = id, .max_bytes = @as(u64, opts.max_outbox_mb) << 20 });
+            }
         }
         // Scratch holds a large trigger twice (the trigger and the started
         // action) and the results of one batch. Pages are touched on use.
@@ -707,6 +755,7 @@ pub const Runner = struct {
             _ = std.c.close(l.fd);
         }
         r.queue.deinit();
+        if (r.ob) |*ob| ob.deinit();
         if (r.svc) |*t| t.deinit();
         r.egress.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
@@ -725,6 +774,8 @@ pub const Runner = struct {
         while (!r.stop.load(.monotonic)) {
             var timeout: i32 = 50;
             if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork()) timeout = 0;
+            // The stream has durable lines that one pass did not send.
+            if (r.stream_more) timeout = 0;
             if (next_timer) |t| timeout = @min(timeout, @as(i32, @intCast(std.math.clamp(t - sys.nowMs(), 0, 50))));
             if (r.sh.unsynced) timeout = @min(timeout, @as(i32, @intCast(r.opts.batched_sync_ms)));
             // Outbound requests that wait for an origin's rate or Retry-After.
@@ -734,12 +785,16 @@ pub const Runner = struct {
             // Replies made while reading (400, 413, 503) go out now, not
             // only when a batch runs.
             if (r.dirty.items.len > 0) r.flushConns();
+            if (r.stream != null and (r.stream_more or r.queue.bytes > 0 or r.queue.notice_len > 0)) r.flushStream();
             const now = sys.nowMs();
             r.egress.afterEvents(now);
             r.drainEgressLost();
             r.serviceFallback(now);
             r.expireServiceCalls(now);
             const timer_due = if (next_timer) |t| t <= now else false;
+            // A full outbox refuses new work: the shard skips due schedules
+            // and the loop refuses webhooks and manual runs (spec 9.2).
+            r.sh.outbox_full = r.outboxFull();
             // Woken executions whose restores did not fit wait in `wakes`.
             if (r.events.items.len > 0 or has_ready or timer_due or r.sh.wakes.items.len > 0) {
                 // A full batch takes a prefix; the rest waits (a limit).
@@ -775,6 +830,8 @@ pub const Runner = struct {
                 try r.sh.syncLog();
                 r.last_sync_ms = now;
             }
+            // The outbox of the `batched` tier follows the same beat.
+            if (r.ob) |*ob| ob.flushSync();
         }
     }
 
@@ -1075,6 +1132,12 @@ pub const Runner = struct {
             } orelse break;
             off += req.consumed;
             if (!req.keep_alive) cn.close_after = true;
+            // New work waits while the outbox is full; a resume still goes on
+            // (the events of a running execution must reach the outbox).
+            if (r.outboxFull() and !std.mem.startsWith(u8, req.target, "/resume/")) {
+                r.replyRaw(idx, 503, outbox_full_body);
+                continue;
+            }
             // "METHOD TARGET\n", the headers as JSON, "\n", then the body,
             // copied into batch memory.
             const p = requestPayload(&r.batch, req) catch {
@@ -1305,7 +1368,7 @@ pub const Runner = struct {
                 },
                 else => {},
             }
-            if (r.opts.admin_port != null) r.publishAction(a);
+            if (r.opts.admin_port != null) try r.publishAction(a);
         }
     }
 
@@ -1464,6 +1527,8 @@ pub const Runner = struct {
             r.stream = null;
             // A half-sent line goes again in full to the next client.
             r.queue.restartFront();
+            if (r.ob) |*ob| ob.restartFront();
+            r.stream_more = false;
         }
         cn.streaming = false;
     }
@@ -1636,6 +1701,8 @@ pub const Runner = struct {
                 r.events.appendAssumeCapacity(.{ .kind = .set_vars, .conn = conn, .payload = p });
             },
             .start_execution => {
+                // New work waits while the outbox is full (spec 9.2).
+                if (r.outboxFull()) return r.adminReply(idx, 503, outbox_full_body);
                 const m = admin.manualEvent(a, req.body, r.opts.test_clock) catch |e| return r.adminReply(idx, if (e == error.OutOfMemory) 503 else 400, switch (e) {
                     error.BadExecutionId => "{\"error\":\"executionId must be a numeric string\"}",
                     error.ClockDisabled => admin.clock_disabled_body,
@@ -1654,11 +1721,21 @@ pub const Runner = struct {
             },
             .events => {
                 if (r.stream != null) return r.adminReply(idx, 409, "{\"error\":\"another client reads the events\"}");
+                // The replay starts after the seq that the client names, or
+                // after the acked seq of this shard (spec 9.2).
+                var after = r.ackedSeq();
+                if (std.mem.indexOfScalar(u8, req.target, '?')) |q| {
+                    after = admin.parseAfter(req.target[q + 1 ..], r.id) catch {
+                        return r.adminReply(idx, 400, after_body);
+                    } orelse after;
+                }
                 const cn = &r.admin_conns[idx];
                 const head = "HTTP/1.1 200 OK\r\ncontent-type: application/x-ndjson\r\ncache-control: no-cache\r\nconnection: close\r\n\r\n";
                 if (cn.wbuf.len - cn.wlen < head.len) return r.adminReply(idx, 503, "{\"error\":\"busy\"}");
                 cn.streaming = true;
                 r.stream = idx;
+                r.stream_more = false;
+                if (r.ob) |*ob| ob.startStream(after);
                 @memcpy(cn.wbuf[cn.wlen..][0..head.len], head);
                 cn.wlen += head.len;
                 // Calls that wait go out again to the new client (spec 9.9).
@@ -1674,6 +1751,38 @@ pub const Runner = struct {
                 const p = std.fmt.allocPrint(a, "POST /resume/{s}/{s}{s}\n{{}}\n{s}", .{ rs.id, rs.seq, if (q) |i| req.target[i..] else "", req.body }) catch return r.adminReply(idx, 503, busy_body);
                 r.keepBatch(&fba);
                 r.events.appendAssumeCapacity(.{ .kind = .http_request, .conn = conn, .payload = p });
+            },
+            .ack_events => {
+                var acks: [admin.max_acks]admin.Ack = undefined;
+                const list = admin.parseAcks(a, req.body, &acks) catch {
+                    return r.adminReply(idx, 400, ack_body);
+                };
+                for (list) |ak| {
+                    // This shard answers for itself; a seq of another shard is
+                    // none of its business.
+                    if (ak.shard != r.id) continue;
+                    if (r.ob) |*ob| {
+                        ob.ack(ak.seq) catch |e| return r.adminReply(idx, switch (e) {
+                            error.AckBeyond => 400,
+                            else => 500,
+                        }, switch (e) {
+                            error.AckBeyond => ack_beyond_body,
+                            else => "{\"error\":\"the ack file was not written\"}",
+                        });
+                    } else {
+                        // No log dir: the acked seq lives in memory only.
+                        if (ak.seq > r.seq_mem) return r.adminReply(idx, 400, ack_beyond_body);
+                        r.acked_mem = @max(r.acked_mem, ak.seq);
+                    }
+                }
+                r.adminReply(idx, 204, "");
+            },
+            .outbox => {
+                const t = r.batch.begin();
+                defer t.end();
+                var b = r.batch.builder();
+                r.outboxStatus(&b) catch return r.adminReply(idx, 503, busy_body);
+                r.adminReply(idx, 200, b.bytes());
             },
             .answer_service => |text| r.answerService(idx, text, req.body),
             .not_found => r.adminReply(idx, 404, "{\"error\":\"not found\"}"),
@@ -1808,33 +1917,84 @@ pub const Runner = struct {
 
     // ---- event stream (spec 9.2) ----------------------------------------------
 
-    /// Encode the line straight into the queue's ring: a counting pass
-    /// gives its length, so nothing is allocated.
+    /// A best-effort line into the ring. A counting pass gives its length,
+    /// so nothing is allocated.
     fn publish(r: *Runner, ev: admin.Event) void {
+        r.publishSeq(ev, null);
+    }
+
+    /// The line into the ring. With a `seq` it is a durable event that has
+    /// no outbox (no log dir): it carries its seq and is never dropped.
+    fn publishSeq(r: *Runner, ev: admin.Event, seq: ?u64) void {
         const now = sys.nowMs();
         var cnt = creds.Out.counter();
-        admin.encode(&cnt, ev, now) catch unreachable; // Counting has no limit.
-        const dst = r.queue.push(cnt.len, ev.droppable()) orelse return;
+        if (seq) |sq| {
+            admin.encodeDurable(creds.Out, &cnt, ev, now, r.id, sq) catch unreachable;
+        } else {
+            admin.encode(&cnt, ev, now) catch unreachable; // Counting has no limit.
+        }
+        const dst = r.queue.push(cnt.len, ev.droppable() and seq == null) orelse return;
         var out: creds.Out = .{ .buf = dst };
-        admin.encode(&out, ev, now) catch unreachable; // `dst` has the counted length.
+        if (seq) |sq| {
+            admin.encodeDurable(creds.Out, &out, ev, now, r.id, sq) catch unreachable;
+        } else {
+            admin.encode(&out, ev, now) catch unreachable; // `dst` has the counted length.
+        }
         std.debug.assert(out.len == dst.len);
     }
 
-    fn publishAction(r: *Runner, a: core.Action) void {
+    /// A durable event: it goes to the outbox with its seq, and the stream
+    /// reads it back from there, in seq order. Without an outbox the line is
+    /// numbered in memory and kept in the ring.
+    fn publishDurable(r: *Runner, ev: admin.Event, sync: outbox.Sync) !void {
+        const now = sys.nowMs();
+        const ob = if (r.ob) |*ob| ob else {
+            r.seq_mem += 1;
+            r.publishSeq(ev, r.seq_mem);
+            return;
+        };
+        const seq = ob.nextSeq();
+        var cnt = creds.Out.counter();
+        admin.encodeDurable(creds.Out, &cnt, ev, now, r.id, seq) catch unreachable;
+        if (cnt.len > outbox.max_line_bytes) {
+            std.debug.print("shard {d}: a durable event of {d} bytes does not fit the outbox\n", .{ r.id, cnt.len });
+            return error.EventTooLarge;
+        }
+        var rec = try ob.begin(seq, @intCast(cnt.len));
+        admin.encodeDurable(outbox.Record, &rec, ev, now, r.id, seq) catch |e| switch (e) {
+            error.NoSpace => unreachable, // It is the counted length.
+            error.OutboxWrite => return error.OutboxWrite,
+        };
+        try rec.finish(sync);
+    }
+
+    /// The sync policy of a record: the durability tier of its workflow.
+    fn syncOf(d: core.Durability) outbox.Sync {
+        return switch (d) {
+            .sync => .now,
+            .batched => .batch,
+            .none => .none,
+        };
+    }
+
+    /// One action as an event of the stream. A durable event can stop the
+    /// shard when the outbox cannot write it: a lost lifecycle event is
+    /// worse than a restart.
+    fn publishAction(r: *Runner, a: core.Action) !void {
         const st = &r.sh.st;
         var idb: [32]u8 = undefined;
         const exec = core.formatExecId(a.exec_id, &idb);
         switch (a.kind) {
             .started => {
                 const lm = &st.modules[a.module];
-                r.publish(.{ .started = .{ .exec = exec, .workflow = lm.workflowId(), .version = lm.versionId(), .manual = a.aux & heap.exec_flag_manual != 0, .trigger = a.payload } });
+                try r.publishDurable(.{ .started = .{ .exec = exec, .workflow = lm.workflowId(), .version = lm.versionId(), .manual = a.aux & heap.exec_flag_manual != 0, .trigger = a.payload } }, syncOf(a.durability));
             },
             .status => {
                 const m = st.moduleAt(a.module);
                 const step = m.str(m.steps[a.step].name);
                 const ss: core.StepStatus = @fromBackingInt(a.aux);
                 switch (ss) {
-                    .waiting => r.publish(.{ .waiting = .{ .exec = exec, .step = step, .wait_till = @bitCast(a.conn) } }),
+                    .waiting => try r.publishDurable(.{ .waiting = .{ .exec = exec, .step = step, .wait_till = @bitCast(a.conn) } }, syncOf(a.durability)),
                     .started => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = "started", .args = a.payload } }),
                     .completed => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = "completed", .result = a.payload } }),
                     .failed, .retrying => r.publish(.{ .step = .{ .exec = exec, .step = step, .status = admin.stepStatusName(ss), .err = if (a.payload.len > 0) a.payload else null } }),
@@ -1847,32 +2007,45 @@ pub const Runner = struct {
                 var sb: [32]u8 = undefined;
                 const sig = core.resumeSignature(st, a.exec_id, &sb);
                 const u = std.fmt.bufPrint(&url, "/resume/{s}/{d}{s}{s}", .{ exec, a.seq, if (sig != null) "?signature=" else "", sig orelse "" }) catch return;
-                r.publish(.{ .waiting = .{ .exec = exec, .step = m.str(m.steps[a.step].name), .resume_url = u, .signature = sig } });
+                try r.publishDurable(.{ .waiting = .{ .exec = exec, .step = m.str(m.steps[a.step].name), .resume_url = u, .signature = sig } }, syncOf(a.durability));
             },
             .finished => {
                 const status: heap.ExecStatus = @fromBackingInt(a.aux);
                 // A poll run that found nothing sent no `started` (spec 9.8).
                 if (status == .skipped) return;
-                r.publish(.{ .finished = .{ .exec = exec, .status = admin.statusName(status), .result = if (a.payload.len > 0) a.payload else null } });
+                try r.publishDurable(.{ .finished = .{ .exec = exec, .status = admin.statusName(status), .result = if (a.payload.len > 0) a.payload else null } }, syncOf(a.durability));
             },
             .attention => {
                 const m = st.moduleAt(a.module);
-                r.publish(.{ .finished = .{ .exec = exec, .status = "needs_attention", .step = m.str(m.steps[a.step].name) } });
+                try r.publishDurable(.{ .finished = .{ .exec = exec, .status = "needs_attention", .step = m.str(m.steps[a.step].name) } }, syncOf(a.durability));
             },
             .static_data => if (a.aux == 0) {
                 const nl = std.mem.indexOfScalar(u8, a.payload, '\n') orelse return;
-                r.publish(.{ .static_data = .{ .workflow = a.payload[0..nl], .doc = a.payload[nl + 1 ..] } });
-            } else r.publish(.{ .static_data = .{ .workflow = "", .err = a.payload } }),
+                try r.publishDurable(.{ .static_data = .{ .workflow = a.payload[0..nl], .doc = a.payload[nl + 1 ..] } }, syncOf(a.durability));
+            } else try r.publishDurable(.{ .static_data = .{ .workflow = "", .err = a.payload } }, syncOf(a.durability)),
             else => {},
         }
     }
 
-    /// Send queued lines to the stream client until its socket is full:
-    /// up to 64 lines in each system call.
+    /// Send lines to the stream client until its socket is full: the durable
+    /// ones first, from the outbox and in seq order, then the best-effort
+    /// ones from the ring, up to 64 lines in each system call.
     fn flushStream(r: *Runner) void {
         const idx = r.stream orelse return;
         const cn = &r.admin_conns[idx];
         if (cn.wsent < cn.wlen) return; // The response head is not out yet.
+        // A slow client makes the outbox cursor fall behind: nothing is lost.
+        if (r.ob) |*ob| {
+            r.stream_more = false;
+            switch (ob.flushStream(cn.fd)) {
+                .done => r.stream_more = ob.pending(),
+                .again => {
+                    r.poller.wantWrite(cn.fd, r.adminToken(idx)) catch r.closeAdmin(idx);
+                    return;
+                },
+                .closed => return r.closeAdmin(idx),
+            }
+        }
         r.queue.noteDropped(sys.nowMs());
         var guard: u32 = 0;
         while (guard < 1 << 20) : (guard += 1) {
@@ -2609,6 +2782,31 @@ pub const Runner = struct {
     /// for HTTP results: one for each outbound request that can be in flight.
     fn resultReserve(r: *const Runner) usize {
         return r.opts.max_egress;
+    }
+
+    /// True when the retained durable events are at `--max-outbox-mb`.
+    fn outboxFull(r: *const Runner) bool {
+        const ob = if (r.ob) |*o| o else return false;
+        return ob.full();
+    }
+
+    /// The seq up to which n8n handled the events of this shard.
+    fn ackedSeq(r: *const Runner) u64 {
+        const ob = if (r.ob) |*o| o else return r.acked_mem;
+        return ob.ackedSeq();
+    }
+
+    /// `GET /_admin/outbox` (spec 9.2).
+    fn outboxStatus(r: *const Runner, b: *core_lib.arena.Builder) error{ArenaFull}!void {
+        const st: outbox.Status = if (r.ob) |*o| o.status() else .{
+            .first = r.seq_mem + 1,
+            .last = r.seq_mem,
+            .acked = r.acked_mem,
+            .bytes = 0,
+            .max_bytes = 0,
+        };
+        var nb: [256]u8 = undefined;
+        try b.append(std.fmt.bufPrint(&nb, "{{\"shards\":[{{\"shard\":{d},\"first\":{d},\"last\":{d},\"acked\":{d},\"bytes\":{d},\"maxBytes\":{d}}}]}}", .{ r.id, st.first, st.last, st.acked, st.bytes, st.max_bytes }) catch unreachable);
     }
 };
 

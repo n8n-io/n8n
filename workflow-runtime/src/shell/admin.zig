@@ -20,6 +20,10 @@ pub const Route = union(enum) {
     start_execution,
     cancel_execution: []const u8,
     events,
+    /// `POST /_admin/events/ack`: the seqs that n8n handled.
+    ack_events,
+    /// `GET /_admin/outbox`: the stored events of each shard.
+    outbox,
     @"resume": struct { id: []const u8, seq: []const u8 },
     /// `POST /_admin/services/<callId>`: the answer to a service call (spec 9.9).
     answer_service: []const u8,
@@ -52,7 +56,12 @@ pub fn route(method: []const u8, target: []const u8) Route {
         if (b != null and b.?.len > 0 and c == null and eq(u8, method, "DELETE")) return .{ .cancel_execution = b.? };
         return .not_found;
     }
-    if (eq(u8, a, "events") and b == null and eq(u8, method, "GET")) return .events;
+    if (eq(u8, a, "events")) {
+        if (b == null and eq(u8, method, "GET")) return .events;
+        if (b != null and eq(u8, b.?, "ack") and c == null and eq(u8, method, "POST")) return .ack_events;
+        return .not_found;
+    }
+    if (eq(u8, a, "outbox") and b == null and eq(u8, method, "GET")) return .outbox;
     // Without a seq: the resume token of ctx.execution().
     if (eq(u8, a, "resume") and b != null and b.?.len > 0 and eq(u8, method, "POST")) return .{ .@"resume" = .{ .id = b.?, .seq = c orelse "" } };
     if (eq(u8, a, "services") and b != null and b.?.len > 0 and c == null and eq(u8, method, "POST")) return .{ .answer_service = b.? };
@@ -212,6 +221,67 @@ fn boolField(o: std.json.ObjectMap, name: []const u8) bool {
     return v == .bool and v.bool;
 }
 
+/// Most acks of one request: n8n sends one for each shard.
+pub const max_acks: usize = 64;
+
+/// One ack of `POST /_admin/events/ack`: the seq that n8n handled.
+pub const Ack = struct { shard: u32, seq: u64 };
+
+/// The acks of `{"acks":[{"shard":0,"seq":123}]}`. A seq of 0 names no
+/// event, and a list longer than `out` is a bad body.
+pub fn parseAcks(gpa: std.mem.Allocator, body: []const u8, out: []Ack) BodyError![]Ack {
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const root = std.json.parseFromSliceLeaky(std.json.Value, arena.allocator(), body, .{ .parse_numbers = false }) catch return error.BadBody;
+    if (root != .object) return error.BadBody;
+    const list = root.object.get("acks") orelse return error.BadBody;
+    if (list != .array) return error.BadBody;
+    if (list.array.items.len > out.len) return error.BadBody;
+    var n: usize = 0;
+    for (list.array.items) |item| {
+        if (item != .object) return error.BadBody;
+        const shard = uintField(item.object.get("shard") orelse return error.BadBody, u32) orelse return error.BadBody;
+        const seq = uintField(item.object.get("seq") orelse return error.BadBody, u64) orelse return error.BadBody;
+        if (seq == 0) return error.BadBody;
+        out[n] = .{ .shard = shard, .seq = seq };
+        n += 1;
+    }
+    return out[0..n];
+}
+
+fn uintField(v: std.json.Value, comptime T: type) ?T {
+    return switch (v) {
+        .number_string => |text| std.fmt.parseInt(T, text, 10) catch null,
+        .integer => |x| if (x < 0 or x > std.math.maxInt(T)) null else @intCast(x),
+        else => null,
+    };
+}
+
+/// The seq of `shard` from `after=<shard>:<seq>[,<shard>:<seq>...]`, the
+/// query of `GET /_admin/events` (spec 9.2). Null when the query names no
+/// seq for the shard: it starts after its acked seq.
+pub fn parseAfter(query: []const u8, shard: u32) BodyError!?u64 {
+    var it = std.mem.splitScalar(u8, query, '&');
+    while (it.next()) |kv| {
+        const at = std.mem.indexOfScalar(u8, kv, '=') orelse continue;
+        if (!std.mem.eql(u8, kv[0..at], "after")) continue;
+        const value = kv[at + 1 ..];
+        if (value.len == 0) return error.BadBody;
+        var found: ?u64 = null;
+        var pairs = std.mem.splitScalar(u8, value, ',');
+        var guard: u32 = 0;
+        while (pairs.next()) |pair| : (guard += 1) {
+            if (guard > max_acks) return error.BadBody;
+            const colon = std.mem.indexOfScalar(u8, pair, ':') orelse return error.BadBody;
+            const n = std.fmt.parseInt(u32, pair[0..colon], 10) catch return error.BadBody;
+            const seq = std.fmt.parseInt(u64, pair[colon + 1 ..], 10) catch return error.BadBody;
+            if (n == shard) found = seq;
+        }
+        return found;
+    }
+    return null;
+}
+
 // ---- events (spec 9.2) ----------------------------------------------------------
 
 pub const Event = union(enum) {
@@ -238,89 +308,110 @@ pub const Event = union(enum) {
 /// One event as one line of JSON, with its newline. With a counting `Out`
 /// it gives the length of the line before it is written.
 pub fn encode(out: *Out, ev: Event, at: i64) Out.Error!void {
+    try encodeBody(Out, out, ev);
+    try printOut(Out, out, ",\"at\":{d}}}\n", .{at});
+}
+
+/// The line of a durable event (spec 9.2): the fields of `encode`, then the
+/// shard and the seq that the outbox gave it. A sink has `put`, `byte` and
+/// an `Error` set, so the line goes straight into a segment file.
+pub fn encodeDurable(comptime S: type, out: *S, ev: Event, at: i64, shard: u32, seq: u64) S.Error!void {
+    try encodeBody(S, out, ev);
+    try printOut(S, out, ",\"shard\":{d},\"seq\":{d},\"at\":{d}}}\n", .{ shard, seq, at });
+}
+
+/// True for the kinds that go to the outbox: n8n must not lose them.
+pub fn durable(ev: Event) bool {
+    return switch (ev) {
+        .started, .waiting, .finished, .static_data => true,
+        .step, .trace, .dropped, .service => false,
+    };
+}
+
+/// The members of an event, without the closing brace.
+fn encodeBody(comptime S: type, out: *S, ev: Event) S.Error!void {
     switch (ev) {
         .started => |e| {
             try out.put("{\"type\":\"started\",\"executionId\":");
-            try writeJsonString(out, e.exec);
+            try writeJsonStringTo(S, out, e.exec);
             try out.put(",\"workflowId\":");
-            try writeJsonString(out, e.workflow);
+            try writeJsonStringTo(S, out, e.workflow);
             try out.put(",\"versionId\":");
-            try writeJsonString(out, e.version);
+            try writeJsonStringTo(S, out, e.version);
             try out.put(if (e.manual) ",\"mode\":\"manual\",\"trigger\":" else ",\"mode\":\"trigger\",\"trigger\":");
             try out.put(if (e.trigger.len == 0) "null" else e.trigger);
         },
         .step => |e| {
             try out.put("{\"type\":\"step\",\"executionId\":");
-            try writeJsonString(out, e.exec);
+            try writeJsonStringTo(S, out, e.exec);
             try out.put(",\"step\":");
-            try writeJsonString(out, e.step);
+            try writeJsonStringTo(S, out, e.step);
             try out.put(",\"status\":");
-            try writeJsonString(out, e.status);
-            if (e.args) |v| try member(out, "args", v);
-            if (e.result) |v| try member(out, "result", v);
+            try writeJsonStringTo(S, out, e.status);
+            if (e.args) |v| try member(S, out, "args", v);
+            if (e.result) |v| try member(S, out, "result", v);
             if (e.err) |v| {
                 try out.put(",\"error\":");
-                try writeJsonString(out, v);
+                try writeJsonStringTo(S, out, v);
             }
         },
         .trace => |e| {
             try out.put("{\"type\":\"trace\",\"executionId\":");
-            try writeJsonString(out, e.exec);
+            try writeJsonStringTo(S, out, e.exec);
             std.debug.assert(e.item.len >= 2 and e.item[0] == '{');
             try out.byte(',');
             try out.put(e.item[1 .. e.item.len - 1]);
         },
         .waiting => |e| {
             try out.put("{\"type\":\"waiting\",\"executionId\":");
-            try writeJsonString(out, e.exec);
+            try writeJsonStringTo(S, out, e.exec);
             try out.put(",\"step\":");
-            try writeJsonString(out, e.step);
+            try writeJsonStringTo(S, out, e.step);
             if (e.resume_url) |u| {
                 try out.put(",\"resumeUrl\":");
-                try writeJsonString(out, u);
+                try writeJsonStringTo(S, out, u);
             }
             if (e.signature) |sg| {
                 try out.put(",\"signature\":");
-                try writeJsonString(out, sg);
+                try writeJsonStringTo(S, out, sg);
             }
-            if (e.wait_till) |t| try printOut(out, ",\"waitTill\":{d}", .{t});
+            if (e.wait_till) |t| try printOut(S, out, ",\"waitTill\":{d}", .{t});
         },
         .finished => |e| {
             try out.put("{\"type\":\"finished\",\"executionId\":");
-            try writeJsonString(out, e.exec);
+            try writeJsonStringTo(S, out, e.exec);
             try out.put(",\"status\":");
-            try writeJsonString(out, e.status);
-            if (e.result) |v| try member(out, "result", v);
+            try writeJsonStringTo(S, out, e.status);
+            if (e.result) |v| try member(S, out, "result", v);
             if (e.step) |s| {
                 try out.put(",\"step\":");
-                try writeJsonString(out, s);
+                try writeJsonStringTo(S, out, s);
             }
         },
         .static_data => |e| if (e.err) |msg| {
             try out.put("{\"type\":\"staticDataRejected\",\"message\":");
-            try writeJsonString(out, msg);
+            try writeJsonStringTo(S, out, msg);
         } else {
             try out.put("{\"type\":\"staticData\",\"workflowId\":");
-            try writeJsonString(out, e.workflow);
-            try member(out, "staticData", e.doc orelse "{}");
+            try writeJsonStringTo(S, out, e.workflow);
+            try member(S, out, "staticData", e.doc orelse "{}");
         },
-        .dropped => |e| try printOut(out, "{{\"type\":\"dropped\",\"count\":{d}", .{e.count}),
+        .dropped => |e| try printOut(S, out, "{{\"type\":\"dropped\",\"count\":{d}", .{e.count}),
         .service => |e| {
             std.debug.assert(e.line.len >= 2 and e.line[0] == '{');
             try out.put(e.line);
         },
     }
-    try printOut(out, ",\"at\":{d}}}\n", .{at});
 }
 
 /// Formatted text of at most 64 bytes.
-fn printOut(out: *Out, comptime fmt: []const u8, args: anytype) Out.Error!void {
+fn printOut(comptime S: type, out: *S, comptime fmt: []const u8, args: anytype) S.Error!void {
     var b: [64]u8 = undefined;
     try out.put(std.fmt.bufPrint(&b, fmt, args) catch unreachable);
 }
 
 /// A member whose value is JSON text from the core. Empty text is left out.
-fn member(out: *Out, name: []const u8, v: []const u8) Out.Error!void {
+fn member(comptime S: type, out: *S, name: []const u8, v: []const u8) S.Error!void {
     if (v.len == 0) return;
     try out.put(",\"");
     try out.put(name);
@@ -330,6 +421,10 @@ fn member(out: *Out, name: []const u8, v: []const u8) Out.Error!void {
 
 /// A JSON string as ECMAScript `JSON.stringify` writes it.
 pub fn writeJsonString(out: *Out, s: []const u8) Out.Error!void {
+    return writeJsonStringTo(Out, out, s);
+}
+
+fn writeJsonStringTo(comptime S: type, out: *S, s: []const u8) S.Error!void {
     try out.byte('"');
     var start: usize = 0;
     for (s, 0..) |c, i| {
@@ -345,7 +440,7 @@ pub fn writeJsonString(out: *Out, s: []const u8) Out.Error!void {
             else => continue,
         };
         try out.put(s[start..i]);
-        if (rep.len > 0) try out.put(rep) else try printOut(out, "\\u{x:0>4}", .{c});
+        if (rep.len > 0) try out.put(rep) else try printOut(S, out, "\\u{x:0>4}", .{c});
         start = i + 1;
     }
     try out.put(s[start..]);
@@ -631,10 +726,36 @@ test "admin routes" {
     try t.expectEqualStrings("3", r.seq);
     try t.expect(route("GET", "/_admin/workflows/wf1") == .not_found);
     try t.expect(route("PUT", "/_admin/workflows/a/b") == .not_found);
+    try t.expect(route("POST", "/_admin/events/ack") == .ack_events);
+    try t.expect(route("GET", "/_admin/outbox") == .outbox);
+    try t.expect(route("GET", "/_admin/events/ack") == .not_found);
+    try t.expect(route("POST", "/_admin/outbox") == .not_found);
     try t.expect(route("POST", "/webhook/x") == .not_found);
     try t.expect(route("GET", "/_admin/") == .not_found);
     try t.expectEqualStrings("", route("POST", "/_admin/resume/12").@"resume".seq);
     try t.expect(route("PUT", "/_admin/variables") == .put_variables);
+}
+
+test "acks and the after query" {
+    const t = std.testing;
+    const gpa = std.testing.allocator;
+    var acks: [4]Ack = undefined;
+    const got = try parseAcks(gpa, "{\"acks\":[{\"shard\":0,\"seq\":123},{\"shard\":1,\"seq\":9}]}", &acks);
+    try t.expectEqual(@as(usize, 2), got.len);
+    try t.expectEqual(@as(u32, 0), got[0].shard);
+    try t.expectEqual(@as(u64, 123), got[0].seq);
+    try t.expectEqual(@as(u64, 9), got[1].seq);
+    try t.expectError(error.BadBody, parseAcks(gpa, "{\"acks\":[{\"shard\":0,\"seq\":0}]}", &acks));
+    try t.expectError(error.BadBody, parseAcks(gpa, "{}", &acks));
+    try t.expectError(error.BadBody, parseAcks(gpa, "[]", &acks));
+    try t.expectError(error.BadBody, parseAcks(gpa, "{\"acks\":[{\"shard\":-1,\"seq\":1}]}", &acks));
+    try t.expectEqual(@as(?u64, 7), try parseAfter("after=0:7", 0));
+    try t.expectEqual(@as(?u64, 42), try parseAfter("x=1&after=3:8,0:42", 0));
+    try t.expectEqual(@as(?u64, null), try parseAfter("after=3:8", 0));
+    try t.expectEqual(@as(?u64, null), try parseAfter("", 0));
+    try t.expectError(error.BadBody, parseAfter("after=0", 0));
+    try t.expectError(error.BadBody, parseAfter("after=x:1", 0));
+    try t.expectError(error.BadBody, parseAfter("after=", 0));
 }
 
 test "bearer auth" {
@@ -1051,11 +1172,11 @@ pub const ServiceCalls = struct {
         try writeJsonString(out, step);
         try out.put(",\"callId\":");
         try writeJsonString(out, formatSubCallId(exec_id, seq, sub, &cb));
-        try printOut(out, ",\"attempt\":{d}", .{attempt});
+        try printOut(Out, out, ",\"attempt\":{d}", .{attempt});
         // The core wrote the args: their members are JSON values.
-        try member(out, "service", http.member(payload, "service") orelse "null");
-        try member(out, "op", http.member(payload, "op") orelse "null");
-        try member(out, "args", http.member(payload, "args") orelse "{}");
+        try member(Out, out, "service", http.member(payload, "service") orelse "null");
+        try member(Out, out, "op", http.member(payload, "op") orelse "null");
+        try member(Out, out, "args", http.member(payload, "args") orelse "{}");
     }
 };
 

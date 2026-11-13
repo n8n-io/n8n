@@ -13,6 +13,7 @@ const creds = @import("creds.zig");
 const request = @import("request.zig");
 const programs = @import("programs.zig");
 const shard_mod = @import("shard.zig");
+const outbox = @import("outbox.zig");
 const Smith = std.testing.Smith;
 
 var input_buf: [64 << 10]u8 = undefined;
@@ -500,6 +501,102 @@ fn fuzzLog(_: void, smith: *Smith) !void {
 
 test "fuzz log reader and recovery" {
     try std.testing.fuzz({}, fuzzLog, .{});
+}
+
+// ---- outbox segments (spec 9.2) --------------------------------------------------
+
+/// One record of a seed segment: its seq, the bytes of its line, then the line.
+fn outboxSeed(comptime lines: []const u8) *const [16 + lines.len]u8 {
+    return comptime blk: {
+        var out: [16 + lines.len]u8 = undefined;
+        std.mem.writeInt(u64, out[0..8], 1, .little);
+        std.mem.writeInt(u32, out[8..12], @intCast(lines.len), .little);
+        @memset(out[12..16], 0);
+        @memcpy(out[16..], lines);
+        const final = out;
+        break :blk &final;
+    };
+}
+
+/// A segment file is a parser of untrusted bytes after a crash: the reader
+/// never goes past the valid records, the seqs only grow, and a torn record
+/// is cut. A second start sees the same records.
+fn fuzzOutboxSegment(_: void, smith: *Smith) !void {
+    const bytes = input_buf[0..smith.slice(&input_buf)];
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var tmp = std.testing.tmpDir(.{});
+    defer tmp.cleanup();
+    var pb: [512]u8 = undefined;
+    const n = try tmp.dir.realPath(std.testing.io, &pb);
+    const dir = try a.dupe(u8, pb[0..n]);
+    var sb: [560]u8 = undefined;
+    const seg = try std.fmt.bufPrintSentinel(&sb, "{s}/outbox-0-1.seg", .{dir}, 0);
+    const fd = std.c.open(seg, .{ .ACCMODE = .WRONLY, .CREAT = true, .TRUNC = true }, @as(std.c.mode_t, 0o600));
+    if (fd < 0) return error.SegmentOpen;
+    var off: usize = 0;
+    while (off < bytes.len) {
+        const w = std.c.write(fd, bytes[off..].ptr, bytes.len - off);
+        if (w <= 0) break;
+        off += @intCast(w);
+    }
+    _ = std.c.close(fd);
+    var ob = outbox.Outbox.init(a, .{ .dir = dir, .shard = 0, .max_bytes = 1 << 20, .segment_bytes = 4096 }) catch return;
+    defer ob.deinit();
+    const st = ob.status();
+    if (st.last + 1 != ob.nextSeq()) return error.SeqNotContiguous;
+    if (st.bytes > bytes.len) return error.BytesBeyondFile;
+    // Every stored line comes back once, in seq order, and fits the file.
+    var line_buf: [64 << 10]u8 = undefined;
+    const read = try readOutbox(&ob, st.acked, &line_buf);
+    if (st.last >= st.first and read.lines > st.last - st.first + 1) return error.TooManyLines;
+    if (read.bytes > st.bytes) return error.LinesBeyondRecords;
+    // A second start reads the same records after it cut the torn tail.
+    var again = outbox.Outbox.init(a, .{ .dir = dir, .shard = 0, .max_bytes = 1 << 20, .segment_bytes = 4096 }) catch return;
+    defer again.deinit();
+    if (again.nextSeq() != ob.nextSeq()) return error.SeqChanged;
+    const read2 = try readOutbox(&again, st.acked, &line_buf);
+    if (read2.lines != read.lines or read2.bytes != read.bytes) return error.ScanNotIdempotent;
+    // An ack of the last seq works; one past it does not.
+    if (st.last > 0) {
+        try again.ack(st.last);
+        if (again.ackedSeq() != st.last) return error.AckNotStored;
+        if (again.status().bytes != 0) return error.AckedBytesRemain;
+        if (again.ack(st.last + 1)) |_| return error.AckBeyondTaken else |_| {}
+    }
+}
+
+const OutboxRead = struct { lines: u64, bytes: u64 };
+
+/// Read the stored lines into `buf`, checking that each one has the bytes of
+/// its record. A line that does not fit the buffer fails the check.
+fn readOutbox(ob: *outbox.Outbox, after: u64, buf: []u8) !OutboxRead {
+    ob.startStream(after);
+    var got: OutboxRead = .{ .lines = 0, .bytes = 0 };
+    var guard: u32 = 0;
+    while (guard < 1000) : (guard += 1) {
+        if (ob.rd.fill(ob) == 0) return got;
+        var slices: [outbox.max_slices][]const u8 = undefined;
+        const nspans = ob.rd.slices(&slices);
+        if (nspans == 0) return error.NoSlice;
+        var i: usize = 0;
+        while (i < nspans) : (i += 1) {
+            const s = slices[i];
+            if (s.len > buf.len) return error.LineTooLong;
+            @memcpy(buf[0..s.len], s);
+            got.bytes += s.len;
+            if (s[s.len - 1] == '\n') got.lines += 1;
+        }
+        var total: usize = 0;
+        for (slices[0..nspans]) |s| total += s.len;
+        ob.rd.consume(total);
+    }
+    return got;
+}
+
+test "fuzz outbox segments" {
+    try std.testing.fuzz({}, fuzzOutboxSegment, .{ .corpus = &.{ outboxSeed("a\n"), outboxSeed("{\"type\":\"started\"}\n") } });
 }
 
 // ---- admin request bodies ---------------------------------------------------------
