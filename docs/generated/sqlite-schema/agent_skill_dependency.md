@@ -64,6 +64,7 @@ erDiagram
   varchar_255_ projectId FK
   INTEGER publicationRevision
   INTEGER revision
+  INTEGER runtimeRevision
   TEXT schema
   varchar_16_ scope
   datetime_3_ setupCompletedAt

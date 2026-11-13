@@ -74,6 +74,12 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
 	toolAccessCheckedAt: number;
+	/**
+	 * `agents.runtimeRevision` read before the build. A cache hit compares it
+	 * with the database, so a lost invalidation message cannot keep this
+	 * runtime alive.
+	 */
+	runtimeRevision: number;
 }
 
 interface RuntimeInitialization {
@@ -151,9 +157,9 @@ export class AgentRuntimeCacheService {
 	}
 
 	/**
-	 * Drop all cached runtimes (draft and published) for an agent and, in
-	 * multi-main mode, broadcast the invalidation to peer mains so their
-	 * caches stay in sync.
+	 * Drop all cached runtimes (draft and published) for an agent. Then advance
+	 * the runtime revision and broadcast the invalidation, so that other
+	 * processes rebuild their copies even when the broadcast is lost.
 	 *
 	 * Pass `skipBroadcast: true` from the pubsub handler to avoid a re-publish
 	 * loop when applying an event received from another main.
@@ -173,7 +179,42 @@ export class AgentRuntimeCacheService {
 		}
 
 		if (options.skipBroadcast) return;
-		void this.changePublisher.publish({ command: 'agent-config-changed', payload: { agentId } });
+		void this.invalidateOnOtherProcesses(agentId);
+	}
+
+	/**
+	 * The revision bump is the durable signal: other processes see it on their
+	 * next cache hit. The pub/sub message only frees their memory sooner.
+	 */
+	private async invalidateOnOtherProcesses(agentId: string): Promise<void> {
+		try {
+			await this.agentRepository.bumpRuntimeRevision(agentId);
+		} catch (error) {
+			this.logger.warn('[AgentRuntimeCacheService] Failed to advance the agent runtime revision', {
+				agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+		await this.changePublisher.publish({ command: 'agent-config-changed', payload: { agentId } });
+	}
+
+	/**
+	 * Whether the cached runtime still matches the agent revision in the
+	 * database. Each hit reads one column by primary key. When the read fails,
+	 * serve the cached runtime: the turn needs the database anyway and fails
+	 * there with a clearer error.
+	 */
+	private async revisionStillCurrent(runtime: AgentRuntime): Promise<boolean> {
+		try {
+			const revision = await this.agentRepository.findRuntimeRevision(runtime.agentId);
+			return revision === runtime.runtimeRevision;
+		} catch (error) {
+			this.logger.warn('[AgentRuntimeCacheService] Failed to read the agent runtime revision', {
+				agentId: runtime.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return true;
+		}
 	}
 
 	/**
@@ -370,6 +411,7 @@ export class AgentRuntimeCacheService {
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
+			runtimeRevision: agentEntity.runtimeRevision,
 		};
 	}
 
@@ -378,18 +420,21 @@ export class AgentRuntimeCacheService {
 		cached: AgentRuntime,
 		params: GetRuntimeParams,
 	): Promise<AgentRuntime | undefined> {
-		const accessStillCurrent = await this.toolAccessStillCurrent(cached, params);
+		const [revisionStillCurrent, accessStillCurrent] = await Promise.all([
+			this.revisionStillCurrent(cached),
+			this.toolAccessStillCurrent(cached, params),
+		]);
 		const current = this.runtimes.get(cacheKey);
 		// The access check can race with cache invalidation or replacement.
 		if (current !== cached) {
 			if (current) return this.acquireRuntimeLease(current);
 			return undefined;
 		}
-		if (accessStillCurrent) {
+		if (revisionStillCurrent && accessStillCurrent) {
 			this.runtimes.touch(cacheKey);
 			return this.acquireRuntimeLease(cached);
 		}
-		// Rebuild the tool list after a grant is revoked.
+		// Rebuild after another process changed the agent, or after a grant is revoked.
 		this.runtimes.delete(cacheKey);
 		this.closeAgentResources(cached.agent, params.agentId);
 		return undefined;

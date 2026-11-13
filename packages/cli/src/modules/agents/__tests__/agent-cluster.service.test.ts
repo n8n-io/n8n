@@ -24,9 +24,7 @@ describe('AgentClusterService', () => {
 	it('rejects payloads larger than one pub/sub message', () => {
 		const cluster = testCluster({ queue: true });
 		expect(cluster.fitsInPubSubMessage({ text: 'small' })).toBe(true);
-		expect(cluster.fitsInPubSubMessage({ text: 'a'.repeat(MAX_PUBSUB_PAYLOAD_BYTES) })).toBe(
-			false,
-		);
+		expect(cluster.fitsInPubSubMessage({ text: 'a'.repeat(MAX_PUBSUB_PAYLOAD_BYTES) })).toBe(false);
 	});
 
 	it('counts bytes, not characters', () => {

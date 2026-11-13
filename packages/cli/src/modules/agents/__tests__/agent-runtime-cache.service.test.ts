@@ -26,6 +26,7 @@ function makeAgent(overrides: Partial<ProjectAgent> = {}): ProjectAgent {
 		id: agentId,
 		projectId,
 		versionId: 'draft-version',
+		runtimeRevision: 0,
 		activeVersionId: null,
 		activeVersion: null,
 		schema: { name: 'Draft', model: 'openai:gpt-4o', instructions: 'Help', tools: [], skills: [] },
@@ -55,6 +56,8 @@ function makeService({ sandboxEnabled = false }: { sandboxEnabled?: boolean } = 
 	});
 
 	publisher.publishCommand.mockResolvedValue();
+	agentRepository.findRuntimeRevision.mockResolvedValue(0);
+	agentRepository.bumpRuntimeRevision.mockResolvedValue();
 
 	const service = new AgentRuntimeCacheService(
 		mockLogger(),
@@ -695,10 +698,60 @@ describe('AgentRuntimeCacheService', () => {
 		service.clearRuntimes(agentId);
 
 		expect(runtime.agent.close).toHaveBeenCalled();
-		expect(publisher.publishCommand).toHaveBeenCalledWith({
-			command: 'agent-config-changed',
-			payload: { agentId },
-		});
+		await vi.waitFor(() =>
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'agent-config-changed',
+				payload: { agentId },
+			}),
+		);
+		expect(agentRepository.bumpRuntimeRevision).toHaveBeenCalledWith(agentId);
+	});
+
+	it('still broadcasts when the revision bump fails', async () => {
+		const { service, agentRepository, publisher } = makeService();
+		agentRepository.bumpRuntimeRevision.mockRejectedValue(new Error('db down'));
+
+		service.clearRuntimes(agentId);
+
+		await vi.waitFor(() => expect(publisher.publishCommand).toHaveBeenCalled());
+	});
+
+	it('rebuilds when another process advanced the revision and its message was lost', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const stale = makeRuntime();
+		const fresh = makeRuntime();
+		agentRepository.findByIdAndProjectId
+			.mockResolvedValueOnce(makeAgent())
+			.mockResolvedValueOnce(makeAgent({ runtimeRevision: 1 }));
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(stale)
+			.mockResolvedValueOnce(fresh);
+
+		const first = await service.getRuntime({ agentId, projectId });
+		service.releaseRuntimeLease(first.agent);
+		// No `agent-config-changed` reaches this process. Only the row changed.
+		agentRepository.findRuntimeRevision.mockResolvedValue(1);
+
+		const second = await service.getRuntime({ agentId, projectId });
+		expect(second.agent).toBe(fresh.agent);
+		expect(stale.agent.close).toHaveBeenCalled();
+
+		const third = await service.getRuntime({ agentId, projectId });
+		expect(third).toBe(second);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+	});
+
+	it('serves the cached runtime when the revision read fails', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+		const first = await service.getRuntime({ agentId, projectId });
+		agentRepository.findRuntimeRevision.mockRejectedValue(new Error('db down'));
+		const second = await service.getRuntime({ agentId, projectId });
+
+		expect(second).toBe(first);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(1);
 	});
 
 	it('handles peer cache invalidation without rebroadcasting', () => {

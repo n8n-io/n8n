@@ -114,6 +114,7 @@ erDiagram
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
+  integer runtimeRevision
   json schema
   varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt

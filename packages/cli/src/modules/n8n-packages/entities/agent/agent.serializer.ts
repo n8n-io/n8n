@@ -36,6 +36,7 @@ type AgentPackageKeyHandling = {
 	activeVersion: 'exclude';
 	revision: 'exclude';
 	publicationRevision: 'exclude';
+	runtimeRevision: 'exclude';
 	setupCompletedAt: 'exclude';
 };
 

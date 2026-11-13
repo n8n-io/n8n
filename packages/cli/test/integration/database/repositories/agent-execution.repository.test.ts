@@ -1527,6 +1527,7 @@ describe('AgentExecutionRepository', () => {
 				projectId,
 				agentId,
 				toolAccessCheckedAt: Date.now(),
+				runtimeRevision: 0,
 				telemetryConfiguration: {
 					model: 'mock',
 					channels: [],

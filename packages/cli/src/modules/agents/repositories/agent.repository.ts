@@ -84,6 +84,34 @@ export class AgentRepository extends BaseRepository<Agent> {
 	}
 
 	/**
+	 * Mark the cached runtimes of an agent stale on every process. The bump is
+	 * not an edit of the agent, so it keeps `updatedAt`.
+	 */
+	async bumpRuntimeRevision(agentId: string, ctx: OperationContext = {}): Promise<void> {
+		const manager = this.managerFor(ctx);
+		const updatedAt = manager.connection.driver.escape('updatedAt');
+		const runtimeRevision = manager.connection.driver.escape('runtimeRevision');
+		await manager
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				runtimeRevision: () => `${runtimeRevision} + 1`,
+				updatedAt: () => updatedAt,
+			})
+			.where({ id: agentId })
+			.execute();
+	}
+
+	/** The runtime revision of an agent, or null when the agent is gone. */
+	async findRuntimeRevision(agentId: string, ctx: OperationContext = {}): Promise<number | null> {
+		const row = await this.managerFor(ctx).findOne(Agent, {
+			select: { id: true, runtimeRevision: true },
+			where: { id: agentId },
+		});
+		return row?.runtimeRevision ?? null;
+	}
+
+	/**
 	 * Insert-only create. `save()` on an entity whose id is already set is an
 	 * upsert, so an id minted by the client that already names a row would
 	 * update that row instead of colliding on the primary key.

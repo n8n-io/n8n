@@ -63,10 +63,7 @@ describe('AgentUpdateBroadcaster', () => {
 		roleService.rolesWithScope.mockResolvedValue(['project:editor']);
 		userRepository.findIdsWithGlobalOrProjectRoles.mockResolvedValue(['reader-1']);
 
-		broadcaster.notify(
-			{ ...update, agentId: 'a'.repeat(6 * 1024 * 1024) },
-			'writer-push-ref',
-		);
+		broadcaster.notify({ ...update, agentId: 'a'.repeat(6 * 1024 * 1024) }, 'writer-push-ref');
 
 		await vi.waitFor(() => expect(push.sendToUsers).toHaveBeenCalled());
 		expect(publisher.publishCommand).not.toHaveBeenCalled();

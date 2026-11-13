@@ -1291,6 +1291,24 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('runtime revision', () => {
+		it('advances the revision and keeps updatedAt', async () => {
+			const agent = await createAgent();
+			const before = await agentRepo.findOneByOrFail({ id: agent.id });
+
+			await agentRepo.bumpRuntimeRevision(agent.id);
+			await agentRepo.bumpRuntimeRevision(agent.id);
+
+			expect(await agentRepo.findRuntimeRevision(agent.id)).toBe(before.runtimeRevision + 2);
+			const after = await agentRepo.findOneByOrFail({ id: agent.id });
+			expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+		});
+
+		it('returns null for an agent that does not exist', async () => {
+			expect(await agentRepo.findRuntimeRevision(uuid())).toBeNull();
+		});
+	});
+
 	describe('findChatReachableIds', () => {
 		const chatChannel: AgentIntegrationConfig = {
 			type: N8N_CHAT_INTEGRATION_TYPE,

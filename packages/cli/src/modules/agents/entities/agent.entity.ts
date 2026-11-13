@@ -114,6 +114,14 @@ export class Agent extends WithTimestampsAndStringId {
 	publicationRevision: number;
 
 	/**
+	 * Advances on each change that makes cached runtimes stale (config, skills,
+	 * knowledge, dependencies, integrations). A process compares it on a cache
+	 * hit, so a lost invalidation message cannot keep an old runtime alive.
+	 */
+	@Column({ type: 'int', default: 0 })
+	runtimeRevision: number;
+
+	/**
 	 * Agent tags, read through the `agents_tags` join table. Unidirectional:
 	 * `TagEntity` keeps no inverse relation to `Agent` (it lives in this
 	 * package), and tag writes go through the `AgentTagMapping` rows instead.

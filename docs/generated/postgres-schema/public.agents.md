@@ -14,6 +14,7 @@
 | projectId | varchar(255) |  | true |  | [public.project](public.project.md) |  |
 | publicationRevision | integer | 0 | false |  |  |  |
 | revision | integer | 0 | false |  |  |  |
+| runtimeRevision | integer | 0 | false |  |  | Advances on each change that makes cached agent runtimes stale |
 | schema | json |  | true |  |  |  |
 | scope | varchar(16) | 'project'::character varying | false |  |  | project: belongs to projectId; instance: code-defined, belongs to no project (projectId is null) |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
@@ -39,6 +40,7 @@
 | agents_name_not_null | n | NOT NULL name |
 | agents_publicationRevision_not_null | n | NOT NULL "publicationRevision" |
 | agents_revision_not_null | n | NOT NULL revision |
+| agents_runtimeRevision_not_null | n | NOT NULL "runtimeRevision" |
 | agents_scope_not_null | n | NOT NULL scope |
 | agents_skills_not_null | n | NOT NULL skills |
 | agents_tools_not_null | n | NOT NULL tools |
@@ -94,6 +96,7 @@ erDiagram
   varchar_255_ projectId FK
   integer publicationRevision
   integer revision
+  integer runtimeRevision
   json schema
   varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
