@@ -10,7 +10,7 @@ const execFile = promisify(child_process.execFile);
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 
-/** GitHub team slug -> Linear team. Shared with agent skills that route by owner. */
+/** GitHub team slug -> Linear team name and key. */
 export const TEAMS = JSON.parse(readFileSync(join(import.meta.dirname, 'teams.json'), 'utf8'));
 
 /**
