@@ -1,4 +1,5 @@
 import child_process from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -61,13 +62,46 @@ export function collectImporters(trees, workspaceNames) {
 	})).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** The package that the n8n release ships. Other workspace packages ship only through it. */
+const SHIP_ROOTS = ['n8n'];
+
+/** Sections that reach a consumer at runtime. */
+const RUNTIME_SECTIONS = ['dependencies', 'optionalDependencies'];
+
+/**
+ * Workspace packages that ship: the roots, and every workspace package that
+ * they reach through runtime sections. A test or tooling package can declare
+ * `dependencies` too, but nothing ships it.
+ *
+ * @param { Map<string, Record<string, Record<string, string> | undefined>> } manifests Workspace package name -> package.json.
+ * @param { readonly string[] } [roots]
+ * @returns { Set<string> }
+ * */
+export function shippedPackages(manifests, roots = SHIP_ROOTS) {
+	const shipped = new Set();
+	const queue = [...roots];
+	while (queue.length > 0) {
+		const name = queue.pop();
+		if (name === undefined || shipped.has(name) || !manifests.has(name)) continue;
+		shipped.add(name);
+		for (const section of RUNTIME_SECTIONS) {
+			for (const dependency of Object.keys(manifests.get(name)?.[section] ?? {})) {
+				if (manifests.has(dependency)) queue.push(dependency);
+			}
+		}
+	}
+	return shipped;
+}
+
 /**
  * Decide which OWNERS team owns a dependency. A dependency has one owner.
  *
  * Returns OWNERS team slugs (`core-execution`), not Linear teams: the caller
  * maps a team to its Linear team, so this repo keeps no second mapping.
  *
- * - Production uses only: dev-only dependencies are tooling and go to the OWNERS catch-all team.
+ * - Production uses only: a production use is a runtime use by a workspace package
+ *   that ships. A dependency with no production use is tooling and goes to the
+ *   OWNERS catch-all team.
  * - Direct production uses win over transitive ones.
  * - One owning team: `single`. Several: `round-robin`. The caller picks one of
  *   `candidates`, because the round-robin state lives with the caller.
@@ -77,9 +111,17 @@ export function collectImporters(trees, workspaceNames) {
  * @param { string[] } [input.versions] Installed versions, so callers can tell a finding is already fixed.
  * @param { Importer[] } input.importers
  * @param { Map<string, string> } input.importerDirs Workspace package name -> repo-relative directory.
+ * @param { Set<string> } input.shipped Workspace packages that ship. See `shippedPackages`.
  * @param { import('./owners.mjs').OwnersEntry[] } input.entries
  * */
-export function decideOwner({ packageName, versions = [], importers, importerDirs, entries }) {
+export function decideOwner({
+	packageName,
+	versions = [],
+	importers,
+	importerDirs,
+	shipped,
+	entries,
+}) {
 	/** @param { string } name */
 	const ownerSlug = (name) => {
 		const dir = importerDirs.get(name) ?? '.';
@@ -87,7 +129,7 @@ export function decideOwner({ packageName, versions = [], importers, importerDir
 		return entry ? teamHandleToSlug(entry.team) : undefined;
 	};
 
-	const production = importers.filter((importer) => !importer.dev);
+	const production = importers.filter((importer) => !importer.dev && shipped.has(importer.name));
 	const pool = production.some((importer) => importer.direct)
 		? production.filter((importer) => importer.direct)
 		: production;
@@ -140,6 +182,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 	const importerDirs = new Map(
 		projects.map((project) => [project.name, relative(REPO_ROOT, project.path) || '.']),
 	);
+	const manifests = new Map(
+		projects.map((project) => [
+			project.name,
+			JSON.parse(readFileSync(join(project.path, 'package.json'), 'utf8')),
+		]),
+	);
+	const shipped = shippedPackages(manifests);
 	const workspaceNames = new Set(importerDirs.keys());
 	const entries = parseOwnersFile();
 
@@ -148,7 +197,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 		const trees = await pnpmWhy(packageName);
 		const versions = [...new Set(trees.map((tree) => tree.version).filter(Boolean))].sort();
 		const importers = collectImporters(trees, workspaceNames);
-		results.push(decideOwner({ packageName, versions, importers, importerDirs, entries }));
+		results.push(decideOwner({ packageName, versions, importers, importerDirs, shipped, entries }));
 	}
 	console.log(JSON.stringify(results, null, 2));
 }

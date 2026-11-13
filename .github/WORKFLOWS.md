@@ -952,9 +952,11 @@ node .github/scripts/owners/resolve-dependency-owners.mjs <package> [<package>..
 ```
 
 The script reads `pnpm why` from the lockfile. It needs no install. For each
-package it finds the workspace packages that use it in production. Direct
-users win over transitive users. It maps their directories to OWNERS teams. A
-dependency that only dev tooling uses goes to the catch-all team.
+package it finds the workspace packages that use it in production: a runtime
+use by a package that ships with `n8n` (`packages/cli`). Test and tooling
+packages can declare runtime dependencies too, but they do not count. Direct
+users win over transitive users. The script maps their directories to OWNERS
+teams. A dependency with no production use goes to the catch-all team.
 
 The `decision` field is `single`, `tooling`, `round-robin`, or `none`. The
 `owner` and `candidates` fields hold OWNERS team slugs, such as

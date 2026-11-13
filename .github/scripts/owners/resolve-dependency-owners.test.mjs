@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { collectImporters, decideOwner } from './resolve-dependency-owners.mjs';
+import { collectImporters, decideOwner, shippedPackages } from './resolve-dependency-owners.mjs';
 
 /**
  * Run these tests by running
@@ -21,10 +21,27 @@ const entries = [
 	{ pattern: '*', team: '@n8n-io/qa-dx', required: false, line: 1 },
 	{ pattern: 'packages/a/', team: '@n8n-io/nodes', required: false, line: 2 },
 	{ pattern: 'packages/b/', team: '@n8n-io/iam', required: false, line: 3 },
+	{ pattern: 'packages/tooling/', team: '@n8n-io/core-execution', required: false, line: 4 },
 ];
 
+const shipped = new Set(['@n8n/a', '@n8n/b']);
+
 /** @param {import('./resolve-dependency-owners.mjs').Importer[]} importers */
-const decide = (importers) => decideOwner({ packageName: 'dep', importers, importerDirs, entries });
+const decide = (importers) =>
+	decideOwner({ packageName: 'dep', importers, importerDirs, shipped, entries });
+
+describe('shippedPackages', () => {
+	it('follows runtime sections from the root, and not devDependencies', () => {
+		const manifests = new Map([
+			['n8n', { dependencies: { '@n8n/a': 'workspace:*', lodash: '4' } }],
+			['@n8n/a', { optionalDependencies: { '@n8n/b': 'workspace:*' } }],
+			['@n8n/b', { devDependencies: { 'n8n-tooling': 'workspace:*' } }],
+			['n8n-tooling', { dependencies: { '@n8n/a': 'workspace:*' } }],
+		]);
+
+		assert.deepEqual([...shippedPackages(manifests)].sort(), ['@n8n/a', '@n8n/b', 'n8n']);
+	});
+});
 
 describe('collectImporters', () => {
 	it('marks direct and transitive importers and records the direct dependency that pulls it in', () => {
@@ -87,6 +104,23 @@ describe('decideOwner', () => {
 
 	it('gives dev-only dependencies to the OWNERS catch-all team as tooling', () => {
 		const result = decide([{ name: '@n8n/a', direct: true, dev: true, via: [] }]);
+
+		assert.equal(result.decision, 'tooling');
+		assert.equal(result.owner, 'qa-dx');
+	});
+
+	it('ignores runtime uses by packages that do not ship', () => {
+		const result = decide([
+			{ name: 'n8n-tooling', direct: true, dev: false, via: [] },
+			{ name: '@n8n/a', direct: false, dev: false, via: ['axios'] },
+		]);
+
+		assert.equal(result.decision, 'single');
+		assert.equal(result.owner, 'nodes');
+	});
+
+	it('gives a dependency that only non-shipped packages use to the catch-all team', () => {
+		const result = decide([{ name: 'n8n-tooling', direct: true, dev: false, via: [] }]);
 
 		assert.equal(result.decision, 'tooling');
 		assert.equal(result.owner, 'qa-dx');
