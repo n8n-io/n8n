@@ -139,4 +139,9 @@ export { WindowedChatMemory, type WindowedChatMemoryConfig } from './memory/wind
 
 // Suppliers
 export { supplyMemory, type SupplyMemoryOptions } from './suppliers/supplyMemory';
-export { supplyModel, type SupplyModelOptions, type OpenAiModel } from './suppliers/supplyModel';
+export {
+	supplyModel,
+	getSuppliedModelSource,
+	type SupplyModelOptions,
+	type OpenAiModel,
+} from './suppliers/supplyModel';
