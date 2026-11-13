@@ -105,6 +105,45 @@ export async function deleteSubscriptions(
 	return refused.flat();
 }
 
+/**
+ * Renews every id once, all in parallel, and returns the ids that Graph answered with 404. Pass
+ * only ids whose secret is proven. Never throws: every other failure is warned, and that
+ * subscription keeps its expiry until its own `reauthorizationRequired` renews it.
+ */
+export async function renewSubscriptions(
+	this: IHookFunctions | IWebhookFunctions,
+	ids: Iterable<string>,
+): Promise<Set<string>> {
+	// POST, PUT, DELETE and PATCH share 500 requests per 20 s for an app in one tenant, 2000 across
+	// tenants. ponytail: the calls are not paced, and a 429 only warns. The PATCHes can still use up
+	// the budget of a create in the same 20 s: a re-create after a 404, or the creates of another
+	// activation. Pace the calls if that shows up.
+	const gone = await Promise.all(
+		[...new Set(ids)].map(async (id) => {
+			try {
+				await microsoftApiRequest.call(
+					this,
+					'PATCH',
+					buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]),
+					{ expirationDateTime: newSubscriptionExpiry() },
+				);
+				return [];
+			} catch (error) {
+				if (error instanceof NodeApiError && error.httpCode === '404') {
+					logTrigger.call(this, 'debug', 'subscription gone', { subscriptionId: id });
+					return [id];
+				}
+				logTrigger.call(this, 'warn', 'failed to renew subscription', {
+					subscriptionId: id,
+					error: ensureError(error).message,
+				});
+				return [];
+			}
+		}),
+	);
+	return new Set(gone.flat());
+}
+
 // The reconcile removes an own subscription whose resource is missing from these lists, so
 // they read every page: Graph pages a long list with `@odata.nextLink`.
 export async function fetchAllTeams(
@@ -280,7 +319,11 @@ export async function reconcileSubscriptions(
 		requiredResources: string[];
 		/** The own listing. A lifecycle batch merges in the usable PATCH answers of the request. */
 		subscriptions: SubscriptionResponse[];
-		/** Ids a PATCH in this request succeeded for: live, and preferred as keepers. */
+		/**
+		 * Ids that an accepted lifecycle item of this request named and that a PATCH then renewed.
+		 * Each id is live and preferred as a keeper. The item passed `verifyWebhook`, so the id
+		 * carries the stored secret. A successful PATCH alone proves no secret.
+		 */
 		renewed?: ReadonlySet<string>;
 		/** Ids Graph reported removed. */
 		gone?: ReadonlySet<string>;
@@ -290,6 +333,14 @@ export async function reconcileSubscriptions(
 		 * create there fails the activation, and core retries it.
 		 */
 		holdUnproven: boolean;
+		/**
+		 * Activation sets it, a lifecycle batch does not. Renews each keeper once, after the first
+		 * creates, so the renewals cannot make those creates answer 429. Skipped after a failed
+		 * create: the activation throws. GET by id first proves every live candidate, because a
+		 * renewal must not extend a subscription with another secret. The resource of a keeper that
+		 * answers 404 is created again, after the renewals.
+		 */
+		renewKeepers: boolean;
 	},
 ): Promise<{ errors: Error[]; retry: boolean }> {
 	const {
@@ -299,6 +350,7 @@ export async function reconcileSubscriptions(
 		renewed = new Set(),
 		gone = new Set(),
 		holdUnproven,
+		renewKeepers,
 	} = input;
 	const webhookData = this.getWorkflowStaticData('node');
 	const storedIds = getStoredIds(webhookData);
@@ -319,12 +371,13 @@ export async function reconcileSubscriptions(
 		(Date.parse(b.expirationDateTime) || 0) - (Date.parse(a.expirationDateTime) || 0) ||
 		(a.id < b.id ? -1 : 1);
 
-	// A renewal in this request proves the secret: its lifecycle item passed verification. Earlier
-	// versions stored every own subscription, whatever its secret, so storage alone decides only
-	// for a stored subscription that is the only live own one and the only stored one on its
-	// resource. Elsewhere GET by id proves the live ones, so a live listed subscription with the
-	// stored secret goes only beside a keeper, or at activation when it is not stored and its read
-	// failed. Stale, unlisted and no longer required ones go without a read.
+	// Earlier versions stored every own subscription, whatever its secret. So storage alone
+	// decides only on a lifecycle batch: there the reconcile renews no keeper. Even there it
+	// decides only for a stored subscription that is the only live own one and the only stored
+	// one on its resource. A resource whose keeper this request renewed needs no read either (see
+	// `renewed`). Elsewhere GET by id proves the live ones. A live listed subscription with the
+	// stored secret then goes only beside a keeper. At activation it also goes when it is not
+	// stored and its read failed. Stale, unlisted and no longer required ones go without a read.
 	const keepers = new Map<string, string>();
 	const unproven: SubscriptionResponse[] = [];
 	for (const resource of required) {
@@ -334,6 +387,7 @@ export async function reconcileSubscriptions(
 		const [renewedKeeper] = storedLive.filter((sub) => renewed.has(sub.id)).sort(byPreference);
 		if (renewedKeeper) keepers.set(resource, renewedKeeper.id);
 		else if (
+			!renewKeepers &&
 			storedLive.length === 1 &&
 			liveHere.length === 1 &&
 			onResource.filter(isStored).length === 1
@@ -401,6 +455,16 @@ export async function reconcileSubscriptions(
 		required.filter((resource) => !keepers.has(resource) && !held.has(resource)),
 		clientState,
 	);
+	if (renewKeepers && errors.length === 0) {
+		// A keeper that answers 404 is gone, so it is not deleted or stored. Its resource is
+		// created again.
+		const missing = await renewSubscriptions.call(this, keepers.values());
+		const lost = [...keepers].filter(([, id]) => missing.has(id)).map(([resource]) => resource);
+		for (const resource of lost) keepers.delete(resource);
+		const again = await createSubscriptions.call(this, webhookUrl, lost, clientState);
+		created.push(...again.ids);
+		errors.push(...again.errors);
+	}
 
 	// A stored id that is not listed and that Graph refused to remove stays, so the next
 	// reconcile retries the delete; the by-URL listing cannot find it. The stored ids of a held
@@ -428,26 +492,30 @@ export async function reconcileSubscriptions(
 }
 
 /**
- * Whether the stored ids alone cover every required resource with a live subscription at
- * this URL. Reads each stored id with GET by id, which has its own budget: 2000 requests per
- * 20 s for an app across all tenants, against 40 for the listing. Two stored subscriptions on
- * one resource both count: keeping them is safer than core's cleanup, and the next reconcile
- * proves each secret. An answer with another clientState covers nothing. An answer without
- * one still counts here; the reconcile treats it as unproven. Never throws.
+ * Says whether the stored ids alone cover every required resource with a live subscription at
+ * this URL. Returns `undefined` when they do not. Otherwise returns the ids to renew: for each
+ * required resource, the one stored id whose answer shows the stored secret. Twins on one
+ * resource both cover, which is safer than core's cleanup, but proven twins are not returned:
+ * the marked next reconcile keeps one. Unlike the reconcile, a twin that GET by id cannot prove
+ * does not stop the renewal of a proven one. An answer with another clientState covers nothing,
+ * and one without a clientState covers but is not returned. Reads each stored id with GET by id,
+ * which has its own budget: 2000 requests per 20 s for an app across all tenants, against 40
+ * for the listing. Never throws.
  */
 export async function storedSubscriptionsCover(
 	this: IHookFunctions | IWebhookFunctions,
 	webhookUrl: string,
 	clientState: string,
 	event: string,
-): Promise<boolean> {
+): Promise<string[] | undefined> {
 	let required: string[];
 	try {
 		required = [await getResourcePath.call(this, event)].flat();
 	} catch {
-		return false;
+		return undefined;
 	}
 	const covered = new Set<string>();
+	const proven = new Map<string, Set<string>>();
 	await Promise.all(
 		getStoredIds(this.getWorkflowStaticData('node')).map(async (id) => {
 			try {
@@ -465,6 +533,9 @@ export async function storedSubscriptionsCover(
 					(typeof answeredSecret !== 'string' || answeredSecret === clientState)
 				) {
 					covered.add(answer.resource);
+					if (answeredSecret === clientState && required.includes(answer.resource)) {
+						proven.set(answer.resource, (proven.get(answer.resource) ?? new Set<string>()).add(id));
+					}
 					return;
 				}
 				logTrigger.call(this, 'debug', 'stored subscription does not count', {
@@ -478,7 +549,8 @@ export async function storedSubscriptionsCover(
 			}
 		}),
 	);
-	return required.every((resource) => covered.has(resource));
+	if (!required.every((resource) => covered.has(resource))) return undefined;
+	return [...proven.values()].filter((ids) => ids.size === 1).map(([id]) => id);
 }
 
 // Anything with a `lifecycleEvent` is a lifecycle item and never a workflow item; the
@@ -650,6 +722,7 @@ export async function handleLifecycleNotifications(
 		renewed,
 		gone,
 		holdUnproven: true,
+		renewKeepers: false,
 	});
 	markPendingReconcile(webhookData, retry);
 }
