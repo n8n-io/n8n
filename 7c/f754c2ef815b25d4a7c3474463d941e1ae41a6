@@ -1,0 +1,13 @@
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-agents-events.test.ts
+  ai_agent 8,255-365
+packages/@n8n/instance-ai/evaluations/__tests__/assistant-agents-wait.test.ts
+  ai_agent 175-216
+packages/@n8n/instance-ai/evaluations/harness/assistant-agents.ts
+  ai_agent 150-153,159-183,220-221,235-236,239-240,267-278,280-283,285-286,288-293,295-296,306,345-348,351-358,361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7cf754c2ef815b25d4a7c3474463d941e1ae41a6",
+  "prompts": {}
+}
