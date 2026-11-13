@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionLedger } from '@n8n/backend-services';
-import { ModuleMetadata } from '@n8n/decorators';
+import { LifecycleMetadata, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { ExecutionLedgerEntity } from '../database/entities/execution-ledger.entity';
@@ -32,5 +32,19 @@ describe('ExecutionLedgerModule', () => {
 		const tasks = await new ExecutionLedgerModule().systemTasks();
 
 		expect(tasks.map((task) => task.name)).toEqual(['ExecutionLedgerFoldTask']);
+	});
+
+	it('registers the ended handler for the workflow execute after event', async () => {
+		await new ExecutionLedgerModule().init();
+
+		const handlers = Container.get(LifecycleMetadata).getHandlers();
+
+		expect(handlers).toContainEqual(
+			expect.objectContaining({
+				eventName: 'workflowExecuteAfter',
+				methodName: 'handleWorkflowExecuteAfter',
+				handlerClass: expect.objectContaining({ name: 'ExecutionEndedHandler' }),
+			}),
+		);
 	});
 });

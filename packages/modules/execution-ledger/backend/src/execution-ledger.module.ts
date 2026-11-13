@@ -13,6 +13,8 @@ export class ExecutionLedgerModule implements ModuleInterface {
 	async init() {
 		const { ExecutionLedgerRowWriter } = await import('./execution-ledger-row.writer.js');
 		Container.get(ExecutionLedger).setImplementation(Container.get(ExecutionLedgerRowWriter));
+
+		await import('./execution-ended.handler.js');
 	}
 
 	async systemTasks() {

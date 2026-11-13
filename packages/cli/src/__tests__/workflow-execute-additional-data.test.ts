@@ -1,5 +1,10 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionLedger,
+	UrlService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -667,6 +672,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		describe('pre-run check failure', () => {
 			const nodeTypes = mockInstance(NodeTypes);
 			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionLedger = mockInstance(ExecutionLedger, { isEnabled: true });
 			const subWorkflowData = () =>
 				mock<IWorkflowBase>({
 					id: 'sub-id',
@@ -703,7 +709,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 					mock<INodeType>({ description: { properties: [] } }),
 				);
 				executeErrorWorkflow.mockClear();
-				vi.mocked(executionPersistence.updateExistingExecution).mockClear();
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockClear();
+				executionLedger.recordEnded.mockClear();
 				vi.mocked(WorkflowExecute).mockClear();
 				activeExecutions.finalizeExecution.mockClear();
 			});
@@ -759,7 +766,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1);
 			});
 
 			it.each([false, true])(
@@ -781,7 +788,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					}
 
 					await vi.waitFor(() =>
-						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1),
+						expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1),
 					);
 					expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
 					expect(executeErrorWorkflow).not.toHaveBeenCalled();
@@ -800,7 +807,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('does not have access');
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					EXECUTION_ID,
 					expect.objectContaining({ status: 'error' }),
 				);
@@ -843,7 +850,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				});
 
 				await vi.waitFor(() =>
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1),
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1),
 				);
 				expect(activeExecutions.finalizeExecution).toHaveBeenCalledWith(
 					EXECUTION_ID,
@@ -854,11 +861,38 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			it('keeps the original error when recording the failure fails', async () => {
 				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
-				vi.mocked(executionPersistence.updateExistingExecution).mockRejectedValueOnce(
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockRejectedValueOnce(
 					new Error('database unavailable'),
 				);
 
 				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+			});
+
+			it('records the ended row when the failure save finished the run', async () => {
+				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
+				vi.mocked(executionPersistence.saveExecutionOutcome).mockResolvedValueOnce({
+					updated: true,
+					ended: true,
+				});
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+
+				expect(executionLedger.recordEnded).toHaveBeenCalledWith(
+					expect.objectContaining({
+						executionId: EXECUTION_ID,
+						workflowId: 'sub-id',
+						outcome: 'error',
+						mode: 'integrated',
+					}),
+				);
+			});
+
+			it('records no ended row when the engine already finished the run', async () => {
+				processRunExecutionData.mockReturnValueOnce(Promise.reject(new Error('run failed')));
+
+				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
+
+				expect(executionLedger.recordEnded).not.toHaveBeenCalled();
 			});
 
 			it('leaves the error workflow to the engine hooks when the run itself fails', async () => {
@@ -867,7 +901,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				await expect(runSubWorkflow(false)).rejects.toThrow('run failed');
 
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1);
 			});
 		});
 

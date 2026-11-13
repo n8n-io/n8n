@@ -14,6 +14,11 @@
       "types": "./dist/execution-ledger.module.d.ts",
       "import": "./dist/execution-ledger.module.js",
       "require": "./dist/execution-ledger.module.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.js"
     }
   },
   "files": [
@@ -55,6 +60,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "n8n-containers": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
