@@ -925,7 +925,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			thread_id: z.string(),
 			is_awaiting_user: isAwaitingUser.describe(
-				'Whether the run was paused until the user answered, when the user left the thread',
+				'Whether the run is paused until the user answers, when the user returns. Read after the thread has loaded, so it can differ from the value on the leave event',
 			),
 			time_away_ms: z
 				.number()
@@ -951,7 +951,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			thread_id: z.string(),
 			is_awaiting_user: isAwaitingUser.describe(
-				'Whether the run was paused until the user answered, when the tab became hidden',
+				'Whether the run is paused until the user answers, when the tab becomes visible. It can differ from the value on the leave event',
 			),
 			time_away_ms: z
 				.number()

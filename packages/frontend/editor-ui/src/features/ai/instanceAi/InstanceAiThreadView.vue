@@ -83,6 +83,7 @@ useAssistantAwayTelemetry({
 	// A run that waits for the user is still active.
 	isRunning: () => thread.isStreaming || thread.isSendingMessage,
 	isAwaitingUser: () => thread.isAwaitingConfirmation,
+	isReady: () => thread.hydrationStatus === 'ready',
 });
 const rootStore = useRootStore();
 const i18n = useI18n();
