@@ -74,7 +74,6 @@ const copyDebugInfoToClipboard = async () => {
 </script>
 
 <template>
-	<!-- Nothing to confirm here, so the title row's close button is the only way out. -->
 	<N8nDialog
 		:open="true"
 		size="large"
