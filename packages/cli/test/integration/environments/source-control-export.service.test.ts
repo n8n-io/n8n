@@ -26,6 +26,7 @@ import { SourceControlExportService } from '@/modules/source-control.ee/source-c
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 
 import { createCredentials } from '../shared/db/credentials';
+import { createFolder } from '../shared/db/folders';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 
@@ -108,6 +109,18 @@ describe('SourceControlExportService Integration', () => {
 		]);
 		// Reset mocks
 		vi.clearAllMocks();
+	});
+
+	it('exports workflow folders without Agent folders', async () => {
+		const workflowFolder = await createFolder(teamProject);
+		const agentFolder = await createFolder(teamProject, { resourceType: 'agent' });
+		const context = await sourceControlContextFactory.createContext(testPerson);
+
+		const result = await exportService.exportFoldersToWorkFolder(context);
+
+		expect(result.count).toBe(1);
+		expect(mockFsWriteFile.mock.calls[0][1]).toContain(workflowFolder.id);
+		expect(mockFsWriteFile.mock.calls[0][1]).not.toContain(agentFolder.id);
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {

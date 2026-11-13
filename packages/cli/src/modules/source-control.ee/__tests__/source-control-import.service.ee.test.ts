@@ -3572,7 +3572,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		describe('deleteFoldersNotInWorkfolder', () => {
-			it('should call folderRepository.delete with correct ids', async () => {
+			it('deletes only workflow folders with the candidate ids', async () => {
 				const candidates = [
 					mock<SourceControlledFile>({ id: 'folder1' }),
 					mock<SourceControlledFile>({ id: 'folder2' }),
@@ -3585,6 +3585,7 @@ describe('SourceControlImportService', () => {
 
 				expect(folderRepository.delete).toHaveBeenCalledWith({
 					id: In(['folder1', 'folder2', 'folder3']),
+					resourceType: 'workflow',
 				});
 			});
 
@@ -3611,7 +3612,10 @@ describe('SourceControlImportService', () => {
 				});
 				expect(workflowService.deactivateWorkflowAsSystem).not.toHaveBeenCalled();
 				expect(executionPersistence.hardDeleteByWorkflowId).toHaveBeenCalledWith('wf-1');
-				expect(folderRepository.delete).toHaveBeenCalledWith({ id: In(['folder1']) });
+				expect(folderRepository.delete).toHaveBeenCalledWith({
+					id: In(['folder1']),
+					resourceType: 'workflow',
+				});
 			});
 
 			it('should unpublish a published straggler and wait for the teardown before deleting the folder', async () => {

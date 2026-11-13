@@ -92,10 +92,11 @@ export class SourceControlScopedService {
 		context: SourceControlContext,
 	): FindOptionsWhere<Folder> {
 		if (context.hasAccessToAllProjects()) {
-			return {};
+			return { resourceType: 'workflow' };
 		}
 
 		return {
+			resourceType: 'workflow',
 			homeProject: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}

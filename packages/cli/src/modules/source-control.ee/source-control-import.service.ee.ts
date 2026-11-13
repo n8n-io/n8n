@@ -2000,7 +2000,7 @@ export class SourceControlImportService {
 			);
 
 			await this.deleteWithCallerAllowlistPurge(async (trx) => {
-				await trx.delete(Folder, { id: In(candidateIds) });
+				await trx.delete(Folder, { id: In(candidateIds), resourceType: 'workflow' });
 			});
 
 			await this.sweepAfterWorkflowCascade(cascadedWorkflowIds);

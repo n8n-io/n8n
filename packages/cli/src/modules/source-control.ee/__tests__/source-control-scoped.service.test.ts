@@ -69,4 +69,20 @@ describe('SourceControlScopedService', () => {
 			});
 		});
 	});
+
+	describe('getFoldersInAdminProjectsFromContextFilter', () => {
+		it.each([true, false])(
+			'limits folders to workflows when access to all projects is %s',
+			(hasAccessToAllProjects) => {
+				const context = mock<SourceControlContext>({
+					user: req.user,
+					hasAccessToAllProjects: () => hasAccessToAllProjects,
+				});
+
+				expect(service.getFoldersInAdminProjectsFromContextFilter(context)).toMatchObject({
+					resourceType: 'workflow',
+				});
+			},
+		);
+	});
 });
