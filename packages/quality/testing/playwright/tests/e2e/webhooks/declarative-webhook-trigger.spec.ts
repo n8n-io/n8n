@@ -45,7 +45,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
-		test('should register the hook on activation, run on delivery, and remove the hook on deactivation', async ({
+		test('should register the hook on activation, run only on an allowed delivery, and remove the hook on deactivation', async ({
 			api,
 			services,
 		}) => {
@@ -72,20 +72,27 @@ test.describe(
 			const hook = registration.body as { target_url: string; events: string[] };
 			expect(hook.events).toEqual(['created']);
 
-			const delivery = await api.webhooks.trigger(new URL(hook.target_url).pathname, {
-				method: 'POST',
-				data: { event: 'created', id: 1 },
-			});
-			expect(delivery.status()).toBe(200);
+			const deliver = async (data: object) =>
+				await api.webhooks.trigger(new URL(hook.target_url).pathname, { method: 'POST', data });
+
+			// A ping and an event that the node does not listen to start no execution.
+			const ping = await deliver({ type: 'ping' });
+			expect(ping.status()).toBe(200);
+			expect(await ping.text()).toBe('pong');
+			expect((await deliver({ event: 'deleted', data: { id: 0 } })).status()).toBe(200);
+
+			expect((await deliver({ event: 'created', data: { id: 1 } })).status()).toBe(200);
 
 			const execution = await api.workflows.waitForExecution(workflowId, 30_000, 'webhook');
 			expect(execution.status).toBe('success');
+			expect(await api.workflows.getExecutions(workflowId)).toHaveLength(1);
 			const { data } = await api.workflows.getExecution(execution.id, {
 				redactExecutionData: false,
 			});
 			const runData = (flatted.parse(data) as IRunExecutionData).resultData.runData;
-			expect(runData[TRIGGER_NODE_NAME][0].data?.main[0]?.map((item) => item.json)).toEqual([
-				{ event: 'created', id: 1 },
+			// postReceive takes `data` from the body, and includeMeta wraps it.
+			expect(runData[TRIGGER_NODE_NAME][0].data?.main[0]?.map((item) => item.json.body)).toEqual([
+				{ id: 1 },
 			]);
 
 			await api.workflows.deactivate(workflowId);

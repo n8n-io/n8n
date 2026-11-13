@@ -1,10 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@test/utils';
+import type { Request } from 'express';
 import type {
 	IDataObject,
 	IDeclarativeWebhookTrigger,
 	IHttpRequestOptions,
 	INode,
+	INodeExecutionData,
 	INodeParameters,
 	INodeType,
 	INodeTypes,
@@ -15,8 +17,8 @@ import type {
 import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { createDeclarativeWebhookMethods, declarativeWebhook } from '../declarative-webhook';
-import { HookContext, returnJsonArray } from '../node-execution-context';
+import { createDeclarativeWebhook, createDeclarativeWebhookMethods } from '../declarative-webhook';
+import { HookContext, WebhookContext } from '../node-execution-context';
 
 const httpRequest = vi.fn<(options: IHttpRequestOptions) => Promise<unknown>>();
 
@@ -668,24 +670,398 @@ describe('createDeclarativeWebhookMethods', () => {
 	});
 });
 
-describe('declarativeWebhook', () => {
-	const run = async (body: unknown) =>
-		await declarativeWebhook.call(
-			mock<IWebhookFunctions>({
-				getBodyData: () => body as IDataObject,
-				helpers: { returnJsonArray },
-			}),
+describe('createDeclarativeWebhook', () => {
+	function webhookSetup(
+		handler: IDeclarativeWebhookTrigger['handler'],
+		body: unknown,
+		{
+			headers = {},
+			query = {},
+			rawBody,
+			unreadBody,
+			contentType,
+		}: {
+			headers?: IDataObject;
+			query?: IDataObject;
+			rawBody?: Buffer;
+			/** The body that `readRawBody` reads, for a request that the server did not read. */
+			unreadBody?: Buffer;
+			contentType?: string;
+		} = {},
+	) {
+		const trigger = { ...registryTrigger, handler };
+		const node: INode = {
+			id: 'n1',
+			name: 'Hook',
+			type: 'testWebhook',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: { event: 'created' },
+		};
+		const nodeType = makeNodeType(trigger);
+		const workflow = new Workflow({
+			id: 'w1',
+			nodes: [node],
+			connections: {},
+			active: true,
+			nodeTypes: mock<INodeTypes>({ getByNameAndVersion: () => nodeType }),
+		});
+		// Set after `mock()`, which would wrap the request data in proxies.
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const request = { body, headers, query, rawBody, contentType } as unknown as Request;
+		request.readRawBody = vi.fn(async () => {
+			request.rawBody = unreadBody ?? request.rawBody;
+		});
+		additionalData.httpRequest = request;
+		const context = new WebhookContext(
+			workflow,
+			node,
+			additionalData,
+			'webhook',
+			mock<IWebhookData>(),
+			[],
+			null,
 		);
+		return async () => await createDeclarativeWebhook(trigger).call(context);
+	}
+
+	const eventFilter = {
+		allowed: '={{ $parameter.event }}',
+		actual: '={{ $webhookRequest.body.event }}',
+	};
 
 	test('emits the request body', async () => {
-		expect(await run({ event: 'created' })).toEqual({
-			workflowData: [[{ json: { event: 'created' } }]],
-		});
+		const run = webhookSetup(undefined, { event: 'created' });
+
+		expect(await run()).toEqual({ workflowData: [[{ json: { event: 'created' } }]] });
 	});
 
 	test('emits one item for each element of an array body', async () => {
-		expect(await run([{ n: 1 }, { n: 2 }])).toEqual({
-			workflowData: [[{ json: { n: 1 } }, { json: { n: 2 } }]],
+		const run = webhookSetup(undefined, [{ n: 1 }, { n: 2 }]);
+
+		expect(await run()).toEqual({ workflowData: [[{ json: { n: 1 } }, { json: { n: 2 } }]] });
+	});
+
+	test('emits body keys such as `json` and `binary` as data', async () => {
+		const body = { json: 'x', binary: { file: { data: '' } }, other: 1 };
+		const run = webhookSetup(undefined, body);
+
+		expect(await run()).toStrictEqual({ workflowData: [[{ json: body }]] });
+	});
+
+	test('starts no workflow for an empty array body', async () => {
+		expect(await webhookSetup(undefined, [])()).toStrictEqual({});
+	});
+
+	describe('a +json body', () => {
+		const json = Buffer.from('{ "event": "created" }');
+
+		test('is parsed when the server did not read it', async () => {
+			const run = webhookSetup({ filter: eventFilter }, undefined, {
+				contentType: 'application/vnd.api+json',
+				unreadBody: json,
+			});
+
+			expect(await run()).toStrictEqual({ workflowData: [[{ json: { event: 'created' } }]] });
 		});
+
+		test('is parsed when the server read it but did not parse it', async () => {
+			const run = webhookSetup(undefined, undefined, {
+				contentType: 'application/cloudevents+json',
+				rawBody: json,
+			});
+
+			expect(await run()).toStrictEqual({ workflowData: [[{ json: { event: 'created' } }]] });
+		});
+
+		test('that does not parse starts no workflow', async () => {
+			const run = webhookSetup(undefined, undefined, {
+				contentType: 'application/vnd.api+json',
+				unreadBody: Buffer.from('not json'),
+			});
+
+			expect(await run()).toStrictEqual({});
+		});
+
+		test('is the only unparsed type that is read', async () => {
+			const run = webhookSetup(undefined, undefined, {
+				contentType: 'application/octet-stream',
+				unreadBody: json,
+			});
+
+			expect(await run()).toStrictEqual({});
+		});
+	});
+
+	test('drops items that are not objects', async () => {
+		expect(await webhookSetup(undefined, 'text')()).toStrictEqual({});
+		expect(await webhookSetup(undefined, [1, 'a', [2], { n: 1 }])()).toStrictEqual({
+			workflowData: [[{ json: { n: 1 } }]],
+		});
+	});
+
+	test('starts no workflow when rootProperty finds nothing', async () => {
+		const run = webhookSetup(
+			{ output: { postReceive: [{ type: 'rootProperty', properties: { property: 'data' } }] } },
+			{ event: 'created' },
+		);
+
+		expect(await run()).toStrictEqual({});
+	});
+
+	test('includeMeta emits a text body', async () => {
+		const run = webhookSetup({ output: { includeMeta: true } }, 'text');
+
+		expect(await run()).toStrictEqual({
+			workflowData: [[{ json: { body: 'text', headers: {}, query: {} } }]],
+		});
+	});
+
+	test('needs a WebhookContext', async () => {
+		await expect(
+			createDeclarativeWebhook(registryTrigger).call(mock<IWebhookFunctions>()),
+		).rejects.toThrow('Declarative webhook trigger needs a WebhookContext');
+	});
+
+	describe('ping', () => {
+		test('replies OK and starts no workflow', async () => {
+			const run = webhookSetup(
+				{ ping: { when: '={{ $webhookRequest.body.zen !== undefined }}' } },
+				{ zen: 'hi' },
+			);
+
+			expect(await run()).toEqual({ webhookResponse: 'OK' });
+		});
+
+		test('replies with the resolved response', async () => {
+			const run = webhookSetup(
+				{ ping: { when: '={{ true }}', response: '={{ $webhookRequest.query.challenge }}' } },
+				{},
+				{ query: { challenge: 'abc' } },
+			);
+
+			expect(await run()).toEqual({ webhookResponse: 'abc' });
+		});
+
+		test('emits the body when `when` is falsy', async () => {
+			const run = webhookSetup(
+				{ ping: { when: '={{ $webhookRequest.headers["x-ping"] === "1" }}' } },
+				{ event: 'created' },
+			);
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { event: 'created' } }]] });
+		});
+
+		test('runs before the filter', async () => {
+			const run = webhookSetup(
+				{ ping: { when: '={{ $webhookRequest.body.event === "ping" }}' }, filter: eventFilter },
+				{ event: 'ping' },
+			);
+
+			expect(await run()).toEqual({ webhookResponse: 'OK' });
+		});
+
+		test('returns an undefined response, so the server sends its default reply', async () => {
+			const run = webhookSetup(
+				{ ping: { when: '={{ true }}', response: '={{ $webhookRequest.body.missing }}' } },
+				{},
+			);
+
+			expect(await run()).toStrictEqual({ webhookResponse: undefined });
+		});
+	});
+
+	describe('filter', () => {
+		test('emits an event when a plain string allows it', async () => {
+			const run = webhookSetup({ filter: eventFilter }, { event: 'created' });
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { event: 'created' } }]] });
+		});
+
+		test('starts no workflow for an event that is not allowed', async () => {
+			const run = webhookSetup({ filter: eventFilter }, { event: 'deleted' });
+
+			expect(await run()).toEqual({});
+		});
+
+		test('checks the event against a list', async () => {
+			const filter = { ...eventFilter, allowed: '={{ ["created", "deleted"] }}' };
+
+			expect(await webhookSetup({ filter }, { event: 'deleted' })()).toEqual({
+				workflowData: [[{ json: { event: 'deleted' } }]],
+			});
+			expect(await webhookSetup({ filter }, { event: 'updated' })()).toEqual({});
+		});
+
+		test('accepts all events when `allowed` holds the wildcard', async () => {
+			const filter = { ...eventFilter, allowed: '={{ ["*"] }}', wildcard: '*' };
+			const run = webhookSetup({ filter }, { event: 'updated' });
+
+			expect(await run()).toEqual({ workflowData: [[{ json: { event: 'updated' } }]] });
+		});
+
+		test('misses when `allowed` does not hold the wildcard', async () => {
+			const filter = { ...eventFilter, wildcard: '*' };
+
+			expect(await webhookSetup({ filter }, { event: 'updated' })()).toStrictEqual({});
+		});
+
+		test('misses when `actual` resolves to undefined', async () => {
+			const filter = { ...eventFilter, allowed: '={{ [undefined, "created"] }}' };
+
+			expect(await webhookSetup({ filter }, { type: 'created' })()).toStrictEqual({});
+		});
+
+		test('resolves the event in one pass', async () => {
+			const run = webhookSetup({ filter: eventFilter }, { event: '={{ "created" }}' });
+
+			expect(await run()).toStrictEqual({});
+		});
+
+		test('runs before the output stage', async () => {
+			const action = vi.fn(async (items: INodeExecutionData[]) => items);
+			const run = webhookSetup(
+				{ filter: eventFilter, output: { postReceive: [action] } },
+				{ event: 'deleted' },
+			);
+
+			expect(await run()).toEqual({});
+			expect(action).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('output', () => {
+		test('postReceive shapes the items from the request body', async () => {
+			const run = webhookSetup(
+				{
+					output: {
+						postReceive: [
+							{ type: 'rootProperty', properties: { property: 'data' } },
+							{
+								type: 'setKeyValue',
+								properties: {
+									id: '={{ $responseItem.id }}',
+									total: '={{ $response.body.data.length }}',
+									source: '={{ $webhookRequest.headers["x-source"] }}',
+								},
+							},
+						],
+					},
+				},
+				{ data: [{ id: 1 }, { id: 2 }] },
+				{ headers: { 'x-source': 'api' } },
+			);
+
+			expect(await run()).toEqual({
+				workflowData: [
+					[
+						{ json: { id: 1, total: 2, source: 'api' } },
+						{ json: { id: 2, total: 2, source: 'api' } },
+					],
+				],
+			});
+		});
+
+		test('includeMeta wraps each element of an array body', async () => {
+			const run = webhookSetup({ output: { includeMeta: true } }, [{ n: 1 }, { n: 2 }], {
+				headers: { 'x-a': '1' },
+			});
+
+			expect(await run()).toEqual({
+				workflowData: [
+					[
+						{ json: { body: { n: 1 }, headers: { 'x-a': '1' }, query: {} } },
+						{ json: { body: { n: 2 }, headers: { 'x-a': '1' }, query: {} } },
+					],
+				],
+			});
+		});
+
+		test('includeMeta wraps each item as body, headers and query', async () => {
+			const run = webhookSetup(
+				{ output: { includeMeta: true } },
+				{ event: 'created' },
+				{ headers: { 'x-a': '1' }, query: { q: '2' } },
+			);
+
+			expect(await run()).toEqual({
+				workflowData: [
+					[{ json: { body: { event: 'created' }, headers: { 'x-a': '1' }, query: { q: '2' } } }],
+				],
+			});
+		});
+
+		test('includeMeta wraps the items after postReceive and keeps their binary data', async () => {
+			const binary = { file: { data: 'ZGF0YQ==', mimeType: 'text/plain' } };
+			const run = webhookSetup(
+				{
+					output: {
+						includeMeta: true,
+						postReceive: [
+							{ type: 'rootProperty', properties: { property: 'data' } },
+							async function (items) {
+								return items.map((item) => ({ ...item, binary }));
+							},
+						],
+					},
+				},
+				{ data: { id: 1 } },
+			);
+
+			expect(await run()).toEqual({
+				workflowData: [[{ json: { body: { id: 1 }, headers: {}, query: {} }, binary }]],
+			});
+		});
+	});
+
+	test('resolves request values in one pass', async () => {
+		const run = webhookSetup(
+			{
+				ping: {
+					when: '={{ $webhookRequest.body.ping }}',
+					response: '={{ $webhookRequest.body.value }}',
+				},
+			},
+			{ ping: '={{ false }}', value: '={{ 1 + 1 }}' },
+		);
+
+		expect(await run()).toEqual({ webhookResponse: '={{ 1 + 1 }}' });
+	});
+
+	test('resolves postReceive values in one pass', async () => {
+		const run = webhookSetup(
+			{
+				output: {
+					postReceive: [{ type: 'setKeyValue', properties: { v: '={{ $responseItem.v }}' } }],
+				},
+			},
+			{ v: '={{ 2 + 2 }}' },
+		);
+
+		expect(await run()).toEqual({ workflowData: [[{ json: { v: '={{ 2 + 2 }}' } }]] });
+	});
+
+	test('resolves a nested postReceive value in one pass', async () => {
+		const run = webhookSetup(
+			{
+				output: {
+					postReceive: [{ type: 'setKeyValue', properties: { item: '={{ $responseItem }}' } }],
+				},
+			},
+			{ nested: { v: '={{ 2 + 2 }}' } },
+		);
+
+		expect(await run()).toEqual({
+			workflowData: [[{ json: { item: { nested: { v: '={{ 2 + 2 }}' } } } }]],
+		});
+	});
+
+	test('starts no workflow when postReceive drops all items', async () => {
+		const run = webhookSetup(
+			{ output: { postReceive: [{ type: 'filter', properties: { pass: '={{ false }}' } }] } },
+			{ event: 'created' },
+		);
+
+		expect(await run()).toStrictEqual({});
 	});
 });
