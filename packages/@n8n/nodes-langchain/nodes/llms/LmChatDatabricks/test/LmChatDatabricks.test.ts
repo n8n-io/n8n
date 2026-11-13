@@ -136,7 +136,7 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
-		it('should build the refreshing fetch on top of the traced aiClientFetch', async () => {
+		it('should build the refreshing fetch on top of the traced AI client fetch', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);

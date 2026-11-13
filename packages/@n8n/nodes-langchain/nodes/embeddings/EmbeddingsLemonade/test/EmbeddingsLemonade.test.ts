@@ -65,7 +65,7 @@ describe('EmbeddingsLemonade', () => {
 	});
 
 	describe('supplyData', () => {
-		it('should wire the traced aiClientFetch into OpenAIEmbeddings', async () => {
+		it('should wire the traced AI client fetch into OpenAIEmbeddings', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);

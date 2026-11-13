@@ -73,7 +73,7 @@ describe('LmLemonade', () => {
 	});
 
 	describe('supplyData', () => {
-		it('should wire the traced aiClientFetch into the OpenAI client', async () => {
+		it('should wire the traced AI client fetch into the OpenAI client', async () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);

@@ -64,7 +64,7 @@ describe('LmChatDeepSeek', () => {
 	});
 
 	describe('supplyData', () => {
-		it('should wire the traced aiClientFetch into ChatOpenAI', async () => {
+		it('should wire the traced AI client fetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
