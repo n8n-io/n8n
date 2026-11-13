@@ -21,7 +21,7 @@ Week 1 follows your three steps from the previous page through this setup: the [
 
 The inside of a main looks somewhat like most [Express](https://expressjs.com) applications. Controllers take requests and call services. Services call repositories, and repositories use [TypeORM](https://typeorm.io). A small dependency injection container, `@n8n/di`, creates the services, and decorators register the routes.
 
-Each workflow execution is passed to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow and knows nothing about HTTP or the database. (This is the v1 engine. Engine v2 is in development, and [its docs](../../packages/@n8n/engine/AGENTS.md) state the current design.)
+Each workflow execution goes to the **execution engine**, a library in `n8n-core` that runs the nodes of a workflow. The engine knows nothing about HTTP or the database. (This is the v1 engine. Engine v2 is in development, and [its docs](../../packages/@n8n/engine/AGENTS.md) state the current design.)
 
 Agent turns run on another library, the agent runtime in `@n8n/agents`. Workflow executions and agent turns share the same nodes, credentials, permissions, and database.
 
@@ -44,7 +44,7 @@ In **regular mode**, one process serves the editor and runs executions, so heavy
 
 Alongside the main, processes that run the CLI command `n8n worker` are called **workers**. A worker takes the job from the queue and runs the execution. The job carries only the ID of the execution. The worker reads the workflow and the input from the database. When the execution ends, the worker saves the results to the database and reports completion to the main through the queue.
 
-Processes that run the CLI command `n8n webhook` are called **webhook processes**. A webhook process only receives production webhook calls and adds their jobs to the queue. Busy instances run several of them behind a load balancer, to take in more webhook calls and keep that load off the main that serves the editor.
+Processes that run the CLI command `n8n webhook` are called **webhook processes**. A webhook process only receives production webhook calls and adds their jobs to the queue. Busy instances run several of them behind a load balancer. This setup takes in more webhook calls and keeps that load off the main that serves the editor.
 
 In queue mode, workers run only workflow executions, and agent turns still run on the main.
 
@@ -62,7 +62,7 @@ With one main, a stopped main takes down the editor, the APIs, the schedules and
 
 Several mains cause a new problem: some work must happen exactly once. If two mains ran the same poller, each new record would start two executions. Therefore one main is the **leader**, and only the leader runs pollers. Schedules need no leader, because any main starts each due run from a job in the database. The leader holds a key in Redis that expires after a few seconds and renews it while it runs. If the leader dies, another main takes the key.
 
-Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, if you publish a workflow through a main that is not the leader, that main broadcasts a command, and the leader starts the triggers.
+Mains and workers broadcast changes over [Redis pubsub](https://redis.io/docs/latest/develop/pubsub/). For example, you publish a workflow through a main that is not the leader. That main broadcasts a command, and the leader starts the triggers.
 
 In queue mode with multi-main, all the processes connect like this:
 
@@ -124,7 +124,7 @@ Upgrading an n8n instance must not change what a saved workflow does. Common way
 
 | Package | Holds |
 |---|---|
-| `packages/cli/` | CLI commands, HTTP server, controllers, and most services and modules: auth and SSO, credentials, executions and their lifecycle, triggers and webhooks, queue mode and pubsub, push, task runners, licensing, events and telemetry, public API, and more |
+| `packages/cli/` | CLI commands, HTTP server, controllers, and most services and modules. Examples: auth and SSO, credentials, executions, triggers and webhooks, queue mode and pubsub, push, task runners, licensing, events and telemetry, and the public API |
 | `packages/core/` | Execution engine, node execution contexts (the helpers that nodes call), trigger and poller runtime, node and credential loading, binary data storage, encryption, and instance settings |
 | `packages/workflow/` | Workflow model, expression evaluator, and shared types, used by both backend and frontend |
 | `packages/@n8n/db/` | Entities, repositories, and migrations |

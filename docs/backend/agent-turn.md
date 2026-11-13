@@ -66,9 +66,9 @@ Your message took the simplest path. Other turns differ from it in these common 
 - **Approval:** A tool can ask a person for approval. The turn then saves a checkpoint and pauses, and the approval resumes it from the checkpoint on any main.
 - **Multi-main:** Mains relay the stream over pubsub, so a second tab or the Stop button works on any main.
 
-The agent runtime comes from `@n8n/agents`, a library that knows nothing about n8n. Two products build on it: the `agents` module, which runs the agents that users build, and the n8n Assistant in `@n8n/instance-ai`, which builds and fixes workflows for the user. The Assistant has its own threads and event log, and it reaches n8n through an adapter service.
+The agent runtime comes from `@n8n/agents`, a library that knows nothing about n8n. Two products build on it. The `agents` module runs the agents that users build. The n8n Assistant in `@n8n/instance-ai` builds and fixes workflows for the user. The Assistant has its own threads and event log, and it reaches n8n through an adapter service.
 
-The **AI Agent** node is not part of this runtime. It is a node inside a workflow. When its model asks for a tool, the node asks the engine to run the tool nodes that connect to it, and the whole loop stays inside one execution.
+The **AI Agent** node is not part of this runtime. It is a node inside a workflow. When its model asks for a tool, the node asks the engine to run the tool nodes that connect to it. The whole loop stays inside one execution.
 
 ## Read next
 

@@ -6,7 +6,7 @@ contact: ivov
 
 # Roll out a backend change
 
-A risky backend change should be released behind a flag that is disabled by default, and then rolled out to a growing share of instances on n8n Cloud. This page shows how to choose a flag mechanism, what to monitor during the rollout, and what a rollback does not undo.
+Release a risky backend change behind a flag that is off by default. Then turn the flag on for a growing share of instances on n8n Cloud. This page shows how to choose a flag mechanism, what to monitor during the rollout, and what a rollback does not undo.
 
 ## Choose a flag mechanism
 

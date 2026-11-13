@@ -6,7 +6,7 @@ contact: kgrhartlage
 
 # Governance
 
-Admins of large teams use governance features to review workflows before publication, hide execution data, count executions, move workflows between instances, and share values between workflows.
+Governance features help the admins of large teams. Admins use them to review workflows before publication, hide execution data, count executions, move workflows between instances, and share values between workflows.
 
 ## Workflow reviews
 

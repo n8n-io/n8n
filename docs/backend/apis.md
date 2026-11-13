@@ -25,7 +25,7 @@ Before the method runs, n8n checks, in this order:
 
 Decorators on the method declare the license and the permission that the route needs.
 
-To read the body or the query of a request, use a data transfer object (DTO), i.e. a class from `@n8n/api-types` that holds a Zod schema. If the request does not match the schema, n8n answers 400.
+To read the body or the query of a request, use a data transfer object (DTO). A DTO is a class from `@n8n/api-types` that holds a Zod schema. If the request does not match the schema, n8n answers 400.
 
 n8n sends the value that the method returns as JSON, under the key `data`. If the method throws, the error class sets the status code:
 
@@ -47,8 +47,8 @@ The build generates the OpenAPI document from the DTOs of the endpoints, so a ch
 
 A REST route answers once. To show progress while work runs, the backend uses one of two mechanisms:
 
-- **Push:** Each editor tab keeps a WebSocket connection to a main open, and the backend sends messages over it at any time (e.g. updates on manual executions).
-- **Streamed response:** The backend keeps the response to one request open, and writes each part when it is ready (e.g. agent chat, n8n Assistant, streaming webhooks).
+- **Push:** Each editor tab keeps a WebSocket connection to a main open. The backend sends messages over it at any time, e.g. updates on manual executions.
+- **Streamed response:** The backend keeps the response to one request open, and writes each part when it is ready. Examples are agent chat, the n8n Assistant, and streaming webhooks.
 
 > [!WARNING]
 > **When a connection drops, the data in transit is lost.** Only the n8n Assistant replays the missed parts. Send over push only the state that the editor can also fetch again.
@@ -57,7 +57,7 @@ The types of push messages are in `@n8n/api-types`.
 
 In multi-main, each tab connects to one main. Push can address a message in two ways:
 
-- **To one tab:** n8n pubsub relays the message to the main of that tab, so the tab always gets it (e.g. a worker sends the progress of a manual execution).
+- **To one tab:** n8n pubsub relays the message to the main of that tab, so the tab always gets it. For example, a worker sends the progress of a manual execution.
 - **To a user:** n8n does not relay the message. If the user has tabs on two mains, only the tabs on the main that sends the message get it.
 
 ## Quiz

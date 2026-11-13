@@ -12,7 +12,7 @@ This page explains how n8n checks the license, how quotas limit a feature, and w
 
 ## Licensed features
 
-A license turns on paid features, and sets **quotas** that limit how much of a feature an instance can use, e.g. the number of users. Code asks `LicenseState` if a feature is on, or for the value of a quota. n8n checks a quota where the code uses it, e.g. when a user creates a team project. `LICENSE_FEATURES` and `LICENSE_QUOTAS` in `@n8n/constants` list all features and quotas.
+A license turns on paid features. It also sets **quotas** that limit how much of a feature an instance can use, e.g. the number of users. Code asks `LicenseState` if a feature is on, or for the value of a quota. n8n checks a quota where the code uses it, e.g. when a user creates a team project. `LICENSE_FEATURES` and `LICENSE_QUOTAS` in `@n8n/constants` list all features and quotas.
 
 Files and folders with `.ee` in the name are under the n8n Enterprise License, not the Sustainable Use License. n8n does not check this suffix at runtime, so paid code still needs a license check.
 

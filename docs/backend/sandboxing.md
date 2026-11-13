@@ -29,7 +29,7 @@ The frontend still evaluates expressions with the legacy engine, but is moving t
 
 ## Code node
 
-A Code node runs JavaScript or Python in a [task runner](https://github.com/n8n-io/task-runner-launcher), i.e. a separate process next to the main in regular mode, or next to the worker in queue mode.
+A Code node runs JavaScript or Python in a [task runner](https://github.com/n8n-io/task-runner-launcher). The task runner is a separate process next to the main in regular mode, or next to the worker in queue mode.
 
 By default (`N8N_RUNNERS_MODE=internal`), the runner is a child process of n8n in the same container. It gets only a set of allowed environment variables, but it shares the files and the OS user of n8n. In `external` mode, the runner is in a sidecar container, so the code cannot reach the memory, environment variables, or files of n8n. In both modes, if the code crashes or goes over the heap limit of the runner, only the runner fails. In `internal` mode, the runner and n8n share the memory limit of the container. If the container runs out of memory, the system can stop n8n too.
 
@@ -45,7 +45,7 @@ Unlike a task runner, an isolate runs inside the n8n process. If a custom tool r
 
 <!-- contact: Cadiac -->
 
-The [n8n Assistant](ai-functionality.md#n8n-assistant) writes the source code of a workflow, and compiles it in a remote sandbox, so that its file writes and commands do not run on the n8n host. Without a sandbox, the Assistant cannot build workflows.
+The [n8n Assistant](ai-functionality.md#n8n-assistant) writes the source code of a workflow, and compiles it in a remote sandbox. Then its file writes and commands do not run on the n8n host. Without a sandbox, the Assistant cannot build workflows.
 
 ## Quiz
 
