@@ -182,7 +182,8 @@ describe('StreamSink', () => {
 			const controller = new AbortController();
 
 			const pending = sink.callModel(callContext(model, controller.signal));
-			const assertion = expect(pending).rejects.toBeDefined();
+			// The abort reason proves the wait was interrupted. A Flex error thrown without waiting would carry another message.
+			const assertion = expect(pending).rejects.toThrow('stopped');
 			await vi.advanceTimersByTimeAsync(10);
 			controller.abort(new Error('stopped'));
 			await assertion;
