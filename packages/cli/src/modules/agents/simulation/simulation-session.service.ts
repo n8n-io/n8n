@@ -7,7 +7,8 @@ import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
-import { nodeNameToToolName } from 'n8n-workflow';
+import { isDeepStrictEqual } from 'node:util';
+import { jsonParse, nodeNameToToolName } from 'n8n-workflow';
 
 import { TtlMap } from '@/utils/ttl-map';
 
@@ -24,7 +25,12 @@ import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
-import type { SimulatedAgent, SimulatedTool, SimulationWorld } from './tool-simulation.contracts';
+import type {
+	SimulatedAgent,
+	SimulatedTool,
+	SimulationWorld,
+	StoredTestChat,
+} from './tool-simulation.contracts';
 
 export interface OpenSimulationInput {
 	user: User;
@@ -45,6 +51,9 @@ export class SimulationSessionService {
 
 	private readonly opening = new Map<string, Promise<SimulationSession | undefined>>();
 
+	/** What each cached session last read from or wrote to its thread. */
+	private readonly knownStored = new WeakMap<SimulationSession, StoredTestChat | null>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly flagGate: SafeTestingFlagGate,
@@ -61,7 +70,9 @@ export class SimulationSessionService {
 		// A chat that is already a test run stays one, even if the flag reads off for a moment.
 		const key = sessionKey(input);
 		const cached = this.sessions.get(key);
-		if (cached) {
+		// Another main may have run a turn since, and its world is newer than the cached one.
+		if (cached && (await this.storedChanged(cached))) this.sessions.delete(key);
+		else if (cached) {
 			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
 			cached.updateCapabilities(
@@ -120,6 +131,7 @@ export class SimulationSessionService {
 			queueMode: this.executionsConfig.mode === 'queue',
 			previousWorld: savedWorld,
 		});
+		this.knownStored.set(session, asStored(stored ?? null));
 		this.sessions.set(sessionKey(input), session);
 		return session;
 	}
@@ -130,14 +142,21 @@ export class SimulationSessionService {
 	 * the turn rather than letting a later turn run live.
 	 */
 	async saveTestChat(session: SimulationSession): Promise<void> {
+		const stored = session.storedTestChat();
 		const result = await this.threadRepository.update(
 			{ id: session.testChatId },
-			{ simulation: session.storedTestChat() },
+			{ simulation: stored },
 		);
 		// Without a stored marker a later turn could run live, so the turn must not go on.
 		if (result?.affected === 0) {
 			throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
 		}
+		this.knownStored.set(session, asStored(stored));
+	}
+
+	private async storedChanged(session: SimulationSession): Promise<boolean> {
+		const thread = await this.threadRepository.findOneBy({ id: session.testChatId });
+		return !isDeepStrictEqual(thread?.simulation ?? null, this.knownStored.get(session) ?? null);
 	}
 
 	async markExecutionSimulated(executionId: string): Promise<void> {
@@ -313,4 +332,9 @@ function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInpu
 function withBlockReason(tool: ToolTestCapability): ToolTestCapability {
 	if (tool.testability !== 'blocked' || tool.reason) return tool;
 	return { ...tool, reason: 'unsupported_by_simulator' };
+}
+
+/** As the thread column stores it: JSON drops `undefined` fields, so compare that form. */
+function asStored(stored: StoredTestChat | null): StoredTestChat | null {
+	return stored === null ? null : jsonParse<StoredTestChat>(JSON.stringify(stored));
 }
