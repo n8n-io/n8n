@@ -1998,8 +1998,8 @@ describe('TelemetryEventRelay', () => {
 		it('should buffer on `public-api-invoked` event', () => {
 			const event: RelayEventMap['public-api-invoked'] = {
 				userId: 'user123',
-				path: '/api/v1/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				apiVersion: 'v1',
 				userAgent: 'n8n-cli',
 				client: 'editor_ui',
@@ -2009,8 +2009,8 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.trackApiInvocation).toHaveBeenCalledWith({
 				user_id: 'user123',
-				path: '/api/v1/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'editor_ui',
 				user_agent: 'n8n-cli',
