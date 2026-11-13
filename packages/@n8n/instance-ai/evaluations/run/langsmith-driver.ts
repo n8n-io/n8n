@@ -24,6 +24,7 @@ import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './
 import { parseTargetOutput, reshapeLangSmithRuns, type TargetOutput } from './reshape';
 import { partialIsolationWarning } from '../cli/args';
 import type { CliArgs } from '../cli/args';
+import type { AssistantRuntime } from '../clients/assistant-agents-api';
 import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
 import { compareBuckets, type ComparisonOutcome } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
@@ -269,6 +270,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			// is the in-n8n agent and args.buildModel is unused.
 			buildModel: args.buildViaMcp ? args.buildModel : undefined,
 			mcpBuildSpend,
+			assistantRuntime: args.assistantRuntime,
 		});
 
 		await writePerRunPassMetrics({
@@ -358,6 +360,8 @@ async function updateExperimentAggregates(config: {
 	 *  next to build_model so the experiment carries its own cost record — the
 	 *  external build isn't traced, so LangSmith can't compute this itself. */
 	mcpBuildSpend?: McpBuildSpend[];
+	/** Recorded only for the Agents runtime, so Instance AI experiments keep their metadata. */
+	assistantRuntime?: AssistantRuntime;
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
 		config;
@@ -381,6 +385,7 @@ async function updateExperimentAggregates(config: {
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
 		...(config.buildModel ? { build_model: config.buildModel } : {}),
+		...(config.assistantRuntime === 'agents' ? { assistant_runtime: 'agents' } : {}),
 		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
 	};
 

@@ -3098,6 +3098,9 @@ export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
 export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
 	projectId: z.string().min(1),
+	/** Where the thread comes from. The route stores it in the thread metadata for the trace. */
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
 }) {}
 
 /**
