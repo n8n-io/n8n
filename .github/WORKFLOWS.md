@@ -446,7 +446,7 @@ ci-master.yml
     └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
-    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (minor releases)
+    ├──────────────────────────▶  release-setup-trusted-publishing.yml  (setup on minor releases; no-op otherwise)
     │                                 └──────────▶  release-publish-new-package.yml
     ├──────────────────────────▶  docker-build-push.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
@@ -811,7 +811,7 @@ Workflows with `workflow_call` trigger:
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
 | `sbom-validation-callable.yml`     | `sha`                                         | Read-only SBOM validation |
 | `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
-| `release-setup-trusted-publishing.yml` | none                                       | Find and configure unpublished workspace packages |
+| `release-setup-trusted-publishing.yml` | `setup_required`                           | Find and configure unpublished workspace packages |
 | `release-publish-new-package.yml`  | `package-path`                                | Publish and configure one package |
 
 ---

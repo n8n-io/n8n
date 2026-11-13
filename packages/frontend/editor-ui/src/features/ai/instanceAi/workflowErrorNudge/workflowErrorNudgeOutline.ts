@@ -1,4 +1,3 @@
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 // Builds the animated border drawn around the "Fix with n8n Assistant" button.
 export interface NudgeOutlineInput {
 	width: number;
@@ -54,15 +53,38 @@ function roundedBottomPath(
 	].join(' ');
 }
 
+// Computed border-radius can be 9999px. Scale every corner by the same factor
+// the browser uses, so a pill keeps equal radii instead of losing its bottom corners.
+function usedCornerRadii(
+	top: number,
+	bottom: number,
+	width: number,
+	height: number,
+): { topRadius: number; bottomRadius: number } {
+	const topRadius = Math.max(top, 0);
+	const bottomRadius = Math.max(bottom, 0);
+	const factors: number[] = [];
+	const topPair = topRadius * 2;
+	const bottomPair = bottomRadius * 2;
+	const sidePair = topRadius + bottomRadius;
+	if (topPair > width) factors.push(width / topPair);
+	if (bottomPair > width) factors.push(width / bottomPair);
+	if (sidePair > height) factors.push(height / sidePair);
+
+	const factor = factors.length > 0 ? Math.min(...factors) : 1;
+	return { topRadius: topRadius * factor, bottomRadius: bottomRadius * factor };
+}
+
 export function buildNudgeOutline(input: NudgeOutlineInput): NudgeOutline | undefined {
 	const { width, height, stroke } = input;
 	if (width <= 0 || height <= 0 || stroke <= 0) return undefined;
 
-	const topRadius = Math.min(input.radius, width / 2, height);
-	let bottomRadius = Math.min(Math.max(input.bottomRadius ?? 0, 0), width / 2, height);
-	if (topRadius + bottomRadius > height && bottomRadius > 0) {
-		bottomRadius = Math.max(height - topRadius, 0);
-	}
+	const { topRadius, bottomRadius } = usedCornerRadii(
+		input.radius,
+		input.bottomRadius ?? 0,
+		width,
+		height,
+	);
 
 	const topStraight = width - topRadius * 2;
 	if (topStraight <= 0) return undefined;
