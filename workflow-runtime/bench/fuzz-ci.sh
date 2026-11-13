@@ -13,6 +13,10 @@
 # A failing input is copied to bench/fuzz-crashes/<target>.bin.
 #   bench/fuzz-ci.sh                       all targets
 #   RUNS=50K PAR=6 bench/fuzz-ci.sh "fuzz json decode and encode"
+#   SEED=0x98c2dc46 bench/fuzz-ci.sh "fuzz regex compile and exec"   replay a seed
+# Pass a seed as `--seed=0x...` (with "="): `zig build` rejects `--seed 0x...`.
+# The seed fixes the fuzzer's random choices, but a run on a fresh cache that
+# shares the CPU with other runs can still differ.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 RUNS=${RUNS:-3K}
@@ -33,7 +37,7 @@ run_one() {
   local t=$1 slug=${1// /-}
   local log="$OUT/$slug.log"
   # One worker (-j1): workers of one run also race on <cache>/tmp.
-  zig build fuzz -Drelease=true -Dfuzz-filter="$t" --fuzz="$RUNS" -j1 --cache-dir "$OUT/cache-$slug" > "$log" 2>&1
+  zig build fuzz -Drelease=true -Dfuzz-filter="$t" --fuzz="$RUNS" ${SEED:+--seed="$SEED"} -j1 --cache-dir "$OUT/cache-$slug" > "$log" 2>&1
   local rc=$?
   # The fuzzer rewrites its output line: one line per update.
   local text
@@ -43,6 +47,9 @@ run_one() {
     saved=$(grep -ao "input saved to '[^']*'" <<< "$text" | head -1 | sed "s/input saved to '//; s/'$//")
     [ -n "$saved" ] && [ -f "$saved" ] && cp "$saved" "bench/fuzz-crashes/$slug.bin"
     echo "FAIL $t: a failing input (bench/fuzz-crashes/$slug.bin)"
+    local seed
+    seed=$(grep -ao -- '--seed=0x[0-9a-f]*' <<< "$text" | head -1)
+    [ -n "$seed" ] && echo "  replay: SEED=${seed#--seed=} RUNS=$RUNS bench/fuzz-ci.sh \"$t\""
     tail -40 <<< "$text"
     return 1
   fi
