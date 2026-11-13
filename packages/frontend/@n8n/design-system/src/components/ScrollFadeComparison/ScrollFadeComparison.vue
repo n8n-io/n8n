@@ -4,10 +4,12 @@ import { nextTick, onMounted, ref } from 'vue';
 import Combobox from '../../v2/components/Combobox/Combobox.vue';
 import type { ComboboxItem } from '../../v2/components/Combobox/Combobox.types';
 import N8nButton from '../N8nButton/Button.vue';
+import N8nCodeBlock from '../N8nCodeBlock/CodeBlock.vue';
 import ContextMenu from '../N8nContextMenu/ContextMenu.vue';
 import type { ContextMenuNode } from '../N8nContextMenu/ContextMenu.types';
 import N8nDataTableServer, { type TableHeader } from '../N8nDataTableServer/N8nDataTableServer.vue';
 import DropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import type {
 	DropdownMenuExposed,
 	DropdownMenuItemProps,
@@ -65,6 +67,11 @@ const accountHeaders: Array<TableHeader<Account>> = [
 	{ title: 'Projects', key: 'projects', width: 320, disableSort: true },
 ];
 
+const codeSample = Array.from(
+	{ length: 24 },
+	(_, index) => `const line${String(index + 1).padStart(2, '0')} = ${index + 1};`,
+).join('\n');
+
 const contextBeforeTrigger = ref<HTMLElement | null>(null);
 const contextAfterTrigger = ref<HTMLElement | null>(null);
 const dropdownBefore = ref<DropdownMenuExposed | null>(null);
@@ -103,7 +110,9 @@ onMounted(() => {
 		<header :class="$style.intro">
 			<h1 :class="$style.title">Scroll fade comparison</h1>
 			<p :class="$style.note">
-				Temporary page for a recording. Scroll each list to the end. Delete this story afterwards.
+				Temporary page for a recording. Scroll each pane to the end. The fade hides when nothing is
+				left past that edge. The icon picker grid uses the same bottom fade. Delete this story
+				afterwards.
 			</p>
 		</header>
 
@@ -215,6 +224,73 @@ onMounted(() => {
 		</section>
 
 		<section :class="$style.section">
+			<h2 :class="$style.heading">Scroll area</h2>
+			<p :class="$style.note">
+				Both ends used to fade even at rest. Each edge now fades only while content is hidden past
+				it.
+			</p>
+			<div :class="$style.pair">
+				<div :class="$style.stage">
+					<p :class="$style.label">Before</p>
+					<N8nScrollArea
+						class="scroll-fade-recording-scroll scroll-fade-recording-scroll-before"
+						edge-fade="y"
+						max-height="var(--spacing--5xl)"
+						type="hover"
+					>
+						<ul :class="$style.list">
+							<li v-for="label in labels" :key="`scroll-before-${label}`">{{ label }}</li>
+						</ul>
+					</N8nScrollArea>
+				</div>
+				<div :class="$style.stage">
+					<p :class="$style.label">After</p>
+					<N8nScrollArea
+						class="scroll-fade-recording-scroll"
+						edge-fade="y"
+						max-height="var(--spacing--5xl)"
+						type="hover"
+					>
+						<ul :class="$style.list">
+							<li v-for="label in labels" :key="`scroll-after-${label}`">{{ label }}</li>
+						</ul>
+					</N8nScrollArea>
+				</div>
+			</div>
+		</section>
+
+		<section :class="$style.section">
+			<h2 :class="$style.heading">Code block</h2>
+			<p :class="$style.note">
+				The last line used to stay faded. The fade now hides at the end of the code.
+			</p>
+			<div :class="$style.pair">
+				<div :class="$style.stage">
+					<p :class="$style.label">Before</p>
+					<N8nCodeBlock
+						class="scroll-fade-recording-code scroll-fade-recording-code-before"
+						:code="codeSample"
+						language="typescript"
+						:copyable="false"
+						:max-height="160"
+						aria-label="Code sample before"
+					/>
+				</div>
+				<div :class="$style.stage">
+					<p :class="$style.label">After</p>
+					<N8nCodeBlock
+						class="scroll-fade-recording-code"
+						:code="codeSample"
+						language="typescript"
+						:copyable="false"
+						:max-height="160"
+						aria-label="Code sample after"
+					/>
+				</div>
+			</div>
+		</section>
+
+		<section :class="$style.section">
 			<h2 :class="$style.heading">Data table</h2>
 			<p :class="$style.note">
 				This behaviour is unchanged. Scroll sideways. The right fade hides at the last column. The
@@ -304,6 +380,18 @@ onMounted(() => {
 	font-size: var(--font-size--sm);
 }
 
+.list {
+	margin: 0;
+	padding: var(--spacing--xs);
+	list-style: none;
+}
+
+.list li {
+	padding-block: var(--spacing--2xs);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+}
+
 .tableFrame {
 	width: calc(var(--spacing--5xl) * 2);
 	max-width: 100%;
@@ -346,5 +434,35 @@ div:has(> .scroll-fade-recording-dropdown) {
 
 .scroll-fade-recording-no-fade [data-scroll-mask-bottom] {
 	mask-image: none !important;
+}
+
+.scroll-fade-recording-scroll {
+	width: var(--spacing--5xl);
+	border: var(--border);
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
+}
+
+.scroll-fade-recording-scroll-before [data-reka-scroll-area-viewport] {
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--spacing--sm),
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	) !important;
+}
+
+.scroll-fade-recording-code {
+	width: 100%;
+}
+
+.scroll-fade-recording-code-before pre {
+	mask-image: linear-gradient(
+		to bottom,
+		black 0,
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	) !important;
 }
 </style>

@@ -10,7 +10,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Temporary page for a scroll-fade recording. Delete this story after the recording.',
+					'Temporary page for a scroll-fade recording. Scroll each pane to the end. Delete this story after the recording.',
 			},
 		},
 	},
