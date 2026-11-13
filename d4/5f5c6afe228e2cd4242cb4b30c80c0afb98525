@@ -1,0 +1,31 @@
+packages/cli/src/services/__tests__/password.utility.test.ts
+  s_252e1a6ea6d36e::t_2cedf54f4b0cd5 1-18,20-28,30-38,40-46
+  s_252e1a6ea6d36e::t_8f8231848f8cdd 19,29,39
+packages/cli/src/services/__tests__/password.utility.integration.test.ts
+  s_252e1a6ea6d36e::t_2cedf54f4b0cd5 3,51-64
+packages/cli/src/services/password.utility.ts
+  s_252e1a6ea6d36e::t_00539bdf84a13c 6-9
+  s_252e1a6ea6d36e::t_289244df4b542c 10,19
+packages/cli/src/auth/handlers/email.auth-handler.ts
+  s_252e1a6ea6d36e::t_535dd320da22a9 28
+  s_252e1a6ea6d36e::t_289244df4b542c 26-27
+packages/cli/src/auth/handlers/__tests__/email.auth-handler.test.ts
+  s_252e1a6ea6d36e::t_00539bdf84a13c 56,101
+  s_252e1a6ea6d36e::t_2cedf54f4b0cd5 62-81,112-119,121-125,127-135,137-141,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d45f5c6afe228e2cd4242cb4b30c80c0afb98525",
+  "prompts": {},
+  "sessions": {
+    "s_252e1a6ea6d36e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c65594-982b-472a-af46-ac1e4a4b6266",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
