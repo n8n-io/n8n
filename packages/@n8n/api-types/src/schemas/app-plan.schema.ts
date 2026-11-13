@@ -76,11 +76,34 @@ export const appPlanComponentSchema = z.object({
 		.object({
 			html: z.string().min(1).max(20000),
 			css: z.string().max(10000).optional(),
+			/**
+			 * `mid`: the real structure, labels and sample content in neutral grays.
+			 * `high`: the finished look with colors and style. Defaults to `mid`.
+			 */
+			fidelity: z.enum(['mid', 'high']).optional(),
+			/**
+			 * Other states of the part with the same CSS, e.g. `Empty`, `Loading` or
+			 * `Error`. `html` is the main state with data.
+			 */
+			states: z
+				.array(
+					z.object({
+						name: z.string().trim().min(1).max(24),
+						html: z.string().min(1).max(10000),
+					}),
+				)
+				.max(4)
+				.optional(),
 		})
 		.optional(),
 	status: appPlanComponentStatusSchema.optional(),
 	/** The id of a screen that opens when the user clicks this part, e.g. a row of a list. */
 	opens: planIdSchema.optional(),
+	/**
+	 * The id of another part on the same screen that contains this one, e.g. an
+	 * Approve button in the footer of the draft panel.
+	 */
+	inside: planIdSchema.optional(),
 });
 export type AppPlanComponent = z.infer<typeof appPlanComponentSchema>;
 
@@ -97,6 +120,28 @@ export const appPlanScreenSchema = z.object({
 		.max(80)
 		.optional(),
 	components: z.array(appPlanComponentSchema).min(1).max(30),
+	/**
+	 * The layout of the screen, top to bottom: rows of columns with relative widths,
+	 * like a CSS grid. Each column stacks the parts it lists. Parts with `inside` are
+	 * placed in their container, not here.
+	 */
+	rows: z
+		.array(
+			z.object({
+				columns: z
+					.array(
+						z.object({
+							/** Relative width, e.g. 2 and 1 for a 2:1 split. Defaults to 1. */
+							width: z.number().int().min(1).max(12).optional(),
+							parts: z.array(planIdSchema).min(1).max(12),
+						}),
+					)
+					.min(1)
+					.max(4),
+			}),
+		)
+		.max(12)
+		.optional(),
 });
 export type AppPlanScreen = z.infer<typeof appPlanScreenSchema>;
 
@@ -121,6 +166,33 @@ export const appPlanSchema = z
 		plan.screens.forEach((screen, s) =>
 			screen.components.forEach((c, i) => add(c.id, ['screens', s, 'components', i, 'id'])),
 		);
+		plan.screens.forEach((screen, s) => {
+			const local = new Map(screen.components.map((c) => [c.id, c]));
+			screen.rows?.forEach((row, r) =>
+				row.columns.forEach((column, c) =>
+					column.parts.forEach((id, p) => {
+						if (!local.has(id)) {
+							ctx.addIssue({
+								code: z.ZodIssueCode.custom,
+								message: `Unknown part "${id}" in the rows of screen "${screen.id}"`,
+								path: ['screens', s, 'rows', r, 'columns', c, 'parts', p],
+							});
+						}
+					}),
+				),
+			);
+			screen.components.forEach((component, i) => {
+				if (!component.inside) return;
+				const parent = local.get(component.inside);
+				if (!parent || parent.inside || parent.id === component.id) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `"inside" of "${component.id}" must name a top-level part on the same screen`,
+						path: ['screens', s, 'components', i, 'inside'],
+					});
+				}
+			});
+		});
 		plan.buildOrder?.forEach((id, i) => {
 			if (!ids.has(id)) {
 				ctx.addIssue({

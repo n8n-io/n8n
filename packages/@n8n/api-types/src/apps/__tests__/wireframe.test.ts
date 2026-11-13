@@ -233,3 +233,107 @@ describe('pages', () => {
 		).toBe(false);
 	});
 });
+
+describe('rows, columns and nesting', () => {
+	const laidOut = appPlanSchema.parse({
+		screens: [
+			{
+				id: 'desk',
+				name: 'Desk',
+				components: [
+					{ id: 'kpis', kind: 'kpi', label: 'Today', items: ['Waiting'] },
+					{ id: 'drafts', kind: 'table', label: 'Drafts' },
+					{ id: 'panel', kind: 'detail', label: 'Selected draft' },
+					{ id: 'approve', kind: 'button', label: 'Approve', inside: 'panel' },
+					{ id: 'forgotten', kind: 'text', label: 'Footer note' },
+				],
+				rows: [
+					{ columns: [{ parts: ['kpis'] }] },
+					{
+						columns: [
+							{ width: 2, parts: ['drafts'] },
+							{ width: 1, parts: ['panel'] },
+						],
+					},
+				],
+			},
+		],
+	});
+	const html = renderWireframeBody(laidOut);
+
+	it('renders each row as a grid with the column widths', () => {
+		expect(html).toContain('grid-template-columns: 2fr 1fr');
+		expect(html.indexOf('data-plan-id="kpis"')).toBeLessThan(html.indexOf('data-plan-id="drafts"'));
+	});
+
+	it('puts a part inside its container', () => {
+		const panel = html.indexOf('data-plan-id="panel"');
+		const inside = html.indexOf('class="wf-inside"', panel);
+		expect(inside).toBeGreaterThan(panel);
+		expect(html.indexOf('data-plan-id="approve"')).toBeGreaterThan(inside);
+		expect(html.match(/data-plan-id="approve"/g)).toHaveLength(1);
+	});
+
+	it('still shows parts that the rows leave out', () => {
+		expect(html).toContain('data-plan-id="forgotten"');
+	});
+
+	it('rejects rows with unknown parts and nesting two levels deep', () => {
+		const screen = laidOut.screens[0];
+		expect(
+			appPlanSchema.safeParse({
+				screens: [{ ...screen, rows: [{ columns: [{ parts: ['nope'] }] }] }],
+			}).success,
+		).toBe(false);
+		expect(
+			appPlanSchema.safeParse({
+				screens: [
+					{
+						...screen,
+						components: [
+							...screen.components,
+							{ id: 'deep', kind: 'button', label: 'Deep', inside: 'approve' },
+						],
+					},
+				],
+			}).success,
+		).toBe(false);
+	});
+});
+
+describe('detail fidelity and states', () => {
+	const part = (detail: Record<string, unknown>) =>
+		appPlanSchema.parse({
+			screens: [
+				{
+					id: 'home',
+					name: 'Home',
+					components: [{ id: 'drafts', kind: 'table', label: 'Drafts', detail }],
+				},
+			],
+		});
+
+	it('keeps mid fidelity in grays and lets high fidelity show colors', () => {
+		expect(renderWireframeBody(part({ html: '<p>Row</p>' }))).toContain('filter:grayscale(1)');
+		expect(renderWireframeBody(part({ html: '<p>Row</p>', fidelity: 'high' }))).not.toContain(
+			'grayscale',
+		);
+	});
+
+	it('renders each state behind a CSS-only switcher', () => {
+		const html = renderWireframeBody(
+			part({
+				html: '<p>Row</p>',
+				states: [
+					{ name: 'Empty', html: '<p>No drafts yet</p>' },
+					{ name: 'Error', html: '<p onclick="x()">Could not load</p>' },
+				],
+			}),
+		);
+		expect(html).toContain('<label for="wf-s1">Empty</label>');
+		expect(html).toContain('class="wf-state wf-s2"');
+		expect(html).toContain('No drafts yet');
+		expect(html).not.toContain('onclick');
+		expect(html).not.toContain('<script');
+	});
+});

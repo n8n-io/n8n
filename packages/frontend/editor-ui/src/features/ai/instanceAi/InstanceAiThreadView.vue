@@ -270,7 +270,15 @@ const preview = useCanvasPreview({
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
 
 /** "Detail this part" in the plan view: asks the Assistant for a high-fidelity version of one part. */
-async function detailPlanPart({ planId, label }: { planId: string; label: string }) {
+async function detailPlanPart({
+	planId,
+	label,
+	level,
+}: {
+	planId: string;
+	label: string;
+	level: 'mid' | 'high' | 'states';
+}) {
 	const item = thread.actionableConfirmations.find(
 		(pending) => pending.toolCall.confirmation.appBlueprint !== undefined,
 	);
@@ -281,7 +289,12 @@ async function detailPlanPart({ planId, label }: { planId: string; label: string
 		approved: false,
 		blueprint,
 		revise: {
-			feedback: `Show the "${label}" part (plan id \`${planId}\`) in high fidelity: add a \`detail\` to that component with the HTML and CSS it will have in the finished app, filled with believable sample data. Keep the rest of the plan as it is.`,
+			feedback:
+				level === 'states'
+					? `Add states to the "${label}" part (plan id \`${planId}\`): \`detail.states\` with the edge cases that matter for it, for example Empty, Loading and Error, with the same structure, CSS and fidelity as its main state. Keep the rest of the plan as it is.`
+					: level === 'mid'
+						? `Add mid-fidelity detail to the "${label}" part (plan id \`${planId}\`): a \`detail\` with \`fidelity: "mid"\` that shows its real structure, labels and believable sample content, in neutral grays without brand colors or decoration. Keep the rest of the plan as it is.`
+						: `Take the "${label}" part (plan id \`${planId}\`) to high fidelity: update its \`detail\` to \`fidelity: "high"\` with the colors, type and style it will have in the finished app, and keep its structure and sample content. Keep the rest of the plan as it is.`,
 			planIds: [planId],
 		},
 	});

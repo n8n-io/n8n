@@ -28,8 +28,11 @@ export interface PlanComponentInfo {
 	title: string;
 	kind: string;
 	status: 'planned' | 'building' | 'built';
-	/** The part has a high-fidelity version with sample data. */
+	/** The part has a detailed version with sample data. */
 	detailed: boolean;
+	fidelity?: 'mid' | 'high';
+	/** Names of the other states of a detailed part. */
+	states: string[];
 	data?: PlanResourceInfo & { fields: string[]; shows?: string };
 	action?: PlanResourceInfo & { does: string };
 	link?: { label: string; href: string };
@@ -76,6 +79,8 @@ export function describePlanComponent(
 		kind: component.kind,
 		status: component.status ?? 'planned',
 		detailed: component.detail !== undefined,
+		fidelity: component.detail ? (component.detail.fidelity ?? 'mid') : undefined,
+		states: component.detail?.states?.map((state) => state.name) ?? [],
 		lines,
 	};
 	if (component.data) {
@@ -203,7 +208,12 @@ const DETAIL_BASE_CSS =
 	':host{display:block;position:relative}' +
 	'.wf-sample{position:absolute;top:-9px;right:12px;z-index:2;padding:1px 7px;border-radius:999px;background:#fff4e5;' +
 	'color:#b25e00;font:600 10px/16px system-ui,sans-serif;pointer-events:none}' +
-	'.wf-hifi-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400}';
+	'.wf-hifi-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400}' +
+	'.wf-states-radio{position:absolute;opacity:0;pointer-events:none}' +
+	'.wf-states{position:absolute;top:-11px;left:10px;z-index:2;display:flex;gap:2px;padding:2px;border-radius:999px;' +
+	'background:#fff;border:1px solid #d6d6d2;font:500 10.5px/16px system-ui,sans-serif}' +
+	'.wf-states label{padding:0 8px;border-radius:999px;color:#6f6f6f;cursor:pointer}' +
+	'.wf-state{display:none}';
 
 /**
  * The content of the shadow root of a detailed part: its own styles, the sample
@@ -214,7 +224,35 @@ export function detailShadowContent(component: AppPlanComponent): string {
 	if (!component.detail) return '';
 	// CSS never needs `<`, so dropping it keeps the text from closing the style element.
 	const css = (component.detail.css ?? '').replace(/</g, '');
-	return `<style>${DETAIL_BASE_CSS}${css}</style><span class="wf-sample">Sample data</span><div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div>`;
+	// Mid fidelity stays in grays, also when the markup brings colors.
+	const mid = component.detail.fidelity !== 'high' ? '.wf-hifi-body{filter:grayscale(1)}' : '';
+	const states = [
+		{ name: 'With data', html: component.detail.html },
+		...(component.detail.states ?? []),
+	];
+	if (states.length === 1) {
+		return `<style>${DETAIL_BASE_CSS}${css}${mid}</style><span class="wf-sample">Sample data</span><div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div><slot></slot>`;
+	}
+	// A CSS-only switcher: it works in the sandboxed plan view and in the app without scripts.
+	const switcher = states
+		.map(
+			(_, n) =>
+				`#wf-s${n}:checked~.wf-hifi-body .wf-s${n}{display:block}#wf-s${n}:checked~.wf-states label[for=wf-s${n}]{background:#2b2b2b;color:#fff}`,
+		)
+		.join('');
+	return [
+		`<style>${DETAIL_BASE_CSS}${css}${mid}${switcher}</style>`,
+		states
+			.map(
+				(_, n) =>
+					`<input class="wf-states-radio" type="radio" name="wf-state" id="wf-s${n}"${n === 0 ? ' checked' : ''}>`,
+			)
+			.join(''),
+		`<div class="wf-states">${states.map((state, n) => `<label for="wf-s${n}">${escapeHtml(state.name)}</label>`).join('')}</div>`,
+		'<span class="wf-sample">Sample data</span>',
+		`<div class="wf-hifi-body">${states.map((state, n) => `<div class="wf-state wf-s${n}">${sanitizeDetailHtml(state.html)}</div>`).join('')}</div>`,
+		'<slot></slot>',
+	].join('');
 }
 
 /**
@@ -242,6 +280,18 @@ export function renderDetailModule(plan: AppPlan): string {
 	].join('\n');
 }
 
+/** Parts placed inside `component`, rendered as its footer. */
+function renderChildren(
+	component: AppPlanComponent,
+	plan: AppPlan,
+	options: WireframeRenderOptions,
+): string {
+	const children = listPlanComponents(plan).filter((c) => c.inside === component.id);
+	return children.length
+		? `<div class="wf-inside">${children.map((c) => renderWireframeBlock(c, plan, options)).join('')}</div>`
+		: '';
+}
+
 export function renderWireframeBlock(
 	component: AppPlanComponent,
 	plan: AppPlan,
@@ -257,6 +307,7 @@ export function renderWireframeBlock(
 			options.vue
 				? ''
 				: `<template shadowrootmode="open">${detailShadowContent(component)}</template>`,
+			renderChildren(component, plan, options),
 			'</div>',
 		].join('');
 	}
@@ -277,6 +328,7 @@ export function renderWireframeBlock(
 			? `<div class="wf-head">${showLabel ? `<span class="wf-label">${escapeHtml(component.label)}</span>` : ''}${markers}</div>`
 			: '',
 		`<div class="wf-body">${blockBody(component, plan)}</div>`,
+		renderChildren(component, plan, options),
 		'</div>',
 	].join('');
 }
@@ -286,23 +338,59 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 	const nav = plan.nav ? renderWireframeBlock(plan.nav, plan, options) : '';
 	const screens = plan.screens
 		.map((screen, i) => {
+			const head = `    <div class="wf-screen-head">${
+				screen.path?.includes(':') && plan.screens[0].id !== screen.id
+					? `<span class="wf-back" data-plan-screen-link="${plan.screens[0].id}">← ${escapeHtml(plan.screens[0].name)}</span>`
+					: ''
+			}<h1 class="wf-screen-title">${escapeHtml(screen.name)}</h1>${
+				screen.path ? `<span class="wf-path">${escapeHtml(screen.path)}</span>` : ''
+			}</div>`;
+			if (screen.rows?.length) {
+				const byId = new Map(screen.components.map((c) => [c.id, c]));
+				const placed = new Set(
+					screen.rows.flatMap((row) => row.columns.flatMap((col) => col.parts)),
+				);
+				// Parts the rows forget still show, in a last full-width row.
+				const rest = screen.components
+					.filter((c) => !c.inside && !placed.has(c.id))
+					.map((c) => c.id);
+				const rows = [...screen.rows, ...(rest.length ? [{ columns: [{ parts: rest }] }] : [])];
+				const body = rows
+					.map((row) => {
+						const widths = row.columns
+							.map((col) => `${'width' in col && col.width ? col.width : 1}fr`)
+							.join(' ');
+						const columns = row.columns
+							.map((col) => {
+								const parts = col.parts
+									.map((id) => byId.get(id))
+									.filter((c): c is AppPlanComponent => c !== undefined && !c.inside)
+									.map((c) => renderWireframeBlock(c, plan, options))
+									.join('\n');
+								return `<div class="wf-col">${parts}</div>`;
+							})
+							.join('\n');
+						return `      <div class="wf-row" style="grid-template-columns: ${widths}">\n${columns}\n      </div>`;
+					})
+					.join('\n');
+				return [
+					`  <section class="wf-screen" data-plan-screen="${screen.id}"${i === 0 ? '' : ' hidden'}>`,
+					head,
+					`    <div class="wf-rows">\n${body}\n    </div>`,
+					'  </section>',
+				].join('\n');
+			}
 			const main = screen.components
-				.filter((c) => c.region !== 'aside')
+				.filter((c) => c.region !== 'aside' && !c.inside)
 				.map((c) => renderWireframeBlock(c, plan, options))
 				.join('\n      ');
 			const aside = screen.components
-				.filter((c) => c.region === 'aside')
+				.filter((c) => c.region === 'aside' && !c.inside)
 				.map((c) => renderWireframeBlock(c, plan, options))
 				.join('\n      ');
 			return [
 				`  <section class="wf-screen" data-plan-screen="${screen.id}"${i === 0 ? '' : ' hidden'}>`,
-				`    <div class="wf-screen-head">${
-					screen.path?.includes(':') && plan.screens[0].id !== screen.id
-						? `<span class="wf-back" data-plan-screen-link="${plan.screens[0].id}">← ${escapeHtml(plan.screens[0].name)}</span>`
-						: ''
-				}<h1 class="wf-screen-title">${escapeHtml(screen.name)}</h1>${
-					screen.path ? `<span class="wf-path">${escapeHtml(screen.path)}</span>` : ''
-				}</div>`,
+				head,
 				'    <div class="wf-columns">',
 				`      <div class="wf-grid">\n      ${main}\n      </div>`,
 				aside ? `      <aside class="wf-aside">\n      ${aside}\n      </aside>` : '',
@@ -358,6 +446,13 @@ export const WIREFRAME_CSS = `
 .wf-page.active { background: #2b2b2b; color: #fff; border-color: #2b2b2b; }
 .wf-page code { font: 11px ui-monospace, Menlo, monospace; opacity: .7; margin-left: 4px; }
 .wf-columns { display: flex; gap: 14px; align-items: flex-start; }
+.wf-rows { display: flex; flex-direction: column; gap: 14px; }
+.wf-row { display: grid; gap: 14px; align-items: start; }
+.wf-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+@media (max-width: 720px) { .wf-row { grid-template-columns: 1fr !important; } }
+.wf-inside { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1.5px dashed var(--wf-line-soft); }
+.wf-hifi > .wf-inside { margin: 0; padding: 10px 14px; }
+.wf-inside > .wf-block { box-shadow: none; }
 .wf-grid { flex: 1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .wf-aside { width: 32%; display: flex; flex-direction: column; gap: 14px; }
 .wf-block { font-family: var(--wf-font); font-weight: 300; font-size: 13px; color: var(--wf-ink); background: var(--wf-panel);
@@ -452,6 +547,8 @@ export const PLAN_OVERLAY_CSS = `
   color: #c2361d; font: 600 12px system-ui, sans-serif; cursor: pointer; }
 .plan-ov-detail:hover:not([disabled]) { background: #ffece8; }
 .plan-ov-detail[disabled] { opacity: .6; cursor: default; }
+.plan-ov-secondary { margin-top: 6px; border-color: #e5e8eb; background: #fff; color: #424a53; }
+.plan-ov-secondary:hover:not([disabled]) { background: #f6f8fa; }
 .plan-ov-foot a { color: #ea4b30; font-weight: 500; text-decoration: none; }
 .plan-ov-foot a:hover { text-decoration: underline; }
 .plan-ov-hl { position: fixed; z-index: 2147483645; pointer-events: none; border-radius: 10px;
@@ -611,7 +708,11 @@ export function planOverlayMain(
 			el('span', 'plan-ov-kind', kindIcons[id === 'shell' ? 'shell' : info.kind] ?? '▢'),
 			el('span', 'plan-ov-title', info.title),
 		);
-		if (info.detailed && !isBuilt(id)) head.append(el('span', 'plan-ov-st detailed', 'Detailed'));
+		if (info.detailed && !isBuilt(id)) {
+			head.append(
+				el('span', 'plan-ov-st detailed', info.fidelity === 'high' ? 'High detail' : 'Mid detail'),
+			);
+		}
 		// Once every part is built, the card only shows what the part is connected to.
 		if (!order.every(isBuilt)) {
 			head.append(
@@ -652,18 +753,37 @@ export function planOverlayMain(
 			tip.append(el('div', 'plan-ov-empty', 'Layout only. No data or workflow behind this part.'));
 		if (config.selectable && id !== 'shell') {
 			const foot = el('div', 'plan-ov-foot');
-			const button = el(
-				'button',
-				'plan-ov-detail',
-				info.detailed ? '✨ Redo the detail' : '✨ Detail this part',
-			);
+			// Each click goes one level deeper: sketch, then structure and content, then the finished look.
+			const level = info.detailed ? 'high' : 'mid';
+			const label = !info.detailed
+				? '✨ Add detail'
+				: info.fidelity === 'high'
+					? '✨ Redo the detail'
+					: '✨ Add colors and style';
+			const button = el('button', 'plan-ov-detail', label);
 			button.setAttribute('type', 'button');
 			button.addEventListener('click', () => {
-				window.parent.postMessage({ source, type: 'detail', planId: id }, '*');
+				window.parent.postMessage({ source, type: 'detail', planId: id, level }, '*');
 				button.textContent = 'Asked the Assistant…';
 				button.setAttribute('disabled', '');
 			});
 			foot.append(button);
+			if (info.detailed) {
+				const statesButton = el(
+					'button',
+					'plan-ov-detail plan-ov-secondary',
+					info.states.length
+						? `◐ Redo the states (${info.states.join(', ')})`
+						: '◐ Add states: empty, loading, error',
+				);
+				statesButton.setAttribute('type', 'button');
+				statesButton.addEventListener('click', () => {
+					window.parent.postMessage({ source, type: 'detail', planId: id, level: 'states' }, '*');
+					statesButton.textContent = 'Asked the Assistant…';
+					statesButton.setAttribute('disabled', '');
+				});
+				foot.append(statesButton);
+			}
 			tip.append(foot);
 		}
 		if (info.link) {

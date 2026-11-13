@@ -122,9 +122,10 @@ The `plan` is the wireframe of the app. Keep it short and concrete:
   more than one screen or needs a title bar.
 - `screens`: each with its `components`, in reading order. A component has a
   short lowercase `id` (for example `drafts-table`), a `kind` (`kpi`, `table`,
-  `list`, `chart`, `detail`, `form`, `filter`, `button`, `text`), a `label`,
-  a `region` (`main` or `aside`) and a `span` of a 12-column grid. Use `items`
-  for table columns, form fields or filter names.
+  `list`, `chart`, `detail`, `form`, `filter`, `button`, `text`) and a
+  `label`. Use `items` for table columns, form fields or filter names.
+- `rows`: the layout of each screen, the way you would build it. See
+  [Lay out a screen](#lay-out-a-screen). Do not use `region` or `span`.
 - Make the wireframe look like the app you will build, so the user approves
   the real thing:
   - A row of KPI cards is one `kpi` component with one item per card, for
@@ -145,6 +146,28 @@ The `plan` is the wireframe of the app. Keep it short and concrete:
 
 Use the same resource names in the plan and in `bindings`.
 
+### Lay out a screen
+
+Lay out each screen as you would in code: `rows` from top to bottom, each with
+one to four `columns` that have a relative `width` and stack their `parts`.
+
+- Fill each row. Do not leave a half-empty row next to one part.
+- Common layouts:
+  - **Dashboard:** a full-width filter bar, a full-width row of KPI cards,
+    then charts side by side (`1:1`) or a chart and a table (`2:1`).
+  - **List and detail on one page:** filters and KPIs on top, then the list
+    (`width` 2) next to a detail panel (`width` 1).
+  - **List and detail page:** the list page has the list at full width with
+    `opens` set. The detail page (`/items/:id`) has the record (`width` 2)
+    and a side panel with metadata or actions (`width` 1).
+  - **Form:** one centered column, or the form (`width` 2) next to help or a
+    summary (`width` 1).
+- Put actions where they belong. A button that acts on the selected record
+  sits `inside` its panel, for example Approve and Reject `inside` the draft
+  panel. A button for the whole page goes in the top row next to the filters.
+- The user can change the layout before approval. After approval, the
+  layout is fixed: build exactly these rows and columns.
+
 ### Pages
 
 Give each screen a `path`. Use a separate page when the user opens one
@@ -157,16 +180,31 @@ records quickly in one view.
 ### Detailed parts
 
 Leave `detail` out by default. Add it only when the user asks to see a part in
-detail, for example with "Detail this part" in the wireframe:
+more detail, for example with "Add detail" in the wireframe. Detail comes in
+two levels, one step at a time:
 
-- `detail.html` is the markup of that one part as it will look in the finished
-  app: the real layout, labels and states, filled with believable sample data
-  that matches the plan (names, numbers, dates). Do not use real data.
-- `detail.css` styles it. n8n scopes it to the part, so use plain class
-  selectors. Match the theme of the blueprint.
+- `fidelity: "mid"` (first step): the real structure of the part, its real
+  labels, columns and states, and believable sample content (names, numbers,
+  dates) that matches the plan. Neutral grays, a plain system font, simple
+  borders. No brand colors, shadows or decoration.
+- `fidelity: "high"` (only when asked): the same structure and content with
+  the colors, type and style of the finished app, matching the theme of the
+  blueprint.
+
+For both levels:
+
+- `detail.html` is the markup of that one part. Do not use real data.
+- `detail.css` styles it. n8n isolates it in its own shadow root, so plain
+  class selectors are fine.
 - Plain HTML and CSS only: no scripts, event handlers, external images or
   fonts. Inline SVG is fine for icons and small charts. Keep it short.
 - Change only the asked part, and keep its `id`, `data` and `action`.
+
+When the user asks for states, add `detail.states`: up to four other states
+of the part, each with a short `name` and its own `html`, for example `Empty`
+(no records yet, with a helpful message), `Loading` and `Error`, or another
+edge case such as a very long text. They share `detail.css`. During the build,
+implement every state the plan shows.
 
 ## Build an app from its plan
 
@@ -190,8 +228,8 @@ watches the preview, so the first commit must come fast:
 
 1. **Shell.** Replace the `wf-app` class with your own app classes and
    styles: background, colors and type of the theme. The user approved the
-   layout of the wireframe, so keep it: the same order of parts, the same
-   main and aside columns, and the same spans. Restyle the existing structure
+   layout of the wireframe, so keep it: the same rows, the same columns with
+   the same widths, and the same order of parts. Restyle the existing structure
    with CSS instead of rewriting it. Keep `data-plan-id="shell"` on that
    element. Leave every `wf-block` element exactly as it is, character for
    character: do not retype or shorten them. A detailed part is an empty
@@ -202,7 +240,9 @@ watches the preview, so the first commit must come fast:
    its route component unchanged.
 2. **Each component, in `buildOrder`.** If the component has a `detail`, the
    user approved that design: build the real component to look like it, with
-   real data instead of the sample data. Replace exactly one `wf-block` element
+   real data instead of the sample data. A part that contains other parts
+   (`inside`) keeps their `wf-block` placeholders in the same place until
+   their step comes. Replace exactly one `wf-block` element
    with the real component, usually its own file under `src/components/`. Put
    `data-plan-id="<id>"` on the root element of the real component, and do not
    give it the `wf-block` class. If the component needs a data table, workflow

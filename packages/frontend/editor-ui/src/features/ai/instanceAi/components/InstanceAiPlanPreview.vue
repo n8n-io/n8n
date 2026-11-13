@@ -18,7 +18,9 @@ const props = defineProps<{
 	theme: 'light' | 'dark' | 'both';
 }>();
 
-const emit = defineEmits<{ detail: [component: { planId: string; label: string }] }>();
+const emit = defineEmits<{
+	detail: [component: { planId: string; label: string; level: 'mid' | 'high' | 'states' }];
+}>();
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -45,7 +47,8 @@ function onMessage(event: MessageEvent) {
 	if (typeof data.planId !== 'string') return;
 	if (data.type === 'detail') {
 		const target = listPlanComponents(props.plan).find((c) => c.id === data.planId);
-		if (target) emit('detail', { planId: target.id, label: target.label });
+		const level = data.level === 'high' || data.level === 'states' ? data.level : 'mid';
+		if (target) emit('detail', { planId: target.id, label: target.label, level });
 		return;
 	}
 	if (data.type !== 'selected') return;
