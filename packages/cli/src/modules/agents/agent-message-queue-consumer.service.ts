@@ -316,6 +316,7 @@ export class AgentMessageQueueConsumer {
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
 			onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
+			...(payload.mode ? { chatMode: payload.mode } : {}),
 		});
 
 		if (result.status === 'completed')
