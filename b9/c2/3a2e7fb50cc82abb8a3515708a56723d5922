@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_76d3aa220fe632::t_1a0549391e667d 30,88,356-366
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.ts
+  s_e339623a708cfb::t_c9f82c589c35f5 106-112
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.test.ts
+  ai_agent 385-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9c23a2e7fb50cc82abb8a3515708a56723d5922",
+  "prompts": {},
+  "sessions": {
+    "s_76d3aa220fe632": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c5ee64d-6b15-4f20-ad91-8203ecf6e8ee",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_e339623a708cfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d4ad-eab9-7780-a62b-1c257658c211",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
