@@ -277,29 +277,33 @@ export class SourceControlService {
 	}
 
 	async setBranch(branch: string): Promise<{ branches: string[]; currentBranch: string }> {
-		if (!this.gitService.git) {
-			await this.initGitService();
-		}
-		const previousBranch = this.sourceControlPreferencesService.getPreferences().branchName;
-		const result = await this.gitService.setBranch(branch);
-		try {
-			await this.sourceControlPreferencesService.setPreferences({
-				branchName: result.currentBranch,
-				connected: result.currentBranch?.length > 0,
-			});
-		} catch (error) {
-			if (previousBranch && previousBranch !== result.currentBranch) {
-				try {
-					await this.gitService.setBranch(previousBranch);
-				} catch (rollbackError) {
-					this.logger.error(
-						`Failed to roll back to branch "${previousBranch}": ${(rollbackError as Error).message}`,
-					);
-				}
+		return await this.workfolderMutex(async () => {
+			if (!this.gitService.git) {
+				await this.initGitService();
 			}
-			throw error;
-		}
-		return result;
+
+			const previousBranch = this.sourceControlPreferencesService.getPreferences().branchName;
+
+			try {
+				const result = await this.gitService.setBranch(branch);
+				await this.sourceControlPreferencesService.setPreferences({
+					branchName: result.currentBranch,
+					connected: result.currentBranch?.length > 0,
+				});
+				return result;
+			} catch (error) {
+				if (previousBranch && previousBranch !== branch) {
+					try {
+						await this.gitService.setBranch(previousBranch);
+					} catch (rollbackError) {
+						this.logger.error(
+							`Failed to roll back to branch "${previousBranch}": ${(rollbackError as Error).message}`,
+						);
+					}
+				}
+				throw error;
+			}
+		});
 	}
 
 	// will reset the branch to the remote branch and pull
