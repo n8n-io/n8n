@@ -188,6 +188,77 @@ describe('M1 acceptance (integration)', () => {
 		]);
 	});
 
+	it('runs a node once on the items of both edges into its input, with paired items intact', async () => {
+		// trigger -> A and B, which both feed C's only input; C -> D
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					setNode('node-a', 'A', [{ name: 'via', value: 'A', type: 'string' }]),
+					setNode('node-b', 'B', [{ name: 'via', value: 'B', type: 'string' }]),
+					setNode('node-c', 'C', [
+						{ name: 'via', value: '={{ $json.via }}', type: 'string' },
+						{
+							name: 'origin',
+							value: "={{ $('When clicking Execute').item.json.n }}",
+							type: 'number',
+						},
+					]),
+					setNode('node-d', 'D', [
+						{ name: 'via', value: '={{ $json.via }}', type: 'string' },
+						{
+							name: 'origin',
+							value: "={{ $('When clicking Execute').item.json.n }}",
+							type: 'number',
+						},
+					]),
+				],
+				{
+					[TRIGGER.name]: {
+						main: [
+							[
+								{ node: 'A', type: 'main', index: 0 },
+								{ node: 'B', type: 'main', index: 0 },
+							],
+						],
+					},
+					A: mainTo('C'),
+					B: mainTo('C'),
+					C: mainTo('D'),
+				},
+			),
+		);
+		const { execution, steps, byNode } = await runWorkflow(graph, [
+			[{ json: { n: 1 } }, { json: { n: 2 } }],
+		]);
+
+		expect(execution.status).toBe('completed');
+		expect(steps.filter((step) => step.nodeId === 'node-c')).toHaveLength(1);
+
+		// A's items first, then B's, and each item resolves the trigger item behind it,
+		// inside C through its input link and in D through C's output link.
+		const jsonOf = (nodeId: string) => {
+			const [items] = byNode(nodeId)?.outputs ?? [];
+			return (items as Array<{ json: unknown }>).map(({ json }) => json);
+		};
+		const expected = [
+			{ via: 'A', origin: 1 },
+			{ via: 'A', origin: 2 },
+			{ via: 'B', origin: 1 },
+			{ via: 'B', origin: 2 },
+		];
+		expect(jsonOf('node-c')).toEqual(expected);
+		expect(jsonOf('node-d')).toEqual(expected);
+
+		// C's items from B name B as their source, so a later node can walk to it.
+		expect(byNode('node-c')?.outputs?.[0]).toMatchObject([
+			{ pairedItem: { item: 0 } },
+			{ pairedItem: { item: 1 } },
+			{ pairedItem: { item: 0, sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0 } } },
+			{ pairedItem: { item: 1, sourceOverwrite: { previousNode: 'B', previousNodeOutput: 0 } } },
+		]);
+	});
+
 	it('resolves a paired item inside a loop body against the current pass', async () => {
 		// Loop (one item per pass) -> X -> C -> back; C reads the X item behind its own.
 		const graph = converter.convert(

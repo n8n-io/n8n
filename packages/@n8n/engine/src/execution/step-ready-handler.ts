@@ -4,6 +4,7 @@ import type {
 	IStepExecutor,
 	SubExecutionDeclaration,
 	StepExecutionResult,
+	StepInputSources,
 } from '../dependencies';
 import {
 	deriveLoops,
@@ -53,6 +54,7 @@ type Dispatch =
 			kind: 'run';
 			executor: IStepExecutor;
 			inputs: StepSlots;
+			inputSources: StepInputSources;
 			subExecutionResult?: SubExecutionResumeCause;
 	  };
 
@@ -287,7 +289,7 @@ export class StepReadyHandler {
 		return {
 			kind: 'run',
 			executor: this.executorFor(step, node),
-			inputs: await this.gatherInputs(execution, step),
+			...(await this.gatherInputs(execution, step)),
 			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
 		};
 	}
@@ -296,7 +298,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
+		{ executor, inputs, inputSources, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -306,6 +308,7 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
+			inputSources,
 			// If we're resuming from a sub-execution, we pass in the result so the
 			// executor can use it to answer the sub-workflow call.
 			...(subExecutionResult ? { resume: subExecutionResult } : {}),
@@ -362,8 +365,18 @@ export class StepReadyHandler {
 		return await runBatchStep(node.config, step.iteration, reader);
 	}
 
-	/** Inputs for `node`, each slot taken from the row its edge reads. */
-	private async gatherInputs(execution: ExecutionRecord, step: StepRecord): Promise<StepSlots> {
+	/**
+	 * Inputs for `node`, each slot taken from the rows its edges read, with the
+	 * live rows behind each slot.
+	 *
+	 * Several live edges into one slot concatenate, in graph edge order. Dead
+	 * edges contribute nothing. A slot with one live edge passes its value
+	 * through as is, which is the same rule applied to one list.
+	 */
+	private async gatherInputs(
+		execution: ExecutionRecord,
+		step: StepRecord,
+	): Promise<{ inputs: StepSlots; inputSources: StepInputSources }> {
 		// These are all the edges that feed into the node this step runs.
 		const incomingEdges = execution.graph.edges.filter((edge) => edge.to === step.nodeId);
 		if (incomingEdges.length === 0) {
@@ -390,18 +403,27 @@ export class StepReadyHandler {
 			...new Map(reads.map(({ key }) => [stepKeyId(key), key])).values(),
 		]);
 
-		// Array of length equal to the highest input slot plus one.
-		// The entries are `null` placeholders filled by the loop immediately below.
-		const inputs: StepSlots = Array.from(
-			{ length: Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1 },
-			() => null,
-		);
+		// One entry per slot up to the highest one an edge feeds. A slot stays
+		// `null` until a live edge fills it.
+		const slotCount = Math.max(...reads.map(({ edge }) => edge.inputIndex)) + 1;
+		const inputs: StepSlots = Array.from({ length: slotCount }, () => null);
+		const inputSources: StepInputSources = Array.from({ length: slotCount }, () => []);
 
 		for (const { edge, key } of reads) {
-			inputs[edge.inputIndex] = readEdgeValue(edge, key, step, rows);
+			const value = readEdgeValue(edge, key, step, rows);
+			if (value === null) continue;
+
+			const slot = edge.inputIndex;
+			inputs[slot] = concatenateSlotValue(inputs[slot], value, step, slot);
+			inputSources[slot].push({
+				nodeId: key.nodeId,
+				outputIndex: edge.outputIndex,
+				iteration: key.iteration,
+				itemCount: Array.isArray(value) ? value.length : 1,
+			});
 		}
 
-		return inputs;
+		return { inputs, inputSources };
 	}
 
 	/**
@@ -425,12 +447,12 @@ export class StepReadyHandler {
 }
 
 /**
- * Which row each incoming edge reads for this step, one per input slot.
+ * Which row each incoming edge reads for this step, in graph edge order.
  *
  * An edge that connects nothing at this iteration is dropped, which is what lets
  * a batch node carry both an entry edge and a return edge on slot 0: they never
- * apply at the same iteration, so per iteration the slot still has one source.
- * Two edges that do both apply are the unsupported convergence case.
+ * apply at the same iteration. Several edges that do apply to one slot are the
+ * convergence case, whose values `gatherInputs` concatenates.
  */
 export function resolveInputReads(
 	incomingEdges: GraphEdge[],
@@ -460,19 +482,26 @@ export function resolveInputReads(
 		);
 	}
 
-	const filledSlots: Set<number> = new Set();
-	for (const { edge } of reads) {
-		if (filledSlots.has(edge.inputIndex)) {
-			// TODO(CAT-3982): same-slot convergence gets a defined meaning. We
-			// should have rejected this graph at validation time.
-			throw new UnexpectedError(
-				`step ${step.id} runs node ${step.nodeId}, which has more than one edge into input slot ${edge.inputIndex}; validated graphs have at most one edge per input slot`,
-			);
-		}
-		filledSlots.add(edge.inputIndex);
-	}
-
 	return reads;
+}
+
+/**
+ * The slot's value once `value` joins it: `value` alone when the slot was
+ * empty, else the two lists joined. Only lists have a defined concatenation,
+ * so anything else from a second live edge is a contract violation of the
+ * executor that produced it.
+ */
+function concatenateSlotValue(
+	current: JsonValue,
+	value: JsonValue,
+	step: StepRecord,
+	slot: number,
+): JsonValue {
+	if (current === null) return value;
+	if (Array.isArray(current) && Array.isArray(value)) return [...current, ...value];
+	throw new UnexpectedError(
+		`step ${step.id} runs node ${step.nodeId}, which has several live edges into input slot ${slot} whose values are not all lists; only lists concatenate`,
+	);
 }
 
 /**

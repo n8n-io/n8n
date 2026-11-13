@@ -107,6 +107,8 @@ export type {
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	StepInputSource,
+	StepInputSources,
 	SubExecutionDeclaration,
 	SubExecutionMode,
 } from './dependencies';

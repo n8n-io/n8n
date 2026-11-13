@@ -1,5 +1,6 @@
 import type {
 	StepExecutionContext,
+	StepInputSources,
 	StepSlots,
 	SubExecutionResumeCause,
 	TriggerOutputs,
@@ -144,6 +145,8 @@ export interface CreateExecuteContextParams {
 	source: Array<ISourceData | null>;
 	additionalData: IWorkflowExecuteAdditionalData;
 	itemsByConnection: INodeExecutionData[][];
+	/** Which rows fed `itemsByConnection`, slot by slot. */
+	inputSources: StepInputSources;
 	stepContext: StepExecutionContext;
 	resumeToken?: string;
 	subWorkflowCalls: SubWorkflowCalls;

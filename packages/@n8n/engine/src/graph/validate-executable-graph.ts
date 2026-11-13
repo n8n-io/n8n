@@ -1,4 +1,3 @@
-import { UnimplementedError } from '../common';
 import { GraphValidationError } from './graph-validation.error';
 import { validateLoops } from './loops';
 import type { WorkflowGraph } from './workflow-graph';
@@ -52,19 +51,5 @@ export function validateExecutableGraph(graph: WorkflowGraph): void {
 				);
 			}
 		}
-	}
-
-	// TODO(CAT-3982): same-slot convergence gets a defined meaning (concatenation);
-	// until then it is rejected rather than given accidental semantics.
-	const seenInputSlots = new Set<string>();
-	for (const edge of graph.edges) {
-		if (edge.isBackEdge) continue;
-		const slot = `${edge.to}#${edge.inputIndex}`;
-		if (seenInputSlots.has(slot)) {
-			throw new UnimplementedError(
-				`Node ${name(edge.to)} has more than one edge into input slot ${edge.inputIndex}; converging branches on one slot is not supported yet`,
-			);
-		}
-		seenInputSlots.add(slot);
 	}
 }

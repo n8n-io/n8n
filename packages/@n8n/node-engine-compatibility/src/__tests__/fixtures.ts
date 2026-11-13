@@ -1,4 +1,10 @@
-import type { JsonObject, StepExecutionRequest, StepSlots, WorkflowGraph } from '@n8n/engine';
+import type {
+	JsonObject,
+	StepExecutionRequest,
+	StepInputSources,
+	StepSlots,
+	WorkflowGraph,
+} from '@n8n/engine';
 import { noopResponseEmitter } from '@n8n/engine';
 import type { ExecuteContext } from 'n8n-core';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
@@ -449,9 +455,31 @@ class AsksForReply implements INodeType {
 	}
 }
 
+/** Returns its input with a fresh link per item, as Set does. */
+class LinksToInput implements INodeType {
+	description = {
+		displayName: 'Links To Input',
+		name: 'linksToInput',
+		group: ['transform'],
+		version: 1,
+		description: 'Passes items through, each linked to its input position',
+		defaults: { name: 'Links To Input' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+	} as unknown as INodeType['description'];
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await Promise.resolve([
+			this.getInputData().map((item, i) => ({ json: item.json, pairedItem: { item: i } })),
+		]);
+	}
+}
+
 const registry = new Map<string, INodeType>([
 	['n8n-nodes-base.noOp', new NoOp()],
 	['test.echoParam', new EchoParam()],
+	['test.linksToInput', new LinksToInput()],
 	['test.alwaysFails', new AlwaysFails()],
 	['test.failsWithDescription', new FailsWithDescription()],
 	['test.noExecute', new NoExecute()],
@@ -526,13 +554,30 @@ export const v1Workflow = (
 		connections,
 	}) as unknown as IWorkflowBase;
 
+/**
+ * A request for one step. Unless given, `inputSources` reports one source per
+ * slot, the first graph edge into it, with the slot's item count.
+ */
 export const stepRequest = (
 	graph: WorkflowGraph,
 	nodeId: string,
 	inputs: StepSlots,
+	inputSources: StepInputSources = inputs.map((slot, inputIndex) => {
+		const edge = graph.edges.find((e) => e.to === nodeId && e.inputIndex === inputIndex);
+		if (!edge || slot === null) return [];
+		return [
+			{
+				nodeId: edge.from,
+				outputIndex: edge.outputIndex,
+				iteration: 0,
+				itemCount: Array.isArray(slot) ? slot.length : 1,
+			},
+		];
+	}),
 ): StepExecutionRequest => ({
 	node: graph.nodes.find((n) => n.id === nodeId)!,
 	inputs,
+	inputSources,
 	context: {
 		executionId: 'exec-1',
 		stepId: nodeId,
