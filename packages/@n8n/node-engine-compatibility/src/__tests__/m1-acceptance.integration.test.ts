@@ -188,6 +188,51 @@ describe('M1 acceptance (integration)', () => {
 		]);
 	});
 
+	it('resolves a paired item inside a loop body against the current pass', async () => {
+		// Loop (one item per pass) -> X -> C -> back; C reads the X item behind its own.
+		const graph = converter.convert(
+			v1Workflow(
+				[
+					TRIGGER,
+					{
+						id: 'loop',
+						name: 'Loop',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						parameters: { batchSize: 1 },
+					},
+					setNode('x', 'X', [{ name: 'n', value: '={{ $json.n }}', type: 'number' }]),
+					setNode('c', 'C', [{ name: 'got', value: "={{ $('X').item.json.n }}", type: 'number' }]),
+					setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+				],
+				{
+					'When clicking Execute': mainTo('Loop'),
+					Loop: {
+						main: [
+							[{ node: 'After', type: 'main' as const, index: 0 }],
+							[{ node: 'X', type: 'main' as const, index: 0 }],
+						],
+					},
+					X: mainTo('C'),
+					C: mainTo('Loop'),
+				},
+			),
+		);
+		const { execution, steps } = await runWorkflow(graph, [
+			[{ json: { n: 1 } }, { json: { n: 2 } }, { json: { n: 3 } }],
+		]);
+
+		expect(execution.status).toBe('completed');
+		const gotPerPass = steps
+			.filter((step) => step.nodeId === 'c')
+			.sort((a, b) => a.iteration - b.iteration)
+			.map((step) => {
+				const [items] = step.outputs ?? [];
+				return (items as Array<{ json: { got: number } }>)[0].json.got;
+			});
+		expect(gotPerPass).toEqual([1, 2, 3]);
+	});
+
 	it('fails the execution when a node errors, leaving no orphan step rows', async () => {
 		const graph = setWorkflow([
 			{ name: 'boom', value: "={{ $('Ghost').first().json.x }}", type: 'string' },

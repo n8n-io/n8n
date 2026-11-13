@@ -131,9 +131,61 @@ describe('toV1Execution', () => {
 				},
 			],
 		});
-		expect(toV1Sources(graph).get('b')).toEqual([
+		expect(toV1Sources(graph, {}, 'b', 0)).toEqual([
 			null,
 			{ previousNode: 'A', previousNodeOutput: 1 },
+		]);
+	});
+
+	it('names the pass of a predecessor inside the loop', () => {
+		expect(toV1Sources(graph, {}, 'body', 2)).toEqual([
+			{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 2 },
+		]);
+	});
+
+	it('names the last pass of a loop for the node after it', () => {
+		// Trigger -> Loop, Loop o1 -> Body -> (back) Loop, Loop o0 -> After
+		const withExit = converter.convert(
+			v1Workflow(
+				[
+					{ id: 't', name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+					{ id: 'loop', name: 'Loop', type: 'n8n-nodes-base.splitInBatches', typeVersion: 3 },
+					{ id: 'body', name: 'Body', type: 'n8n-nodes-base.noOp' },
+					{ id: 'after', name: 'After', type: 'n8n-nodes-base.noOp' },
+				],
+				{
+					Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+					Loop: {
+						main: [
+							[{ node: 'After', type: 'main', index: 0 }],
+							[{ node: 'Body', type: 'main', index: 0 }],
+						],
+					},
+					Body: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				},
+			),
+		);
+		const outputsByNode = { loop: { 0: items({}), 1: items({}), 2: items({}) } };
+
+		expect(toV1Sources(withExit, outputsByNode, 'after', 0)).toEqual([
+			{ previousNode: 'Loop', previousNodeOutput: 0, previousNodeRun: 2 },
+		]);
+	});
+
+	it('rebuilds run data inside a loop with the pass each run read', () => {
+		const execution = toV1Execution(
+			graph,
+			{
+				loop: { 0: items({ p: 0 }), 1: items({ p: 1 }) },
+				body: { 0: items({ p: 0 }), 1: items({ p: 1 }) },
+			},
+			'body',
+			1,
+		);
+
+		expect(execution.runData.Body.map((run) => run.source)).toEqual([
+			[{ previousNode: 'Loop', previousNodeOutput: 1 }],
+			[{ previousNode: 'Loop', previousNodeOutput: 1, previousNodeRun: 1 }],
 		]);
 	});
 
@@ -143,7 +195,9 @@ describe('toV1Execution', () => {
 		expect(execution.connections.Body).toEqual({
 			main: [[{ node: 'Loop', type: 'main', index: 0 }]],
 		});
-		expect(toV1Sources(graph).get('loop')).toEqual([{ previousNode: 'B', previousNodeOutput: 0 }]);
+		expect(toV1Sources(graph, {}, 'loop', 0)).toEqual([
+			{ previousNode: 'B', previousNodeOutput: 0 },
+		]);
 	});
 
 	it('omits nodes whose config is unreadable', () => {
