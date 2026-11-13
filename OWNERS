@@ -38,6 +38,7 @@ packages/@n8n/tournament/                               @n8n-io/core-execution
 # Core Application
 
 packages/@n8n/scheduler/                                @n8n-io/core-application
+packages/@n8n/leases/                                   @n8n-io/core-application required
 packages/@n8n/config/                                   @n8n-io/core-application
 packages/@n8n/backend-common/                           @n8n-io/core-application
 packages/@n8n/backend-network/                          @n8n-io/core-application
