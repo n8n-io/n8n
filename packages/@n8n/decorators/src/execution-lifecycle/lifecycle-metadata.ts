@@ -61,6 +61,11 @@ export type WorkflowExecuteAfterContext = {
 	 * the process that ran the job fires its own `workflowExecuteAfter` for the same run.
 	 */
 	executedInThisProcess: boolean;
+	/**
+	 * True only when the save hook of this hook run moved the run from an unfinished to a
+	 * terminal status. At most one hook run gets it for each run.
+	 */
+	endedByThisSave: boolean;
 };
 
 export type WorkflowExecuteResumeContext = {
