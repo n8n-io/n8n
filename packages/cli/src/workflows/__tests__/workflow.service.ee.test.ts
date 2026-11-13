@@ -1265,6 +1265,28 @@ describe('EnterpriseWorkflowService', () => {
 			]);
 		});
 
+		it('does not block a disabled node whose credential the user cannot use', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([]);
+			const submitted = { ...httpNode('deleted-cred'), disabled: true };
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+		});
+
+		it('rejects an enabled node whose credential the user cannot use', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([]);
+			const submitted = httpNode('deleted-cred');
+
+			await expect(
+				service.preventTampering({ nodes: [submitted] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow(BadRequestError);
+		});
+
 		it('saves a node switched back to a credential an earlier version stored, with its position', async () => {
 			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
 				version('v3', [httpNode('own-cred')]),
