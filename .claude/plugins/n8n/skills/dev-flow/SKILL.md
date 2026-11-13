@@ -276,6 +276,8 @@ Push the branch and invoke the repo's PR skill so the title passes `check-pr-tit
 /n8n:create-pr
 ```
 
+If a planned or open ticket replaces this work, say in the PR body why it goes in now and that the code goes when the other lands, so the reviewer does not have to ask.
+
 Ensure the PR body links the Linear ticket. For a security fix, keep the title and body in neutral
 language (no vulnerability type, no Linear slug that reveals it). Capture the PR number for the watch
 phase: `pr=$(gh pr view --json number -q .number)`.

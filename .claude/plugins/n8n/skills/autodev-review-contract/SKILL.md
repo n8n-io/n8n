@@ -13,6 +13,7 @@ user-invocable: false
 - Give file/line (or the part of the plan) and the smallest concrete fix.
 - State the consequence first ("if the user does X, then Y happens"), the mechanism second.
 - Label any runtime-behavior claim you could not verify as unverified.
+- A failure path that ends in a throw, the caller's cleanup and a retry is only safe if the retry still has what it needs. Read what the cleanup does (for example a `delete()` that also removes stored state) before you accept "the caller retries" from a comment, the PR description or a reply.
 - For a diff: say whether this PR introduces the finding or it is pre-existing on the base (`git blame` or the base diff). Pre-existing is still reported, routed to a follow-up.
 - If there is nothing to report, say so explicitly. Do not invent issues.
 

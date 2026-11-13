@@ -46,4 +46,6 @@ Also run an **independent second-opinion pass** over the diff when available (e.
 3. **`[MINOR]`** — grouped, terse.
 4. **Coverage note** — which reviewers ran, which were skipped and why.
 
+**Routing.** Route a finding to "fix here" when the fix is small (tens of lines) and a human reviewer would raise it anyway; deferring it costs a review round. "Follow-up" is for work that needs its own design or crosses owners.
+
 Deduplicate overlapping findings and resolve contradictions, flagging any unresolved. Output the synthesis as your final message. Modify code only if I explicitly ask afterward.
