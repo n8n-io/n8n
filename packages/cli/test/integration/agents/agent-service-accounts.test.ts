@@ -6,11 +6,13 @@ import { BadRequestError, ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
+import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import { ServiceAccountService } from '@/services/service-account.service';
 import { Telemetry } from '@/telemetry';
 
@@ -203,6 +205,74 @@ describe('Agent service accounts', () => {
 			expect(await rename(agent.id, 'Support Agent')).toBe(true);
 
 			expect((await agentRepo.findOneByOrFail({ id: agent.id })).name).toBe('Support Agent');
+		});
+	});
+	describe('instance agents', () => {
+		const serviceAccount = () => Container.get(AgentServiceAccountService);
+
+		it('gives a registered instance agent a service account with a personal project', async () => {
+			const agentId = nanoid();
+
+			await Container.get(SystemAgentRegistrationService).register({
+				agentId,
+				name: 'Assistant',
+				authorize: async () => true,
+				prepareTurn: vi.fn(),
+			});
+
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('gives an existing instance agent an identity on the next start', async () => {
+			const agentId = nanoid();
+			agentsConfig.serviceAccountsEnabled = false;
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+			expect(await agentRepo.findIdentityId(agentId)).toBeNull();
+
+			agentsConfig.serviceAccountsEnabled = true;
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('creates one service account when two mains start together', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			const before = await countServiceAccounts();
+
+			await Promise.all([
+				serviceAccount().assignToInstanceAgent(agentId, 'Assistant'),
+				serviceAccount().assignToInstanceAgent(agentId, 'Assistant'),
+			]);
+
+			expect(await countServiceAccounts()).toBe(before + 1);
+			await expectServiceAccountWithPersonalProject(agentId, 'Assistant');
+		});
+
+		it('rolls back its own service account when another main linked one first', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+			const linked = await agentRepo.findIdentityId(agentId);
+			const before = await countServiceAccounts();
+			// The other main checked before this one linked its account.
+			vi.spyOn(agentRepo, 'findIdentityId').mockResolvedValueOnce(null);
+
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			expect(await countServiceAccounts()).toBe(before);
+			expect(await agentRepo.findIdentityId(agentId)).toBe(linked);
+		});
+
+		it('renames the service account when the instance agent is renamed', async () => {
+			const agentId = nanoid();
+			await agentRepo.ensureInstanceAgent(agentId, 'Assistant');
+			await serviceAccount().assignToInstanceAgent(agentId, 'Assistant');
+
+			await agentRepo.ensureInstanceAgent(agentId, 'n8n Assistant');
+
+			await expectServiceAccountWithPersonalProject(agentId, 'n8n Assistant');
 		});
 	});
 });
