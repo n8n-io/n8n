@@ -41,7 +41,13 @@ fi
 # bench/fuzz-long.sh runs them for minutes). One `zig build fuzz` fuzzes
 # only one test of each binary and exits 0 when the fuzzer panics, so the
 # script runs each target alone and checks its log.
-RUNS="${FUZZ_RUNS:-3K}" PAR="${FUZZ_PAR:-8}" bench/fuzz-ci.sh
+# SKIP_FUZZ=1 skips them while parallel agents share one machine: fuzz once
+# after all their work is merged.
+if [[ "${SKIP_FUZZ:-0}" == 1 ]]; then
+	echo "fuzz: skipped (SKIP_FUZZ=1)"
+else
+	RUNS="${FUZZ_RUNS:-3K}" PAR="${FUZZ_PAR:-8}" bench/fuzz-ci.sh
+fi
 
 # Leaks: a Debug `serve` loads a workflow, answers a webhook, takes
 # credentials, then stops on SIGTERM. The process allocator reports any
