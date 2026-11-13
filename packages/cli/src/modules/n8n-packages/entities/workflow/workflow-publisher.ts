@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -31,6 +32,7 @@ export type PackagePublishingResults = ReadonlyMap<string, WorkflowPublishingRes
 
 export interface PackagePublishingRequest {
 	user: User;
+	publicApi: PublicApiCaller;
 	/** Every workflow the package wrote, across all of its projects. */
 	persisted: PersistedWorkflowOutcome[];
 	policy: WorkflowPublishingPolicy;
@@ -62,6 +64,7 @@ export class WorkflowPublisher {
 	 */
 	async applyToPackage({
 		user,
+		publicApi,
 		persisted,
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
@@ -79,6 +82,7 @@ export class WorkflowPublisher {
 				outcome.workflow,
 				outcome.blockedFromPublish,
 				webhookKeys.some((key) => claimedPaths.has(key)),
+				publicApi,
 			);
 
 			if (result.publishing.state === 'published') {
@@ -160,6 +164,7 @@ export class WorkflowPublisher {
 		workflow: WorkflowEntity,
 		blockedReason?: WorkflowPublishingBlockedReason,
 		webhookContested = false,
+		publicApi: PublicApiCaller = false,
 	): Promise<WorkflowPublishingResult> {
 		const action = item.publishingAction;
 
@@ -184,6 +189,7 @@ export class WorkflowPublisher {
 					workflow: await this.workflowService.activateWorkflow(user, workflow.id, {
 						versionId: workflow.versionId,
 						source: 'import',
+						publicApi,
 					}),
 					publishing: { state: 'published' },
 				};
@@ -192,6 +198,7 @@ export class WorkflowPublisher {
 			return {
 				workflow: await this.workflowService.deactivateWorkflow(user, workflow.id, {
 					source: 'import',
+					publicApi,
 				}),
 				publishing: { state: 'unpublished' },
 			};

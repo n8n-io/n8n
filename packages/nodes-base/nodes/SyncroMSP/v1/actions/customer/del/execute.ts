@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -10,7 +11,7 @@ export async function deleteCustomer(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'DELETE';
-	const endpoint = `customers/${id}`;
+	const endpoint = requestPath`customers/${id}`;
 	const body = {} as IDataObject;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

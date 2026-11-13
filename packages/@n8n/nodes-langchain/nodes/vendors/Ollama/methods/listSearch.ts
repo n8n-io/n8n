@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { OllamaTagsResponse } from '../helpers/interfaces';
 import { apiRequest } from '../transport';
@@ -7,7 +8,7 @@ export async function modelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response: OllamaTagsResponse = await apiRequest.call(this, 'GET', '/api/tags');
+	const response: OllamaTagsResponse = await apiRequest.call(this, 'GET', requestPath`/api/tags`);
 
 	let models = response.models;
 

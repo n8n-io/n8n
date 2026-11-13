@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from '../GenericFunctions';
 
@@ -65,7 +66,12 @@ export async function add(this: IExecuteFunctions, i: number): Promise<INodeExec
 		...(contactId && { contact_id: contactId }),
 	};
 
-	const responseData = await lonescaleApiRequest.call(this, 'POST', `/lists/${listId}/item`, body);
+	const responseData = await lonescaleApiRequest.call(
+		this,
+		'POST',
+		requestPath`/lists/${listId}/item`,
+		body,
+	);
 	return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
 		itemData: { item: i },
 	});

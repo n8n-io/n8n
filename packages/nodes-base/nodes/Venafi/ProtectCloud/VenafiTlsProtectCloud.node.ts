@@ -7,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { certificateFields, certificateOperations } from './CertificateDescription';
@@ -76,7 +77,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 				const { applications } = await venafiApiRequest.call(
 					this,
 					'GET',
-					'/outagedetection/v1/applications',
+					requestPath`/outagedetection/v1/applications`,
 				);
 
 				for (const application of applications) {
@@ -96,7 +97,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 				const { certificateIssuingTemplateAliasIdMap } = (await venafiApiRequest.call(
 					this,
 					'GET',
-					`/outagedetection/v1/applications/${currentApplication}`,
+					requestPath`/outagedetection/v1/applications/${currentApplication}`,
 				)) as { certificateIssuingTemplateAliasIdMap: { [key: string]: string } };
 
 				for (const [templateName, templateId] of Object.entries(
@@ -220,7 +221,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							'/outagedetection/v1/certificaterequests',
+							requestPath`/outagedetection/v1/certificaterequests`,
 							body,
 							qs,
 						);
@@ -235,7 +236,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'GET',
-							`/outagedetection/v1/certificaterequests/${certificateId}`,
+							requestPath`/outagedetection/v1/certificaterequests/${certificateId}`,
 							{},
 							qs,
 						);
@@ -250,7 +251,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificateRequests',
 								'GET',
-								'/outagedetection/v1/certificaterequests',
+								requestPath`/outagedetection/v1/certificaterequests`,
 								{},
 								qs,
 							);
@@ -259,7 +260,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								'/outagedetection/v1/certificaterequests',
+								requestPath`/outagedetection/v1/certificaterequests`,
 								{},
 								qs,
 							);
@@ -277,7 +278,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							'/outagedetection/v1/certificates/deletion',
+							requestPath`/outagedetection/v1/certificates/deletion`,
 							{ certificateIds: [certificateId] },
 						);
 
@@ -297,10 +298,10 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/outagedetection/v1/certificates/${certificateId}/contents`,
+								requestPath`/outagedetection/v1/certificates/${certificateId}/contents`,
 								{},
 								qs,
-								{ encoding: null, json: false, resolveWithFullResponse: true, cert: true },
+								{ encoding: null, json: false, resolveWithFullResponse: true },
 							);
 						} else {
 							const exportFormat = this.getNodeParameter('keystoreType', i) as string;
@@ -337,7 +338,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'POST',
-								`/outagedetection/v1/certificates/${certificateId}/keystore`,
+								requestPath`/outagedetection/v1/certificates/${certificateId}/keystore`,
 								body,
 								{},
 								{ encoding: null, json: false, resolveWithFullResponse: true },
@@ -373,7 +374,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'GET',
-							`/outagedetection/v1/certificates/${certificateId}`,
+							requestPath`/outagedetection/v1/certificates/${certificateId}`,
 							{},
 							qs,
 						);
@@ -391,7 +392,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificates',
 								'GET',
-								'/outagedetection/v1/certificates',
+								requestPath`/outagedetection/v1/certificates`,
 								{},
 								qs,
 							);
@@ -400,7 +401,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								'/outagedetection/v1/certificates',
+								requestPath`/outagedetection/v1/certificates`,
 								{},
 								qs,
 							);
@@ -438,7 +439,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							'/outagedetection/v1/certificaterequests',
+							requestPath`/outagedetection/v1/certificaterequests`,
 							body,
 							qs,
 						);

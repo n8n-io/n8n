@@ -116,7 +116,11 @@ describe('Source Control (Public API)', () => {
 
 			expect(response.status).toBe(200);
 			expect(response.body).toEqual(statusResult);
-			expect(pullSpy).toHaveBeenCalled();
+			expect(pullSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ id: owner.id }),
+				expect.anything(),
+				'other',
+			);
 			expect(emitSpy).toHaveBeenCalledWith(
 				'source-control-user-pulled-api',
 				expect.objectContaining({ forced: false }),
@@ -340,7 +344,7 @@ describe('Source Control (Public API)', () => {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
-					origin: 'publicApi',
+					publicApi: 'other',
 				}),
 			);
 		});
@@ -372,7 +376,7 @@ describe('Source Control (Public API)', () => {
 					// Pull previews the incoming side, matching what `pullWorkfolder` applies.
 					preferLocalVersion: false,
 					verbose: false,
-					origin: 'publicApi',
+					publicApi: 'other',
 				}),
 			);
 		});
@@ -529,7 +533,7 @@ describe('Source Control (Public API)', () => {
 					fileNames: [{ id: 'wf-1', type: 'workflow' }],
 					force: undefined,
 				},
-				'publicApi',
+				'other',
 			);
 		});
 
@@ -593,7 +597,7 @@ describe('Source Control (Public API)', () => {
 			expect(pushSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				expect.objectContaining({ force: true }),
-				'publicApi',
+				'other',
 			);
 		});
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import {
 	OnLeaderStepdown,
@@ -11,6 +11,7 @@ import {
 	PubSubCommandMap,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
 import {
@@ -37,7 +38,6 @@ import {
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
-import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -48,8 +48,11 @@ import {
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 	WORKFLOW_REACTIVATE_STABLE_PERIOD,
 } from '@/constants';
+import { PublisherLookupError } from '@/errors/publisher-lookup.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -66,6 +69,7 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
@@ -75,6 +79,18 @@ interface QueuedActivation {
 	lastTimeout: number;
 	timeout: NodeJS.Timeout;
 	workflowData: IWorkflowDb;
+}
+
+/**
+ * The reason for an activation refusal that holds until someone changes the
+ * policy, the workflow or the credential access, or `null` for any other error.
+ * A retry cannot succeed, so a refusal gets no fault report, no error workflow
+ * and no retry.
+ */
+function getPermanentRefusalReason(error: unknown): string | null {
+	if (isPolicyRefusal(error)) return 'policy';
+	if (error instanceof TriggerCredentialAccessError) return 'credential access';
+	return null;
 }
 
 /** The wait before the last reactivation attempt, so a quick failure continues the backoff. */
@@ -111,6 +127,8 @@ export class ActiveWorkflowManager {
 		private readonly workflowPushNotifier: WorkflowPushNotifier,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -474,12 +492,14 @@ export class ActiveWorkflowManager {
 				});
 			}
 		} catch (error) {
-			// An expected refusal, permanent until policy or workflow changes: no fault
-			// report, no error workflow and no retry, or every restart alerts.
-			if (isPolicyRefusal(error)) {
-				this.logger.warn(`Publication of ${formatWorkflow(dbWorkflow)} blocked by policy`, {
-					workflowId: dbWorkflow.id,
-				});
+			// An expected refusal: no fault report, no error workflow and no retry,
+			// or every restart alerts.
+			const refusalReason = getPermanentRefusalReason(error);
+			if (refusalReason) {
+				this.logger.warn(
+					`Publication of ${formatWorkflow(dbWorkflow)} blocked by ${refusalReason}`,
+					{ workflowId: dbWorkflow.id },
+				);
 
 				return;
 			}
@@ -565,7 +585,16 @@ export class ActiveWorkflowManager {
 		{
 			shouldPublish = true,
 			actor = { kind: 'system', reason: 'activation' },
-		}: { shouldPublish?: boolean; actor?: PolicyActor } = {},
+			credentialsCheckedVersionId,
+			publisherId,
+		}: {
+			shouldPublish?: boolean;
+			actor?: PolicyActor;
+			/** The version whose trigger credentials the caller already checked. */
+			credentialsCheckedVersionId?: string;
+			/** The user this activation records as publisher, when the record is not written yet. */
+			publisherId?: string;
+		} = {},
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -617,6 +646,16 @@ export class ActiveWorkflowManager {
 				{ id: dbWorkflow.id, name: dbWorkflow.name, nodes },
 				actor,
 			);
+
+			// Another version can be active by the time a forwarded command arrives, so
+			// only the version that the sending main checked skips the check.
+			if (credentialsCheckedVersionId !== dbWorkflow.activeVersion.versionId) {
+				await this.checkTriggerCredentialAccess(
+					dbWorkflow.id,
+					dbWorkflow.activeVersion,
+					publisherId,
+				);
+			}
 
 			// This check answers the caller. The leader checks again as `system` before it
 			// registers, so a check that depends on the actor can still refuse there.
@@ -762,6 +801,37 @@ export class ActiveWorkflowManager {
 		});
 	}
 
+	/**
+	 * Checks the nodes of the active version as the user its runs act as: the
+	 * version's publisher. The actor is not used, because a user who only moves
+	 * the workflow does not become its publisher. All nodes, not only triggers:
+	 * a trigger can load its sub-nodes, with their credentials, in the webhook phase.
+	 */
+	private async checkTriggerCredentialAccess(
+		workflowId: WorkflowId,
+		activeVersion: WorkflowHistory,
+		publisherId: string | undefined,
+	) {
+		let actingUserId = publisherId;
+		if (actingUserId === undefined) {
+			try {
+				actingUserId = await this.workflowPublisherService.findPublisherUserIdForAccessCheck(
+					workflowId,
+					activeVersion.versionId,
+				);
+			} catch (error) {
+				throw new PublisherLookupError(workflowId, error);
+			}
+		}
+
+		try {
+			await this.credentialsPermissionChecker.check(workflowId, activeVersion.nodes, actingUserId);
+		} catch (error) {
+			if (error instanceof UserError) throw new TriggerCredentialAccessError(error);
+			throw error;
+		}
+	}
+
 	@OnPubSubEvent('add-webhooks-triggers-and-pollers', {
 		instanceType: 'main',
 		instanceRole: 'leader',
@@ -773,7 +843,10 @@ export class ActiveWorkflowManager {
 	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
 			await this.add(workflowId, activationMode, undefined, {
-				shouldPublish: false, // prevent leader from re-publishing message
+				shouldPublish: false, // prevent leader from re-publishing message.
+				// The sending main checked this version as the acting user. The leader cannot
+				// repeat it: the publish record that names that user can be written later.
+				credentialsCheckedVersionId: activeVersionId,
 			});
 		} catch (e) {
 			const error = ensureError(e);
@@ -781,9 +854,10 @@ export class ActiveWorkflowManager {
 			const nodeId = getErrorNodeId(e);
 			const errorDescription = getErrorDescription(e);
 
-			if (error instanceof IsolateError) {
+			// Both are transient, so the workflow stays published and the activation is retried.
+			if (error instanceof IsolateError || error instanceof PublisherLookupError) {
 				this.logger.warn(
-					`Isolate error activating workflow "${workflowId}", queuing for retry: "${message}"`,
+					`Transient error activating workflow "${workflowId}", queuing for retry: "${message}"`,
 					{ workflowId },
 				);
 
@@ -803,22 +877,26 @@ export class ActiveWorkflowManager {
 				// deactivation below so the active version is still resolvable, or
 				// they keep firing a workflow marked inactive. Each teardown is caught
 				// on its own so a webhook failure never skips the durable-job cleanup.
-				try {
-					await this.clearWebhooks(workflowId);
-				} catch (cleanupError) {
-					this.logger.error(`Failed to remove webhooks of workflow "${workflowId}"`, {
-						workflowId,
-						error: ensureError(cleanupError),
-					});
-				}
+				// A credential refusal happens before registration: skip the teardown,
+				// because it calls the trigger nodes with the refused credentials.
+				if (!(error instanceof TriggerCredentialAccessError)) {
+					try {
+						await this.clearWebhooks(workflowId);
+					} catch (cleanupError) {
+						this.logger.error(`Failed to remove webhooks of workflow "${workflowId}"`, {
+							workflowId,
+							error: ensureError(cleanupError),
+						});
+					}
 
-				try {
-					await this.removeNonWebhookTriggers(workflowId);
-				} catch (cleanupError) {
-					this.logger.error(`Failed to remove triggers of workflow "${workflowId}"`, {
-						workflowId,
-						error: ensureError(cleanupError),
-					});
+					try {
+						await this.removeNonWebhookTriggers(workflowId);
+					} catch (cleanupError) {
+						this.logger.error(`Failed to remove triggers of workflow "${workflowId}"`, {
+							workflowId,
+							error: ensureError(cleanupError),
+						});
+					}
 				}
 
 				await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
@@ -921,10 +999,11 @@ export class ActiveWorkflowManager {
 			try {
 				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
-				// An expected refusal, permanent until policy or workflow changes: no fault
-				// report, and leave the queue rather than retrying forever.
-				if (isPolicyRefusal(error)) {
-					this.logger.warn(`Publication of workflow "${workflowId}" blocked by policy`, {
+				// An expected refusal: no fault report, and leave the queue rather than
+				// retrying forever.
+				const refusalReason = getPermanentRefusalReason(error);
+				if (refusalReason) {
+					this.logger.warn(`Publication of workflow "${workflowId}" blocked by ${refusalReason}`, {
 						workflowId,
 					});
 

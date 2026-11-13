@@ -12,6 +12,7 @@ import type { PushResult } from 'simple-git';
 
 import { BadRequestError, ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { IWorkflowToImport } from '@/interfaces';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
@@ -39,7 +40,6 @@ import {
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
-import type { SourceControlActionOrigin } from './types/source-control-action-origin';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -312,14 +312,14 @@ export class SourceControlService {
 	async pushWorkfolder(
 		user: User,
 		options: PushWorkfolderOptions,
-		origin: SourceControlActionOrigin = 'ui',
+		publicApi: PublicApiCaller = false,
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
 		statusResult: SourceControlledFile[];
 	}> {
 		return await this.workfolderMutex(
-			async () => await this.pushWorkfolderWithoutLock(user, options, origin),
+			async () => await this.pushWorkfolderWithoutLock(user, options, publicApi),
 		);
 	}
 
@@ -333,13 +333,13 @@ export class SourceControlService {
 	private async resolveAuthorizedFilesToPush(
 		user: User,
 		requestedFiles: Array<Pick<SourceControlledFile, 'id' | 'type'>>,
-		origin: SourceControlActionOrigin,
+		publicApi: PublicApiCaller,
 	): Promise<SourceControlledFile[]> {
 		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
-			origin,
+			publicApi,
 		});
 
 		// No explicit selection: push everything the user is allowed to.
@@ -378,7 +378,7 @@ export class SourceControlService {
 	private async pushWorkfolderWithoutLock(
 		user: User,
 		options: PushWorkfolderOptions,
-		origin: SourceControlActionOrigin = 'ui',
+		publicApi: PublicApiCaller = false,
 	): Promise<{
 		statusCode: number;
 		pushResult: PushResult | undefined;
@@ -392,7 +392,7 @@ export class SourceControlService {
 
 		const context = await this.sourceControlContextFactory.createContext(user);
 
-		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, origin);
+		const filesToPush = await this.resolveAuthorizedFilesToPush(user, options.fileNames, publicApi);
 
 		let statusResult: SourceControlledFile[] = filesToPush;
 
@@ -516,7 +516,7 @@ export class SourceControlService {
 		// #region Tracking Information
 		this.eventService.emit('source-control-user-finished-push-ui', {
 			...getTrackingInformationFromPostPushResult(user.id, statusResult),
-			publicApi: origin === 'publicApi',
+			publicApi,
 		});
 		// #endregion
 
@@ -530,15 +530,17 @@ export class SourceControlService {
 	async pullWorkfolder(
 		user: User,
 		options: PullWorkFolderRequestDto,
+		publicApi: PublicApiCaller = false,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		return await this.workfolderMutex(
-			async () => await this.pullWorkfolderWithoutLock(user, options),
+			async () => await this.pullWorkfolderWithoutLock(user, options, publicApi),
 		);
 	}
 
 	private async pullWorkfolderWithoutLock(
 		user: User,
 		options: PullWorkFolderRequestDto,
+		publicApi: PublicApiCaller,
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
@@ -546,6 +548,7 @@ export class SourceControlService {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
+			publicApi,
 		});
 
 		if (options.force !== true) {

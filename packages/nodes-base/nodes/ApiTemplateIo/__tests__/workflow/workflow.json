@@ -1,0 +1,90 @@
+{
+	"name": "APITemplate.io Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "1cea86d8-4665-5660-9404-452b35613fbd",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "account",
+				"operation": "get"
+			},
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "026ac516-27a9-504b-992f-b953c33b9faf",
+			"name": "Account > Get",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "pdf",
+				"operation": "create",
+				"pdfTemplateId": "79667b2b1876e347",
+				"jsonParameters": true,
+				"propertiesJson": "{\"name\": \"Ada\"}"
+			},
+			"type": "n8n-nodes-base.apiTemplateIo",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "74cc1b72-8bdf-5b71-b8d4-ff5b0141eefd",
+			"name": "PDF > Create",
+			"credentials": {
+				"apiTemplateIoApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Account > Get": [
+			{
+				"json": {
+					"status": "success",
+					"api_calls": 12
+				}
+			}
+		],
+		"PDF > Create": [
+			{
+				"json": {
+					"status": "success",
+					"transaction_ref": "a0430897-2c94-40e1-a09b-57403d811ceb"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Account > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "PDF > Create",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

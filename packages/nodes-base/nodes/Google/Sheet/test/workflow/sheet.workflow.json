@@ -1,0 +1,458 @@
+{
+	"name": "Google Sheets request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "Q3 Orders",
+					"mode": "name"
+				},
+				"options": {
+					"dataLocationOnSheet": {
+						"values": {
+							"rangeDefinition": "specifyRangeA1",
+							"range": "A1:C20"
+						}
+					}
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 0],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a02",
+			"name": "Read Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "append",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "Q3 Orders",
+					"mode": "name"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"order_id": "ORD-1043",
+						"status": "pending"
+					},
+					"matchingColumns": [],
+					"schema": [
+						{
+							"id": "order_id",
+							"displayName": "order_id",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "status",
+							"displayName": "status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					]
+				},
+				"options": {
+					"useAppend": true
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 200],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a03",
+			"name": "Append Row",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "Q3 Orders",
+					"mode": "name"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"order_id": "ORD-1042",
+						"status": "shipped"
+					},
+					"matchingColumns": ["order_id"],
+					"schema": [
+						{
+							"id": "order_id",
+							"displayName": "order_id",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "status",
+							"displayName": "status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 400],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a04",
+			"name": "Update Row",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "appendOrUpdate",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "Q3 Orders",
+					"mode": "name"
+				},
+				"columns": {
+					"mappingMode": "defineBelow",
+					"value": {
+						"order_id": "ORD-1044",
+						"status": "pending"
+					},
+					"matchingColumns": ["order_id"],
+					"schema": [
+						{
+							"id": "order_id",
+							"displayName": "order_id",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						},
+						{
+							"id": "status",
+							"displayName": "status",
+							"required": false,
+							"defaultMatch": false,
+							"display": true,
+							"type": "string",
+							"canBeUsedToMatch": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 600],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a05",
+			"name": "Append or Update Row",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "clear",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "1843902751",
+					"mode": "id"
+				},
+				"keepFirstRow": true
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 800],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a06",
+			"name": "Clear Sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "1843902751",
+					"mode": "id"
+				},
+				"startIndex": 5
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 1000],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a07",
+			"name": "Delete Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"title": "Q4 Orders",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 1200],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a08",
+			"name": "Create Sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "remove",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "1843902751",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 1400],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a09",
+			"name": "Remove Sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spreadsheet",
+				"title": "Q4 Planning",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 1600],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a10",
+			"name": "Create Spreadsheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spreadsheet",
+				"operation": "deleteSpreadsheet",
+				"documentId": {
+					"__rl": true,
+					"value": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [220, 1800],
+			"id": "7a3e1c52-9d4b-4f6a-8e21-3c5b7d9f0a11",
+			"name": "Delete Spreadsheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Read Rows": [
+			{
+				"json": {
+					"row_number": 2,
+					"order_id": "ORD-1042",
+					"status": "pending"
+				}
+			}
+		],
+		"Append Row": [
+			{
+				"json": {
+					"order_id": "ORD-1043",
+					"status": "pending"
+				}
+			}
+		],
+		"Update Row": [
+			{
+				"json": {
+					"order_id": "ORD-1042",
+					"status": "shipped"
+				}
+			}
+		],
+		"Append or Update Row": [
+			{
+				"json": {
+					"order_id": "ORD-1044",
+					"status": "pending"
+				}
+			}
+		],
+		"Clear Sheet": [
+			{
+				"json": {}
+			}
+		],
+		"Delete Rows": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Create Sheet": [
+			{
+				"json": {
+					"spreadsheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"sheetId": 905317462,
+					"title": "Q4 Orders"
+				}
+			}
+		],
+		"Remove Sheet": [
+			{
+				"json": {
+					"spreadsheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M"
+				}
+			}
+		],
+		"Create Spreadsheet": [
+			{
+				"json": {
+					"spreadsheetId": "1Hq3nW6tR9yU2iO5pA8sD1fG4hJ7kL0zX3cV6bN9mQ2E",
+					"properties": {
+						"title": "Q4 Planning"
+					}
+				}
+			}
+		],
+		"Delete Spreadsheet": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{ "node": "Read Rows", "type": "main", "index": 0 },
+					{ "node": "Append Row", "type": "main", "index": 0 },
+					{ "node": "Update Row", "type": "main", "index": 0 },
+					{ "node": "Append or Update Row", "type": "main", "index": 0 },
+					{ "node": "Clear Sheet", "type": "main", "index": 0 },
+					{ "node": "Delete Rows", "type": "main", "index": 0 },
+					{ "node": "Create Sheet", "type": "main", "index": 0 },
+					{ "node": "Remove Sheet", "type": "main", "index": 0 },
+					{ "node": "Create Spreadsheet", "type": "main", "index": 0 },
+					{ "node": "Delete Spreadsheet", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -8,8 +8,10 @@ import type {
 	IDataObject,
 	IHttpRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost
@@ -17,7 +19,7 @@ import { NodeApiError } from 'n8n-workflow';
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject | GenericValue | GenericValue[] = {},
 	query: IDataObject = {},
 ) {
@@ -25,11 +27,11 @@ export async function apiRequest(
 
 	query.api_key = credentials.apiKey;
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method,
 		body,
 		qs: query,
-		url: `https://${credentials.subdomain}.syncromsp.com/api/v1/${endpoint}`,
+		url: requestUrl`https://${credentials.subdomain}.syncromsp.com/api/v1/${endpoint}`,
 		headers: {},
 	};
 
@@ -53,7 +55,7 @@ export async function apiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		responseData = await apiRequest.call(this, method, requestPath`${endpoint}`, body, query);
 		query.page++;
 		returnData = returnData.concat(responseData[endpoint] as IDataObject[]);
 	} while (responseData[endpoint].length !== 0);
@@ -71,12 +73,12 @@ export async function validateCredentials(
 		apiKey: string;
 	};
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		method: 'GET',
 		qs: {
 			api_key: apiKey,
 		},
-		url: `https://${subdomain}.syncromsp.com/api/v1//me`,
+		url: requestUrl`https://${subdomain}.syncromsp.com/api/v1//me`,
 	};
 
 	return await this.helpers.request(options);

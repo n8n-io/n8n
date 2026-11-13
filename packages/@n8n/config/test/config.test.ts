@@ -564,7 +564,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -765,6 +765,7 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

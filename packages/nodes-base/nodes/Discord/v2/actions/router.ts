@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeOperationError, SEND_AND_WAIT_OPERATION, requestPath } from 'n8n-workflow';
 
 import * as channel from './channel';
 import * as member from './member';
@@ -34,7 +34,7 @@ export async function router(this: IExecuteFunctions) {
 			userGuilds = (await discordApiRequest.call(
 				this,
 				'GET',
-				'/users/@me/guilds',
+				requestPath`/users/@me/guilds`,
 			)) as IDataObject[];
 
 			checkAccessToGuild(this.getNode(), guildId, userGuilds);

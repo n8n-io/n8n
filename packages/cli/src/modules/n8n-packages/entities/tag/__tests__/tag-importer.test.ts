@@ -16,6 +16,7 @@ function contextFor(scopes: Array<'tag:create' | 'tag:update'>): ImportContext {
 		user: mock<User>({ id: 'user-1', role: { scopes: scopes.map((slug) => ({ slug })) } }),
 		projectId: 'project-1',
 		folderId: null,
+		publicApi: false,
 	};
 }
 

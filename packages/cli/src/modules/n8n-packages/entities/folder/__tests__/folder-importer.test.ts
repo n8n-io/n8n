@@ -15,6 +15,7 @@ const context = (
 	user: mock<User>(),
 	projectId: 'project-1',
 	folderId: null,
+	publicApi: false,
 	folderConflictPolicy: 'merge',
 	layoutConflictPolicy,
 	...over,

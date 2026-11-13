@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock, MockedObject } from 'vitest';
 
 import { Github } from '../Github.node';
@@ -90,7 +91,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 			// Verify API was called with correct parameters
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/actions/secrets/MY_SECRET',
+				requestPath`/repos/test-owner/test-repo/actions/secrets/${'MY_SECRET'}`,
 				{
 					encrypted_value: 'encrypted-secret-value',
 					key_id: 'test-key-id-123',
@@ -155,7 +156,7 @@ describe('Github Node - Secret CreateOrUpdate Operation', () => {
 
 			expect(GenericFunctions.githubApiRequest).toHaveBeenCalledWith(
 				'PUT',
-				'/repos/test-owner/test-repo/actions/secrets/MY_SECRET_2',
+				requestPath`/repos/test-owner/test-repo/actions/secrets/${'MY_SECRET_2'}`,
 				expect.any(Object),
 				{},
 			);
