@@ -1,0 +1,51 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestMoreMenu.test.ts
+  s_11b3a7c96629c4::t_b742e88ff005db 202-210
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_11b3a7c96629c4::t_72c8beccf00316 3618,3628-3629
+  s_11b3a7c96629c4::t_4dbfb3c60e9845 298,308-311,314-316
+  s_11b3a7c96629c4::t_cf4e232a43cd09 303,306,317-324,327-337
+  s_11b3a7c96629c4::t_9080388f8da143 282-297
+  s_11b3a7c96629c4::t_1895a735a0a5ad 299-302,307,312-313,338-339
+  s_11b3a7c96629c4::t_4acca09f20e97f 304-305,325-326
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_11b3a7c96629c4::t_4679c6cbc09310 498
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_11b3a7c96629c4::t_88768f40cf73f0 303-305,307,442-444,446-447
+  s_11b3a7c96629c4::t_2e751dede3471c 302,308-310
+  s_11b3a7c96629c4::t_b7b8d8d62e0425 1110-1111,1113-1114
+  s_11b3a7c96629c4::t_172e52aafdd3ca 1112
+  s_11b3a7c96629c4::t_51d7ad98a086d3 306,445
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_11b3a7c96629c4::t_4d5fb2698b7e40 892-893
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_11b3a7c96629c4::t_db3086636dac7f 1868-1876,1878-1881
+  s_11b3a7c96629c4::t_62d4a5203e9638 13
+  s_7026092cc5734f::t_5ffb9168a8ce30 1877
+packages/frontend/editor-ui/src/features/agents/components/AgentTestMoreMenu.vue
+  s_11b3a7c96629c4::t_badd90416a9b3e 271,300
+  s_11b3a7c96629c4::t_9aa1f6010326ba 301-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "579b5213af7b21321bad6fb6f068baf8086c36ca",
+  "prompts": {},
+  "sessions": {
+    "s_11b3a7c96629c4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a19cfc-c14e-767f-ad96-6547daeebc86",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_7026092cc5734f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a19ce2-5707-70f2-9c6e-7706c076b1eb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

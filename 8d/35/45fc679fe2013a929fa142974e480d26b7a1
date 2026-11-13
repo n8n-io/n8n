@@ -1,0 +1,22 @@
+.agents/skills/public-api-live-testing/scripts/parity/run.mjs
+  s_9d31531ba5c1f9::t_7a4fb0f62404ae 123-124,126-128
+  s_9d31531ba5c1f9::t_1ad93a9efe7450 161-167
+.agents/skills/public-api-live-testing/SKILL.md
+  s_9d31531ba5c1f9::t_381a33b212c126 81-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d3545fc679fe2013a929fa142974e480d26b7a1",
+  "prompts": {},
+  "sessions": {
+    "s_9d31531ba5c1f9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0949ac3c-8f37-450f-9366-3b1368197b66",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

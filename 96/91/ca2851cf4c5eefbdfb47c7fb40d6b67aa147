@@ -1,0 +1,48 @@
+packages/cli/test/integration/project.service.integration.test.ts
+  s_5f5efe371ad2e2::t_535d194d4f5082 229-233,252-256,494-498
+packages/cli/test/integration/services/project.service.test.ts
+  s_5f5efe371ad2e2::t_535d194d4f5082 332-336
+  s_5f5efe371ad2e2::t_37bf43bb2e82a8 300-304
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_5f5efe371ad2e2::t_2a6baa3df0d3cb 4,110
+packages/cli/src/user-management/email/__tests__/user-management-mailer.test.ts
+  s_5f5efe371ad2e2::t_4d99065e69b59a 369
+packages/cli/test/integration/public-api/users.test.ts
+  s_5f5efe371ad2e2::t_39244a4c51d5b5 358,368-370
+  s_5f5efe371ad2e2::t_051889d9be2544 4
+  s_5f5efe371ad2e2::t_891787792a4198 371
+packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+  s_5f5efe371ad2e2::t_535d194d4f5082 692-696
+  s_5f5efe371ad2e2::t_066050d23d4724 673-676,687-691,697-701
+  s_5f5efe371ad2e2::t_47838e7c688a96 702-703
+packages/cli/src/services/user.service.ts
+  s_5f5efe371ad2e2::t_4a191d14ecc857 706
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_5f5efe371ad2e2::t_535d194d4f5082 197-201,215-219,238,241,245-246,269-276,304-308
+packages/@n8n/telemetry/src/schemas.ts
+  s_5f5efe371ad2e2::t_2a6baa3df0d3cb 6-11
+packages/cli/src/public-api/v1/controllers/projects.public.controller.ts
+  s_5f5efe371ad2e2::t_1c96eb2986744f 224-225,227-229
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_5f5efe371ad2e2::t_2a6baa3df0d3cb 4,48
+packages/cli/test/integration/public-api/projects.test.ts
+  s_5f5efe371ad2e2::t_1c96eb2986744f 1169-1174
+packages/cli/src/services/project.service.ee.ts
+  s_5f5efe371ad2e2::t_1c96eb2986744f 644-654
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9691ca2851cf4c5eefbdfb47c7fb40d6b67aa147",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

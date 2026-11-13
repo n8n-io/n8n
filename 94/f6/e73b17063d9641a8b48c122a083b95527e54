@@ -1,0 +1,28 @@
+packages/@n8n/instance-ai/src/workspace/pack-workspace-sdk.ts
+  s_939a48207b5108::t_ebd5093bcf4ad4 5-7,76-81,196
+  s_939a48207b5108::t_7d303747580f75 33-34,96,107,159-165,167,189-195,197,199-200,245
+packages/@n8n/instance-ai/scripts/verify-snapshot-packages.ts
+  s_939a48207b5108::t_7d303747580f75 14,85-89
+packages/@n8n/instance-ai/src/workspace/__tests__/pack-workspace-sdk.test.ts
+  s_939a48207b5108::t_7d303747580f75 5-17,105-107,117-141
+  s_939a48207b5108::t_2bb7d687bc78eb 108-116
+  s_939a48207b5108::t_78cffff9b39867 142
+packages/@n8n/instance-ai/scripts/build-snapshot.cjs
+  s_939a48207b5108::t_7d303747580f75 9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94f6e73b17063d9641a8b48c122a083b95527e54",
+  "prompts": {},
+  "sessions": {
+    "s_939a48207b5108": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e366ccd96ffeMbZge3MQBa6Tn6",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

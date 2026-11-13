@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/agents/composables/useFirstAssignmentPrototype.test.ts
+  h_8a472ace01776f 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4475f6588dbd8bd26bf4ce79212e3ecd0dbc7a4c",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

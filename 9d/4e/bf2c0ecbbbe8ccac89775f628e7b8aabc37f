@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  h_23d60aac2fe72e 1145-1146,1148-1151,1153-1175,1177,1179,1309,1312-1314,1323-1332
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  h_23d60aac2fe72e 67-68
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  h_23d60aac2fe72e 189,1734
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  h_23d60aac2fe72e 596-612
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  h_23d60aac2fe72e 21,23,584-647
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  h_23d60aac2fe72e 2,15-22,25-26,221-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d4ebf2c0ecbbbe8ccac89775f628e7b8aabc37f",
+  "prompts": {},
+  "humans": {
+    "h_23d60aac2fe72e": {
+      "author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
