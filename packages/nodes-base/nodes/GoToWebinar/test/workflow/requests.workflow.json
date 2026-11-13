@@ -1,0 +1,794 @@
+{
+	"name": "gotowebinar-requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "attendee",
+				"operation": "get",
+				"webinarKey": "2913487560192837",
+				"sessionKey": "3381229044",
+				"registrantKey": "5562039117"
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Attendee Get",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 120],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attendee",
+				"operation": "getAll",
+				"webinarKey": "2913487560192837",
+				"sessionKey": "3381229044",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Attendee Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "attendee",
+				"operation": "getDetails",
+				"webinarKey": "2913487560192837",
+				"sessionKey": "3381229044",
+				"registrantKey": "5562039117",
+				"details": "polls"
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Attendee Get Details",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 360],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coorganizer",
+				"operation": "create",
+				"webinarKey": "2913487560192837",
+				"isExternal": false,
+				"organizerKey": "8800112233"
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Coorganizer Create",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coorganizer",
+				"operation": "delete",
+				"webinarKey": "2913487560192837",
+				"coorganizerKey": "4410020030",
+				"isExternal": false
+			},
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Coorganizer Delete",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coorganizer",
+				"operation": "getAll",
+				"webinarKey": "2913487560192837",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Coorganizer Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 720],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coorganizer",
+				"operation": "reinvite",
+				"webinarKey": "2913487560192837",
+				"coorganizerKey": "4410020030",
+				"isExternal": false
+			},
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Coorganizer Reinvite",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 840],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "panelist",
+				"operation": "create",
+				"webinarKey": "2913487560192837",
+				"name": "Grace",
+				"email": "grace@example.com"
+			},
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Panelist Create",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "panelist",
+				"operation": "delete",
+				"webinarKey": "2913487560192837",
+				"panelistKey": "6610020040"
+			},
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Panelist Delete",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1080],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "panelist",
+				"operation": "getAll",
+				"webinarKey": "2913487560192837",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Panelist Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "panelist",
+				"operation": "reinvite",
+				"webinarKey": "2913487560192837",
+				"panelistKey": "6610020040"
+			},
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Panelist Reinvite",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1320],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "registrant",
+				"operation": "create",
+				"webinarKey": "2913487560192837",
+				"firstName": "Ada",
+				"lastName": "Lovelace",
+				"email": "ada@example.com",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Registrant Create",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "registrant",
+				"operation": "delete",
+				"webinarKey": "2913487560192837",
+				"registrantKey": "5562039117"
+			},
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Registrant Delete",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1560],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "registrant",
+				"operation": "get",
+				"webinarKey": "2913487560192837",
+				"registrantKey": "5562039117"
+			},
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Registrant Get",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1680],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "registrant",
+				"operation": "getAll",
+				"webinarKey": "2913487560192837",
+				"returnAll": true
+			},
+			"id": "00000000-0000-4000-8000-000000000015",
+			"name": "Registrant Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "get",
+				"webinarKey": "2913487560192837",
+				"sessionKey": "3381229044"
+			},
+			"id": "00000000-0000-4000-8000-000000000016",
+			"name": "Session Get",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 1920],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000017",
+			"name": "Session Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2040],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {
+					"webinarKey": "2913487560192837"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000018",
+			"name": "Session Get Many By Webinar",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2160],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "session",
+				"operation": "getDetails",
+				"webinarKey": "2913487560192837",
+				"sessionKey": "3381229044",
+				"details": "performance"
+			},
+			"id": "00000000-0000-4000-8000-000000000019",
+			"name": "Session Get Details",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2280],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "webinar",
+				"operation": "create",
+				"subject": "Launch",
+				"times": {
+					"timesProperties": [
+						{
+							"startTime": "2026-11-02T10:00:00Z",
+							"endTime": "2026-11-02T11:00:00Z"
+						}
+					]
+				},
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000020",
+			"name": "Webinar Create",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "webinar",
+				"operation": "delete",
+				"webinarKey": "2913487560192837",
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000021",
+			"name": "Webinar Delete",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2520],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "webinar",
+				"operation": "get",
+				"webinarKey": "2913487560192837"
+			},
+			"id": "00000000-0000-4000-8000-000000000022",
+			"name": "Webinar Get",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2640],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "webinar",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000023",
+			"name": "Webinar Get Many",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2760],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "webinar",
+				"operation": "update",
+				"webinarKey": "2913487560192837",
+				"notifyParticipants": true,
+				"updateFields": {
+					"subject": "Relaunch"
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000024",
+			"name": "Webinar Update",
+			"type": "n8n-nodes-base.goToWebinar",
+			"typeVersion": 1,
+			"position": [220, 2880],
+			"credentials": {
+				"goToWebinarOAuth2Api": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Attendee Get": [
+			{
+				"json": {
+					"firstName": "Ada"
+				}
+			}
+		],
+		"Attendee Get Many": [
+			{
+				"json": {
+					"firstName": "Ada"
+				}
+			}
+		],
+		"Attendee Get Details": [
+			{
+				"json": {
+					"question": "Ready?"
+				}
+			}
+		],
+		"Coorganizer Create": [
+			{
+				"json": {
+					"memberKey": "coorg-1"
+				}
+			}
+		],
+		"Coorganizer Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Coorganizer Get Many": [
+			{
+				"json": {
+					"memberKey": "coorg-1"
+				}
+			}
+		],
+		"Coorganizer Reinvite": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Panelist Create": [
+			{
+				"json": {
+					"panelistKey": "panel-1"
+				}
+			}
+		],
+		"Panelist Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Panelist Get Many": [
+			{
+				"json": {
+					"panelistKey": "panel-1"
+				}
+			}
+		],
+		"Panelist Reinvite": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Registrant Create": [
+			{
+				"json": {
+					"registrantKey": "reg-1"
+				}
+			}
+		],
+		"Registrant Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Registrant Get": [
+			{
+				"json": {
+					"email": "ada@example.com"
+				}
+			}
+		],
+		"Registrant Get Many": [
+			{
+				"json": {
+					"email": "ada@example.com"
+				}
+			}
+		],
+		"Session Get": [
+			{
+				"json": {
+					"sessionKey": "session-1"
+				}
+			}
+		],
+		"Session Get Many": [
+			{
+				"json": {
+					"sessionKey": "session-2"
+				}
+			}
+		],
+		"Session Get Many By Webinar": [
+			{
+				"json": {
+					"sessionKey": "session-3"
+				}
+			}
+		],
+		"Session Get Details": [
+			{
+				"json": {
+					"attendance": "high"
+				}
+			}
+		],
+		"Webinar Create": [
+			{
+				"json": {
+					"webinarKey": "webinar-1"
+				}
+			}
+		],
+		"Webinar Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Webinar Get": [
+			{
+				"json": {
+					"subject": "Launch"
+				}
+			}
+		],
+		"Webinar Get Many": [
+			{
+				"json": {
+					"subject": "Launch"
+				}
+			}
+		],
+		"Webinar Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Attendee Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attendee Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Attendee Get Details",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coorganizer Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coorganizer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coorganizer Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coorganizer Reinvite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Panelist Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Panelist Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Panelist Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Panelist Reinvite",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Registrant Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Registrant Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Registrant Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Registrant Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Session Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Session Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Session Get Many By Webinar",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Session Get Details",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webinar Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webinar Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webinar Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webinar Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webinar Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { SelfHealingResultActionResponse, SelfHealingResultDetail } from '@n8n/api-types';
+import type {
+	SelfHealingOriginalAction,
+	SelfHealingResultActionResponse,
+	SelfHealingResultDetail,
+} from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCallout, N8nEmptyState, N8nLoading } from '@n8n/design-system';
 import { VIEWS } from '@n8n/frontend-constants/views';
@@ -11,6 +16,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -49,10 +55,29 @@ const rootStore = useRootStore();
 const router = useRouter();
 const i18n = useI18n();
 const { showError, showMessage } = useToast();
+const telemetry = useTelemetry();
 const chat = capabilityRegistry.tryUse(capabilities.createSelfHealingChatHandoff)?.();
 const canChat = computed(() => chat?.canStart(props.selection.projectId) ?? false);
 const chatRetry = ref<ChatRetry | null>(null);
 let reconcileOnRetry: ((current: SelfHealingResultDetail) => Promise<boolean>) | null = null;
+let viewTracked = false;
+
+/** Telemetry names for the buttons. */
+const ORIGINAL_ACTIONS = {
+	'approve-and-publish': 'publish',
+	chat: 'continue',
+	editor: 'open_editor',
+	dismiss: 'dismiss',
+} as const satisfies Record<SelfHealingResultAction, SelfHealingOriginalAction>;
+
+function resultTelemetry(result: SelfHealingResultDetail) {
+	return {
+		result_id: result.resultId,
+		workflow_id: result.workflowId,
+		project_id: result.projectId,
+		result_kind: result.outcome,
+	};
+}
 
 const workflowNames = computed(() => {
 	const listed = detail.value?.workflows ?? [];
@@ -98,9 +123,27 @@ watch(
 	() => {
 		reconcileOnRetry = null;
 		chatRetry.value = null;
+		viewTracked = false;
 		void store.select(props.selection);
 	},
 	{ immediate: true },
+);
+
+// Track one view each time the user opens a result. An action or a refresh is not a new view.
+watch(
+	detail,
+	(shown) => {
+		if (!shown || viewTracked || shown.resultId !== props.selection.id) return;
+		viewTracked = true;
+		// Could not fix results close on creation and are not part of the engagement metrics.
+		if (shown.outcome === 'could_not_fix') return;
+
+		telemetry.track(TELEMETRY_EVENT.SELF_HEALING.USER_VIEWED_SELF_HEALING_RESULT, {
+			...resultTelemetry(shown),
+			current_state: shown.reviewState,
+		});
+	},
+	{ flush: 'post' },
 );
 
 /** A client error status means the server rejected the action, so nothing was saved. */
@@ -116,6 +159,7 @@ function notifyResultClosed(
 	before: SelfHealingResultDetail,
 	after: SelfHealingResultDetail,
 	onItemChange: (change: InboxItemChange) => void,
+	advance = false,
 ) {
 	if (before.reviewState === 'open' && after.reviewState !== 'open') {
 		onItemChange({
@@ -123,8 +167,26 @@ function notifyResultClosed(
 			id: after.resultId,
 			state: 'closed',
 			updatedAt: after.updatedAt,
+			advance,
 		});
 	}
+}
+
+function showPublished(result: SelfHealingResultActionResponse) {
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: result.workflowId },
+	});
+	showMessage({
+		type: 'success',
+		title: i18n.baseText('inbox.selfHealing.action.published.title', {
+			adjustToNumber: result.suggestions.length,
+			interpolate: { count: String(result.suggestions.length) },
+		}),
+		message: i18n.baseText('inbox.selfHealing.action.published.message', {
+			interpolate: { url: href },
+		}),
+	});
 }
 
 async function openEditor(workflowId: string) {
@@ -190,6 +252,12 @@ async function onAction(action: SelfHealingResultAction) {
 	const target = { ...props.selection };
 	if (!store.beginAction(target, action)) return;
 
+	// Track the click before the request. The request can fail or lose its response.
+	telemetry.track(TELEMETRY_EVENT.SELF_HEALING.USER_CLICKED_SELF_HEALING_ACTION, {
+		...resultTelemetry(before),
+		original_action: ORIGINAL_ACTIONS[action],
+	});
+
 	const isSelected = props.isSelected;
 	const onItemChange = props.onItemChange;
 	const isContinuation = action === 'chat' || action === 'editor';
@@ -201,7 +269,6 @@ async function onAction(action: SelfHealingResultAction) {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
-
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
 	 * So the chat waits for an explicit start, and publication stays unconfirmed.
@@ -212,13 +279,24 @@ async function onAction(action: SelfHealingResultAction) {
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
 		const closed = result.reviewState === closedState;
-		if (!isSelected(target.id) || !closed) return false;
+		if (!isSelected(target.id) || !closed) return { continued: false, advance: false };
 
-		if (action === 'chat') {
+		// A confirmed publish or dismissal stays in the Inbox and moves on to the next item.
+		let advance = false;
+		if (action === 'dismiss') {
+			advance = !responseLost;
+		} else if (action === 'chat') {
 			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
-		} else if (action !== 'dismiss') {
+		} else if (
+			!responseLost &&
+			action === 'approve-and-publish' &&
+			result.publishError === undefined
+		) {
+			showPublished(result);
+			advance = true;
+		} else {
 			if (responseLost && action === 'approve-and-publish') {
 				showMessage({
 					type: 'warning',
@@ -255,19 +333,24 @@ async function onAction(action: SelfHealingResultAction) {
 
 			await openEditor(result.workflowId);
 		}
-		return true;
+		return { continued: true, advance };
 	}
 
 	try {
-		const result = await reviewSelfHealingResult(rootStore.restApiContext, target, reviewAction);
+		const result = await reviewSelfHealingResult(
+			rootStore.restApiContext,
+			target,
+			reviewAction,
+			ORIGINAL_ACTIONS[action],
+		);
 
-		await continueAfterClose(result, false);
+		const { advance } = await continueAfterClose(result, false);
 		store.acceptResult(result);
-		notifyResultClosed(before, result, onItemChange);
+		notifyResultClosed(before, result, onItemChange, advance);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		const reconcile = async (current: SelfHealingResultDetail) => {
-			const continued = !isRejected(cause) && (await continueAfterClose(current, true));
+			const continued = !isRejected(cause) && (await continueAfterClose(current, true)).continued;
 			notifyResultClosed(before, current, onItemChange);
 			return continued;
 		};

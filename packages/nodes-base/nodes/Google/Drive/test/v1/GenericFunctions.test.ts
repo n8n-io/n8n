@@ -1,5 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IPollFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequestAllItems } from '../../v1/GenericFunctions';
 import type { Mock, Mocked } from 'vitest';
@@ -38,7 +39,7 @@ describe('googleApiRequestAllItems', () => {
 			mockContext,
 			'files',
 			'GET',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			{},
 			{},
 		);
@@ -57,7 +58,7 @@ describe('googleApiRequestAllItems', () => {
 			mockContext,
 			'files',
 			'GET',
-			'/drive/v3/files',
+			requestPath`/drive/v3/files`,
 			{},
 			{},
 		);

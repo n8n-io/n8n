@@ -487,7 +487,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			expectedAttempts,
 			onTransitioned,
 		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
-	): Promise<CrashedExecution[]> {
+	): Promise<boolean> {
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
 
@@ -495,12 +495,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			await this.transitionToCrashed(where, [status]),
 		);
 
-		if (transitioned.length > 0) {
-			onTransitioned?.(transitioned);
-			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
-		}
+		if (transitioned.length === 0) return false;
 
-		return transitioned;
+		onTransitioned?.(transitioned);
+		this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		return true;
 	}
 
 	/**

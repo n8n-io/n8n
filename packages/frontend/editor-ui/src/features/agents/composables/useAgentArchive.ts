@@ -33,7 +33,10 @@ export function useAgentArchive() {
 		return confirmed === MODAL_CONFIRM;
 	}
 
-	async function archive(agent: AgentResource): Promise<AgentResource | null> {
+	/** The card passes a list row; the builder header passes the full agent. */
+	type ArchiveTarget = Pick<AgentResource, 'id' | 'name' | 'projectId' | 'activeVersionId'>;
+
+	async function archive(agent: ArchiveTarget): Promise<AgentResource | null> {
 		// Archive unpublishes the agent, so a published agent needs a confirmation.
 		if (agent.activeVersionId !== null && !(await confirmArchivePublished(agent.name))) return null;
 		if (agentIdsInFlight.has(agent.id)) return null;
@@ -53,7 +56,7 @@ export function useAgentArchive() {
 		}
 	}
 
-	async function unarchive(agent: AgentResource): Promise<AgentResource | null> {
+	async function unarchive(agent: ArchiveTarget): Promise<AgentResource | null> {
 		if (agentIdsInFlight.has(agent.id)) return null;
 
 		agentIdsInFlight.add(agent.id);

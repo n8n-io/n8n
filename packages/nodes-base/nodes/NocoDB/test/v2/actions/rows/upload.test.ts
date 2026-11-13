@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/rows/upload.operation';
@@ -96,7 +97,7 @@ describe('NocoDB Rows Upload Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'POST',
-				'/api/v3/data/testProjectId/testTable/records/testRowId/fields/testFieldName/upload',
+				requestPath`/api/v3/data/testProjectId/testTable/records/testRowId/fields/testFieldName/upload`,
 				{
 					contentType: 'image/jpeg',
 					file: 'base64encodeddata',
@@ -155,14 +156,14 @@ describe('NocoDB Rows Upload Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/testProjectId/testTable/records/testRowId',
+				requestPath`/api/v3/data/testProjectId/testTable/records/testRowId`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PATCH',
-				'/api/v3/data/testProjectId/testTable/records',
+				requestPath`/api/v3/data/testProjectId/testTable/records`,
 				[
 					{
 						id: 'testRowId',
@@ -202,14 +203,14 @@ describe('NocoDB Rows Upload Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/testProjectId/testTable/records/testRowId',
+				requestPath`/api/v3/data/testProjectId/testTable/records/testRowId`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PATCH',
-				'/api/v3/data/testProjectId/testTable/records',
+				requestPath`/api/v3/data/testProjectId/testTable/records`,
 				[
 					{
 						id: 'testRowId',
@@ -252,14 +253,14 @@ describe('NocoDB Rows Upload Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/testProjectId/testTable/records/testRowId',
+				requestPath`/api/v3/data/testProjectId/testTable/records/testRowId`,
 				{},
 				{},
 			);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'PATCH',
-				'/api/v3/data/testProjectId/testTable/records',
+				requestPath`/api/v3/data/testProjectId/testTable/records`,
 				[
 					{
 						id: 'testRowId',

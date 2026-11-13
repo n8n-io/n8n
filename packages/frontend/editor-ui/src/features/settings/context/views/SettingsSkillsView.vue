@@ -64,6 +64,7 @@ import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -113,6 +114,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const sourceToDelete = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -213,6 +215,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			projectIcon: personalProject.icon,
 			target: { projectId: personalProject.id },
 		});
 	}
@@ -222,6 +225,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			projectIcon: project.icon,
 			target: { projectId: project.id },
 		});
 	}
@@ -604,7 +608,10 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+			: [
+					{ value: currentValue, ...scopeDisplay(detail), projectIcon: detail.projectIcon },
+					...scopeOptions.value,
+				];
 		// A restore keeps the modal open, so the next save must send the hash it produced.
 		let baseSkillHash = detail.skillHash;
 		openModal({
@@ -617,6 +624,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			projectType: detail.projectType,
+			projectIcon: detail.projectIcon,
 			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
@@ -786,6 +795,13 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 const checkingSourceIds = ref<string[]>([]);
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
+
+async function onSourceDeleted() {
+	sourceToDelete.value = undefined;
+	void loadCreators();
+	await loadSources();
+	await load();
+}
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
@@ -1046,6 +1062,7 @@ onMounted(async () => {
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@delete-source="sourceToDelete = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1091,6 +1108,12 @@ onMounted(async () => {
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
+		/>
+		<SkillSourceDeleteDialog
+			v-if="skillSyncEnabled && sourceToDelete"
+			:source="sourceToDelete"
+			@close="sourceToDelete = undefined"
+			@deleted="onSourceDeleted"
 		/>
 		<input
 			ref="skillFolderInput"

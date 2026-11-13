@@ -11,7 +11,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, hexToRgb } from './GenericFunctions';
 import type {
@@ -129,13 +129,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					await sheet.appendSheetData(
-						setData,
-						sheet.encodeRange(range),
-						keyRow,
-						valueInputMode,
-						usePathForKeyRow,
-					);
+					await sheet.appendSheetData(setData, range, keyRow, valueInputMode, usePathForKeyRow);
 
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
@@ -152,7 +146,7 @@ export class GoogleSheetsV1 implements INodeType {
 				//         clear
 				// ----------------------------------
 				try {
-					await sheet.clearData(sheet.encodeRange(range));
+					await sheet.clearData(range);
 
 					const items = this.getInputData();
 					return [items];
@@ -189,7 +183,7 @@ export class GoogleSheetsV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/v4/spreadsheets/${sheetId}:batchUpdate`,
+							requestPath`/v4/spreadsheets/${sheetId}:batchUpdate`,
 							{ requests },
 						);
 
@@ -256,7 +250,7 @@ export class GoogleSheetsV1 implements INodeType {
 				//         lookup
 				// ----------------------------------
 				try {
-					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					const sheetData = await sheet.getData(range, valueRenderMode);
 
 					if (sheetData === undefined) {
 						return [];
@@ -317,7 +311,7 @@ export class GoogleSheetsV1 implements INodeType {
 				try {
 					const rawData = this.getNodeParameter('rawData', 0);
 
-					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
+					const sheetData = await sheet.getData(range, valueRenderMode);
 
 					let returnData: IDataObject[];
 					if (!sheetData) {
@@ -367,7 +361,7 @@ export class GoogleSheetsV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/v4/spreadsheets/${sheetId}:batchUpdate`,
+							requestPath`/v4/spreadsheets/${sheetId}:batchUpdate`,
 							{ requests },
 						);
 						delete responseData.replies;
@@ -482,7 +476,12 @@ export class GoogleSheetsV1 implements INodeType {
 							: undefined;
 						body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath`/v4/spreadsheets`,
+							body,
+						);
 
 						returnData.push(responseData as IDataObject);
 					} catch (error) {

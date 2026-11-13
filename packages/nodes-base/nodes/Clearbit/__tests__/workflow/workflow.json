@@ -1,0 +1,115 @@
+{
+	"name": "Clearbit request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b0500000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "person",
+				"operation": "enrich",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clearbit",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b0500000-0000-4000-8000-000000000001",
+			"name": "person enrich",
+			"credentials": {
+				"clearbitApi": {
+					"id": "credId",
+					"name": "Clearbit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "enrich",
+				"domain": "example.com",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clearbit",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "b0500000-0000-4000-8000-000000000002",
+			"name": "company enrich",
+			"credentials": {
+				"clearbitApi": {
+					"id": "credId",
+					"name": "Clearbit account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "company",
+				"operation": "autocomplete",
+				"name": "Acme"
+			},
+			"type": "n8n-nodes-base.clearbit",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "b0500000-0000-4000-8000-000000000003",
+			"name": "company autocomplete",
+			"credentials": {
+				"clearbitApi": {
+					"id": "credId",
+					"name": "Clearbit account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"person enrich": [
+			{
+				"json": {
+					"id": "person-1"
+				}
+			}
+		],
+		"company enrich": [
+			{
+				"json": {
+					"id": "company-1"
+				}
+			}
+		],
+		"company autocomplete": [
+			{
+				"json": {
+					"name": "Acme Corp"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "person enrich",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "company enrich",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "company autocomplete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

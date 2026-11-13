@@ -67,6 +67,7 @@ import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_EMPTY_PREFERENCES_NOTE_FLAG,
 	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
@@ -112,6 +113,7 @@ import {
 } from './tools/get-instance-context.tool';
 import { createGetDependenciesTool } from './tools/get-dependencies.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
+import { McpPreferencesNoteService } from './mcp-preferences-note.service';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
@@ -175,6 +177,7 @@ export type McpFeatureFlags = {
 	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
 	skillsExtensionEnabled?: boolean;
+	preferencesNoteVariant?: string;
 };
 
 type McpAppTelemetryResolution = {
@@ -289,6 +292,7 @@ export class McpService {
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly preferencesNoteService: McpPreferencesNoteService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -310,12 +314,15 @@ export class McpService {
 			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
 		]);
 		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
+		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
+			preferencesNoteVariant:
+				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
 		};
 	}
 
@@ -860,7 +867,15 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		registerIfAllowed(createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry));
+		registerIfAllowed(
+			createGetUserPreferencesTool(
+				user,
+				this.aiPreferenceService,
+				this.telemetry,
+				this.preferencesNoteService,
+				featureFlags.preferencesNoteVariant,
+			),
+		);
 		// The write path. Gated by `aiPreference:write` at registration; the service applies the
 		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
 		registerIfAllowed(

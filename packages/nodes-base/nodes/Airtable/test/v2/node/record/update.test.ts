@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -136,16 +137,20 @@ describe('Test AirtableV2, update operation', () => {
 
 		await update.execute.call(mockExecuteFunctions, [{ json: {} }], 'base', 'table');
 
-		expect(transport.batchUpdate).toHaveBeenCalledWith('base/table', { typecast: true }, [
-			{
-				id: 'recXXX',
-				fields: {
-					status: 'New Option',
-					// attachment must be an array, not the original string
-					attachments: [{ url: 'https://example.com/file.pdf', filename: 'file.pdf' }],
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			requestPath`base/table`,
+			{ typecast: true },
+			[
+				{
+					id: 'recXXX',
+					fields: {
+						status: 'New Option',
+						// attachment must be an array, not the original string
+						attachments: [{ url: 'https://example.com/file.pdf', filename: 'file.pdf' }],
+					},
 				},
-			},
-		]);
+			],
+		);
 	});
 
 	it('should update a record by id, autoMapInputData', async () => {
@@ -176,7 +181,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1' }, id: 'recXXX' }],
 		);
@@ -210,7 +215,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
 		);
@@ -260,7 +265,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[{ fields: { lookupField: 'lookup_val_1', name: 'updated name' }, id: 'recAAA' }],
 		);
@@ -318,7 +323,7 @@ describe('Test AirtableV2, update operation', () => {
 		);
 
 		expect(transport.batchUpdate).toHaveBeenCalledWith(
-			'appYoLbase/tblltable',
+			requestPath`appYoLbase/tblltable`,
 			{ typecast: false },
 			[
 				{ fields: { lookupField: 'shared_val', name: 'updated name' }, id: 'recAAA' },

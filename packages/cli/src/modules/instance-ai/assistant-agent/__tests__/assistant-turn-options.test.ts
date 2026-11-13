@@ -40,14 +40,51 @@ describe('Assistant turn options', () => {
 		expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('not-a-boolean');
 	});
 
-	it('ignores the retired build mode of stored turn options', () => {
-		expect(createAssistantTurnOptions({ timeZone: 'UTC', mode: 'progressive' }).request).toEqual({
+	it('ignores the turn override fields in the client context and keeps the other fields', () => {
+		const logger = mock<Logger>();
+
+		const options = createAssistantTurnOptions(
+			{
+				timeZone: 'UTC',
+				pushRef: 'push-1',
+				browserUseAvailable: true,
+				// Values that are not valid must not drop the other fields either.
+				mode: 'not-a-mode',
+				promptVersion: '',
+				observerThresholdTokens: 1,
+			},
+			logger,
+		);
+
+		expect(options.request).toEqual({
 			timeZone: 'UTC',
+			pushRef: 'push-1',
+			browserUseAvailable: true,
+		});
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('ignores the turn override fields in stored options of older turns', () => {
+		const options = readAssistantTurnOptions({
+			runId: 'run-1',
+			messageGroupId: 'mg-1',
+			request: {
+				timeZone: 'UTC',
+				mode: 'progressive',
+				promptVersion: 'default@1',
+				observerThresholdTokens: 5_000,
+			},
+		});
+
+		expect(options).toEqual({
+			runId: 'run-1',
+			messageGroupId: 'mg-1',
+			request: { timeZone: 'UTC' },
 		});
 	});
 
 	it('reads back what it stored, so a resume keeps its run id', () => {
-		const options = createAssistantTurnOptions({ timeZone: 'UTC', promptVersion: 'default@1' });
+		const options = createAssistantTurnOptions({ timeZone: 'UTC', pushRef: 'push-1' });
 
 		const stored = deepCopy(serializeAssistantTurnOptions(options));
 

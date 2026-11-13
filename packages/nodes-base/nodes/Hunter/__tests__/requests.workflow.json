@@ -1,0 +1,161 @@
+{
+	"name": "Hunter request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"domain": "n8n.io",
+				"onlyEmails": false,
+				"returnAll": false,
+				"limit": 10,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Domain Search",
+			"credentials": {
+				"hunterApi": {
+					"id": "cred1",
+					"name": "Hunter account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"domain": "n8n.io",
+				"returnAll": true,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Domain Search All",
+			"credentials": {
+				"hunterApi": {
+					"id": "cred1",
+					"name": "Hunter account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "emailFinder",
+				"domain": "n8n.io",
+				"firstname": "Nathan",
+				"lastname": "Smith"
+			},
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Email Finder",
+			"credentials": {
+				"hunterApi": {
+					"id": "cred1",
+					"name": "Hunter account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "emailVerifier",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.hunter",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Email Verifier",
+			"credentials": {
+				"hunterApi": {
+					"id": "cred1",
+					"name": "Hunter account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Domain Search": [
+			{
+				"json": {
+					"domain": "n8n.io",
+					"organization": "n8n",
+					"emails": [
+						{
+							"value": "nathan@n8n.io",
+							"type": "personal",
+							"confidence": 94
+						}
+					]
+				}
+			}
+		],
+		"Domain Search All": [
+			{
+				"json": {
+					"value": "nathan@n8n.io",
+					"type": "personal",
+					"confidence": 94
+				}
+			}
+		],
+		"Email Finder": [
+			{
+				"json": {
+					"email": "nathan@n8n.io",
+					"score": 97
+				}
+			}
+		],
+		"Email Verifier": [
+			{
+				"json": {
+					"email": "nathan@n8n.io",
+					"status": "valid"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Domain Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Domain Search All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Email Finder",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Email Verifier",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

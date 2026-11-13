@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -159,7 +159,13 @@ export const execute: ConfluenceOperation = async function (
 
 		let response: IDataObject;
 		try {
-			response = await confluenceApiRequest.call(this, 'GET', '/wiki/rest/api/search', {}, pageQs);
+			response = await confluenceApiRequest.call(
+				this,
+				'GET',
+				requestPath`/wiki/rest/api/search`,
+				{},
+				pageQs,
+			);
 		} catch (error) {
 			throw toSearchError.call(this, error, itemIndex) ?? error;
 		}

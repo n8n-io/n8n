@@ -1,11 +1,37 @@
+import { mock, mockDeep } from 'vitest-mock-extended';
+import type { IExecuteFunctions, INode, IRequestOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
 import {
 	getGoogleAnalyticsDomainsArray,
 	getTags,
 	getToEmailArray,
+	mandrillApiRequest,
 	validateJSON,
 } from '../GenericFunctions';
 
 describe('Mandrill GenericFunctions', () => {
+	describe('mandrillApiRequest', () => {
+		it('should encode a path value that contains a slash', async () => {
+			const executeFunctions = mockDeep<IExecuteFunctions>();
+			executeFunctions.getNode.mockReturnValue(mock<INode>());
+			executeFunctions.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			executeFunctions.helpers.request.mockResolvedValue({});
+
+			await mandrillApiRequest.call(
+				executeFunctions,
+				requestPath`/templates`,
+				'POST',
+				requestPath`/${'info/list'}`,
+			);
+
+			const options = executeFunctions.helpers.request.mock.calls[0][0] as IRequestOptions;
+			expect(String(options.uri)).toBe(
+				'https://mandrillapp.com/api/1.0/templates/info%2Flist.json',
+			);
+		});
+	});
+
 	describe('getToEmailArray', () => {
 		it('should convert single email to array', () => {
 			const result = getToEmailArray('test@example.com');

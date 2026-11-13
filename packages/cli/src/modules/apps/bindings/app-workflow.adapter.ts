@@ -48,6 +48,7 @@ import {
 } from '@/workflows/callable/callable-workflow-result';
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './infer-output-schema';
 
@@ -122,6 +123,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 	constructor(
 		private readonly workflowLoader: CallableWorkflowLoader,
 		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowService: WorkflowService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly activeExecutions: ActiveExecutions,
@@ -154,6 +156,33 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 				`Binding "${binding.key}": workflow "${workflow.name}" cannot run from an app (${incompatibility.reason}).`,
 			);
 		}
+	}
+
+	async canPublish(user: User, _projectId: string, binding: AppWorkflowBinding) {
+		const workflow = await this.workflowFinder.findWorkflowForUser(binding.workflowId, user, [
+			'workflow:publish',
+		]);
+		return workflow !== null;
+	}
+
+	async getPublishState(projectId: string, binding: AppWorkflowBinding) {
+		const draft = await this.workflowLoader.loadWorkflow(projectId, {
+			workflowId: binding.workflowId,
+			workflowName: '',
+		});
+		if (!draft || getWorkflowToolIncompatibilityReason(draft) !== null) return null;
+		const published = draft.activeVersionId !== null;
+		return {
+			name: draft.name,
+			published,
+			hasChanges: published && draft.versionId !== draft.activeVersionId,
+		};
+	}
+
+	async publish(user: User, _projectId: string, binding: AppWorkflowBinding) {
+		await this.workflowService.activateWorkflow(user, binding.workflowId, {
+			publishHistory: 'latestActivation',
+		});
 	}
 
 	async describe(

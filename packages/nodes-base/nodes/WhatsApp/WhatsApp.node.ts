@@ -1,11 +1,18 @@
 import type {
 	IExecuteFunctions,
+	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 
 import { createMessage, WHATSAPP_BASE_URL } from './GenericFunctions';
 import { mediaFields, mediaTypeFields } from './MediaDescription';
@@ -97,7 +104,7 @@ export class WhatsApp implements INodeType {
 						WHATSAPP_CREDENTIALS_TYPE,
 						{
 							baseURL: WHATSAPP_BASE_URL,
-							url: `${credentials.businessAccountId}/message_templates`,
+							url: requestPath`${credentials.businessAccountId}/message_templates`,
 							method: 'GET',
 							qs: {
 								fields: 'name,language',
@@ -137,10 +144,16 @@ export class WhatsApp implements INodeType {
 				const instanceId = this.getInstanceId();
 
 				try {
+					const options: WithRequestTarget<IHttpRequestOptions> = createMessage(
+						config,
+						phoneNumberId,
+						recipientPhoneNumber,
+						instanceId,
+					);
 					await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						WHATSAPP_CREDENTIALS_TYPE,
-						createMessage(config, phoneNumberId, recipientPhoneNumber, instanceId),
+						options,
 					);
 				} catch (error) {
 					if (this.continueOnFail()) {

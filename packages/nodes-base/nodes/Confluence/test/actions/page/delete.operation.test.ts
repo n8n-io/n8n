@@ -4,7 +4,7 @@ import type {
 	INode,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/delete.operation';
@@ -57,7 +57,7 @@ describe('Confluence page:delete operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/pages/123');
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/wiki/api/v2/pages/123`);
 		expect(result).toEqual({ deleted: true, pageId: '123', purged: false });
 	});
 
@@ -67,11 +67,11 @@ describe('Confluence page:delete operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(1, 'DELETE', '/wiki/api/v2/pages/123');
+		expect(apiRequest).toHaveBeenNthCalledWith(1, 'DELETE', requestPath`/wiki/api/v2/pages/123`);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'DELETE',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ purge: true },
 		);
@@ -90,7 +90,7 @@ describe('Confluence page:delete operation', () => {
 		await execute.call(ctx, 0);
 
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('page', 0, '', { extractValue: true });
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/pages/456');
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', requestPath`/wiki/api/v2/pages/456`);
 	});
 
 	it('resolves a By Title selection to its page ID before deleting', async () => {
@@ -102,11 +102,11 @@ describe('Confluence page:delete operation', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{},
 			{ title: 'Doc', limit: 250 },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'DELETE', '/wiki/api/v2/pages/777');
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'DELETE', requestPath`/wiki/api/v2/pages/777`);
 		expect(result).toEqual({ deleted: true, pageId: '777', purged: false });
 	});
 
@@ -124,7 +124,7 @@ describe('Confluence page:delete operation', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'DELETE',
-			'/wiki/api/v2/pages/123',
+			requestPath`/wiki/api/v2/pages/123`,
 			{},
 			{ purge: true },
 		);

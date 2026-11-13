@@ -1,0 +1,299 @@
+{
+	"name": "Iterable request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "track",
+				"name": "purchase",
+				"additionalFields": {
+					"email": "nathan@n8n.io"
+				}
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Track Event",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "upsert",
+				"identifier": "email",
+				"value": "nathan@n8n.io",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Upsert User",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"by": "email",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Delete User by Email",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "delete",
+				"by": "userId",
+				"userId": "usr-1001"
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Delete User by ID",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"by": "email",
+				"email": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Get User by Email",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"by": "userId",
+				"userId": "usr-1001"
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Get User by ID",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "userList",
+				"operation": "add",
+				"listId": "1234",
+				"identifier": "email",
+				"value": "nathan@n8n.io"
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Add to List",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "userList",
+				"operation": "remove",
+				"listId": "1234",
+				"identifier": "email",
+				"value": "nathan@n8n.io",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.iterable",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Remove from List",
+			"credentials": {
+				"iterableApi": {
+					"id": "cred1",
+					"name": "Iterable account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Track Event": [
+			{
+				"json": {
+					"code": "Success",
+					"msg": "",
+					"params": null
+				}
+			}
+		],
+		"Upsert User": [
+			{
+				"json": {
+					"code": "Success",
+					"msg": "",
+					"params": null
+				}
+			}
+		],
+		"Delete User by Email": [
+			{
+				"json": {
+					"code": "Success",
+					"msg": "",
+					"params": null
+				}
+			}
+		],
+		"Delete User by ID": [
+			{
+				"json": {
+					"code": "Success",
+					"msg": "",
+					"params": null
+				}
+			}
+		],
+		"Get User by Email": [
+			{
+				"json": {
+					"email": "nathan@n8n.io",
+					"userId": "usr-1001",
+					"dataFields": {
+						"firstName": "Nathan"
+					}
+				}
+			}
+		],
+		"Get User by ID": [
+			{
+				"json": {
+					"email": "nathan@n8n.io",
+					"userId": "usr-1001",
+					"dataFields": {
+						"firstName": "Nathan"
+					}
+				}
+			}
+		],
+		"Add to List": [
+			{
+				"json": {
+					"successCount": 1,
+					"failCount": 0
+				}
+			}
+		],
+		"Remove from List": [
+			{
+				"json": {
+					"successCount": 1,
+					"failCount": 0
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Track Event",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upsert User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete User by Email",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete User by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User by Email",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User by ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add to List",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove from List",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

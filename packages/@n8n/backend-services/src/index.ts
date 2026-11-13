@@ -21,6 +21,12 @@ export {
 	CREDENTIAL_USABILITY_SCOPES,
 	type UnusableCredential,
 } from './credentials/credentials-finder.service';
+export {
+	CodeExecutionBackend,
+	type CodeExecutionBackendStatus,
+	type CodeTaskRequest,
+	toCodeTaskRequest,
+} from './code-execution/code-execution-backend';
 export { UncacheableValueError } from './errors/cache-errors/uncacheable-value.error';
 export { CacheService } from './services/cache/cache.service';
 export type { Hash, MaybeHash } from './services/cache/cache.types';
@@ -108,6 +114,8 @@ export {
 } from './services/instance-registry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
+export { ExecutionLedger } from './executions/execution-ledger.service';
+export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {
 	isRedactableExecution,

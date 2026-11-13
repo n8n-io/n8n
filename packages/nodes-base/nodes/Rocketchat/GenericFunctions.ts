@@ -4,11 +4,14 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function rocketchatApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	resource: string,
+	resource: RequestPath,
 	method: IHttpRequestMethods,
 	operation: string,
 
@@ -18,11 +21,11 @@ export async function rocketchatApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('rocketchatApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers,
 		method,
 		body,
-		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
+		uri: requestUrl`${credentials.domain}/api/v1${resource}.${operation}`,
 		qs: queryParams,
 		json: true,
 	};
@@ -35,7 +38,7 @@ export async function rocketchatApiRequest(
 export async function rocketchatApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	resource: string,
+	resource: RequestPath,
 	method: IHttpRequestMethods,
 	operation: string,
 	body: IDataObject = {},

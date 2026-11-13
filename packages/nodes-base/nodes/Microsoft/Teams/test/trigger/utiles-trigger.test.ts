@@ -1,6 +1,12 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
-import type { IDataObject, INode, IWebhookFunctions, NodeParameterValueType } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, ObservableObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INode,
+	IWebhookFunctions,
+	NodeParameterValueType,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, ObservableObject, requestPath } from 'n8n-workflow';
 
 import {
 	fetchAllTeams,
@@ -72,7 +78,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				mockLoadOptionsFunctions,
 				'value',
 				'GET',
-				'/v1.0/me/joinedTeams',
+				requestPath`/v1.0/me/joinedTeams`,
 			);
 		});
 
@@ -104,7 +110,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				mockLoadOptionsFunctions,
 				'value',
 				'GET',
-				'/v1.0/teams/team1/channels',
+				requestPath`/v1.0/teams/team1/channels`,
 			);
 		});
 
@@ -172,7 +178,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				mockHookFunctions,
 				'POST',
-				'/v1.0/subscriptions',
+				requestPath`/v1.0/subscriptions`,
 				expect.objectContaining({ clientState: 'my-secret-state' }),
 			);
 		});
@@ -606,7 +612,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				mockHookFunctions,
 				'value',
 				'GET',
-				'/v1.0/subscriptions',
+				requestPath`/v1.0/subscriptions`,
 			);
 		});
 	});
@@ -657,14 +663,20 @@ describe('Microsoft Teams Helpers Functions', () => {
 					(name in params ? params[name] : fallback) as NodeParameterValueType,
 			);
 			(microsoftApiRequestAllItems.call as Mock).mockImplementation(
-				async (_ctx: unknown, _property: string, _method: string, path: string) => {
-					if (path === '/v1.0/subscriptions') return subscriptions;
-					if (path === '/v1.0/me/joinedTeams') return [{ id: 'team1' }, { id: 'team2' }];
+				async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+					if (path.value === '/v1.0/subscriptions') return subscriptions;
+					if (path.value === '/v1.0/me/joinedTeams') return [{ id: 'team1' }, { id: 'team2' }];
 					throw new Error(`unexpected path ${path}`);
 				},
 			);
 			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string, path: string, body?: Record<string, unknown>) => {
+				async (
+					_ctx: unknown,
+					method: string,
+					target: RequestPath,
+					body?: Record<string, unknown>,
+				) => {
+					const path = target.value;
 					if (method === 'GET') {
 						if (!path.startsWith('/v1.0/subscriptions/'))
 							throw new Error(`unexpected path ${path}`);
@@ -690,7 +702,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 		};
 
 		const calls = (method: string) =>
-			(microsoftApiRequest.call as Mock).mock.calls.filter((call) => call[1] === method);
+			(microsoftApiRequest.call as Mock).mock.calls
+				.filter((call) => call[1] === method)
+				.map(([ctx, requestMethod, path, ...rest]) => [ctx, requestMethod, String(path), ...rest]);
 
 		beforeEach(() => {
 			vi.useFakeTimers({ toFake: ['Date'], now: NOW });
@@ -757,7 +771,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					ctx,
 					'POST',
-					'/v1.0/subscriptions',
+					requestPath`/v1.0/subscriptions`,
 					expect.objectContaining({ resource: '/me/chats', clientState: 'secret' }),
 				);
 				expect(ctx.logger.warn).not.toHaveBeenCalled();
@@ -771,8 +785,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 				const { ctx } = arrange();
 				let releaseFirst: (value: unknown) => void = () => {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, _method: string, path: string) => {
-						if (path === '/v1.0/subscriptions/sub1') {
+					async (_ctx: unknown, _method: string, path: RequestPath) => {
+						if (path.value === '/v1.0/subscriptions/sub1') {
 							return await new Promise((resolve) => {
 								releaseFirst = resolve;
 							});
@@ -799,9 +813,9 @@ describe('Microsoft Teams Helpers Functions', () => {
 					new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 				let refuseB: (error: Error) => void = () => {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, _method: string, path: string) => {
-						if (path === '/v1.0/subscriptions/ok') return {};
-						if (path === '/v1.0/subscriptions/a') throw forbidden();
+					async (_ctx: unknown, _method: string, path: RequestPath) => {
+						if (path.value === '/v1.0/subscriptions/ok') return {};
+						if (path.value === '/v1.0/subscriptions/a') throw forbidden();
 						return await new Promise((_resolve, reject) => {
 							refuseB = reject;
 						});
@@ -1014,8 +1028,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 					});
 					const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
 					(microsoftApiRequest.call as Mock).mockImplementation(
-						async (callCtx: unknown, method: string, path: string, body?: unknown) => {
-							if (method === 'GET' && path === '/v1.0/subscriptions/a') {
+						async (callCtx: unknown, method: string, path: RequestPath, body?: unknown) => {
+							if (method === 'GET' && path.value === '/v1.0/subscriptions/a') {
 								if (answer === undefined) throw new Error('Graph is unavailable');
 								return answer;
 							}
@@ -1047,8 +1061,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 				const baseline = (microsoftApiRequest.call as Mock).getMockImplementation();
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (callCtx: unknown, method: string, path: string, body?: unknown) => {
-						if (method === 'GET' && path === '/v1.0/subscriptions/a') {
+					async (callCtx: unknown, method: string, path: RequestPath, body?: unknown) => {
+						if (method === 'GET' && path.value === '/v1.0/subscriptions/a') {
 							throw new Error('Graph is unavailable');
 						}
 						return await baseline?.(callCtx, method, path, body);
@@ -1320,10 +1334,10 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 				const releaseDelete: Record<string, (value: unknown) => void> = {};
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string) => {
+					async (_ctx: unknown, method: string, path: RequestPath) => {
 						if (method === 'DELETE') {
 							return await new Promise((resolve) => {
-								releaseDelete[path] = resolve;
+								releaseDelete[path.value] = resolve;
 							});
 						}
 						return { id: 'new-chats' };
@@ -1391,8 +1405,8 @@ describe('Microsoft Teams Helpers Functions', () => {
 			// GET by id answers from the table and 404s for any other id.
 			const answerById = (byId: Record<string, unknown>) =>
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, _method: string, path: string) => {
-						const found = byId[path.slice('/v1.0/subscriptions/'.length)];
+					async (_ctx: unknown, _method: string, path: RequestPath) => {
+						const found = byId[path.value.slice('/v1.0/subscriptions/'.length)];
 						if (found === undefined) {
 							throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
 						}
@@ -1553,7 +1567,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 
 				expect(
 					(microsoftApiRequestAllItems.call as Mock).mock.calls.filter(
-						(call) => call[3] === '/v1.0/subscriptions',
+						(call) => String(call[3]) === '/v1.0/subscriptions',
 					),
 				).toHaveLength(1);
 				expect(calls('POST').map((call) => call[3].resource)).toEqual([
@@ -1661,7 +1675,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					ctx,
 					'POST',
-					'/v1.0/subscriptions',
+					requestPath`/v1.0/subscriptions`,
 					expect.objectContaining({ clientState: 'stored-secret' }),
 				);
 			});
@@ -1842,10 +1856,15 @@ describe('Microsoft Teams Helpers Functions', () => {
 					],
 				});
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string, body?: Record<string, unknown>) =>
+					async (
+						_ctx: unknown,
+						method: string,
+						path: RequestPath,
+						body?: Record<string, unknown>,
+					) =>
 						method === 'PATCH'
 							? {
-									id: path.slice('/v1.0/subscriptions/'.length),
+									id: path.value.slice('/v1.0/subscriptions/'.length),
 									resource: '/teams/team1/channels',
 									notificationUrl: webhookUrl,
 									expirationDateTime: body?.expirationDateTime,
@@ -1989,7 +2008,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 					expect.objectContaining({ subscriptionId: 'sub1' }),
 				);
 				expect(
-					(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3)),
+					(microsoftApiRequest.call as Mock).mock.calls.map((call) => [call[1], String(call[2])]),
 				).toEqual([
 					['PATCH', '/v1.0/subscriptions/sub1'],
 					['DELETE', '/v1.0/subscriptions/sub1'],
@@ -2018,7 +2037,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					ctx,
 					'PATCH',
-					'/v1.0/subscriptions/sub1',
+					requestPath`/v1.0/subscriptions/sub1`,
 					{ expirationDateTime: expectedExpiry },
 				);
 				expect(ctx.logger.debug).toHaveBeenCalledWith(
@@ -2090,14 +2109,23 @@ describe('Microsoft Teams Helpers Functions', () => {
 				});
 				let graphIsDown = true;
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string, body?: Record<string, unknown>) => {
+					async (
+						_ctx: unknown,
+						method: string,
+						path: RequestPath,
+						body?: Record<string, unknown>,
+					) => {
 						if (method === 'POST') {
 							if (graphIsDown) throw new Error('Service unavailable');
 							return { id: 'new-team1' };
 						}
 						if (method === 'PATCH') {
 							return {
-								...subscription(path.slice('/v1.0/subscriptions/'.length), TEAM2, minutes(60)),
+								...subscription(
+									path.value.slice('/v1.0/subscriptions/'.length),
+									TEAM2,
+									minutes(60),
+								),
 								expirationDateTime: body?.expirationDateTime,
 							};
 						}
@@ -2154,7 +2182,7 @@ describe('Microsoft Teams Helpers Functions', () => {
 				expect(calls('PATCH')).toHaveLength(1);
 				expect(
 					(microsoftApiRequestAllItems.call as Mock).mock.calls.filter(
-						(call) => call[3] === '/v1.0/subscriptions',
+						(call) => String(call[3]) === '/v1.0/subscriptions',
 					),
 				).toHaveLength(listings);
 				expect(staticData).not.toHaveProperty('pendingReconcile');

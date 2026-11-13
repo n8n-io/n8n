@@ -1,0 +1,47 @@
+{
+	"name": "Mailgun request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5a0e8a52-6f1e-4b0a-9a51-2f3c1b7d0001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"fromEmail": "nathan@mg.example.com",
+				"toEmail": "jane@example.com",
+				"subject": "Hello",
+				"text": "Hello Jane"
+			},
+			"type": "n8n-nodes-base.mailgun",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "5a0e8a52-6f1e-4b0a-9a51-2f3c1b7d0002",
+			"name": "Mailgun > Send",
+			"credentials": {
+				"mailgunApi": {
+					"id": "1",
+					"name": "Mailgun account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Mailgun > Send", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Mailgun > Send": [
+			{
+				"json": {
+					"id": "<20261012120000.1.ABCDEF@mg.example.com>",
+					"message": "Queued. Thank you."
+				}
+			}
+		]
+	}
+}

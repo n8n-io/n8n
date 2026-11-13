@@ -509,7 +509,7 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
-		expect(skill?.description).toContain('workflow-verification-follow-up');
+		expect(skill?.description).toContain('workflow-setup-required');
 		expect(skill?.parents).toEqual(['workflow-builder']);
 
 		const loaded = await source.loadSkill('post-build-flow');

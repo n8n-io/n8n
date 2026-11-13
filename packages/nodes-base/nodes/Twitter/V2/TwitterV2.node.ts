@@ -12,6 +12,7 @@ import {
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
 	type JsonObject,
+	requestPath,
 } from 'n8n-workflow';
 
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
@@ -126,7 +127,7 @@ export class TwitterV2 implements INodeType {
 					if (operation === 'searchUser') {
 						const me = this.getNodeParameter('me', i, false) as boolean;
 						if (me) {
-							responseData = await twitterApiRequest.call(this, 'GET', '/users/me', {});
+							responseData = await twitterApiRequest.call(this, 'GET', requestPath`/users/me`, {});
 						} else {
 							const userRlc = this.getNodeParameter(
 								'user',
@@ -141,14 +142,14 @@ export class TwitterV2 implements INodeType {
 								responseData = await twitterApiRequest.call(
 									this,
 									'GET',
-									`/users/by/username/${userRlc.value}`,
+									requestPath`/users/by/username/${userRlc.value}`,
 									{},
 								);
 							} else if (userRlc.mode === 'id') {
 								responseData = await twitterApiRequest.call(
 									this,
 									'GET',
-									`/users/${userRlc.value}`,
+									requestPath`/users/${userRlc.value}`,
 									{},
 								);
 							}
@@ -193,7 +194,7 @@ export class TwitterV2 implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/tweets/search/recent',
+								requestPath`/tweets/search/recent`,
 								{},
 								qs,
 							);
@@ -203,7 +204,7 @@ export class TwitterV2 implements INodeType {
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',
-								'/tweets/search/recent',
+								requestPath`/tweets/search/recent`,
 								{},
 								qs,
 							);
@@ -234,7 +235,7 @@ export class TwitterV2 implements INodeType {
 							const inReplyToStatusIdValue = { in_reply_to_tweet_id: returnId(inReplyToStatusId) };
 							body.reply = inReplyToStatusIdValue;
 						}
-						responseData = await twitterApiRequest.call(this, 'POST', '/tweets', body);
+						responseData = await twitterApiRequest.call(this, 'POST', requestPath`/tweets`, body);
 					}
 					if (operation === 'delete') {
 						const tweetRLC = this.getNodeParameter(
@@ -244,7 +245,12 @@ export class TwitterV2 implements INodeType {
 							{},
 						) as INodeParameterResourceLocator;
 						const tweetId = returnId(tweetRLC);
-						responseData = await twitterApiRequest.call(this, 'DELETE', `/tweets/${tweetId}`, {});
+						responseData = await twitterApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/tweets/${tweetId}`,
+							{},
+						);
 					}
 					if (operation === 'like') {
 						const tweetRLC = this.getNodeParameter(
@@ -257,13 +263,18 @@ export class TwitterV2 implements INodeType {
 						const body: IDataObject = {
 							tweet_id: tweetId,
 						};
-						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
+						const user = (await twitterApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/me`,
+							{},
+						)) as {
 							id: string;
 						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user.id}/likes`,
+							requestPath`/users/${user.id}/likes`,
 							body,
 						);
 					}
@@ -278,13 +289,18 @@ export class TwitterV2 implements INodeType {
 						const body: IDataObject = {
 							tweet_id: tweetId,
 						};
-						const user = (await twitterApiRequest.call(this, 'GET', '/users/me', {})) as {
+						const user = (await twitterApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/me`,
+							{},
+						)) as {
 							id: string;
 						};
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/users/${user.id}/retweets`,
+							requestPath`/users/${user.id}/retweets`,
 							body,
 						);
 					}
@@ -308,9 +324,14 @@ export class TwitterV2 implements INodeType {
 							{},
 						) as INodeParameterResourceLocator;
 						const listId = returnId(listRlc);
-						responseData = await twitterApiRequest.call(this, 'POST', `/lists/${listId}/members`, {
-							user_id: userId,
-						});
+						responseData = await twitterApiRequest.call(
+							this,
+							'POST',
+							requestPath`/lists/${listId}/members`,
+							{
+								user_id: userId,
+							},
+						);
 					}
 				}
 				if (resource === 'directMessage') {
@@ -337,7 +358,7 @@ export class TwitterV2 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/dm_conversations/with/${user}/messages`,
+							requestPath`/dm_conversations/with/${user}/messages`,
 							body,
 						);
 					}

@@ -1,0 +1,523 @@
+{
+	"name": "WooCommerce Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "create",
+				"email": "nathan@example.com"
+			},
+			"id": "woocommerce-0",
+			"name": "Customer Create",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"customerId": "25"
+			},
+			"id": "woocommerce-1",
+			"name": "Customer Delete",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "25"
+			},
+			"id": "woocommerce-2",
+			"name": "Customer Get",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "woocommerce-3",
+			"name": "Customer Get Many",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "woocommerce-4",
+			"name": "Customer Get Many All Pages",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "25",
+				"updateFields": {
+					"first_name": "Nathan"
+				}
+			},
+			"id": "woocommerce-5",
+			"name": "Customer Update",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "create",
+				"name": "Premium Quality"
+			},
+			"id": "woocommerce-6",
+			"name": "Product Create",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "update",
+				"productId": "794",
+				"updateFields": {
+					"regularPrice": "24.54"
+				}
+			},
+			"id": "woocommerce-7",
+			"name": "Product Update",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "get",
+				"productId": "794"
+			},
+			"id": "woocommerce-8",
+			"name": "Product Get",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "woocommerce-9",
+			"name": "Product Get Many",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "product",
+				"operation": "delete",
+				"productId": "794"
+			},
+			"id": "woocommerce-10",
+			"name": "Product Delete",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "create"
+			},
+			"id": "woocommerce-11",
+			"name": "Order Create",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "update",
+				"orderId": "727",
+				"updateFields": {
+					"status": "completed"
+				}
+			},
+			"id": "woocommerce-12",
+			"name": "Order Update",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "get",
+				"orderId": "727"
+			},
+			"id": "woocommerce-13",
+			"name": "Order Get",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "getAll",
+				"limit": 5
+			},
+			"id": "woocommerce-14",
+			"name": "Order Get Many",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "order",
+				"operation": "delete",
+				"orderId": "727"
+			},
+			"id": "woocommerce-15",
+			"name": "Order Delete",
+			"type": "n8n-nodes-base.wooCommerce",
+			"typeVersion": 1,
+			"position": [300, 2250],
+			"credentials": {
+				"wooCommerceApi": {
+					"id": "1",
+					"name": "WooCommerce account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Customer Create": [
+			{
+				"json": {
+					"id": 25
+				}
+			}
+		],
+		"Customer Delete": [
+			{
+				"json": {
+					"id": 25
+				}
+			}
+		],
+		"Customer Get": [
+			{
+				"json": {
+					"id": 25,
+					"email": "nathan@example.com"
+				}
+			}
+		],
+		"Customer Get Many": [
+			{
+				"json": {
+					"id": 25
+				}
+			}
+		],
+		"Customer Get Many All Pages": [
+			{
+				"json": {
+					"id": 25
+				}
+			},
+			{
+				"json": {
+					"id": 26
+				}
+			}
+		],
+		"Customer Update": [
+			{
+				"json": {
+					"id": 25
+				}
+			}
+		],
+		"Product Create": [
+			{
+				"json": {
+					"id": 794
+				}
+			}
+		],
+		"Product Update": [
+			{
+				"json": {
+					"id": 794
+				}
+			}
+		],
+		"Product Get": [
+			{
+				"json": {
+					"id": 794,
+					"name": "Premium Quality"
+				}
+			}
+		],
+		"Product Get Many": [
+			{
+				"json": {
+					"id": 794
+				}
+			}
+		],
+		"Product Delete": [
+			{
+				"json": {
+					"id": 794
+				}
+			}
+		],
+		"Order Create": [
+			{
+				"json": {
+					"id": 727
+				}
+			}
+		],
+		"Order Update": [
+			{
+				"json": {
+					"id": 727
+				}
+			}
+		],
+		"Order Get": [
+			{
+				"json": {
+					"id": 727,
+					"status": "processing"
+				}
+			}
+		],
+		"Order Get Many": [
+			{
+				"json": {
+					"id": 727
+				}
+			}
+		],
+		"Order Delete": [
+			{
+				"json": {
+					"id": 727
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Customer Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get Many All Pages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Product Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Order Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -12,12 +12,14 @@ import {
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	sanitizeXmlName,
 } from 'n8n-workflow';
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest } from './GenericFunctions';
+import { nextCloudApiRequest, webDavPath } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -887,7 +889,7 @@ export class NextCloud implements INodeType {
 		let lastOperationWasDownload = false;
 
 		for (let i = 0; i < items.length; i++) {
-			let endpoint = '';
+			let endpoint = requestPath``;
 			let requestMethod: IHttpRequestMethods = 'GET';
 			let responseData: any;
 
@@ -913,14 +915,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -938,7 +940,7 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'MKCOL' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
@@ -946,7 +948,7 @@ export class NextCloud implements INodeType {
 
 						// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
 						requestMethod = 'PROPFIND' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					}
 				}
 
@@ -957,25 +959,27 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'COPY' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination =
+							requestUrl`${credentials.webDavUrl}${webDavPath(toPath)}`.toString();
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
 						// ----------------------------------
 
 						requestMethod = 'DELETE';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
 						// ----------------------------------
 
 						requestMethod = 'MOVE' as IHttpRequestMethods;
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = webDavPath(this.getNodeParameter('path', i) as string);
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination =
+							requestUrl`${credentials.webDavUrl}${webDavPath(toPath)}`.toString();
 					} else if (operation === 'share') {
 						// ----------------------------------
 						//         share
@@ -988,7 +992,7 @@ export class NextCloud implements INodeType {
 							// Internal Link: not a real OCS share, derive the link from oc:fileid via PROPFIND.
 							// PROPFIND is not in the IHttpRequestMethods enum but is required for WebDAV PROPFIND requests
 							requestMethod = 'PROPFIND' as IHttpRequestMethods;
-							endpoint = sharePath;
+							endpoint = webDavPath(sharePath);
 							headers['Content-Type'] = 'application/xml';
 							headers.Depth = '0';
 							body = `<?xml version="1.0"?>
@@ -1000,7 +1004,7 @@ export class NextCloud implements INodeType {
 							// Regular OCS share.
 							requestMethod = 'POST';
 							useWebDavEndpoint = false;
-							endpoint = 'ocs/v2.php/apps/files_sharing/api/v1/shares';
+							endpoint = requestPath`ocs/v2.php/apps/files_sharing/api/v1/shares`;
 							headers['OCS-APIRequest'] = true;
 							headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
@@ -1031,7 +1035,7 @@ export class NextCloud implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = 'ocs/v1.php/cloud/users';
+						endpoint = requestPath`ocs/v1.php/cloud/users`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1055,7 +1059,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'DELETE';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`ocs/v1.php/cloud/users/${userid}`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1068,7 +1072,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'GET';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`ocs/v1.php/cloud/users/${userid}`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1084,7 +1088,7 @@ export class NextCloud implements INodeType {
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
-						endpoint = 'ocs/v1.php/cloud/users';
+						endpoint = requestPath`ocs/v1.php/cloud/users`;
 
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
@@ -1097,7 +1101,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'PUT';
 
 						const userid = this.getNodeParameter('userId', i) as string;
-						endpoint = `ocs/v1.php/cloud/users/${userid}`;
+						endpoint = requestPath`ocs/v1.php/cloud/users/${userid}`;
 
 						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
 							.map((entry) => {
@@ -1172,7 +1176,7 @@ export class NextCloud implements INodeType {
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData as Buffer,
-						endpoint,
+						this.getNodeParameter('path', i) as string,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
 					const shareType = this.getNodeParameter('shareType', i) as number;

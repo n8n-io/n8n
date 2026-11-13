@@ -1,8 +1,8 @@
 import { randomBytes } from 'crypto';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
-import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IHookFunctions, IDataObject, IWebhookFunctions, RequestPath } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type {
 	TeamResponse,
@@ -78,7 +78,7 @@ export async function deleteSubscriptions(
 ): Promise<string[]> {
 	const refused = await Promise.all(
 		[...new Set(ids)].map(async (id) => {
-			let path: string;
+			let path: RequestPath;
 			try {
 				path = buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]);
 			} catch (error) {
@@ -152,7 +152,7 @@ export async function createSubscription(
 	const response = (await microsoftApiRequest.call(
 		this,
 		'POST',
-		'/v1.0/subscriptions',
+		requestPath`/v1.0/subscriptions`,
 		body,
 	)) as SubscriptionResponse;
 
@@ -200,7 +200,7 @@ export async function listOwnSubscriptions(
 		this,
 		'value',
 		'GET',
-		'/v1.0/subscriptions',
+		requestPath`/v1.0/subscriptions`,
 	)) as SubscriptionResponse[];
 	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
 }
@@ -713,7 +713,7 @@ export async function getResourcePath(
 					'/chats/',
 					{ id: decodeSelectedId.call(this, chatId) },
 					'/messages',
-				]);
+				]).value;
 			}
 		}
 
@@ -730,7 +730,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/channels`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/channels']);
+				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/channels']).value;
 			}
 		}
 
@@ -770,7 +770,7 @@ export async function getResourcePath(
 						'/channels/',
 						{ id: decodeSelectedId.call(this, channelId) },
 						'/messages',
-					]);
+					]).value;
 				}
 			}
 		}
@@ -788,7 +788,7 @@ export async function getResourcePath(
 				return teams.map((team) => `/teams/${team.id}/members`);
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/members']);
+				return buildTeamsPath.call(this, ['/teams/', { id: teamId }, '/members']).value;
 			}
 		}
 

@@ -50,6 +50,11 @@
 			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already own a scope of the same kind, which uq_type_availability_policy_scope_project rejects."
 		},
 		{
+			"name": "ProjectExecutionLimit",
+			"path": "packages/modules/execution-limits/backend/src/project-execution-limit.entity.ts",
+			"reason": "Governance config attached to the project, not user data; dropped via FK cascade. Transferring it could not work anyway: a destination project may already have its own cap, which the primary key rejects."
+		},
+		{
 			"name": "Variables",
 			"path": "packages/@n8n/db/src/entities/variables.ts",
 			"reason": "Project-scoped variables are dropped via FK cascade; personal projects do not expose them."

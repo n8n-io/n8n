@@ -18,8 +18,6 @@ export {
 } from '../memory/tool-result-memory';
 
 export const MAX_MODEL_TOOL_RESULT_TOKENS = 50_000;
-// Limit exact counts because encoding large uninterrupted text can be slow.
-export const MAX_EXACT_TOKENIZATION_BYTES = 200_000;
 // BPE tokens cannot exceed UTF-8 bytes; reserve room for provider message framing.
 const SMALL_PAYLOAD_OVERHEAD_BYTES = 1_024;
 
@@ -105,8 +103,7 @@ async function guardSerialized(
 	const byteLength = Buffer.byteLength(serialized, 'utf8');
 	if (byteLength + SMALL_PAYLOAD_OVERHEAD_BYTES <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
-	const countTokens = byteLength > MAX_EXACT_TOKENIZATION_BYTES ? countTokensByBytes : tokenCounter;
-	const tokenCount = await countTokens(serialized);
+	const tokenCount = await tokenCounter(serialized);
 	if (tokenCount <= MAX_MODEL_TOOL_RESULT_TOKENS) return unchanged;
 
 	const offloaded = await tryOffloadResult(serialized, tokenCount, kind, storage);
@@ -119,7 +116,7 @@ async function guardSerialized(
 		};
 	}
 
-	const truncated = await buildTruncationEnvelope(serialized, tokenCount, countTokens);
+	const truncated = await buildTruncationEnvelope(serialized, tokenCount, tokenCounter);
 	return {
 		historyOutput: truncated,
 		wireOutput: truncated,
@@ -223,10 +220,6 @@ async function tryOffloadResult(
 	} catch {
 		return undefined;
 	}
-}
-
-function countTokensByBytes(serialized: string): number {
-	return Buffer.byteLength(serialized, 'utf8') + SMALL_PAYLOAD_OVERHEAD_BYTES;
 }
 
 async function buildTruncationEnvelope(
