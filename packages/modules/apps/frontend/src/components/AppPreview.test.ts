@@ -358,6 +358,28 @@ describe('AppPreview', () => {
 			);
 		});
 
+		it('lists the pages of the plan and opens the picked page in the frame', async () => {
+			const { fromFrame, findByTestId, findByLabelText, findByText } = await renderWithFrame();
+			const frame = (await findByTestId('app-preview-frame')) as HTMLIFrameElement;
+			const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+
+			fromFrame({
+				...progress(7, 7),
+				pages: [
+					{ id: 'queue', name: 'Drafts', path: '/' },
+					{ id: 'draft', name: 'Draft', path: '/drafts/:id' },
+				],
+				page: 'queue',
+			});
+			await userEvent.click(await findByLabelText('Page'));
+			await userEvent.click(await findByText(/\/drafts\/:id/));
+
+			expect(postMessage).toHaveBeenCalledWith(
+				{ source: 'n8n-app-plan', type: 'page', pageId: 'draft' },
+				PREVIEW_ORIGIN,
+			);
+		});
+
 		it('drops the progress once every part is built', async () => {
 			const { fromFrame, findByTestId, queryByTestId } = await renderWithFrame();
 			fromFrame(progress(6, 7, 'Send'));

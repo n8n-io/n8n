@@ -11,6 +11,8 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nBadge,
+	N8nButton,
+	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nIconButton,
 	N8nLoading,
@@ -82,6 +84,29 @@ const inspecting = ref(false);
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
 // Build progress of an app made from a plan, reported by the preview overlay.
 const planProgress = ref<{ built: number; total: number; current?: string } | null>(null);
+// The pages of an app made from a plan, so the user can open a page the nav does not list.
+const planPages = ref<Array<{ id: string; name: string; path?: string }>>([]);
+const planPage = ref<string>();
+const pageItems = computed(() =>
+	planPages.value.map((page) => ({
+		id: page.id,
+		label: page.path ? `${page.name}  ${page.path}` : page.name,
+		checked: page.id === planPage.value,
+	})),
+);
+const currentPageName = computed(
+	() =>
+		planPages.value.find((page) => page.id === planPage.value)?.name ?? planPages.value[0]?.name,
+);
+
+function openPlanPage(pageId: string) {
+	if (!previewOrigin.value) return;
+	planPage.value = pageId;
+	frame.value?.contentWindow?.postMessage(
+		{ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'page', pageId },
+		previewOrigin.value,
+	);
+}
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 const sizeOptions = computed(() =>
@@ -197,6 +222,24 @@ function readPlanProgress(data: unknown) {
 	const current = 'current' in data && typeof data.current === 'string' ? data.current : undefined;
 	// A finished build needs no progress, so the header drops it.
 	planProgress.value = total > 0 && built < total ? { built, total, current } : null;
+	const pages = 'pages' in data && Array.isArray(data.pages) ? data.pages : [];
+	planPages.value = pages.flatMap((page: unknown) =>
+		typeof page === 'object' &&
+		page !== null &&
+		'id' in page &&
+		typeof page.id === 'string' &&
+		'name' in page &&
+		typeof page.name === 'string'
+			? [
+					{
+						id: page.id,
+						name: page.name,
+						...('path' in page && typeof page.path === 'string' ? { path: page.path } : {}),
+					},
+				]
+			: [],
+	);
+	planPage.value = 'page' in data && typeof data.page === 'string' ? data.page : undefined;
 	return true;
 }
 
@@ -218,7 +261,10 @@ watch(() => props.buildingPlanId, postBuilding);
 // A new version may come without a plan, so wait for the overlay to report again.
 watch(
 	() => preview.value?.url,
-	() => (planProgress.value = null),
+	() => {
+		planProgress.value = null;
+		planPages.value = [];
+	},
 );
 
 watch(
@@ -300,6 +346,25 @@ onBeforeUnmount(() => {
 						</N8nText>
 					</div>
 				</N8nTooltip>
+				<N8nDropdownMenu
+					v-if="planPages.length > 1"
+					:items="pageItems"
+					placement="bottom-start"
+					data-test-id="app-preview-plan-pages"
+					@select="openPlanPage"
+				>
+					<template #trigger>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							icon="file"
+							:class="$style.pageButton"
+							:aria-label="i18n.baseText('apps.preview.plan.page')"
+						>
+							{{ currentPageName }}
+						</N8nButton>
+					</template>
+				</N8nDropdownMenu>
 			</div>
 			<N8nText
 				v-if="inspecting"
@@ -503,6 +568,10 @@ onBeforeUnmount(() => {
 
 .planDone {
 	background: var(--color--success);
+}
+
+.pageButton {
+	max-width: 160px;
 }
 
 .planText {

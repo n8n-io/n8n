@@ -598,6 +598,9 @@ export interface PlanOverlayProgress {
 	total: number;
 	/** Label of the step in progress, or of the next step. */
 	current?: string;
+	/** The pages of the plan, and the one on screen. */
+	pages?: Array<{ id: string; name: string; path?: string }>;
+	page?: string;
 }
 
 /** Runs in the page. Self-contained: it is embedded with `toString()`. */
@@ -630,6 +633,9 @@ export function planOverlayMain(
 	// `opens` may name a part instead of a screen; it then means the screen of that part.
 	let screenOfPart: Record<string, string> = {};
 	let pinned = false;
+	// The preview follows the build to the page of the announced part, until the user picks a page.
+	let follow = true;
+	let screenList: Array<{ id: string; name: string; path?: string }> = [];
 	let switchTimer = 0;
 	let order: string[] = [];
 	// The step the builder announced. Without it, the next unbuilt step counts as current.
@@ -652,6 +658,7 @@ export function planOverlayMain(
 		all.forEach((c) => (byId[c.id] = c));
 		screens = {};
 		plan.screens.forEach((sc) => (screens[sc.id] = { name: sc.name, path: sc.path }));
+		screenList = plan.screens.map((sc) => ({ id: sc.id, name: sc.name, path: sc.path }));
 		screenOfPart = {};
 		plan.screens.forEach((sc) => sc.components.forEach((c) => (screenOfPart[c.id] = sc.id)));
 		order = plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
@@ -673,6 +680,37 @@ export function planOverlayMain(
 
 	function screenFor(id: string): string | undefined {
 		return screens[id] ? id : screenOfPart[id];
+	}
+
+	function pathPattern(path: string): RegExp {
+		return new RegExp(`^${path.replace(/:[^/]+/g, '[^/]+').replace(/\/$/, '')}/?$`);
+	}
+
+	/** The page on screen: a visible wireframe section, or the page whose path matches the URL. */
+	function currentPage(): string | undefined {
+		const visible = doc.querySelector('[data-plan-screen]:not([hidden])');
+		if (visible) return visible.getAttribute('data-plan-screen') ?? undefined;
+		const here = window.location.pathname;
+		return (
+			screenList.find((sc) => sc.path && !sc.path.includes(':') && pathPattern(sc.path).test(here))
+				?.id ??
+			screenList.find((sc) => sc.path && pathPattern(sc.path).test(here))?.id ??
+			screenList[0]?.id
+		);
+	}
+
+	/** Shows a page: its wireframe section if there is one, or its path through the app router. */
+	function goToPage(requested: string) {
+		const id = screenFor(requested);
+		if (!id || id === currentPage()) return;
+		if (doc.querySelector(`[data-plan-screen="${id}"]`)) {
+			showScreen(id);
+		} else {
+			const path = screens[id]?.path ?? '/';
+			window.history.pushState({}, '', path.replace(/:[^/]+/g, 'sample'));
+			window.dispatchEvent(new PopStateEvent('popstate'));
+		}
+		window.setTimeout(renderProgress, 60);
 	}
 
 	function hideTip() {
@@ -913,8 +951,14 @@ export function planOverlayMain(
 		const type = 'type' in data ? data.type : undefined;
 		if (type === 'building') {
 			const id = 'planId' in data && typeof data.planId === 'string' ? data.planId : null;
+			if (id !== buildingId) follow = true;
 			buildingId = id;
+			const page = id && id !== 'shell' ? screenFor(id) : undefined;
+			if (follow && page) goToPage(page);
 			renderProgress();
+		} else if (type === 'page') {
+			follow = false;
+			if ('pageId' in data && typeof data.pageId === 'string') goToPage(data.pageId);
 		} else if (config.selectable && (type === 'select:enable' || type === 'select:disable')) {
 			selecting = type === 'select:enable';
 			doc.documentElement.classList.toggle('plan-ov-selecting', selecting);
@@ -964,6 +1008,7 @@ export function planOverlayMain(
 					built,
 					total: order.length,
 					...(current ? { current: name(current) } : {}),
+					...(screenList.length > 1 ? { pages: screenList, page: currentPage() } : {}),
 				},
 				'*',
 			);
@@ -1005,7 +1050,7 @@ export function planOverlayMain(
 			childList: true,
 			subtree: true,
 			attributes: true,
-			attributeFilter: ['class'],
+			attributeFilter: ['class', 'hidden'],
 		});
 	}
 

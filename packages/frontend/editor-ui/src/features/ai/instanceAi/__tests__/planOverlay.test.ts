@@ -80,3 +80,37 @@ describe('plan overlay pages', () => {
 		expect(document.querySelector<HTMLElement>('[data-plan-screen="list"]')!.hidden).toBe(true);
 	});
 });
+
+describe('plan overlay follows the build', () => {
+	const send = (data: Record<string, unknown>) =>
+		window.dispatchEvent(
+			new MessageEvent('message', { data: { source: 'n8n-app-plan', ...data }, source: window }),
+		);
+	const visible = (id: string) =>
+		!document.querySelector<HTMLElement>(`[data-plan-screen="${id}"]`)!.hidden;
+
+	it('shows the page of the part in progress until the user picks a page', () => {
+		const plan = appPlanSchema.parse({
+			screens: [
+				{ id: 'list', name: 'List', components: [{ id: 'rows', kind: 'table', label: 'Rows' }] },
+				{
+					id: 'record',
+					name: 'Record',
+					path: '/rows/:id',
+					components: [{ id: 'body', kind: 'detail', label: 'Record' }],
+				},
+			],
+		});
+		document.body.innerHTML = renderWireframeBody(plan);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, { plan, progress: 'parent' });
+
+		send({ type: 'building', planId: 'body' });
+		expect(visible('record')).toBe(true);
+
+		send({ type: 'page', pageId: 'list' });
+		expect(visible('list')).toBe(true);
+
+		send({ type: 'building', planId: 'body' });
+		expect(visible('list')).toBe(true);
+	});
+});
