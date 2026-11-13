@@ -22,27 +22,34 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 				),
 			quickjs_fe_init_duration_ms: z
 				.number()
-				.describe('Time to load and start the QuickJS shadow engine'),
+				.describe(
+					'Time to finish loading and start the QuickJS shadow engine. Excludes earlier preload work',
+				),
 			quickjs_fe_start_variant: z
 				.enum(['boot', 'idle', 'boot_only'])
+				.optional()
+				.meta({ deprecated: true })
 				.describe(
-					'When the shadow engine started: during the editor boot, or after the editor start when the browser was first idle. A browser that cannot wait for idle time sends boot_only and is not part of the boot and idle comparison',
+					'Historical start variant. New reports omit this property because the shadow engine always starts during the editor boot',
 				),
 			quickjs_fe_idle_wait_ms: z
 				.number()
 				.optional()
+				.meta({ deprecated: true })
 				.describe(
-					'Time the idle variant waited for the editor start and then for the browser, before the start. Not set for the other variants',
+					'Historical idle wait duration. New reports omit this property because the shadow engine no longer waits for idle time',
 				),
 			quickjs_fe_bundle_import_ms: z
 				.number()
 				.optional()
-				.describe('Time to import the runtime bundle. Not set when the start failed before it'),
+				.describe(
+					'Remaining time to import the runtime bundle after any preload. Not set when the start failed before it',
+				),
 			quickjs_fe_wasm_ready_ms: z
 				.number()
 				.optional()
 				.describe(
-					'Time to load the QuickJS loader code, then load and instantiate the WASM module, after the bundle import',
+					'Remaining time to load and instantiate the WASM module after any preload. Measured after the bundle import',
 				),
 			quickjs_fe_bridge_ready_ms: z
 				.number()
@@ -51,7 +58,7 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			quickjs_fe_startup_visible: z
 				.boolean()
 				.describe(
-					'Whether the tab stayed visible for the whole start of the shadow engine, the idle wait included',
+					'Whether the tab stayed visible during initialization of the shadow engine. Excludes earlier preload work',
 				),
 			quickjs_fe_wasm_source: z
 				.enum(['cache', 'revalidated', 'network'])

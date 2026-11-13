@@ -41,7 +41,6 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
-	notifyQuickJsShadowEditorReady,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -313,7 +312,6 @@ export async function initializeAuthenticatedFeatures(
 	});
 
 	authenticatedFeaturesInitialized = true;
-	notifyQuickJsShadowEditorReady();
 }
 
 function registerAuthenticationHooks() {
