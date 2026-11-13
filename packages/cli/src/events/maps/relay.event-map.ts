@@ -11,6 +11,7 @@ import type {
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionReviewType,
+	PublicApiRateLimitSettings,
 	RedactionFloor,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
@@ -1322,6 +1323,13 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		before: RedactionFloor;
 		after: RedactionFloor;
+	};
+
+	/** `before` and `after` hold only the limits and windows that changed. */
+	'public-api-rate-limit-updated': {
+		user: UserLike;
+		before: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
+		after: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
 	};
 
 	// #endregion
