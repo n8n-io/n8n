@@ -613,6 +613,28 @@ describe('AssistantConfirmationCard', () => {
 			);
 		});
 
+		it('gives the runtime to the shared cards that track their own input', async () => {
+			const { getByTestId } = renderInThread({
+				requestId: 'req-9',
+				inputThreadId: 'input-thread-1',
+				message: 'Read a file',
+				inputType: 'resource-decision',
+				resourceDecision: {
+					toolGroup: 'filesystem',
+					resource: '/tmp/a.txt',
+					description: 'Read /tmp/a.txt',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				},
+			});
+
+			await fireEvent.click(getByTestId('gateway-decision-deny'));
+
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				'User finished providing input',
+				expect.objectContaining({ type: 'resource-decision', runtime: 'agents' }),
+			);
+		});
+
 		it('does not track domain access, like the current Assistant', async () => {
 			const { getByTestId, lastOnAccepted } = renderInThread({
 				requestId: 'req-1',

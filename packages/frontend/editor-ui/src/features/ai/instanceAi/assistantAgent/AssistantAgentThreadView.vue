@@ -94,7 +94,6 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
-import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import { useAssistantAgentMessageTelemetry } from './useAssistantAgentMessageTelemetry';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
@@ -103,7 +102,6 @@ import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
-provide(ASSISTANT_RUNTIME, 'agents');
 useAssistantAwayTelemetry({
 	threadId: () => props.threadId,
 	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
