@@ -164,19 +164,21 @@ watch(
 			<N8nSettingsRow
 				:title="i18n.baseText('settings.sso.scim.enable.title')"
 				:description="i18n.baseText('settings.sso.scim.enable.description')"
+				action-fill
 			>
 				<template #action>
 					<N8nTooltip
+						as-child
 						:disabled="props.ssoEnabled"
 						:content="i18n.baseText('settings.sso.scim.enable.needsSso')"
 						placement="top"
 					>
 						<!-- A disabled select gets no pointer events, so the wrapper shows the tooltip. -->
-						<div :class="$style.selectWrapper" data-test-id="sso-scim-enabled-select-wrapper">
+						<div :class="$style.fill" data-test-id="sso-scim-enabled-select-wrapper">
 							<N8nSelect
 								v-model="selectValue"
 								size="medium"
-								:class="$style.select"
+								:class="$style.fill"
 								:disabled="saving || !props.ssoEnabled"
 								:aria-label="i18n.baseText('settings.sso.scim.enable.title')"
 								data-test-id="sso-scim-enabled-select"
@@ -200,10 +202,11 @@ watch(
 			<N8nSettingsRow
 				:title="i18n.baseText('settings.sso.scim.baseUrl.title')"
 				:description="i18n.baseText('settings.sso.scim.baseUrl.description')"
+				action-fill
 			>
 				<template #action>
 					<N8nCopyInput
-						:class="$style.copyInput"
+						:class="$style.fill"
 						:value="config.baseUrl"
 						:label="i18n.baseText('settings.sso.scim.baseUrl.title')"
 						size="medium"
@@ -215,6 +218,7 @@ watch(
 			<N8nSettingsRow
 				:title="i18n.baseText('settings.sso.scim.token.title')"
 				:description="tokenDescription"
+				action-fill
 			>
 				<template #action>
 					<div v-if="maskedToken" :class="$style.tokenAction">
@@ -279,32 +283,20 @@ watch(
 	gap: var(--spacing--2xs);
 }
 
-.selectWrapper {
-	display: inline-flex;
+/* The rows use `action-fill`, so their controls fill the action column. */
+.fill {
+	width: 100%;
 }
 
-.select {
-	width: 200px;
-}
-
-/*
- * The base URL and the token field share one right edge: the token field plus the
- * menu button is as wide as the base URL field. A narrow action keeps the row
- * description readable.
- */
 .tokenAction {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	width: 280px;
+	width: 100%;
 }
 
 .tokenInput {
 	flex: 1 1 auto;
 	min-width: 0;
-}
-
-.copyInput {
-	width: 280px;
 }
 </style>
