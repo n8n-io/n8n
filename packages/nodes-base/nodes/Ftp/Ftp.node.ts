@@ -110,6 +110,8 @@ function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursi
 	item.date = undefined;
 }
 
+const DEFAULT_CONNECTION_TIMEOUT = 60_000;
+
 const timeoutOption: INodeProperties = {
 	displayName: 'Timeout',
 	name: 'timeout',
@@ -118,7 +120,7 @@ const timeoutOption: INodeProperties = {
 	typeOptions: {
 		minValue: 1,
 	},
-	default: 10000,
+	default: DEFAULT_CONNECTION_TIMEOUT,
 };
 
 export class Ftp implements INodeType {
@@ -560,6 +562,7 @@ export class Ftp implements INodeType {
 							password: (credentials.password as string) || undefined,
 							privateKey: formatPemBlock(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
+							readyTimeout: DEFAULT_CONNECTION_TIMEOUT,
 						});
 					} else {
 						await sftp.connect({
@@ -567,6 +570,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: credentials.password as string,
+							readyTimeout: DEFAULT_CONNECTION_TIMEOUT,
 						});
 					}
 				} catch (error) {
@@ -594,7 +598,11 @@ export class Ftp implements INodeType {
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 
-		const connectionTimeout = this.getNodeParameter('options.timeout', 0, 10000) as number;
+		const connectionTimeout = this.getNodeParameter(
+			'options.timeout',
+			0,
+			DEFAULT_CONNECTION_TIMEOUT,
+		) as number;
 
 		if (protocol === 'sftp') {
 			credentials = await this.getCredentials<ICredentialDataDecryptedObject>('sftp');

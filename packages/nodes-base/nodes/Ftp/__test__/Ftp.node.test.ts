@@ -1,9 +1,18 @@
 import { mockDeep } from 'vitest-mock-extended';
-import type { IExecuteFunctions, NodeExecutionWithMetadata } from 'n8n-workflow';
+import type { WriteStream } from 'fs';
+import { readFile } from 'fs/promises';
+import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IExecuteFunctions,
+	INodeExecutionData,
+	NodeExecutionWithMetadata,
+} from 'n8n-workflow';
 import type PromiseFtp from 'promise-ftp';
 import * as ftpModule from 'promise-ftp';
 import type sftp from 'ssh2-sftp-client';
 import * as sftpModule from 'ssh2-sftp-client';
+import { finished } from 'stream/promises';
 
 import { Ftp } from '../Ftp.node';
 
@@ -105,9 +114,14 @@ describe('Ftp', () => {
 		);
 	});
 
-	const setupSftpList = (typeVersion: number, options: { timeout?: number } = {}) => {
+	const setupSftpExecution = (
+		typeVersion: number,
+		options: { timeout?: number } = {},
+		operation = 'list',
+	) => {
 		const connect = vi.fn<sftp['connect']>();
 		const end = vi.fn();
+		const get = vi.fn<sftp['get']>();
 		const list = vi.fn().mockResolvedValue([
 			{
 				name: 'file.txt',
@@ -118,7 +132,7 @@ describe('Ftp', () => {
 			},
 		]);
 		vi.spyOn(sftpModule, 'default').mockImplementation(function () {
-			return { connect, list, end } as unknown as sftp;
+			return { connect, list, get, end } as unknown as sftp;
 		});
 		executeFunctions.getNode.mockReturnValue({ typeVersion } as never);
 		executeFunctions.getCredentials.mockResolvedValue({
@@ -128,18 +142,22 @@ describe('Ftp', () => {
 			password: 'test',
 		});
 		executeFunctions.helpers.returnJsonArray.mockImplementation((data) =>
-			(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+			(Array.isArray(data) ? data : [data]).map((json) =>
+				json.json ? (json as INodeExecutionData) : { json },
+			),
 		);
 		executeFunctions.getNodeParameter.mockImplementation((parameterName, _idx, defaultValue) => {
 			switch (parameterName) {
 				case 'operation':
-					return 'list';
+					return operation;
 				case 'protocol':
 					return 'sftp';
 				case 'options.timeout':
 					return options.timeout ?? defaultValue;
 				case 'path':
-					return '/test';
+					return operation === 'download' ? '/test/file.txt' : '/test';
+				case 'binaryPropertyName':
+					return 'data';
 				case 'recursive':
 					return false;
 				case 'options':
@@ -148,11 +166,11 @@ describe('Ftp', () => {
 					return defaultValue;
 			}
 		});
-		return { connect, list, end };
+		return { connect, list, get, end };
 	};
 
 	it('should return sftp list timestamps as ISO strings on version 1.1', async () => {
-		setupSftpList(1.1);
+		setupSftpExecution(1.1);
 
 		const result = await new Ftp().execute.call(executeFunctions);
 
@@ -162,7 +180,7 @@ describe('Ftp', () => {
 	});
 
 	it('should return sftp list timestamps as Date objects on version 1', async () => {
-		setupSftpList(1);
+		setupSftpExecution(1);
 
 		const result = await new Ftp().execute.call(executeFunctions);
 
@@ -172,6 +190,21 @@ describe('Ftp', () => {
 	});
 
 	describe('SFTP handshake timeout', () => {
+		// NODE-6082: Model the measured group-exchange handshake duration, not its cause.
+		const simulateHandshake =
+			(handshakeDuration: number): sftp['connect'] =>
+			async ({ readyTimeout = 20_000 }) =>
+				await new Promise((resolve, reject) => {
+					const readyTimer = setTimeout(() => {
+						clearTimeout(timeoutTimer);
+						resolve(mockDeep<Awaited<ReturnType<sftp['connect']>>>());
+					}, handshakeDuration);
+					const timeoutTimer = setTimeout(() => {
+						clearTimeout(readyTimer);
+						reject(new Error('getConnection: Timed out while waiting for handshake'));
+					}, readyTimeout);
+				});
+
 		beforeEach(() => {
 			vi.useFakeTimers();
 		});
@@ -194,21 +227,8 @@ describe('Ftp', () => {
 				options: {},
 			},
 		])('should list files after $scenario', async ({ handshakeDuration, options }) => {
-			const { connect, list, end } = setupSftpList(1.1, options);
-			// NODE-6082: Model the measured group-exchange handshake duration, not its cause.
-			connect.mockImplementation(
-				async ({ readyTimeout = 20_000 }) =>
-					await new Promise((resolve, reject) => {
-						const readyTimer = setTimeout(() => {
-							clearTimeout(timeoutTimer);
-							resolve(mockDeep<Awaited<ReturnType<sftp['connect']>>>());
-						}, handshakeDuration);
-						const timeoutTimer = setTimeout(() => {
-							clearTimeout(readyTimer);
-							reject(new Error('getConnection: Timed out while waiting for handshake'));
-						}, readyTimeout);
-					}),
-			);
+			const { connect, list, end } = setupSftpExecution(1.1, options);
+			connect.mockImplementation(simulateHandshake(handshakeDuration));
 
 			const outcome = new Ftp().execute.call(executeFunctions).then(
 				(items) => ({ items }),
@@ -226,6 +246,102 @@ describe('Ftp', () => {
 				],
 			});
 			expect(list).toHaveBeenCalledWith('/test');
+			expect(end).toHaveBeenCalledOnce();
+		});
+
+		it.each([undefined, 'test-private-key'])(
+			'should download a file after a 30-second handshake with default options and private key %s',
+			async (privateKey) => {
+				const { connect, get, end } = setupSftpExecution(1.1, {}, 'download');
+				executeFunctions.getCredentials.mockResolvedValue({
+					host: 'test.com',
+					port: 22,
+					username: 'test',
+					password: 'test',
+					privateKey,
+				});
+				connect.mockImplementation(simulateHandshake(30_000));
+				get.mockImplementation(async (_path, destination) => {
+					const stream = destination as WriteStream;
+					stream.end('file content');
+					await finished(stream);
+					return stream;
+				});
+				executeFunctions.nodeHelpers.copyBinaryFile.mockImplementation(async (path, fileName) => ({
+					data: (await readFile(path)).toString('base64'),
+					mimeType: 'text/plain',
+					fileName,
+				}));
+
+				const outcome = new Ftp().execute.call(executeFunctions).then(
+					(items) => ({ items }),
+					(error: unknown) => ({ error }),
+				);
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(await outcome).toEqual({
+					items: [
+						[
+							expect.objectContaining({
+								binary: {
+									data: {
+										data: Buffer.from('file content').toString('base64'),
+										mimeType: 'text/plain',
+										fileName: 'file.txt',
+									},
+								},
+							}),
+						],
+					],
+				});
+				expect(get).toHaveBeenCalledWith('/test/file.txt', expect.anything());
+				expect(end).toHaveBeenCalledOnce();
+			},
+		);
+
+		it.each([undefined, 'test-private-key'])(
+			'should validate credentials after a 30-second handshake with private key %s',
+			async (privateKey) => {
+				const { connect, end } = setupSftpExecution(1.1);
+				connect.mockImplementation(simulateHandshake(30_000));
+
+				const outcome = new Ftp().methods.credentialTest.sftpConnectionTest.call(
+					mockDeep<ICredentialTestFunctions>(),
+					mockDeep<ICredentialsDecrypted>({
+						data: {
+							host: 'test.com',
+							port: 22,
+							username: 'test',
+							password: 'test',
+							privateKey,
+						},
+					}),
+				);
+				await vi.advanceTimersByTimeAsync(30_000);
+
+				expect(await outcome).toEqual({ status: 'OK', message: 'Connection successful!' });
+				expect(end).toHaveBeenCalledOnce();
+			},
+		);
+
+		it.each([
+			{ scenario: 'the default timeout', options: {}, timeout: 60_000 },
+			{ scenario: 'an explicit shorter timeout', options: { timeout: 30_000 }, timeout: 30_000 },
+		])('should stop waiting after $scenario', async ({ options, timeout }) => {
+			const { connect, list, end } = setupSftpExecution(1.1, options);
+			connect.mockImplementation(simulateHandshake(timeout + 1));
+
+			const outcome = new Ftp().execute.call(executeFunctions).catch((error: unknown) => error);
+			const settled = vi.fn();
+			void outcome.then(settled);
+			await vi.advanceTimersByTimeAsync(timeout - 1);
+			expect(settled).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(await outcome).toEqual(
+				new Error('getConnection: Timed out while waiting for handshake'),
+			);
+			expect(list).not.toHaveBeenCalled();
 			expect(end).toHaveBeenCalledOnce();
 		});
 	});
