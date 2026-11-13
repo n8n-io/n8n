@@ -41,6 +41,11 @@ export class WorkflowPublicationStatusService {
 		workflowId: string,
 		ctx: OperationContext = {},
 	): Promise<WorkflowPublicationStatus> {
+		const { publicationStatus } = await this.getStatusWithTriggerRows(workflowId, ctx);
+		return publicationStatus;
+	}
+
+	private async getStatusWithTriggerRows(workflowId: string, ctx: OperationContext = {}) {
 		const [inFlightPublication, currentTriggerStatuses] = await Promise.all([
 			this.outboxRepository.findInFlightByWorkflowId(workflowId, ctx),
 			this.triggerStatusRepository.findByWorkflowId(workflowId, ctx),
@@ -60,15 +65,30 @@ export class WorkflowPublicationStatusService {
 		const liveVersionId = activatedRow?.versionId ?? null;
 
 		const status = this.deriveStatus(isPublishing, currentTriggerStatuses);
-		return { status, liveVersionId, pendingVersionId, triggers };
+		return {
+			publicationStatus: { status, liveVersionId, pendingVersionId, triggers },
+			triggerRows: currentTriggerStatuses,
+		};
 	}
 
 	/** Include the latest request so callers can correlate failures that have no trigger rows. */
 	async getLatestStatus(workflowId: string): Promise<WorkflowPublicationStatusWithDetails> {
-		const publication = await this.outboxRepository.findLatestByWorkflowId(workflowId);
-		const status = await this.getStatus(workflowId);
+		const latestPublication = await this.outboxRepository.findLatestByWorkflowId(workflowId);
+		const { publicationStatus: status, triggerRows } =
+			await this.getStatusWithTriggerRows(workflowId);
+		// Cleanup can retain an old failure after a newer completed record expires.
+		const publication =
+			latestPublication &&
+			latestPublication.status !== 'pending' &&
+			latestPublication.status !== 'in_progress' &&
+			triggerRows.some((row) => row.updatedAt > latestPublication.updatedAt)
+				? null
+				: latestPublication;
 		const versionId =
-			publication?.publishedVersionId ?? status.pendingVersionId ?? status.liveVersionId;
+			publication?.publishedVersionId ??
+			status.pendingVersionId ??
+			triggerRows[0]?.versionId ??
+			null;
 		const failures = status.triggers.filter((trigger) => trigger.status === 'failed');
 		const result: WorkflowPublicationStatusWithDetails = {
 			...status,
@@ -124,7 +144,10 @@ export class WorkflowPublicationStatusService {
 			while (!controller.signal.aborted) {
 				const status = await this.getLatestStatus(workflowId);
 				if (controller.signal.aborted) break;
-				if (status.versionId !== null && status.versionId !== versionId) {
+				if (
+					status.status === 'not_published' ||
+					(status.versionId !== null && status.versionId !== versionId)
+				) {
 					throw new UserError(
 						'Another publication replaced this request. Check the current workflow publication status.',
 					);

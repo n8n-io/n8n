@@ -1,12 +1,22 @@
-import { createWorkflowWithHistory, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflowHistory,
+	createWorkflowWithHistory,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import { CredentialsFinderService, NodeTypesProxy, RoleService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowPublicationOutboxRepository, type User } from '@n8n/db';
+import {
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type { INode } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -236,6 +246,32 @@ describe('publish_workflow trigger activation', () => {
 		});
 	});
 
+	test('reports when unpublication replaces a pending publish of the same version', async () => {
+		const { response, workflow, owner, record } = await queuePublication([
+			scheduleNode('valid', 30),
+		]);
+
+		await Container.get(WorkflowService).deactivateWorkflow(owner, workflow.id, {
+			source: 'n8n-mcp',
+		});
+		await consumer.processRecord(record, new AbortController().signal);
+		const unpublishRecord = await outboxRepository.claimNextPendingRecord();
+		expect(unpublishRecord).toMatchObject({ publishedVersionId: workflow.versionId });
+		await consumer.processRecord(unpublishRecord!, new AbortController().signal);
+
+		expect((await response).structuredContent).toMatchObject({
+			success: false,
+			activeVersionId: null,
+			error: expect.stringContaining('Another publication replaced this request'),
+		});
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: {
+				active: false,
+				publicationStatus: { status: 'not_published', liveVersionId: null },
+			},
+		});
+	});
+
 	test('returns success for a valid 30-minute schedule', async () => {
 		const trigger = scheduleNode('valid', 30);
 		const { result, workflow, owner, recordId } = await publishAndActivate([trigger]);
@@ -258,6 +294,62 @@ describe('publish_workflow trigger activation', () => {
 		});
 		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
 			workflow: { active: true, publicationStatus: { status: 'published' } },
+		});
+	});
+
+	test('keeps a newer successful publication after completed outbox cleanup', async () => {
+		const { workflow, owner, recordId } = await publishAndActivate([scheduleNode('invalid', 60)]);
+		const versionId = uuid();
+		await createWorkflowHistory(
+			{ ...workflow, versionId, nodes: [scheduleNode('valid', 30)] },
+			owner,
+		);
+		const publicationQueued = createDeferredPromise();
+		publicationNotifier.requestDrain.mockImplementationOnce(() => publicationQueued.resolve());
+		const tool = createPublishWorkflowTool(
+			owner,
+			Container.get(WorkflowFinderService),
+			Container.get(WorkflowService),
+			telemetry,
+			collaborationService,
+			statusService,
+		);
+		const response = Promise.resolve(tool.handler({ workflowId: workflow.id, versionId }));
+		await Promise.race([publicationQueued.promise, response]);
+		const record = await outboxRepository.claimNextPendingRecord();
+		expect(record).toMatchObject({ publishedVersionId: versionId });
+		await consumer.processRecord(record!, new AbortController().signal);
+		expect((await response).structuredContent).toMatchObject({ success: true });
+
+		const completedAt = new Date(Date.now() - 2 * 60 * 60 * 1_000);
+		await outboxRepository.update(recordId, {
+			updatedAt: new Date(completedAt.getTime() - 60 * 60 * 1_000),
+		});
+		await outboxRepository.update(record!.id, { updatedAt: completedAt });
+		await Container.get(WorkflowPublicationTriggerStatusRepository).update(
+			{ workflowId: workflow.id },
+			{ updatedAt: completedAt },
+		);
+		expect(await outboxRepository.deleteTerminalOlderThan(3_600, 7 * 86_400, 10)).toBe(1);
+		expect(await outboxRepository.findLatestByWorkflowId(workflow.id)).toMatchObject({
+			status: 'failed',
+			publishedVersionId: workflow.versionId,
+		});
+
+		expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+			workflow: {
+				active: true,
+				publicationStatus: {
+					status: 'published',
+					versionId,
+					liveVersionId: versionId,
+					errorMessage: null,
+				},
+			},
+		});
+		await expect(statusService.waitForPublication(workflow.id, versionId)).resolves.toMatchObject({
+			status: 'published',
+			versionId,
 		});
 	});
 
@@ -346,6 +438,22 @@ describe('publish_workflow trigger activation', () => {
 					},
 				);
 			}
+
+			await outboxRepository.update(recordId, {
+				updatedAt: new Date(Date.now() - 60_000),
+			});
+			expect(await outboxRepository.deleteTerminalOlderThan(1, 1, 10)).toBe(1);
+			expect(await outboxRepository.findLatestByWorkflowId(workflow.id)).toBeNull();
+			expect((await detailsFor(owner, workflow.id)).structuredContent).toMatchObject({
+				workflow: {
+					active: includeValidTrigger,
+					publicationStatus: {
+						status,
+						versionId: workflow.versionId,
+						errorMessage: expect.stringContaining('Invalid interval'),
+					},
+				},
+			});
 		},
 	);
 });
