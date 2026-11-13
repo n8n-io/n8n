@@ -8987,9 +8987,6 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
-      '@n8n/composables':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/design-system
@@ -8999,9 +8996,6 @@ importers:
       '@n8n/i18n':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/i18n
-      '@n8n/permissions':
-        specifier: workspace:*
-        version: link:../../../@n8n/permissions
       '@n8n/rest-api-client':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/rest-api-client
@@ -9011,9 +9005,6 @@ importers:
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
       pinia:
         specifier: catalog:frontend
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))

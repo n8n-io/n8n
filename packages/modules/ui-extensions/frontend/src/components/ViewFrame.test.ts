@@ -141,6 +141,20 @@ describe('ViewFrame', () => {
 		expect((await findByTestId('ui-extensions-view-error')).textContent).toContain('boom');
 	});
 
+	it('shows why a source is not a view, and renders no frame', () => {
+		const result = render(ViewFrame, {
+			props: {
+				view: { ...mcpView, source: 'const x = 1;' },
+				pageContext: workflowContext,
+				workflowAvailableInMcp: true,
+				runtime,
+			},
+		});
+
+		expect(result.getByTestId('ui-extensions-view-error').textContent).toContain('export default');
+		expect(result.queryByTestId('ui-extensions-view-frame')).toBeNull();
+	});
+
 	it('removes the frame when the view loads another page', async () => {
 		const { iframe, postMessage, fromFrame, findByTestId, queryByTestId } = renderFrame();
 		fromFrame(ready);
