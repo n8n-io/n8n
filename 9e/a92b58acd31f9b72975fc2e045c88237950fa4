@@ -1,0 +1,19 @@
+.claude/plugins/n8n/skills/dev-flow/SKILL.md
+  s_2f7d745c1f33d3::t_5f33a1d1bd5405 300-303
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9ea92b58acd31f9b72975fc2e045c88237950fa4",
+  "prompts": {},
+  "sessions": {
+    "s_2f7d745c1f33d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383bb0e3-c6b8-41c7-b230-9a9301010b08",
+        "model": "unknown"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
