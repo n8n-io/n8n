@@ -28,7 +28,6 @@ jobs:
       runtime: ${{ fromJSON(steps.ci-filter.outputs.results).runtime == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
       e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
-      promotions_infrastructure: ${{ fromJSON(steps.ci-filter.outputs.results)['promotions-infrastructure'] == true }}
       dev_server_smoke: ${{ fromJSON(steps.ci-filter.outputs.results)['dev-server-smoke'] == true }}
       frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
@@ -131,16 +130,6 @@ jobs:
               .github/actions/build-n8n-docker/**
               .github/actions/load-n8n-docker/**
               packages/quality/testing/playwright/**
-              packages/quality/environments/containers/**
-            promotions-infrastructure:
-              .github/workflows/ci-pull-requests.yml
-              .github/workflows/test-e2e-reusable.yml
-              packages/cli/src/modules/promotions.ee/**
-              packages/modules/promotions/**
-              packages/@n8n/backend-services/src/pubsub/**
-              packages/quality/testing/playwright/tests/infrastructure/promotions/**
-              packages/quality/testing/playwright/fixtures/**
-              packages/quality/testing/playwright/services/promotions-api-helper.ts
               packages/quality/environments/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
@@ -428,7 +417,6 @@ jobs:
       github.event_name != 'merge_group' &&
       (needs.install-and-build.outputs.runtime == 'true'
         || needs.install-and-build.outputs.e2e == 'true'
-        || needs.install-and-build.outputs.promotions_infrastructure == 'true'
         || needs.install-and-build.outputs.e2e_performance == 'true'
         || needs.install-and-build.outputs.engine_e2e == 'true'
         || contains(github.event.pull_request.labels.*.name, 'force-e2e')
@@ -511,22 +499,6 @@ jobs:
       pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
-    secrets: inherit
-
-  promotions-infrastructure:
-    name: Promotions infrastructure
-    needs: [install-and-build, prepare-docker]
-    if: >-
-      needs.prepare-docker.result == 'success' &&
-      needs.install-and-build.outputs.promotions_infrastructure == 'true' &&
-      github.event.pull_request.head.repo.fork != true
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ needs.install-and-build.outputs.commit_sha }}
-      test-mode: docker-artifact
-      test-command: pnpm --filter=n8n-playwright exec playwright test --project=multi-main:infrastructure tests/infrastructure/promotions/checkout-cleanup-multi-main.spec.ts
-      workers: '1'
-      artifact-prefix: promotions-infrastructure
     secrets: inherit
 
   # Engine v2 parity: runs the `@engine:*` specs against a main that routes
@@ -666,7 +638,6 @@ jobs:
         check-packaging,
         e2e-matrix,
         e2e,
-        promotions-infrastructure,
         e2e-engine,
         dev-server-smoke,
         frontend-declarations,

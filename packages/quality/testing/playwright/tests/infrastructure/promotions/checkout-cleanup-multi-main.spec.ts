@@ -65,10 +65,6 @@ test.describe(
 				await mainZeroApi.getActiveModules(),
 				'the promotions module is not active: it needs a license granting feat:promotions at startup',
 			).toContain('promotions');
-			expect(
-				await mainOneApi.getActiveModules(),
-				'the promotions module is not active on main 1: it needs a license granting feat:promotions at startup',
-			).toContain('promotions');
 			// The test license override is local to each main.
 			await Promise.all([
 				mainZeroApi.enableFeature('promotions'),

@@ -26,6 +26,8 @@ test.describe(
 				'the promotions module is not active: it needs a license granting feat:promotions at startup',
 			).toContain('promotions');
 			await api.enableFeature('promotions');
+			// The editor loads the Environments version through source control preferences.
+			await api.enableFeature('sourceControl');
 			const gitea = services.gitea;
 			const repoName = generateUniqueRepoName();
 			await gitea.createRepo(repoName);
