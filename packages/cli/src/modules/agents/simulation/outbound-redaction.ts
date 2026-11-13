@@ -11,6 +11,8 @@ const MIN_SECRET_LENGTH = 4;
 // A value under a name that does not look secret is still a secret in generic credentials
 // (`httpHeaderAuth.value`, `httpQueryAuth.value`). Those are collected from this length on.
 const MIN_UNNAMED_SECRET_LENGTH = 8;
+// Path segments of a credential URL this long are tokens, not route words.
+const MIN_URL_TOKEN_LENGTH = 16;
 // Credential fields that name the service rather than unlock it. The simulator needs them to
 // recognise the request, so they stay. Everything else in a credential counts as secret.
 const NON_SECRET_CREDENTIAL_KEYS: ReadonlySet<string> = new Set([
@@ -101,7 +103,10 @@ export class OutboundRedactor {
 			if (value.length >= MIN_SECRET_LENGTH) this.secrets.add(value);
 			return;
 		}
-		if (key && isNonSecretCredentialKey(key)) return;
+		if (key && isNonSecretCredentialKey(key)) {
+			this.collectUrlSecrets(value);
+			return;
+		}
 		// `httpCustomAuth.json` holds the headers and query values as a JSON string: all secret.
 		const parsed = parseJsonObject(value);
 		if (parsed !== undefined) {
@@ -126,9 +131,38 @@ export class OutboundRedactor {
 		return this.scrub(parsed.toString());
 	}
 
+	/**
+	 * A service address stays, but a URL can carry its credential: a webhook URL's path
+	 * (`/services/T/B/<token>`) or a query value. Long path segments and query values count.
+	 */
+	private collectUrlSecrets(value: string): void {
+		let parsed: URL;
+		try {
+			parsed = new URL(value);
+		} catch {
+			return;
+		}
+		for (const segment of parsed.pathname.split('/')) {
+			if (segment.length >= MIN_URL_TOKEN_LENGTH) this.secrets.add(safeDecode(segment));
+		}
+		for (const queryValue of parsed.searchParams.values()) {
+			if (queryValue.length >= MIN_SECRET_LENGTH) this.secrets.add(queryValue);
+		}
+		if (parsed.password.length >= MIN_SECRET_LENGTH) {
+			this.secrets.add(safeDecode(parsed.password));
+		}
+	}
+
 	private redactValue(value: unknown, key?: string): unknown {
 		if (key && isSensitiveKey(key)) return PLACEHOLDER;
 		if (typeof value === 'string') return this.scrub(value);
+		// A numeric secret (a PIN) sent as a JSON number.
+		if (
+			(typeof value === 'number' || typeof value === 'bigint') &&
+			this.secrets.has(String(value))
+		) {
+			return PLACEHOLDER;
+		}
 		if (Array.isArray(value)) return value.map((item) => this.redactValue(item));
 		// Uploads and streams are not JSON: walking them would turn bytes into numbered keys.
 		if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
@@ -271,4 +305,12 @@ function withServerName(url: string, name: string): string {
 	const parsed = new URL(url);
 	parsed.searchParams.set('n8n_mcp_server', name);
 	return parsed.toString();
+}
+
+function safeDecode(text: string): string {
+	try {
+		return decodeURIComponent(text);
+	} catch {
+		return text;
+	}
 }

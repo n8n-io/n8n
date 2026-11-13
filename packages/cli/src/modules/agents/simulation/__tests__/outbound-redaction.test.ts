@@ -199,6 +199,38 @@ describe('OutboundRedactor', () => {
 		expect(JSON.stringify(request)).not.toContain('123456');
 	});
 
+	it('removes the token in the path of a webhook URL credential, and keeps the host', async () => {
+		const token = 'XyZ123abcDEF456ghiJKL789';
+		const { redactor } = await redactorWithCredential({
+			webhookUrl: `https://hooks.slack.com/services/T0001/B0002/${token}`,
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: `https://hooks.slack.com/services/T0001/B0002/${token}`,
+			body: { text: 'hi' },
+		});
+
+		expect(request.url).not.toContain(token);
+		expect(request.url).toContain('https://hooks.slack.com/services/');
+	});
+
+	it('removes a numeric secret sent as a JSON number', async () => {
+		const { redactor } = await redactorWithCredential({
+			json: JSON.stringify({ body: { proof: 123456 } }),
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://api.example.com/verify',
+			body: { proof: 123456, count: 2 },
+		});
+
+		expect(request.body).toEqual({ proof: '[REDACTED]', count: 2 });
+	});
+
 	it('removes short values inside a custom auth JSON credential', async () => {
 		const { redactor } = await redactorWithCredential({
 			json: JSON.stringify({ headers: { 'X-Pin': 'p1n9' } }),

@@ -501,7 +501,27 @@ function parseJson(text: string): unknown {
 }
 
 /** `url` is `base` or below it on a path boundary (`/mcp` does not match `/mcp-two`). */
-function urlIsUnder(url: string, base: string): boolean {
+function urlIsUnder(rawUrl: string, rawBase: string): boolean {
+	// Compared as parsed URLs: a `Request` writes `https://host?x` as `https://host/?x`.
+	const url = normalizeUrl(rawUrl);
+	const base = normalizeUrl(rawBase);
 	const root = base.replace(/\/+$/, '');
-	return url === base || url === root || url.startsWith(`${root}/`) || url.startsWith(`${root}?`);
+	const rootWithoutSlashBeforeQuery = base.replace(/\/\?/, '?');
+	return (
+		url === base ||
+		url === root ||
+		url === rootWithoutSlashBeforeQuery ||
+		url.startsWith(`${root}/`) ||
+		url.startsWith(`${root}?`)
+	);
+}
+
+function normalizeUrl(url: string): string {
+	try {
+		const parsed = new URL(url);
+		parsed.hash = '';
+		return parsed.toString();
+	} catch {
+		return url;
+	}
 }

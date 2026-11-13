@@ -394,6 +394,39 @@ describe('SimulationSession', () => {
 		expect(JSON.stringify(world.handleRequest.mock.calls)).not.toMatch(/key-a|key-b/);
 	});
 
+	it('names the server of a Request whose URL the platform normalised', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const servers = [
+			{
+				name: 'acct_a',
+				url: 'https://mcp.example.com?key=key-a',
+				simulatorUrl: 'https://mcp.example.com/?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
+			},
+			{
+				name: 'acct_b',
+				url: 'https://mcp.example.com?key=key-b',
+				simulatorUrl: 'https://mcp.example.com/?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
+			},
+		];
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: servers.map((server) => ({
+				toolName: server.name,
+				kind: 'mcp' as const,
+				testability: 'simulated' as const,
+			})),
+			mcpServers: servers,
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+
+		await mcpFetch(new Request(servers[1].url, { method: 'POST', body: '{}' }));
+
+		const [[request, call]] = world.handleRequest.mock.calls;
+		expect(request.url).toBe(servers[1].simulatorUrl);
+		expect(call).toMatchObject({ mcpServerName: 'acct_b' });
+	});
+
 	it('routes a call to the server of its tool when two servers share one URL', async () => {
 		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
 		const servers = ['acct_a', 'acct_b'].map((name) => ({
