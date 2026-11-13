@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_5f5efe371ad2e2::t_535d194d4f5082 1138
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_5f5efe371ad2e2::t_5f2d0ca122a4e2 68-74,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff83b00d35c4065075b707e04ba98e0bed55dce9",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
