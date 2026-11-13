@@ -1,0 +1,22 @@
+packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts
+  s_9b3403f33f27bc::t_e76fd9279b3dca 9,237,239,251,771-772,798
+  s_9b3403f33f27bc::t_9e423cf01eeb68 236
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_9b3403f33f27bc::t_e76fd9279b3dca 1645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "590259f2e2d7fc3eeb9041aca9fe58b56784fd56",
+  "prompts": {},
+  "sessions": {
+    "s_9b3403f33f27bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b824e7d0-3e6b-453b-803b-35e874412684",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
