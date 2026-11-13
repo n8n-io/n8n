@@ -13,8 +13,10 @@ import {
 	continueInstanceAiTraceContext,
 	createInstanceAiTraceContext,
 	emitBuilderMetric,
+	isLangSmithTracingEnabled,
 	orchestratorAgentId,
 	parseSuspension,
+	threadProvenanceMetadata,
 	releaseTraceClient,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -29,6 +31,7 @@ import { WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
 	SteeredMessageEvent,
+	SystemAgentHostInstruction,
 	SystemAgentResumeTurn,
 	SystemAgentTurn,
 	SystemAgentTurnOutcome,
@@ -147,6 +150,8 @@ interface AssistantTraceScope {
 	messageGroupId: string;
 	userId: string;
 	proxyConfig?: ServiceProxyConfig;
+	/** The `thread_source` and `source_context.*` metadata of the thread. */
+	threadProvenance: Record<string, unknown>;
 }
 
 /** What the trace of a turn records besides the turn itself. */
@@ -187,6 +192,8 @@ export class AssistantTurnTrace {
 	private firstResponseRecorded = false;
 
 	private steeredMessageCount = 0;
+
+	private hostInstructionCount = 0;
 
 	constructor(
 		readonly context: InstanceAiTraceContext,
@@ -353,6 +360,35 @@ export class AssistantTurnTrace {
 	}
 
 	/**
+	 * Records an instruction that the host added when the agent tried to stop.
+	 * The model gets one more step in this turn, so it is not a new turn.
+	 */
+	recordHostInstruction(instruction: SystemAgentHostInstruction): void {
+		this.hostInstructionCount++;
+		const { context } = this;
+		const recorded = { reason: instruction.reason, content: instruction.content };
+		const record = async () => {
+			const run = await context.startChildRun(context.actorRun, {
+				name: `host: ${instruction.reason.replace(/_/g, ' ')}`,
+				canonicalName: 'instance-ai.host_instruction',
+				runType: 'chain',
+				tags: ['host-instruction'],
+				metadata: { reason: instruction.reason },
+				inputs: recorded,
+			});
+			await context.finishRun(run, { outputs: recorded });
+		};
+		const recording = record().catch((error: unknown) => {
+			this.logger.warn('Failed to trace an Assistant host instruction', {
+				runId: this.runId,
+				error: getErrorMessage(error),
+			});
+		});
+		// The turn can finish before the span exports, so keep the trace open for it.
+		context.keepOpenUntilSettled?.(recording);
+	}
+
+	/**
 	 * Records the `first_response` builder metric on the first chunk that the
 	 * user sees, like the stream runner of the current Assistant runtime.
 	 */
@@ -417,6 +453,9 @@ export class AssistantTurnTrace {
 		}
 		if (this.steeredMessageCount > 0) {
 			rootMetadata = { ...rootMetadata, steered_message_count: this.steeredMessageCount };
+		}
+		if (this.hostInstructionCount > 0) {
+			rootMetadata = { ...rootMetadata, host_instruction_count: this.hostInstructionCount };
 		}
 
 		try {
@@ -490,6 +529,10 @@ export class AssistantTurnTracer {
 			messageGroupId: anchor?.messageGroupId ?? setup.messageGroupId,
 			userId: turn.user.id,
 			...(setup.proxyConfig ? { proxyConfig: setup.proxyConfig } : {}),
+			// Only a trace uses the provenance, so skip the read when tracing is off.
+			threadProvenance: isLangSmithTracingEnabled(Boolean(setup.proxyConfig))
+				? await this.readThreadProvenance(turn)
+				: {},
 		};
 		const trace = await this.createForTurn(turn, scope, anchor, setup);
 		if (!trace) return undefined;
@@ -502,6 +545,23 @@ export class AssistantTurnTracer {
 			});
 		}
 		return trace;
+	}
+
+	/**
+	 * The provenance of the thread, from its metadata. A failed read does not
+	 * stop the turn or the trace. The trace then has no provenance.
+	 */
+	private async readThreadProvenance(turn: SystemAgentTurn): Promise<Record<string, unknown>> {
+		try {
+			const thread = await turn.memory.getThread(turn.thread.id);
+			return threadProvenanceMetadata(thread?.metadata);
+		} catch (error) {
+			this.logger.debug('Could not read thread provenance for tracing', {
+				threadId: turn.thread.id,
+				error: getErrorMessage(error),
+			});
+			return {};
+		}
 	}
 
 	private async createForTurn(
@@ -563,7 +623,7 @@ export class AssistantTurnTracer {
 			return await createInstanceAiTraceContext({
 				...this.commonOptions(scope),
 				input,
-				metadata: { ...metadata, ...RUNTIME_TRACE_METADATA },
+				metadata: { ...scope.threadProvenance, ...metadata, ...RUNTIME_TRACE_METADATA },
 			});
 		});
 	}
@@ -585,6 +645,7 @@ export class AssistantTurnTracer {
 					resume_reason: 'approval',
 					agent_id: orchestratorAgentId(scope.runId),
 					...continuedFromMetadata(anchor),
+					...scope.threadProvenance,
 					...metadata,
 					...RUNTIME_TRACE_METADATA,
 				},

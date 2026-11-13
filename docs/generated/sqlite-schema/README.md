@@ -170,7 +170,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
-| [workflow_history](workflow_history.md) | 11 |  | table |
+| [workflow_history](workflow_history.md) | 12 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
 | [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
@@ -246,6 +246,7 @@ erDiagram
 "agent_workflow_dependency" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents" }o--o| "workflow_entity" : "FOREIGN KEY (approvalWorkflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"agents" }o--o| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -828,6 +829,7 @@ erDiagram
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
@@ -2164,6 +2166,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  JSON settings
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK

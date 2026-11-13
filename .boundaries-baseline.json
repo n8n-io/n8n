@@ -1,5 +1,5 @@
 {
-	"issues": 87,
+	"issues": 86,
 	"entries": [
 		"packages/@n8n/agents/eslint.config.mjs -> @n8n/eslint-config/backend [undeclared-dependency]",
 		"packages/@n8n/agents/eslint.config.mjs -> eslint/config [undeclared-dependency]",
@@ -67,7 +67,6 @@
 		"packages/frontend/@n8n/chat/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/composables/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/design-system/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/frontend-module-sdk/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/frontend-utils/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/i18n/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/rest-api-client/eslint.config.mjs -> eslint/config [undeclared-dependency]",

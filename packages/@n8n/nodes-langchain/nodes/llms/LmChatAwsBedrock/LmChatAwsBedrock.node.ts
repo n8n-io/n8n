@@ -366,12 +366,13 @@ export class LmChatAwsBedrock implements INodeType {
 
 		const region = resolveBedrockRegion(modelName, credentialRegion);
 
-		const client = createBedrockRuntimeClient({
+		const client = await createBedrockRuntimeClient({
 			region,
 			credentials,
 			bedrockRuntimeEndpoint,
 			maxRetries: options.maxRetries,
 			timeout: options.timeout,
+			egressFilter: this.helpers.getSecureEgressFilter(),
 		});
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.

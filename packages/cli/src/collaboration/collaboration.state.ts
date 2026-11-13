@@ -214,21 +214,25 @@ export class CollaborationState {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getWriteLock(workflowId);
-			if (current && current.clientId !== clientId) return false;
+			if (current && !this.isHeldBy(current, clientId, userId)) return false;
 			await this.setWriteLock(workflowId, clientId, userId);
 			return true;
 		});
 	}
 
-	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
+	async renewWriteLock(workflowId: Workflow['id'], clientId: string, userId: User['id']) {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
 		await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getWriteLock(workflowId);
-			if (currentLock?.clientId === clientId) {
+			if (this.isHeldBy(currentLock, clientId, userId)) {
 				const lockData = JSON.stringify(currentLock);
 				await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 			}
 		});
+	}
+
+	private isHeldBy(lock: WriteLock | null, clientId: string, userId: User['id']): boolean {
+		return lock?.clientId === clientId && lock.userId === userId;
 	}
 
 	/** Parse a raw cached lock value; `null` when missing or malformed. */
@@ -261,11 +265,15 @@ export class CollaborationState {
 	 * from deleting a lock that was taken over by another tab between the
 	 * check and the delete.
 	 */
-	async releaseWriteLockIfHolder(workflowId: Workflow['id'], clientId: string): Promise<boolean> {
+	async releaseWriteLockIfHolder(
+		workflowId: Workflow['id'],
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getWriteLock(workflowId);
-			if (current?.clientId !== clientId) return false;
+			if (!this.isHeldBy(current, clientId, userId)) return false;
 			await this.cache.delete(cacheKey);
 			return true;
 		});
@@ -378,17 +386,17 @@ export class CollaborationState {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getAgentWriteLock(agentId);
-			if (current && current.clientId !== clientId) return false;
+			if (current && !this.isHeldBy(current, clientId, userId)) return false;
 			await this.setAgentWriteLock(agentId, clientId, userId);
 			return true;
 		});
 	}
 
-	async renewAgentWriteLock(agentId: string, clientId: string) {
+	async renewAgentWriteLock(agentId: string, clientId: string, userId: User['id']) {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
 		await this.serializeLockOp(cacheKey, async () => {
 			const currentLock = await this.getAgentWriteLock(agentId);
-			if (currentLock?.clientId === clientId) {
+			if (this.isHeldBy(currentLock, clientId, userId)) {
 				const lockData = JSON.stringify(currentLock);
 				await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 			}
@@ -427,11 +435,15 @@ export class CollaborationState {
 	/**
 	 * Release the agent write lock only if the caller holds it.
 	 */
-	async releaseAgentWriteLockIfHolder(agentId: string, clientId: string): Promise<boolean> {
+	async releaseAgentWriteLockIfHolder(
+		agentId: string,
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
 		const cacheKey = this.formAgentWriteLockCacheKey(agentId);
 		return await this.serializeLockOp(cacheKey, async () => {
 			const current = await this.getAgentWriteLock(agentId);
-			if (current?.clientId !== clientId) return false;
+			if (!this.isHeldBy(current, clientId, userId)) return false;
 			await this.cache.delete(cacheKey);
 			return true;
 		});

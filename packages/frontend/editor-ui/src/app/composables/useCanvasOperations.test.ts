@@ -6511,6 +6511,57 @@ describe('useCanvasOperations', () => {
 			]);
 		});
 
+		describe('restricted node types', () => {
+			const RESTRICTED_NODE_TYPE = 'n8n-nodes-base.code';
+			const toast = useToast();
+
+			beforeEach(() => {
+				vi.mocked(toast.showMessage).mockClear();
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+					(importedNodes, connections) =>
+						createTestWorkflowObject({ nodes: importedNodes, connections }),
+				);
+				mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+					(name) =>
+						name === RESTRICTED_NODE_TYPE
+							? { name, available: false, scope: 'instance' }
+							: { name, available: true },
+				);
+			});
+
+			function importedNodes() {
+				return [
+					createTestNode({ name: 'Code', type: RESTRICTED_NODE_TYPE }),
+					createTestNode({ name: 'Set', type: SET_NODE_TYPE }),
+				];
+			}
+
+			it('imports the nodes and warns once when the caller opts in', async () => {
+				const result = await useCanvasOperations().importWorkflowData(
+					{ nodes: importedNodes(), connections: {} },
+					'paste',
+					{ trackEvents: false, warnRestrictedNodes: true },
+				);
+
+				expect(result.nodes?.map((node) => node.name)).toEqual(['Code', 'Set']);
+				expect(toast.showMessage).toHaveBeenCalledTimes(1);
+				expect(toast.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({ customClass: 'content-toast restricted-import-toast' }),
+					false,
+				);
+			});
+
+			it('does not warn when the caller does not opt in', async () => {
+				await useCanvasOperations().importWorkflowData(
+					{ nodes: importedNodes(), connections: {} },
+					'file',
+					{ trackEvents: false },
+				);
+
+				expect(toast.showMessage).not.toHaveBeenCalled();
+			});
+		});
+
 		it.each(['paste', 'file', 'url'] as const)(
 			'strips empty groups before importing from %s when the feature is disabled',
 			async (source) => {

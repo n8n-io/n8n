@@ -55,6 +55,74 @@ export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult 
 	};
 }
 
+/** A ChatGeneration carries its `message`; a plain Generation carries only text. */
+function hasMessage(generation: unknown): generation is { message: unknown } {
+	return typeof generation === 'object' && generation !== null && 'message' in generation;
+}
+
+/** Only AI messages declare `usage_metadata`; `BaseMessage` does not. */
+function hasUsageMetadata(message: unknown): message is {
+	usage_metadata?: { input_tokens?: number; output_tokens?: number; total_tokens?: number };
+} {
+	return typeof message === 'object' && message !== null && 'usage_metadata' in message;
+}
+
+/** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
+function isReportedTokenUsage(
+	usage: unknown,
+): usage is { promptTokens: number; completionTokens: number } {
+	if (typeof usage !== 'object' || usage === null) return false;
+	if (!('promptTokens' in usage) || typeof usage.promptTokens !== 'number') return false;
+	if (!('completionTokens' in usage) || typeof usage.completionTokens !== 'number') return false;
+	return true;
+}
+
+/**
+ * OpenAI Chat Model usage. Reads the reported `tokenUsage` first (Chat Completions),
+ * then the message's `usage_metadata` (Responses API, which reports only
+ * `estimatedTokenUsage`). Never reads `estimatedTokenUsage`, which mixes provider
+ * usage with local estimates. A provider-reported `total_tokens` on the message wins
+ * over recomputing input + output; the `tokenUsage` payload carries no total the
+ * default parser trusts, so that branch recomputes.
+ */
+export function openAiTokensUsageParser(result: LLMResult): {
+	completionTokens: number;
+	promptTokens: number;
+	totalTokens: number;
+} {
+	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
+	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
+	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
+	// zeroes tokenUsage (it ignores estimatedTokenUsage) and this branch returns
+	// 0/0/0, regressing to estimate even though message.usage_metadata is populated.
+	if (isReportedTokenUsage(reportedUsage)) {
+		const promptTokens = reportedUsage.promptTokens;
+		const completionTokens = reportedUsage.completionTokens;
+		// totalTokens is recomputed here (unlike usage_metadata) to preserve the default parser's historical Completions contract.
+		return {
+			completionTokens,
+			promptTokens,
+			totalTokens: promptTokens + completionTokens,
+		};
+	}
+
+	const generation = result.generations?.[0]?.[0];
+	const message = generation && hasMessage(generation) ? generation.message : undefined;
+	if (hasUsageMetadata(message)) {
+		// Responses: prefer the provider's total, then fall back to input + output.
+		const promptTokens = message.usage_metadata?.input_tokens ?? 0;
+		const completionTokens = message.usage_metadata?.output_tokens ?? 0;
+		const totalTokens = message.usage_metadata?.total_tokens ?? promptTokens + completionTokens;
+		return {
+			completionTokens,
+			promptTokens,
+			totalTokens,
+		};
+	}
+
+	return { completionTokens: 0, promptTokens: 0, totalTokens: 0 };
+}
+
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
@@ -163,6 +231,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
+		// Read usage before the generations are reduced to their run-data shape,
+		// so a parser can read fields the run-data shape drops (e.g. the message).
+		const tokenUsage = this.options.tokensUsageParser(output);
+
 		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
 
 		const tokenUsageEstimate = {
@@ -170,7 +242,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			promptTokens: 0,
 			totalTokens: 0,
 		};
-		const tokenUsage = this.options.tokensUsageParser(output);
 
 		if (output.generations.length > 0) {
 			tokenUsageEstimate.completionTokens = await this.estimateTokensFromGeneration(

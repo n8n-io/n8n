@@ -248,7 +248,7 @@ function noteOf(skill: DiscoveredSkill): string {
 				</N8nText>
 			</div>
 			<div :class="$style.right">
-				<SkillSourceFilesView v-if="previewSkill" :skill="previewSkill" />
+				<SkillSourceFilesView v-if="previewSkill" :key="previewSkill.key" :skill="previewSkill" />
 			</div>
 		</div>
 	</div>
@@ -278,7 +278,7 @@ function noteOf(skill: DiscoveredSkill): string {
 
 .right {
 	min-height: 0;
-	overflow-y: auto;
+	overflow: hidden;
 	border: var(--border);
 	border-radius: var(--radius);
 }

@@ -56,6 +56,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { Push } from '@/push';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -1289,6 +1290,42 @@ describe('run', () => {
 		});
 	});
 
+	describe('user of the pushRef', () => {
+		it('binds sendDataToUI to the user of the pushRef', async () => {
+			const push = mockInstance(Push);
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: Object.assign(createRunExecutionData({}), { pushRefUserId: undefined }),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				pushRef: 'push-ref',
+				pushRefUserId: undefined,
+				userId: 'editor',
+			});
+
+			await runner.run(data);
+			additionalData.sendDataToUI?.('sendConsoleMessage', { message: 'hi' });
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				'push-ref',
+				'editor',
+			);
+		});
+	});
+
 	describe('startup failure', () => {
 		it('rejects on startup errors', async () => {
 			const error = new Error('boom');
@@ -1675,6 +1712,30 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
+
+	it('enqueues the user of the pushRef with the job', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			executionMode: 'trigger',
+			pushRef: 'push-ref',
+			pushRefUserId: undefined,
+			userId: 'editor',
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({ pushRefUserId: 'editor' }),
+			expect.any(Object),
+		);
 	});
 
 	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {

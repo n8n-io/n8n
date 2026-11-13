@@ -1,4 +1,5 @@
-import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { BedrockApi } from './resolveBedrockApi';
 
@@ -28,7 +29,7 @@ export async function listBedrockInferenceProfiles(
 	ctx: ILoadOptionsFunctions,
 	{ credentialsType, baseURL }: BedrockApi,
 ): Promise<BedrockInferenceProfileSummary[]> {
-	const request = async (url: string) =>
+	const request = async (url: RequestPath) =>
 		await (ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialsType, {
 			method: 'GET',
 			baseURL,
@@ -37,8 +38,8 @@ export async function listBedrockInferenceProfiles(
 		}) as Promise<{ inferenceProfileSummaries?: BedrockInferenceProfileSummary[] }>);
 
 	const [systemDefined, application] = await Promise.allSettled([
-		request('/inference-profiles?maxResults=1000'),
-		request('/inference-profiles?maxResults=1000&type=APPLICATION'),
+		request(requestPath`/inference-profiles?maxResults=1000`),
+		request(requestPath`/inference-profiles?maxResults=1000&type=APPLICATION`),
 	]);
 
 	const results = [

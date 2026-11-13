@@ -2,6 +2,8 @@ import type {
 	CreatePromotionEnvironmentDto,
 	CreatePromotionProviderDto,
 	PromotionCheckoutPublicDto,
+	PromotePackageDto,
+	PromotePackageResultDto,
 	PromotionEnvironmentPublicDto,
 	PromotionProviderCreatedPublicDto,
 	UpdatePromotionEnvironmentDto,
@@ -62,6 +64,10 @@ export class PromotionsApiHelper {
 
 	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
 		return await this.send('POST', `/environments/${environmentId}/disconnect`);
+	}
+
+	async promote(environmentId: string, input: PromotePackageDto): Promise<PromotePackageResultDto> {
+		return await this.send('POST', `/environments/${environmentId}/promote`, input);
 	}
 
 	private async send<T>(

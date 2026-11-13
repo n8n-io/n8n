@@ -6,6 +6,7 @@ import {
 	Project,
 	TagEntity,
 	WorkflowEntity,
+	User,
 	WithTimestampsAndStringId,
 } from '@n8n/db';
 import {
@@ -124,6 +125,19 @@ export class Agent extends WithTimestampsAndStringId {
 	@ManyToOne('AgentHistory', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'activeVersionId' })
 	activeVersion?: Relation<AgentHistory> | null;
+
+	/**
+	 * The identity this agent acts as. Today it is always a service account.
+	 * Null for an instance agent, and for an agent created while agent service
+	 * accounts were off.
+	 */
+	@Index({ unique: true, where: '"identityId" IS NOT NULL' })
+	@Column({ type: 'uuid', nullable: true })
+	identityId: string | null;
+
+	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+	@JoinColumn({ name: 'identityId', foreignKeyConstraintName: 'FK_agents_identity' })
+	identity?: Relation<User> | null;
 
 	/** Draft revision. Fenced saves advance it to reject stale draft writes. */
 	@Column({ type: 'int', default: 0 })

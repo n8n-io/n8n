@@ -9,7 +9,10 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import {
+	describeTypeRestriction,
+	RestrictedNodePopover,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref } from 'vue';
@@ -63,6 +66,21 @@ const actionDisabled = computed(
 
 const rowRef = ref<HTMLElement | null>(null);
 const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
+
+const toggleTooltip = computed(() => {
+	if (restriction.value) {
+		return describeTypeRestriction('chatTool', props.nodeType.displayName, restriction.value);
+	}
+	return props.enabled
+		? i18n.baseText('chatHub.toolsManager.disableTool')
+		: i18n.baseText('chatHub.toolsManager.enableTool');
+});
+
+const toggleLabel = computed(() =>
+	i18n.baseText('chatHub.toolsManager.toggleLabel', {
+		interpolate: { toolName: displayName.value, status: toggleTooltip.value },
+	}),
+);
 </script>
 
 <template>
@@ -148,17 +166,12 @@ const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
 					/>
 				</N8nTooltip>
 
-				<N8nTooltip
-					v-if="!roleBlocked"
-					:content="
-						enabled
-							? i18n.baseText('chatHub.toolsManager.disableTool')
-							: i18n.baseText('chatHub.toolsManager.enableTool')
-					"
-				>
+				<N8nTooltip v-if="!roleBlocked" :content="toggleTooltip">
 					<N8nSwitch
 						:model-value="enabled"
 						size="large"
+						:disabled="!!restriction"
+						:aria-label="toggleLabel"
 						:class="$style.toggle"
 						@update:model-value="emit('toggle', Boolean($event))"
 					/>

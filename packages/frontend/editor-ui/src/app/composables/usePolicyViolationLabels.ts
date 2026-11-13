@@ -10,7 +10,10 @@ export function usePolicyViolationLabels() {
 	const credentialsStore = useCredentialsStore();
 
 	/** The display name of the node or credential type a violation names, if known. */
-	function labelOf({ subject, subjectType }: PolicyViolation): string | undefined {
+	function labelOf({
+		subject,
+		subjectType,
+	}: Pick<PolicyViolation, 'subject' | 'subjectType'>): string | undefined {
 		if (subject === undefined) return undefined;
 
 		if (subjectType === NODE_TYPE_SUBJECT) return nodeTypesStore.getNodeType(subject)?.displayName;

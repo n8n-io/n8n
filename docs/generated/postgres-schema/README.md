@@ -170,7 +170,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_builder_session](public.workflow_builder_session.md) | 9 |  | BASE TABLE |
 | [public.workflow_dependency](public.workflow_dependency.md) | 9 |  | BASE TABLE |
 | [public.workflow_entity](public.workflow_entity.md) | 20 |  | BASE TABLE |
-| [public.workflow_history](public.workflow_history.md) | 11 |  | BASE TABLE |
+| [public.workflow_history](public.workflow_history.md) | 12 |  | BASE TABLE |
 | [public.workflow_publication_outbox](public.workflow_publication_outbox.md) | 8 |  | BASE TABLE |
 | [public.workflow_publication_retry_state](public.workflow_publication_retry_state.md) | 4 |  | BASE TABLE |
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
@@ -264,6 +264,7 @@ erDiagram
 "public.agent_workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;approvalWorkflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
+"public.agents" }o--o| "public.user" : "FOREIGN KEY (#quot;identityId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agents" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.agents_memory_entries" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -842,6 +843,7 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
   boolean isArchived
   varchar_128_ name
@@ -2176,6 +2178,7 @@ erDiagram
   varchar_128_ name
   json nodeGroups
   json nodes
+  json settings
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
   varchar_36_ workflowId FK

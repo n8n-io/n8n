@@ -81,7 +81,7 @@ describe('LiveWebhooks', () => {
 
 	/**
 	 * Wires up the standard `executeWebhook` mock setup (`findWebhook`,
-	 * `getWebhookMethods`, `findOne`, `getByNameAndVersion`, `getNodeWebhooks`,
+	 * `getWebhookMethods`, `get`, `getByNameAndVersion`, `getNodeWebhooks`,
 	 * and the `WebhookHelpers.executeWebhook` shim that drives the callback).
 	 *
 	 * Callers supply the `workflowEntity` for the case they're exercising and
@@ -124,7 +124,7 @@ describe('LiveWebhooks', () => {
 
 		webhookService.findWebhook.mockResolvedValue(webhookEntity);
 		webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
-		workflowRepository.findOne.mockResolvedValue(workflowEntity);
+		workflowRepository.get.mockResolvedValue(workflowEntity);
 		nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 		webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
@@ -661,7 +661,7 @@ describe('LiveWebhooks', () => {
 
 			webhookService.findWebhook.mockResolvedValue(webhookEntity);
 			webhookService.getWebhookMethods.mockResolvedValue([httpMethod]);
-			workflowRepository.findOne.mockResolvedValue(workflowEntity);
+			workflowRepository.get.mockResolvedValue(workflowEntity);
 			nodeTypes.getByNameAndVersion.mockReturnValue(webhookNodeType);
 			webhookService.getNodeWebhooks.mockReturnValue([webhookData]);
 
@@ -798,7 +798,7 @@ describe('LiveWebhooks', () => {
 				connections: {},
 			});
 
-			workflowRepository.findOne.mockResolvedValue(
+			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: WORKFLOW_ID,
 					active: true,

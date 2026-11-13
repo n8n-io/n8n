@@ -8,6 +8,7 @@ import { ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -206,6 +207,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					skillRefs,
 					policy,
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				completion,
 				mock<AgentSetupCompletionService>(),
@@ -214,6 +218,7 @@ describe('AgentRepository', () => {
 				mock(),
 				mock<GlobalConfig>({ tags: { disabled: false } }),
 				mock<TagService>(),
+				mock(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });
 			const id = uuid();
@@ -305,6 +310,9 @@ describe('AgentRepository', () => {
 					taskRepo,
 					Container.get(AgentSkillRefsService),
 					mock<AgentPolicyService>(),
+					mock<CredentialsFinderService>({
+						findCredentialForUser: async (id: string) => ({ id }) as never,
+					}),
 				),
 				setup,
 				transactionRunner,
@@ -1082,8 +1090,8 @@ describe('AgentRepository', () => {
 			await createAgent();
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [first.id, second.id] },
 			});
 
@@ -1096,8 +1104,8 @@ describe('AgentRepository', () => {
 			const outside = await createAgent({ projectId: otherProject.id });
 
 			const { count, data } = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { ids: [outside.id] },
 			});
 
@@ -1144,8 +1152,8 @@ describe('AgentRepository', () => {
 
 		async function listReachable(availableInChat = true) {
 			return await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat },
 			});
 		}
@@ -1266,7 +1274,7 @@ describe('AgentRepository', () => {
 			}
 		});
 
-		it('keeps count and skip/take pagination correct with the filter applied', async () => {
+		it('keeps count and offset/limit pagination correct with the filter applied', async () => {
 			const agents: Agent[] = [];
 			for (let i = 0; i < 3; i++) {
 				agents.push(await createPublishedAgent([chatChannel]));
@@ -1274,8 +1282,8 @@ describe('AgentRepository', () => {
 			await createPublishedAgent([]);
 
 			const page = await agentRepo.findByProjectIdsPaginated([projectId], {
-				skip: 1,
-				take: 1,
+				offset: 1,
+				limit: 1,
 				sortBy: 'name:asc',
 				filter: { availableInChat: true },
 			});
@@ -1369,7 +1377,7 @@ describe('AgentRepository', () => {
 		async function listByUsage(usageCounts?: Map<string, number>) {
 			return await agentRepo.findByProjectIdsPaginated(
 				[projectId],
-				{ skip: 0, take: 10, sortBy: 'usage:desc' },
+				{ offset: 0, limit: 10, sortBy: 'usage:desc' },
 				{ usageCounts },
 			);
 		}

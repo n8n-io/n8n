@@ -1,7 +1,12 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import type { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
-import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	N8N_CHAT_INTEGRATION_TYPE,
+	type ListAgentsOptions,
+} from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Telemetry } from '@/telemetry';
 import type { GlobalConfig } from '@n8n/config';
@@ -11,14 +16,19 @@ import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
-import type { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { mockLogger } from '@n8n/backend-test-utils';
 import type {
-	ProjectRelationRepository,
-	TagEntity,
-	TransactionRunner,
-	User,
-	WorkflowRepository,
+	CredentialsFinderService,
+	EventService,
+	ProjectScopeService,
+} from '@n8n/backend-services';
+import { mockLogger } from '@n8n/backend-test-utils';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type ProjectRelationRepository,
+	type TagEntity,
+	type TransactionRunner,
+	type User,
+	type WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
@@ -117,6 +127,10 @@ function makeService() {
 	const n8nChatFlag = mock<N8nChatFlagService>();
 	n8nChatFlag.isEnabledFor.mockResolvedValue(false);
 	setupCompletion.recordIfSetupComplete.mockResolvedValue(null);
+	const credentialsFinderService = mock<CredentialsFinderService>();
+	credentialsFinderService.findCredentialForUser.mockImplementation(
+		async (id) => ({ id, isGlobal: false, isResolvable: false }) as never,
+	);
 	const configPreparation = new AgentConfigPreparationService(
 		credentialsService,
 		workflowRepository,
@@ -125,6 +139,7 @@ function makeService() {
 		agentTaskRepository,
 		skillRefs,
 		agentPolicyService,
+		credentialsFinderService,
 	);
 
 	agentsSettingsService.getEnabled.mockResolvedValue(true);
@@ -175,6 +190,7 @@ function makeService() {
 		mock(),
 		globalConfig,
 		tagService,
+		mock<AgentServiceAccountService>(),
 	);
 
 	return {
@@ -197,6 +213,7 @@ function makeService() {
 		eventService,
 		agentExecutionService,
 		credentialsService,
+		credentialsFinderService,
 		projectScopeService,
 		agentsSettingsService,
 		globalConfig,
@@ -771,6 +788,50 @@ describe('AgentsService', () => {
 			expect(entity.integrations).toEqual([{ type: 'telegram', credentialId: '' }]);
 		});
 
+		it('blanks a credential that the user can read but not use', async () => {
+			const { service, agentRepository, credentialsService, credentialsFinderService } =
+				makeService();
+			mockCreateReturning(agentRepository, makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-model-1', name: 'OpenAI', type: 'openaiApi' } as never,
+				{ id: 'cred-mcp-1', name: 'Header', type: 'httpHeaderAuth' } as never,
+			]);
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (id, _user, scopes) =>
+					id === 'cred-mcp-1' && scopes.includes('credential:connect')
+						? null
+						: ({ id, isGlobal: false, isResolvable: false } as never),
+			);
+
+			await service.create(projectId, 'Support Agent', {
+				actor,
+				schema: {
+					name: 'Support Agent',
+					model: 'openai/gpt-5-mini',
+					instructions: 'Triage tickets.',
+					credential: 'cred-model-1',
+					mcpServers: [
+						{
+							name: 'docs',
+							url: 'https://mcp.example.test/mcp',
+							transport: 'streamableHttp',
+							authentication: 'headerAuth',
+							credential: 'cred-mcp-1',
+						},
+					],
+				},
+				user: { ...user, role: GLOBAL_MEMBER_ROLE } as User,
+			});
+
+			const [entity] = agentRepository.create.mock.calls[0];
+			const schema = entity.schema as unknown as {
+				credential?: string;
+				mcpServers?: Array<{ credential?: string }>;
+			};
+			expect(schema.credential).toBe('cred-model-1');
+			expect(schema.mcpServers?.[0]?.credential).toBe('');
+		});
+
 		it('reports creation and indexes a duplicate', async () => {
 			const { service, agentRepository, eventService, telemetry } = makeService();
 			const saved = makeAgent();
@@ -1012,7 +1073,12 @@ describe('AgentsService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({
+			id: agentId,
+			name: 'Agent',
+			projectId,
+			versionId: 'version-1',
+		});
 
 		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
@@ -1050,11 +1116,24 @@ describe('AgentsService', () => {
 		);
 	});
 
+	it('resolves the agent by ID alone when no project is given (Public API path)', async () => {
+		const { service, agentRepository } = makeService();
+		const agent = makeAgent();
+		agentRepository.findById.mockResolvedValue(agent);
+
+		await expect(service.delete(agentId)).resolves.toMatchObject({
+			id: agentId,
+			projectId,
+		});
+		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
+	});
+
 	it('does not emit agent-deleted when the agent is missing', async () => {
 		const { service, agentRepository, eventService } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
 
@@ -1066,7 +1145,7 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toMatchObject({ id: agentId });
 		expect(agentRepository.removeAfterApprovalCleanup).toHaveBeenCalledWith(agentId, projectId);
 		expect(agentKnowledgeService.destroyKnowledgeSandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
@@ -1078,17 +1157,19 @@ describe('AgentsService', () => {
 		await expect(service.delete(agentId, projectId, { requireArchived: true })).rejects.toThrow(
 			'Agent must be archived before it can be deleted.',
 		);
-		expect(agentRepository.remove).not.toHaveBeenCalled();
+		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ isArchived: true }));
-		await expect(service.delete(agentId, projectId, { requireArchived: true })).resolves.toBe(true);
+		await expect(
+			service.delete(agentId, projectId, { requireArchived: true }),
+		).resolves.toMatchObject({ id: agentId });
 	});
 
-	it('returns false when deleting a missing agent', async () => {
+	it('returns null when deleting a missing agent', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBeNull();
 		expect(agentRepository.removeAfterApprovalCleanup).not.toHaveBeenCalled();
 	});
 
@@ -1169,10 +1250,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(agentRepository.findN8nChatListPaginated).not.toHaveBeenCalled();
@@ -1184,7 +1265,7 @@ describe('AgentsService', () => {
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 			projectScopeService.getMemberProjectIds.mockResolvedValue(['project-owned']);
 			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+			const options = { offset: 0, limit: 10, filter: { availableInChat: true } };
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1211,11 +1292,11 @@ describe('AgentsService', () => {
 			const counts = new Map([['agent-1', 3]]);
 			agentExecutionService.countN8nChatThreadsByAgent.mockResolvedValue(counts);
 			const options = {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
 				sortBy: 'usage:desc',
-			} as never;
+			} satisfies ListAgentsOptions;
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1239,10 +1320,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result).toEqual({
 				count: 1,
@@ -1287,10 +1368,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result.data[0]).not.toHaveProperty('personalisation');
 			expect(result.data[0]).not.toHaveProperty('description');
@@ -1300,7 +1381,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+			const options = { offset: 0, limit: 10, filter: { availableInChat: true } };
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1336,10 +1417,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result.data[0]).toMatchObject({
 				id: 'agent-3',
@@ -1603,7 +1684,7 @@ describe('AgentsService', () => {
 				makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			const options = { offset: 0, limit: 10 };
 
 			await service.findListableByUserPaginated(user, options);
 
@@ -1619,7 +1700,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			const options = { offset: 0, limit: 10 };
 
 			await service.findListableByUserPaginated(user, options);
 
