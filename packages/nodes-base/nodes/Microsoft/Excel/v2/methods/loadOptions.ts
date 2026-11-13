@@ -1,6 +1,7 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest, toWorkbookId } from '../transport';
 import { parseAddress } from '../helpers/utils';
 
 // loadOptions context throughout this file: the transport's trailing `0` is its
@@ -9,9 +10,12 @@ import { parseAddress } from '../helpers/utils';
 export async function getWorksheetColumnRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = toWorkbookId.call(
+		this,
+		this.getNodeParameter('workbook', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const worksheetId = this.getNodeParameter('worksheet', undefined, {
 		extractValue: true,
@@ -24,7 +28,7 @@ export async function getWorksheetColumnRow(
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+			requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 			undefined,
 			{ select: 'values' },
 			undefined,
@@ -40,7 +44,7 @@ export async function getWorksheetColumnRow(
 		const worksheetData = await microsoftApiRequest.call(
 			this,
 			'PATCH',
-			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+			requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 			{ select: 'values' },
 			undefined,
 			undefined,
@@ -72,9 +76,12 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 export async function getTableColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const workbookId = this.getNodeParameter('workbook', undefined, {
-		extractValue: true,
-	}) as string;
+	const workbookId = toWorkbookId.call(
+		this,
+		this.getNodeParameter('workbook', undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const worksheetId = this.getNodeParameter('worksheet', undefined, {
 		extractValue: true,
@@ -87,7 +94,7 @@ export async function getTableColumns(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
+		requestPath`/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/columns`,
 		{},
 		undefined,
 		undefined,

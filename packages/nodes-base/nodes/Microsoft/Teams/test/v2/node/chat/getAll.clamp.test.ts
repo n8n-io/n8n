@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 
@@ -62,7 +63,7 @@ describe('Microsoft Teams V2, chat getAll paging arguments', () => {
 		expect(transport.microsoftApiRequestAllItems).toHaveBeenCalledWith(
 			'value',
 			'GET',
-			'/v1.0/chats',
+			requestPath`/v1.0/chats`,
 			{},
 			{ $top: expectedTop },
 			expectedLimit,

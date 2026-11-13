@@ -187,8 +187,7 @@ import {
 } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
-import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
-import { isKnownAssistantAgentThread } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
+import type { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
@@ -1733,11 +1732,7 @@ async function createPendingAgent(
 	if (props.artifactPersistAgent) {
 		return await props.artifactPersistAgent(request);
 	}
-	// An Assistant agent thread binds the saved agent with its next message.
-	if (aiThreadId.value && !isKnownAssistantAgentThread(aiThreadId.value)) {
-		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
-		return result.agent;
-	}
+	// Manual edits must also save when the Assistant thread is only a local draft.
 	try {
 		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
 			id: targetAgentId,
@@ -3043,9 +3038,9 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
-		schema: personalisation ? { personalisation } : null,
+		project: null,
+		isArchived: false,
 		availableInMCP: false,
-		isCompiled: false,
 		isRunnable: false,
 		hasPublishHistory: false,
 		hasVersionHistory: false,
@@ -3053,8 +3048,20 @@ function draftAgentResource(personalisation: AgentJsonConfig['personalisation'])
 		updatedAt: now,
 		versionId: null,
 		activeVersionId: null,
+		config: personalisation
+			? {
+					name: locale.baseText('agents.new.defaultName'),
+					model: '',
+					instructions: '',
+					personalisation,
+				}
+			: null,
+		configHash: null,
 		tools: {},
 		skills: {},
+		skillHashes: {},
+		outdatedSkillIds: [],
+		skillVersions: {},
 		activeVersion: null,
 	};
 }

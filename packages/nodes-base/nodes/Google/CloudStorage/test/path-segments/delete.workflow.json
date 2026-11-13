@@ -1,0 +1,70 @@
+{
+	"name": "Google Cloud Storage Delete Path Segments",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5e1f6d4b-3b54-4c4c-8c1f-7b4d2e3c8b21",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "object",
+				"operation": "delete",
+				"bucketName": "n8n-test-bucket",
+				"objectName": ".."
+			},
+			"type": "n8n-nodes-base.googleCloudStorage",
+			"typeVersion": 1.1,
+			"position": [220, 0],
+			"id": "d1e2f3a4-b5c6-4d7e-8f90-a1b2c3d4e5f6",
+			"name": "Delete Object",
+			"continueOnFail": true,
+			"credentials": {
+				"googleCloudStorageOAuth2Api": {
+					"id": "1",
+					"name": "Google Cloud Storage OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8a4f1c2e-6b3d-4e5f-9a0b-1c2d3e4f5a6b",
+							"name": "error",
+							"value": "={{ $json.error }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 0],
+			"id": "e2f3a4b5-c6d7-4e8f-9a01-b2c3d4e5f6a7",
+			"name": "Read Error"
+		}
+	],
+	"pinData": {
+		"Read Error": [
+			{
+				"json": {
+					"error": "Invalid identifier: \"..\" is not allowed"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [[{ "node": "Delete Object", "type": "main", "index": 0 }]]
+		},
+		"Delete Object": {
+			"main": [[{ "node": "Read Error", "type": "main", "index": 0 }]]
+		}
+	}
+}

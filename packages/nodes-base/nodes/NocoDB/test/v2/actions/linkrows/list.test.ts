@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/linkrows/list.operation';
@@ -66,7 +67,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{ limit: 50 },
 			);
@@ -91,7 +92,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequestAllItems.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{},
 			);
@@ -117,7 +118,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{ limit: 2 },
 			);
@@ -148,7 +149,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{ limit: 50, fields: 'name' },
 			);
@@ -179,7 +180,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{ limit: 50, sort: JSON.stringify([{ field: 'id', direction: 'desc' }]) },
 			);
@@ -208,7 +209,7 @@ describe('NocoDB Link Rows List Action', () => {
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
-				'/api/v3/data/base1/table1/links/linkField1/record1',
+				requestPath`/api/v3/data/base1/table1/links/linkField1/record1`,
 				{},
 				{ limit: 50, where: '(name,like,example%)' },
 			);

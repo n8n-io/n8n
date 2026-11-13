@@ -1,0 +1,106 @@
+{
+	"name": "Discord request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1f3c2d4-5b6e-4f70-8a91-0b2c3d4e5f60",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"guildId": {
+					"__rl": true,
+					"value": "1168516062791340136",
+					"mode": "id"
+				},
+				"sendTo": "user",
+				"userId": {
+					"__rl": true,
+					"value": "470936827994570762",
+					"mode": "id"
+				},
+				"content": "Hello",
+				"options": {}
+			},
+			"id": "b2e4d3c5-6c7f-4081-9ba2-1c3d4e5f6071",
+			"name": "Send to User",
+			"type": "n8n-nodes-base.discord",
+			"typeVersion": 2,
+			"position": [220, -100],
+			"credentials": {
+				"discordBotApi": {
+					"id": "1",
+					"name": "Discord Bot account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "webhook",
+				"content": "Thread message",
+				"options": {
+					"wait": true
+				}
+			},
+			"id": "c3f5e4d6-7d80-4192-acb3-2d4e5f607182",
+			"name": "Webhook Thread",
+			"type": "n8n-nodes-base.discord",
+			"typeVersion": 2,
+			"position": [220, 100],
+			"credentials": {
+				"discordWebhookApi": {
+					"id": "2",
+					"name": "Discord Webhook account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Send to User": [
+			{
+				"json": {
+					"id": "1168784010269433999",
+					"channel_id": "1168790000000000001",
+					"content": "Hello"
+				}
+			}
+		],
+		"Webhook Thread": [
+			{
+				"json": {
+					"id": "1168768986385748000",
+					"channel_id": "1168516240332034067",
+					"content": "Thread message"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Send to User",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Webhook Thread",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"meta": {
+		"instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+	},
+	"tags": []
+}

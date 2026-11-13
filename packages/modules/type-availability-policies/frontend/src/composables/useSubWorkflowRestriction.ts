@@ -69,8 +69,9 @@ function toRestriction(
 /**
  * Whether the sub-workflow an Execute Workflow node calls uses a node type that blocks the call.
  * Loads the answer for the node and keeps it current when the node or the parent changes. Pass
- * `refresh` from a surface that must not show a cached answer. `checkFailed` is true when the
- * answer could not load: the real start fails closed then, so it is not "no restriction".
+ * `refresh` from a surface that must not show a cached answer: every sub-workflow it selects is
+ * refetched. `checkFailed` is true when the answer could not load: the real start fails closed
+ * then, so it is not "no restriction".
  */
 export function useSubWorkflowRestriction({
 	parentWorkflowId,
@@ -96,13 +97,13 @@ export function useSubWorkflowRestriction({
 
 	watch(
 		() => (target.value ? `${target.value.parentId}:${target.value.subWorkflowId}` : null),
-		(key, previousKey) => {
+		(key) => {
 			if (!key || !target.value) return;
 
+			// Fires once per target, so a refresh surface forces every sub-workflow it is pointed at,
+			// including one picked after opening with no selection.
 			const { parentId, subWorkflowId } = target.value;
-			void store.fetchSubWorkflowCheck(parentId, subWorkflowId, {
-				force: refresh && previousKey === undefined,
-			});
+			void store.fetchSubWorkflowCheck(parentId, subWorkflowId, { force: refresh });
 		},
 		{ immediate: true },
 	);

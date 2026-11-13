@@ -62,6 +62,24 @@ describe('DataTableSizeValidator', () => {
 		});
 	});
 
+	describe('getRemainingStorageBytes', () => {
+		it('should return the bytes left before the size limit', async () => {
+			fetchSizeFn.mockResolvedValue({ totalBytes: 60 * 1024 * 1024, dataTables: {} });
+
+			await expect(
+				validator.getRemainingStorageBytes(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
+			).resolves.toBe(40 * 1024 * 1024);
+		});
+
+		it('should return a negative number when the limit is already exceeded', async () => {
+			fetchSizeFn.mockResolvedValue({ totalBytes: 110 * 1024 * 1024, dataTables: {} });
+
+			await expect(
+				validator.getRemainingStorageBytes(fetchSizeFn, new Date('2024-01-01T00:00:00Z')),
+			).resolves.toBe(-10 * 1024 * 1024);
+		});
+	});
+
 	describe('caching behavior', () => {
 		it('should use cached value within cache duration', async () => {
 			fetchSizeFn.mockResolvedValue({ totalBytes: 50 * 1024 * 1024, dataTables: {} });

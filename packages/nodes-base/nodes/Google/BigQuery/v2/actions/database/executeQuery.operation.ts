@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
@@ -317,7 +317,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const response: ResponseWithJobReference = await googleBigQueryApiRequest.call(
 				this,
 				'POST',
-				`/v2/projects/${projectId}/jobs`,
+				requestPath`/v2/projects/${projectId}/jobs`,
 				{
 					configuration: {
 						query: body,
@@ -343,7 +343,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				const queryResponse: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
-					`/v2/projects/${projectId}/queries/${jobId}`,
+					requestPath`/v2/projects/${projectId}/queries/${jobId}`,
 					undefined,
 					qs,
 				);
@@ -419,7 +419,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				const response: IDataObject = await googleBigQueryApiRequestAllItems.call(
 					this,
 					'GET',
-					`/v2/projects/${job.projectId}/queries/${job.jobId}`,
+					requestPath`/v2/projects/${job.projectId}/queries/${job.jobId}`,
 					undefined,
 					qs,
 				);

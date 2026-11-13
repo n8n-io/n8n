@@ -1,5 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, RequestPath } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -18,8 +18,8 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
-const TABLE_ENDPOINT = `${WORKBOOK_ROOT}/workbook/tables/Table1`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
+const TABLE_ENDPOINT = requestPath`${WORKBOOK_ROOT}/workbook/tables/Table1`;
 const SESSION_HEADER = { 'workbook-session-id': 'session-1' };
 
 describe('Microsoft Excel (SharePoint) — Table: Append', () => {
@@ -48,9 +48,9 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 	const mockColumnsAndSession = () => {
 		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }, { name: 'Email' }]);
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-1' };
-			if (resource.endsWith('/rows/add')) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.value.endsWith('/rows/add')) {
 				return { index: 3, values: [['Frank', 'frank@example.com']] };
 			}
 			return {};
@@ -82,7 +82,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequestAllItems).toHaveBeenCalledWith(`${TABLE_ENDPOINT}/columns`, {
+		expect(apiRequestAllItems).toHaveBeenCalledWith(requestPath`${TABLE_ENDPOINT}/columns`, {
 			$select: 'name',
 		});
 		const calls = apiRequest.mock.calls.map((call: unknown[]) => String(call[1]));
@@ -93,7 +93,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 		]);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${TABLE_ENDPOINT}/rows/add`,
+			requestPath`${TABLE_ENDPOINT}/rows/add`,
 			{
 				values: [
 					['Frank', 'frank@example.com'],
@@ -104,9 +104,13 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 			undefined,
 			SESSION_HEADER,
 		);
-		expect(apiRequest).toHaveBeenCalledWith('POST', `${WORKBOOK_ROOT}/workbook/createSession`, {
-			persistChanges: true,
-		});
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`${WORKBOOK_ROOT}/workbook/createSession`,
+			{
+				persistChanges: true,
+			},
+		);
 		expect(result[0].length).toBeGreaterThan(0);
 	});
 
@@ -131,7 +135,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${TABLE_ENDPOINT}/rows/add`,
+			requestPath`${TABLE_ENDPOINT}/rows/add`,
 			{
 				values: [
 					[null, 'new@example.com'],
@@ -153,7 +157,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${TABLE_ENDPOINT}/rows/add`,
+			requestPath`${TABLE_ENDPOINT}/rows/add`,
 			expect.objectContaining({ index: 2 }),
 			{},
 			undefined,
@@ -170,7 +174,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${TABLE_ENDPOINT}/rows/add`,
+			requestPath`${TABLE_ENDPOINT}/rows/add`,
 			expect.objectContaining({ index: 0 }),
 			{},
 			undefined,
@@ -183,9 +187,9 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 		ctx.getInputData.mockReturnValue([{ json: { Name: 'Frank' } }]);
 		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }]);
 		const graphMessage = 'The argument is invalid or missing or has an incorrect format.';
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-1' };
-			if (resource.endsWith('/rows/add')) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.value.endsWith('/rows/add')) {
 				throw new NodeApiError(
 					mock<INode>(),
 					{ message: graphMessage },
@@ -210,9 +214,9 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 			{ json: { Name: 'Dana' } },
 		]);
 		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }, { name: 'Email' }]);
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-1' };
-			if (resource.endsWith('/rows/add')) {
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.value.endsWith('/rows/add')) {
 				return {
 					index: 3,
 					values: [
@@ -236,9 +240,9 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 		ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
 		ctx.continueOnFail.mockReturnValue(true);
 		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }]);
-		apiRequest.mockImplementation(async (_method: string, resource: string) => {
-			if (resource.endsWith('/createSession')) return { id: 'session-1' };
-			if (resource.endsWith('/rows/add')) throw new Error('boom');
+		apiRequest.mockImplementation(async (_method: string, resource: RequestPath) => {
+			if (resource.value.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.value.endsWith('/rows/add')) throw new Error('boom');
 			return {};
 		});
 
@@ -246,7 +250,7 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/closeSession`,
+			requestPath`${WORKBOOK_ROOT}/workbook/closeSession`,
 			{},
 			{},
 			undefined,

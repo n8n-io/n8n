@@ -1,8 +1,5 @@
-import type {
-	ILoadOptionsFunctions,
-	INodeTypeBaseDescription,
-	IRequestOptions,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeTypeBaseDescription } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { LemlistTrigger } from '../LemlistTrigger.node';
@@ -31,7 +28,7 @@ describe.each([
 			}));
 
 			context.helpers.requestWithAuthentication.mockImplementation(
-				async (_credentialType, requestOptions: IRequestOptions) => {
+				async (_credentialType, requestOptions) => {
 					const offset = Number(requestOptions.qs?.offset ?? 0);
 					const limit = Math.min(Number(requestOptions.qs?.limit ?? 100), 100);
 					return campaigns.slice(offset, offset + limit);
@@ -44,7 +41,7 @@ describe.each([
 				'lemlistApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.lemlist.com/api/campaigns',
+					uri: requestUrl`https://api.lemlist.com/api/campaigns`,
 				}),
 			);
 			expect(options.length).toBe(campaigns.length);

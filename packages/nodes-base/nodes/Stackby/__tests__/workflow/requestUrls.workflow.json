@@ -1,0 +1,161 @@
+{
+	"name": "Stackby Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "name",
+							"value": "Nathan"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, -200],
+			"id": "input",
+			"name": "Input"
+		},
+		{
+			"parameters": {
+				"operation": "read",
+				"stackId": "stQ7JA1JBbbbcCVc",
+				"table": "Sales Leads",
+				"id": "rw1655131325dd7d4cd7"
+			},
+			"type": "n8n-nodes-base.stackby",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "node-0",
+			"name": "Read",
+			"credentials": {
+				"stackbyApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"stackId": "stQ7JA1JBbbbcCVc",
+				"table": "Sales Leads",
+				"id": "rw1655131325dd7d4cd7"
+			},
+			"type": "n8n-nodes-base.stackby",
+			"typeVersion": 1,
+			"position": [400, 200],
+			"id": "node-1",
+			"name": "Delete",
+			"credentials": {
+				"stackbyApi": {
+					"id": "2",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "list",
+				"stackId": "stQ7JA1JBbbbcCVc",
+				"table": "Sales Leads",
+				"returnAll": false,
+				"limit": 2,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.stackby",
+			"typeVersion": 1,
+			"position": [400, 400],
+			"id": "node-2",
+			"name": "List",
+			"credentials": {
+				"stackbyApi": {
+					"id": "3",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"stackId": "stQ7JA1JBbbbcCVc",
+				"table": "Sales Leads",
+				"columns": "name"
+			},
+			"type": "n8n-nodes-base.stackby",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"id": "node-3",
+			"name": "Append",
+			"credentials": {
+				"stackbyApi": {
+					"id": "4",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete": [
+			{
+				"json": {
+					"id": "rw1655131325dd7d4cd7",
+					"deleted": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Input",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "List",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input": {
+			"main": [
+				[
+					{
+						"node": "Append",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

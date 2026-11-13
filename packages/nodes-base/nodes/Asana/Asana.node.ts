@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	asanaApiRequest,
@@ -1727,7 +1727,7 @@ export class Asana implements INodeType {
 			// Get all the available projects to display them to user so that they can be
 			// selected easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await asanaApiRequest.call(this, 'GET', '/projects', {});
+				const responseData = await asanaApiRequest.call(this, 'GET', requestPath`/projects`, {});
 
 				if (responseData.data === undefined) {
 					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
@@ -1770,7 +1770,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequest.call(
 					this,
 					'GET',
-					`/projects/${projectId}/sections`,
+					requestPath`/projects/${projectId}/sections`,
 					{},
 				);
 
@@ -1812,7 +1812,12 @@ export class Asana implements INodeType {
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaceId = this.getCurrentNodeParameter('workspace');
 
-				const workspace = await asanaApiRequest.call(this, 'GET', `/workspaces/${workspaceId}`, {});
+				const workspace = await asanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/workspaces/${workspaceId}`,
+					{},
+				);
 
 				// if the workspace selected it's not an organization then error as they endpoint
 				// to retrieve the teams from an organization just work with workspaces that are an organization
@@ -1827,7 +1832,7 @@ export class Asana implements INodeType {
 				const responseData = await asanaApiRequestAllItems.call(
 					this,
 					'GET',
-					`/organizations/${workspaceId}/teams`,
+					requestPath`/organizations/${workspaceId}/teams`,
 					{},
 				);
 
@@ -1864,7 +1869,7 @@ export class Asana implements INodeType {
 				const taskId = this.getNodeParameter('id') as string;
 				let taskData;
 				try {
-					taskData = await asanaApiRequest.call(this, 'GET', `/tasks/${taskId}`, {});
+					taskData = await asanaApiRequest.call(this, 'GET', requestPath`/tasks/${taskId}`, {});
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject, {
 						message: `Could not find task with id "${taskId}" so tags could not be loaded.`,
@@ -1872,7 +1877,13 @@ export class Asana implements INodeType {
 				}
 
 				const workspace = taskData.data.workspace.gid;
-				const responseData = await asanaApiRequest.call(this, 'GET', '/tags', {}, { workspace });
+				const responseData = await asanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/tags`,
+					{},
+					{ workspace },
+				);
 
 				if (responseData.data === undefined) {
 					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
@@ -1909,7 +1920,7 @@ export class Asana implements INodeType {
 			// Get all users to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-users
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const responseData = await asanaApiRequest.call(this, 'GET', '/users', {});
+				const responseData = await asanaApiRequest.call(this, 'GET', requestPath`/users`, {});
 
 				if (responseData.data === undefined) {
 					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
@@ -1980,7 +1991,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/subtasks`,
+							requestPath`/tasks/${taskId}/subtasks`,
 							body,
 							qs,
 						);
@@ -2014,7 +2025,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'GET',
-							`/tasks/${taskId}/subtasks`,
+							requestPath`/tasks/${taskId}/subtasks`,
 							body,
 							qs,
 						);
@@ -2040,7 +2051,7 @@ export class Asana implements INodeType {
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
 
-						responseData = await asanaApiRequest.call(this, 'POST', '/tasks', body, qs);
+						responseData = await asanaApiRequest.call(this, 'POST', requestPath`/tasks`, body, qs);
 
 						responseData = responseData.data;
 					} else if (operation === 'delete') {
@@ -2051,7 +2062,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'DELETE',
-							`/tasks/${this.getNodeParameter('id', i) as string}`,
+							requestPath`/tasks/${this.getNodeParameter('id', i) as string}`,
 							body,
 							qs,
 						);
@@ -2065,7 +2076,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'GET',
-							`/tasks/${this.getNodeParameter('id', i) as string}`,
+							requestPath`/tasks/${this.getNodeParameter('id', i) as string}`,
 							body,
 							qs,
 						);
@@ -2101,11 +2112,17 @@ export class Asana implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await asanaApiRequestAllItems.call(this, 'GET', '/tasks', body, qs);
+							responseData = await asanaApiRequestAllItems.call(
+								this,
+								'GET',
+								requestPath`/tasks`,
+								body,
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await asanaApiRequest.call(this, 'GET', '/tasks', body, qs);
+							responseData = await asanaApiRequest.call(this, 'GET', requestPath`/tasks`, body, qs);
 
 							responseData = responseData.data;
 						}
@@ -2123,7 +2140,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/sections/${sectionId}/addTask`,
+							requestPath`/sections/${sectionId}/addTask`,
 							body,
 							qs,
 						);
@@ -2140,7 +2157,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'PUT',
-							`/tasks/${this.getNodeParameter('id', i) as string}`,
+							requestPath`/tasks/${this.getNodeParameter('id', i) as string}`,
 							body,
 							qs,
 						);
@@ -2162,7 +2179,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'GET',
-							`/workspaces/${workspaceId}/tasks/search`,
+							requestPath`/workspaces/${workspaceId}/tasks/search`,
 							body,
 							qs,
 						);
@@ -2193,7 +2210,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/stories`,
+							requestPath`/tasks/${taskId}/stories`,
 							body,
 							qs,
 						);
@@ -2211,7 +2228,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'DELETE',
-							`/stories/${commentId}`,
+							requestPath`/stories/${commentId}`,
 							body,
 							qs,
 						);
@@ -2232,7 +2249,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/addTag`,
+							requestPath`/tasks/${taskId}/addTag`,
 							body,
 							qs,
 						);
@@ -2252,7 +2269,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/removeTag`,
+							requestPath`/tasks/${taskId}/removeTag`,
 							body,
 							qs,
 						);
@@ -2277,7 +2294,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/addProject`,
+							requestPath`/tasks/${taskId}/addProject`,
 							body,
 							qs,
 						);
@@ -2297,7 +2314,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/tasks/${taskId}/removeProject`,
+							requestPath`/tasks/${taskId}/removeProject`,
 							body,
 							qs,
 						);
@@ -2313,7 +2330,13 @@ export class Asana implements INodeType {
 
 						const userId = this.getNodeParameter('userId', i) as string;
 
-						responseData = await asanaApiRequest.call(this, 'GET', `/users/${userId}`, body, qs);
+						responseData = await asanaApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/${userId}`,
+							body,
+							qs,
+						);
 						responseData = responseData.data;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
@@ -2325,7 +2348,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'GET',
-							`/workspaces/${workspaceId}/users`,
+							requestPath`/workspaces/${workspaceId}/users`,
 							body,
 							qs,
 						);
@@ -2356,7 +2379,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'POST',
-							`/teams/${teamId}/projects`,
+							requestPath`/teams/${teamId}/projects`,
 							body,
 							qs,
 						);
@@ -2369,7 +2392,13 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						const projectId = this.getNodeParameter('id', i) as string;
 
-						await asanaApiRequest.call(this, 'DELETE', `/projects/${projectId}`, body, qs);
+						await asanaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/projects/${projectId}`,
+							body,
+							qs,
+						);
 
 						responseData = { success: true };
 					}
@@ -2383,7 +2412,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'GET',
-							`/projects/${projectId}`,
+							requestPath`/projects/${projectId}`,
 							body,
 							qs,
 						);
@@ -2410,11 +2439,23 @@ export class Asana implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await asanaApiRequestAllItems.call(this, 'GET', '/projects', body, qs);
+							responseData = await asanaApiRequestAllItems.call(
+								this,
+								'GET',
+								requestPath`/projects`,
+								body,
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await asanaApiRequest.call(this, 'GET', '/projects', body, qs);
+							responseData = await asanaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/projects`,
+								body,
+								qs,
+							);
 
 							responseData = responseData.data;
 						}
@@ -2450,7 +2491,7 @@ export class Asana implements INodeType {
 						responseData = await asanaApiRequest.call(
 							this,
 							'PUT',
-							`/projects/${projectId}`,
+							requestPath`/projects/${projectId}`,
 							body,
 							qs,
 						);

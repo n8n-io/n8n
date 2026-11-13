@@ -92,6 +92,8 @@ export interface IRunExecutionDataV1 {
 	 */
 	waitReason?: 'suspended';
 	pushRef?: string;
+	/** The user who owns `pushRef`, used only to route push messages on resume. */
+	pushRefUserId?: string;
 
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<

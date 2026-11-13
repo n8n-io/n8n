@@ -9,11 +9,15 @@ import { Container } from '@n8n/di';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
-import { createRole } from '@test-integration/db/roles';
+import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
+import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
 import {
+	addApiKey,
 	createMember,
 	createMemberWithApiKey,
+	createOwner,
 	createOwnerWithApiKey,
+	createUser,
 	getUserById,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -472,6 +476,54 @@ describe('Users in Public API', () => {
 			expect(response.status).toBe(204);
 			const storedUser = await getUserById(member.id);
 			expect(storedUser.role.slug).toBe(payload.newRoleName);
+		});
+
+		describe('as a user with a custom role', () => {
+			const createUserManagerWithApiKey = async () => {
+				const role = await createCustomRoleWithScopeSlugs(
+					['user:list', 'user:read', 'user:changeRole'],
+					{ roleType: 'global' },
+				);
+				const userManager = await createUser({ role });
+				userManager.apiKeys = [await addApiKey(userManager, { scopes: ['user:changeRole'] })];
+				return userManager;
+			};
+
+			beforeEach(() => {
+				testServer.license.enable('feat:advancedPermissions');
+			});
+
+			it("should not change the owner's role", async () => {
+				const owner = await createOwner();
+				const userManager = await createUserManagerWithApiKey();
+
+				const response = await testServer
+					.publicApiAgentFor(userManager)
+					.patch(`/users/${owner.id}/role`)
+					.send({ newRoleName: 'global:member' });
+
+				expect(response.status).toBe(403);
+				expect(response.body).toHaveProperty(
+					'message',
+					CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER,
+				);
+				const storedOwner = await getUserById(owner.id);
+				expect(storedOwner.role.slug).toBe('global:owner');
+			});
+
+			it("should change a member's role", async () => {
+				const member = await createMember();
+				const userManager = await createUserManagerWithApiKey();
+
+				const response = await testServer
+					.publicApiAgentFor(userManager)
+					.patch(`/users/${member.id}/role`)
+					.send({ newRoleName: 'global:admin' });
+
+				expect(response.status).toBe(204);
+				const storedUser = await getUserById(member.id);
+				expect(storedUser.role.slug).toBe('global:admin');
+			});
 		});
 	});
 });

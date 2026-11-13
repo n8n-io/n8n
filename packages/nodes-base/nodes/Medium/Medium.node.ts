@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { mediumApiRequest } from './GenericFunctions';
 
@@ -359,14 +359,14 @@ export class Medium implements INodeType {
 			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				//Get the User Id
-				const user = await mediumApiRequest.call(this, 'GET', '/me');
+				const user = await mediumApiRequest.call(this, 'GET', requestPath`/me`);
 
 				const userId = user.data.id;
 				//Get all publications of that user
 				const publications = await mediumApiRequest.call(
 					this,
 					'GET',
-					`/users/${userId}/publications`,
+					requestPath`/users/${userId}/publications`,
 				);
 				const publicationsList = publications.data;
 				for (const publication of publicationsList) {
@@ -464,18 +464,24 @@ export class Medium implements INodeType {
 							responseData = await mediumApiRequest.call(
 								this,
 								'POST',
-								`/publications/${publicationId}/posts`,
+								requestPath`/publications/${publicationId}/posts`,
 								bodyRequest,
 								qs,
 							);
 						} else {
-							const responseAuthorId = await mediumApiRequest.call(this, 'GET', '/me', {}, qs);
+							const responseAuthorId = await mediumApiRequest.call(
+								this,
+								'GET',
+								requestPath`/me`,
+								{},
+								qs,
+							);
 
 							const authorId = responseAuthorId.data.id;
 							responseData = await mediumApiRequest.call(
 								this,
 								'POST',
-								`/users/${authorId}/posts`,
+								requestPath`/users/${authorId}/posts`,
 								bodyRequest,
 								qs,
 							);
@@ -493,14 +499,14 @@ export class Medium implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const user = await mediumApiRequest.call(this, 'GET', '/me');
+						const user = await mediumApiRequest.call(this, 'GET', requestPath`/me`);
 
 						const userId = user.data.id;
 						//Get all publications of that user
 						responseData = await mediumApiRequest.call(
 							this,
 							'GET',
-							`/users/${userId}/publications`,
+							requestPath`/users/${userId}/publications`,
 						);
 
 						responseData = responseData.data;
