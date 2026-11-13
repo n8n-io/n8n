@@ -484,6 +484,28 @@ describe('fileTypeFromMimeType', () => {
 	it('should recognize pdf', () => {
 		expect(fileTypeFromMimeType('application/pdf')).toEqual('pdf');
 	});
+
+	it('should ignore parameters, surrounding whitespace and case', () => {
+		expect(fileTypeFromMimeType('APPLICATION/JSON')).toBe('json');
+		expect(fileTypeFromMimeType('Text/HTML')).toBe('html');
+		expect(fileTypeFromMimeType('  application/pdf ; charset=utf-8')).toBe('pdf');
+		expect(fileTypeFromMimeType('application/json; charset=utf-8')).toBe('json');
+	});
+
+	it('should not match unrelated media types sharing a prefix', () => {
+		expect(fileTypeFromMimeType('application/json-patch+json')).toBeUndefined();
+		expect(fileTypeFromMimeType('application/json5')).toBeUndefined();
+		expect(fileTypeFromMimeType('application/pdfx')).toBeUndefined();
+		expect(fileTypeFromMimeType('application/javascriptx')).toBeUndefined();
+	});
+
+	it('should keep classifying known categorical types', () => {
+		expect(fileTypeFromMimeType('image/png')).toBe('image');
+		expect(fileTypeFromMimeType('audio/mpeg')).toBe('audio');
+		expect(fileTypeFromMimeType('video/mp4')).toBe('video');
+		expect(fileTypeFromMimeType('text/plain')).toBe('text');
+		expect(fileTypeFromMimeType('application/octet-stream')).toBeUndefined();
+	});
 });
 
 const repeat = (fn: () => void, times = 10) => Array(times).fill(0).forEach(fn);
@@ -781,29 +803,5 @@ describe('sanitizeFilename', () => {
 	it('should remove null bytes', () => {
 		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
 		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
-	});
-});
-
-describe('fileTypeFromMimeType essence matching', () => {
-	it('should ignore parameters, surrounding whitespace and case', () => {
-		expect(fileTypeFromMimeType('APPLICATION/JSON')).toBe('json');
-		expect(fileTypeFromMimeType('Text/HTML')).toBe('html');
-		expect(fileTypeFromMimeType('  application/pdf ; charset=utf-8')).toBe('pdf');
-		expect(fileTypeFromMimeType('application/json; charset=utf-8')).toBe('json');
-	});
-
-	it('should not match unrelated media types sharing a prefix', () => {
-		expect(fileTypeFromMimeType('application/json-patch+json')).toBeUndefined();
-		expect(fileTypeFromMimeType('application/json5')).toBeUndefined();
-		expect(fileTypeFromMimeType('application/pdfx')).toBeUndefined();
-		expect(fileTypeFromMimeType('application/javascriptx')).toBeUndefined();
-	});
-
-	it('should keep classifying known categorical types', () => {
-		expect(fileTypeFromMimeType('image/png')).toBe('image');
-		expect(fileTypeFromMimeType('audio/mpeg')).toBe('audio');
-		expect(fileTypeFromMimeType('video/mp4')).toBe('video');
-		expect(fileTypeFromMimeType('text/plain')).toBe('text');
-		expect(fileTypeFromMimeType('application/octet-stream')).toBeUndefined();
 	});
 });
