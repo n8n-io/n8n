@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { N8N_VERSION } from '@/constants';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 
 import { readLeftoverManifest, writeImportManifest } from '../import-manifest-bridge';
 
@@ -54,6 +55,38 @@ describe('import-manifest-bridge', () => {
 
 		await writeFile(path.join(exportFolder, 'manifest.json'), '{not-json');
 		expect(await readLeftoverManifest(exportFolder)).toBeUndefined();
+	});
+
+	it('keeps exported skills when rebuilding the manifest for a workflow selection', async () => {
+		const skill = serializedSkillSchema.parse({
+			id: 'skill_triage',
+			scope: 'project',
+			skill: {
+				name: 'Triage',
+				description: 'Triage support requests',
+				instructions: 'Read requests.',
+			},
+			frontmatter: null,
+		});
+		await writeTree({
+			'projects/alpha/skills/skill_triage/skill.json': JSON.stringify(skill),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = await readLeftoverManifest(exportFolder);
+
+		expect(written?.skills).toEqual([
+			{ id: skill.id, name: skill.skill.name, target: 'projects/alpha/skills/skill_triage' },
+		]);
 	});
 
 	it('carries the archive flag of each workflow file through the rebuild, selected or not', async () => {

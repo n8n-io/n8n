@@ -1,4 +1,5 @@
 import { getN8nVersion } from '@n8n/backend-common';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
@@ -152,7 +153,7 @@ async function walkSnapshotCollections(
 			if (kind === undefined) continue;
 			const relativeFile = path.relative(exportFolder, fullPath).split(path.sep).join('/');
 			const target = path.posix.dirname(relativeFile);
-			const item = await readIdNameFile(fullPath, target);
+			const item = await readIdNameFile(fullPath, target, kind);
 			if (!item) continue;
 			const { entry: listed, isArchived } = item;
 			// Only a workflow entry carries the flag; the other kinds list id, name and target.
@@ -180,6 +181,7 @@ async function walkSnapshotCollections(
 async function readIdNameFile(
 	file: string,
 	target: string,
+	kind: SnapshotKind,
 ): Promise<{ entry: ManifestEntry; isArchived: boolean } | undefined> {
 	let parsed: unknown;
 	try {
@@ -187,16 +189,15 @@ async function readIdNameFile(
 	} catch {
 		return undefined;
 	}
-	if (
-		typeof parsed !== 'object' ||
-		parsed === null ||
-		typeof (parsed as { id?: unknown }).id !== 'string' ||
-		typeof (parsed as { name?: unknown }).name !== 'string'
-	) {
+
+	const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+	const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+	if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 		return undefined;
 	}
-	const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
-	return { entry: { id, name, target }, isArchived: isArchived === true };
+
+	return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 }
 
 async function collectVariables(

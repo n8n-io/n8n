@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -166,7 +167,12 @@ export class WorkingCopyUpdater {
 
 				const kind = ENTITY_FILES[entry.name as keyof typeof ENTITY_FILES];
 				if (kind !== undefined) {
-					const { entry, isArchived } = await this.readEntityFile(fullPath, target, relativeFile);
+					const { entry, isArchived } = await this.readEntityFile(
+						fullPath,
+						target,
+						relativeFile,
+						kind,
+					);
 					// Only a workflow entry carries the flag; the other kinds list id, name and target.
 					if (kind === 'workflows') {
 						collected.workflows.push({ ...entry, isArchived });
@@ -245,6 +251,7 @@ export class WorkingCopyUpdater {
 		file: string,
 		target: string,
 		relativeFile: string,
+		kind: keyof BranchLayout,
 	): Promise<{ entry: ManifestEntry; isArchived: boolean }> {
 		let raw: string;
 		try {
@@ -262,18 +269,17 @@ export class WorkingCopyUpdater {
 				`"${relativeFile}" on the branch is not valid JSON. Remove it and retry.`,
 			);
 		}
-		if (
-			typeof parsed !== 'object' ||
-			parsed === null ||
-			typeof (parsed as { id?: unknown }).id !== 'string' ||
-			typeof (parsed as { name?: unknown }).name !== 'string'
-		) {
+
+		const nameSource = isRecord(parsed) && kind === 'skills' ? parsed.skill : parsed;
+		const name = isRecord(nameSource) ? nameSource.name : undefined;
+
+		if (!isRecord(parsed) || typeof parsed.id !== 'string' || typeof name !== 'string') {
 			throw new BadRequestError(
 				`"${relativeFile}" on the branch is missing an id or a name. Remove it and retry.`,
 			);
 		}
-		const { id, name, isArchived } = parsed as { id: string; name: string; isArchived?: unknown };
-		return { entry: { id, name, target }, isArchived: isArchived === true };
+
+		return { entry: { id: parsed.id, name, target }, isArchived: parsed.isArchived === true };
 	}
 
 	async assertSelectionFitsBranch(
