@@ -528,6 +528,21 @@ describe('SimulationSessionService', () => {
 		);
 	});
 
+	it('does not overwrite a world another main stored after this session opened', async () => {
+		const { service, threadRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+		const newer = {
+			testRun: true,
+			world: { backend: 'llm-mock', worldId: 'world-1', state: { seed: 'newer' } },
+		};
+		vi.mocked(threadRepository.findOneBy).mockResolvedValue({ simulation: newer } as never);
+
+		await expect(session!.markTestChat()).rejects.toThrow('changed somewhere else');
+		await expect(service.saveTestChat(session!, { onConflict: 'skip' })).resolves.toBeUndefined();
+
+		expect(threadRepository.update).not.toHaveBeenCalled();
+	});
+
 	it('keeps the stored world when the simulator is down on a later turn', async () => {
 		const backend = llmBackend();
 		vi.mocked(backend.openWorld).mockRejectedValue(new Error('down'));

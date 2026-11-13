@@ -55,6 +55,8 @@ export class SimulationSessionService {
 	/** What each cached session last read from or wrote to its thread. */
 	private readonly knownStored = new WeakMap<SimulationSession, StoredTestChat | null>();
 
+	private readonly sessionKeys = new WeakMap<SimulationSession, string>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly flagGate: SafeTestingFlagGate,
@@ -140,6 +142,7 @@ export class SimulationSessionService {
 			previousWorld: savedWorld,
 		});
 		this.knownStored.set(session, asStored(stored ?? null));
+		this.sessionKeys.set(session, sessionKey(input));
 		this.sessions.set(sessionKey(input), session);
 		return session;
 	}
@@ -149,7 +152,26 @@ export class SimulationSessionService {
 	 * restarts and other mains continue the same test run. A failed write fails
 	 * the turn rather than letting a later turn run live.
 	 */
-	async saveTestChat(session: SimulationSession): Promise<void> {
+	/**
+	 * `onConflict: 'skip'` keeps the newer world another main stored since this session
+	 * last saw it; `'throw'` (before a turn runs) fails the turn instead of overwriting it.
+	 */
+	async saveTestChat(
+		session: SimulationSession,
+		{ onConflict = 'throw' }: { onConflict?: 'throw' | 'skip' } = {},
+	): Promise<void> {
+		if (await this.storedChanged(session)) {
+			this.dropSession(session);
+			if (onConflict === 'skip') {
+				this.logger.warn('[SafeTesting] Kept a newer simulated world stored by another turn', {
+					testChatId: session.testChatId,
+				});
+				return;
+			}
+			throw new UnexpectedError(
+				'This test chat changed somewhere else while this message was starting. Send it again.',
+			);
+		}
 		const stored = session.storedTestChat();
 		const result = await this.threadRepository.update(
 			{ id: session.testChatId },
@@ -160,6 +182,11 @@ export class SimulationSessionService {
 			throw new UnexpectedError('Could not mark the test chat, so this test run cannot start.');
 		}
 		this.knownStored.set(session, asStored(stored));
+	}
+
+	private dropSession(session: SimulationSession): void {
+		const key = this.sessionKeys.get(session);
+		if (key !== undefined && this.sessions.get(key) === session) this.sessions.delete(key);
 	}
 
 	private async storedChanged(session: SimulationSession): Promise<boolean> {

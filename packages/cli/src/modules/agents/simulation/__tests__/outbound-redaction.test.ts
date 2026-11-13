@@ -150,6 +150,40 @@ describe('OutboundRedactor', () => {
 		});
 	});
 
+	it.each(['abc123', 'my real secret'])(
+		'removes a short or spaced generic auth value (%s)',
+		async (secret) => {
+			const { redactor } = await redactorWithCredential({
+				name: 'Ocp-Apim-Subscription-Key',
+				value: secret,
+			});
+
+			const request = redactor.redact({
+				protocol: 'http',
+				method: 'GET',
+				url: 'https://api.example.com/v1/items',
+				headers: { 'Ocp-Apim-Subscription-Key': secret },
+			});
+
+			expect(JSON.stringify(request)).not.toContain(secret);
+		},
+	);
+
+	it('removes short values inside a custom auth JSON credential', async () => {
+		const { redactor } = await redactorWithCredential({
+			json: JSON.stringify({ headers: { 'X-Pin': 'p1n9' } }),
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://api.example.com/data',
+			headers: { 'X-Pin': 'p1n9' },
+		});
+
+		expect(JSON.stringify(request)).not.toContain('p1n9');
+	});
+
 	it('removes a query auth value under a plain parameter name', async () => {
 		const secret = 'AIzaSyD-plainQueryKey123';
 		const { redactor } = await redactorWithCredential({ name: 'key', value: secret });
