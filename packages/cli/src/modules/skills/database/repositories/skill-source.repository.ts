@@ -167,8 +167,6 @@ export class SkillSourceRepository {
 					projectId,
 					credentialId,
 					probeCursor: null,
-					lastErrorReason: null,
-					lastCheckedAt: new Date(),
 				},
 			);
 		} catch (error) {

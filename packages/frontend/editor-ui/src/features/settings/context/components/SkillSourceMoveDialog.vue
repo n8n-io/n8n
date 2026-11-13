@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import type {
-	MoveSkillSourceDto,
-	SkillSourceCredentialOption,
-	SkillSourceListItem,
-	SkillSourceMovePreview,
+import {
+	skillSourceMovePreviewSchema,
+	type MoveSkillSourceDto,
+	type SkillSourceCredentialOption,
+	type SkillSourceListItem,
+	type SkillSourceMovePreview,
 } from '@n8n/api-types';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
+import { ResponseError } from '@n8n/rest-api-client';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useRouter } from 'vue-router';
 import { useEventListener } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -15,7 +18,6 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
-	N8nInputLabel,
 	N8nSelect2,
 	N8nText,
 } from '@n8n/design-system';
@@ -42,8 +44,10 @@ const loadingCredentials = ref(false);
 const moving = ref(false);
 const error = ref('');
 const credentialError = ref(false);
-let previewRun = 0;
-let credentialsRun = 0;
+const previewFetch = useLatestFetch();
+const credentialsFetch = useLatestFetch();
+const scopeLabelId = useId();
+const credentialLabelId = useId();
 const NONE = '__none__';
 
 const scopeItems = computed(() =>
@@ -58,13 +62,7 @@ const credentialItems = computed(() => [
 	...credentials.value.map(({ id, name }) => ({ value: id, label: name })),
 ]);
 const canMove = computed(
-	() =>
-		!!scope.value &&
-		preview.value?.canMove &&
-		!checking.value &&
-		!moving.value &&
-		!loadingCredentials.value &&
-		!credentialError.value,
+	() => !!scope.value && preview.value?.canMove && !checking.value && !moving.value,
 );
 
 function payload(): MoveSkillSourceDto {
@@ -76,7 +74,7 @@ function payload(): MoveSkillSourceDto {
 }
 
 async function validate() {
-	const run = ++previewRun;
+	const isLatest = previewFetch.next();
 	preview.value = null;
 	if (!props.open || !scope.value) {
 		checking.value = false;
@@ -86,20 +84,20 @@ async function validate() {
 	error.value = '';
 	try {
 		const result = await skillsStore.previewSourceMove(props.source.id, payload());
-		if (run === previewRun && props.open) preview.value = result;
+		if (isLatest() && props.open) preview.value = result;
 	} catch (cause) {
-		if (run === previewRun && props.open)
+		if (isLatest() && props.open)
 			error.value =
 				cause instanceof Error
 					? cause.message
 					: i18n.baseText('settings.context.skills.moveSource.error');
 	} finally {
-		if (run === previewRun) checking.value = false;
+		if (isLatest()) checking.value = false;
 	}
 }
 
 async function loadCredentials() {
-	const run = ++credentialsRun;
+	const isLatest = credentialsFetch.next();
 	if (!props.open || !scope.value) {
 		loadingCredentials.value = false;
 		return;
@@ -108,19 +106,19 @@ async function loadCredentials() {
 	credentialError.value = false;
 	try {
 		const result = await skillsStore.fetchSourceCredentials(parseScope(scope.value));
-		if (run === credentialsRun && props.open) credentials.value = result;
+		if (isLatest() && props.open) credentials.value = result;
 	} catch {
-		if (run === credentialsRun && props.open) credentialError.value = true;
+		if (isLatest() && props.open) credentialError.value = true;
 	} finally {
-		if (run === credentialsRun) loadingCredentials.value = false;
+		if (isLatest()) loadingCredentials.value = false;
 	}
 }
 
 watch(
 	() => [props.open, props.source.id],
 	() => {
-		previewRun++;
-		credentialsRun++;
+		previewFetch.invalidate();
+		credentialsFetch.invalidate();
 		scope.value = '';
 		credentialId.value = '';
 		preview.value = null;
@@ -162,7 +160,15 @@ async function move() {
 		emit('moved', props.source.id);
 		emit('update:open', false);
 	} catch (cause) {
-		await validate();
+		const submitted = skillSourceMovePreviewSchema.safeParse(
+			cause instanceof ResponseError ? cause.meta?.preview : undefined,
+		);
+		if (submitted.success) {
+			previewFetch.invalidate();
+			preview.value = submitted.data;
+		} else {
+			await validate();
+		}
 		if (!preview.value || preview.value.canMove) {
 			error.value =
 				cause instanceof Error
@@ -172,6 +178,10 @@ async function move() {
 	} finally {
 		moving.value = false;
 	}
+}
+
+function focusSelect(id: string) {
+	document.getElementById(id)?.focus();
 }
 
 function close(open: boolean) {
@@ -193,8 +203,19 @@ function close(open: boolean) {
 					interpolate: { source: source.label },
 				})
 			}}</N8nText>
-			<N8nInputLabel :label="i18n.baseText('settings.context.skills.connect.scope.label')">
+			<div :class="$style.field">
+				<label
+					:id="scopeLabelId"
+					:for="`${scopeLabelId}-select`"
+					@click.prevent="focusSelect(`${scopeLabelId}-select`)"
+				>
+					<N8nText :bold="true">{{
+						i18n.baseText('settings.context.skills.connect.scope.label')
+					}}</N8nText>
+				</label>
 				<N8nSelect2
+					:id="`${scopeLabelId}-select`"
+					:aria-labelledby="scopeLabelId"
 					:model-value="scope"
 					@update:model-value="scope = String($event ?? '')"
 					:items="scopeItems"
@@ -202,20 +223,31 @@ function close(open: boolean) {
 					:placeholder="i18n.baseText('settings.context.skills.moveSource.scope.placeholder')"
 					data-test-id="source-move-scope"
 				/>
-			</N8nInputLabel>
+			</div>
 			<N8nText v-if="scopeItems.length === 0">{{
 				i18n.baseText('settings.context.skills.moveSource.noScopes')
 			}}</N8nText>
 			<template v-if="scope">
-				<N8nInputLabel :label="i18n.baseText('settings.context.skills.connect.credential.label')">
+				<div :class="$style.field">
+					<label
+						:id="credentialLabelId"
+						:for="`${credentialLabelId}-select`"
+						@click.prevent="focusSelect(`${credentialLabelId}-select`)"
+					>
+						<N8nText :bold="true">{{
+							i18n.baseText('settings.context.skills.connect.credential.label')
+						}}</N8nText>
+					</label>
 					<N8nSelect2
+						:id="`${credentialLabelId}-select`"
+						:aria-labelledby="credentialLabelId"
 						:model-value="credentialId || NONE"
 						:items="credentialItems"
 						:disabled="moving || loadingCredentials"
 						data-test-id="source-move-credential"
 						@update:model-value="credentialId = $event === NONE ? '' : String($event ?? '')"
 					/>
-				</N8nInputLabel>
+				</div>
 				<N8nText v-if="checking" role="status">{{
 					i18n.baseText('settings.context.skills.moveSource.checking')
 				}}</N8nText>
@@ -337,6 +369,11 @@ function close(open: boolean) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
+}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 .list {
 	padding-left: var(--spacing--lg);

@@ -412,6 +412,8 @@ export class AgentSkillRefsService {
 		const createdIds = new Map<string, string>();
 		if (creator !== null && toCreate.length > 0) {
 			await this.skillAccess.assertCanCreate(creator, target);
+			// Take existing skill locks before inline creates take the name lock.
+			await this.skillRuntime.lockForAttach([...found.keys()], ctx);
 			// A new name must also differ from the skills this draft keeps referring to.
 			const kept = await this.skillRuntime.resolveForAgentDraft(
 				[...found.keys()].map((id) => ({ id })),

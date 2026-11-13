@@ -627,7 +627,7 @@ export class SkillRepository {
 		await this.lock(skillIds, 'pessimistic_write', ctx);
 	}
 
-	/** Serialize name checks and writes, including creates into an empty scope. */
+	/** Serialize name checks and writes. Take all existing skill row locks before this lock. */
 	async lockNames(ctx: OperationContext): Promise<void> {
 		if (!ctx.trx) throw new UnexpectedError('Skill name locks need a transaction');
 		// SQLite serializes write transactions. PostgreSQL needs a lock without a schema change.

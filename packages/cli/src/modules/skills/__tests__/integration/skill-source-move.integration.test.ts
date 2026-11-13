@@ -17,6 +17,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
+import { SkillImporter } from '@/modules/n8n-packages/entities/skill/skill-importer';
 import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
@@ -121,6 +122,7 @@ describe('Skill source scope moves', () => {
 			agents.create({
 				id: randomUUID(),
 				name,
+				schema: { name, model: 'anthropic/claude-sonnet-4-5', instructions: 'Help.' },
 				projectId,
 				integrations: [],
 				tools: {},
@@ -328,6 +330,22 @@ describe('Skill source scope moves', () => {
 		);
 	});
 
+	it('preserves the last check result and permits a check after a move', async () => {
+		const { sourceId } = await sourceIn(from.id);
+		const checkedAt = new Date(Date.now() - 120_000);
+		await db().update(
+			SkillSourceConnection,
+			{ id: sourceId },
+			{ lastCheckedAt: checkedAt, lastErrorReason: 'unreachable' },
+		);
+		await move(sourceId, request(from.id, to.id));
+		expect(await sources().findById(sourceId)).toMatchObject({
+			lastCheckedAt: checkedAt,
+			lastErrorReason: 'unreachable',
+		});
+		expect(await sources().claimCheckNow(sourceId, new Date(), 60_000)).toBe(true);
+	});
+
 	it('ignores the health and cursor from a check that started before the move', async () => {
 		const { sourceId } = await sourceIn(from.id);
 		const before = (await sources().findById(sourceId))!;
@@ -425,8 +443,72 @@ describe('Skill source scope moves', () => {
 	});
 
 	it.runIf(process.env.DB_TYPE === 'postgresdb')(
-		'rechecks an attachment that waited for a source move lock',
+		'orders a multi-skill import with a concurrent save',
 		async () => {
+			const existing = await createSkill({ projectId: to.id, content: { name: 'Existing' } });
+			const service = Container.get(SkillService);
+			const detail = await service.get(ownerUser, existing.id);
+			const locked = createDeferredPromise();
+			const release = createDeferredPromise();
+			const importing = createDeferredPromise();
+			const repository = Container.get(SkillRepository);
+			const lock = repository.lockForEdit.bind(repository);
+			vi.spyOn(repository, 'lockForEdit')
+				.mockImplementationOnce(async (ids, ctx) => {
+					await lock(ids, ctx);
+					locked.resolve(undefined);
+					await release.promise;
+				})
+				.mockImplementationOnce(async (ids, ctx) => {
+					importing.resolve(undefined);
+					await lock(ids, ctx);
+				});
+			const saving = service.update(ownerUser, existing.id, {
+				description: 'Saved first',
+				baseSkillHash: detail.skillHash,
+			});
+			await locked.promise;
+			const imported = Container.get(SkillImporter).applyShared(ownerUser, {
+				sharedUsers: new Set(),
+				shared: [
+					{
+						skill: {
+							id: 'skill_new',
+							scope: 'project',
+							skill: { name: 'New', description: 'Test', instructions: 'Test' },
+							frontmatter: null,
+						},
+						target: { projectId: to.id },
+						usedBy: [],
+					},
+					{
+						skill: {
+							id: existing.id,
+							scope: 'project',
+							skill: { name: 'Existing', description: 'Imported', instructions: 'Test' },
+							frontmatter: null,
+						},
+						target: { projectId: to.id },
+						usedBy: [],
+						base: { skillHash: detail.skillHash, versionId: detail.versionId },
+					},
+				],
+			});
+			const refused = expect(imported).rejects.toThrow('changed');
+			try {
+				await importing.promise;
+			} finally {
+				release.resolve(undefined);
+			}
+			await saving;
+			await refused;
+			expect(await findSkill('skill_new')).toBeNull();
+		},
+	);
+
+	it.runIf(process.env.DB_TYPE === 'postgresdb').each(['stored', 'mixed'] as const)(
+		'rechecks a %s attachment that waited for a source move lock',
+		async (kind) => {
 			const { sourceId, skills } = await sourceIn(null);
 			const agent = await attach(skills[0].id, from.id, 'Support');
 			await Container.get(AgentSkillRepository).replaceDependencies(agent.id, []);
@@ -453,7 +535,23 @@ describe('Skill source scope moves', () => {
 			);
 			await locked.promise;
 			const attachResult = Container.get(TransactionRunner).run({}, async (ctx) => {
-				await Container.get(AgentSkillRefsService).checkRefs(agent, [{ id: skills[0].id }], ctx);
+				const refs = Container.get(AgentSkillRefsService);
+				if (kind === 'stored') {
+					await refs.checkRefs(agent, [{ id: skills[0].id }], ctx);
+				} else {
+					await refs.createDraftRefs(
+						agent,
+						[
+							{ type: 'skill', id: skills[0].id },
+							{ type: 'skill', id: 'inline' },
+						],
+						{
+							inline: { name: 'Inline', description: 'Test', instructions: 'Test' },
+						},
+						ownerUser,
+						ctx,
+					);
+				}
 			});
 			const refused = expect(attachResult).rejects.toThrow('is not available to this agent');
 			try {

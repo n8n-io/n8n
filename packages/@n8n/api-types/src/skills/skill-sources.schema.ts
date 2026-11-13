@@ -76,25 +76,44 @@ export class MoveSkillSourceDto extends Z.class({
 	credentialId: z.string().min(1).max(36).optional(),
 }) {}
 
-export type SkillSourceMovePreview = {
-	skillCount: number;
-	canMove: boolean;
+const skillSourceDuplicateSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('none') }),
+	z.object({
+		kind: z.literal('blocked'),
+		where: z.enum(['global', 'scope']),
+		sourceId: z.string().nullable(),
+	}),
+	z.object({
+		kind: z.literal('warning'),
+		projects: z.array(z.object({ id: z.string(), name: z.string() })),
+	}),
+]);
+
+export const skillSourceMovePreviewSchema = z.object({
+	skillCount: z.number(),
+	canMove: z.boolean(),
 	/** A null name or destination hides a skill the user cannot read. */
-	nameConflicts: Array<{
-		moving: { id: string; name: string | null };
-		existing: { id: string; name: string } | null;
-	}>;
-	usageConflicts: Array<{
-		skill: { id: string; name: string | null };
-		agents: Array<{ id: string; name: string }>;
-		hiddenAgents: number;
-	}>;
-	duplicate: SkillSourceDuplicate;
-	credential: {
-		required: boolean;
-		reason: 'credential_missing' | 'credential_out_of_scope' | null;
-	};
-};
+	nameConflicts: z.array(
+		z.object({
+			moving: z.object({ id: z.string(), name: z.string().nullable() }),
+			existing: z.object({ id: z.string(), name: z.string() }).nullable(),
+		}),
+	),
+	usageConflicts: z.array(
+		z.object({
+			skill: z.object({ id: z.string(), name: z.string().nullable() }),
+			agents: z.array(z.object({ id: z.string(), name: z.string() })),
+			hiddenAgents: z.number(),
+		}),
+	),
+	duplicate: skillSourceDuplicateSchema,
+	credential: z.object({
+		required: z.boolean(),
+		reason: z.enum(['credential_missing', 'credential_out_of_scope']).nullable(),
+	}),
+});
+
+export type SkillSourceMovePreview = z.infer<typeof skillSourceMovePreviewSchema>;
 
 /** The source that a link points to. */
 export type SkillSourceSummary = {
@@ -113,10 +132,7 @@ export type SkillSourceSummary = {
  * chosen scope. `sourceId` is set when the user may add skills to that source.
  * `warning`: the same source is in other projects that the user can see.
  */
-export type SkillSourceDuplicate =
-	| { kind: 'none' }
-	| { kind: 'blocked'; where: 'global' | 'scope'; sourceId: string | null }
-	| { kind: 'warning'; projects: Array<{ id: string; name: string }> };
+export type SkillSourceDuplicate = z.infer<typeof skillSourceDuplicateSchema>;
 
 /** The rules of the security check. The build spec lists them in Appendix B. */
 export const SKILL_SCAN_RULES = [
