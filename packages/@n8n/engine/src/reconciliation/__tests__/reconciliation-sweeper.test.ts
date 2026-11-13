@@ -96,6 +96,23 @@ describe('ReconciliationSweeper', () => {
 		expect(detector.detect).not.toHaveBeenCalled();
 	});
 
+	it('sets one timer for each detector when start is called two times', async () => {
+		const detector = makeStepDetector();
+		const sweeper = new ReconciliationSweeper(
+			[detector],
+			{ 'step-queued-no-message': makeStepRepair() },
+			makeLogger(),
+		);
+
+		sweeper.start();
+		sweeper.start();
+		expect(vi.getTimerCount()).toBe(1);
+		await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+
+		expect(detector.detect).toHaveBeenCalledTimes(1);
+		await sweeper.stop();
+	});
+
 	it('runs each detector at its own interval', async () => {
 		const fast = makeStepDetector([], INTERVAL_MS);
 		const slow = makeExecutionDetector([], INTERVAL_MS * 3);
@@ -251,7 +268,7 @@ describe('ReconciliationSweeper', () => {
 		sweeper.start();
 		await vi.advanceTimersByTimeAsync(INTERVAL_MS);
 
-		expect(logger.info).toHaveBeenCalledWith('Reconciliation pass repaired stuck rows', {
+		expect(logger.info).toHaveBeenCalledWith('Reconciliation pass finished', {
 			detector: 'queued steps',
 			found: 3,
 			repaired: 1,
