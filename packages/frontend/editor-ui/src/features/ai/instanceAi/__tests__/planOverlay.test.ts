@@ -114,3 +114,21 @@ describe('plan overlay follows the build', () => {
 		expect(visible('list')).toBe(true);
 	});
 });
+
+describe('plan overlay hover card', () => {
+	it('hides the card when the pointer leaves the frame', () => {
+		vi.useFakeTimers();
+		document.body.innerHTML = renderWireframeBody(plan);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, { plan });
+
+		document
+			.querySelector('[data-plan-id="drafts"]')!
+			.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+		expect(document.querySelector('.plan-ov-tip')).not.toBeNull();
+
+		document.documentElement.dispatchEvent(new MouseEvent('mouseleave'));
+		vi.advanceTimersByTime(500);
+		expect(document.querySelector('.plan-ov-tip')).toBeNull();
+		vi.useRealTimers();
+	});
+});

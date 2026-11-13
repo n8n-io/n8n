@@ -579,6 +579,28 @@ export const PLAN_OVERLAY_CSS = `
   background: linear-gradient(100deg, transparent 20%, rgba(255,109,90,.18) 50%, transparent 80%); background-size: 200% 100%;
   animation: plan-ov-shimmer 1.4s linear infinite; }
 @keyframes plan-ov-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-color-scheme: dark) {
+  .plan-ov-tip { background: #232325; color: #e6e6e8; border-color: rgba(255, 255, 255, .1);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4); }
+  .plan-ov-tip.pinned { box-shadow: 0 0 0 2px #ff6d5a, 0 12px 32px -8px rgba(0, 0, 0, .6); }
+  .plan-ov-kind { background: rgba(255, 109, 90, .16); color: #ff8a78; }
+  .plan-ov-st { background: #2f2f32; color: #a9adb3; }
+  .plan-ov-st.building { background: rgba(255, 170, 60, .14); color: #ffb35c; }
+  .plan-ov-st.built { background: rgba(60, 190, 110, .14); color: #6fd39a; }
+  .plan-ov-st.detailed { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
+  .plan-ov-sec, .plan-ov-foot { border-top-color: #333336; }
+  .plan-ov-foot { background: #1d1d1f; }
+  .plan-ov-chip, .plan-ov-field { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
+  .plan-ov-new { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
+  .plan-ov-text { color: #c4c6ca; }
+  .plan-ov-detail { background: rgba(255, 109, 90, .12); border-color: rgba(255, 109, 90, .4); color: #ff8a78; }
+  .plan-ov-detail:hover:not([disabled]) { background: rgba(255, 109, 90, .2); }
+  .plan-ov-secondary, .plan-ov-go { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
+  .plan-ov-secondary:hover:not([disabled]), .plan-ov-go:hover { background: #343437; }
+  .plan-ov-go, .plan-ov-foot a { color: #ff8a78; }
+  .plan-ov-bar { background: rgba(30, 30, 32, .94); border-bottom-color: #333336; color: #ddd; }
+  .plan-ov-bar .track { background: #3a3a3d; }
+}
 `;
 
 export interface PlanOverlayConfig {
@@ -908,6 +930,11 @@ export function planOverlayMain(
 			window.clearTimeout(hideTimer);
 			hideTimer = window.setTimeout(hideTip, 400);
 		}
+	});
+	// No mouseover fires once the pointer leaves the frame, so hide the card here.
+	doc.documentElement.addEventListener('mouseleave', () => {
+		window.clearTimeout(switchTimer);
+		if (tip && !pinned) hideTimer = window.setTimeout(hideTip, 400);
 	});
 	doc.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') hideTip();
