@@ -9,4 +9,4 @@ interface PullRequestCacheEntry {
 
 // Keep response bodies outside workflow static data to avoid writes from read-only executions.
 // Each worker starts with an empty cache and keeps at most 100 responses.
-export const pullRequestCache = new LruCache<string, PullRequestCacheEntry | undefined>(100);
+export const pullRequestCache = new LruCache<string, PullRequestCacheEntry>(100);

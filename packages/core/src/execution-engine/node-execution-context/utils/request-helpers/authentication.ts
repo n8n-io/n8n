@@ -298,7 +298,15 @@ export async function requestWithAuthentication(
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
-			if (credentialsDecrypted !== undefined) {
+			if (
+				credentialsDecrypted !== undefined &&
+				(additionalCredentialOptions?.preAuthenticationRetryStatusCode === undefined ||
+					shouldRetryAfterPreAuthentication(
+						error.statusCode ?? error.response?.status,
+						credentialsDecrypted,
+						additionalCredentialOptions,
+					))
+			) {
 				// try to refresh the credentials
 				const data = await additionalData.credentialsHelper.preAuthentication(
 					{ helpers: this.helpers },

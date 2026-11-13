@@ -133,7 +133,11 @@ describe('GitHub conditional pull request reads', () => {
 				headers: { ...options.headers, Authorization: `Bearer ${data.accessToken}` },
 			}),
 		);
-		const helpers = getRequestHelperFunctions(mock<Workflow>(), node, additionalData);
+		const helpers = getRequestHelperFunctions(
+			mock<Workflow>({ id: 'workflow-id' }),
+			node,
+			additionalData,
+		);
 		context.helpers.httpRequest.mockImplementation(helpers.httpRequest);
 		context.helpers.httpRequestWithAuthentication.mockImplementation(
 			helpers.httpRequestWithAuthentication,
@@ -142,35 +146,49 @@ describe('GitHub conditional pull request reads', () => {
 		return {
 			credentialWrites,
 			preAuthentication: additionalData.credentialsHelper.preAuthentication,
+			runHook: additionalData.hooks!.runHook,
 		};
 	}
 
-	it('revalidates a GitHub App read once without refreshing a stored token', async () => {
-		const context = createContext();
-		const { credentialWrites, preAuthentication } = useGitHubAppAuthentication(context);
-		nock(server)
-			.matchHeader('authorization', 'Bearer stored-token')
-			.get(`${endpoint}/42`)
-			.reply(200, pullRequest, { ETag: etag });
-		const firstOutput = await new Github().execute.call(context);
-		preAuthentication.mockClear();
-		nock(server)
-			.matchHeader('authorization', 'Bearer stored-token')
-			.matchHeader('if-none-match', etag)
-			.get(`${endpoint}/42`)
-			.reply(304);
+	it.each([
+		{ resource: 'pullRequest', operation: 'get', path: `${endpoint}/42`, body: pullRequest },
+		{ resource: 'repository', operation: 'getPullRequests', path: endpoint, body: [pullRequest] },
+	])(
+		'records the data-fetched hook and revalidates once for $resource:$operation',
+		async ({ resource, operation, path, body }) => {
+			const context = createContext({ resource, operation });
+			const { credentialWrites, preAuthentication, runHook } = useGitHubAppAuthentication(context);
+			nock(server)
+				.matchHeader('authorization', 'Bearer stored-token')
+				.get(path)
+				.query(true)
+				.reply(200, body, { ETag: etag });
+			const firstOutput = await new Github().execute.call(context);
+			expect(firstOutput[0].map((item) => item.json)).toEqual([pullRequest]);
+			expect(runHook).toHaveBeenCalledExactlyOnceWith('nodeFetchedData', [
+				'workflow-id',
+				context.getNode(),
+			]);
+			preAuthentication.mockClear();
+			nock(server)
+				.matchHeader('authorization', 'Bearer stored-token')
+				.matchHeader('if-none-match', etag)
+				.get(path)
+				.query(true)
+				.reply(304);
 
-		expect(await new Github().execute.call(context)).toEqual(firstOutput);
-		expect(preAuthentication).toHaveBeenCalledTimes(1);
-		expect(preAuthentication).toHaveBeenLastCalledWith(
-			expect.anything(),
-			expect.anything(),
-			'githubAppApi',
-			context.getNode(),
-			false,
-		);
-		expect(credentialWrites).not.toHaveBeenCalled();
-	});
+			expect(await new Github().execute.call(context)).toEqual(firstOutput);
+			expect(preAuthentication).toHaveBeenCalledTimes(1);
+			expect(preAuthentication).toHaveBeenLastCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'githubAppApi',
+				context.getNode(),
+				false,
+			);
+			expect(credentialWrites).not.toHaveBeenCalled();
+		},
+	);
 
 	it('refreshes a GitHub App token after a 401 and revalidates the cached body', async () => {
 		vi.spyOn(jwt, 'sign').mockImplementation(() => 'test-app-jwt');
@@ -342,6 +360,7 @@ describe('GitHub conditional pull request reads', () => {
 		await execute();
 		nock(server).matchHeader('if-none-match', etag).get(`${endpoint}/42`).reply(200, pullRequest);
 		await execute();
+		expect(pullRequestCache.size).toBe(0);
 		nock(server, { badheaders: ['if-none-match'] })
 			.get(`${endpoint}/42`)
 			.reply(200, pullRequest);

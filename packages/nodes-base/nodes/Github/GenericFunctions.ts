@@ -76,15 +76,13 @@ export async function githubApiRequest(
 
 			let response: { statusCode: number; headers: IDataObject; body: IDataObject | IDataObject[] };
 			try {
-				// The modern helper refreshes credentials on 401, but not on 304.
-				response = await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
-					method,
-					url: options.uri,
-					qs: options.qs,
-					headers: options.headers,
-					json: true,
-					returnFullResponse: true,
-				});
+				// Keep the data-fetched hook, but refresh credentials only after a 401.
+				response = await this.helpers.requestWithAuthentication.call(
+					this,
+					credentialType,
+					{ ...options, resolveWithFullResponse: true },
+					{ preAuthenticationRetryStatusCode: 401 },
+				);
 			} catch (error) {
 				// The request helper can report 304 as a NodeApiError.
 				if (!cached || (error.statusCode !== 304 && error.httpCode !== '304')) {
@@ -112,7 +110,7 @@ export async function githubApiRequest(
 					body: deepCopy(response.body),
 				});
 			} else {
-				pullRequestCache.set(key, undefined);
+				pullRequestCache.delete(key);
 			}
 			return option.resolveWithFullResponse ? response : response.body;
 		}

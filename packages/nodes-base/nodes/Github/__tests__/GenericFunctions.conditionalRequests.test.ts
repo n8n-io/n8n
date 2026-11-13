@@ -26,7 +26,7 @@ describe.each([
 	let conditionalHeaders: unknown[];
 	let responseStatuses: number[];
 
-	function createExecutionContext() {
+	function createExecutionContext(hasEtag = true) {
 		const context = mockDeep<IExecuteFunctions>();
 		context.getNodeParameter.mockReturnValue('accessToken');
 		context.getNode.mockReturnValue(
@@ -37,7 +37,7 @@ describe.each([
 			}),
 		);
 		context.getCredentials.mockResolvedValue({ server: 'https://api.github.com' });
-		context.helpers.httpRequestWithAuthentication.mockImplementation(
+		context.helpers.requestWithAuthentication.mockImplementation(
 			async (_credentialType, options) => {
 				const conditionalHeader = Object.entries(options.headers ?? {}).find(
 					([name]) => name.toLowerCase() === 'if-none-match',
@@ -47,11 +47,11 @@ describe.each([
 				const statusCode = conditionalHeader === etag ? 304 : 200;
 				responseStatuses.push(statusCode);
 				const responseBody = statusCode === 304 ? '' : body;
-				const response = { statusCode, headers: { etag }, body: responseBody };
+				const response = { statusCode, headers: hasEtag ? { etag } : {}, body: responseBody };
 				if (statusCode === 304) {
 					throw Object.assign(new Error('Not Modified'), { statusCode, response });
 				}
-				return options.returnFullResponse ? response : responseBody;
+				return options.resolveWithFullResponse ? response : responseBody;
 			},
 		);
 		return context;
@@ -71,13 +71,14 @@ describe.each([
 		expect(result).toEqual(body);
 		expect(conditionalHeaders).toEqual([undefined]);
 		expect(responseStatuses).toEqual([200]);
-		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 			'githubApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: expect.objectContaining({ value: `https://api.github.com${endpoint}` }),
+				uri: expect.objectContaining({ value: `https://api.github.com${endpoint}` }),
 				qs: query,
 			}),
+			{ preAuthenticationRetryStatusCode: 401 },
 		);
 	});
 
@@ -102,6 +103,32 @@ describe.each([
 		expect(conditionalHeaders).toEqual([undefined, etag]);
 		expect(responseStatuses).toEqual([200, 304]);
 		expect(nextResult).toEqual(body);
+	});
+
+	it('keeps reusable responses after many responses without ETags', async () => {
+		await githubApiRequest.call(createExecutionContext(), 'GET', endpoint, {}, query);
+
+		for (let page = 1; page <= 100; page++) {
+			await githubApiRequest.call(
+				createExecutionContext(false),
+				'GET',
+				endpoint,
+				{},
+				{
+					...query,
+					page,
+				},
+			);
+		}
+		expect(pullRequestCache.size).toBe(1);
+		conditionalHeaders = [];
+		responseStatuses = [];
+
+		expect(
+			await githubApiRequest.call(createExecutionContext(), 'GET', endpoint, {}, query),
+		).toEqual(body);
+		expect(conditionalHeaders).toEqual([etag]);
+		expect(responseStatuses).toEqual([304]);
 	});
 
 	it('fetches an evicted response and still revalidates a recent response', async () => {
