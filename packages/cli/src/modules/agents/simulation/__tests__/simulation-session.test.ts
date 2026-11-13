@@ -9,6 +9,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
+import { InstrumentedRunUnsupportedError } from '../../tools/instrumented-run-guard';
 import { SimulationBlockedError, SimulationSession } from '../simulation-session';
 import type { SimulatedReply, SimulationWorld } from '../tool-simulation.contracts';
 
@@ -319,6 +320,45 @@ describe('SimulationSession', () => {
 		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'simulated_made_up' });
 	});
 
+	it('keeps a key in the MCP server URL away from the world, and still names the server', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const serverUrl = 'https://mcp.example.com/mcp?key=s3cret-mcp-key';
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'docs', kind: 'mcp', testability: 'simulated' }],
+			mcpServers: [{ name: 'docs', url: serverUrl }],
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+		const tool: BuiltTool = {
+			name: 'docs_search',
+			description: '',
+			mcpTool: true,
+			mcpServerName: 'docs',
+			handler: async () =>
+				await mcpFetch(serverUrl, {
+					method: 'POST',
+					body: JSON.stringify({ jsonrpc: '2.0', id: 1, params: { password: 's3cret-mcp-key' } }),
+				}),
+		};
+
+		await runTool(session, tool);
+
+		const [request, call] = world.handleRequest.mock.calls[0];
+		expect(JSON.stringify(request)).not.toContain('s3cret-mcp-key');
+		expect(request.url).toBe('https://mcp.example.com/mcp?key=%5BREDACTED%5D');
+		expect(call).toMatchObject({ mcpServerName: 'docs' });
+	});
+
+	it('leaves out provider tools and routes web search through the fallback tool', () => {
+		const session = new SimulationSession({ testChatId: 't', capabilities: [] });
+
+		const instrumentation = session.instrumentation();
+
+		expect(instrumentation.disableProviderTools).toBe(true);
+		expect(instrumentation.webSearch).toEqual(expect.any(Function));
+	});
+
 	it('keeps the world state for the test chat', () => {
 		const session = new SimulationSession({
 			testChatId: 'chat-1',
@@ -353,6 +393,32 @@ describe('SimulationSession', () => {
 		session.updateCapabilities([slackCapability]);
 
 		await expect(runTool(session, tool, 'tc-after')).resolves.toBe('ok');
+	});
+
+	it('blocks a workflow tool whose run would leave this process or paused', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'notify', kind: 'workflow', testability: 'simulated' }],
+		});
+		const handler = vi.fn(async () => {
+			throw new InstrumentedRunUnsupportedError('This workflow runs on Engine v2.');
+		});
+
+		await expect(
+			runTool(session, {
+				name: 'notify',
+				description: '',
+				metadata: { kind: 'workflow' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'This workflow runs on Engine v2.',
+		});
 	});
 
 	it('keeps a decrypted credential out of the request the world receives', async () => {

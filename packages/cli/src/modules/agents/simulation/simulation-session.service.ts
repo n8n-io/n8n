@@ -2,11 +2,12 @@ import type { AgentJsonConfig, ToolTestCapability } from '@n8n/api-types';
 import { isCredentialAgentIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
+import { In } from '@n8n/typeorm';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { TtlMap } from '@/utils/ttl-map';
@@ -19,6 +20,7 @@ import { AgentExecutionThreadRepository } from '../repositories/agent-execution-
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { nodeSimulationGap } from './non-http-node-types';
+import { redactMcpUrl } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
@@ -52,6 +54,7 @@ export class SimulationSessionService {
 		private readonly skillRefs: AgentSkillRefsService,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
@@ -111,7 +114,11 @@ export class SimulationSessionService {
 			mcpServers: agent.tools.flatMap((tool) =>
 				tool.kind === 'mcp' && tool.url ? [{ name: tool.toolName, url: tool.url }] : [],
 			),
-			recordTestChat: async (current) => await this.saveTestChat(current),
+			recordTestChat: async (current, executionId) => {
+				await this.saveTestChat(current);
+				// Before the agent runs, so the execution is a test run even if the turn never ends.
+				if (executionId) await this.markExecutionSimulated(executionId);
+			},
 			queueMode: this.executionsConfig.mode === 'queue',
 			previousWorld: savedWorld,
 		});
@@ -156,20 +163,38 @@ export class SimulationSessionService {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
 			const server =
 				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
+			// A server without a description is described by its URL, which can carry a key.
+			const description =
+				server && tool.description
+					? tool.description.split(server.url).join(redactMcpUrl(server.url))
+					: tool.description;
 			tools.push({
 				toolName: tool.name,
 				kind,
-				...(tool.description ? { description: tool.description } : {}),
+				...(description ? { description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
-				...(server ? { url: server.url } : {}),
+				// The simulator matches requests to servers by this URL, redacted the same way.
+				...(server ? { url: redactMcpUrl(server.url) } : {}),
 			});
 			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
+		}
+		// Test runs leave out the provider's native search and attach the fallback tool,
+		// which summarizeTools does not list when native search is configured.
+		if (config.config?.webSearch?.enabled && !tools.some((tool) => tool.kind === 'web_search')) {
+			tools.push({
+				toolName: 'web_search',
+				kind: 'web_search',
+				description: 'Web search returning {title, url, snippet} result lists',
+			});
 		}
 		for (const ref of config.tools ?? []) {
 			if (ref.type !== 'node' || ref.enabled === false) continue;
 			const gap = nodeSimulationGap(ref.node.nodeType, ref.node.nodeParameters);
 			if (gap) hostGaps.set(nodeNameToToolName(ref.name), gap);
+		}
+		for (const [toolName, gap] of await this.workflowEngineGaps(config)) {
+			if (!hostGaps.has(toolName)) hostGaps.set(toolName, gap);
 		}
 		for (const integration of saved.integrations ?? []) {
 			if (!isCredentialAgentIntegration(integration)) continue;
@@ -187,6 +212,33 @@ export class SimulationSessionService {
 			},
 			hostGaps,
 		};
+	}
+
+	/**
+	 * Workflow tools whose workflow runs on Engine v2. The run would go to the data plane,
+	 * where the test run's hooks do not reach; the runtime refuses it as well.
+	 */
+	private async workflowEngineGaps(config: AgentJsonConfig): Promise<Map<string, string>> {
+		const gaps = new Map<string, string>();
+		const refs = (config.tools ?? []).flatMap((ref) =>
+			ref.type === 'workflow' && ref.enabled !== false && ref.workflowId ? [ref] : [],
+		);
+		if (refs.length === 0) return gaps;
+		const workflows = await this.workflowRepository.find({
+			where: { id: In(refs.flatMap((ref) => (ref.workflowId ? [ref.workflowId] : []))) },
+			select: ['id', 'settings'],
+		});
+		const onEngineV2 = new Set(
+			workflows.filter((workflow) => workflow.settings?.engineType === 'v2').map(({ id }) => id),
+		);
+		for (const ref of refs) {
+			if (!ref.workflowId || !onEngineV2.has(ref.workflowId)) continue;
+			gaps.set(
+				sanitizeToolName(ref.name ?? ref.workflow),
+				'Workflows that run on Engine v2 cannot run in a test run yet.',
+			);
+		}
+		return gaps;
 	}
 
 	private hostGap(kind: SimulatedTool['kind'], mcpTransport?: string): string | undefined {

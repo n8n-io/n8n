@@ -53,7 +53,8 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 
 interface ExecuteTurnConfig {
 	admittedExecution?: AgentExecutionAdmission;
-	onAdmitted?: () => Promise<void>;
+	/** Runs after the execution record exists and before the agent starts. */
+	onAdmitted?: (executionId: string) => Promise<void>;
 	/** Runs when the agent runtime starts. An abort before it means the agent did not run. */
 	onRuntimeStarted?: () => void;
 	agentInstance: RuntimeAgent;
@@ -706,7 +707,7 @@ export class AgentTurnExecutionService {
 
 		config.onExecutionStarted?.(executionId, config.context.threadId, inputMessageIds);
 		turn.options.abortSignal?.throwIfAborted();
-		await config.onAdmitted?.();
+		await config.onAdmitted?.(executionId);
 		turn.options.abortSignal?.throwIfAborted();
 
 		// Forward side-call model costs (title generation, observation-log

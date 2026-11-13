@@ -1,7 +1,7 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentSkillRefsService } from '../../agent-skill-refs.service';
@@ -41,10 +41,14 @@ const config = {
 			name: 'Send Email',
 			node: { nodeType: 'n8n-nodes-base.emailSend', nodeTypeVersion: 2, nodeParameters: {} },
 		},
-		{ type: 'workflow', name: 'Create ticket', workflow: 'wf-1' },
+		{ type: 'workflow', name: 'Create ticket', workflow: 'Create ticket', workflowId: 'wf-1' },
 		{ type: 'custom', id: 'custom-1' },
 	],
-	mcpServers: [{ name: 'linear', url: 'https://mcp.linear.app/mcp', transport: 'sse' }],
+	mcpServers: [
+		{ name: 'linear', url: 'https://mcp.linear.app/mcp', transport: 'sse' },
+		{ name: 'docs', url: 'https://mcp.example.com/mcp?key=s3cret-mcp-key' },
+	],
+	config: { webSearch: { enabled: true } },
 } as unknown as AgentJsonConfig;
 
 const world: SimulationWorld = {
@@ -59,11 +63,13 @@ function setup({
 	stored,
 	backend,
 	queueMode = false,
+	engineV2 = false,
 }: {
 	flagOn?: boolean;
 	stored?: AgentExecutionThread['simulation'];
 	backend?: SimulationBackend;
 	queueMode?: boolean;
+	engineV2?: boolean;
 } = {}) {
 	const flagGate = mock<SafeTestingFlagGate>();
 	flagGate.isEnabled.mockResolvedValue(flagOn);
@@ -83,6 +89,10 @@ function setup({
 		stored === undefined ? null : ({ simulation: stored } as AgentExecutionThread),
 	);
 	const executionRepository = mock<AgentExecutionRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	workflowRepository.find.mockResolvedValue([
+		{ id: 'wf-1', settings: engineV2 ? { engineType: 'v2' } : {} } as WorkflowEntity,
+	]);
 	const service = new SimulationSessionService(
 		mock<Logger>(),
 		flagGate,
@@ -92,6 +102,7 @@ function setup({
 		skillRefs,
 		threadRepository,
 		executionRepository,
+		workflowRepository,
 	);
 	return { service, threadRepository, executionRepository, flagGate };
 }
@@ -200,10 +211,73 @@ describe('SimulationSessionService', () => {
 			}),
 			expect.objectContaining({ toolName: 'my_code', kind: 'custom', testability: 'blocked' }),
 			expect.objectContaining({ toolName: 'linear', kind: 'mcp', testability: 'blocked' }),
+			{ toolName: 'docs', kind: 'mcp', testability: 'simulated' },
+			{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' },
 		]);
 		expect(backend.describeTools).toHaveBeenCalledWith(
-			expect.objectContaining({ tools: [expect.objectContaining({ toolName: 'Send_Slack' })] }),
+			expect.objectContaining({
+				tools: [
+					expect.objectContaining({ toolName: 'Send_Slack' }),
+					expect.objectContaining({ toolName: 'docs' }),
+					expect.objectContaining({ toolName: 'web_search' }),
+				],
+			}),
 		);
+	});
+
+	it('blocks a workflow tool whose workflow runs on Engine v2', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend, engineV2: true });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual({
+			toolName: 'create-ticket',
+			kind: 'workflow',
+			testability: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'Workflows that run on Engine v2 cannot run in a test run yet.',
+		});
+		expect(backend.describeTools).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tools: expect.not.arrayContaining([expect.objectContaining({ toolName: 'create-ticket' })]),
+			}),
+		);
+	});
+
+	it('lets the simulator describe a workflow tool that runs on the default engine', async () => {
+		const { service } = setup({ backend: llmBackend() });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual(
+			expect.objectContaining({ toolName: 'create-ticket', testability: 'simulated' }),
+		);
+	});
+
+	it('lists web search when it is enabled, also when the model would search natively', async () => {
+		const { service } = setup({ backend: llmBackend() });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual(
+			expect.objectContaining({
+				toolName: 'web_search',
+				kind: 'web_search',
+				testability: 'simulated',
+			}),
+		);
+	});
+
+	it('describes an MCP server to the simulator without the key in its URL', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend });
+
+		await service.describeTools('agent-1', 'project-1');
+
+		const described = JSON.stringify(vi.mocked(backend.describeTools).mock.calls[0][0]);
+		expect(described).not.toContain('s3cret-mcp-key');
+		expect(described).toContain('https://mcp.example.com/mcp?key=%5BREDACTED%5D');
 	});
 
 	it('marks a tool the backend leaves out as unsupported by the simulator', async () => {
@@ -285,6 +359,31 @@ describe('SimulationSessionService', () => {
 			route: 'blocked',
 			detail: 'Workflow tools cannot run in a test run in queue mode yet.',
 		});
+	});
+
+	it('marks the execution as simulated when the turn is admitted, after the marker', async () => {
+		const { service, threadRepository, executionRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat('execution-7');
+
+		expect(threadRepository.update).toHaveBeenCalledOnce();
+		expect(executionRepository.update).toHaveBeenCalledExactlyOnceWith(
+			{ id: 'execution-7' },
+			{ simulated: true },
+		);
+		expect(threadRepository.update.mock.invocationCallOrder[0]).toBeLessThan(
+			executionRepository.update.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not mark the execution when the test chat marker fails', async () => {
+		const { service, threadRepository, executionRepository } = setup();
+		threadRepository.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+		const session = await service.openForDraftRun(openInput);
+
+		await expect(session!.markTestChat('execution-7')).rejects.toThrow();
+		expect(executionRepository.update).not.toHaveBeenCalled();
 	});
 
 	it('fails the turn when the test chat marker matches no thread', async () => {

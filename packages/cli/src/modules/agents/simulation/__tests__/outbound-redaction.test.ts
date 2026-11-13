@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { OutboundRedactor } from '../outbound-redaction';
+import { OutboundRedactor, redactMcpUrl } from '../outbound-redaction';
 
 const telegramToken = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
 
@@ -93,5 +93,93 @@ describe('OutboundRedactor', () => {
 		});
 
 		expect(JSON.stringify(request)).not.toContain('pw4567');
+	});
+
+	it('removes a header auth value whose header name does not look secret', async () => {
+		const secret = 'f3a9c1d27b8e4c60';
+		const { redactor } = await redactorWithCredential({
+			name: 'Ocp-Apim-Subscription-Key',
+			value: secret,
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://api.example.com/v1/items',
+			headers: { 'Ocp-Apim-Subscription-Key': secret, Accept: 'application/json' },
+		});
+
+		expect(JSON.stringify(request)).not.toContain(secret);
+		expect(request.headers).toEqual({
+			'Ocp-Apim-Subscription-Key': '[REDACTED]',
+			Accept: 'application/json',
+		});
+	});
+
+	it('removes a query auth value under a plain parameter name', async () => {
+		const secret = 'AIzaSyD-plainQueryKey123';
+		const { redactor } = await redactorWithCredential({ name: 'key', value: secret });
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: `https://maps.example.com/geocode?address=Berlin&key=${secret}`,
+		});
+
+		expect(request.url).not.toContain(secret);
+		expect(request.url).toContain('address=Berlin');
+	});
+
+	it('removes the values inside a custom auth JSON credential', async () => {
+		const secret = 'custom-secret-998877';
+		const { redactor } = await redactorWithCredential({
+			json: JSON.stringify({
+				headers: { 'X-Tenant-Pass': secret },
+				qs: { sig: 'qs-signature-123' },
+			}),
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://api.example.com/data?sig=qs-signature-123',
+			headers: { 'X-Tenant-Pass': secret },
+		});
+
+		expect(JSON.stringify(request)).not.toContain(secret);
+		expect(JSON.stringify(request)).not.toContain('qs-signature-123');
+	});
+
+	it('keeps the service address and settings of a credential', async () => {
+		const { redactor } = await redactorWithCredential({
+			url: 'https://acme.atlassian.net',
+			domain: 'acme.atlassian.net',
+			authentication: 'genericCredentialType',
+			value: 'a-long-enough-secret',
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://acme.atlassian.net/rest/api/3/issue/ABC-1',
+		});
+
+		expect(request.url).toBe('https://acme.atlassian.net/rest/api/3/issue/ABC-1');
+	});
+});
+
+describe('redactMcpUrl', () => {
+	it('removes every query value and the user info, and keeps the path', () => {
+		expect(redactMcpUrl('https://user:pw@mcp.example.com/mcp?key=s3cret&team=t1')).toBe(
+			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&team=%5BREDACTED%5D',
+		);
+	});
+
+	it('leaves a URL without a query as it is', () => {
+		expect(redactMcpUrl('https://mcp.linear.app/mcp')).toBe('https://mcp.linear.app/mcp');
+	});
+
+	it('drops the query of a URL it cannot parse', () => {
+		expect(redactMcpUrl('not a url?token=abc')).toBe('not a url');
 	});
 });

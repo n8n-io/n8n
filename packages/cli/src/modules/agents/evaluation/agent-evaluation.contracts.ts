@@ -81,6 +81,13 @@ export interface AgentRuntimeInstrumentation {
 	 */
 	toolCallInterceptor?: ToolCallInterceptor;
 	/**
+	 * Leaves out the model provider's own tools (native web search and any
+	 * configured `providerTools`). They run inside the provider's call, where no
+	 * seam can see them. Web search uses the fallback `web_search` tool instead.
+	 * Also applies to sub-agents. Set by test runs.
+	 */
+	disableProviderTools?: boolean;
+	/**
 	 * Transforms a configured sub-agent's config before its delegated runtime
 	 * is reconstructed (the child inherits this instrumentation, so its seams
 	 * are already covered). May only REMOVE features — the child's tool

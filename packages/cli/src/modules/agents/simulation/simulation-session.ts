@@ -18,8 +18,9 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, EvalNodeMockHandler } fr
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
+import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard';
 import { nodeSimulationGap } from './non-http-node-types';
-import { OutboundRedactor } from './outbound-redaction';
+import { OutboundRedactor, redactMcpUrl } from './outbound-redaction';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -105,7 +106,7 @@ export interface SimulationSessionInit {
 	/** Configured MCP servers, to name the server of each MCP request. */
 	mcpServers?: McpServerRef[];
 	/** Stores the test chat marker. Runs before each turn starts. */
-	recordTestChat?: (session: SimulationSession) => Promise<void>;
+	recordTestChat?: (session: SimulationSession, executionId?: string) => Promise<void>;
 	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
 	queueMode?: boolean;
 	/** The world stored earlier, kept when a new one fails to open. */
@@ -158,10 +159,11 @@ export class SimulationSession {
 
 	/**
 	 * Store that this chat is a test chat before the turn runs, so that a later
-	 * turn never runs live, even after a restart or with the flag off.
+	 * turn never runs live, even after a restart or with the flag off. Marks the
+	 * turn's execution as simulated too, before the agent starts.
 	 */
-	async markTestChat(): Promise<void> {
-		await this.recordTestChat?.(this);
+	async markTestChat(executionId?: string): Promise<void> {
+		await this.recordTestChat?.(this, executionId);
 	}
 
 	/** The marker and world to store on the test chat's thread. */
@@ -207,6 +209,10 @@ export class SimulationSession {
 		try {
 			output = await this.activeCalls.run(active, run);
 		} catch (error) {
+			// The workflow would have left this process, or paused; it was refused or stopped.
+			if (!active.blocked && error instanceof InstrumentedRunUnsupportedError) {
+				active.blocked = blocked('not_simulatable', error.message);
+			}
 			if (active.blocked) {
 				this.decisions.set(toolCallId, active.blocked);
 				throw new SimulationBlockedError(active.blocked);
@@ -229,7 +235,10 @@ export class SimulationSession {
 		return {
 			toolCallInterceptor: this.interceptor,
 			mcpFetch: this.mcpFetch,
-			...(this.capabilities.has(WEB_SEARCH_TOOL_NAME) ? { webSearch: this.webSearch } : {}),
+			// Provider tools (native web search included) would run for real where no seam
+			// sees them. The fallback search tool runs through the interceptor instead.
+			webSearch: this.webSearch,
+			disableProviderTools: true,
 			configureToolAdditionalData: (additionalData, context) => {
 				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
@@ -341,10 +350,9 @@ export class SimulationSession {
 		const rawBody =
 			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
-		const reply = await this.ask(
-			{ protocol: 'mcp', method, url, body },
-			{ mcpServerName: this.mcpServerForUrl(url) },
-		);
+		// Named from the real URL; the simulator only sees the URL without its query values.
+		const request = this.redactor.redact({ protocol: 'mcp', method, url: redactMcpUrl(url), body });
+		const reply = await this.ask(request, { mcpServerName: this.mcpServerForUrl(url) });
 		if (reply.outcome !== 'served') throw new Error('Unexpected MCP reply');
 		const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
 		return new Response(reply.status === 204 ? null : payload, {
