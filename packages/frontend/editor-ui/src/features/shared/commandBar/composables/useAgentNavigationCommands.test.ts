@@ -107,8 +107,8 @@ describe('useAgentNavigationCommands', () => {
 			await setup().source?.search({ query: '  support ', offset: 10, limit: 5 });
 
 			expect(listAgentsPageGlobal).toHaveBeenCalledWith(useRootStore().restApiContext, {
-				skip: 10,
-				take: 5,
+				offset: 10,
+				limit: 5,
 				sortBy: 'updatedAt:desc',
 				filter: { query: 'support' },
 			});
@@ -120,8 +120,8 @@ describe('useAgentNavigationCommands', () => {
 			await setup().source?.search({ query: '  ', offset: 0, limit: 5 });
 
 			expect(listAgentsPageGlobal).toHaveBeenCalledWith(useRootStore().restApiContext, {
-				skip: 0,
-				take: 5,
+				offset: 0,
+				limit: 5,
 				sortBy: 'updatedAt:desc',
 			});
 		});

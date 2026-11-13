@@ -19,7 +19,7 @@ describe('AgentsListController', () => {
 		const { controller, agentsService } = makeController();
 		const response = { count: 2, data: [{ id: 'agent-1' }, { id: 'agent-2' }] } as never;
 		const res = mock<Response>();
-		const query = { skip: 0, take: 50, sortBy: 'updatedAt:desc' } as never;
+		const query = { offset: 0, limit: 50, sortBy: 'updatedAt:desc' } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue(response);
 
@@ -33,7 +33,7 @@ describe('AgentsListController', () => {
 	it('passes a name filter to the overview list', async () => {
 		const { controller, agentsService } = makeController();
 		const res = mock<Response>();
-		const query = { skip: 0, take: 10, filter: { query: 'support' } } as never;
+		const query = { offset: 0, limit: 10, filter: { query: 'support' } } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue({ count: 0, data: [] } as never);
 
@@ -46,7 +46,7 @@ describe('AgentsListController', () => {
 		const { controller, agentsService } = makeController();
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
-		const query = { skip: 0, take: 10, filter: { availableInChat: value } } as never;
+		const query = { offset: 0, limit: 10, filter: { availableInChat: value } } as never;
 
 		agentsService.findChatReachableByUserPaginated.mockResolvedValue(response);
 
@@ -60,7 +60,7 @@ describe('AgentsListController', () => {
 	it('returns an empty page when the user has no accessible agents', async () => {
 		const { controller, agentsService } = makeController();
 		const res = mock<Response>();
-		const query = { skip: 0, take: 50 } as never;
+		const query = { offset: 0, limit: 50 } as never;
 		const emptyResponse = { count: 0, data: [] } as never;
 
 		agentsService.findListableByUserPaginated.mockResolvedValue(emptyResponse);

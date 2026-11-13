@@ -17,10 +17,10 @@ describe('fetchMcpAgents', () => {
 	});
 
 	it('omits the filter for a whitespace-only query', async () => {
-		await fetchMcpAgents(context, { take: 10, query: '   ' });
+		await fetchMcpAgents(context, { limit: 10, query: '   ' });
 
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/mcp/agents', {
-			take: 10,
+			limit: 10,
 		});
 	});
 

@@ -19,7 +19,7 @@ import {
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
-	type ListAgentsQueryDto,
+	type ListAgentsOptions,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
@@ -508,7 +508,7 @@ export class AgentsService {
 
 	async findByProjectIdPaginated(
 		projectId: string,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		return await this.addListSkillVersions(
 			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
@@ -711,7 +711,7 @@ export class AgentsService {
 	 */
 	async findChatReachableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentChatListResponse> {
 		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const [projectIds, ownedProjectIds] = await Promise.all([
@@ -816,7 +816,7 @@ export class AgentsService {
 	/** The agents overview list: every project where the user holds `agent:list`. */
 	async findListableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.addListSkillVersions(

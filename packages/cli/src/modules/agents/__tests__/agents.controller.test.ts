@@ -286,8 +286,8 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 10,
+			offset: 0,
+			limit: 10,
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 
@@ -303,15 +303,15 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'name:asc',
 			filter: { query: 'support' },
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 		const listReq = {
 			params: { projectId: 'project-1' },
-			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			query: { offset: '0', limit: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
 			user: { id: 'user-1' },
 		} as never;
 

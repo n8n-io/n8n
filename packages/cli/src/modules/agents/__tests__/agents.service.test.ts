@@ -1168,10 +1168,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(agentRepository.findN8nChatListPaginated).not.toHaveBeenCalled();
@@ -1183,7 +1183,7 @@ describe('AgentsService', () => {
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 			projectScopeService.getMemberProjectIds.mockResolvedValue(['project-owned']);
 			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+			const options = { offset: 0, limit: 10, filter: { availableInChat: true } };
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1210,11 +1210,11 @@ describe('AgentsService', () => {
 			const counts = new Map([['agent-1', 3]]);
 			agentExecutionService.countN8nChatThreadsByAgent.mockResolvedValue(counts);
 			const options = {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
 				sortBy: 'usage:desc',
-			} as never;
+			};
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1238,10 +1238,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result).toEqual({
 				count: 1,
@@ -1286,10 +1286,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result.data[0]).not.toHaveProperty('personalisation');
 			expect(result.data[0]).not.toHaveProperty('description');
@@ -1299,7 +1299,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			agentRepository.findN8nChatListPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10, filter: { availableInChat: true } } as never;
+			const options = { offset: 0, limit: 10, filter: { availableInChat: true } };
 
 			await service.findChatReachableByUserPaginated(user, options);
 
@@ -1335,10 +1335,10 @@ describe('AgentsService', () => {
 			});
 
 			const result = await service.findChatReachableByUserPaginated(user, {
-				skip: 0,
-				take: 10,
+				offset: 0,
+				limit: 10,
 				filter: { availableInChat: true },
-			} as never);
+			});
 
 			expect(result.data[0]).toMatchObject({
 				id: 'agent-3',
@@ -1602,7 +1602,7 @@ describe('AgentsService', () => {
 				makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			const options = { offset: 0, limit: 10 };
 
 			await service.findListableByUserPaginated(user, options);
 
@@ -1618,7 +1618,7 @@ describe('AgentsService', () => {
 			const { service, agentRepository, projectScopeService } = makeService();
 			projectScopeService.getProjectIds.mockResolvedValue(null);
 			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			const options = { offset: 0, limit: 10 };
 
 			await service.findListableByUserPaginated(user, options);
 

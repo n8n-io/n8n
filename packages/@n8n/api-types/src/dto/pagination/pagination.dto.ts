@@ -47,7 +47,7 @@ export const paginationSchema = {
 
 export class PaginationDto extends Z.class(paginationSchema) {}
 
-const offsetValidator = z
+export const offsetValidator = z
 	.string()
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : 0))
@@ -58,18 +58,18 @@ const offsetValidator = z
 		message: 'Param `offset` must be a non-negative integer',
 	});
 
-const createLimitValidator = (maxItems: number) =>
+export const createLimitValidator = (maxItems: number, defaultLimit = DEFAULT_PUBLIC_API_LIMIT) =>
 	z
 		.string()
 		.optional()
-		.transform((val) => (val ? parseInt(val, 10) : DEFAULT_PUBLIC_API_LIMIT))
+		.transform((val) => (val ? parseInt(val, 10) : defaultLimit))
 		.refine((val) => !isNaN(val) && Number.isInteger(val), {
 			message: 'Param `limit` must be a valid integer',
 		})
 		.refine((val) => val >= 0, {
 			message: 'Param `limit` must be a non-negative integer',
 		})
-		.transform((val) => Math.min(val === 0 ? DEFAULT_PUBLIC_API_LIMIT : val, maxItems));
+		.transform((val) => Math.min(val === 0 ? defaultLimit : val, maxItems));
 
 export const publicApiPaginationSchema = {
 	offset: offsetValidator,

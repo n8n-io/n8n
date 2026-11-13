@@ -132,8 +132,8 @@ async function fetchAgents() {
 
 	try {
 		const fetchOptions = {
-			skip: (currentPage.value - 1) * pageSize.value,
-			take: pageSize.value,
+			offset: (currentPage.value - 1) * pageSize.value,
+			limit: pageSize.value,
 			sortBy: currentSort.value,
 			filter: buildListFilter(),
 		};

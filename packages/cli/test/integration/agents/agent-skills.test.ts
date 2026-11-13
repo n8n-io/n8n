@@ -4,7 +4,7 @@
  * version keeps its pins in `agent_version_skill_dependency`, and the skill text lives in
  * `skill_version`. These tests run the agent services against real rows.
  */
-import type { AgentJsonConfig, AgentSkill, ListAgentsQueryDto } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -270,7 +270,7 @@ describe('Agent skills in the skills module', () => {
 		const agent = (await publish(await createAgent([skill])))!;
 		const originalId = agent.versionId!;
 		await saveInstructions(skill, 'Second instructions');
-		const listOptions = { skip: 0, take: 50 } as ListAgentsQueryDto;
+		const listOptions = { offset: 0, limit: 50 };
 		const historyBeforePublish = await publishService.listVersions(agent.id, project.id, 10, 0);
 		expect(historyBeforePublish).toHaveLength(1);
 		expect(historyBeforePublish[0]).toMatchObject({ versionId: originalId, isCurrent: false });

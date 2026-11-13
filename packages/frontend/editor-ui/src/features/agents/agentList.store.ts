@@ -9,7 +9,7 @@ export const useAgentListStore = defineStore('agentList', () => {
 	const totalCount = ref<number>();
 
 	async function fetchTotalCount() {
-		const { count } = await listAgentsPageGlobal(rootStore.restApiContext, { take: 1 });
+		const { count } = await listAgentsPageGlobal(rootStore.restApiContext, { limit: 1 });
 		totalCount.value = count;
 	}
 

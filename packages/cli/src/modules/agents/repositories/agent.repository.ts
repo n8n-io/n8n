@@ -2,8 +2,10 @@ import isEqual from 'lodash/isEqual';
 import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
+	AgentListFilter,
+	AgentsListSortBy,
 	AgentVectorStoreProvider,
-	ListAgentsQueryDto,
+	ListAgentsOptions,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -268,7 +270,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		{
 			withProject = false,
 			usageCounts,
@@ -297,7 +299,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		query.skip(options.offset ?? 0).take(options.limit);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -311,7 +313,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findN8nChatListPaginated(
 		reachableProjectIds: string[] | null,
 		ownedProjectIds: string[],
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		usageCounts?: Map<string, number>,
 	): Promise<AgentListResult> {
 		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
@@ -346,7 +348,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		query.skip(options.offset ?? 0).take(options.limit);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -409,7 +411,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<Agent>,
-		filter: ListAgentsQueryDto['filter'],
+		filter: AgentListFilter | undefined,
 	): void {
 		if (!filter?.includeArchived) {
 			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
@@ -433,6 +435,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
+		}
+		if (filter?.active !== undefined) {
+			query.andWhere(
+				filter.active ? 'agent.activeVersionId IS NOT NULL' : 'agent.activeVersionId IS NULL',
+			);
+		}
+		if (filter?.projectId) {
+			query.andWhere('agent.projectId = :filterProjectId', { filterProjectId: filter.projectId });
 		}
 	}
 
@@ -488,7 +498,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
-		sortBy?: ListAgentsQueryDto['sortBy'],
+		sortBy?: AgentsListSortBy,
 		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];

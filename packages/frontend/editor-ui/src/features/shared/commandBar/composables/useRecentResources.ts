@@ -254,8 +254,8 @@ export function useRecentResources(): CommandGroup & {
 		if (!settingsStore.isAgentsEnabled || recentOpens.length === 0) return;
 
 		const agents = await listAgentsPageGlobal(rootStore.restApiContext, {
-			skip: 0,
-			take: recentOpens.length,
+			offset: 0,
+			limit: recentOpens.length,
 			filter: { ids: recentOpens.map(({ id }) => id) },
 		}).catch(() => undefined);
 		if (!agents) return;
