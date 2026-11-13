@@ -434,6 +434,106 @@ describe('OpenAIChatModel', () => {
 			]);
 		});
 
+		describe('when OpenAI rejects the replayed reasoning', () => {
+			type Requests = ConstructorParameters<typeof OpenAIChatModel>[1];
+			const rejection = new Error('Request failed with status code 400');
+			const history: Message[] = [
+				userMessage,
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'reasoning',
+							text: 'Compare both cities.',
+							providerMetadata: { encryptedContent },
+						},
+						replyText,
+					],
+				},
+			];
+			const historyWithoutReasoning = [
+				{ role: 'user', content: 'Hi' },
+				{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Hello' }] },
+			];
+			const createRequests = () => ({
+				httpRequest: vi
+					.fn<Requests['httpRequest']>()
+					.mockRejectedValueOnce(rejection)
+					.mockResolvedValueOnce({ body: mockFinalResponse }),
+				openStream: vi
+					.fn<Requests['openStream']>()
+					.mockRejectedValueOnce(rejection)
+					.mockResolvedValueOnce({
+						body: (async function* () {
+							yield Buffer.from(
+								`data: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed' } })}\n\n`,
+							);
+						})(),
+					}),
+			});
+
+			it('should send the request once more without reasoning', async () => {
+				const requests = createRequests();
+
+				const result = await new OpenAIChatModel('gpt-4o', requests, { baseURL }).generate(history);
+
+				expect(result.finishReason).toBe('stop');
+				expect(requests.httpRequest).toHaveBeenCalledTimes(2);
+				expect(requests.httpRequest).toHaveBeenLastCalledWith(
+					'POST',
+					`${baseURL}/responses`,
+					expect.objectContaining({ input: historyWithoutReasoning }),
+					undefined,
+					undefined,
+				);
+			});
+
+			it('should open the stream once more without reasoning', async () => {
+				const requests = createRequests();
+
+				const chunks = await collect(
+					new OpenAIChatModel('gpt-4o', requests, { baseURL }).stream(history),
+				);
+
+				expect(chunks).toEqual([{ type: 'finish', finishReason: 'stop', usage: undefined }]);
+				expect(requests.openStream).toHaveBeenLastCalledWith(
+					'POST',
+					`${baseURL}/responses`,
+					expect.objectContaining({ input: historyWithoutReasoning }),
+					undefined,
+					undefined,
+				);
+			});
+
+			it('should not retry a request that replays no reasoning', async () => {
+				const requests = createRequests();
+
+				const result = new OpenAIChatModel('gpt-4o', requests, { baseURL }).generate([userMessage]);
+
+				await expect(result).rejects.toBe(rejection);
+				expect(requests.httpRequest).toHaveBeenCalledTimes(1);
+			});
+
+			it('should fail an aborted request with the cancellation', async () => {
+				const cancellation = new Error('canceled');
+				const requests = {
+					...createRequests(),
+					// Like the n8n request helper, reject at once when the signal is aborted.
+					httpRequest: vi.fn<Requests['httpRequest']>(async (...args) => {
+						throw args[4]?.aborted ? cancellation : rejection;
+					}),
+				};
+				const controller = new AbortController();
+				controller.abort();
+
+				const result = new OpenAIChatModel('gpt-4o', requests, { baseURL }).generate(history, {
+					abortSignal: controller.signal,
+				});
+
+				await expect(result).rejects.toBe(cancellation);
+			});
+		});
+
 		it('should leave out reasoning without an encrypted payload', async () => {
 			const captured = captureInput();
 

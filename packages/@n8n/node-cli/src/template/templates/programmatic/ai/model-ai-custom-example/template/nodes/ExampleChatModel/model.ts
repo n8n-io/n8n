@@ -398,6 +398,10 @@ function isResponsesResponse(body: unknown): body is OpenAIResponsesResponse {
 	);
 }
 
+function isReasoningInput(item: ResponsesInputItem): boolean {
+	return 'type' in item && item.type === 'reasoning';
+}
+
 function definedHeaders(
 	headers: Readonly<ChatModelConfig['headers']>,
 ): Record<string, string> | undefined {
@@ -474,14 +478,33 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		};
 	}
 
+	private async sendWithReasoningFallback<T>(
+		body: OpenAIResponsesRequest,
+		send: (body: OpenAIResponsesRequest) => Promise<T>,
+	): Promise<T> {
+		const input = typeof body.input === 'string' ? [] : body.input;
+		if (!input.some(isReasoningInput)) return await send(body);
+		try {
+			return await send(body);
+		} catch {
+			// OpenAI only decrypts reasoning for the organization that created it, so
+			// after an API key change it rejects every later turn. Send it once without.
+			return await send({ ...body, input: input.filter((item) => !isReasoningInput(item)) });
+		}
+	}
+
 	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
 		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
-		const response = await this.requests.httpRequest(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
+		const response = await this.sendWithReasoningFallback(
 			this.buildRequestBody(messages, merged, false),
-			definedHeaders(merged.headers),
-			merged.abortSignal,
+			async (body) =>
+				await this.requests.httpRequest(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
 		);
 		const body = response.body;
 		if (!isResponsesResponse(body)) {
@@ -548,12 +571,16 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
 		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
-		const streamResponse = await this.requests.openStream(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
+		const streamResponse = await this.sendWithReasoningFallback(
 			this.buildRequestBody(messages, merged, true),
-			definedHeaders(merged.headers),
-			merged.abortSignal,
+			async (body) =>
+				await this.requests.openStream(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
 		);
 		const streamBody = streamResponse.body;
 
