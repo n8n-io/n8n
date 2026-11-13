@@ -1,3 +1,12 @@
+## [1.123.96](https://github.com/n8n-io/n8n/compare/n8n@1.123.95...n8n@1.123.96) (2026-11-13)
+
+
+### Bug Fixes
+
+* **editor:** Make JSON highlight color visible on light theme ([#43690](https://github.com/n8n-io/n8n/issues/43690)) ([bffbcd8](https://github.com/n8n-io/n8n/commit/bffbcd8835ae6a84016df83cb5a333d975a6698f))
+* Update @modelcontextprotocol/sdk ([#43527](https://github.com/n8n-io/n8n/issues/43527)) ([f719280](https://github.com/n8n-io/n8n/commit/f7192808203d8d328ffe271a2a4b7e33acf1877c))
+
+
 ## [1.123.95](https://github.com/n8n-io/n8n/compare/n8n@1.123.94...n8n@1.123.95) (2026-11-12)
 
 
