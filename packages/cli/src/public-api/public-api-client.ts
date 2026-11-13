@@ -23,7 +23,10 @@ const TELEMETRY_CLIENT_BY_HEADER_VALUE = new Map<string, PublicApiClient>([
 export function resolvePublicApiClient(header: string | string[] | undefined): PublicApiClient {
 	const value = Array.isArray(header) ? header[0] : header;
 	const normalizedValue = value?.trim().toLowerCase();
-	if (normalizedValue === undefined) return 'other';
+
+	if (normalizedValue === undefined) {
+		return 'other';
+	}
 
 	return TELEMETRY_CLIENT_BY_HEADER_VALUE.get(normalizedValue) ?? 'other';
 }
