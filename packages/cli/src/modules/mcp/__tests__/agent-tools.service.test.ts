@@ -1894,6 +1894,128 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
 		});
 
+		it('keeps long values truncated by default', async () => {
+			const longReply = 'x'.repeat(10_000);
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [
+					{
+						...turn('execution-1'),
+						timeline: [{ type: 'text', content: longReply, timestamp: 1 }],
+					},
+				],
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).not.toHaveProperty('nextCursor');
+			expect(result.structuredContent.transcript).toContain('… [truncated]');
+			expect(result.structuredContent.transcript).not.toContain(longReply);
+		});
+
+		it('returns the full transcript in pages when output is full', async () => {
+			const longOutput = { blob: 'o'.repeat(80_000) };
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [
+					{
+						...turn('execution-1'),
+						timeline: [
+							{
+								type: 'tool-call',
+								kind: 'tool',
+								name: 'lookup_order',
+								toolCallId: 'call-1',
+								input: { orderId: 'BAD-1' },
+								output: longOutput,
+								startTime: 1,
+								endTime: 2,
+								success: true,
+							},
+						],
+					},
+					turn('execution-2'),
+				],
+			});
+
+			const first = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				output: 'full',
+			});
+
+			expect(first.structuredContent).toMatchObject({
+				ok: true,
+				session: { sessionId: 'session-1' },
+				output: 'full',
+				nextCursor: expect.any(String),
+				complete: false,
+			});
+			expect(first.structuredContent.transcript).toContain('output: full');
+			expect(first.structuredContent.transcript).not.toContain('… [truncated]');
+
+			const second = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				cursor: first.structuredContent.nextCursor,
+			});
+
+			expect(second.structuredContent).toMatchObject({
+				ok: true,
+				output: 'full',
+				nextCursor: null,
+				complete: true,
+			});
+			expect(second.structuredContent.transcript).toContain('User: Message execution-2');
+			const combined = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
+			expect(combined.match(/o{100,}/g)?.join('')).toBe(longOutput.blob);
+		});
+
+		it('returns the full transcript of the requested turn only', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+				output: 'full',
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, complete: true });
+			expect(result.structuredContent.transcript).toContain('scope: single turn, turns: 1');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn in full output', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+				output: 'full',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('reports a cursor that does not match the session', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				cursor: 'not-a-cursor',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+		});
+
 		it('reports an unknown session', async () => {
 			agentContextService.readSession.mockResolvedValue(null);
 
