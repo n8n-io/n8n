@@ -27,6 +27,7 @@ import { AgentTaskService } from '../agent-task.service';
 import { AgentsService } from '../agents.service';
 import { AgentChannelReconciler } from '../integrations/agent-channel-reconciler.service';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
+import { AgentInterruptedReplyNotifier } from '../integrations/agent-interrupted-reply-notifier.service';
 import { DiscordIntegration } from '../integrations/platforms/discord/discord-integration';
 import { LinearIntegration } from '../integrations/platforms/linear/linear-integration';
 import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
@@ -59,6 +60,7 @@ function setUpContainerForInit() {
 	Container.set(AgentsService, mock<AgentsService>());
 	Container.set(AgentDependencyIndexListener, mock<AgentDependencyIndexListener>());
 	Container.set(AgentExecutionService, mock<AgentExecutionService>());
+	Container.set(AgentInterruptedReplyNotifier, mock<AgentInterruptedReplyNotifier>());
 	Container.set(AgentExecutionLogStore, mock<AgentExecutionLogStore>());
 	Container.set(ExecutionDataJsonStore, mock<ExecutionDataJsonStore>());
 	Container.set(AgentRuntimeCacheService, mock<AgentRuntimeCacheService>());

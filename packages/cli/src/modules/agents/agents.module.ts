@@ -58,6 +58,13 @@ export class AgentsModule implements ModuleInterface {
 		// Loaded for its shutdown hook. Turns can run on every instance type.
 		await import('./agent-shutdown-drain.service.js');
 
+		// Registers itself with the execution service, so chat platform users
+		// learn when their turn is interrupted.
+		const { AgentInterruptedReplyNotifier } = await import(
+			'./integrations/agent-interrupted-reply-notifier.service.js'
+		);
+		Container.get(AgentInterruptedReplyNotifier);
+
 		const { registerUserDeletionHandler } = await import('./register-user-deletion-handler.js');
 		registerUserDeletionHandler();
 

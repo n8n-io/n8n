@@ -15,8 +15,18 @@ import type {
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
-	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline' | 'ownerKey'
+	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline' | 'ownerKey' | 'source'
 >;
+
+const RUNNING_EXECUTION_COLUMNS = [
+	'id',
+	'threadId',
+	'startedAt',
+	'updatedAt',
+	'timeline',
+	'ownerKey',
+	'source',
+] as const satisfies ReadonlyArray<keyof RunningAgentExecution>;
 
 /** Extra conditions for the terminal write of a running turn. */
 export interface RunningRowGuard {
@@ -148,7 +158,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
 		return await this.find({
-			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline', 'ownerKey'],
+			select: [...RUNNING_EXECUTION_COLUMNS],
 			where: { status: 'running' },
 		});
 	}
@@ -158,7 +168,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		for (let i = 0; i < executionIds.length; i += PARENT_ID_BATCH_SIZE) {
 			rows.push(
 				...(await this.find({
-					select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline', 'ownerKey'],
+					select: [...RUNNING_EXECUTION_COLUMNS],
 					where: { id: In(executionIds.slice(i, i + PARENT_ID_BATCH_SIZE)), status: 'running' },
 				})),
 			);

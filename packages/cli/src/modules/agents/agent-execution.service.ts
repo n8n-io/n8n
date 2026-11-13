@@ -25,6 +25,7 @@ import { AgentProjectDeletionRepository } from './repositories/agent-project-del
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
+import { AgentExecutionInterruptedError } from './agent-execution-interrupted.error';
 import { AgentInstanceShuttingDownError } from './agent-instance-shutting-down.error';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';
@@ -162,6 +163,27 @@ export interface ThreadListItem
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
 
+/**
+ * Shown to users as-is. The cause can be a restart, a shutdown, a crash or a
+ * process that lost its database, so do not name one of them.
+ */
+export const INTERRUPTED_EXECUTION_ERROR =
+	'Agent execution stopped before it finished, because the n8n process that ran it shut down or stopped responding.';
+
+/** A running turn that this process marked as interrupted. */
+export interface InterruptedExecution {
+	executionId: string;
+	agentId: string;
+	threadId: string;
+	/** Where the turn came from, e.g. 'chat' or 'slack'. */
+	source: string | null;
+	/**
+	 * The turn ran in this process. Its reply path is still live and reports
+	 * the stop itself, so a listener must not report it again.
+	 */
+	local: boolean;
+}
+
 /** A stop request that the heartbeat found on the row of a local turn. */
 export interface DurableStopRequest {
 	executionId: string;
@@ -190,6 +212,11 @@ export class AgentExecutionService {
 	private readonly activeExecutions = new Map<string, { agentId: string; threadId: string }>();
 
 	private stopRequestHandler?: (request: DurableStopRequest) => void;
+
+	private interruptedHandler?: (execution: InterruptedExecution) => Promise<void>;
+
+	/** Interrupt notices in flight. Shutdown waits for them before channels close. */
+	private readonly interruptNotices = new Set<Promise<void>>();
 
 	/** Set when this process shuts down. It refuses new turns from then on. */
 	private shuttingDown = false;
@@ -248,6 +275,15 @@ export class AgentExecutionService {
 	 */
 	onDurableStopRequest(handler: (request: DurableStopRequest) => void): void {
 		this.stopRequestHandler = handler;
+	}
+
+	/**
+	 * Called after this process marks a turn as interrupted, for example to tell
+	 * a chat platform user that the reply will not come. The chat integration
+	 * service registers it, because it owns the platform connections.
+	 */
+	onExecutionInterrupted(handler: (execution: InterruptedExecution) => Promise<void>): void {
+		this.interruptedHandler = handler;
 	}
 
 	async startExecutionRecording(
@@ -567,8 +603,7 @@ export class AgentExecutionService {
 	): Promise<boolean> {
 		const timeline = execution.timeline ?? [];
 		const stoppedAt = new Date();
-		const error =
-			'Agent execution stopped because n8n restarted, for example after a crash or an update.';
+		const error = INTERRUPTED_EXECUTION_ERROR;
 		const duration = execution.startedAt
 			? Math.max(0, stoppedAt.getTime() - execution.startedAt.getTime())
 			: 0;
@@ -595,7 +630,13 @@ export class AgentExecutionService {
 				ctx,
 			);
 		});
-		if (finalized) void this.notifyInterruptedExecution(execution);
+		if (finalized) {
+			const local = this.heartbeatTimers.has(execution.id);
+			const notice = this.notifyInterruptedExecution(execution, local).finally(() =>
+				this.interruptNotices.delete(notice),
+			);
+			this.interruptNotices.add(notice);
+		}
 		return finalized;
 	}
 
@@ -636,10 +677,14 @@ export class AgentExecutionService {
 		for (const executionId of executionIds) {
 			this.abortLostExecution(executionId, 'Agent execution stopped because n8n shut down');
 		}
+		await Promise.allSettled([...this.interruptNotices]);
 		return interrupted;
 	}
 
-	private async notifyInterruptedExecution(execution: RunningAgentExecution): Promise<void> {
+	private async notifyInterruptedExecution(
+		execution: RunningAgentExecution,
+		local: boolean,
+	): Promise<void> {
 		try {
 			const thread = await this.agentExecutionThreadRepository.findOneBy({
 				id: execution.threadId,
@@ -650,6 +695,13 @@ export class AgentExecutionService {
 				agentId: thread.agentId,
 				threadId: execution.threadId,
 				executionId: execution.id,
+			});
+			await this.interruptedHandler?.({
+				executionId: execution.id,
+				agentId: thread.agentId,
+				threadId: execution.threadId,
+				source: execution.source ?? null,
+				local,
 			});
 		} catch (error) {
 			this.logger.warn('Failed to resolve an interrupted agent execution update', {
@@ -717,7 +769,7 @@ export class AgentExecutionService {
 	}
 
 	private abortLostExecution(executionId: string, reason: string): void {
-		this.executionControllers.get(executionId)?.abort(new OperationalError(reason));
+		this.executionControllers.get(executionId)?.abort(new AgentExecutionInterruptedError(reason));
 		this.stopHeartbeat(executionId);
 	}
 

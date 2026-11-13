@@ -9,7 +9,12 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
+import {
+	AgentExecutionService,
+	INTERRUPTED_EXECUTION_ERROR,
+	type RecordMessageParams,
+} from '../agent-execution.service';
+import { AgentExecutionInterruptedError } from '../agent-execution-interrupted.error';
 import { AgentInstanceShuttingDownError } from '../agent-instance-shutting-down.error';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -736,6 +741,7 @@ describe('AgentExecutionService', () => {
 				updatedAt: new Date(),
 				timeline: null,
 				ownerKey: 'instance-a',
+				source: null,
 			};
 			agentExecutionRepository.findRunningByIds.mockResolvedValue([running]);
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
@@ -752,6 +758,45 @@ describe('AgentExecutionService', () => {
 			expect(signal.aborted).toBe(true);
 			expect(String(signal.reason)).toContain('n8n shut down');
 			expect(service.localExecutionIds()).toEqual([]);
+		});
+
+		it('tells the interrupted listener about each turn before it returns', async () => {
+			await startSnapshotExecution();
+			const listener = vi.fn().mockResolvedValue(undefined);
+			service.onExecutionInterrupted(listener);
+			agentExecutionRepository.findRunningByIds.mockResolvedValue([
+				{
+					id: 'execution-1',
+					threadId: 'thread-1',
+					startedAt: new Date(),
+					updatedAt: new Date(),
+					timeline: null,
+					ownerKey: 'instance-a',
+					source: 'slack',
+				},
+			]);
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(makeThread());
+
+			await service.interruptLocalExecutions();
+
+			expect(listener).toHaveBeenCalledWith({
+				executionId: 'execution-1',
+				agentId: makeThread().agentId,
+				threadId: 'thread-1',
+				source: 'slack',
+				local: true,
+			});
+		});
+
+		it('stops local turns with an interrupted error', async () => {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			agentExecutionRepository.findRunningByIds.mockResolvedValue([]);
+
+			await service.interruptLocalExecutions();
+
+			expect(signal.reason).toBeInstanceOf(AgentExecutionInterruptedError);
 		});
 
 		it('still stops local turns when the database is unreachable', async () => {
@@ -1935,13 +1980,13 @@ describe('AgentExecutionService', () => {
 					status: 'interrupted',
 					timeline: partial,
 					storedAt: 'db',
-					error: expect.stringContaining('n8n restarted'),
+					error: INTERRUPTED_EXECUTION_ERROR,
 					failureSummary: {
 						count: 1,
 						latest: {
 							kind: 'execution',
 							name: null,
-							message: expect.stringContaining('n8n restarted'),
+							message: INTERRUPTED_EXECUTION_ERROR,
 							occurredAt: expect.any(Number),
 						},
 					},

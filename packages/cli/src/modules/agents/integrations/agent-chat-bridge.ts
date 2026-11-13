@@ -24,6 +24,7 @@ import { UserError } from '@n8n/errors';
 import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
+import { AgentExecutionInterruptedError } from '../agent-execution-interrupted.error';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
 import {
 	queuedAccessSender,
@@ -193,7 +194,20 @@ interface OpenSuspension {
 	suspendPayload?: unknown;
 }
 
+/** The stop can arrive wrapped by the agent runtime, so follow the causes. */
+function isInterruptedError(error: unknown): boolean {
+	for (let current = error, depth = 0; current && depth < 5; depth++) {
+		if (current instanceof AgentExecutionInterruptedError) return true;
+		current = current instanceof Error ? current.cause : undefined;
+	}
+	return false;
+}
+
+export const INTERRUPTED_REPLY_TEXT =
+	'⚠️ Your request stopped before the agent could reply. Please send it again.';
+
 function errorText(error: unknown): string {
+	if (isInterruptedError(error)) return INTERRUPTED_REPLY_TEXT;
 	const rateLimitMessage = rateLimitMessageFromError(error);
 	if (rateLimitMessage !== undefined) return `⚠️ ${rateLimitMessage}`;
 	if (isAttachmentValidationError(error)) {
@@ -628,6 +642,11 @@ export class AgentChatBridge {
 				...(agentThreadId ? { agentThreadId } : {}),
 			},
 		);
+	}
+
+	/** Tell the platform user that a turn stopped and its reply will not come. */
+	async deliverInterruptedNotice(threadId: string): Promise<void> {
+		await this.chat.thread(threadId).post(INTERRUPTED_REPLY_TEXT);
 	}
 
 	async deliverBackgroundApproval(

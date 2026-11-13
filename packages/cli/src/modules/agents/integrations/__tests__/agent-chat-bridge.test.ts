@@ -12,14 +12,15 @@ import { AgentMessageRepository } from '../../repositories/agent-message.reposit
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
 import { mock } from 'vitest-mock-extended';
 import { deepCopy, type Logger } from 'n8n-workflow';
-import { UserError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import {
 	AgentResourceRepository,
 	type ChatSessionGeneration,
 } from '../../repositories/agent-resource.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
-import { AgentChatBridge } from '../agent-chat-bridge';
+import { AgentExecutionInterruptedError } from '../../agent-execution-interrupted.error';
+import { AgentChatBridge, INTERRUPTED_REPLY_TEXT } from '../agent-chat-bridge';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
@@ -4560,6 +4561,23 @@ describe('AgentChatBridge — un-mentioned messages', () => {
 
 			expect(executor.executeForChatPublished).toHaveBeenCalledTimes(1);
 			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts the interrupted notice when the turn stops on shutdown', async () => {
+			const executor = makeAgentExecutor([finish]);
+			executor.executeForChatPublished.mockImplementation(() => {
+				throw new OperationalError('Agent turn failed', {
+					cause: new AgentExecutionInterruptedError(
+						'Agent execution stopped because n8n shut down',
+					),
+				});
+			});
+			const handlers = makeFailingBridge(executor);
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello', isMention: true, author });
+
+			expect(thread.post).toHaveBeenCalledWith(INTERRUPTED_REPLY_TEXT);
 		});
 
 		it('does not post a streamed error when nobody mentioned the agent', async () => {
