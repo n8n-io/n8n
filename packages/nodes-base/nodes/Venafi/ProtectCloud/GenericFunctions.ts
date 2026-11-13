@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import * as nacl_factory from 'js-nacl';
-import get from 'lodash/get';
-=======
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,

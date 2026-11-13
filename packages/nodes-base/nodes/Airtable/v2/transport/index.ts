@@ -11,12 +11,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
+import { requestUrl, UserError } from 'n8n-workflow';
 
 import type { IAttachment, IRecord } from '../helpers/interfaces';
 

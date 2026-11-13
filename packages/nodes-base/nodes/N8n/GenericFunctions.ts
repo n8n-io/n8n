@@ -36,18 +36,7 @@ export async function apiRequest(
 
 	const credentials = await this.getCredentials<N8nApiCredentials>('n8nApi');
 	const baseUrl = credentials.baseUrl;
-<<<<<<< HEAD:packages/nodes-base/nodes/N8n/GenericFunctions.ts
-
-	const options: IRequestOptions = {
-		method,
-		body,
-		qs: query,
-		uri: `${baseUrl.replace(new RegExp('/$'), '')}/${endpoint}`,
-		json: true,
-	};
-=======
-	const normalizedBaseUrl = baseUrl.replace(/([^:])\/{2,}/g, '$1/').replace(/\/+$/, '');
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761)):packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
+	const normalizedBaseUrl = baseUrl.replace(new RegExp('/$'), '');
 
 	try {
 		const options: WithRequestTarget<IRequestOptions, 'uri'> = {

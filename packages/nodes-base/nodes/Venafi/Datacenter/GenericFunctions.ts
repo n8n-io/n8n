@@ -8,14 +8,9 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { OperationalError } from 'n8n-workflow';
-=======
-import { OperationalError } from '@n8n/errors';
-import { requestUrl } from 'n8n-workflow';
+import { OperationalError, requestUrl } from 'n8n-workflow';
 
 import { parseNextPageLink } from '../parseNextPageLink';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

@@ -66,16 +66,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-<<<<<<< HEAD
-import { ProjectScopeService, UrlService } from '@n8n/backend-services';
-=======
-import {
-	CredentialsFinderService,
-	NodeTypesProxy,
-	ProjectScopeService,
-	UrlService,
-} from '@n8n/backend-services';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
+import { CredentialsFinderService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 

@@ -1,9 +1,5 @@
 import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
-<<<<<<< HEAD
-=======
-import { isBaseMessage } from '@langchain/core/messages';
 import { isRecord } from '@n8n/utils/is-record';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import isObject from 'lodash/isObject';
 import pick from 'lodash/pick';
 import type { EngineRequest, IDataObject } from 'n8n-workflow';

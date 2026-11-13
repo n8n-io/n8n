@@ -2997,37 +2997,6 @@ export class Github implements INodeType {
 
 						endpoint = requestPath`/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews/${reviewId}`;
 					}
-<<<<<<< HEAD
-=======
-				} else if (resource === 'secret') {
-					if (operation === 'createOrUpdate') {
-						// ----------------------------------
-						//         createOrUpdate
-						// ----------------------------------
-						requestMethod = 'PUT';
-
-						const secretName = this.getNodeParameter('secretName', i) as string;
-						const secretValue = this.getNodeParameter('secretValue', i) as string;
-
-						const secretNameError = validateSecretName(secretName);
-						if (secretNameError) {
-							throw new NodeOperationError(this.getNode(), secretNameError, { itemIndex: i });
-						}
-
-						// First, get the repository's public key for encryption
-						const { key_id, key } = await getRepositoryPublicKey.call(this, owner, repository);
-
-						// Encrypt the secret value using the public key
-						const encryptedValue = await encryptSecret(secretValue, key);
-
-						body = {
-							encrypted_value: encryptedValue,
-							key_id,
-						};
-
-						endpoint = requestPath`/repos/${owner}/${repository}/actions/secrets/${secretName}`;
-					}
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 				} else if (resource === 'user') {
 					if (operation === 'getRepositories') {
 						// ----------------------------------

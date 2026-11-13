@@ -11,12 +11,6 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type {
-<<<<<<< HEAD
-	ProjectRelationRepository,
-	TransactionRunner,
-	User,
-	WorkflowRepository,
-=======
 	CredentialsFinderService,
 	EventService,
 	ProjectScopeService,
@@ -25,11 +19,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_MEMBER_ROLE,
 	type ProjectRelationRepository,
-	type TagEntity,
 	type TransactionRunner,
 	type User,
 	type WorkflowRepository,
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';

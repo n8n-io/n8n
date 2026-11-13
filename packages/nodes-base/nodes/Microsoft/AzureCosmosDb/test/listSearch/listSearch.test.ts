@@ -1,14 +1,9 @@
-<<<<<<< HEAD
 import {
 	OperationalError,
+	requestUrl,
 	type IGetNodeParameterOptions,
 	type ILoadOptionsFunctions,
 } from 'n8n-workflow';
-=======
-import { OperationalError } from '@n8n/errors';
-import type { IGetNodeParameterOptions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 import { AzureCosmosDb } from '../../AzureCosmosDb.node';
 import { HeaderConstants } from '../../helpers/constants';

@@ -2,17 +2,12 @@ import type { AgentDefinitionService } from '@/modules/agents/agent-definition.s
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
-<<<<<<< HEAD
-import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
-=======
 import {
 	CredentialsFinderService,
 	type EventService,
-	NodeTypesProxy,
 	ProjectScopeService,
 	UrlService,
 } from '@n8n/backend-services';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GLOBAL_MEMBER_ROLE, User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';

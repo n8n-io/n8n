@@ -1,12 +1,8 @@
 import {
 	NodeApiError,
 	NodeOperationError,
-<<<<<<< HEAD
-	OperationalError,
-=======
 	requestPath,
 	requestUrl,
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INode,

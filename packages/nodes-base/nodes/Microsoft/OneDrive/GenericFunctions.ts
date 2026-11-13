@@ -2,12 +2,8 @@ import { DateTime } from 'luxon';
 import {
 	NodeApiError,
 	NodeOperationError,
-<<<<<<< HEAD
-	OperationalError,
-=======
 	requestPath,
 	requestUrl,
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type IDataObject,
@@ -19,10 +15,6 @@ import {
 	type IPollFunctions,
 	type RequestPath,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-
-=======
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import { validateUserTargetId } from '../GenericFunctions';
 
 /**

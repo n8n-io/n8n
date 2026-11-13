@@ -9,14 +9,7 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { UserError } from 'n8n-workflow';
-
-const BEEMINDER_URI = 'https://www.beeminder.com/api/v1';
-=======
-import { UserError } from '@n8n/errors';
-import { requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
+import { UserError, requestUrl } from 'n8n-workflow';
 
 function isValidAuthenticationMethod(value: unknown): value is 'apiToken' | 'oAuth2' {
 	return typeof value === 'string' && ['apiToken', 'oAuth2'].includes(value);

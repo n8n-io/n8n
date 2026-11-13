@@ -17,10 +17,6 @@ import {
 	requestPath,
 	requestUrl,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { NodeApiError, NodeOperationError, OperationalError } from 'n8n-workflow';
-=======
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 
 export type ExcelCredentialType =
 	| 'microsoftExcelOAuth2Api'

@@ -1,18 +1,13 @@
 import { retryabilityFromError } from '@n8n/backend-network';
-<<<<<<< HEAD
-import { sleep } from '@n8n/utils/sleep';
-import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
 import { sleep } from '@n8n/utils/sleep';
 import {
 	decodePathValue,
 	NodeApiError,
 	NodeOperationError,
+	UserError,
 	requestPath,
 	requestUrl,
 } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
 import type {
 	IAdditionalCredentialOptions,
 	IDataObject,

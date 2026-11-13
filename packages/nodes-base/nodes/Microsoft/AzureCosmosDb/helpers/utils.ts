@@ -6,12 +6,7 @@ import type {
 	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
-<<<<<<< HEAD
-import { jsonParse, NodeOperationError, OperationalError } from 'n8n-workflow';
-=======
-import { OperationalError } from '@n8n/errors';
-import { jsonParse, NodeOperationError, requestPath } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
+import { jsonParse, NodeOperationError, OperationalError, requestPath } from 'n8n-workflow';
 
 import { HeaderConstants } from './constants';
 import { ErrorMap } from './errorHandler';

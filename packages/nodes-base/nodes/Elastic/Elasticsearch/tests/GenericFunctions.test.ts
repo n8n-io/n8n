@@ -1,9 +1,10 @@
-<<<<<<< HEAD
-import { type IExecuteFunctions, NodeApiError, UserError } from 'n8n-workflow';
-=======
-import { UserError } from '@n8n/errors';
-import { type IExecuteFunctions, NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
->>>>>>> 9d82d35c (chore: Bundle/2.x (#43761))
+import {
+	type IExecuteFunctions,
+	NodeApiError,
+	UserError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from '../GenericFunctions';
 
