@@ -114,6 +114,89 @@ describe('ExecutionLedger', () => {
 		});
 	});
 
+	describe('recordCreated', () => {
+		const blocked = { outcome: 'blocked', blockedBy: 'startFailed' };
+		const tombstone = { executionId: 'exec-old', workflowId: 'wf-1', mode: 'trigger' } as const;
+
+		beforeEach(() => ledger.setImplementation(writer));
+
+		it('writes only the started row for a new run', async () => {
+			await ledger.recordCreated({ started: startedFacts, status: 'new' }, txCtx);
+
+			expect(writer.writeStarted).toHaveBeenCalledExactlyOnceWith(startedFacts, txCtx);
+			expect(writer.writeEnded).not.toHaveBeenCalled();
+		});
+
+		it('ends a row created failed as blocked at its stop time', async () => {
+			const stoppedAt = new Date('2026-10-30T10:00:05Z');
+
+			await ledger.recordCreated({ started: startedFacts, status: 'error', stoppedAt }, txCtx);
+
+			expect(writer.writeEnded).toHaveBeenCalledExactlyOnceWith(
+				{ ...startedFacts, ...blocked, occurredAt: stoppedAt },
+				txCtx,
+			);
+		});
+
+		it('writes no ended row when the started row was not recorded', async () => {
+			writer.writeStarted.mockResolvedValue(false);
+
+			await ledger.recordCreated({ started: startedFacts, status: 'error' }, txCtx);
+
+			expect(writer.writeEnded).not.toHaveBeenCalled();
+		});
+
+		it('reports a row created finished with work done and writes no ended row', async () => {
+			await ledger.recordCreated(
+				{ started: startedFacts, status: 'success', startedAt: new Date() },
+				txCtx,
+			);
+
+			expect(writer.writeEnded).not.toHaveBeenCalled();
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					message: 'An execution row was created finished with work done',
+				}),
+			);
+		});
+
+		it('ends a reclaimed tombstone as blocked, with the name and time of the new run', async () => {
+			await ledger.recordCreated(
+				{
+					started: { ...startedFacts, source: 'instance_ai' },
+					status: 'new',
+					reclaimedTombstone: tombstone,
+				},
+				txCtx,
+			);
+
+			expect(writer.writeEnded).toHaveBeenCalledExactlyOnceWith(
+				{ ...startedFacts, ...tombstone, ...blocked, source: undefined },
+				txCtx,
+			);
+			expect(writer.writeStarted).toHaveBeenCalledOnce();
+		});
+
+		it('writes only the tombstone row for a copied run', async () => {
+			await ledger.recordCreated(
+				{ started: startedFacts, status: 'error', isCopy: true, reclaimedTombstone: tombstone },
+				txCtx,
+			);
+
+			expect(writer.writeStarted).not.toHaveBeenCalled();
+			expect(writer.writeEnded).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ executionId: 'exec-old' }),
+				txCtx,
+			);
+		});
+
+		it('rejects a context without a transaction', async () => {
+			await expect(
+				ledger.recordCreated({ started: startedFacts, status: 'new' }, {}),
+			).rejects.toThrow('A ledger insert needs an active transaction');
+		});
+	});
+
 	describe('recordEnded', () => {
 		beforeEach(() => ledger.setImplementation(writer));
 

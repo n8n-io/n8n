@@ -114,7 +114,7 @@ export {
 } from './services/instance-registry-proxy.service';
 export { ExecutingUserIdentifierProxy } from './credentials/executing-user-identifier-proxy';
 export type { IExecutingUserIdentifier } from './credentials/executing-user-identifier.interface';
-export { ExecutionLedger } from './executions/execution-ledger.service';
+export { ExecutionLedger, type CreatedExecution } from './executions/execution-ledger.service';
 export type * from './executions/execution-ledger-writer';
 export { ExecutionRedactionServiceProxy } from './executions/execution-redaction-proxy.service';
 export {

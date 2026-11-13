@@ -542,59 +542,43 @@ describe('ExecutionPersistence', () => {
 
 		describe('execution ledger', () => {
 			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
-			const blocked = { outcome: 'blocked', blockedBy: 'startFailed' };
 			let mockTx: ReturnType<typeof createMockTransaction>;
 
 			beforeEach(() => {
-				executionLedger.recordStarted.mockResolvedValue(true);
 				mockTx = createMockTransaction();
 				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
 			});
 
-			it('writes the started row in the transaction of the execution row', async () => {
-				await persistence.create(createPayload, {}, { source: 'instance_ai' });
+			it('passes the new row to the ledger in its transaction', async () => {
+				const stoppedAt = new Date('2026-11-10T10:00:00Z');
 
-				expect(executionLedger.recordStarted).toHaveBeenCalledExactlyOnceWith(
+				await persistence.create(
+					{ ...createPayload, status: 'error', stoppedAt },
+					{},
+					{ source: 'instance_ai', skipLedger: true },
+				);
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
 					{
-						executionId: 'exec-1',
-						workflowId: 'workflow-123',
-						workflowName: 'Test Workflow',
-						mode: 'manual',
-						source: 'instance_ai',
-						occurredAt: expect.any(Date),
+						started: {
+							executionId: 'exec-1',
+							workflowId: 'workflow-123',
+							workflowName: 'Test Workflow',
+							mode: 'manual',
+							source: 'instance_ai',
+							occurredAt: expect.any(Date),
+						},
+						status: 'error',
+						startedAt: undefined,
+						stoppedAt,
+						isCopy: true,
+						reclaimedTombstone: null,
 					},
 					txCtx,
 				);
-				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
 			});
 
-			it('writes a blocked ended row for a row created finished', async () => {
-				const stoppedAt = new Date('2026-11-10T10:00:00Z');
-
-				await persistence.create({ ...createPayload, status: 'error', stoppedAt });
-
-				expect(executionLedger.recordEndedInTransaction).toHaveBeenCalledExactlyOnceWith(
-					expect.objectContaining({ executionId: 'exec-1', ...blocked, occurredAt: stoppedAt }),
-					txCtx,
-				);
-			});
-
-			it('writes no ended row when the started row was not recorded', async () => {
-				executionLedger.recordStarted.mockResolvedValue(false);
-
-				await persistence.create({ ...createPayload, status: 'error' });
-
-				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
-			});
-
-			it('writes no row for an imported execution', async () => {
-				await persistence.create({ ...createPayload, status: 'error' }, {}, { skipLedger: true });
-
-				expect(executionLedger.recordStarted).not.toHaveBeenCalled();
-				expect(executionLedger.recordEndedInTransaction).not.toHaveBeenCalled();
-			});
-
-			it('writes a blocked ended row for a reclaimed tombstone', async () => {
+			it('passes the reclaimed tombstone to the ledger', async () => {
 				mockTx.findOne.mockResolvedValue({
 					id: 'exec-old',
 					workflowId: 'workflow-123',
@@ -604,21 +588,22 @@ describe('ExecutionPersistence', () => {
 
 				await persistence.create({ ...createPayload, deduplicationKey: 'wf-1:node-1:1' });
 
-				expect(executionLedger.recordEndedInTransaction).toHaveBeenCalledExactlyOnceWith(
-					expect.objectContaining({ executionId: 'exec-old', mode: 'trigger', ...blocked }),
-					txCtx,
-				);
-				expect(executionLedger.recordStarted).toHaveBeenCalledWith(
-					expect.objectContaining({ executionId: 'exec-1' }),
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						reclaimedTombstone: expect.objectContaining({
+							executionId: 'exec-old',
+							workflowId: 'workflow-123',
+							mode: 'trigger',
+						}),
+					}),
 					txCtx,
 				);
 			});
 
-			it('writes no row when the module is off', async () => {
-				await createPersistenceService('db').create({ ...createPayload, status: 'error' });
+			it('does not call the ledger when the module is off', async () => {
+				await createPersistenceService('db').create(createPayload);
 
-				expect(disabledLedger.recordStarted).not.toHaveBeenCalled();
-				expect(disabledLedger.recordEndedInTransaction).not.toHaveBeenCalled();
+				expect(disabledLedger.recordCreated).not.toHaveBeenCalled();
 			});
 		});
 	});

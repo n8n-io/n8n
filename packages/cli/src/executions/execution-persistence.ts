@@ -1,9 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
-import {
-	EventService,
-	ExecutionLedger,
-	type ExecutionLedgerStartedFacts,
-} from '@n8n/backend-services';
+import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -31,11 +27,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowExecutionSource,
 } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	isTerminalExecutionStatus,
-	migrateRunExecutionData,
-} from 'n8n-workflow';
+import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
@@ -160,19 +152,26 @@ export class ExecutionPersistence {
 					{ jsonSizeBytes, binaryDataSizeBytes },
 				);
 
-				await this.recordInLedger(
-					{
-						executionId,
-						workflowId: executionEntity.workflowId,
-						workflowName: workflowData.name,
-						mode: executionEntity.mode,
-						source: options.source,
-						occurredAt: executionEntity.createdAt,
-					},
-					{ ...executionEntity, skipLedger: options.skipLedger },
-					reclaimedTombstone,
-					c,
-				);
+				if (this.executionLedger.isEnabled) {
+					await this.executionLedger.recordCreated(
+						{
+							started: {
+								executionId,
+								workflowId: executionEntity.workflowId,
+								workflowName: workflowData.name,
+								mode: executionEntity.mode,
+								source: options.source,
+								occurredAt: executionEntity.createdAt,
+							},
+							status: executionEntity.status,
+							startedAt: executionEntity.startedAt,
+							stoppedAt: executionEntity.stoppedAt,
+							isCopy: options.skipLedger,
+							reclaimedTombstone,
+						},
+						c,
+					);
+				}
 
 				return executionId;
 			});
@@ -201,37 +200,6 @@ export class ExecutionPersistence {
 			}
 			throw error;
 		}
-	}
-
-	/** A row created finished and a reclaimed tombstone never ran, so both get an `ended blocked` row. */
-	private async recordInLedger(
-		started: ExecutionLedgerStartedFacts,
-		row: { status: ExecutionStatus; stoppedAt?: Date; skipLedger?: true },
-		tombstone: ReclaimedTombstone | null,
-		ctx: OperationContext,
-	): Promise<void> {
-		if (!this.executionLedger.isEnabled) return;
-
-		const blocked = { outcome: 'blocked', blockedBy: 'startFailed' } as const;
-
-		if (tombstone) {
-			// Same dedup key, so the same workflow: the name and the time come from the new run.
-			const { executionId, workflowId, mode } = tombstone;
-			await this.executionLedger.recordEndedInTransaction(
-				{ ...started, ...blocked, executionId, workflowId, mode, source: undefined },
-				ctx,
-			);
-		}
-
-		if (row.skipLedger) return;
-
-		const recorded = await this.executionLedger.recordStarted(started, ctx);
-		if (!recorded || !isTerminalExecutionStatus(row.status)) return;
-
-		await this.executionLedger.recordEndedInTransaction(
-			{ ...started, ...blocked, occurredAt: row.stoppedAt ?? started.occurredAt },
-			ctx,
-		);
 	}
 
 	/**
