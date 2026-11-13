@@ -36,7 +36,11 @@ const TEST_RUN_BLOCKED_NODE_TYPES: ReadonlyMap<string, string> = new Map([
 		HOST_FILES,
 	),
 	...blockAll(['emailReadImap', 'crateDb', 'questDb', 'timescaleDb', 'oracleDatabase'], NO_HTTP),
+	// The sub-workflow gets a fresh additionalData without the test run's hooks, so only this
+	// entry keeps it from running for real.
 	...blockAll(['executeWorkflow'], 'Nested workflows do not run under the test run yet.'),
+	// A paused workflow resumes later without the test run's hooks and would run for real.
+	...blockAll(['wait', 'form'], 'This node pauses the workflow, which a test run cannot resume.'),
 ]);
 
 /**

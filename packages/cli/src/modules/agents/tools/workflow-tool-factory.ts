@@ -37,7 +37,7 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -66,6 +66,11 @@ import {
 import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import {
+	assertInstrumentedRunStaysOnMain,
+	InstrumentedRunUnsupportedError,
+	PAUSED_INSTRUMENTED_RUN_MESSAGE,
+} from './instrumented-run-guard';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
@@ -350,11 +355,14 @@ export async function executeWorkflow(
 		}),
 	};
 
-	// Eval runs decorate the sub-execution's additionalData (HTTP mock handler,
-	// mocked credentials helper). The closure does not survive queue
-	// serialization — eval callers refuse queue mode upfront.
+	// Test runs and evals decorate the sub-execution's additionalData (HTTP mock
+	// handler, node guard, credentials helper). The closure only applies in this
+	// main process, so a run that would go to a queue worker or Engine v2 is
+	// refused here, before it starts.
 	const instrument = context.instrumentToolAdditionalData;
+	const instrumented = Boolean(instrument && instrumentedToolName);
 	if (instrument && instrumentedToolName) {
+		assertInstrumentedRunStaysOnMain(workflow, context.executionMode);
 		runData.configureAdditionalData = (additionalData) => {
 			instrument(additionalData, { toolName: instrumentedToolName, toolKind: 'workflow' });
 		};
@@ -420,6 +428,10 @@ export async function executeWorkflow(
 			completedRun && context.executionMode === 'integrated'
 				? formatResult(executionId, completedRun.status, completedRun.data, allOutputs)
 				: await extractResult(executionId, allOutputs);
+		if (instrumented && result.status === 'waiting') {
+			await stopPausedInstrumentedRun(executionId, workflow.id);
+			throw new InstrumentedRunUnsupportedError(PAUSED_INSTRUMENTED_RUN_MESSAGE);
+		}
 		if (isWorkflowToolResponse(webhookResponse)) {
 			const response = await Container.get(WebhookResponseRelay).restoreOffloadedBody(
 				webhookResponse,
@@ -432,6 +444,28 @@ export async function executeWorkflow(
 		}
 		return result;
 	});
+}
+
+/**
+ * A paused run would resume later (Wait Tracker, resume webhook) with a fresh
+ * additionalData and none of the instrumentation, so it is stopped now.
+ */
+async function stopPausedInstrumentedRun(executionId: string, workflowId: string): Promise<void> {
+	try {
+		const { ExecutionService } = await import('@/executions/execution.service.js');
+		await Container.get(ExecutionService).stop(executionId, [workflowId]);
+	} catch (error) {
+		// Not reported as a safe refusal: the paused run may still resume for real.
+		Container.get(Logger).error('Failed to stop a paused instrumented workflow run', {
+			executionId,
+			workflowId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		throw new UnexpectedError(
+			`The workflow paused, and its execution ${executionId} could not be stopped. Stop it in the executions list.`,
+			{ cause: error },
+		);
+	}
 }
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */
