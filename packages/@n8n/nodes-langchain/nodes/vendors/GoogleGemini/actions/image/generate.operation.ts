@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
+import { assertResponseHasCandidates } from '../../helpers/candidates';
 import {
 	type GenerateContentRequest,
 	type GenerateContentResponse,
@@ -110,6 +111,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				body,
 			},
 		)) as GenerateContentResponse;
+
+		assertResponseHasCandidates(response);
+
 		const promises = response.candidates.map(async (candidate) => {
 			const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
 			const mimeType = imagePart?.inlineData.mimeType;
