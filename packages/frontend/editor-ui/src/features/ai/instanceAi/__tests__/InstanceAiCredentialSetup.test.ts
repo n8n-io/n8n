@@ -14,6 +14,7 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
+import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 
 // Toggleable state for the "Set up automatically" switch and easy-setup detection.
 const experiment = vi.hoisted(() => ({ enabled: false }));
@@ -573,6 +574,32 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
+
+		it.each([
+			['the current runtime', undefined, 'instance-ai'],
+			['an Assistant agent thread', 'agents', 'agents'],
+		] as const)(
+			'reports the runtime of %s with the input',
+			async (_name, providedRuntime, expectedRuntime) => {
+				mockTelemetryTrack.mockReset();
+				const { getByTestId } = renderComponent({
+					props: {
+						credentialRequests: makeCredentialRequestsWithExisting(1),
+						message: 'Set up credentials',
+					},
+					...(providedRuntime
+						? { global: { provide: { [ASSISTANT_RUNTIME as symbol]: providedRuntime } } }
+						: {}),
+				});
+
+				await userEvent.click(getByTestId('credential-picker'));
+
+				expect(mockTelemetryTrack).toHaveBeenCalledWith(
+					'User finished providing input',
+					expect.objectContaining({ type: 'credential-setup', runtime: expectedRuntime }),
+				);
+			},
+		);
 
 		// INS-361: when the user asked for a new credential, the sole existing one
 		// must not be preselected — let alone auto-submitted before they see the card.
