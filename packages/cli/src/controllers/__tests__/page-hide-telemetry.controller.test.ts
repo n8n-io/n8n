@@ -21,18 +21,20 @@ describe('PageHideTelemetryController', () => {
 	});
 	const res = mock<Response>();
 	const allowed = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN;
+	const turn = { turn_number: 2, turn_has_artifact: true };
 
 	beforeEach(() => vi.clearAllMocks());
 
 	it('tracks an allowed event with the id of the signed-in user', () => {
 		controller.track(req, res, {
 			event: allowed.name,
-			properties: { thread_id: 'thread-1', is_awaiting_user: true },
+			properties: { thread_id: 'thread-1', is_awaiting_user: true, ...turn },
 		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
 			is_awaiting_user: expect.any(Boolean),
+			...turn,
 			user_id: 'user-1',
 		});
 	});
@@ -40,12 +42,18 @@ describe('PageHideTelemetryController', () => {
 	it('ignores a user id that the client sends', () => {
 		controller.track(req, res, {
 			event: allowed.name,
-			properties: { thread_id: 'thread-1', is_awaiting_user: false, user_id: 'someone-else' },
+			properties: {
+				thread_id: 'thread-1',
+				is_awaiting_user: false,
+				...turn,
+				user_id: 'someone-else',
+			},
 		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
 			is_awaiting_user: expect.any(Boolean),
+			...turn,
 			user_id: 'user-1',
 		});
 	});
@@ -53,12 +61,13 @@ describe('PageHideTelemetryController', () => {
 	it('drops properties that the event does not define', () => {
 		controller.track(req, res, {
 			event: allowed.name,
-			properties: { thread_id: 'thread-1', is_awaiting_user: false, extra: 'ignored' },
+			properties: { thread_id: 'thread-1', is_awaiting_user: false, ...turn, extra: 'ignored' },
 		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(allowed, {
 			thread_id: 'thread-1',
 			is_awaiting_user: expect.any(Boolean),
+			...turn,
 			user_id: 'user-1',
 		});
 	});
@@ -67,7 +76,7 @@ describe('PageHideTelemetryController', () => {
 		expect(() =>
 			controller.track(reqWithoutScope, res, {
 				event: allowed.name,
-				properties: { thread_id: 'thread-1', is_awaiting_user: false },
+				properties: { thread_id: 'thread-1', is_awaiting_user: false, ...turn },
 			}),
 		).toThrow(ForbiddenError);
 		expect(telemetry.track).not.toHaveBeenCalled();

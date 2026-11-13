@@ -47,6 +47,20 @@ const isAwaitingUser = z
 	.boolean()
 	.describe('The run is paused until the user answers a confirmation or question');
 
+/** The current turn of the thread when the event fires. Shared by the away events. */
+const currentTurnProps = {
+	turn_number: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('The current turn: the user messages in the thread so far. The first message is 1'),
+	turn_has_artifact: z
+		.boolean()
+		.describe(
+			'The agent built, changed or opened an artifact in the current turn so far. A resource that the user attached to the message does not count',
+		),
+};
+
 /** The runtimes that run an n8n Assistant thread. */
 export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
 export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
@@ -916,7 +930,11 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		name: 'User left AI Assistant thread with an active run',
 		description:
 			'The user left an n8n Assistant thread, for another thread or another page in n8n, while a run was active in it. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question.',
-		properties: z.object({ thread_id: z.string(), is_awaiting_user: isAwaitingUser }),
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
+		}),
 	},
 	USER_RETURNED_TO_AI_ASSISTANT_THREAD: {
 		name: 'User returned to AI Assistant thread',
@@ -927,6 +945,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			is_awaiting_user: isAwaitingUser.describe(
 				'Whether the run is paused until the user answers, when the user returns. Read after the thread has loaded, so it can differ from the value on the leave event',
 			),
+			...currentTurnProps,
 			time_away_ms: z
 				.number()
 				.int()
@@ -941,6 +960,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			thread_id: z.string(),
 			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
 			user_id: z.string(),
 		}),
 	},
@@ -953,6 +973,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			is_awaiting_user: isAwaitingUser.describe(
 				'Whether the run is paused until the user answers, when the tab becomes visible. It can differ from the value on the leave event',
 			),
+			...currentTurnProps,
 			time_away_ms: z
 				.number()
 				.int()

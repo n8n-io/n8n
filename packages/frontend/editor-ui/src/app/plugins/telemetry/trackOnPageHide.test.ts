@@ -17,7 +17,12 @@ describe('trackOnPageHide', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	it('sends an authenticated request that survives the page closing', () => {
-		trackOnPageHide(context, event, { thread_id: 'thread-1', is_awaiting_user: false });
+		trackOnPageHide(context, event, {
+			thread_id: 'thread-1',
+			is_awaiting_user: false,
+			turn_number: 1,
+			turn_has_artifact: false,
+		});
 
 		expect(fetchMock).toHaveBeenCalledWith('http://localhost:5678/rest/telemetry/page-hide', {
 			method: 'POST',
@@ -26,7 +31,12 @@ describe('trackOnPageHide', () => {
 			headers: { 'browser-id': getBrowserId(), 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				event: event.name,
-				properties: { thread_id: 'thread-1', is_awaiting_user: false },
+				properties: {
+					thread_id: 'thread-1',
+					is_awaiting_user: false,
+					turn_number: 1,
+					turn_has_artifact: false,
+				},
 			}),
 		});
 	});
@@ -35,7 +45,12 @@ describe('trackOnPageHide', () => {
 		fetchMock.mockRejectedValue(new Error('network down'));
 
 		expect(() =>
-			trackOnPageHide(context, event, { thread_id: 'thread-1', is_awaiting_user: false }),
+			trackOnPageHide(context, event, {
+				thread_id: 'thread-1',
+				is_awaiting_user: false,
+				turn_number: 1,
+				turn_has_artifact: false,
+			}),
 		).not.toThrow();
 		await Promise.resolve();
 	});

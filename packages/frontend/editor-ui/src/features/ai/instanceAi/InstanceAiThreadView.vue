@@ -30,6 +30,7 @@ import {
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from './assistantTurn';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -84,6 +85,7 @@ useAssistantAwayTelemetry({
 	isRunning: () => thread.isStreaming || thread.isSendingMessage,
 	isAwaitingUser: () => thread.isAwaitingUserInput,
 	isReady: () => thread.hydrationStatus === 'ready',
+	turn: () => getCurrentTurn(thread.artifactTurns),
 });
 const rootStore = useRootStore();
 const i18n = useI18n();

@@ -3,6 +3,7 @@ import { render } from '@testing-library/vue';
 import { defineComponent, h, nextTick, ref, useTemplateRef } from 'vue';
 
 import { trackOnPageHide } from '@/app/plugins/telemetry/trackOnPageHide';
+import type { AssistantTurnTelemetry } from '../assistantTurn';
 import { useAssistantAwayTelemetry } from './useAssistantAwayTelemetry';
 
 const track = vi.fn();
@@ -26,11 +27,14 @@ vi.mock('vue-router', () => ({
 
 const { INSTANCE_AI } = TELEMETRY_EVENT;
 
+const DEFAULT_TURN: AssistantTurnTelemetry = { turn_number: 1, turn_has_artifact: false };
+
 function mountHarness(
 	threadId: string,
 	isRunning: { value: boolean },
 	isAwaitingUser: { value: boolean } = { value: false },
 	isReady: { value: boolean } = { value: true },
+	turn: { value: AssistantTurnTelemetry } = { value: DEFAULT_TURN },
 ) {
 	routeParams.value = { threadId };
 	return render(
@@ -41,6 +45,7 @@ function mountHarness(
 					isRunning: () => isRunning.value,
 					isAwaitingUser: () => isAwaitingUser.value,
 					isReady: () => isReady.value,
+					turn: () => turn.value,
 				});
 				return () => h('div');
 			},
@@ -75,6 +80,7 @@ describe('useAssistantAwayTelemetry', () => {
 				{
 					thread_id: 't-leave',
 					is_awaiting_user: false,
+					...DEFAULT_TURN,
 				},
 			);
 		});
@@ -94,6 +100,7 @@ describe('useAssistantAwayTelemetry', () => {
 						isRunning: () => child.value?.isStreaming ?? false,
 						isAwaitingUser: () => false,
 						isReady: () => true,
+						turn: () => DEFAULT_TURN,
 					});
 					return () => h(Child, { ref: 'child' });
 				},
@@ -108,6 +115,7 @@ describe('useAssistantAwayTelemetry', () => {
 				{
 					thread_id: 't-ref',
 					is_awaiting_user: false,
+					...DEFAULT_TURN,
 				},
 			);
 		});
@@ -139,6 +147,7 @@ describe('useAssistantAwayTelemetry', () => {
 			expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD, {
 				thread_id: 't-return',
 				is_awaiting_user: false,
+				...DEFAULT_TURN,
 				time_away_ms: 5000,
 			});
 		});
@@ -153,6 +162,7 @@ describe('useAssistantAwayTelemetry', () => {
 				{
 					thread_id: 't-await',
 					is_awaiting_user: true,
+					...DEFAULT_TURN,
 				},
 			);
 		});
@@ -167,7 +177,7 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(track).toHaveBeenCalledWith(
 				INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD,
-				expect.objectContaining({ thread_id: 't-now', is_awaiting_user: false }),
+				expect.objectContaining({ thread_id: 't-now', is_awaiting_user: false, ...DEFAULT_TURN }),
 			);
 		});
 
@@ -192,6 +202,7 @@ describe('useAssistantAwayTelemetry', () => {
 				expect(track).toHaveBeenCalledWith(INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD, {
 					thread_id: 't-load',
 					is_awaiting_user: true,
+					...DEFAULT_TURN,
 					// Counted until the user came back, not until the thread loaded.
 					time_away_ms: 2000,
 				});
@@ -218,7 +229,7 @@ describe('useAssistantAwayTelemetry', () => {
 			expect(trackOnPageHide).toHaveBeenCalledWith(
 				{ baseUrl: '/rest' },
 				INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
-				{ thread_id: 't-tab', is_awaiting_user: false },
+				{ thread_id: 't-tab', is_awaiting_user: false, ...DEFAULT_TURN },
 			);
 			// The backend emits this event, so the SDK must not send it a second time.
 			expect(track).not.toHaveBeenCalled();
@@ -231,7 +242,7 @@ describe('useAssistantAwayTelemetry', () => {
 			expect(trackOnPageHide).toHaveBeenCalledWith(
 				{ baseUrl: '/rest' },
 				INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
-				{ thread_id: 't-tab-await', is_awaiting_user: true },
+				{ thread_id: 't-tab-await', is_awaiting_user: true, ...DEFAULT_TURN },
 			);
 		});
 
@@ -246,7 +257,11 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(track).toHaveBeenLastCalledWith(
 				INSTANCE_AI.USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
-				expect.objectContaining({ thread_id: 't-tab-now', is_awaiting_user: false }),
+				expect.objectContaining({
+					thread_id: 't-tab-now',
+					is_awaiting_user: false,
+					...DEFAULT_TURN,
+				}),
 			);
 		});
 
@@ -268,7 +283,7 @@ describe('useAssistantAwayTelemetry', () => {
 
 			expect(track).toHaveBeenLastCalledWith(
 				INSTANCE_AI.USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
-				{ thread_id: 't-tab-back', is_awaiting_user: false, time_away_ms: 3000 },
+				{ thread_id: 't-tab-back', is_awaiting_user: false, ...DEFAULT_TURN, time_away_ms: 3000 },
 			);
 		});
 
@@ -289,6 +304,85 @@ describe('useAssistantAwayTelemetry', () => {
 			setTabHidden(true);
 
 			expect(trackOnPageHide).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('current turn', () => {
+		const turn = (turn_number: number, turn_has_artifact: boolean) => ({
+			value: { turn_number, turn_has_artifact },
+		});
+
+		it('reports the turn when the user leaves the thread', () => {
+			const first = mountHarness(
+				't-turn-leave',
+				{ value: true },
+				{ value: false },
+				{ value: true },
+				turn(3, true),
+			);
+			routeParams.value = { threadId: 'other' };
+			first.unmount();
+
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN,
+				{
+					thread_id: 't-turn-leave',
+					is_awaiting_user: false,
+					turn_number: 3,
+					turn_has_artifact: true,
+				},
+			);
+		});
+
+		it('reports the turn when the user returns to the thread, not the turn when the user left', () => {
+			const first = mountHarness(
+				't-turn-return',
+				{ value: true },
+				{ value: false },
+				{ value: true },
+				turn(2, false),
+			);
+			routeParams.value = { threadId: 'other' };
+			first.unmount();
+
+			mountHarness(
+				't-turn-return',
+				{ value: true },
+				{ value: false },
+				{ value: true },
+				turn(3, true),
+			);
+
+			expect(track).toHaveBeenCalledWith(
+				INSTANCE_AI.USER_RETURNED_TO_AI_ASSISTANT_THREAD,
+				expect.objectContaining({ turn_number: 3, turn_has_artifact: true }),
+			);
+		});
+
+		it('reports the turn when the tab is hidden and when it is visible again', () => {
+			const current = turn(2, false);
+			mountHarness('t-turn-tab', { value: true }, { value: false }, { value: true }, current);
+			setTabHidden(true);
+
+			expect(trackOnPageHide).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				{
+					thread_id: 't-turn-tab',
+					is_awaiting_user: false,
+					turn_number: 2,
+					turn_has_artifact: false,
+				},
+			);
+
+			// The agent builds a workflow while the user is away.
+			current.value = { turn_number: 2, turn_has_artifact: true };
+			setTabHidden(false);
+
+			expect(track).toHaveBeenLastCalledWith(
+				INSTANCE_AI.USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN,
+				expect.objectContaining({ turn_number: 2, turn_has_artifact: true }),
+			);
 		});
 	});
 });

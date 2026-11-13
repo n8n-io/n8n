@@ -9,6 +9,7 @@ import type {
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -105,6 +106,7 @@ useAssistantAwayTelemetry({
 	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
 	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
 	isReady: () => panel.value?.isLoadingHistory === false,
+	turn: () => getCurrentTurn(thread.artifactTurns),
 });
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
