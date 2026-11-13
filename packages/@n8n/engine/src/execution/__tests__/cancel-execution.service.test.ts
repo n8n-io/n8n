@@ -43,6 +43,8 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 			.fn()
 			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 		...overrides,
 	};

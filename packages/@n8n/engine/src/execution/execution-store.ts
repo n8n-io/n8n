@@ -52,6 +52,12 @@ export type ExecutionRecord = BaseExecutionRecord & {
 	finishedAt: Date | null;
 };
 
+/** An execution that is still `queued` after its `stale_after` time. */
+export interface StaleQueuedExecution {
+	id: string;
+	staleAfter: Date;
+}
+
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
 	constructor(readonly executionId: string) {
@@ -103,6 +109,19 @@ export interface ExecutionStore {
 	 * or `null` when the execution had already ended.
 	 */
 	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
+
+	/**
+	 * The executions that are `queued` and whose `stale_after` time is `at` or
+	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
+	 */
+	findStaleQueuedExecutions(at: Date, limit: number): Promise<StaleQueuedExecution[]>;
+
+	/**
+	 * Gives a `queued` execution a new `stale_after` time. A compare-and-set on
+	 * the status and on the `staleAfter` value that the caller read, so only one
+	 * of several concurrent callers gets `true`.
+	 */
+	renewQueuedExecution(id: string, staleAfter: Date): Promise<boolean>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when
