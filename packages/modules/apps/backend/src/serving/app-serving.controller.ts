@@ -36,6 +36,7 @@ export class AppServingController {
 		const config = {
 			planUrl: '/plan.json',
 			editorUrl: this.preview.editorOrigin,
+			parentOrigin: this.preview.editorOrigin,
 			projectId,
 			progress: 'parent' as const,
 		};

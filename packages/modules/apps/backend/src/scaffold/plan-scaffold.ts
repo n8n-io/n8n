@@ -1,6 +1,5 @@
 import {
 	WIREFRAME_CSS,
-	WIREFRAME_FONT_URL,
 	renderDetailModule,
 	renderWireframeBody,
 	type AppPlan,
@@ -40,7 +39,7 @@ export function createPlanScaffold(
 			'',
 		].join('\n'),
 	);
-	add('src/plan/wireframe.css', `@import url('${WIREFRAME_FONT_URL}');\n${WIREFRAME_CSS}`);
+	add('src/plan/wireframe.css', WIREFRAME_CSS);
 	add('src/style.css', '* { box-sizing: border-box; }\nbody { margin: 0; }\n');
 	add('src/plan/details.js', renderDetailModule(plan));
 	add('public/plan.json', JSON.stringify(plan, null, 2) + '\n');

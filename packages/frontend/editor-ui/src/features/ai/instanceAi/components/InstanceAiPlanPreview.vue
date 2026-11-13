@@ -2,6 +2,7 @@
 import {
 	PLAN_OVERLAY_MESSAGE_SOURCE,
 	listPlanComponents,
+	postPlanFrameContext,
 	renderWireframeDocument,
 	type AppPlan,
 } from '@n8n/api-types';
@@ -28,11 +29,20 @@ const frame = useTemplateRef<HTMLIFrameElement>('frame');
 const selecting = ref(false);
 
 const srcdoc = computed(() =>
-	renderWireframeDocument(props.plan, { selectable: true }, { theme: props.theme }),
+	renderWireframeDocument(
+		props.plan,
+		{ selectable: true, parentOrigin: window.location.origin },
+		{ theme: props.theme },
+	),
 );
 
 function post(type: 'select:enable' | 'select:disable' | 'select:clear') {
 	frame.value?.contentWindow?.postMessage({ source: PLAN_OVERLAY_MESSAGE_SOURCE, type }, '*');
+}
+
+// The frame has no origin (sandbox without `allow-same-origin`), so messages to it use `*`.
+function onFrameLoad() {
+	if (frame.value?.contentWindow) void postPlanFrameContext(frame.value.contentWindow, '*');
 }
 
 function toggleSelect() {
@@ -101,6 +111,7 @@ onBeforeUnmount(() => window.removeEventListener('message', onMessage));
 			:class="$style.frame"
 			:srcdoc="srcdoc"
 			sandbox="allow-scripts allow-popups"
+			@load="onFrameLoad"
 			:title="i18n.baseText('instanceAi.appPlan.title', { interpolate: { name } })"
 			data-test-id="instance-ai-plan-frame"
 		/>

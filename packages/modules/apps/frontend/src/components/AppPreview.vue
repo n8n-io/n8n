@@ -3,6 +3,7 @@ import {
 	APP_INSPECTOR_MESSAGE_SOURCE,
 	PLAN_OVERLAY_MESSAGE_SOURCE,
 	appInspectorEventSchema,
+	postPlanFrameContext,
 	type AppPreviewElement,
 	type AppResponse,
 	type AppVersionResponse,
@@ -99,9 +100,13 @@ const currentPageName = computed(
 		planPages.value.find((page) => page.id === planPage.value)?.name ?? planPages.value[0]?.name,
 );
 
+// The page the user picked. A new version reloads the frame, and this brings the user back to it.
+const pickedPage = ref<string>();
+
 function openPlanPage(pageId: string) {
 	if (!previewOrigin.value) return;
 	planPage.value = pageId;
+	pickedPage.value = pageId;
 	frame.value?.contentWindow?.postMessage(
 		{ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'page', pageId },
 		previewOrigin.value,
@@ -210,7 +215,10 @@ function postBuilding() {
 
 function onFrameLoad() {
 	if (inspecting.value) postInspectCommand('inspect:enable');
+	const target = frame.value?.contentWindow;
+	if (target && previewOrigin.value) void postPlanFrameContext(target, previewOrigin.value);
 	if (props.buildingPlanId) postBuilding();
+	if (pickedPage.value) openPlanPage(pickedPage.value);
 }
 
 function readPlanProgress(data: unknown) {
@@ -240,6 +248,9 @@ function readPlanProgress(data: unknown) {
 			: [],
 	);
 	planPage.value = 'page' in data && typeof data.page === 'string' ? data.page : undefined;
+	// The user opened a page in the frame, for example with "Go to page".
+	if ('following' in data && data.following === false && planPage.value)
+		pickedPage.value = planPage.value;
 	return true;
 }
 
@@ -257,7 +268,14 @@ function onKeyDown(event: KeyboardEvent) {
 	if (event.key === 'Escape' && inspecting.value) setInspecting(false);
 }
 
-watch(() => props.buildingPlanId, postBuilding);
+// The next part may be on another page: the preview follows the build again.
+watch(
+	() => props.buildingPlanId,
+	() => {
+		pickedPage.value = undefined;
+		postBuilding();
+	},
+);
 // A new version may come without a plan, so wait for the overlay to report again.
 watch(
 	() => preview.value?.url,

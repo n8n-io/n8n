@@ -203,12 +203,16 @@ export function sanitizeDetailHtml(html: string): string {
 		.replace(/(href|src|action|formaction)\s*=\s*("|')?\s*javascript:[^"'\s>]*("|')?/gi, '$1="#"');
 }
 
+/** The font of the n8n editor. The editor sends the font file into the frame (see `postPlanFrameContext`). */
+export const PLAN_FONT_FAMILY =
+	"'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
 /** Base styles inside the shadow root of a detailed part. */
 const DETAIL_BASE_CSS =
 	':host{display:block;position:relative}' +
 	'.wf-sample{position:absolute;top:-9px;right:12px;z-index:2;padding:1px 7px;border-radius:999px;background:#fff4e5;' +
 	'color:#b25e00;font:600 10px/16px system-ui,sans-serif;pointer-events:none}' +
-	'.wf-hifi-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:400}' +
+	`.wf-hifi-body{font-family:${PLAN_FONT_FAMILY};font-weight:400}` +
 	'.wf-states-radio{position:absolute;opacity:0;pointer-events:none}' +
 	'.wf-states{position:absolute;top:-11px;left:10px;z-index:2;display:flex;gap:2px;padding:2px;border-radius:999px;' +
 	'background:var(--wf-panel,#fff);border:1px solid var(--wf-line-soft,#d6d6d2);font:500 10.5px/16px system-ui,sans-serif}' +
@@ -417,16 +421,13 @@ export function renderWireframeBody(plan: AppPlan, options: WireframeRenderOptio
 		.join('\n');
 }
 
-export const WIREFRAME_FONT_URL =
-	'https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&display=swap';
-
 /** Shell styles (the paper look) and block styles. Block styles stay after the shell is built. */
 export const WIREFRAME_CSS = `
 .wf-app, .wf-block {
   --wf-ink: #2b2b2b; --wf-ink-soft: #6f6f6f; --wf-ink-faint: #a8a8a8;
   --wf-paper: #fbfbf9; --wf-panel: #ffffff; --wf-line: #2b2b2b; --wf-line-soft: #c9c9c9; --wf-wash: #f0efeb;
   --wf-mid-filter: grayscale(1);
-  --wf-font: 'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
+  --wf-font: ${PLAN_FONT_FAMILY};
 }
 @media (prefers-color-scheme: dark) { .wf-theme-both {
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
@@ -436,7 +437,7 @@ export const WIREFRAME_CSS = `
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
   --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e;
   --wf-mid-filter: grayscale(1) invert(0.86) hue-rotate(180deg); }
-.wf-app { font-family: var(--wf-font); font-weight: 300; font-size: 13px; color: var(--wf-ink); background: var(--wf-paper);
+.wf-app { font-family: var(--wf-font); font-weight: 400; font-size: 13px; color: var(--wf-ink); background: var(--wf-paper);
   min-height: 100vh; display: flex; flex-direction: column; }
 .wf-app.wf-layout-sidebar { flex-direction: row; }
 .wf-app *, .wf-block * { box-sizing: border-box; }
@@ -462,7 +463,7 @@ export const WIREFRAME_CSS = `
 .wf-inside > .wf-block { box-shadow: none; }
 .wf-grid { flex: 1; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
 .wf-aside { width: 32%; display: flex; flex-direction: column; gap: 14px; }
-.wf-block { font-family: var(--wf-font); font-weight: 300; font-size: 13px; color: var(--wf-ink); background: var(--wf-panel);
+.wf-block { font-family: var(--wf-font); font-weight: 400; font-size: 13px; color: var(--wf-ink); background: var(--wf-panel);
   border: 2px solid var(--wf-line); border-radius: 10px; box-shadow: 4px 4px 0 var(--wf-wash); padding: 10px 12px; min-width: 0; }
 .wf-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .wf-label { font-weight: 400; font-size: 14px; flex: 1; }
@@ -579,28 +580,26 @@ export const PLAN_OVERLAY_CSS = `
   background: linear-gradient(100deg, transparent 20%, rgba(255,109,90,.18) 50%, transparent 80%); background-size: 200% 100%;
   animation: plan-ov-shimmer 1.4s linear infinite; }
 @keyframes plan-ov-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-@media (prefers-color-scheme: dark) {
-  .plan-ov-tip { background: #232325; color: #e6e6e8; border-color: rgba(255, 255, 255, .1);
-    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4); }
-  .plan-ov-tip.pinned { box-shadow: 0 0 0 2px #ff6d5a, 0 12px 32px -8px rgba(0, 0, 0, .6); }
-  .plan-ov-kind { background: rgba(255, 109, 90, .16); color: #ff8a78; }
-  .plan-ov-st { background: #2f2f32; color: #a9adb3; }
-  .plan-ov-st.building { background: rgba(255, 170, 60, .14); color: #ffb35c; }
-  .plan-ov-st.built { background: rgba(60, 190, 110, .14); color: #6fd39a; }
-  .plan-ov-st.detailed { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
-  .plan-ov-sec, .plan-ov-foot { border-top-color: #333336; }
-  .plan-ov-foot { background: #1d1d1f; }
-  .plan-ov-chip, .plan-ov-field { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
-  .plan-ov-new { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
-  .plan-ov-text { color: #c4c6ca; }
-  .plan-ov-detail { background: rgba(255, 109, 90, .12); border-color: rgba(255, 109, 90, .4); color: #ff8a78; }
-  .plan-ov-detail:hover:not([disabled]) { background: rgba(255, 109, 90, .2); }
-  .plan-ov-secondary, .plan-ov-go { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
-  .plan-ov-secondary:hover:not([disabled]), .plan-ov-go:hover { background: #343437; }
-  .plan-ov-go, .plan-ov-foot a { color: #ff8a78; }
-  .plan-ov-bar { background: rgba(30, 30, 32, .94); border-bottom-color: #333336; color: #ddd; }
-  .plan-ov-bar .track { background: #3a3a3d; }
-}
+.plan-ov-dark .plan-ov-tip { background: #232325; color: #e6e6e8; border-color: rgba(255, 255, 255, .1);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4); }
+.plan-ov-dark .plan-ov-tip.pinned { box-shadow: 0 0 0 2px #ff6d5a, 0 12px 32px -8px rgba(0, 0, 0, .6); }
+.plan-ov-dark .plan-ov-kind { background: rgba(255, 109, 90, .16); color: #ff8a78; }
+.plan-ov-dark .plan-ov-st { background: #2f2f32; color: #a9adb3; }
+.plan-ov-dark .plan-ov-st.building { background: rgba(255, 170, 60, .14); color: #ffb35c; }
+.plan-ov-dark .plan-ov-st.built { background: rgba(60, 190, 110, .14); color: #6fd39a; }
+.plan-ov-dark .plan-ov-st.detailed { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
+.plan-ov-dark .plan-ov-sec, .plan-ov-dark .plan-ov-foot { border-top-color: #333336; }
+.plan-ov-dark .plan-ov-foot { background: #1d1d1f; }
+.plan-ov-dark .plan-ov-chip, .plan-ov-dark .plan-ov-field { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
+.plan-ov-dark .plan-ov-new { background: rgba(150, 110, 255, .16); color: #b9a0ff; }
+.plan-ov-dark .plan-ov-text { color: #c4c6ca; }
+.plan-ov-dark .plan-ov-detail { background: rgba(255, 109, 90, .12); border-color: rgba(255, 109, 90, .4); color: #ff8a78; }
+.plan-ov-dark .plan-ov-detail:hover:not([disabled]) { background: rgba(255, 109, 90, .2); }
+.plan-ov-dark .plan-ov-secondary, .plan-ov-dark .plan-ov-go { background: #2c2c2f; border-color: #3a3a3d; color: #d0d0d4; }
+.plan-ov-dark .plan-ov-secondary:hover:not([disabled]), .plan-ov-dark .plan-ov-go:hover { background: #343437; }
+.plan-ov-dark .plan-ov-go, .plan-ov-dark .plan-ov-foot a { color: #ff8a78; }
+.plan-ov-dark .plan-ov-bar { background: rgba(30, 30, 32, .94); border-bottom-color: #333336; color: #ddd; }
+.plan-ov-dark .plan-ov-bar .track { background: #3a3a3d; }
 `;
 
 export interface PlanOverlayConfig {
@@ -616,6 +615,8 @@ export interface PlanOverlayConfig {
 	progress?: boolean | 'parent';
 	/** Lets the parent page turn on block selection with `postMessage`. */
 	selectable?: boolean;
+	/** The origin of the parent page. Messages go only there and come only from there. Defaults to any. */
+	parentOrigin?: string;
 }
 
 /** `postMessage` source of the plan overlay. */
@@ -640,6 +641,12 @@ export function planOverlayMain(
 ): void {
 	const doc = document;
 	const source = 'n8n-app-plan';
+	const parentOrigin = config.parentOrigin ?? '*';
+	// Until the parent sends the editor theme, follow the color scheme of the browser.
+	doc.documentElement.classList.toggle(
+		'plan-ov-dark',
+		window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false,
+	);
 	const style = doc.createElement('style');
 	style.textContent = css;
 	doc.head.append(style);
@@ -760,6 +767,13 @@ export function planOverlayMain(
 		window.setTimeout(renderProgress, 60);
 	}
 
+	/** A page the user picked: it works with wireframe sections and the app router, and stops following the build. */
+	function openPage(requested: string) {
+		follow = false;
+		goToPage(requested);
+		window.setTimeout(renderProgress, 60);
+	}
+
 	function hideTip() {
 		pinned = false;
 		window.clearTimeout(switchTimer);
@@ -853,7 +867,7 @@ export function planOverlayMain(
 				go.setAttribute('type', 'button');
 				go.addEventListener('click', () => {
 					hideTip();
-					showScreen(targetId);
+					openPage(targetId);
 				});
 				row.append(go);
 			}
@@ -874,7 +888,7 @@ export function planOverlayMain(
 			const button = el('button', 'plan-ov-detail', label);
 			button.setAttribute('type', 'button');
 			button.addEventListener('click', () => {
-				window.parent.postMessage({ source, type: 'detail', planId: id, level }, '*');
+				window.parent.postMessage({ source, type: 'detail', planId: id, level }, parentOrigin);
 				button.textContent = 'Asked the Assistant…';
 				button.setAttribute('disabled', '');
 			});
@@ -889,7 +903,10 @@ export function planOverlayMain(
 				);
 				statesButton.setAttribute('type', 'button');
 				statesButton.addEventListener('click', () => {
-					window.parent.postMessage({ source, type: 'detail', planId: id, level: 'states' }, '*');
+					window.parent.postMessage(
+						{ source, type: 'detail', planId: id, level: 'states' },
+						parentOrigin,
+					);
 					statesButton.textContent = 'Asked the Assistant…';
 					statesButton.setAttribute('disabled', '');
 				});
@@ -979,7 +996,7 @@ export function planOverlayMain(
 			link &&
 			(link.closest('.wf-block') || link.closest('.wf-pages') || link.classList.contains('wf-back'))
 		) {
-			showScreen(link.getAttribute('data-plan-screen-link') ?? '');
+			openPage(link.getAttribute('data-plan-screen-link') ?? '');
 			return;
 		}
 		if (tip?.contains(event.target)) return;
@@ -997,6 +1014,7 @@ export function planOverlayMain(
 	let selecting = false;
 	window.addEventListener('message', (event) => {
 		if (event.source !== window.parent) return;
+		if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
 		const data: unknown = event.data;
 		if (typeof data !== 'object' || data === null || !('source' in data) || data.source !== source)
 			return;
@@ -1012,8 +1030,16 @@ export function planOverlayMain(
 			if (follow && page) goToPage(page);
 			renderProgress();
 		} else if (type === 'page') {
-			follow = false;
-			if ('pageId' in data && typeof data.pageId === 'string') goToPage(data.pageId);
+			if ('pageId' in data && typeof data.pageId === 'string') openPage(data.pageId);
+		} else if (type === 'theme' && 'dark' in data) {
+			doc.documentElement.classList.toggle('plan-ov-dark', data.dark === true);
+		} else if (type === 'font' && 'data' in data && data.data instanceof ArrayBuffer) {
+			try {
+				const face = new FontFace('Geist', data.data, { weight: '100 900' });
+				doc.fonts.add(face);
+			} catch {
+				// The fallback fonts of the stack apply.
+			}
 		} else if (config.selectable && (type === 'select:enable' || type === 'select:disable')) {
 			selecting = type === 'select:enable';
 			doc.documentElement.classList.toggle('plan-ov-selecting', selecting);
@@ -1037,7 +1063,7 @@ export function planOverlayMain(
 				node.classList.add('plan-ov-selected');
 				selecting = false;
 				doc.documentElement.classList.remove('plan-ov-selecting');
-				window.parent.postMessage({ source, type: 'selected', planId: id }, '*');
+				window.parent.postMessage({ source, type: 'selected', planId: id }, parentOrigin);
 			},
 			true,
 		);
@@ -1064,8 +1090,9 @@ export function planOverlayMain(
 					total: order.length,
 					...(current ? { current: name(current) } : {}),
 					...(screenList.length > 1 ? { pages: screenList, page: currentPage() } : {}),
+					following: follow,
 				},
-				'*',
+				parentOrigin,
 			);
 			return;
 		}
@@ -1135,7 +1162,6 @@ export function renderWireframeDocument(
 	return [
 		'<!doctype html><html><head><meta charset="utf-8">',
 		'<meta name="viewport" content="width=device-width, initial-scale=1">',
-		`<link rel="stylesheet" href="${WIREFRAME_FONT_URL}">`,
 		`<style>html,body{margin:0}${WIREFRAME_CSS}</style>`,
 		'</head><body>',
 		plan.screens.length > 1
@@ -1157,4 +1183,50 @@ export function planBuildOrder(plan: AppPlan): string[] {
 	return plan.buildOrder?.length
 		? plan.buildOrder
 		: [APP_PLAN_SHELL_ID, ...listPlanComponents(plan).map((c) => c.id)];
+}
+
+let editorFont: Promise<ArrayBuffer | undefined> | undefined;
+
+/** The upright Geist font file of the editor, read once from its `@font-face` rule. */
+async function loadEditorFont(): Promise<ArrayBuffer | undefined> {
+	editorFont ??= (async () => {
+		for (const sheet of Array.from(document.styleSheets)) {
+			let rules: CSSRuleList;
+			try {
+				rules = sheet.cssRules;
+			} catch {
+				continue;
+			}
+			for (const rule of Array.from(rules)) {
+				if (!(rule instanceof CSSFontFaceRule)) continue;
+				const family = rule.style.getPropertyValue('font-family').replace(/["']/g, '').trim();
+				if (family !== 'Geist' || rule.style.getPropertyValue('font-style') === 'italic') continue;
+				const url = /url\(["']?([^"')]+)/.exec(rule.style.getPropertyValue('src'))?.[1];
+				if (!url) continue;
+				const response = await fetch(new URL(url, sheet.href ?? window.location.href));
+				return response.ok ? await response.arrayBuffer() : undefined;
+			}
+		}
+		return undefined;
+	})().catch(() => undefined);
+	return await editorFont;
+}
+
+/**
+ * Sends the editor theme and font into a frame with the plan overlay, so the
+ * wireframe and the hover card look like the editor. A frame cannot load the
+ * font itself: it runs on another origin, or on none.
+ */
+export async function postPlanFrameContext(target: Window, targetOrigin: string): Promise<void> {
+	const theme = document.body.getAttribute('data-theme');
+	const dark = theme
+		? theme === 'dark'
+		: (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+	target.postMessage({ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'theme', dark }, targetOrigin);
+	const font = await loadEditorFont();
+	if (font)
+		target.postMessage(
+			{ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'font', data: font },
+			targetOrigin,
+		);
 }

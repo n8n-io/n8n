@@ -380,6 +380,31 @@ describe('AppPreview', () => {
 			);
 		});
 
+		it('brings the user back to the page they opened after the frame reloads', async () => {
+			const { fromFrame, findByTestId } = await renderWithFrame();
+			const frame = (await findByTestId('app-preview-frame')) as HTMLIFrameElement;
+			const postMessage = vi.spyOn(frame.contentWindow!, 'postMessage');
+
+			// The user clicked "Go to page" in the frame.
+			fromFrame({
+				...progress(3, 7),
+				pages: [
+					{ id: 'queue', name: 'Drafts' },
+					{ id: 'draft', name: 'Draft' },
+				],
+				page: 'draft',
+				following: false,
+			});
+			frame.dispatchEvent(new Event('load'));
+
+			await vi.waitFor(() =>
+				expect(postMessage).toHaveBeenCalledWith(
+					{ source: 'n8n-app-plan', type: 'page', pageId: 'draft' },
+					PREVIEW_ORIGIN,
+				),
+			);
+		});
+
 		it('drops the progress once every part is built', async () => {
 			const { fromFrame, findByTestId, queryByTestId } = await renderWithFrame();
 			fromFrame(progress(6, 7, 'Send'));
@@ -516,10 +541,10 @@ describe('AppPreview', () => {
 
 			await fireEvent.load(frame);
 
-			expect(postMessage).toHaveBeenCalledExactlyOnceWith(
-				command('inspect:enable'),
-				PREVIEW_ORIGIN,
+			const inspectorCalls = postMessage.mock.calls.filter(
+				([data]) => (data as { source?: string }).source === APP_INSPECTOR_MESSAGE_SOURCE,
 			);
+			expect(inspectorCalls).toEqual([[command('inspect:enable'), PREVIEW_ORIGIN]]);
 		});
 
 		it('clears the highlight in the frame when the selection is removed', async () => {
