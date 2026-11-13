@@ -569,6 +569,42 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending[0].publishedVersionId).toBe('v-concurrent');
 		});
 
+		const PENDING_REASONS_A_TRANSFER_REPLACES = ['publish', 'reconcile'] as const;
+		const PENDING_REASONS_A_TRANSFER_KEEPS = ['startup', 'leadership-takeover'] as const;
+
+		const pendingOf = async (workflowId: string) =>
+			(await repository.find({ where: { workflowId, status: 'pending' } })).map(
+				({ reason, publishedVersionId }) => ({ reason, publishedVersionId }),
+			);
+
+		it.each(PENDING_REASONS_A_TRANSFER_REPLACES)(
+			'turns a pending %s record into a transfer and keeps its version',
+			async (reason) => {
+				const workflow = await createActiveWorkflow();
+				await repository.enqueue(workflow.id, 'v-concurrent', reason);
+
+				await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+				expect(await pendingOf(workflow.id)).toEqual([
+					{ reason: 'transfer', publishedVersionId: 'v-concurrent' },
+				]);
+			},
+		);
+
+		it.each(PENDING_REASONS_A_TRANSFER_KEEPS)(
+			'keeps a pending %s record unchanged on a transfer',
+			async (reason) => {
+				const workflow = await createActiveWorkflow();
+				await repository.enqueue(workflow.id, 'v-concurrent', reason);
+
+				await repository.enqueueByWorkflowIds([workflow.id], 'transfer');
+
+				expect(await pendingOf(workflow.id)).toEqual([
+					{ reason, publishedVersionId: 'v-concurrent' },
+				]);
+			},
+		);
+
 		it('is a no-op for an empty list', async () => {
 			await createActiveWorkflow();
 
