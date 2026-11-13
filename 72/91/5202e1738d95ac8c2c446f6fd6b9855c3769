@@ -1,0 +1,400 @@
+.dockerignore
+  h_8fb27e0cdf6d1e 42-48
+.gitignore
+  h_8fb27e0cdf6d1e 100-101
+docker/images/code-sandbox/Dockerfile
+  h_8fb27e0cdf6d1e 1-110
+docker/images/code-sandbox/build.sh
+  h_8fb27e0cdf6d1e 1-29
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  h_8fb27e0cdf6d1e 61,100
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  h_8fb27e0cdf6d1e 48-49
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  h_8fb27e0cdf6d1e 44
+packages/@n8n/benchmark/scenarios/js-code-node/js-code-node.script.js
+  h_8fb27e0cdf6d1e 6-10
+packages/@n8n/code-runtime-python/README.md
+  h_8fb27e0cdf6d1e 1-39
+packages/@n8n/code-runtime-python/src/executor.py
+  h_8fb27e0cdf6d1e 1-185
+packages/@n8n/code-runtime-python/src/worker.py
+  h_8fb27e0cdf6d1e 1-582
+packages/@n8n/code-runtime-python/tests/test_executor.py
+  h_8fb27e0cdf6d1e 1-101
+packages/@n8n/code-runtime-python/tests/test_worker.py
+  h_8fb27e0cdf6d1e 1-264
+packages/@n8n/code-runtime/oxlint.config.mts
+  h_8fb27e0cdf6d1e 1-12
+packages/@n8n/code-runtime/package.json
+  h_8fb27e0cdf6d1e 1-43
+packages/@n8n/code-runtime/snapshot/lazy-http.cjs
+  h_8fb27e0cdf6d1e 1-3
+packages/@n8n/code-runtime/snapshot/lazy-https.cjs
+  h_8fb27e0cdf6d1e 1-2
+packages/@n8n/code-runtime/src/__tests__/worker.test.ts
+  h_8fb27e0cdf6d1e 1-528
+packages/@n8n/code-runtime/src/entry.ts
+  h_8fb27e0cdf6d1e 1-14
+packages/@n8n/code-runtime/src/errors.ts
+  h_8fb27e0cdf6d1e 1-52
+packages/@n8n/code-runtime/src/helpers.ts
+  h_8fb27e0cdf6d1e 1-236
+packages/@n8n/code-runtime/src/run-task.ts
+  h_8fb27e0cdf6d1e 1-306
+packages/@n8n/code-runtime/src/snapshot.ts
+  h_8fb27e0cdf6d1e 1-33
+packages/@n8n/code-runtime/src/types.ts
+  h_8fb27e0cdf6d1e 1-56
+packages/@n8n/code-runtime/src/vendor/README.md
+  h_8fb27e0cdf6d1e 1-5
+packages/@n8n/code-runtime/src/vendor/additional-keys.ts
+  h_8fb27e0cdf6d1e 1-78
+packages/@n8n/code-runtime/src/vendor/data-request-response-reconstruct.ts
+  h_8fb27e0cdf6d1e 1-55
+packages/@n8n/code-runtime/src/vendor/error-like.ts
+  h_8fb27e0cdf6d1e 1-12
+packages/@n8n/code-runtime/src/vendor/execution-error.ts
+  h_8fb27e0cdf6d1e 1-127
+packages/@n8n/code-runtime/src/vendor/execution-metadata.ts
+  h_8fb27e0cdf6d1e 1-75
+packages/@n8n/code-runtime/src/vendor/invalid-execution-metadata.error.ts
+  h_8fb27e0cdf6d1e 1-13
+packages/@n8n/code-runtime/src/vendor/node-types.ts
+  h_8fb27e0cdf6d1e 1-92
+packages/@n8n/code-runtime/src/vendor/serializable-error.ts
+  h_8fb27e0cdf6d1e 1-32
+packages/@n8n/code-runtime/src/vendor/unsupported-helpers.ts
+  h_8fb27e0cdf6d1e 1-19
+packages/@n8n/code-runtime/src/worker.ts
+  h_8fb27e0cdf6d1e 1-270
+packages/@n8n/code-runtime/tsconfig.build.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-runtime/tsconfig.json
+  h_8fb27e0cdf6d1e 1-10
+packages/@n8n/code-runtime/vite.config.ts
+  h_8fb27e0cdf6d1e 1-3
+packages/@n8n/task-runner/src/index.ts
+  h_8fb27e0cdf6d1e 5-9
+packages/cli/src/modules/code-sandbox/__tests__/code-sandbox-backend.test.ts
+  h_8fb27e0cdf6d1e 1-289
+packages/cli/src/modules/code-sandbox/__tests__/rpc-handler.test.ts
+  h_8fb27e0cdf6d1e 1-78
+packages/cli/src/modules/code-sandbox/__tests__/sandbox-lease-manager.test.ts
+  h_8fb27e0cdf6d1e 1-219
+packages/cli/src/modules/code-sandbox/__tests__/task-api-client.test.ts
+  h_8fb27e0cdf6d1e 1-29
+packages/cli/src/modules/code-sandbox/code-sandbox-backend.ts
+  h_8fb27e0cdf6d1e 1-694
+packages/cli/src/modules/code-sandbox/code-sandbox-lifecycle.ts
+  h_8fb27e0cdf6d1e 1-19
+packages/cli/src/modules/code-sandbox/code-sandbox-timings.ts
+  h_8fb27e0cdf6d1e 1-115
+packages/cli/src/modules/code-sandbox/code-sandbox.config.ts
+  h_8fb27e0cdf6d1e 1-104
+packages/cli/src/modules/code-sandbox/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 1-38
+packages/cli/src/modules/code-sandbox/code-task-builder.ts
+  h_8fb27e0cdf6d1e 1-166
+packages/cli/src/modules/code-sandbox/rpc-handler.ts
+  h_8fb27e0cdf6d1e 1-70
+packages/cli/src/modules/code-sandbox/sandbox-lease-manager.ts
+  h_8fb27e0cdf6d1e 1-427
+packages/cli/src/modules/code-sandbox/task-api-client.ts
+  h_8fb27e0cdf6d1e 1-408
+packages/cli/src/workflow-execute-additional-data.ts
+  h_8fb27e0cdf6d1e 75,925-948,974-977
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2139-2193
+spike/code-sandbox/README.md
+  h_8fb27e0cdf6d1e 1-174
+spike/code-sandbox/remote/.gitignore
+  h_8fb27e0cdf6d1e 1-2
+spike/code-sandbox/remote/remote.sh
+  h_8fb27e0cdf6d1e 1-116
+spike/code-sandbox/remote/setup-vm.sh
+  h_8fb27e0cdf6d1e 1-231
+spike/code-sandbox/scripts/analyze.mjs
+  h_8fb27e0cdf6d1e 1-169
+spike/code-sandbox/scripts/benchmark-pass.sh
+  h_8fb27e0cdf6d1e 1-58
+spike/code-sandbox/scripts/compose.sh
+  h_8fb27e0cdf6d1e 1-40
+spike/code-sandbox/scripts/direct-pass.mjs
+  h_8fb27e0cdf6d1e 1-319
+spike/code-sandbox/scripts/echo-server.mjs
+  h_8fb27e0cdf6d1e 1-65
+spike/code-sandbox/scripts/fc-stack.sh
+  h_8fb27e0cdf6d1e 1-181
+spike/code-sandbox/scripts/full-pass.sh
+  h_8fb27e0cdf6d1e 1-321
+spike/code-sandbox/scripts/functional.mjs
+  h_8fb27e0cdf6d1e 1-57
+spike/code-sandbox/scripts/generate-workloads.mjs
+  h_8fb27e0cdf6d1e 1-439
+spike/code-sandbox/scripts/latency-pass.sh
+  h_8fb27e0cdf6d1e 1-66
+spike/code-sandbox/scripts/lib.sh
+  h_8fb27e0cdf6d1e 1-50
+spike/code-sandbox/scripts/load-pass.sh
+  h_8fb27e0cdf6d1e 1-43
+spike/code-sandbox/scripts/pool-pass.sh
+  h_8fb27e0cdf6d1e 1-145
+spike/code-sandbox/scripts/process-churn.mjs
+  h_8fb27e0cdf6d1e 1-105
+spike/code-sandbox/scripts/python-report.mjs
+  h_8fb27e0cdf6d1e 1-172
+spike/code-sandbox/scripts/report-data.mjs
+  h_8fb27e0cdf6d1e 1-524
+spike/code-sandbox/scripts/reuse-ab-pass.sh
+  h_8fb27e0cdf6d1e 1-70
+spike/code-sandbox/scripts/run-workload.mjs
+  h_8fb27e0cdf6d1e 1-105
+spike/code-sandbox/scripts/sandboxes.mjs
+  h_8fb27e0cdf6d1e 1-129
+spike/code-sandbox/scripts/setup.sh
+  h_8fb27e0cdf6d1e 1-34
+spike/code-sandbox/scripts/start-n8n.sh
+  h_8fb27e0cdf6d1e 1-41
+spike/code-sandbox/scripts/summarize.mjs
+  h_8fb27e0cdf6d1e 1-95
+spike/code-sandbox/scripts/task-runners.sh
+  h_8fb27e0cdf6d1e 1-40
+spike/code-sandbox/workloads/w1.json
+  h_8fb27e0cdf6d1e 1-61
+spike/code-sandbox/workloads/w10.json
+  h_8fb27e0cdf6d1e 1-54
+spike/code-sandbox/workloads/w14/w14-0.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-1.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-10.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-11.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-12.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-13.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-14.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-15.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-16.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-17.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-18.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-19.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-2.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-20.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-21.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-22.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-23.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-24.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-25.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-26.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-27.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-28.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-29.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-3.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-30.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-31.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-32.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-33.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-34.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-35.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-36.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-37.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-38.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-39.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-4.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-40.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-41.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-42.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-43.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-44.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-45.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-46.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-47.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-48.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-49.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-5.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-50.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-51.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-52.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-53.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-54.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-55.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-56.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-57.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-58.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-59.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-6.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-60.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-61.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-62.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-63.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-64.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-65.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-66.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-67.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-68.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-69.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-7.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-70.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-71.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-72.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-73.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-74.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-75.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-76.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-77.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-78.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-79.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-8.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-80.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-81.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-82.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-83.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-84.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-85.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-86.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-87.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-88.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-89.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-9.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-90.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-91.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-92.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-93.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-94.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-95.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-96.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-97.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-98.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w14/w14-99.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w2.json
+  h_8fb27e0cdf6d1e 1-161
+spike/code-sandbox/workloads/w3.json
+  h_8fb27e0cdf6d1e 1-124
+spike/code-sandbox/workloads/w4.json
+  h_8fb27e0cdf6d1e 1-447
+spike/code-sandbox/workloads/w5.json
+  h_8fb27e0cdf6d1e 1-112
+spike/code-sandbox/workloads/w5b.json
+  h_8fb27e0cdf6d1e 1-87
+spike/code-sandbox/workloads/w6.json
+  h_8fb27e0cdf6d1e 1-61
+spike/code-sandbox/workloads/w9-sub.json
+  h_8fb27e0cdf6d1e 1-56
+spike/code-sandbox/workloads/w9.json
+  h_8fb27e0cdf6d1e 1-95
+spike/code-sandbox/workloads/wmix.json
+  h_8fb27e0cdf6d1e 1-87
+spike/code-sandbox/workloads/wpy1.json
+  h_8fb27e0cdf6d1e 1-62
+spike/code-sandbox/workloads/wpy5.json
+  h_8fb27e0cdf6d1e 1-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72915202e1738d95ac8c2c446f6fd6b9855c3769",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
