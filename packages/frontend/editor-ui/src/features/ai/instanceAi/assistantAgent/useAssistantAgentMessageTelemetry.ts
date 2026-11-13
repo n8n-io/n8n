@@ -15,6 +15,14 @@ import {
 	type InstanceAiPrefillPayload,
 } from '../prefills';
 
+/** The context of the user message that starts a run, as `User sent builder message` reports it. */
+export interface AssistantAgentSentMessageContext {
+	isFirstMessage: boolean;
+	mentionCounts: AssistantMentionCounts;
+	attachmentCount: number;
+	selectedElementCount: number;
+}
+
 /** A text that the host sends for the user. Its authorship is final. */
 export interface AssistantAgentHostSend {
 	text: string;
@@ -51,12 +59,22 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 		return { authorship: resolveAuthorship(text, prefill) };
 	}
 
-	function trackSend({ text, files, clientContext, isFirstMessage }: AssistantAgentSendingMessage) {
+	/** Returns the context of the message, which `User received AI Assistant response` repeats. */
+	function trackSend({
+		text,
+		files,
+		clientContext,
+		isFirstMessage,
+	}: AssistantAgentSendingMessage): AssistantAgentSentMessageContext {
 		const { authorship, mentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS } = takeAuthorship(text);
 		const isPrefill = authorship.kind === 'prefill';
 		const attachments: unknown[] = Array.isArray(clientContext?.attachments)
 			? clientContext.attachments
 			: [];
+		const attachmentCount = files.length + attachments.length;
+		const selectedElementCount = attachments.filter(
+			(a) => isRecord(a) && a.type === 'element',
+		).length;
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE, {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
@@ -67,10 +85,11 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 			prefill_id: isPrefill ? (authorship.prefillId ?? null) : null,
 			prompt_modified: isPrefill ? (authorship.promptModified ?? false) : null,
 			mention_counts: mentionCounts,
-			attachment_count: files.length + attachments.length,
-			selected_element_count: attachments.filter((a) => isRecord(a) && a.type === 'element').length,
+			attachment_count: attachmentCount,
+			selected_element_count: selectedElementCount,
 			runtime: 'agents',
 		});
+		return { isFirstMessage, mentionCounts, attachmentCount, selectedElementCount };
 	}
 
 	return {
