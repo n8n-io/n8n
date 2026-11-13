@@ -299,9 +299,15 @@ describe('OutboundRedactor', () => {
 });
 
 describe('redactMcpUrl', () => {
-	it('removes every query value and the user info, and keeps the path', () => {
+	it('removes the query, including a token used as a parameter name', () => {
+		expect(redactMcpUrl('https://example.com/mcp?secret-access-token')).toBe(
+			'https://example.com/mcp',
+		);
+	});
+
+	it('removes the query and the user info, and keeps the path', () => {
 		expect(redactMcpUrl('https://user:pw@mcp.example.com/mcp?key=s3cret&team=t1')).toBe(
-			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&team=%5BREDACTED%5D',
+			'https://mcp.example.com/mcp',
 		);
 	});
 
@@ -340,12 +346,8 @@ describe('simulatorMcpUrls', () => {
 			{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
 		]);
 
-		expect(urls.get('acct_a')).toBe(
-			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_a',
-		);
-		expect(urls.get('acct_b')).toBe(
-			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&n8n_mcp_server=acct_b',
-		);
+		expect(urls.get('acct_a')).toBe('https://mcp.example.com/mcp?n8n_mcp_server=acct_a');
+		expect(urls.get('acct_b')).toBe('https://mcp.example.com/mcp?n8n_mcp_server=acct_b');
 		expect(urls.get('linear')).toBe('https://mcp.linear.app/mcp');
 	});
 });

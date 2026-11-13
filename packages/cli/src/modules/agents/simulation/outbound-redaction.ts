@@ -247,8 +247,8 @@ function isSafeMcpPathSegment(segment: string, hostLabels: ReadonlySet<string>):
 }
 
 /**
- * An MCP server URL with its user info, fragment, every query value and every path segment
- * that is not plain structure removed. MCP servers take a key in the query (`?key=`, `?apiKey=`)
+ * An MCP server URL with its user info, fragment, query and every path segment that is not
+ * plain structure removed. MCP servers take a key in the query (`?key=`, `?apiKey=`)
  * or the path (`/s/<token>/mcp`), and their credential is never decrypted where the redactor
  * sees it. The host and plain segments stay, so the simulator can tell servers apart.
  */
@@ -265,8 +265,8 @@ export function redactMcpUrl(url: string): string {
 	parsed.username = '';
 	parsed.password = '';
 	parsed.hash = '';
-	for (const name of new Set(parsed.searchParams.keys()))
-		parsed.searchParams.set(name, PLACEHOLDER);
+	// The whole query goes: a parameter name can be the token too (`?secret-access-token`).
+	parsed.search = '';
 	const hostLabels = new Set(parsed.hostname.toLowerCase().split('.'));
 	parsed.pathname = parsed.pathname
 		.split('/')
