@@ -803,6 +803,25 @@ describe('AiSdkLanguageModelAdapter', () => {
 			});
 			expect(model.calls[0].config?.abortSignal?.aborted).toBe(true);
 		});
+
+		it('closes the chat model stream when a chunk breaks the contract', async () => {
+			const onStreamClose = vi.fn();
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'tool-call-delta', name: 'lookup', argumentsDelta: '{}' },
+						{ type: 'text-delta', delta: 'never read' },
+					],
+					onStreamClose,
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			await vi.waitFor(() => expect(onStreamClose).toHaveBeenCalled(), { timeout: 1000 });
+		});
+
 		it('matches a complete tool call without an id to the only pending call', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(
 				createFakeChatModel({

@@ -111,7 +111,9 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 					} catch (error) {
 						if (cancellation.signal.aborted) return;
 						// A chunk that breaks the contract also stops the request it came from.
+						// Closing the iterator frees the request when the model ignores the signal.
 						cancellation.abort();
+						void Promise.resolve(iterator.return?.()).catch(() => undefined);
 						controller.enqueue({ type: 'error', error });
 						controller.close();
 						return;
