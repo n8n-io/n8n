@@ -2993,6 +2993,49 @@ describe('AgentRuntime — eager input persistence', () => {
 		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
 	});
 
+	it('saves the resumed tool result before the next model call of the turn', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// The model call after the resume reads memory, as a tool of the same turn can.
+		let storedState: unknown;
+		generateText.mockImplementationOnce(async () => {
+			const stored = await memory.getMessages('t1', { resourceId: 'u1' });
+			const content = stored.flatMap((m) => {
+				const parts = (m as { content?: unknown }).content;
+				return Array.isArray(parts) ? (parts as unknown[]) : [];
+			});
+			const part = content.find(
+				(c) =>
+					typeof c === 'object' &&
+					c !== null &&
+					Reflect.get(c, 'type') === 'tool-call' &&
+					Reflect.get(c, 'toolCallId') === 'tc-1',
+			);
+			storedState = part ? Reflect.get(part, 'state') : undefined;
+			return makeGenerateSuccess('done');
+		});
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(storedState).toBe('resolved');
+	});
+
 	it("persists the turn's assistant output when an active turn is aborted (generate)", async () => {
 		const lookupTool: BuiltTool = {
 			name: 'lookup',

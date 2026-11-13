@@ -1,5 +1,7 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceAiAutoApprovalDeciderSchema,
+	instanceAiConfirmationSeveritySchema,
 	instanceContextAbsenceReasonSchema,
 	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -380,6 +382,29 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
 			variant: openWorkflowInAssistantVariant,
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	APPROVAL_DECIDED_IN_AUTO_MODE: {
+		name: 'AI Assistant decided approval in auto mode',
+		description:
+			'Auto mode reviewed an action set to Ask first before its approval card showed. Fires once per reviewed action, with whether the action ran without a card or the card showed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string(),
+			tool_name: z.string(),
+			is_mcp_tool: z.boolean(),
+			severity: z.enum(instanceAiConfirmationSeveritySchema.options),
+			route: z
+				.enum(['always-ask', 'low-risk', 'judge'])
+				.describe(
+					'always-ask and low-risk are fixed rules. judge is every other action: the judge model decides, except for an MCP call that is too long to check, which a rule sends to the card (decided_by rule)',
+				),
+			decision: z.enum(['approve', 'ask']).describe('approve ran the action without a card'),
+			decided_by: z.enum(instanceAiAutoApprovalDeciderSchema.options),
+			judge_failed: z.boolean().describe('The judge model failed or timed out, so the card showed'),
+			judge_duration_ms: z.number().optional(),
+			judge_model: z.string().optional(),
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {

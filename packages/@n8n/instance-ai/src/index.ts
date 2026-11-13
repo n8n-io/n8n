@@ -2,6 +2,7 @@
 import './source-map-filter';
 
 import type * as AiaModelDefaultsMod from './agent/aia-model-defaults';
+import type * as ApprovalJudgeMod from './approval-review/approval-judge';
 import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SelfHealingAgentMod from './agent/self-healing-agent';
@@ -263,6 +264,9 @@ const loadStructuredFileParser = lazyModule(
 const loadValidateAttachments = lazyModule(
 	() => require('./parsers/validate-attachments') as typeof ValidateAttachmentsMod,
 );
+const loadApprovalJudge = lazyModule(
+	() => require('./approval-review/approval-judge') as typeof ApprovalJudgeMod,
+);
 
 export { MAX_STEPS } from './constants/max-steps';
 export { RESOURCE_EXPLORATION_UNAVAILABLE } from './constants/resource-exploration';
@@ -295,6 +299,7 @@ export {
 	rereadAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	threadAuthorizesAgentAdoption,
+	threadTargetsAgent,
 	withAttachedAgentTarget,
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
@@ -312,6 +317,17 @@ export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData =
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );
 export type { Logger } from './logger';
+export const judgeApproval: typeof ApprovalJudgeMod.judgeApproval = lazyFunction(
+	() => loadApprovalJudge().judgeApproval,
+);
+export const conversationForApprovalJudge: typeof ApprovalJudgeMod.conversationForApprovalJudge =
+	lazyFunction(() => loadApprovalJudge().conversationForApprovalJudge);
+export type { ApprovalJudgeMessage, ApprovalJudgeResult } from './approval-review/approval-judge';
+export type {
+	ApprovalReviewOutcome,
+	InstanceAiApprovalReviewer,
+} from './approval-review/approval-review';
+export type { PendingApproval } from './approval-review/pending-approval';
 export { createThreadApprovalContext } from './approval-review/thread-approval-context';
 export const createDomainAccessTracker: typeof DomainAccessMod.createDomainAccessTracker =
 	lazyFunction(() => loadDomainAccess().createDomainAccessTracker);

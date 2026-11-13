@@ -66,6 +66,7 @@ import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { InstanceAiApprovalReviewer } from './approval-review/approval-review';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type {
@@ -1807,6 +1808,16 @@ export interface InstanceAiContext {
 	browserUseState?: BrowserUseState;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/**
+	 * Auto mode: reviews an approval before its card shows, and runs the action
+	 * when the review approves it. Absent means Manual mode.
+	 */
+	approvalReviewer?: InstanceAiApprovalReviewer;
+	/**
+	 * When true, a user's MCP tool permissions can only make the admin's
+	 * permissions stricter. Otherwise they replace them.
+	 */
+	enforceAdminMcpPermissions?: boolean;
 	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
 	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
 	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
