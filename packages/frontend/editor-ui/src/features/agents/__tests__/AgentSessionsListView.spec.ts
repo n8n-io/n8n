@@ -76,6 +76,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
 					'agentSessions.origin.n8nChat': 'n8n Chat',
+					'agentSessions.origin.webhook': 'API',
 					'agentSessions.empty': 'No agent sessions',
 					'agentSessions.emptyDescription':
 						'Sessions will appear here after you preview your agent.',
@@ -595,6 +596,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'n8n_chat' }, 'Preview', 'flask-conical'],
 		[{ source: 'n8n_chat_production' }, 'n8n Chat', 'message-square'],
 		[{ source: 'workflow' }, 'Workflow', 'workflow'],
+		[{ source: 'webhook' }, 'API', 'plug'],
 		[{ source: 'subagent' }, 'Sub-agent', 'bot'],
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],

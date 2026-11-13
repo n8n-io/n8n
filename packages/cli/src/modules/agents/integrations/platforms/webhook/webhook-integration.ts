@@ -21,9 +21,9 @@ export class WebhookIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['httpHeaderAuth', 'jwtAuth'];
 
-	readonly displayLabel = 'Webhook';
+	readonly displayLabel = 'API';
 
-	readonly displayIcon = 'webhook';
+	readonly displayIcon = 'plug';
 
 	readonly requiresChatInstance = false;
 
@@ -61,14 +61,14 @@ export class WebhookIntegration extends AgentChatIntegration {
 		if (integration.type !== this.type) return;
 		const authentication = webhookAuthentication(integration);
 		if (!authentication) {
-			throw new BadRequestError('Webhook authentication is required');
+			throw new BadRequestError('Choose an authentication for the API channel');
 		}
 		const hasCredential = integration.credentialId.trim() !== '';
 		if (authentication === 'none' && hasCredential) {
-			throw new BadRequestError('A webhook without authentication takes no credential');
+			throw new BadRequestError('An API channel without authentication takes no credential');
 		}
 		if (authentication !== 'none' && !hasCredential) {
-			throw new BadRequestError('This webhook authentication needs a credential');
+			throw new BadRequestError('This API channel authentication needs a credential');
 		}
 	}
 

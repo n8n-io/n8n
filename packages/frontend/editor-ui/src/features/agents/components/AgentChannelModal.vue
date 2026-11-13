@@ -379,6 +379,12 @@ function connectAction(channelType: string) {
 	);
 }
 
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
+}
+
 function goToSetup(channelType: string) {
 	clearIntegrationError(channelType);
 	openedFromList.value = true;
@@ -677,6 +683,7 @@ watch(
 						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"

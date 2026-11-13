@@ -155,6 +155,9 @@ const triggerLabel = computed((): string => {
 	if (source === 'n8n_chat_production') {
 		return i18n.baseText('agentSessions.origin.n8nChat');
 	}
+	if (source === 'webhook') {
+		return i18n.baseText('agentSessions.origin.webhook');
+	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 

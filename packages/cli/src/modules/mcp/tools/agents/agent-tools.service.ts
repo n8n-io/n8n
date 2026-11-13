@@ -382,7 +382,7 @@ const updateIntegrationInput = {
 		.min(1)
 		.optional()
 		.describe(
-			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup, and for a channel that runs without a credential, such as a webhook with authentication none',
+			'Accessible credential for this integration. Required for disconnect and for non-Slack connect operations. Omit it to connect Slack through managed setup, and for a channel that runs without a credential, such as the API channel (type webhook) with authentication none',
 		),
 	managerCredentialId: z
 		.string()
@@ -401,7 +401,9 @@ const updateIntegrationInput = {
 	settings: z
 		.record(z.unknown())
 		.optional()
-		.describe('Integration settings; required for Telegram and webhook connect operations'),
+		.describe(
+			'Integration settings; required for Telegram and API channel (type webhook) connect operations',
+		),
 	replacesCredentialId: z
 		.string()
 		.min(1)
@@ -1166,7 +1168,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					"Configure or disconnect a Slack, Telegram, Linear, or webhook conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace. For a webhook, pass settings.authentication, and omit credentialId when it is none.",
+					"Configure or disconnect a Slack, Telegram, Linear, or API (type webhook) conversation integration. This is the only way to manage integrations; config.replace and config.patch can't change them. Configuration never publishes the Agent. If the Agent is already published, connecting starts the channel immediately. Otherwise, the channel stays inactive until publish_agent is called. For Slack, connect without credentialId first: n8n returns the workspaces where it can create a Slack app for the Agent, or the steps the user must take in n8n. Then call again with managerCredentialId and workspaceId after the user confirms the workspace. For the API channel, pass settings.authentication, and omit credentialId when it is none.",
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
