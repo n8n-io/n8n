@@ -627,7 +627,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					userId: null,
 					user: null,
-					workflowHistory: { name: 'Release 1' } as WorkflowHistory,
+					workflowHistory: { name: 'Release 1', settings: { engineType: 'v2' } } as WorkflowHistory,
 				},
 				{
 					id: 2,
@@ -657,6 +657,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					user: null,
 					versionName: 'Release 1',
+					settings: { engineType: 'v2' },
 				},
 				{
 					id: 2,
@@ -666,6 +667,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					user: null,
 					versionName: null,
+					settings: null,
 				},
 			]);
 			expect(workflowPublishHistoryRepository.findTimelinePage).toHaveBeenCalledWith(workflowId, {

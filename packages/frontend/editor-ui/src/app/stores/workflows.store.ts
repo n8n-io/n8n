@@ -321,10 +321,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflowId.value) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			// An engine change saves a new version. A new version has no name or description yet.
+			const keptVersionData =
+				workflowDocumentStore.versionData?.versionId === updatedWorkflow.versionId
+					? workflowDocumentStore.versionData
+					: null;
 			workflowDocumentStore.setVersionData({
 				versionId: updatedWorkflow.versionId,
-				name: workflowDocumentStore.versionData?.name ?? null,
-				description: workflowDocumentStore.versionData?.description ?? null,
+				name: keptVersionData?.name ?? null,
+				description: keptVersionData?.description ?? null,
 			});
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 			// The server can change version-scoped settings (a restore sets the engine of the
