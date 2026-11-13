@@ -22,7 +22,6 @@ import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollTriggerTaskHandler } from '@/scheduling/poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
-import { ScheduledJobCrashJournal } from '@/scheduling/scheduled-job-crash-journal';
 import { SystemTaskJobRegistrar } from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
@@ -132,7 +131,6 @@ describe('system task runner across mains over one database', () => {
 			agentOwner,
 			owner,
 			eventService,
-			Container.get(ScheduledJobCrashJournal),
 		);
 		const provisioner = new DurableJobProvisioner(
 			logger,

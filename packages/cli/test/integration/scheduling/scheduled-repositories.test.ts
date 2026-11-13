@@ -1091,7 +1091,7 @@ describe('scheduled repositories', () => {
 	});
 
 	describe('ScheduledTaskRepository.findRunningTasks', () => {
-		it('reads the started rows, all of them or only those one host claimed', async () => {
+		it('reads the started rows of the task type, all of them or only those one host claimed', async () => {
 			const job = await createJob();
 			const mine = await createTask(job.id, {
 				status: 'running',
@@ -1110,13 +1110,22 @@ describe('scheduled repositories', () => {
 				claimedBy: 'main-1',
 				leaseExpiresAt: secondsFromNow(60),
 			});
+			await createTask(job.id, {
+				taskType: 'pollTrigger',
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(60),
+				startedAt: secondsFromNow(-5),
+			});
 			await createTask(job.id, { status: 'pending' });
 			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-60) });
 
-			const all = await taskRepository.findRunningTasks();
+			const all = await taskRepository.findRunningTasks('scheduleTrigger');
 			expect(all.map((task) => task.id).sort()).toEqual([mine.id, other.id].sort());
 
-			const claimed = await taskRepository.findRunningTasks({ claimedBy: 'main-1' });
+			const claimed = await taskRepository.findRunningTasks('scheduleTrigger', {
+				claimedBy: 'main-1',
+			});
 			expect(claimed.map((task) => task.id)).toEqual([mine.id]);
 		});
 	});

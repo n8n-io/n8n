@@ -638,10 +638,14 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.getMany();
 	}
 
-	/** The `running` rows whose handler started, or only those one host claimed. */
-	async findRunningTasks(options: { claimedBy?: string } = {}): Promise<ScheduledTask[]> {
+	/** The `running` rows of a task type whose handler started, or only those one host claimed. */
+	async findRunningTasks(
+		taskType: string,
+		options: { claimedBy?: string } = {},
+	): Promise<ScheduledTask[]> {
 		const query = this.createQueryBuilder('t')
 			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
+			.andWhere('t.taskType = :taskType', { taskType })
 			.andWhere('t.startedAt IS NOT NULL');
 		if (options.claimedBy !== undefined) {
 			query.andWhere('t.claimedBy = :claimedBy', { claimedBy: options.claimedBy });

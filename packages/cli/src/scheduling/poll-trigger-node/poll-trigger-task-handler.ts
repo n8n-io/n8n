@@ -26,6 +26,7 @@ import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
+import { ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
 import {
 	isPollTriggerTaskPayload,
 	POLL_TRIGGER_TASK_TYPE,
@@ -58,6 +59,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
 		private readonly eventService: EventService,
+		private readonly crashJournal: ScheduledJobCrashJournal,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -156,6 +158,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				leaseSignal.throwIfAborted();
 				const pollResponse = await poll;
 				polled = true;
+				// Only a returned poll ends a crash streak: a skipped or abandoned one fetched nothing to completion.
+				this.crashJournal.recordCompletion(task.payload);
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 				leaseSignal.throwIfAborted();

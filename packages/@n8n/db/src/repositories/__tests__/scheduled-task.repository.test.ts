@@ -46,15 +46,16 @@ describe('ScheduledTaskRepository', () => {
 			return qb;
 		};
 
-		it('reads every running row whose handler started', async () => {
+		it('reads every running row of the task type whose handler started', async () => {
 			const qb = selectRunning();
 
-			const result = await repository.findRunningTasks();
+			const result = await repository.findRunningTasks('poll');
 
 			expect(qb.where).toHaveBeenCalledWith('t.status = :running', {
 				running: ScheduledTaskStatus.Running,
 			});
-			expect(qb.andWhere).toHaveBeenCalledTimes(1);
+			expect(qb.andWhere).toHaveBeenCalledTimes(2);
+			expect(qb.andWhere).toHaveBeenCalledWith('t.taskType = :taskType', { taskType: 'poll' });
 			expect(qb.andWhere).toHaveBeenCalledWith('t.startedAt IS NOT NULL');
 			expect(result).toBe(running);
 		});
@@ -62,7 +63,7 @@ describe('ScheduledTaskRepository', () => {
 		it('reads only the rows one host claimed', async () => {
 			const qb = selectRunning();
 
-			const result = await repository.findRunningTasks({ claimedBy: 'main-1' });
+			const result = await repository.findRunningTasks('poll', { claimedBy: 'main-1' });
 
 			expect(qb.andWhere).toHaveBeenCalledWith('t.claimedBy = :claimedBy', { claimedBy: 'main-1' });
 			expect(result).toBe(running);

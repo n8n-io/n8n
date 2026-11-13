@@ -13,7 +13,6 @@ import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollTriggerTaskHandler } from '@/scheduling/poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from '@/scheduling/schedule-trigger-node/schedule-trigger-task-handler';
-import { ScheduledJobCrashJournal } from '@/scheduling/scheduled-job-crash-journal';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 
@@ -86,7 +85,6 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			Container.get(AgentScheduledJobOwner),
 			Container.get(SystemTaskScheduledJobOwner),
 			Container.get(EventService),
-			Container.get(ScheduledJobCrashJournal),
 		);
 	};
 

@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 
+import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { CrashStreak, ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
 import { ScheduledJobCrashRecovery } from '../scheduled-job-crash-recovery';
 
@@ -64,7 +65,7 @@ describe('ScheduledJobCrashRecovery', () => {
 
 		await recovery.recover();
 
-		expect(tasks.findRunningTasks).toHaveBeenCalledWith({});
+		expect(tasks.findRunningTasks).toHaveBeenCalledWith(POLL_TRIGGER_TASK_TYPE, {});
 		expect(journal.recordCrash).toHaveBeenCalledWith(running);
 	});
 
@@ -73,7 +74,9 @@ describe('ScheduledJobCrashRecovery', () => {
 
 		await recovery.recover();
 
-		expect(tasks.findRunningTasks).toHaveBeenCalledWith({ claimedBy: 'main-1' });
+		expect(tasks.findRunningTasks).toHaveBeenCalledWith(POLL_TRIGGER_TASK_TYPE, {
+			claimedBy: 'main-1',
+		});
 	});
 
 	it('deactivates a workflow whose job reached the crash threshold and clears its streaks', async () => {

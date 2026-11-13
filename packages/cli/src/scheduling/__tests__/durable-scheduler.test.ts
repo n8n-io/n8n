@@ -3,14 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
 import type { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
-import type {
-	ClaimedTask,
-	DispatchDecision,
-	DispatchReporter,
-	Scheduler,
-	SchedulerPasses,
-	TaskRun,
-} from '@n8n/scheduler';
+import type { Scheduler, SchedulerPasses } from '@n8n/scheduler';
 import { createScheduler } from '@n8n/scheduler';
 import type { InstanceSettings, Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -22,7 +15,6 @@ import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-node/poll-trigger-task';
 import type { PollTriggerTaskHandler } from '../poll-trigger-node/poll-trigger-task-handler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
-import type { ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
 import type { AgentScheduledJobOwner } from '../agent-scheduled-job-owner';
 import { SystemTaskScheduledJobOwner } from '../system-tasks/system-task-scheduled-job-owner';
 import type { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
@@ -65,7 +57,6 @@ describe('DurableScheduler', () => {
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
 		const eventService = mock<EventService>();
-		const crashJournal = mock<ScheduledJobCrashJournal>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -102,7 +93,6 @@ describe('DurableScheduler', () => {
 			agentOwner,
 			systemTaskOwner,
 			eventService,
-			crashJournal,
 		);
 		return {
 			scheduler,
@@ -114,9 +104,6 @@ describe('DurableScheduler', () => {
 			agentOwner,
 			systemTaskOwner,
 			eventService,
-			crashJournal,
-			scheduleTriggerTaskHandler,
-			pollTriggerTaskHandler,
 		};
 	}
 
@@ -245,68 +232,26 @@ describe('DurableScheduler', () => {
 	});
 
 	describe('registerTaskHandler', () => {
-		const task = {
-			id: '1',
-			payload: { workflowId: 'wf', nodeId: 'node' },
-		} as unknown as ClaimedTask;
-		const report = mock<DispatchReporter>();
-		const run: TaskRun = { signal: new AbortController().signal, remainingMs: () => 1000 };
-		const decision = 'dispatched' as unknown as DispatchDecision;
+		it('delegates to the inner scheduler when active', () => {
+			const { scheduler, inner } = makeScheduler();
+			const handler = { execute: vi.fn() };
 
-		const registeredHandler = (inner: Scheduler, taskType: string) => {
-			const call = vi.mocked(inner.registerTaskHandler).mock.calls.find(([t]) => t === taskType);
-			if (!call) throw new Error(`No handler registered for ${taskType}`);
-			return call[1];
-		};
-
-		it('delegates to the inner scheduler when active', async () => {
-			const { scheduler, inner, crashJournal } = makeScheduler();
-			const handler = { execute: vi.fn().mockResolvedValue(decision) };
 			scheduler.registerTaskHandler('some-task', handler);
 
-			await expect(registeredHandler(inner, 'some-task').execute(task, report, run)).resolves.toBe(
-				decision,
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith('some-task', handler);
+		});
+
+		it('registers the schedule- and poll-trigger handlers at construction', () => {
+			const { inner } = makeScheduler();
+
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				SCHEDULE_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: SCHEDULE_TRIGGER_TASK_TYPE }),
 			);
-
-			expect(handler.execute).toHaveBeenCalledWith(task, report, run);
-			expect(crashJournal.recordCompletion).toHaveBeenCalledWith(task.payload);
-		});
-
-		it('does not record a completion when the handler throws', async () => {
-			const { scheduler, inner, crashJournal } = makeScheduler();
-			const handler = { execute: vi.fn().mockRejectedValue(new Error('poll failed')) };
-			scheduler.registerTaskHandler('some-task', handler);
-
-			await expect(
-				registeredHandler(inner, 'some-task').execute(task, report, run),
-			).rejects.toThrow('poll failed');
-
-			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
-		});
-
-		it('does not record a completion when the run was aborted', async () => {
-			const { scheduler, inner, crashJournal } = makeScheduler();
-			const handler = { execute: vi.fn().mockResolvedValue(decision) };
-			scheduler.registerTaskHandler('some-task', handler);
-			const controller = new AbortController();
-			controller.abort(new Error('timed out'));
-
-			await registeredHandler(inner, 'some-task').execute(task, report, {
-				signal: controller.signal,
-				remainingMs: () => 0,
-			});
-
-			expect(crashJournal.recordCompletion).not.toHaveBeenCalled();
-		});
-
-		it('registers the schedule- and poll-trigger handlers at construction', async () => {
-			const { inner, scheduleTriggerTaskHandler, pollTriggerTaskHandler } = makeScheduler();
-
-			await registeredHandler(inner, SCHEDULE_TRIGGER_TASK_TYPE).execute(task, report, run);
-			await registeredHandler(inner, POLL_TRIGGER_TASK_TYPE).execute(task, report, run);
-
-			expect(scheduleTriggerTaskHandler.execute).toHaveBeenCalledWith(task, report, run);
-			expect(pollTriggerTaskHandler.execute).toHaveBeenCalledWith(task, report, run);
+			expect(inner.registerTaskHandler).toHaveBeenCalledWith(
+				POLL_TRIGGER_TASK_TYPE,
+				expect.objectContaining({ taskType: POLL_TRIGGER_TASK_TYPE }),
+			);
 		});
 	});
 
