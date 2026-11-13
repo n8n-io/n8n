@@ -28,12 +28,14 @@ interface RequestConfig {
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: AsyncIterableIterator<string> }>;
 }
 
@@ -70,6 +72,8 @@ export class CustomChatModel extends BaseChatModel<ModelConfig> {
 			'POST',
 			requestUrl`${this.baseURL}/generate`,
 			requestBody,
+			undefined,
+			merged.abortSignal,
 		);
 		const body = response.body as ProviderResponse;
 
@@ -111,6 +115,8 @@ export class CustomChatModel extends BaseChatModel<ModelConfig> {
 			'POST',
 			requestUrl`${this.baseURL}/stream`,
 			requestBody,
+			undefined,
+			merged.abortSignal,
 		);
 		for await (const chunk of response.body) {
 			yield { type: 'text-delta', delta: chunk };

@@ -79,6 +79,7 @@ export class ExampleChatModel implements INodeType {
 			{
 				httpRequest: async () => {
 					// make a request to the API using this.helpers.httpRequestWithAuthentication.call
+					// and pass the abortSignal argument on in its options
 					return {
 						body: {
 							response: 'Hello World!',
@@ -92,6 +93,7 @@ export class ExampleChatModel implements INodeType {
 				},
 				openStream: async () => {
 					// make a request to the API using this.helpers.httpRequestWithAuthentication.call
+					// and pass the abortSignal argument on in its options
 					const mockStream = (async function* () {
 						yield 'Hello ';
 						yield 'World';

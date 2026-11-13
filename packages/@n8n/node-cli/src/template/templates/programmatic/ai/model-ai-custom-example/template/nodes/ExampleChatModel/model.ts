@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { IHttpRequestMethods, RequestUrl } from 'n8n-workflow';
 import { requestUrl } from 'n8n-workflow';
 import {
 	BaseChatModel,
 	getParametersJsonSchema,
 	parseSSEStream,
+	type FinishReason,
 	type TokenUsage,
 	type Tool,
 	type ToolCall,
@@ -44,7 +46,12 @@ type ResponsesInputItem =
 			name: string;
 			arguments: string;
 	  }
-	| { type: 'function_call_output'; call_id: string; output: string };
+	| { type: 'function_call_output'; call_id: string; output: string }
+	| {
+			type: 'reasoning';
+			summary: Array<{ type: 'summary_text'; text: string }>;
+			encrypted_content: string;
+	  };
 
 interface OpenAIResponsesRequest {
 	model: string;
@@ -53,13 +60,24 @@ interface OpenAIResponsesRequest {
 	max_output_tokens?: number;
 	temperature?: number;
 	top_p?: number;
+	presence_penalty?: number;
+	frequency_penalty?: number;
 	tools?: OpenAITool[];
 	tool_choice?: OpenAIToolChoice;
 	parallel_tool_calls?: boolean;
 	store?: boolean;
 	stream?: boolean;
+	include?: Array<'reasoning.encrypted_content'>;
 	metadata?: Record<string, unknown>;
 }
+
+type OpenAIResponseStatus =
+	| 'completed'
+	| 'failed'
+	| 'in_progress'
+	| 'cancelled'
+	| 'queued'
+	| 'incomplete';
 
 interface OpenAIResponsesResponse {
 	id: string;
@@ -67,7 +85,7 @@ interface OpenAIResponsesResponse {
 	created_at: string;
 	model: string;
 	output: ResponsesOutputItem[];
-	status: string;
+	status: OpenAIResponseStatus;
 	usage?: {
 		input_tokens: number;
 		output_tokens: number;
@@ -79,7 +97,8 @@ interface OpenAIResponsesResponse {
 			reasoning_tokens?: number;
 		};
 	};
-	incomplete_details?: Record<string, unknown>;
+	incomplete_details?: { reason?: 'max_output_tokens' | 'content_filter' } | null;
+	error?: { code?: string; message?: string } | null;
 	metadata?: Record<string, unknown>;
 	user?: string;
 	service_tier?: string;
@@ -98,7 +117,7 @@ type ResponsesOutputItem =
 	| {
 			type: 'function_call';
 			id?: string;
-			call_id: string;
+			call_id?: string;
 			name: string;
 			arguments: string;
 	  }
@@ -109,14 +128,19 @@ type ResponsesOutputItem =
 				type: string;
 				text: string;
 			}>;
+			encrypted_content?: string | null;
 	  };
+
+type ReasoningOutputItem = Extract<ResponsesOutputItem, { type: 'reasoning' }>;
 
 interface OpenAIStreamEvent {
 	type: string;
 	delta?: string;
 	output_index?: number;
 	item?: Record<string, unknown>;
-	response?: Record<string, unknown>;
+	response?: Partial<OpenAIResponsesResponse>;
+	usage?: OpenAIResponsesResponse['usage'];
+	message?: string;
 }
 
 // Helpers
@@ -190,16 +214,16 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 						arguments: contentPart.input,
 					});
 				} else if (contentPart.type === 'reasoning') {
-					inputItems.push({
-						type: 'message',
-						role: 'assistant',
-						content: [
-							{
-								type: 'output_text',
-								text: contentPart.text,
-							},
-						],
-					});
+					const encryptedContent = contentPart.providerMetadata?.encryptedContent;
+					// OpenAI only reuses reasoning that carries its encrypted payload.
+					// Reasoning without it, for example from another provider, is left out.
+					if (typeof encryptedContent === 'string') {
+						inputItems.push({
+							type: 'reasoning',
+							summary: [{ type: 'summary_text', text: contentPart.text }],
+							encrypted_content: encryptedContent,
+						});
+					}
 				}
 			}
 		}
@@ -274,7 +298,7 @@ function parseResponsesOutput(output: ResponsesOutputItem[]): {
 		if (item.type === 'function_call') {
 			try {
 				toolCalls.push({
-					id: item.call_id,
+					id: toolCallId(item),
 					name: item.name,
 					arguments: JSON.parse(item.arguments) as Record<string, unknown>,
 					argumentsRaw: item.arguments,
@@ -311,9 +335,88 @@ function parseTokenUsage(
 		: undefined;
 }
 
+function isReasoningItem(item: unknown): item is ReasoningOutputItem {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'type' in item &&
+		item.type === 'reasoning' &&
+		'summary' in item &&
+		Array.isArray(item.summary)
+	);
+}
+
+function toReasoningContent(item: ReasoningOutputItem): MessageContent {
+	const text = item.summary.map((part) => part.text).join('');
+	return item.encrypted_content
+		? { type: 'reasoning', text, providerMetadata: { encryptedContent: item.encrypted_content } }
+		: { type: 'reasoning', text };
+}
+
+function toolCallId({ call_id: callId, id }: { call_id?: unknown; id?: unknown }): string {
+	const hasCallId = typeof callId === 'string' && callId !== '';
+	const hasItemId = typeof id === 'string' && id !== '';
+	switch (true) {
+		case hasCallId:
+			return callId;
+		case !hasCallId && hasItemId:
+			return id;
+		default:
+			// Some OpenAI-compatible servers send no ID. The generated one pairs the
+			// call with its result when the conversation is sent back.
+			return `call_${randomUUID()}`;
+	}
+}
+
+function toFinishReason(
+	response: Partial<OpenAIResponsesResponse>,
+	hasToolCalls: boolean,
+): FinishReason {
+	const isIncomplete = response.status === 'incomplete';
+	const isFiltered = response.incomplete_details?.reason === 'content_filter';
+	switch (true) {
+		case isIncomplete && isFiltered:
+			return 'content-filter';
+		case isIncomplete && !isFiltered:
+			return 'length';
+		case !isIncomplete && hasToolCalls:
+			return 'tool-calls';
+		case !isIncomplete && !hasToolCalls && response.status === 'completed':
+			return 'stop';
+		default:
+			return 'other';
+	}
+}
+
+function responseFailedError(response: Partial<OpenAIResponsesResponse> | undefined): Error {
+	return new Error(`The model response failed: ${response?.error?.message ?? 'no error details'}`);
+}
+
+function isResponsesResponse(body: unknown): body is OpenAIResponsesResponse {
+	return (
+		typeof body === 'object' && body !== null && 'output' in body && Array.isArray(body.output)
+	);
+}
+
+function isReasoningInput(item: ResponsesInputItem): boolean {
+	return 'type' in item && item.type === 'reasoning';
+}
+
+function definedHeaders(
+	headers: Readonly<ChatModelConfig['headers']>,
+): Record<string, string> | undefined {
+	if (!headers) return undefined;
+	const result: Record<string, string> = {};
+	for (const [name, value] of Object.entries(headers)) {
+		if (value !== undefined) result[name] = value;
+	}
+	return result;
+}
+
 interface OpenAIChatModelConfig extends ChatModelConfig {
 	apiKey?: string;
 	baseURL?: string;
+	toolChoice?: OpenAIToolChoice;
 
 	providerTools?: ProviderTool[];
 }
@@ -324,12 +427,14 @@ interface RequestConfig {
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: unknown }>;
 	openStream: (
 		method: IHttpRequestMethods,
 		url: RequestUrl,
 		body?: object,
 		headers?: Record<string, string>,
+		abortSignal?: ChatModelConfig['abortSignal'],
 	) => Promise<{ body: AsyncIterableIterator<Buffer | Uint8Array> }>;
 }
 
@@ -345,35 +450,72 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 		this.baseURL = config?.baseURL ?? 'https://api.openai.com/v1';
 	}
 
-	private getTools(config?: OpenAIChatModelConfig) {
-		const ownTools = this.tools;
-		const providerTools = config?.providerTools ?? this.defaultConfig?.providerTools ?? [];
-		return [...ownTools, ...providerTools].map(genericToolToResponsesTool);
-	}
-
-	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
-		const merged = this.mergeConfig(config);
+	private buildRequestBody(
+		messages: Message[],
+		config: OpenAIChatModelConfig,
+		stream: boolean,
+	): OpenAIResponsesRequest {
 		const { instructions, input } = genericMessagesToResponsesInput(messages);
-		const tools = this.getTools(config);
-		const requestBody: OpenAIResponsesRequest = {
+		const providerTools = config.providerTools ?? this.defaultConfig?.providerTools ?? [];
+		const tools = [...this.tools, ...providerTools];
+		// The Responses API has no parameter for stop sequences, a seed or top-k
+		// sampling, so those options are not sent.
+		return {
 			model: this.modelId,
 			input,
 			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
+			max_output_tokens: config.maxTokens,
+			temperature: config.temperature,
+			top_p: config.topP,
+			presence_penalty: config.presencePenalty,
+			frequency_penalty: config.frequencyPenalty,
+			tools: tools.map(genericToolToResponsesTool),
+			tool_choice: config.toolChoice,
 			parallel_tool_calls: true,
 			store: false,
-			stream: false,
+			stream,
+			include: ['reasoning.encrypted_content'],
 		};
+	}
 
-		const response = await this.requests.httpRequest(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
-			requestBody,
+	private async sendWithReasoningFallback<T>(
+		body: OpenAIResponsesRequest,
+		abortSignal: ChatModelConfig['abortSignal'],
+		send: (body: OpenAIResponsesRequest) => Promise<T>,
+	): Promise<T> {
+		const input = typeof body.input === 'string' ? [] : body.input;
+		if (!input.some(isReasoningInput)) return await send(body);
+		try {
+			return await send(body);
+		} catch {
+			abortSignal?.throwIfAborted();
+			// OpenAI only decrypts reasoning for the organization that created it, so
+			// after an API key change it rejects every later turn. Send it once without.
+			return await send({ ...body, input: input.filter((item) => !isReasoningInput(item)) });
+		}
+	}
+
+	async generate(messages: Message[], config?: OpenAIChatModelConfig): Promise<GenerateResult> {
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
+		const response = await this.sendWithReasoningFallback(
+			this.buildRequestBody(messages, merged, false),
+			merged.abortSignal,
+			async (body) =>
+				await this.requests.httpRequest(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
 		);
-		const body = response.body as OpenAIResponsesResponse;
+		const body = response.body;
+		if (!isResponsesResponse(body)) {
+			throw new Error('Unexpected response from the Responses API: the body has no output array');
+		}
+		if (body.status === 'failed') {
+			throw responseFailedError(body);
+		}
 
 		const { text, toolCalls } = parseResponsesOutput(body.output);
 
@@ -401,7 +543,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 			}
 		}
 
-		const content: MessageContent[] = [];
+		const content = body.output.filter(isReasoningItem).map(toReasoningContent);
 		if (toolCalls.length) {
 			for (const toolCall of toolCalls) {
 				content.push({
@@ -422,7 +564,7 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 
 		return {
 			id: body.id,
-			finishReason: body.status === 'completed' ? 'stop' : 'other',
+			finishReason: toFinishReason(body, toolCalls.length > 0),
 			usage,
 			message,
 			rawResponse: body,
@@ -431,32 +573,23 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 	}
 
 	async *stream(messages: Message[], config?: OpenAIChatModelConfig): AsyncIterable<StreamChunk> {
-		const merged = this.mergeConfig(config) as OpenAIChatModelConfig;
-		const { instructions, input } = genericMessagesToResponsesInput(messages);
-
-		const tools = this.getTools(config);
-
-		const requestBody: OpenAIResponsesRequest = {
-			model: this.modelId,
-			input,
-			instructions,
-			max_output_tokens: merged.maxTokens,
-			temperature: merged.temperature,
-			top_p: merged.topP,
-			tools,
-			parallel_tool_calls: true,
-			store: false,
-			stream: true,
-		};
-
-		const streamResponse = await this.requests.openStream(
-			'POST',
-			requestUrl`${this.baseURL}/responses`,
-			requestBody,
+		const merged: OpenAIChatModelConfig = { ...this.defaultConfig, ...config };
+		const streamResponse = await this.sendWithReasoningFallback(
+			this.buildRequestBody(messages, merged, true),
+			merged.abortSignal,
+			async (body) =>
+				await this.requests.openStream(
+					'POST',
+					requestUrl`${this.baseURL}/responses`,
+					body,
+					definedHeaders(merged.headers),
+					merged.abortSignal,
+				),
 		);
 		const streamBody = streamResponse.body;
 
 		const toolCallBuffers: Record<number, { name: string; arguments: string }> = {};
+		let hasToolCalls = false;
 
 		for await (const event of parseOpenAIStreamEvents(streamBody)) {
 			const type = event.type;
@@ -477,12 +610,8 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 						arguments: (item.arguments as string) ?? '',
 					};
 				}
-				if (item?.type === 'reasoning') {
-					const summary = (item.summary as Array<Record<string, unknown>>) ?? [];
-					const reasoningText = summary
-						.map((s) => s.text)
-						.filter(Boolean)
-						.join('');
+				if (isReasoningItem(item)) {
+					const reasoningText = item.summary.map((part) => part.text).join('');
 					if (reasoningText) {
 						yield { type: 'reasoning-delta', delta: reasoningText };
 					}
@@ -510,24 +639,37 @@ export class OpenAIChatModel extends BaseChatModel<OpenAIChatModelConfig> {
 					const idx = event.output_index ?? 0;
 					const buf = toolCallBuffers[idx];
 					if (buf) {
+						hasToolCalls = true;
 						yield {
 							type: 'tool-call-delta',
-							id: (item.call_id as string) ?? (item.id as string),
+							id: toolCallId(item),
 							name: buf.name,
 							argumentsDelta: buf.arguments,
 						};
 					}
 				}
+				if (isReasoningItem(item)) {
+					// The complete block carries the encrypted payload for the next turn.
+					yield { type: 'content', content: toReasoningContent(item) };
+				}
 			}
 
-			if (type === 'response.done' || type === 'response.completed') {
-				const responseData =
-					(event.response as unknown as OpenAIResponsesResponse) ??
-					(event as unknown as OpenAIResponsesResponse);
+			if (type === 'response.failed') {
+				throw responseFailedError(event.response);
+			}
+
+			if (type === 'error') {
+				throw new Error(`The model stream failed: ${event.message ?? 'no error details'}`);
+			}
+
+			const isFinished =
+				type === 'response.done' || type === 'response.completed' || type === 'response.incomplete';
+			if (isFinished) {
+				const status = type === 'response.incomplete' ? 'incomplete' : 'completed';
 				yield {
 					type: 'finish',
-					finishReason: 'stop',
-					usage: parseTokenUsage(responseData.usage),
+					finishReason: toFinishReason({ status, ...event.response }, hasToolCalls),
+					usage: parseTokenUsage(event.response?.usage ?? event.usage),
 				};
 			}
 		}
