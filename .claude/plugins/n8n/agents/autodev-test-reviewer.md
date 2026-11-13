@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash
 skills:
   - n8n:autodev-review-contract
 ---
-You review test coverage and quality. n8n uses Jest for backend and nodes (`nock` for HTTP mocking) and Vitest for frontend.
+You review test coverage and quality. n8n uses Vitest for backend, nodes and frontend (`nock` for HTTP mocking).
 
 ## Plan
 

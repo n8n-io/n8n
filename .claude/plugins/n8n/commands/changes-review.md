@@ -17,14 +17,17 @@ This command **explores and reviews only** — unless I explicitly tell you to m
 No PR required. Determine the base ref: if `$ARGUMENTS` names one, use it; otherwise detect the default branch.
 
 ```bash
-base=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p'); base="${base:-master}"
+base="$ARGUMENTS"
+[ -n "$base" ] || base=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+base="${base:-master}"
 echo "base: $base"
 git diff "$base"...HEAD    # committed on this branch since it forked from base
 git diff HEAD              # uncommitted changes (staged + unstaged)
+git ls-files --others --exclude-standard | while IFS= read -r f; do git diff --no-index -- /dev/null "$f"; done   # new untracked files
 git status -s
 ```
 
-The change set under review is the union of *committed-since-base* and *uncommitted* changes. If there are no changes, say so and stop.
+The change set under review is the union of *committed-since-base*, *uncommitted* and *untracked* changes. If there are no changes, say so and stop.
 
 ## Step 2 — Fan out reviewers (parallel)
 

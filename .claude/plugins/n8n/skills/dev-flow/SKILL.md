@@ -248,8 +248,7 @@ skip it rather than dispatch a no-op reviewer:
    `n8n:conventions` skill)
 4. **Testing** — identify high-value tests that are missing, and review existing/changed tests for
    whether they actually assert behavior. (`n8n:autodev-test-reviewer`; fallback
-   `expert-test-developer`. For logic-heavy files, `n8n:mutant-score` to measure mutation
-   coverage and `n8n:mutant-fix` to add tests that kill surviving mutants.)
+   `expert-test-developer`.)
 5. **Frontend / Vue** *(only when the diff touches frontend)* — Vue 3 + Pinia reactivity, design-system
    and i18n conventions, a11y, component health. (`n8n:autodev-vue-reviewer`; fallback
    `expert-vue3-developer` + the `n8n:design-system` skill)
@@ -263,7 +262,7 @@ converged in Phase 5 and before Phase 6 (e.g. `codex review`, or a `cubic` / `/r
 Do not run it every round. Verify each finding rather than accepting it blindly. If none is
 available, note that and continue.
 
-Collect all findings, dedupe across lenses (any second-opinion pass included), and triage by severity.
+Collect all findings, dedupe across lenses (any second-opinion pass included), and triage by severity. Findings the review contract marks as pre-existing do not enter the fix loop: list them as follow-ups for the PR body or the final report.
 
 ## Phase 5 — Fix ↔ re-review loop (until clean)
 
@@ -290,6 +289,8 @@ Push the branch and invoke the repo's PR skill so the title passes `check-pr-tit
 ```
 /n8n:create-pr
 ```
+
+`/n8n:create-pr` asks whether to include the plan file in the PR description. Answer no, so the flow does not stop for a question.
 
 If a planned or open ticket replaces this work, say in the PR body why it goes in now and that the code goes when the other lands, so the reviewer does not have to ask.
 

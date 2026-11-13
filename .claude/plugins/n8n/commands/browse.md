@@ -19,8 +19,10 @@ If a node/credential under `packages/nodes-base` was edited, `pnpm build` there 
 Only worth it when your own long-running dev servers already serve *this* checkout and the test needs their real data (workflows, credentials — log in with your own dev credentials; never paste them into this file or the conversation):
 
 ```bash
-pid=$(pgrep -f "$(cd <dir> && pwd)/packages/cli" | head -n1)
-[ -n "$pid" ] && curl -sf localhost:5678/healthz >/dev/null && curl -sf localhost:8080 >/dev/null && echo reusable
+dir=$(cd <dir> && pwd -P)
+# true when a process listening on the port runs from this checkout (its cwd is under $dir)
+owned() { for p in $(lsof -ti tcp:$1 -sTCP:LISTEN 2>/dev/null); do case "$(lsof -a -p "$p" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')" in "$dir"|"$dir"/*) return 0;; esac; done; return 1; }
+owned 5678 && owned 8080 && curl -sf localhost:5678/healthz >/dev/null && curl -sf localhost:8080 >/dev/null && echo reusable
 ```
 
 If `reusable`, skip to Step 6 against http://localhost:8080. Otherwise Step 3. Never restart or kill those servers to make this work — spin up your own instead.
@@ -53,13 +55,14 @@ N8N_PORT=$BE N8N_EDITOR_PORT=$FE VUE_APP_URL_BASE_API= pnpm dev:fe:editor
 
 Both are watch-mode, so hot reload works exactly like the main setup. A malformed port throws immediately with the var name — read the error instead of waiting.
 
-Needs a public URL (webhooks, OAuth callbacks)? Start `cloudflared tunnel --url "http://localhost:$BE"` backgrounded FIRST, then add `WEBHOOK_URL=https://<random>.trycloudflare.com/` to the backend env — it is read at boot.
+Needs a public URL (webhooks, OAuth callbacks)? Start `cloudflared tunnel --url "http://localhost:$BE"` backgrounded FIRST and note its PID (`CF_PID=$!`), then add `WEBHOOK_URL=https://<random>.trycloudflare.com/` to the backend env, and it is read at boot.
 
-Poll before testing (first build can take minutes; report the dev-server output if either never comes up):
+Poll before testing, with a deadline (the first build can take minutes). If either check fails, stop and report the dev-server output:
 
 ```bash
-until curl -sf localhost:$BE/healthz >/dev/null 2>&1; do sleep 3; done; echo backend ready
-until curl -sf localhost:$FE >/dev/null 2>&1; do sleep 3; done; echo editor ready
+wait_for() { for _ in $(seq 100); do curl -sf "$1" >/dev/null 2>&1 && return 0; sleep 3; done; echo "not ready after about 5 minutes: $1" >&2; return 1; }
+wait_for localhost:$BE/healthz && echo backend ready
+wait_for localhost:$FE && echo editor ready
 ```
 
 ## Step 5 — Owner setup (fresh DB has no users)
@@ -86,9 +89,13 @@ sqlite3 "$DATA/.n8n/database.sqlite" 'select id, name, active from workflow_enti
 ## Step 7 — Clean up
 
 ```bash
-lsof -ti tcp:$BE -ti tcp:$((BE+1)) -ti tcp:$FE 2>/dev/null | xargs -r kill -9 2>/dev/null
-pkill -f "cloudflared tunnel" 2>/dev/null
-rm -rf "$DATA"
+if [ -z "$BE" ] || [ -z "$FE" ] || [ -z "$DATA" ]; then
+  echo "BE, FE or DATA is unset: set them from Step 3 first. Nothing was stopped." >&2
+else
+  lsof -ti tcp:$BE -ti tcp:$((BE+1)) -ti tcp:$FE 2>/dev/null | xargs -r kill -9 2>/dev/null
+  [ -n "$CF_PID" ] && kill "$CF_PID" 2>/dev/null   # only the tunnel started in Step 4
+  rm -rf "$DATA"
+fi
 true
 ```
 

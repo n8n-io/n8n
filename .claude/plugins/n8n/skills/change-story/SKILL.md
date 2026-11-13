@@ -32,8 +32,9 @@ one-liners. Padding a section to look thorough teaches readers to skim.
 Compute the diff with `git diff <merge-base>...<head>` plus
 `git log <merge-base>..<head> --format='%h %s%n%b'` for commit messages.
 When reviewing the current branch and the working tree is dirty, use
-`git diff <merge-base>` (includes uncommitted work) instead: the author
-use case usually runs before everything is committed. State in the story
+`git diff <merge-base>` (includes uncommitted work) instead, plus every untracked file
+(`git ls-files --others --exclude-standard`, each shown with `git diff --no-index /dev/null <file>`),
+since `git diff` omits new files: the author use case usually runs before everything is committed. State in the story
 header that uncommitted changes are included. A dirty tree while
 reviewing some other branch or PR is irrelevant, ignore it.
 If not in a git repo or the diff is empty, stop and tell the user.
@@ -112,7 +113,8 @@ noise, no accidental commit, and it survives worktree removal, one
 archive shared by every checkout of the project.
 
 Dispatch ONE subagent (general-purpose) with the prompt template in
-references/evidence-capture.md, filled in with: repo path, branch names,
+references/evidence-capture.md. With --review, step 4b dispatches it in the same message as the
+reviewers, so prepare it here and send it there; without --review, send it now. Fill it in with: repo path, branch names,
 change types, the specific flows/endpoints/tests to exercise, and the
 assets output directory `<run-dir>/assets/`.
 
@@ -219,12 +221,14 @@ small. Volume scales with the change, never with the template.
    positive line, no padding. Without --review, fill the template's
    {{REVIEW_NAV_HTML}} and {{REVIEW_SECTION_HTML}} with empty strings
    so section and nav link disappear.
-8. Not covered: what this story did not verify (flows not exercised,
+9. Not covered: what this story did not verify (flows not exercised,
    evidence that failed to capture, inferred claims). Honesty section,
    never empty in practice.
 
 Render with this skill's `assets/story-template.html`: copy it and fill
-the {{PLACEHOLDER}} slots with HTML fragments. The template's comments
+the {{PLACEHOLDER}} slots with HTML fragments. Escape all PR, commit, diff and captured-output
+text (`<`, `>`, `&`, quotes) before it goes into a fragment: only this skill's own markup stays
+raw, so a diff that contains HTML cannot render as live markup in the page. The template's comments
 document the exact markup for figures, before/after toggles, and
 collapsible output; it already ships section nav, lightbox, before/after
 toggle, and mermaid rendering. Do not hand-roll a page from scratch.
