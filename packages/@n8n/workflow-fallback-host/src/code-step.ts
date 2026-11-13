@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import type { Context } from 'node:vm';
 import { Script, createContext } from 'node:vm';
 
-import { readItems, StepInputError, toResultItems } from './items';
+import { readItems, StepInputError, toCodeResultItems } from './items';
 import { jmespathText } from './jmespath';
 import { isJsonObject, type JsonObject, type JsonValue } from './protocol';
 
@@ -681,13 +681,7 @@ function finish(outcome: unknown, options: CodeStepOptions): JsonObject[] {
 	}
 
 	const value: unknown = JSON.parse(outcome.json);
-	try {
-		return toResultItems(value);
-	} catch (error) {
-		throw new CodeStepError(
-			`Code must return an object or an array of objects. ${messageOf(error)}`,
-		);
-	}
+	return toCodeResultItems(value);
 }
 
 function isTimeout(error: unknown): boolean {

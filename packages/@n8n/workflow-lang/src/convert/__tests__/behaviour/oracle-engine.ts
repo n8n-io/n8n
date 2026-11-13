@@ -91,6 +91,23 @@ function nodeTypes() {
 	};
 }
 
+/** A result entry as a plain object (not an array). */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The `json` of a result, as `extractJsonData` of n8n's `js-task-runner.ts`
+ * gives it: the `json` when the result has one, else `json ?? {}` for a result
+ * with `binary`, else the result itself.
+ */
+function extractJsonData(result: unknown): unknown {
+	if (!isPlainObject(result)) return result;
+	if ('json' in result) return result.json;
+	if ('binary' in result) return result.json ?? {};
+	return result;
+}
+
 /** A stand-in for the JavaScript task runner: runs Code node code in `node:vm`. */
 async function startRunnerTask(
 	_additionalData: unknown,
@@ -134,7 +151,23 @@ async function startRunnerTask(
 			const start = settings.chunk?.startIndex ?? 0;
 			const count = settings.chunk?.count ?? connectionInputData.length;
 			const out: unknown[] = [];
-			for (let i = start; i < start + count; i++) out.push(await run(i));
+			for (let i = start; i < start + count; i++) {
+				const result = await run(i);
+				// As `runForEachItem` of n8n's `js-task-runner.ts`: a result that is false
+				// gives no output, `json` is the `json` of the result (for an item with
+				// `binary` and no `json`, an empty object), and its `binary` is the item's.
+				if (!result) continue;
+				if (!isPlainObject(result)) {
+					out.push(result);
+					continue;
+				}
+				const item: Record<string, unknown> = {
+					json: extractJsonData(result),
+					pairedItem: { item: i },
+				};
+				if (result.binary) item.binary = result.binary;
+				out.push(item);
+			}
 			return { ok: true, result: wf.deepCopy(out) };
 		}
 		return { ok: true, result: wf.deepCopy(await run(0)) };

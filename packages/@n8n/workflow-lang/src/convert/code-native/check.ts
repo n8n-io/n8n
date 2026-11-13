@@ -30,7 +30,7 @@ export default workflow({
 	},
 });
 
-${helperSources(emitHelpers(t)).join('\n\n')}
+${helperSources(emitHelpers(t, mode)).join('\n\n')}
 `;
 }
 

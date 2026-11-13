@@ -107,7 +107,7 @@ export function attemptNative(
 		allNodes: t.allNodes,
 		expression: (input, lists, allLists = []) =>
 			emitExpression(t, src.mode, input, lists, allLists),
-		helpers: emitHelpers(t),
+		helpers: emitHelpers(t, src.mode),
 	};
 }
 

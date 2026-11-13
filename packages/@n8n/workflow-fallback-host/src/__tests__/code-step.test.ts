@@ -1,6 +1,14 @@
 import { parseCodeStepArgs, runCodeStep, runCodeStepAsync } from '../code-step';
 import { StepInputError } from '../items';
 
+/** A binary entry of an item, in the in-memory form of `binary.ts`. */
+const BINARY = "{ data: 'aGk=', mimeType: 'text/plain' }";
+
+/** The binary data of the item as the code runner gives it: the `$binary` key, with its sizes. */
+const BINARY_ITEM = {
+	$binary: { data: { data: 'aGk=', mimeType: 'text/plain', bytes: 2, fileSize: '2 B' } },
+};
+
 const run = (
 	code: string,
 	items: Array<Record<string, number | string>> = [],
@@ -326,8 +334,10 @@ return [{ json: r }];`,
 		expect(run('return [{ json: { a: 1 } }];')).toEqual([{ a: 1 }]);
 	});
 
-	it('keeps a plain object that has a "json" key and other keys', () => {
-		expect(run('return [{ json: { a: 1 }, other: 2 }];')).toEqual([{ json: { a: 1 }, other: 2 }]);
+	it('rejects a result that mixes an n8n item key with other top-level keys, as v1 does', () => {
+		expect(() => run('return [{ json: { a: 1 }, other: 2 }];')).toThrow(
+			'Invalid output format [item 0]',
+		);
 	});
 
 	it('gives an empty list when the code returns nothing', () => {
@@ -391,6 +401,42 @@ return [{ json: r }];`,
 
 	it('rejects a result that is not a list of objects', () => {
 		expect(() => run('return [1, 2];')).toThrow(/must return an object/);
+	});
+
+	it('takes the binary data of an item out of its JSON, as v1 does', () => {
+		// v1's normalizeItems: an item with `binary` and no `json` keeps its other keys as JSON.
+		expect(run('return [{ binary: { data: ' + BINARY + ' } }];')).toEqual([BINARY_ITEM]);
+		expect(run('return [{ json: { a: 1 }, binary: { data: ' + BINARY + ' } }];')).toEqual([
+			{ a: 1, ...BINARY_ITEM },
+		]);
+	});
+
+	it('keeps the "binary" key of an object that v1 wraps in json', () => {
+		// v1 wraps a single object that has no `json`: the binary map stays part of the JSON.
+		expect(run('return { binary: { data: ' + BINARY + ' } };')).toEqual([
+			{ binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } },
+		]);
+	});
+
+	it('rejects the top-level key of a binary item that v1 rejects', () => {
+		expect(() => run('return [{ a: 1, binary: { data: ' + BINARY + ' } }];')).toThrow(
+			'Invalid output format [item 0]',
+		);
+	});
+
+	it('rejects a mix of items with and without binary data, as v1 does', () => {
+		expect(() => run('return [{ json: { a: 1 } }, { binary: { data: ' + BINARY + ' } }];')).toThrow(
+			'Inconsistent item format',
+		);
+	});
+
+	it('rejects a json or binary value that is not an object, as v1 does', () => {
+		expect(() => run('return [{ json: 5 }];')).toThrow(
+			"A 'json' property isn't an object [item 0]",
+		);
+		expect(() => run('return [{ json: {}, binary: 5 }];')).toThrow(
+			"A 'binary' property isn't an object [item 0]",
+		);
 	});
 
 	it('rejects a result that is not JSON', () => {

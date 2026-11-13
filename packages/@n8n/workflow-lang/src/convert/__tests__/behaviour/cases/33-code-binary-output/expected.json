@@ -1,0 +1,123 @@
+{
+	"generatedBy": "oracle.ts: n8n-core WorkflowExecute with n8n-nodes-base, executionOrder v1",
+	"error": null,
+	"order": [
+		"Webhook",
+		"All Binary",
+		"All Binary Out",
+		"All Json Binary",
+		"All Json Binary Out",
+		"All Single Binary",
+		"All Single Binary Out",
+		"Each Binary",
+		"Each Binary Out",
+		"Each Keys Binary",
+		"Each Keys Binary Out",
+		"Each Json Binary",
+		"Each Json Binary Out"
+	],
+	"nodes": {
+		"Webhook": [
+			[
+				{
+					"headers": {},
+					"params": {},
+					"query": {},
+					"body": {
+						"ok": true
+					}
+				}
+			]
+		],
+		"All Binary": [[{}]],
+		"All Binary Out": [
+			[
+				{
+					"json": {},
+					"binaryKeys": ["data"]
+				}
+			]
+		],
+		"All Json Binary": [
+			[
+				{
+					"a": 1
+				}
+			]
+		],
+		"All Json Binary Out": [
+			[
+				{
+					"json": {
+						"a": 1
+					},
+					"binaryKeys": ["data"]
+				}
+			]
+		],
+		"All Single Binary": [
+			[
+				{
+					"binary": {
+						"data": {
+							"data": "aGk=",
+							"mimeType": "text/plain"
+						}
+					}
+				}
+			]
+		],
+		"All Single Binary Out": [
+			[
+				{
+					"json": {
+						"binary": {
+							"data": {
+								"data": "aGk=",
+								"mimeType": "text/plain"
+							}
+						}
+					},
+					"binaryKeys": []
+				}
+			]
+		],
+		"Each Binary": [[{}]],
+		"Each Binary Out": [
+			[
+				{
+					"json": {},
+					"binaryKeys": ["data"]
+				}
+			]
+		],
+		"Each Keys Binary": [[{}]],
+		"Each Keys Binary Out": [
+			[
+				{
+					"json": {},
+					"binaryKeys": ["data"]
+				}
+			]
+		],
+		"Each Json Binary": [
+			[
+				{
+					"a": true
+				}
+			]
+		],
+		"Each Json Binary Out": [
+			[
+				{
+					"json": {
+						"a": true
+					},
+					"binaryKeys": ["data"]
+				}
+			]
+		]
+	},
+	"requests": [],
+	"responses": []
+}

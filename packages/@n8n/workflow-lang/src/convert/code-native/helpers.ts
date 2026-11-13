@@ -48,37 +48,154 @@ function codeWrapJson(j: Json, index: number): Json {
 	},
 	codeItem: {
 		uses: [],
-		source: `/** One result entry: an n8n item gives its \`json\` (and \`$binary\`), other objects stay. */
-function codeItem(e: Json): Json {
+		source: `/**
+ * One v1 item as compiled code holds it: its \`json\`, with its binary data in \`$binary\`.
+ * The checks are the ones of v1's \`validateItem\`.
+ */
+function codeItem(e: Json, index: number): Json {
 	const json = e.json;
-	if (json === null || typeof json !== 'object' || Array.isArray(json)) return e;
-	for (const key of Object.keys(e)) {
-		if (
-			key !== 'json' &&
-			key !== 'binary' &&
-			key !== 'pairedItem' &&
-			key !== 'error' &&
-			key !== 'index'
-		) {
-			return e;
-		}
+	if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+		throw new Error("A 'json' property isn't an object [item " + index + ']');
 	}
 	const binary = e.binary;
-	if (
-		binary !== null &&
-		typeof binary === 'object' &&
-		!Array.isArray(binary) &&
-		Object.keys(binary).length > 0
-	) {
-		return { ...json, $binary: binary };
+	if (binary === undefined) return json;
+	if (binary === null || typeof binary !== 'object' || Array.isArray(binary)) {
+		throw new Error("A 'binary' property isn't an object [item " + index + ']');
 	}
-	return json;
+	return Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json;
+}`,
+	},
+	codeReservedKey: {
+		uses: [],
+		source: `/** The top-level keys of an n8n item (\`REQUIRED_N8N_ITEM_KEYS\` of the Code node). */
+function codeReservedKey(key: string): boolean {
+	return key === 'json' || key === 'binary' || key === 'pairedItem' || key === 'error' || key === 'index';
+}`,
+	},
+	codeTopLevelKeys: {
+		uses: ['codeReservedKey'],
+		source: `/**
+ * v1's \`validateTopLevelKeys\` (\`result-validation.ts\` of the Code node): when an item
+ * has a reserved key, it must not have other top-level keys.
+ */
+function codeTopLevelKeys(list: Json[]): void {
+	let mustCheck = false;
+	for (let k = 0; k < list.length && !mustCheck; k++) {
+		for (const key of Object.keys(list[k])) {
+			if (codeReservedKey(key)) mustCheck = true;
+		}
+	}
+	if (!mustCheck) return;
+	for (let k = 0; k < list.length; k++) {
+		let found = '';
+		const unknown: string[] = [];
+		for (const key of Object.keys(list[k])) {
+			if (codeReservedKey(key)) {
+				if (found === '') found = key;
+			} else {
+				unknown.push(key);
+			}
+		}
+		if (unknown.length === 0) continue;
+		if (found !== '') throw new Error('Invalid output format [item ' + k + ']');
+		throw new Error('Unknown top-level item key: ' + unknown[0] + ' [item ' + k + ']');
+	}
+}`,
+	},
+	codeNormalize: {
+		uses: ['codeTopLevelKeys'],
+		source: `/**
+ * v1's \`validateRunCodeAllItems\` and \`normalizeItems\` (\`normalize-items.ts\` of n8n-core):
+ * one object becomes a list; items with \`json\` stay as they are; items with \`binary\` and
+ * no \`json\` get their other keys under \`json\`; a mix of the two forms is an error.
+ */
+function codeNormalize(value: Json): Json[] {
+	if (!Array.isArray(value)) {
+		if (value === null || typeof value !== 'object') {
+			throw new Error(
+				'Code must return an object or an array of objects. Result item 0 is not an object',
+			);
+		}
+		// As v1: an object with a truthy \`json\` is one item, else the object goes under \`json\`.
+		return value.json ? [value] : [{ json: value }];
+	}
+	let withJson = 0;
+	let withBinary = 0;
+	for (let k = 0; k < value.length; k++) {
+		const e: Json = value[k];
+		if (e === null || typeof e !== 'object' || Array.isArray(e)) {
+			throw new Error(
+				'Code must return an object or an array of objects. Result item ' + k + ' is not an object',
+			);
+		}
+		if ('json' in e) withJson++;
+		if ('binary' in e) withBinary++;
+	}
+	codeTopLevelKeys(value);
+	if (withJson === value.length) return value;
+	if (withJson > 0) throw new Error('Inconsistent item format');
+	if (withBinary > 0 && withBinary < value.length) throw new Error('Inconsistent item format');
+	const out: Json[] = [];
+	for (let k = 0; k < value.length; k++) {
+		const e: Json = value[k];
+		if (withBinary === value.length) {
+			const json: Json = {};
+			for (const key of Object.keys(e)) {
+				if (key !== 'binary') json[key] = e[key];
+			}
+			out.push({ json, binary: e.binary });
+		} else {
+			out.push({ json: e });
+		}
+	}
+	return out;
+}`,
+	},
+	codeItemEach: {
+		uses: [],
+		source: `/**
+ * One result of a Code node in "each item" mode, as v1's task runner gives it
+ * (\`extractJsonData\` of \`js-task-runner.ts\`) and \`validateItem\` checks it.
+ */
+function codeItemEach(e: Json, index: number): Json {
+	let json: Json;
+	if ('json' in e) {
+		json = e.json;
+	} else if ('binary' in e) {
+		// As v1: a result with binary data and no \`json\` gives an empty \`json\`.
+		json = e.json === undefined || e.json === null ? {} : e.json;
+	} else {
+		json = e;
+	}
+	if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+		throw new Error("A 'json' property isn't an object [item " + index + ']');
+	}
+	const binary = e.binary;
+	if (binary === undefined) return json;
+	if (binary === null || typeof binary !== 'object' || Array.isArray(binary)) {
+		throw new Error("A 'binary' property isn't an object [item " + index + ']');
+	}
+	return Object.keys(binary).length > 0 ? { ...json, $binary: binary } : json;
 }`,
 	},
 	codeItems: {
-		uses: ['codeItem'],
-		source: `/** The result list of a Code node: a JSON copy, one object becomes a list of one. */
+		uses: ['codeNormalize', 'codeItem'],
+		source: `/** The result list of a Code node in "all items" mode: a JSON copy, as v1 normalizes it. */
 function codeItems(value: Json): Json[] {
+	const text: Json = JSON.stringify(value === undefined ? null : value);
+	if (text === undefined) throw new Error('Code returned a value that is not JSON');
+	const parsed: Json = JSON.parse(text);
+	if (parsed === null) return [];
+	const list = codeNormalize(parsed);
+	const out: Json[] = [];
+	for (let k = 0; k < list.length; k++) out.push(codeItem(list[k], k));
+	return out;
+}`,
+	},
+	codeEachItems: {
+		uses: ['codeItemEach'],
+		source: `/** The result list of a Code node in "each item" mode: a JSON copy, one item for each result. */
+function codeEachItems(value: Json): Json[] {
 	const text: Json = JSON.stringify(value === undefined ? null : value);
 	if (text === undefined) throw new Error('Code returned a value that is not JSON');
 	const parsed: Json = JSON.parse(text);
@@ -86,13 +203,13 @@ function codeItems(value: Json): Json[] {
 	const list: Json[] = Array.isArray(parsed) ? parsed : [parsed];
 	const out: Json[] = [];
 	for (let k = 0; k < list.length; k++) {
-		const e = list[k];
+		const e: Json = list[k];
 		if (e === null || typeof e !== 'object' || Array.isArray(e)) {
 			throw new Error(
 				'Code must return an object or an array of objects. Result item ' + k + ' is not an object',
 			);
 		}
-		out.push(codeItem(e));
+		out.push(codeItemEach(e, k));
 	}
 	return out;
 }`,

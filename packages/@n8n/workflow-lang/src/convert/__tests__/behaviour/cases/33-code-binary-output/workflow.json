@@ -1,0 +1,350 @@
+{
+	"name": "Code binary output",
+	"nodes": [
+		{
+			"id": "webhook",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [0, 0],
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "binary",
+				"responseMode": "responseNode",
+				"options": {}
+			}
+		},
+		{
+			"id": "allBinary",
+			"name": "All Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 0],
+			"parameters": {
+				"jsCode": "return [{ binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } }];"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "allBinaryOut",
+			"name": "All Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 0],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "allJsonBinary",
+			"name": "All Json Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 180],
+			"parameters": {
+				"jsCode": "return [{ json: { a: 1 }, binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } }];"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "allJsonBinaryOut",
+			"name": "All Json Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 180],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "allSingleBinary",
+			"name": "All Single Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 360],
+			"parameters": {
+				"jsCode": "return { binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } };"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "allSingleBinaryOut",
+			"name": "All Single Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 360],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "eachBinary",
+			"name": "Each Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 540],
+			"parameters": {
+				"jsCode": "return { binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } };",
+				"mode": "runOnceForEachItem"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "eachBinaryOut",
+			"name": "Each Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 540],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "eachKeysBinary",
+			"name": "Each Keys Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 720],
+			"parameters": {
+				"jsCode": "return { a: 1, binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } };",
+				"mode": "runOnceForEachItem"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "eachKeysBinaryOut",
+			"name": "Each Keys Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 720],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "eachJsonBinary",
+			"name": "Each Json Binary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [400, 900],
+			"parameters": {
+				"jsCode": "return { json: { a: $json.body.ok }, binary: { data: { data: 'aGk=', mimeType: 'text/plain' } } };",
+				"mode": "runOnceForEachItem"
+			},
+			"onError": "continueRegularOutput"
+		},
+		{
+			"id": "eachJsonBinaryOut",
+			"name": "Each Json Binary Out",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [620, 900],
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "json",
+							"name": "json",
+							"value": "={{ $json }}",
+							"type": "object"
+						},
+						{
+							"id": "binaryKeys",
+							"name": "binaryKeys",
+							"value": "={{ Object.keys($binary ?? {}) }}",
+							"type": "array"
+						}
+					]
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "All Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "All Json Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "All Single Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Each Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Each Keys Binary",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Each Json Binary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"All Binary": {
+			"main": [
+				[
+					{
+						"node": "All Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"All Json Binary": {
+			"main": [
+				[
+					{
+						"node": "All Json Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"All Single Binary": {
+			"main": [
+				[
+					{
+						"node": "All Single Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Each Binary": {
+			"main": [
+				[
+					{
+						"node": "Each Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Each Keys Binary": {
+			"main": [
+				[
+					{
+						"node": "Each Keys Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Each Json Binary": {
+			"main": [
+				[
+					{
+						"node": "Each Json Binary Out",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

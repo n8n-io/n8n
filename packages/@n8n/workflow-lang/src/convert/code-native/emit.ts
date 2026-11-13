@@ -14,8 +14,13 @@ import type { Translation } from './translate.ts';
 import { ALL_NODES, MATCHES, FIRST_JSON, INDEX, ITEM, ITEMS, nodeVar, P } from './translate.ts';
 
 /** The helpers that `emitExpression` calls, besides those of the translation. */
-export function emitHelpers(t: Translation): string[] {
-	const out = new Set(['codeClone', 'codeWrap', 'codeItems', ...t.helpers]);
+export function emitHelpers(t: Translation, mode: 'all' | 'each'): string[] {
+	const out = new Set([
+		'codeClone',
+		'codeWrap',
+		mode === 'each' ? 'codeEachItems' : 'codeItems',
+		...t.helpers,
+	]);
 	if (t.nodes.length > 0) out.add('codeWrapJson');
 	if (t.usesCollections) out.add('collPlain');
 	return [...out];
@@ -63,11 +68,13 @@ export function emitExpression(
 			`\tconst ${P}out: Json[] = [];`,
 			`\tfor (let ${P}k = 0; ${P}k < ${ITEMS}.length; ${P}k++) {`,
 			`\t\tconst ${P}r: Json = ${P}run(${ITEMS}[${P}k], ${P}k);`,
-			`\t\tif (${P}r !== undefined && ${P}r !== null) ${P}out.push(${P}r);`,
+			// As v1's runner: a result that is null or undefined gives no output, and so
+			// does any other value that is false (0, an empty string).
+			`\t\tif (${P}r) ${P}out.push(${P}r);`,
 			'\t}',
 			t.usesCollections
-				? `\treturn codeItems(collPlain(${P}out));`
-				: `\treturn codeItems(${P}out);`,
+				? `\treturn codeEachItems(collPlain(${P}out));`
+				: `\treturn codeEachItems(${P}out);`,
 		].join('\n');
 	}
 	// Every node that ran before, by name, for \`$(name)\` with a computed name.
