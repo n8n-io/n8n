@@ -40,6 +40,8 @@ const IDENTITY = {
 };
 const APPLY_RESULT = { ...IDENTITY, status: 'applied', counts: {}, warnings: [] };
 const SOURCE_CHANGED_RESULT = { ...IDENTITY, status: 'source-changed' };
+const PREVIEW_CHANGED_RESULT = { ...IDENTITY, status: 'preview-changed' };
+const PREVIEW_REVISION = 'b'.repeat(64);
 const BLOCKED_RESULT = {
 	...IDENTITY,
 	status: 'blocked',
@@ -151,12 +153,16 @@ describe('promotion-environment apply command', () => {
 		return { run: async () => await command.run(), applyPackage, ...stubs };
 	}
 
-	it('sends the reviewed source built from the three expected flags', async () => {
-		const { run, applyPackage } = runApply(APPLY_RESULT, { format: 'table', ...PINNED_FLAGS });
+	it('sends the reviewed source and the reviewed preview revision', async () => {
+		const { run, applyPackage } = runApply(APPLY_RESULT, {
+			format: 'table',
+			...PINNED_FLAGS,
+			expectedPreviewRevision: PREVIEW_REVISION,
+		});
 
 		await run();
 
-		expect(applyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE);
+		expect(applyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE, PREVIEW_REVISION);
 	});
 
 	it('names the branch and commit it applied, and exits through succeed', async () => {
@@ -194,6 +200,17 @@ describe('promotion-environment apply command', () => {
 		expect(logToStderr).toHaveBeenCalledWith(expect.stringContaining('Nothing was imported.'));
 		expect(logToStderr).toHaveBeenCalledWith(
 			expect.stringContaining(`environment env-1, branch release, commit ${SHA}`),
+		);
+		expect(exit).toHaveBeenCalledWith(3);
+	});
+
+	it('exits 3 and names the command that shows the new preview when the preview changed', async () => {
+		const { run, logToStderr, exit } = runApply(PREVIEW_CHANGED_RESULT);
+
+		await run();
+
+		expect(logToStderr).toHaveBeenCalledWith(
+			expect.stringContaining('Run n8n-cli promotion-environment list-apply-changes env-1 --json.'),
 		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
@@ -320,17 +337,23 @@ describe('promotion-environment apply-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE, undefined);
+		expect(continueApplyPackage).toHaveBeenCalledWith(
+			'env-1',
+			EXPECTED_SOURCE,
+			undefined,
+			undefined,
+		);
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('sends the confirmation of destructive data table changes', async () => {
+	it('confirms only the destructive changes of the reviewed preview', async () => {
 		const command = new PromotionEnvironmentApplyContinue(
 			[
 				'env-1',
 				`--expected-environment-id=${EXPECTED_SOURCE.environmentId}`,
 				`--expected-branch=${EXPECTED_SOURCE.branchName}`,
 				`--expected-commit-sha=${SHA}`,
+				`--expected-preview-revision=${PREVIEW_REVISION}`,
 				'--confirm-destructive-changes',
 				'--format=table',
 			],
@@ -345,7 +368,12 @@ describe('promotion-environment apply-continue command', () => {
 
 		await command.run();
 
-		expect(continueApplyPackage).toHaveBeenCalledWith('env-1', EXPECTED_SOURCE, true);
+		expect(continueApplyPackage).toHaveBeenCalledWith(
+			'env-1',
+			EXPECTED_SOURCE,
+			true,
+			PREVIEW_REVISION,
+		);
 	});
 });
 
@@ -500,12 +528,11 @@ describe('promotion-environment apply-selection command', () => {
 	});
 
 	it('sends the reviewed source and the reviewed preview revision', async () => {
-		const revision = 'b'.repeat(64);
 		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
 			format: 'table',
 			workflow: ['wf-1'],
 			...PINNED_FLAGS,
-			expectedPreviewRevision: revision,
+			expectedPreviewRevision: PREVIEW_REVISION,
 		});
 
 		await run();
@@ -514,7 +541,7 @@ describe('promotion-environment apply-selection command', () => {
 			'proj-1',
 			{ workflowIds: ['wf-1'] },
 			EXPECTED_SOURCE,
-			revision,
+			PREVIEW_REVISION,
 		);
 	});
 
@@ -538,6 +565,18 @@ describe('promotion-environment apply-selection command', () => {
 
 		expect(succeed).not.toHaveBeenCalled();
 		expect(exit).toHaveBeenCalledWith(3);
+	});
+
+	it('names the project preview command when the preview changed', async () => {
+		const { run, logToStderr } = runApplySelection(PREVIEW_CHANGED_RESULT);
+
+		await run();
+
+		expect(logToStderr).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'Run n8n-cli promotion-environment list-changes proj-1 apply --json.',
+			),
+		);
 	});
 
 	it('exits 4 with a Continue command that resends the same workflow and folder ids', async () => {

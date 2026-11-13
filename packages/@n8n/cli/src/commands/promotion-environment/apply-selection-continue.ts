@@ -1,6 +1,10 @@
 import { Args, Flags } from '@oclif/core';
 
-import { PromotionApplyCommand, selectionContinueCommand } from './apply-command';
+import {
+	PromotionApplyCommand,
+	selectionContinueCommand,
+	selectionPreviewCommand,
+} from './apply-command';
 import {
 	expectedPreviewRevisionFlag,
 	expectedSourceFlags,
@@ -52,7 +56,12 @@ export default class PromotionEnvironmentApplySelectionContinue extends Promotio
 				flags.confirmDestructiveChanges,
 				flags.expectedPreviewRevision,
 			);
-			this.reportApplyResult(result, flags, selectionContinueCommand(args.projectId, selection));
+			this.reportApplyResult(
+				result,
+				flags,
+				selectionContinueCommand(args.projectId, selection),
+				selectionPreviewCommand(args.projectId),
+			);
 		});
 	}
 }
