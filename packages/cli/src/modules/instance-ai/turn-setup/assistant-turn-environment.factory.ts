@@ -6,7 +6,7 @@ import {
 	PORTABLE_WORKSPACE_ROOT,
 } from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -22,6 +22,7 @@ import {
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	type InstanceAiContext,
+	type InstanceAiTraceContext,
 	type ModelConfig,
 	type OrchestrationContext,
 	type ServiceProxyConfig,
@@ -34,7 +35,6 @@ import { redactTelemetryProperties } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
-import { N8N_VERSION } from '@/constants';
 import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
@@ -109,6 +109,7 @@ export interface AssistantTurnEnvironmentParams {
 	/** Resumed segments use the gates bound to the original turn. */
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
+	tracing?: InstanceAiTraceContext;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -178,7 +179,7 @@ export class AssistantTurnEnvironmentFactory {
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 		});
 
 		return {
@@ -237,6 +238,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig,
 			instanceContextGates,
 			experimentGates,
+			tracing,
 		} = params;
 		const { memory } = runtime;
 		const thread = await memory.getThread(threadId);
@@ -449,7 +451,7 @@ export class AssistantTurnEnvironmentFactory {
 		if (sandboxStatus.workflowBuilderAvailable) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',
-				{ threadId, runId, userId: user.id, messageGroupId },
+				{ threadId, runId, userId: user.id, messageGroupId, tracing },
 				async () => await runtime.sandbox.resolveConfig(),
 			);
 
@@ -519,6 +521,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			...(tracing ? { tracing } : {}),
 			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
@@ -543,6 +546,7 @@ export class AssistantTurnEnvironmentFactory {
 						component: 'instance-ai-agent-builder-usage',
 						threadId,
 						runId,
+						tracing: orchestrationContext.tracing,
 						userId: user.id,
 						...(boundProjectId ? { projectId: boundProjectId } : {}),
 						...(messageGroupId ? { messageGroupId } : {}),

@@ -1,7 +1,7 @@
 import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
-import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
+import { computed, defineComponent, h, isReadonly, ref, nextTick, type Ref } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
@@ -283,6 +283,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 			props: [
 				'modelValue',
 				'placeholder',
+				'placeholderPreview',
 				'isStreaming',
 				'showStopButton',
 				'canSubmit',
@@ -448,6 +449,7 @@ describe('AgentChatPanel', () => {
 	function mountPanel(
 		overrides: Partial<{
 			visible: boolean;
+			autofocus: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			attachmentCapabilities: ProviderAttachmentCapabilities;
@@ -463,6 +465,7 @@ describe('AgentChatPanel', () => {
 			newSession: boolean;
 			clientContext: () => Record<string, unknown> | undefined;
 			placeholder: string;
+			placeholderPreview: Readonly<Ref<string | undefined>>;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
 		}> = {},
@@ -494,6 +497,54 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it.each([true, false])(
+		'focuses only the visible Assistant composer (visible: %s)',
+		async (visible) => {
+			const wrapper = mountPanel({ autofocus: true, visible });
+			await flushPromises();
+			expect(focusInputMock).toHaveBeenCalledTimes(visible ? 1 : 0);
+			await wrapper.setProps({ visible: true });
+			await flushPromises();
+			expect(focusInputMock).toHaveBeenCalled();
+		},
+	);
+
+	it.each(['visible', 'autofocus'] as const)(
+		'focuses the Assistant on page load and when %s is enabled',
+		async (prop) => {
+			const outside = document.createElement('input');
+			document.body.append(outside);
+			outside.focus();
+			const wrapper = mountPanel({ autofocus: true }, document.body);
+			try {
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+				await wrapper.setProps({ [prop]: false });
+				outside.focus();
+				await wrapper.setProps({ [prop]: true });
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		},
+	);
+
+	it('reports draft changes without putting placeholder prompts in the draft', async () => {
+		const wrapper = mountPanel({ placeholder: 'Build a news agent' });
+		expect(wrapper.emitted('content-change')).toEqual([[false]]);
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		input.vm.$emit('update:modelValue', 'My draft');
+		await nextTick();
+		expect(wrapper.emitted('content-change')).toEqual([[false], [true]]);
+		await wrapper.setProps({ placeholder: 'Build another agent' });
+		expect(input.props('modelValue')).toBe('My draft');
+		input.vm.$emit('update:modelValue', '');
+		await nextTick();
+		expect(wrapper.emitted('content-change')).toEqual([[false], [true], [false]]);
+	});
 
 	it('submits a message when Web Crypto is unavailable', async () => {
 		const actual = await vi.importActual<typeof import('../composables/agentTelemetry.utils')>(
@@ -3699,6 +3750,50 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it.each([true, false])(
+		'restores the Assistant composer after approval without changing an active field (outside focus: %s)',
+		async (focusOutside) => {
+			const wrapper = mountPanel({ autofocus: true }, document.body);
+			const outside = document.createElement('input');
+			document.body.append(outside);
+			try {
+				await flushPromises();
+				messagesMock.value = [
+					{
+						...openInteractiveMessage(),
+						interactive: {
+							toolName: APPROVAL_TOOL_NAME,
+							toolCallId: 'tc-1',
+							runId: 'run-1',
+							input: { type: 'approval', toolName: 'send_message', args: {} },
+						},
+					},
+				];
+				await flushPromises();
+				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
+				if (focusOutside) {
+					outside.focus();
+				} else if (document.activeElement instanceof HTMLElement) {
+					document.activeElement.blur();
+				}
+				focusInputMock.mockClear();
+				messagesMock.value[0].interactive!.resolvedAt = 1;
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-chat-approvals"]').exists()).toBe(false);
+				if (focusOutside) {
+					expect(document.activeElement).toBe(outside);
+					expect(focusInputMock).not.toHaveBeenCalled();
+				} else {
+					expect(document.activeElement).toBe(wrapper.get('textarea').element);
+					expect(focusInputMock).toHaveBeenCalled();
+				}
+			} finally {
+				wrapper.unmount();
+				outside.remove();
+			}
+		},
+	);
+
 	it.each([
 		{ action: 'allow-once', decision: { approved: true } },
 		{ action: 'deny', decision: { approved: false } },
@@ -4639,6 +4734,30 @@ describe('AgentChatPanel', () => {
 				);
 			});
 
+			it('forwards the preview ref while keeping question and queue placeholders first', async () => {
+				const preview = ref<string>();
+				const wrapper = mountPanel({ placeholderPreview: preview });
+				const input = composer(wrapper);
+				expect(input.props('placeholderPreview')).toBe(preview);
+				messagesMock.value = [openInteractiveMessage()];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBeUndefined();
+				messagesMock.value = [];
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'queued',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBeUndefined();
+				queuedMessagesMock.value = [];
+				await nextTick();
+				expect(input.props('placeholderPreview')).toBe(preview);
+			});
+
 			it('hides the attach button when the host turns it off', () => {
 				const wrapper = mountPanel({ showAttachButton: false });
 
@@ -4734,6 +4853,11 @@ describe('AgentChatPanel', () => {
 			) => void;
 			removeComposerAttachment: (id: string) => void;
 			sendMessageFromOutside: (message: string, files?: File[]) => void;
+			sendHostMessage: (
+				message: string,
+				clientContext?: Record<string, unknown>,
+			) => Promise<'sent' | 'busy' | 'rejected'>;
+			composerAttachments: Array<{ chip: { id: string } }>;
 		};
 		const composerVm = (wrapper: ReturnType<typeof mountPanel>) =>
 			wrapper.vm as unknown as ComposerVm;
@@ -4928,6 +5052,45 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.emitted('message-accepted')).toEqual([
 				[{ text: 'use these', files: [], clientContext }],
 			]);
+		});
+
+		describe('sendHostMessage', () => {
+			it('sends past the composer, so the draft and the staged chips stay', async () => {
+				acceptOnSend();
+				const wrapper = mountPanel({ clientContext: () => ({ timeZone: 'Europe/Helsinki' }) });
+				const vm = composerVm(wrapper);
+				vm.setDraft('half-typed');
+				vm.addComposerAttachment({ id: 'wf-1', label: 'Invoices' }, { workflowId: 'wf-1' });
+				await nextTick();
+
+				const result = await vm.sendHostMessage('fix it', { attachments: [{ id: 'wf-2' }] });
+				await flushPromises();
+
+				expect(result).toBe('sent');
+				const clientContext = { timeZone: 'Europe/Helsinki', attachments: [{ id: 'wf-2' }] };
+				expect(sendMessageMock).toHaveBeenCalledWith(
+					'fix it',
+					undefined,
+					expect.any(Function),
+					clientContext,
+				);
+				expect(wrapper.emitted('message-accepted')).toEqual([
+					[{ text: 'fix it', files: [], clientContext }],
+				]);
+				expect(composer(wrapper).props('modelValue')).toBe('half-typed');
+				expect(vm.composerAttachments.map(({ chip }) => chip.id)).toEqual(['wf-1']);
+			});
+
+			it('does not answer an open card', async () => {
+				messagesMock.value = [openInteractiveMessage()];
+				const wrapper = mountPanel();
+
+				const result = await composerVm(wrapper).sendHostMessage('fix it');
+
+				expect(result).toBe('busy');
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(cancelAndSteerMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('replaces a chip with the same id and drops a removed chip from the next send', async () => {
