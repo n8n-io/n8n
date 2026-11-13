@@ -12,6 +12,7 @@ import {
 	versionRow,
 	resetSkillMocks,
 } from './test-utils/skill-services';
+import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { Skill } from '../database/entities/skill.entity';
 import { SkillSyncedError } from '../errors/skill-synced.error';
 import { toAgentSkill, type ResolvedSkillRow } from '../utils/skill-content';
@@ -629,7 +630,7 @@ describe('SkillService', () => {
 
 		it('refuses to move a synced skill on its own, for every caller', async () => {
 			await givenUsers();
-			links.isLinked.mockResolvedValue(true);
+			links.findLinkBySkillId.mockResolvedValue(mock<SkillSourceLink>({ sourceId: 'source-1' }));
 			skills.findLatestSummaries.mockResolvedValue(
 				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
 			);
@@ -640,7 +641,7 @@ describe('SkillService', () => {
 				SkillSyncedError,
 				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
 			);
-			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(links.findLinkBySkillId).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 

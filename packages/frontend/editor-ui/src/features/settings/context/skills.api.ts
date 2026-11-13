@@ -1,4 +1,6 @@
 import type {
+	MoveSkillSourceDto,
+	SkillSourceMovePreview,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -191,4 +193,26 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 		'POST',
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
 	);
+}
+
+/** Local validation for a source scope change. */
+export async function previewSkillSourceMove(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<SkillSourceMovePreview> {
+	return await makeRestApiRequest<SkillSourceMovePreview>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/move/preview`,
+		payload,
+	);
+}
+
+export async function moveSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: MoveSkillSourceDto,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/move`, payload);
 }

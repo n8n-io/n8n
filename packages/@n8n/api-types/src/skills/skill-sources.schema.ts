@@ -68,6 +68,34 @@ export class ConnectSkillSourceDto extends Z.class({
 	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
+/** Checks or moves a source without reading its remote repository. */
+export class MoveSkillSourceDto extends Z.class({
+	...skillSourceScope,
+	/** The scope shown when the dialog opened. Reject a stale request. */
+	fromProjectId: z.string().min(1).max(36).nullable(),
+	credentialId: z.string().min(1).max(36).optional(),
+}) {}
+
+export type SkillSourceMovePreview = {
+	skillCount: number;
+	canMove: boolean;
+	/** A null name or destination hides a skill the user cannot read. */
+	nameConflicts: Array<{
+		moving: { id: string; name: string | null };
+		existing: { id: string; name: string } | null;
+	}>;
+	usageConflicts: Array<{
+		skill: { id: string; name: string | null };
+		agents: Array<{ id: string; name: string }>;
+		hiddenAgents: number;
+	}>;
+	duplicate: SkillSourceDuplicate;
+	credential: {
+		required: boolean;
+		reason: 'credential_missing' | 'credential_out_of_scope' | null;
+	};
+};
+
 /** The source that a link points to. */
 export type SkillSourceSummary = {
 	type: 'github';
@@ -299,4 +327,6 @@ export type SkillSourceListItem = {
 	lastCheckedAt: string | null;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
+	/** Whether the user may remove the source from this scope. The destination is checked separately. */
+	canMove: boolean;
 };

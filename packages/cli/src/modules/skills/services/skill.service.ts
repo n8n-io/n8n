@@ -514,25 +514,28 @@ export class SkillService {
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
-		const skill = withTrimmedName(input.skill);
-		assertHasInstructions(skill);
-		if (input.checkNameTaken) {
-			await this.assertNameFree(skill.name, input.target, undefined, ctx);
-		}
-		const id = input.id ?? `skill_${generateNanoId()}`;
-		await this.skillRepository.createSkill(
-			{
-				id,
-				target: input.target,
-				source: input.source,
-				createdById: input.createdById,
-				...(input.sourceRevision ? { sourceRevision: input.sourceRevision } : {}),
-			},
-			toSkillContent(skill, input.frontmatter ?? null),
-			ctx,
-		);
-		this.logger.debug('Created skill', { skillId: id });
-		return id;
+		return await this.txRunner.run(ctx, async (txCtx) => {
+			const skill = withTrimmedName(input.skill);
+			assertHasInstructions(skill);
+			await this.skillRepository.lockNames(txCtx);
+			if (input.checkNameTaken) {
+				await this.assertNameFree(skill.name, input.target, undefined, txCtx);
+			}
+			const id = input.id ?? `skill_${generateNanoId()}`;
+			await this.skillRepository.createSkill(
+				{
+					id,
+					target: input.target,
+					source: input.source,
+					createdById: input.createdById,
+					...(input.sourceRevision ? { sourceRevision: input.sourceRevision } : {}),
+				},
+				toSkillContent(skill, input.frontmatter ?? null),
+				txCtx,
+			);
+			this.logger.debug('Created skill', { skillId: id });
+			return id;
+		});
 	}
 
 	/**
@@ -599,6 +602,7 @@ export class SkillService {
 			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
 				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
+			await this.skillRepository.lockNames(txCtx);
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
 			const versionId = await this.skillRepository.insertSavedVersion(
@@ -633,7 +637,12 @@ export class SkillService {
 		target: SkillTarget,
 		keepAgentId: string | undefined,
 		ctx: OperationContext = {},
-		{ nameAfterMove, checkedSource, agentProjectIds = 'all' }: SkillMoveOptions = {},
+		{
+			nameAfterMove,
+			checkedSource,
+			agentProjectIds = 'all',
+			movingSourceId,
+		}: SkillMoveOptions = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
 			await this.skillRepository.lockForEdit([skillId], txCtx);
@@ -652,7 +661,11 @@ export class SkillService {
 				nameAfterMove ??
 				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			// All skills of a source share its scope, so a synced skill moves only with its source.
-			if (await this.sourceRepository.isLinked(skillId, txCtx)) {
+			const link = await this.sourceRepository.findLinkBySkillId(skillId, txCtx);
+			if (movingSourceId && link?.sourceId !== movingSourceId) {
+				throw new ConflictError('The skill stopped syncing. Check the source and try again.');
+			}
+			if (link && link.sourceId !== movingSourceId) {
 				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
 				throw new SkillSyncedError(
 					name ?? skillId,
@@ -664,6 +677,7 @@ export class SkillService {
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
+			await this.skillRepository.lockNames(txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);

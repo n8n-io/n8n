@@ -6,6 +6,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
@@ -143,6 +144,39 @@ export class SkillSourceRepository {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
 	}
 
+	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
+		if (this.sources.manager.connection.options.type !== 'postgres') return;
+		await this.sources.managerFor(ctx).findOne(SkillSourceConnection, {
+			where: { id: sourceId },
+			lock: { mode: 'pessimistic_write' },
+		});
+	}
+
+	async moveScope(
+		sourceId: string,
+		projectId: string | null,
+		credentialId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		try {
+			await this.sources.managerFor(ctx).update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{
+					projectId,
+					credentialId,
+					probeCursor: null,
+					lastErrorReason: null,
+					lastCheckedAt: new Date(),
+				},
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
+			throw error;
+		}
+	}
+
 	/** The source of a synced skill, in one query. Null for a skill without a source. */
 	async findSyncedFrom(skillId: string, ctx: OperationContext = {}): Promise<SyncedFromRow | null> {
 		const link = await this.links
@@ -200,8 +234,11 @@ export class SkillSourceRepository {
 		return sources.sort((a, b) => time(a) - time(b));
 	}
 
-	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
-		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
+	async findLinksBySource(
+		sourceId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor(ctx).find(SkillSourceLink, { where: { sourceId } });
 	}
 
 	/**
@@ -296,10 +333,18 @@ export class SkillSourceRepository {
 	 * A check that did not read the source, because its access still waits after a rate limit.
 	 * Only the reason changes: `lastCheckedAt` keeps the time of the last read.
 	 */
-	async recordDelayed(sourceId: string): Promise<void> {
-		await this.sources
-			.managerFor({})
-			.update(SkillSourceConnection, { id: sourceId }, { lastErrorReason: 'rate_limited' });
+	async recordDelayed(
+		source: Pick<SkillSourceConnection, 'id' | 'projectId' | 'credentialId'>,
+	): Promise<void> {
+		await this.sources.managerFor({}).update(
+			SkillSourceConnection,
+			{
+				id: source.id,
+				projectId: source.projectId ?? IsNull(),
+				credentialId: source.credentialId ?? IsNull(),
+			},
+			{ lastErrorReason: 'rate_limited' },
+		);
 	}
 
 	/**
@@ -313,26 +358,36 @@ export class SkillSourceRepository {
 		sourceId: string,
 		result: {
 			checkedAt: Date;
+			readScope?: Pick<SkillSourceConnection, 'projectId' | 'credentialId'>;
 			errorReason: string | null;
 			/** `to` null clears the cursor, so the next check reads every skill again. */
 			probeCursor?: { from: string | null; to: string | null };
 		},
 	): Promise<void> {
 		const manager = this.sources.managerFor({});
-		const { checkedAt, errorReason, probeCursor } = result;
-		await manager.update(
-			SkillSourceConnection,
-			{ id: sourceId, lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)) },
-			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
-		);
+		const { checkedAt, errorReason, probeCursor, readScope } = result;
+		const unchanged = {
+			id: sourceId,
+			lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
+			...(readScope
+				? {
+						projectId: readScope.projectId ?? IsNull(),
+						credentialId: readScope.credentialId ?? IsNull(),
+					}
+				: {}),
+		};
+		await manager.update(SkillSourceConnection, unchanged, {
+			lastCheckedAt: checkedAt,
+			lastErrorReason: errorReason,
+		});
 		if (!probeCursor) return;
 		const moved = await manager.update(
 			SkillSourceConnection,
-			{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
+			{ ...unchanged, probeCursor: probeCursor.from ?? IsNull() },
 			{ probeCursor: probeCursor.to },
 		);
 		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+			await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
 		}
 	}
 

@@ -1,5 +1,6 @@
 import {
 	ConnectSkillSourceDto,
+	MoveSkillSourceDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
@@ -85,6 +86,27 @@ export class SkillSourceController {
 	@Get('/')
 	async list(req: AuthenticatedRequest) {
 		return await this.skillSourceService.list(req.user);
+	}
+
+	// Resource-dependent scope checks run in the service. GlobalScope would exclude project roles.
+	@Post('/:sourceId/move/preview')
+	async previewMove(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: MoveSkillSourceDto,
+	) {
+		return await this.skillSourceService.previewMove(req.user, sourceId, payload);
+	}
+
+	@Post('/:sourceId/move')
+	async move(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: MoveSkillSourceDto,
+	) {
+		return await this.skillSourceService.move(req.user, sourceId, payload);
 	}
 
 	/**

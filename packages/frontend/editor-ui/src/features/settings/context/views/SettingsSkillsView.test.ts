@@ -1377,6 +1377,7 @@ describe('SettingsSkillsView', () => {
 				health: 'connected' as const,
 				lastCheckedAt: null,
 				canReview: true,
+				canMove: true,
 			};
 
 			async function renderWithSource() {
@@ -1732,7 +1733,7 @@ describe('SettingsSkillsView', () => {
 				await openSynced();
 
 				expect(lastModalData().scopeLockedReason).toBe(
-					'Set by the source acme/skills. The skill moves only with its source. To move this skill on its own, stop syncing it first.',
+					'Set by the source acme/skills. To move all its skills, select Change scope in the source menu. To move only this skill, stop syncing it first.',
 				);
 			});
 

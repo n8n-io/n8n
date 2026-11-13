@@ -2,9 +2,9 @@ import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
 import { validate as isUuid } from 'uuid';
-import { GLOBAL_OWNER_ROLE, UserRepository, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, UserRepository, TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type {
@@ -81,6 +81,7 @@ export class SkillSyncService {
 		private readonly credentials: SkillSourceCredentialsProxy,
 		private readonly scanner: SkillSecurityScanner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -90,9 +91,30 @@ export class SkillSyncService {
 	 * skill was created.
 	 */
 	async stopSyncing(user: User, skillId: string): Promise<void> {
-		const { link, source } = await this.requireSource(user, skillId, 'stopSyncing');
-		// A stop at the same time removed the link first. The skill is not synced either way.
-		if (!(await this.sourceRepository.deleteLink(skillId))) return;
+		const checked = await this.requireSource(user, skillId, 'stopSyncing');
+		const [canRead, canUpdate] = await Promise.all([
+			this.skillAccess.accessCheck(user, 'read'),
+			this.skillAccess.accessCheck(user, 'update'),
+		]);
+		const result = await this.txRunner.run({}, async (ctx) => {
+			await this.skillRepository.lockForEdit([skillId], ctx);
+			const link = await this.sourceRepository.findLinkBySkillId(skillId, ctx);
+			if (!link) return null;
+			const source = await this.sourceRepository.findById(link.sourceId, ctx);
+			if (!source || source.id !== checked.source.id) {
+				throw new ConflictError('The source scope changed. Reload the skill and try again.');
+			}
+			if (source.projectId !== checked.source.projectId) {
+				if (!canRead(source)) throw new NotFoundError('Skill not found');
+				if (!canUpdate(source))
+					throw new ForbiddenError('You are not allowed to stop syncing this skill.');
+			}
+			const current = { link, source };
+			if (!(await this.sourceRepository.deleteLink(skillId, ctx))) return null;
+			return current;
+		});
+		if (!result) return;
+		const { link, source } = result;
 		await this.skillsTelemetry.stoppedSync(
 			{ provider: source.type, had_pending_update: link.pendingContentHash !== null },
 			user.id,
@@ -235,7 +257,7 @@ export class SkillSyncService {
 		// Still waiting after a rate limit: no request, and the wait does not grow. The check time
 		// stays, because n8n did not read the source, so the task still checks it first next time.
 		if ((previousBackoff?.until ?? 0) > checkedAt.getTime()) {
-			await this.sourceRepository.recordDelayed(source.id);
+			await this.sourceRepository.recordDelayed(source);
 			throw new SkillSourceReadError(
 				'rate_limited',
 				'The source limits how often n8n can read it. n8n checks again later.',
@@ -245,7 +267,11 @@ export class SkillSyncService {
 			const auth = await this.authOf(source, client);
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
 			if (cursor !== undefined && cursor === source.probeCursor) {
-				await this.sourceRepository.recordCheck(source.id, { checkedAt, errorReason: null });
+				await this.sourceRepository.recordCheck(source.id, {
+					checkedAt,
+					errorReason: null,
+					readScope: source,
+				});
 				if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
 				return;
 			}
@@ -255,6 +281,7 @@ export class SkillSyncService {
 			// check reads every skill again.
 			const next = conflict ? null : cursor;
 			await this.sourceRepository.recordCheck(source.id, {
+				readScope: source,
 				checkedAt,
 				errorReason: null,
 				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
@@ -281,6 +308,7 @@ export class SkillSyncService {
 				});
 			}
 			await this.sourceRepository.recordCheck(source.id, {
+				readScope: source,
 				checkedAt,
 				errorReason: skillSourceReasonOf(error) ?? 'unexpected',
 			});

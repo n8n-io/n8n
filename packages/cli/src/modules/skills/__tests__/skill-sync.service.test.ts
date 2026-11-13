@@ -1,8 +1,9 @@
-import type { User } from '@n8n/db';
+import type { User, TransactionRunner } from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
+import { TX_CTX } from './test-utils/skill-services';
 import type { SkillSourceConnection } from '../database/entities/skill-source-connection.entity';
 import type { SkillSourceLink } from '../database/entities/skill-source-link.entity';
 import type { SkillSourceRepository } from '../database/repositories/skill-source.repository';
@@ -19,6 +20,7 @@ describe('SkillSyncService', () => {
 	const access = mock<SkillAccessService>();
 	const sources = mock<SkillSourceRepository>();
 	const telemetry = mock<SkillsTelemetry>();
+	const txRunner = mock<TransactionRunner>();
 	const service = new SkillSyncService(
 		mock(),
 		flagGate,
@@ -30,6 +32,7 @@ describe('SkillSyncService', () => {
 		mock(),
 		mock(),
 		telemetry,
+		txRunner,
 	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });
@@ -41,8 +44,10 @@ describe('SkillSyncService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		sources.findById.mockResolvedValue(source);
 		access.canOnSource.mockResolvedValue(true);
+		access.accessCheck.mockResolvedValue(() => true);
 		sources.deleteLink.mockResolvedValue(true);
 	});
 
@@ -57,7 +62,7 @@ describe('SkillSyncService', () => {
 
 				await service.stopSyncing(user, 'skill_a');
 
-				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a');
+				expect(sources.deleteLink).toHaveBeenCalledWith('skill_a', TX_CTX);
 				expect(telemetry.stoppedSync).toHaveBeenCalledTimes(1);
 				expect(telemetry.stoppedSync).toHaveBeenCalledWith(
 					{ provider: 'github', had_pending_update: hadPendingUpdate },
@@ -113,6 +118,7 @@ describe('SkillSyncService', () => {
 				mock(),
 				mock(),
 				telemetry,
+				txRunner,
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
 			const secondId = '4795c2a1-f46c-4b7d-a657-a435cedb7181';
@@ -144,7 +150,7 @@ describe('SkillSyncService', () => {
 			await expect(sync.checkNow(user, secondId)).rejects.toThrow();
 
 			expect(probe).toHaveBeenCalledTimes(2);
-			expect(sources.recordDelayed).toHaveBeenCalledWith(secondId);
+			expect(sources.recordDelayed).toHaveBeenCalledWith(expect.objectContaining({ id: secondId }));
 		},
 	);
 });
