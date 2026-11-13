@@ -119,6 +119,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				placeholder: { type: String, required: false },
 				disabled: { type: Boolean, required: false },
 				remoteMethod: { type: Function, required: false },
+				loading: { type: Boolean, required: false },
 			},
 			emits: ['update:model-value'],
 			setup(_, { emit }) {
@@ -126,7 +127,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				return {};
 			},
 			template:
-				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-user-ids="users.map((u) => u.id).join(\',\')">' +
+				'<div data-test-id="project-members-select" :data-disabled="disabled" :data-loading="loading" :data-user-ids="users.map((u) => u.id).join(\',\')">' +
 				'<input data-test-id="project-members-select-query" @input="remoteMethod?.($event.target.value)" />' +
 				'</div>',
 		}),
@@ -837,6 +838,32 @@ describe('ProjectSettings', () => {
 			await new Promise((resolve) => setTimeout(resolve, 0));
 
 			expect(getByTestId('project-members-select').dataset.userIds).toBe('b');
+		});
+
+		it('keeps loading until the latest of two identical searches resolves', async () => {
+			const resolvers: Array<() => void> = [];
+			vi.mocked(usersStore.fetchUsers).mockImplementation(
+				async () => await new Promise<void>((resolve) => resolvers.push(resolve)),
+			);
+
+			const { getByTestId } = renderComponent();
+			await vi.waitFor(() => expect(resolvers).toHaveLength(1));
+			resolvers[0]();
+
+			const select = getByTestId('project-members-select');
+			const queryInput = getInput(select);
+			for (const expectedCalls of [2, 3]) {
+				queryInput.value = 'bob';
+				queryInput.dispatchEvent(new Event('input'));
+				await vi.waitFor(() => expect(resolvers).toHaveLength(expectedCalls));
+			}
+
+			resolvers[1]();
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			expect(select.dataset.loading).toBe('true');
+
+			resolvers[2]();
+			await vi.waitFor(() => expect(select.dataset.loading).toBe('false'));
 		});
 
 		it('skips user preloading on mount when user cannot manage members', async () => {

@@ -118,7 +118,7 @@ const membersTableState = ref<TableOptions>({
 	sortBy: [],
 });
 
-const userSearchQuery = ref('');
+let latestUserSearchId = 0;
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
@@ -629,7 +629,7 @@ const onUpdateMembersTableOptions = (options: TableOptions) => {
 };
 
 const searchUsers = async (query: string) => {
-	userSearchQuery.value = query;
+	const searchId = ++latestUserSearchId;
 
 	isLoadingUsers.value = true;
 	try {
@@ -648,15 +648,15 @@ const searchUsers = async (query: string) => {
 		}
 
 		await usersStore.fetchUsers({ take: 50, filter });
-		// A slower, older request must not replace the results of a newer query.
-		if (query !== userSearchQuery.value) return;
+		// Only the latest request may set the results and the loading state.
+		if (searchId !== latestUserSearchId) return;
 
 		userSearchResults.value = usersStore.allUsers.filter((user) => matchesUser(query, user));
 	} catch (error) {
-		if (query !== userSearchQuery.value) return;
+		if (searchId !== latestUserSearchId) return;
 		toast.showError(error, i18n.baseText('projects.settings.users.search.error'));
 	} finally {
-		if (query === userSearchQuery.value) isLoadingUsers.value = false;
+		if (searchId === latestUserSearchId) isLoadingUsers.value = false;
 	}
 };
 

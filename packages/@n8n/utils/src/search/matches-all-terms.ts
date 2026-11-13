@@ -1,8 +1,23 @@
+// Letters that NFD does not split into a base letter and a diacritic.
+const FOLDED_LETTERS: Record<string, string> = {
+	æ: 'ae',
+	đ: 'd',
+	ð: 'd',
+	ħ: 'h',
+	ı: 'i',
+	ł: 'l',
+	ø: 'o',
+	œ: 'oe',
+	ß: 'ss',
+	þ: 'th',
+};
+
 const normalize = (value: string) =>
 	value
+		.toLowerCase()
 		.normalize('NFD')
 		.replace(/\p{Diacritic}/gu, '')
-		.toLowerCase();
+		.replace(/[æđðħıłøœßþ]/g, (letter) => FOLDED_LETTERS[letter] ?? letter);
 
 /** Splits a search query into terms on whitespace. */
 export function splitSearchTerms(query: string): string[] {
