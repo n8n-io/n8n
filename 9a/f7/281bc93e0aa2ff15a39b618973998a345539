@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryCard.vue
+  s_aa6b9a73f6e091::t_598295b7e67c78 53-57,78-80
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.test.ts
+  s_aa6b9a73f6e091::t_598295b7e67c78 5,102,105-111,123-150,191-366
+packages/frontend/editor-ui/src/features/shared/banners/banners.store.ts
+  s_aa6b9a73f6e091::t_598295b7e67c78 28-47,57,86,105-109,139,141-148,150-155
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.test.ts
+  s_aa6b9a73f6e091::t_598295b7e67c78 345,353-362
+  s_aa6b9a73f6e091::t_ca500d8891596a 363-364
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreWeaviate/VectorStoreWeaviate.node.ts
+  s_aa6b9a73f6e091::t_598295b7e67c78 11,65-67,73,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9af7281bc93e0aa2ff15a39b618973998a345539",
+  "prompts": {},
+  "sessions": {
+    "s_aa6b9a73f6e091": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e2f842cb5ffe9mLfv84aiMY1LI",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
