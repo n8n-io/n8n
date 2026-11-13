@@ -1174,12 +1174,10 @@ describe('Telemetry', () => {
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(buffer['user1'].routes).toStrictEqual({
-				'GET /workflows/{workflowId}': {
-					'2xx': { other: 2 },
-					'4xx': { editor_ui: 1 },
-				},
-			});
+			expect(buffer['user1'].routes).toStrictEqual([
+				{ route: 'GET /workflows/{workflowId}', result: '2xx', caller: 'other', calls: 2 },
+				{ route: 'GET /workflows/{workflowId}', result: '4xx', caller: 'editor_ui', calls: 1 },
+			]);
 		});
 
 		test('should handle missing user_agent', () => {
@@ -1272,10 +1270,11 @@ describe('Telemetry', () => {
 						'GET /executions': 1,
 					},
 					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
-					routes: {
-						'GET /workflows': { '2xx': { other: 1, editor_ui: 1 } },
-						'GET /executions': { '2xx': { other: 1 } },
-					},
+					routes: [
+						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+						{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
+						{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+					],
 					first: expect.any(Date),
 					user_agents: {},
 				},
@@ -1734,7 +1733,9 @@ describe('Telemetry', () => {
 					total_calls: 1,
 					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
 					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
-					routes: JSON.stringify({ 'GET /workflows': { '2xx': { other: 1 } } }),
+					routes: JSON.stringify([
+						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					]),
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());

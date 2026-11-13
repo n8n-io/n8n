@@ -70,18 +70,20 @@ interface IApiInvocationProperties {
 	client: PublicApiClient;
 }
 
-/** Calls per route, then per result, then per caller. Only non-zero leaves are kept. */
-type ApiInvocationsByRoute = Record<
-	string,
-	Partial<Record<PublicApiResult, Partial<Record<PublicApiClient, number>>>>
->;
+/** One row for each route, result and caller. A flat list is easier to query in Hex. */
+interface IApiRouteCalls {
+	route: string;
+	result: PublicApiResult;
+	caller: PublicApiClient;
+	calls: number;
+}
 
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
 	endpoints_by_client: { editor_ui: Record<string, number> };
-	routes: ApiInvocationsByRoute;
+	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
@@ -578,7 +580,7 @@ export class Telemetry {
 			first: new Date(),
 			endpoints: {},
 			endpoints_by_client: { editor_ui: {} },
-			routes: {},
+			routes: [],
 			user_agents: {},
 			clients: { editor_ui: 0, other: 0 },
 		});
@@ -593,9 +595,14 @@ export class Telemetry {
 			editorUiEndpoints[route] = (editorUiEndpoints[route] ?? 0) + 1;
 		}
 
-		const resultCounts = (entry.routes[route] ??= {});
-		const clientCounts = (resultCounts[result] ??= {});
-		clientCounts[client] = (clientCounts[client] ?? 0) + 1;
+		const existingRow = entry.routes.find(
+			(row) => row.route === route && row.result === result && row.caller === client,
+		);
+		if (existingRow) {
+			existingRow.calls++;
+		} else {
+			entry.routes.push({ route, result, caller: client, calls: 1 });
+		}
 
 		if (user_agent) {
 			entry.user_agents[user_agent] = (entry.user_agents[user_agent] ?? 0) + 1;
