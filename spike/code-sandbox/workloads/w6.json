@@ -1,0 +1,61 @@
+{
+	"id": "spikeW6000000001",
+	"name": "W6 httpRequest RPC",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000049",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000050",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w6",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000051",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const mode = $json.query?.mode ?? \"ten\";\nconst out = {};\nif (mode === \"ten\") {\n  const t0 = Date.now();\n  for (let i = 0; i < 10; i++) {\n    await helpers.httpRequest({ url: 'http://127.0.0.1:5680/echo?i=' + i, json: true });\n  }\n  out.ms = Date.now() - t0;\n} else if (mode === \"ssrf\") {\n  try { await helpers.httpRequest({ url: \"http://169.254.169.254/latest/meta-data/\" }); out.blocked = false; }\n  catch (e) { out.blocked = true; out.message = e.message; }\n} else if (mode === \"proxy\") {\n  const r = await helpers.httpRequest({ url: 'http://127.0.0.1:5680/echo?via=proxy', json: true });\n  out.viaProxy = r.viaProxy === true;\n}\nreturn [{ json: out }];"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

@@ -1,0 +1,87 @@
+{
+	"id": "spikeWMIX0000001",
+	"name": "WMIX JS and Python Code nodes",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-9000-000000000011",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-9000-000000000012",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-wmix",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "c3000000-0000-4000-9000-000000000013",
+			"name": "JS",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { ...i.json, js: true } }));"
+			}
+		},
+		{
+			"id": "c2000000-0000-4000-9000-000000000014",
+			"name": "Python",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "pythonNative",
+				"pythonCode": "return [{\"json\": {**item[\"json\"], \"py\": True}} for item in _items]"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "JS",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"JS": {
+			"main": [
+				[
+					{
+						"node": "Python",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}

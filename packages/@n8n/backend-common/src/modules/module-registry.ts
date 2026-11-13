@@ -45,6 +45,8 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// Does nothing unless N8N_CODE_EXECUTION_BACKEND=sandbox (spike).
+		'code-sandbox',
 		'insights',
 		'external-secrets',
 		'community-packages',

@@ -58,6 +58,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'code-sandbox',
 			'external-secrets',
 			'community-packages',
 			'data-table',
@@ -96,6 +97,7 @@ describe('eligibleModules', () => {
 		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
+			'code-sandbox',
 			'insights',
 			'external-secrets',
 			'community-packages',

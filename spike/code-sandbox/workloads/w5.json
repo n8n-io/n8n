@@ -1,0 +1,112 @@
+{
+	"id": "spikeW5000000001",
+	"name": "W5 binary transfer",
+	"active": false,
+	"nodes": [
+		{
+			"id": "a1000000-0000-4000-8000-000000000040",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [
+				0,
+				0
+			],
+			"webhookId": "b1000000-0000-4000-8000-000000000041",
+			"parameters": {
+				"httpMethod": "POST",
+				"path": "spike-w5",
+				"responseMode": "lastNode",
+				"responseData": "allEntries",
+				"options": {}
+			}
+		},
+		{
+			"id": "d0000000-0000-4000-8000-000000000042",
+			"name": "Read File",
+			"type": "n8n-nodes-base.readWriteFile",
+			"typeVersion": 1,
+			"position": [
+				200,
+				0
+			],
+			"parameters": {
+				"operation": "read",
+				"fileSelector": "={{ '/tmp/n8n-spike/w5-' + ($json.query.size || '1mb') + '.bin' }}",
+				"options": {}
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000043",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				400,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "const meta = helpers.assertBinaryData(0, \"data\");\nconst stream = await helpers.getBinaryStream(meta.id);\nlet bytes = 0;\nconst { PassThrough } = require(\"stream\");\nconst counter = new PassThrough();\ncounter.on(\"data\", (c) => { bytes += c.length; });\nstream.pipe(counter);\nconst out = await helpers.prepareBinaryData(counter, \"copy.bin\", \"application/octet-stream\");\nreturn [{ json: { bytes }, binary: { data: out } }];"
+			}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000044",
+			"name": "Report",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				600,
+				0
+			],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"jsCode": "return $input.all().map(i => ({ json: { bytes: i.json.bytes, size: i.binary?.data?.fileSize, id: i.binary?.data?.id } }));"
+			}
+		}
+	],
+	"connections": {
+		"Webhook": {
+			"main": [
+				[
+					{
+						"node": "Read File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read File": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1",
+		"saveDataSuccessExecution": "none",
+		"saveManualExecutions": false
+	},
+	"pinData": {},
+	"meta": {
+		"spike": "code-sandbox-opus"
+	}
+}
