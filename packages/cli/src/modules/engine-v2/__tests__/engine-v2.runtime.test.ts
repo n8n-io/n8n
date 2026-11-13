@@ -93,7 +93,7 @@ const mocks = vi.hoisted(() => {
 		engine,
 		v1StepExecutor,
 		stepDataLoader,
-		createDataSource: vi.fn((_url: string) => dataSource),
+		createDataSource: vi.fn((_url: string, _options?: unknown) => dataSource),
 		createServer: vi.fn((_app: unknown) => httpServer),
 		createEngineRuntime: vi.fn((_options: unknown) => engine),
 		createEngineStepDataLoader: vi.fn((_executionStore: unknown, _stepStore: unknown) => {
@@ -129,6 +129,10 @@ describe('EngineV2Runtime', () => {
 			host: '0.0.0.0',
 			port: 3000,
 			resumeSecret: '',
+			stepConcurrency: 1,
+			orchestrationConcurrency: 1,
+			databasePoolSize: 10,
+			databaseConnectionTimeoutMs: 20_000,
 			...overrides,
 		});
 
@@ -213,11 +217,28 @@ describe('EngineV2Runtime', () => {
 		it('opens the data plane connection and migrates it before building the engine', async () => {
 			await newRuntime().init(senders());
 
-			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine');
+			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', expect.anything());
 			expect(mocks.dataSource.initialize).toHaveBeenCalled();
 			expect(mocks.dataSource.runMigrations).toHaveBeenCalled();
 			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
 				expect.objectContaining({ dataSource: mocks.dataSource }),
+			);
+		});
+
+		it('sizes the database pool and the handler concurrency from the engine config', async () => {
+			await newRuntime('postgres://engine', {
+				stepConcurrency: 4,
+				orchestrationConcurrency: 2,
+				databasePoolSize: 25,
+				databaseConnectionTimeoutMs: 5000,
+			}).init(senders());
+
+			expect(mocks.createDataSource).toHaveBeenCalledWith('postgres://engine', {
+				poolSize: 25,
+				connectTimeoutMS: 5000,
+			});
+			expect(mocks.createEngineRuntime).toHaveBeenCalledWith(
+				expect.objectContaining({ concurrency: { step: 4, orchestration: 2 } }),
 			);
 		});
 
