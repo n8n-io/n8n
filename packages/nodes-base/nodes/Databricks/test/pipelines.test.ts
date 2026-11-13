@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';
@@ -49,7 +49,7 @@ describe('getPipelines', () => {
 			'databricksApi',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.0/pipelines`,
+				url: requestUrl`${HOST}/api/2.0/pipelines`,
 				qs: { max_results: PIPELINES_PAGE_SIZE },
 				headers: expect.objectContaining({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT }),
 			}),

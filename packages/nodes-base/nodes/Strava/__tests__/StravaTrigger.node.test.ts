@@ -1,5 +1,6 @@
 import type * as express from 'express';
 import type { IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as GenericFunctions from '../GenericFunctions';
@@ -40,7 +41,7 @@ describe('StravaTrigger', () => {
 
 			await node.webhookMethods.default.create.call(hookFunctions);
 
-			expect(request).toHaveBeenCalledWith('POST', '/push_subscriptions', {
+			expect(request).toHaveBeenCalledWith('POST', requestPath`/push_subscriptions`, {
 				callback_url: 'https://n8n.example/webhook',
 				verify_token: nodeId,
 			});
@@ -66,8 +67,8 @@ describe('StravaTrigger', () => {
 			const created = await node.webhookMethods.default.create.call(hookFunctions);
 
 			expect(created).toBe(true);
-			expect(request).toHaveBeenCalledWith('DELETE', '/push_subscriptions/1');
-			expect(request).toHaveBeenLastCalledWith('POST', '/push_subscriptions', {
+			expect(request).toHaveBeenCalledWith('DELETE', requestPath`/push_subscriptions/1`);
+			expect(request).toHaveBeenLastCalledWith('POST', requestPath`/push_subscriptions`, {
 				callback_url: 'https://n8n.example/webhook',
 				verify_token: nodeId,
 			});

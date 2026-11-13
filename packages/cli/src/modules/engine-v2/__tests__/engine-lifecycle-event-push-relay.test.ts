@@ -10,6 +10,7 @@ import { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-re
 
 const EXECUTION_ID = 'exec-1';
 const PUSH_REF = 'push-1';
+const USER_ID = 'user-1';
 const WORKFLOW_ID = 'wf-1';
 const TRIGGER_NAME = 'When clicking Execute';
 
@@ -47,6 +48,11 @@ const stepFailed: LifecycleEvent = {
 	...stepFields,
 	type: 'step:failed',
 	at: '2026-08-25T10:00:01.500Z',
+	error: {
+		name: 'NodeOperationError',
+		message: 'Node execution failed',
+		details: { description: 'Check the credentials', context: { itemIndex: 2 } },
+	},
 };
 
 const stepWaiting: LifecycleEvent = {
@@ -76,6 +82,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 	const register = (overrides: { trigger?: { nodeName: string; outputs: never } } = {}) =>
 		registry.register(EXECUTION_ID, {
 			pushRef: PUSH_REF,
+			userId: USER_ID,
 			workflowId: WORKFLOW_ID,
 			...overrides,
 		});
@@ -102,8 +109,8 @@ describe('EngineLifecycleEventPushRelay', () => {
 
 		relay.relay([stepStarted, stepCompleted]);
 
-		for (const [, pushRef] of vi.mocked(push.send).mock.calls) {
-			expect(pushRef).toBe(PUSH_REF);
+		for (const [, pushRef, userId] of vi.mocked(push.send).mock.calls) {
+			expect([pushRef, userId]).toEqual([PUSH_REF, USER_ID]);
 		}
 	});
 
@@ -212,7 +219,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 			const call = vi
 				.mocked(push.send)
 				.mock.calls.find(([message]) => message.type === 'nodeExecuteAfterData');
-			expect(call?.[2]).toBe(true);
+			expect(call?.[3]).toBe(true);
 		});
 
 		it('reuses the executionIndex allocated at the start, so the two messages pair up', () => {
@@ -330,14 +337,19 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
 		});
 
-		it('sends an error that survives the wire', () => {
+		it('sends the recorded error with its details, in a shape that survives the wire', () => {
 			// A plain `Error` would serialize to `{}`.
 			register();
 
 			relay.relay([stepStarted, stepFailed]);
 
 			const { error } = sentOfType('nodeExecuteAfter')[0].data.data;
-			expect(JSON.stringify(error)).toContain('Node execution failed');
+			expect(error?.toJSON?.()).toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Node execution failed',
+				description: 'Check the credentials',
+				context: { itemIndex: 2 },
+			});
 		});
 	});
 

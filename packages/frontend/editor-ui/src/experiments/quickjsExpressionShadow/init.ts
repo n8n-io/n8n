@@ -4,7 +4,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { isRecord } from '@n8n/utils/is-record';
 import { Expression } from 'n8n-workflow';
-import type { ShadowEvaluator } from 'n8n-workflow';
+import type { FeatureFlags, ShadowEvaluator } from 'n8n-workflow';
 
 import { QUICKJS_EXPRESSION_SHADOW_EXPERIMENT } from '@/app/constants/experiments';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -15,7 +15,6 @@ import type { ShadowReport } from './shadowRunner';
 export const DEFAULT_SAMPLE_RATE = 10;
 export const DEFAULT_TIMEOUT_MS = 100;
 export const REPORT_INTERVAL_MS = 5 * 60 * 1000;
-export const IDLE_START_TIMEOUT_MS = 10_000;
 
 const MIN_TIMEOUT_MS = 10;
 // A shadow run blocks the main thread for up to this long, so keep it short.
@@ -28,63 +27,14 @@ let session = 0;
 
 let stopActiveRun: (() => void) | undefined;
 
-/**
- * When the shadow engine starts.
- * - `boot`: at once, while the editor loads.
- * - `idle`: later, after the editor start, when the browser has no other work to do.
- * - `boot_only`: at once, because the browser cannot wait for idle time.
- */
-type StartVariant = 'boot' | 'idle' | 'boot_only';
-
 interface StartupTimings {
 	bundleImportMs?: number;
 	wasmReadyMs?: number;
 	bridgeReadyMs?: number;
 }
 
-/**
- * A/B test: each page load picks `boot` or `idle` at random, half and half.
- * The reports then tell if a later start makes the engine start faster.
- * Safari has no `requestIdleCallback`, so it gets `boot_only` and stays out of the test.
- */
-function pickStartVariant(): StartVariant {
-	if (typeof window.requestIdleCallback !== 'function') {
-		return 'boot_only';
-	}
-	return Math.random() < 0.5 ? 'idle' : 'boot';
-}
-
-let markEditorReady: () => void = () => {};
-
-const createEditorReady = async () =>
-	await new Promise<void>((resolve) => {
-		markEditorReady = resolve;
-	});
-
-// Resolves when the editor finishes its start after login. A logout replaces it.
-let editorReady = createEditorReady();
-
-/** Tell the shadow run that the editor finished its start after login. */
-export function notifyQuickJsShadowEditorReady() {
-	markEditorReady();
-}
-
-/** Wait until the editor finishes its start after login, then until the browser is idle. */
-async function waitForEditorThenIdle(): Promise<void> {
-	// requestIdleCallback alone can fire while the startup requests still run.
-	// The timeout ends the wait when the editor start fails or does not end.
-	let editorTimeout: ReturnType<typeof setTimeout> | undefined;
-	await Promise.race([
-		editorReady,
-		new Promise<void>((resolve) => {
-			editorTimeout = setTimeout(resolve, IDLE_START_TIMEOUT_MS);
-		}),
-	]);
-	clearTimeout(editorTimeout);
-	await new Promise<void>((resolve) => {
-		window.requestIdleCallback(() => resolve(), { timeout: IDLE_START_TIMEOUT_MS });
-	});
-}
+const importRuntimeBundle = async () =>
+	await import('@n8n/expression-runtime/runtime-bundle.iife.js?raw');
 
 /** Watch the tab visibility. The returned function stops the watch and tells whether the tab stayed visible. */
 function watchVisibility(): () => boolean {
@@ -141,6 +91,36 @@ function watchWasmSource(): () => FileSource | undefined {
 	};
 }
 
+// Set from the preload until a start takes the watch, or a logout stops it.
+let stopPreloadWasmSourceWatch: (() => FileSource | undefined) | undefined;
+
+/** Stop the WASM watch of a preload when no shadow start takes it. */
+function dropPreloadWasmSourceWatch() {
+	stopPreloadWasmSourceWatch?.();
+	stopPreloadWasmSourceWatch = undefined;
+}
+
+/**
+ * Start the download of the QuickJS runtime bundle and WASM file, so a later
+ * shadow start does not wait for them. Does nothing when the shadow flag is
+ * off in `featureFlags`.
+ * Never throws.
+ */
+export function preloadQuickJsExpressionShadow(featureFlags: FeatureFlags | undefined) {
+	if (
+		stopPreloadWasmSourceWatch === undefined &&
+		featureFlags?.[QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name] === true
+	) {
+		try {
+			stopPreloadWasmSourceWatch = watchWasmSource();
+			void importRuntimeBundle().catch(() => {});
+			void Expression.loadQuickJsWasm().catch(() => {});
+		} catch {
+			// The preload is optional, and the caller must not fail because of it.
+		}
+	}
+}
+
 export interface ShadowSettings {
 	sampleRate: number;
 	timeoutMs: number;
@@ -193,15 +173,20 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	if (started) return;
 
 	const settingsStore = useSettingsStore();
-	if (!settingsStore.isCloudDeployment) return;
-	if (Expression.getActiveImplementation() !== 'legacy') return;
+	if (!settingsStore.isCloudDeployment || Expression.getActiveImplementation() !== 'legacy') {
+		dropPreloadWasmSourceWatch();
+		return;
+	}
 
 	// Read before the wait, so a logout during the wait stops this start.
 	const startSession = session;
 	const postHogStore = usePostHog();
 	await postHogStore.waitForFeatureFlags();
 	if (startSession !== session) return;
-	if (!postHogStore.isFeatureEnabled(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name)) return;
+	if (!postHogStore.isFeatureEnabled(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name)) {
+		dropPreloadWasmSourceWatch();
+		return;
+	}
 
 	// Checked again after the wait, so two calls cannot both start a run.
 	if (started) return;
@@ -210,33 +195,22 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	const settings = readShadowSettings(
 		postHogStore.getFeatureFlagPayload(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name),
 	);
-	const startVariant = pickStartVariant();
-	// Started before the idle wait, because a hidden tab also makes that wait longer.
 	const stopVisibilityWatch = watchVisibility();
-	let idleWaitMs: number | undefined;
-	if (startVariant === 'idle') {
-		const waitStart = performance.now();
-		await waitForEditorThenIdle();
-		idleWaitMs = performance.now() - waitStart;
-		if (startSession !== session) {
-			stopVisibilityWatch();
-			return;
-		}
-	}
 
 	const telemetry = useTelemetry();
 	const timings: StartupTimings = {};
 	let initDurationMs = 0;
 	let startupVisible = false;
 	let wasmSource: FileSource | undefined;
+	const preloaded = stopPreloadWasmSourceWatch !== undefined;
 
 	const send = (initStatus: 'ready' | 'failed', report: ShadowReport, startupReport = false) => {
 		telemetry.track(TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED, {
+			quickjs_fe_event_version: '2',
 			quickjs_fe_init_status: initStatus,
 			quickjs_fe_startup_report: startupReport,
 			quickjs_fe_init_duration_ms: initDurationMs,
-			quickjs_fe_start_variant: startVariant,
-			quickjs_fe_idle_wait_ms: idleWaitMs,
+			quickjs_fe_preloaded: preloaded,
 			quickjs_fe_bundle_import_ms: timings.bundleImportMs,
 			quickjs_fe_wasm_ready_ms: timings.wasmReadyMs,
 			quickjs_fe_bridge_ready_ms: timings.bridgeReadyMs,
@@ -256,14 +230,12 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 		return result;
 	};
 
-	const stopWasmSourceWatch = watchWasmSource();
+	const stopWasmSourceWatch = stopPreloadWasmSourceWatch ?? watchWasmSource();
+	stopPreloadWasmSourceWatch = undefined;
 	const initStart = performance.now();
 	let evaluator: ShadowEvaluator;
 	try {
-		const { default: runtimeBundle } = await timed(
-			'bundleImportMs',
-			async () => await import('@n8n/expression-runtime/runtime-bundle.iife.js?raw'),
-		);
+		const { default: runtimeBundle } = await timed('bundleImportMs', importRuntimeBundle);
 		await timed('wasmReadyMs', async () => await Expression.loadQuickJsWasm());
 		evaluator = await timed(
 			'bridgeReadyMs',
@@ -325,8 +297,7 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 export function stopQuickJsExpressionShadow() {
 	session += 1;
 	started = false;
-	markEditorReady();
-	editorReady = createEditorReady();
+	dropPreloadWasmSourceWatch();
 	stopActiveRun?.();
 	stopActiveRun = undefined;
 }

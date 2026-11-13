@@ -7,6 +7,7 @@ import {
 	aiClientFetch,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import { requestUrl } from 'n8n-workflow';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
@@ -203,7 +204,7 @@ describe('LmOpenAi', () => {
 			expect(mockLoadContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'openAiApi',
 				expect.objectContaining({
-					uri: 'https://api.openai.com/v1/models',
+					uri: requestUrl`https://api.openai.com/v1/models`,
 					allowedDomains: 'api.openai.com',
 				}),
 			);

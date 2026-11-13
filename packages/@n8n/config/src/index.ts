@@ -11,6 +11,7 @@ import { CacheConfig } from './configs/cache.config';
 import { CanvasOnlyConfig } from './configs/canvas-only.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
+import { CodeExecutionConfig } from './configs/code-execution.config';
 import { CollaborationConfig } from './configs/collaboration.config';
 import { CompressionNodeConfig } from './configs/compression.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -68,6 +69,8 @@ export { sampleRateSchema } from './configs/sentry.config';
 export { positiveIntSchema, nonnegativeIntSchema } from './schemas';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
+export { CodeExecutionConfig, CodeSandboxConfig } from './configs/code-execution.config';
+export type { CodeExecutionBackendType, CodeSandboxScope } from './configs/code-execution.config';
 export { SecurityConfig } from './configs/security.config';
 export { PublicApiRateLimitConfig } from './configs/public-api.config';
 export {
@@ -199,6 +202,9 @@ export class GlobalConfig {
 
 	@Nested
 	taskRunners: TaskRunnersConfig;
+
+	@Nested
+	codeExecution: CodeExecutionConfig;
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;

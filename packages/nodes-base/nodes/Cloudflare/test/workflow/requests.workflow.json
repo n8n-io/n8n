@@ -1,0 +1,187 @@
+{
+	"name": "Cloudflare Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "zoneCertificate",
+				"operation": "get",
+				"zoneId": "023e105f4ecef8ad9ca31a8372d0c353",
+				"certificateId": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60"
+			},
+			"id": "node-0",
+			"name": "Certificate Get",
+			"type": "n8n-nodes-base.cloudflare",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"cloudflareApi": {
+					"id": "1",
+					"name": "Cloudflare account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "zoneCertificate",
+				"operation": "delete",
+				"zoneId": "023e105f4ecef8ad9ca31a8372d0c353",
+				"certificateId": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60"
+			},
+			"id": "node-1",
+			"name": "Certificate Delete",
+			"type": "n8n-nodes-base.cloudflare",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"cloudflareApi": {
+					"id": "1",
+					"name": "Cloudflare account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "zoneCertificate",
+				"operation": "getMany",
+				"zoneId": "023e105f4ecef8ad9ca31a8372d0c353",
+				"limit": 5
+			},
+			"id": "node-2",
+			"name": "Certificate Get Many",
+			"type": "n8n-nodes-base.cloudflare",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"cloudflareApi": {
+					"id": "1",
+					"name": "Cloudflare account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "zoneCertificate",
+				"operation": "getMany",
+				"zoneId": "023e105f4ecef8ad9ca31a8372d0c353",
+				"returnAll": true
+			},
+			"id": "node-3",
+			"name": "Certificate Get All",
+			"type": "n8n-nodes-base.cloudflare",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"cloudflareApi": {
+					"id": "1",
+					"name": "Cloudflare account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "zoneCertificate",
+				"operation": "upload",
+				"zoneId": "023e105f4ecef8ad9ca31a8372d0c353",
+				"certificate": "fake-certificate",
+				"privateKey": "fake-private-key"
+			},
+			"id": "node-4",
+			"name": "Certificate Upload",
+			"type": "n8n-nodes-base.cloudflare",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"cloudflareApi": {
+					"id": "1",
+					"name": "Cloudflare account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Certificate Get": [
+			{
+				"json": {
+					"id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+					"status": "active"
+				}
+			}
+		],
+		"Certificate Delete": [
+			{
+				"json": {
+					"id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60"
+				}
+			}
+		],
+		"Certificate Get Many": [
+			{
+				"json": {
+					"id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+					"status": "active"
+				}
+			}
+		],
+		"Certificate Get All": [
+			{
+				"json": {
+					"id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+					"status": "active"
+				}
+			}
+		],
+		"Certificate Upload": [
+			{
+				"json": {
+					"id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+					"status": "pending"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Certificate Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Certificate Upload",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

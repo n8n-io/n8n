@@ -26,7 +26,7 @@ export const issueDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/repos/{{$parameter.owner}}/{{$parameter.repository}}/issues',
+						url: '=/repos/{{ toPathSegment($parameter.owner) }}/{{ toPathSegment($parameter.repository) }}/issues',
 					},
 				},
 			},
@@ -38,7 +38,7 @@ export const issueDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/repos/{{$parameter.owner}}/{{$parameter.repository}}/issues/{{$parameter.issue}}',
+						url: '=/repos/{{ toPathSegment($parameter.owner) }}/{{ toPathSegment($parameter.repository) }}/issues/{{ toPathSegment($parameter.issue) }}',
 					},
 				},
 			},
@@ -50,7 +50,7 @@ export const issueDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '=/repos/{{$parameter.owner}}/{{$parameter.repository}}/issues',
+						url: '=/repos/{{ toPathSegment($parameter.owner) }}/{{ toPathSegment($parameter.repository) }}/issues',
 					},
 				},
 			},

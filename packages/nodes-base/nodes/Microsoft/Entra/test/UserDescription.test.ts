@@ -1261,7 +1261,7 @@ describe('Microsoft Entra Node', () => {
 						},
 						{
 							method: 'patch',
-							path: guestPath,
+							path: '/users/user_contoso.com%23EXT%23@tenant.onmicrosoft.com',
 							statusCode: 204,
 							requestBody: { aboutMe: 'About me' },
 							responseBody: {},

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { apiRequest } from './index';
@@ -22,7 +23,7 @@ describe('Ollama Transport', () => {
 				response: 'test response',
 			});
 
-			const result = await apiRequest.call(executeFunctionsMock, 'POST', '/api/chat', {
+			const result = await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/api/chat`, {
 				body: { model: 'test-model', messages: [] },
 			});
 
@@ -36,7 +37,7 @@ describe('Ollama Transport', () => {
 					method: 'POST',
 					body: { model: 'test-model', messages: [] },
 					qs: undefined,
-					url: 'http://localhost:11434/api/chat',
+					url: requestUrl`http://localhost:11434/api/chat`,
 					json: true,
 				},
 			);
@@ -52,7 +53,7 @@ describe('Ollama Transport', () => {
 				response: 'test response',
 			});
 
-			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags');
+			await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/api/tags`);
 
 			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
@@ -63,7 +64,7 @@ describe('Ollama Transport', () => {
 					method: 'GET',
 					body: undefined,
 					qs: undefined,
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 					json: true,
 				},
 			);
@@ -75,7 +76,7 @@ describe('Ollama Transport', () => {
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue([]);
 
-			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags', {
+			await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/api/tags`, {
 				qs: { limit: 10, offset: 0 },
 			});
 
@@ -88,7 +89,7 @@ describe('Ollama Transport', () => {
 					method: 'GET',
 					body: undefined,
 					qs: { limit: 10, offset: 0 },
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 					json: true,
 				},
 			);
@@ -101,7 +102,7 @@ describe('Ollama Transport', () => {
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(executeFunctionsMock, 'POST', '/api/generate', {
+			await apiRequest.call(executeFunctionsMock, 'POST', requestPath`/api/generate`, {
 				headers: { 'X-Custom-Header': 'custom-value' },
 				body: { model: 'test', prompt: 'hello' },
 			});
@@ -117,38 +118,27 @@ describe('Ollama Transport', () => {
 					method: 'POST',
 					body: { model: 'test', prompt: 'hello' },
 					qs: undefined,
-					url: 'http://localhost:11434/api/generate',
+					url: requestUrl`http://localhost:11434/api/generate`,
 					json: true,
 				},
 			);
 		});
 
-		it('should handle additional options', async () => {
+		it('should encode path values that contain a slash', async () => {
 			executeFunctionsMock.getCredentials.mockResolvedValue({
 				baseUrl: 'http://localhost:11434',
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(executeFunctionsMock, 'POST', '/api/chat', {
-				body: { model: 'test' },
-				option: { timeout: 30000, encoding: 'utf8' },
-			});
-
-			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
-				'ollamaApi',
-				{
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					method: 'POST',
-					body: { model: 'test' },
-					qs: undefined,
-					url: 'http://localhost:11434/api/chat',
-					json: true,
-					timeout: 30000,
-					encoding: 'utf8',
-				},
+			await apiRequest.call(
+				executeFunctionsMock,
+				'GET',
+				requestPath`/api/blobs/${'sha256-1/tags'}`,
 			);
+
+			expect(
+				String(executeFunctionsMock.helpers.httpRequestWithAuthentication.mock.calls[0][1].url),
+			).toBe('http://localhost:11434/api/blobs/sha256-1%2Ftags');
 		});
 
 		it('should work with ILoadOptionsFunctions', async () => {
@@ -159,7 +149,7 @@ describe('Ollama Transport', () => {
 				models: [{ name: 'llama3.2:latest' }],
 			});
 
-			const result = await apiRequest.call(loadOptionsFunctionsMock, 'GET', '/api/tags');
+			const result = await apiRequest.call(loadOptionsFunctionsMock, 'GET', requestPath`/api/tags`);
 
 			expect(loadOptionsFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
@@ -170,7 +160,7 @@ describe('Ollama Transport', () => {
 					method: 'GET',
 					body: undefined,
 					qs: undefined,
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 					json: true,
 				},
 			);
@@ -184,12 +174,12 @@ describe('Ollama Transport', () => {
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags');
+			await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/api/tags`);
 
 			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
 				expect.objectContaining({
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 				}),
 			);
 		});
@@ -200,7 +190,7 @@ describe('Ollama Transport', () => {
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags', {});
+			await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/api/tags`, {});
 
 			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
@@ -211,7 +201,7 @@ describe('Ollama Transport', () => {
 					method: 'GET',
 					body: undefined,
 					qs: undefined,
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 					json: true,
 				},
 			);
@@ -223,7 +213,7 @@ describe('Ollama Transport', () => {
 			});
 			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags');
+			await apiRequest.call(executeFunctionsMock, 'GET', requestPath`/api/tags`);
 
 			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'ollamaApi',
@@ -234,7 +224,7 @@ describe('Ollama Transport', () => {
 					method: 'GET',
 					body: undefined,
 					qs: undefined,
-					url: 'http://localhost:11434/api/tags',
+					url: requestUrl`http://localhost:11434/api/tags`,
 					json: true,
 				},
 			);

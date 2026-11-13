@@ -7,8 +7,9 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { accountContactFields, accountContactOperations } from './AccountContactDescription';
 import { accountFields, accountOperations } from './AccountDescription';
@@ -235,7 +236,7 @@ export class ActiveCampaign implements INodeType {
 				const { fields } = await activeCampaignApiRequest.call(
 					this,
 					'GET',
-					'/api/3/fields',
+					requestPath`/api/3/fields`,
 					{},
 					{ limit: 100 },
 				);
@@ -256,7 +257,7 @@ export class ActiveCampaign implements INodeType {
 				const { accountCustomFieldMeta: fields } = await activeCampaignApiRequest.call(
 					this,
 					'GET',
-					'/api/3/accountCustomFieldMeta',
+					requestPath`/api/3/accountCustomFieldMeta`,
 					{},
 					{ limit: 100 },
 				);
@@ -277,7 +278,7 @@ export class ActiveCampaign implements INodeType {
 				const tags = await activeCampaignApiRequestAllItems.call(
 					this,
 					'GET',
-					'/api/3/tags',
+					requestPath`/api/3/tags`,
 					{},
 					{ limit: 100 },
 					'tags',
@@ -307,7 +308,7 @@ export class ActiveCampaign implements INodeType {
 		let qs: IDataObject;
 
 		let requestMethod: IHttpRequestMethods;
-		let endpoint: string;
+		let endpoint: RequestPath;
 		let returnAll = false;
 		let dataKey: string | undefined;
 
@@ -318,7 +319,7 @@ export class ActiveCampaign implements INodeType {
 				operation = this.getNodeParameter('operation', 0);
 
 				requestMethod = 'GET';
-				endpoint = '';
+				endpoint = requestPath``;
 				body = {} as IDataObject;
 				qs = {} as IDataObject;
 
@@ -332,9 +333,9 @@ export class ActiveCampaign implements INodeType {
 
 						const updateIfExists = this.getNodeParameter('updateIfExists', i) as boolean;
 						if (updateIfExists) {
-							endpoint = '/api/3/contact/sync';
+							endpoint = requestPath`/api/3/contact/sync`;
 						} else {
-							endpoint = '/api/3/contacts';
+							endpoint = requestPath`/api/3/contacts`;
 						}
 
 						dataKey = 'contact';
@@ -353,7 +354,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const contactId = this.getNodeParameter('contactId', i) as number;
-						endpoint = `/api/3/contacts/${contactId}`;
+						endpoint = requestPath`/api/3/contacts/${contactId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         contact:get
@@ -362,7 +363,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const contactId = this.getNodeParameter('contactId', i) as number;
-						endpoint = `/api/3/contacts/${contactId}`;
+						endpoint = requestPath`/api/3/contacts/${contactId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         contacts:getAll
@@ -389,7 +390,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'contacts';
 						}
 
-						endpoint = '/api/3/contacts';
+						endpoint = requestPath`/api/3/contacts`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         contact:update
@@ -398,7 +399,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const contactId = this.getNodeParameter('contactId', i) as number;
-						endpoint = `/api/3/contacts/${contactId}`;
+						endpoint = requestPath`/api/3/contacts/${contactId}`;
 
 						dataKey = 'contact';
 
@@ -421,7 +422,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/accounts';
+						endpoint = requestPath`/api/3/accounts`;
 
 						dataKey = 'account';
 
@@ -439,7 +440,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const accountId = this.getNodeParameter('accountId', i) as number;
-						endpoint = `/api/3/accounts/${accountId}`;
+						endpoint = requestPath`/api/3/accounts/${accountId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         account:get
@@ -448,7 +449,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const accountId = this.getNodeParameter('accountId', i) as number;
-						endpoint = `/api/3/accounts/${accountId}`;
+						endpoint = requestPath`/api/3/accounts/${accountId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         account:getAll
@@ -466,7 +467,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'accounts';
 						}
 
-						endpoint = '/api/3/accounts';
+						endpoint = requestPath`/api/3/accounts`;
 
 						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
@@ -478,7 +479,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const accountId = this.getNodeParameter('accountId', i) as number;
-						endpoint = `/api/3/accounts/${accountId}`;
+						endpoint = requestPath`/api/3/accounts/${accountId}`;
 
 						dataKey = 'account';
 
@@ -501,7 +502,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/accountContacts';
+						endpoint = requestPath`/api/3/accountContacts`;
 
 						dataKey = 'accountContact';
 
@@ -520,7 +521,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const accountContactId = this.getNodeParameter('accountContactId', i) as number;
-						endpoint = `/api/3/accountContacts/${accountContactId}`;
+						endpoint = requestPath`/api/3/accountContacts/${accountContactId}`;
 
 						dataKey = 'accountContact';
 
@@ -536,7 +537,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const accountContactId = this.getNodeParameter('accountContactId', i) as number;
-						endpoint = `/api/3/accountContacts/${accountContactId}`;
+						endpoint = requestPath`/api/3/accountContacts/${accountContactId}`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -552,7 +553,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/contactTags';
+						endpoint = requestPath`/api/3/contactTags`;
 
 						dataKey = 'contactTag';
 
@@ -568,7 +569,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const contactTagId = this.getNodeParameter('contactTagId', i) as number;
-						endpoint = `/api/3/contactTags/${contactTagId}`;
+						endpoint = requestPath`/api/3/contactTags/${contactTagId}`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -584,7 +585,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/contactLists';
+						endpoint = requestPath`/api/3/contactLists`;
 
 						dataKey = 'contactTag';
 
@@ -600,7 +601,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/contactLists';
+						endpoint = requestPath`/api/3/contactLists`;
 
 						body.contactList = {
 							list: this.getNodeParameter('listId', i) as string,
@@ -635,7 +636,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'lists';
 						}
 
-						endpoint = '/api/3/lists';
+						endpoint = requestPath`/api/3/lists`;
 					}
 				} else if (resource === 'tag') {
 					if (operation === 'create') {
@@ -645,7 +646,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/tags';
+						endpoint = requestPath`/api/3/tags`;
 
 						dataKey = 'tag';
 
@@ -664,7 +665,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const tagId = this.getNodeParameter('tagId', i) as number;
-						endpoint = `/api/3/tags/${tagId}`;
+						endpoint = requestPath`/api/3/tags/${tagId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         tag:get
@@ -673,7 +674,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const tagId = this.getNodeParameter('tagId', i) as number;
-						endpoint = `/api/3/tags/${tagId}`;
+						endpoint = requestPath`/api/3/tags/${tagId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         tags:getAll
@@ -691,7 +692,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'tags';
 						}
 
-						endpoint = '/api/3/tags';
+						endpoint = requestPath`/api/3/tags`;
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         tags:update
@@ -700,7 +701,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const tagId = this.getNodeParameter('tagId', i) as number;
-						endpoint = `/api/3/tags/${tagId}`;
+						endpoint = requestPath`/api/3/tags/${tagId}`;
 
 						dataKey = 'tag';
 
@@ -723,7 +724,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/deals';
+						endpoint = requestPath`/api/3/deals`;
 
 						body.deal = {
 							title: this.getNodeParameter('title', i) as string,
@@ -757,7 +758,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/api/3/deals/${dealId}`;
+						endpoint = requestPath`/api/3/deals/${dealId}`;
 
 						body.deal = {} as IDataObject;
 
@@ -771,7 +772,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/api/3/deals/${dealId}`;
+						endpoint = requestPath`/api/3/deals/${dealId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         deal:get
@@ -780,7 +781,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/api/3/deals/${dealId}`;
+						endpoint = requestPath`/api/3/deals/${dealId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         deals:getAll
@@ -798,7 +799,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'deals';
 						}
 
-						endpoint = '/api/3/deals';
+						endpoint = requestPath`/api/3/deals`;
 					} else if (operation === 'createNote') {
 						// ----------------------------------
 						//         deal:createNote
@@ -810,7 +811,7 @@ export class ActiveCampaign implements INodeType {
 						} as IDataObject;
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
-						endpoint = `/api/3/deals/${dealId}/notes`;
+						endpoint = requestPath`/api/3/deals/${dealId}/notes`;
 					} else if (operation === 'updateNote') {
 						// ----------------------------------
 						//         deal:updateNote
@@ -823,7 +824,7 @@ export class ActiveCampaign implements INodeType {
 
 						const dealId = this.getNodeParameter('dealId', i) as number;
 						const dealNoteId = this.getNodeParameter('dealNoteId', i) as number;
-						endpoint = `/api/3/deals/${dealId}/notes/${dealNoteId}`;
+						endpoint = requestPath`/api/3/deals/${dealId}/notes/${dealNoteId}`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -839,7 +840,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/connections';
+						endpoint = requestPath`/api/3/connections`;
 
 						body.connection = {
 							service: this.getNodeParameter('service', i) as string,
@@ -856,7 +857,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const connectionId = this.getNodeParameter('connectionId', i) as number;
-						endpoint = `/api/3/connections/${connectionId}`;
+						endpoint = requestPath`/api/3/connections/${connectionId}`;
 
 						body.connection = {} as IDataObject;
 
@@ -870,7 +871,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const connectionId = this.getNodeParameter('connectionId', i) as number;
-						endpoint = `/api/3/connections/${connectionId}`;
+						endpoint = requestPath`/api/3/connections/${connectionId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         connection:get
@@ -879,7 +880,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const connectionId = this.getNodeParameter('connectionId', i) as number;
-						endpoint = `/api/3/connections/${connectionId}`;
+						endpoint = requestPath`/api/3/connections/${connectionId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         connections:getAll
@@ -897,7 +898,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'connections';
 						}
 
-						endpoint = '/api/3/connections';
+						endpoint = requestPath`/api/3/connections`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -913,7 +914,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/ecomOrders';
+						endpoint = requestPath`/api/3/ecomOrders`;
 
 						body.ecomOrder = {
 							source: this.getNodeParameter('source', i) as string,
@@ -956,7 +957,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const orderId = this.getNodeParameter('orderId', i) as number;
-						endpoint = `/api/3/ecomOrders/${orderId}`;
+						endpoint = requestPath`/api/3/ecomOrders/${orderId}`;
 
 						body.ecomOrder = {} as IDataObject;
 
@@ -970,7 +971,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const orderId = this.getNodeParameter('orderId', i) as number;
-						endpoint = `/api/3/ecomOrders/${orderId}`;
+						endpoint = requestPath`/api/3/ecomOrders/${orderId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         ecommerceOrder:get
@@ -979,7 +980,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const orderId = this.getNodeParameter('orderId', i) as number;
-						endpoint = `/api/3/ecomOrders/${orderId}`;
+						endpoint = requestPath`/api/3/ecomOrders/${orderId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         ecommerceOrders:getAll
@@ -997,7 +998,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomOrders';
 						}
 
-						endpoint = '/api/3/ecomOrders';
+						endpoint = requestPath`/api/3/ecomOrders`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1013,7 +1014,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'POST';
 
-						endpoint = '/api/3/ecomCustomers';
+						endpoint = requestPath`/api/3/ecomCustomers`;
 
 						body.ecomCustomer = {
 							connectionid: this.getNodeParameter('connectionid', i) as string,
@@ -1038,7 +1039,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'PUT';
 
 						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
-						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+						endpoint = requestPath`/api/3/ecomCustomers/${ecommerceCustomerId}`;
 
 						body.ecomCustomer = {} as IDataObject;
 
@@ -1059,7 +1060,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'DELETE';
 
 						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
-						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+						endpoint = requestPath`/api/3/ecomCustomers/${ecommerceCustomerId}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         ecommerceCustomer:get
@@ -1068,7 +1069,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const ecommerceCustomerId = this.getNodeParameter('ecommerceCustomerId', i) as number;
-						endpoint = `/api/3/ecomCustomers/${ecommerceCustomerId}`;
+						endpoint = requestPath`/api/3/ecomCustomers/${ecommerceCustomerId}`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         ecommerceCustomers:getAll
@@ -1086,7 +1087,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomCustomers';
 						}
 
-						endpoint = '/api/3/ecomCustomers';
+						endpoint = requestPath`/api/3/ecomCustomers`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1103,7 +1104,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const procuctId = this.getNodeParameter('procuctId', i) as number;
-						endpoint = `/api/3/ecomOrderProducts/${procuctId}`;
+						endpoint = requestPath`/api/3/ecomOrderProducts/${procuctId}`;
 					} else if (operation === 'getByOrderId') {
 						// ----------------------------------
 						//         ecommerceOrderProducts:getByOrderId
@@ -1114,7 +1115,7 @@ export class ActiveCampaign implements INodeType {
 						//dataKey = 'ecomOrderProducts';
 
 						const orderId = this.getNodeParameter('orderId', i) as number;
-						endpoint = `/api/3/ecomOrders/${orderId}/orderProducts`;
+						endpoint = requestPath`/api/3/ecomOrders/${orderId}/orderProducts`;
 					} else if (operation === 'getAll') {
 						// ----------------------------------
 						//         ecommerceOrderProductss:getAll
@@ -1132,7 +1133,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomOrderProducts';
 						}
 
-						endpoint = '/api/3/ecomOrderProducts';
+						endpoint = requestPath`/api/3/ecomOrderProducts`;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

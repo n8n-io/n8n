@@ -19,7 +19,7 @@ describe('Microsoft Excel (SharePoint), Service Principal worksheet => readRows 
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get(
-			'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/usedRange',
+			'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/usedRange',
 		)
 		.reply(200, {
 			address: 'Sheet1!A1:B2',

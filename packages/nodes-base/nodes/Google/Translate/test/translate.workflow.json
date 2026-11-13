@@ -1,0 +1,45 @@
+{
+	"name": "Google Translate request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9d4f6a13-2b8c-4e5d-a170-6c3e8b2d4f01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"text": "Good morning",
+				"translateTo": "de"
+			},
+			"type": "n8n-nodes-base.googleTranslate",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "9d4f6a13-2b8c-4e5d-a170-6c3e8b2d4f02",
+			"name": "Translate",
+			"credentials": {
+				"googleTranslateOAuth2Api": {
+					"id": "gtranslate-cred-1",
+					"name": "Google Translate account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Translate", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Translate": [
+			{
+				"json": {
+					"translatedText": "Guten Morgen",
+					"detectedSourceLanguage": "en"
+				}
+			}
+		]
+	}
+}

@@ -6,12 +6,14 @@ import {
 	N8nCard,
 	N8nText,
 	N8nTimeAgo,
+	N8nTooltip,
 	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import WorkflowReviewStatusDot from '../reviews/components/WorkflowReviewStatusDot.vue';
+import { getWorkflowReviewStatusDisplay } from '../reviews/workflowReviewStatus.utils';
 
 defineProps<{ item: InboxItem; selected: boolean }>();
 const emit = defineEmits<{ select: [] }>();
@@ -40,6 +42,18 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 			return i18n.baseText('inbox.outcome.needsAttention');
 		case 'could_not_fix':
 			return i18n.baseText('inbox.outcome.couldNotFix');
+	}
+}
+
+/** The status dot shows only a color. The tooltip gives the status in words. */
+function statusTooltip(item: InboxItem) {
+	switch (item.type) {
+		case 'workflow_review':
+			return getWorkflowReviewStatusDisplay(i18n, item.state, item.decision).decisionLabel;
+		case 'self_healing_result':
+			return item.state === 'closed' ? i18n.baseText('inbox.tabs.closed') : outcomeLabel(item);
+		case 'promotion_review':
+			return i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`);
 	}
 }
 </script>
@@ -73,32 +87,34 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 					]"
 					>{{ itemTitle(item) }}</N8nText
 				>
-				<WorkflowReviewStatusDot
-					v-if="item.type === 'workflow_review'"
-					:state="item.state"
-					:decision="item.decision"
-				/>
-				<span
-					v-else-if="item.type === 'promotion_review'"
-					:class="[$style.statusDot, $style[item.reviewState]]"
-					role="img"
-					:aria-label="i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`)"
-					data-test-id="inbox-promotion-status"
-				/>
-				<span
-					v-else
-					:class="[
-						$style.statusDot,
-						item.state === 'closed'
-							? $style.closed
-							: item.outcome === 'fix_ready'
-								? $style.fixReady
-								: $style.needsAttention,
-					]"
-					role="img"
-					:aria-label="`${i18n.baseText(item.state === 'open' ? 'inbox.tabs.open' : 'inbox.tabs.closed')} | ${outcomeLabel(item)}`"
-					data-test-id="inbox-assistant-status"
-				/>
+				<N8nTooltip :content="statusTooltip(item)" :show-after="300">
+					<WorkflowReviewStatusDot
+						v-if="item.type === 'workflow_review'"
+						:state="item.state"
+						:decision="item.decision"
+					/>
+					<span
+						v-else-if="item.type === 'promotion_review'"
+						:class="[$style.statusDot, $style[item.reviewState]]"
+						role="img"
+						:aria-label="i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`)"
+						data-test-id="inbox-promotion-status"
+					/>
+					<span
+						v-else
+						:class="[
+							$style.statusDot,
+							item.state === 'closed'
+								? $style.closed
+								: item.outcome === 'fix_ready'
+									? $style.fixReady
+									: $style.needsAttention,
+						]"
+						role="img"
+						:aria-label="`${i18n.baseText(item.state === 'open' ? 'inbox.tabs.open' : 'inbox.tabs.closed')} | ${outcomeLabel(item)}`"
+						data-test-id="inbox-assistant-status"
+					/>
+				</N8nTooltip>
 			</div>
 			<div :class="$style.meta">
 				<N8nBadge
@@ -214,6 +230,8 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 	white-space: nowrap;
 }
 .statusDot {
+	/* The tooltip trigger is not a flex container, so the dot sets its own box. */
+	display: block;
 	flex-shrink: 0;
 	width: var(--font-size--3xs);
 	height: var(--font-size--3xs);

@@ -1,0 +1,193 @@
+{
+	"name": "Demio Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"eventId": "1288",
+				"additionalFields": {}
+			},
+			"id": "demio-0",
+			"name": "Event Get",
+			"type": "n8n-nodes-base.demio",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"demioApi": {
+					"id": "1",
+					"name": "Demio account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "get",
+				"eventId": "1288",
+				"additionalFields": {
+					"date_id": "5432"
+				}
+			},
+			"id": "demio-1",
+			"name": "Event Get Date",
+			"type": "n8n-nodes-base.demio",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"demioApi": {
+					"id": "1",
+					"name": "Demio account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "demio-2",
+			"name": "Event Get Many",
+			"type": "n8n-nodes-base.demio",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"demioApi": {
+					"id": "1",
+					"name": "Demio account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "register",
+				"eventId": "1288",
+				"firstName": "Nathan",
+				"email": "nathan@example.com",
+				"additionalFields": {}
+			},
+			"id": "demio-3",
+			"name": "Event Register",
+			"type": "n8n-nodes-base.demio",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"demioApi": {
+					"id": "1",
+					"name": "Demio account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"eventId": "1288",
+				"dateId": "5432",
+				"filters": {}
+			},
+			"id": "demio-4",
+			"name": "Report Get",
+			"type": "n8n-nodes-base.demio",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"demioApi": {
+					"id": "1",
+					"name": "Demio account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Event Get": [
+			{
+				"json": {
+					"id": 1288,
+					"name": "Product Demo"
+				}
+			}
+		],
+		"Event Get Date": [
+			{
+				"json": {
+					"id": 1288,
+					"name": "Product Demo",
+					"date_id": 5432
+				}
+			}
+		],
+		"Event Get Many": [
+			{
+				"json": {
+					"id": 1288,
+					"name": "Product Demo"
+				}
+			}
+		],
+		"Event Register": [
+			{
+				"json": {
+					"hash": "abc123",
+					"join_link": "https://event.demio.com/ref/abc123"
+				}
+			}
+		],
+		"Report Get": [
+			{
+				"json": {
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Event Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get Date",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Register",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Report Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

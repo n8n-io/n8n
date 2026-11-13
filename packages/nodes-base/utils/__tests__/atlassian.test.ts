@@ -48,6 +48,10 @@ describe('getAtlassianApiBaseUrl', () => {
 			'https://api.atlassian.com/ex/jira/a%2Fb%20c',
 		);
 	});
+
+	it.each(['.', '..', ''])('should reject the cloudId "%s"', (cloudId) => {
+		expect(() => getAtlassianApiBaseUrl('confluence', cloudId)).toThrow();
+	});
 });
 
 describe('getAtlassianCloudId', () => {

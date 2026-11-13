@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import type { ConfluenceBodyEnvelope } from './bodyEnvelope';
 import { confluenceApiRequest } from '../../transport';
@@ -30,7 +30,7 @@ export async function fetchPageForWrite(
 	const page = await confluenceApiRequest.call(
 		this,
 		'GET',
-		`/wiki/api/v2/pages/${encodeURIComponent(pageId)}`,
+		requestPath`/wiki/api/v2/pages/${pageId}`,
 		{},
 		qs,
 	);
@@ -108,7 +108,7 @@ export async function putPage(
 		return await confluenceApiRequest.call(
 			this,
 			'PUT',
-			`/wiki/api/v2/pages/${encodeURIComponent(pageId)}`,
+			requestPath`/wiki/api/v2/pages/${pageId}`,
 			payload,
 		);
 	} catch (error) {

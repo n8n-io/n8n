@@ -40,7 +40,7 @@ import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	describeRestrictedNodeTypes,
-	getNodeTypeRestriction,
+	collectRestrictedNodeTypes,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -185,16 +185,12 @@ const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.pub
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 /** The publish policy check judges every node, disabled or unreachable ones too. */
-const restrictedNodeTypes = computed(() => {
-	const nodeTypes = workflowDocumentStore.value.allNodes.map((node) => node.type);
-	return [...new Set(nodeTypes)].flatMap((type) => {
-		const restriction = getNodeTypeRestriction(type);
-		if (!restriction) return [];
-
-		const displayName = nodeTypesStore.getNodeType(type)?.displayName ?? type;
-		return [{ ...restriction, displayName }];
-	});
-});
+const restrictedNodeTypes = computed(() =>
+	collectRestrictedNodeTypes(
+		workflowDocumentStore.value.allNodes.map((node) => node.type),
+		(type) => nodeTypesStore.getNodeType(type)?.displayName ?? type,
+	),
+);
 
 const hasRestrictedNodeTypes = computed(() => restrictedNodeTypes.value.length > 0);
 

@@ -143,8 +143,8 @@ describe('useAgentApi', () => {
 			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
 
 			const result = await listAgentsPage(restApiContext, 'project-1', {
-				skip: 10,
-				take: 25,
+				offset: 10,
+				limit: 25,
 				sortBy: 'name:asc',
 				filter: { query: 'support' },
 			});
@@ -154,8 +154,8 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2',
 				{
-					skip: 10,
-					take: 25,
+					offset: 10,
+					limit: 25,
 					sortBy: 'name:asc',
 					filter: { query: 'support' },
 				},
@@ -180,14 +180,14 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 0, take: 250 },
+				{ offset: 0, limit: 250 },
 			);
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(
 				2,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 1, take: 250 },
+				{ offset: 1, limit: 250 },
 			);
 		});
 	});
@@ -521,15 +521,15 @@ describe('useAgentApi', () => {
 
 			const result = await listN8nChatAgents(restApiContext, {
 				query: '  support  ',
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 
 			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true, query: 'support' },
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 			expect(result).toBe(response);
@@ -538,19 +538,19 @@ describe('useAgentApi', () => {
 		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
 			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
 
-			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
-			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { offset: 0, limit: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', offset: 0, limit: 50 });
 
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 		});

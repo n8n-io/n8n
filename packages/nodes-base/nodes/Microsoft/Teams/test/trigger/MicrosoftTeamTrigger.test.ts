@@ -5,8 +5,9 @@ import type {
 	INode,
 	IWebhookFunctions,
 	NodeParameterValueType,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, ObservableObject } from 'n8n-workflow';
+import { NodeApiError, ObservableObject, requestPath } from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
@@ -83,16 +84,18 @@ describe('Microsoft Teams Trigger Node', () => {
 	};
 
 	const calls = (method: string) =>
-		(microsoftApiRequest.call as Mock).mock.calls.filter((call) => call[1] === method);
+		(microsoftApiRequest.call as Mock).mock.calls
+			.filter((call) => call[1] === method)
+			.map(([ctx, requestMethod, path, ...rest]) => [ctx, requestMethod, String(path), ...rest]);
 	// The subscription listing and the joined teams both page through `microsoftApiRequestAllItems`.
 	const pagedGraph = (
 		subscriptions: unknown[],
 		teams: unknown[] = [{ id: 'team1' }, { id: 'team2' }],
 	) =>
 		(microsoftApiRequestAllItems.call as Mock).mockImplementation(
-			async (_ctx: unknown, _property: string, _method: string, path: string) => {
-				if (path === '/v1.0/subscriptions') return subscriptions;
-				if (path === '/v1.0/me/joinedTeams') return teams;
+			async (_ctx: unknown, _property: string, _method: string, path: RequestPath) => {
+				if (path.value === '/v1.0/subscriptions') return subscriptions;
+				if (path.value === '/v1.0/me/joinedTeams') return teams;
 				throw new Error(`unexpected path ${path}`);
 			},
 		);
@@ -109,7 +112,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expirationDateTime: new Date(Date.now() + expiresInMs).toISOString(),
 			});
 			const graphCalls = () =>
-				(microsoftApiRequest.call as Mock).mock.calls.map((call) => call.slice(1, 3));
+				(microsoftApiRequest.call as Mock).mock.calls.map((call) => [call[1], String(call[2])]);
 			const forbidden = (ctx: TriggerContext) =>
 				new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 			const throttled = (ctx: TriggerContext) =>
@@ -224,7 +227,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					expect.anything(),
 					'DELETE',
-					'/v1.0/subscriptions/sub1',
+					requestPath`/v1.0/subscriptions/sub1`,
 				);
 				expect(staticData.subscriptionIds).toBeUndefined();
 			});
@@ -360,9 +363,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				// GET by id answers from the table and 404s for any other id.
 				const answerById = (answers: Record<string, unknown>) =>
 					(microsoftApiRequest.call as Mock).mockImplementation(
-						async (_ctx: unknown, method: string, path: string) => {
+						async (_ctx: unknown, method: string, path: RequestPath) => {
 							if (method !== 'GET') return {};
-							const answer = answers[path.slice('/v1.0/subscriptions/'.length)];
+							const answer = answers[path.value.slice('/v1.0/subscriptions/'.length)];
 							if (answer === undefined) {
 								throw new NodeApiError(mock<INode>(), { message: 'Not found', httpCode: '404' });
 							}
@@ -489,10 +492,10 @@ describe('Microsoft Teams Trigger Node', () => {
 						own('b', '/me/chats', expiresInMs),
 					]);
 					(microsoftApiRequest.call as Mock).mockImplementation(
-						async (_ctx: unknown, method: string, path: string) =>
+						async (_ctx: unknown, method: string, path: RequestPath) =>
 							method === 'GET'
 								? {
-										...own(path.slice('/v1.0/subscriptions/'.length), '/me/chats', HOUR),
+										...own(path.value.slice('/v1.0/subscriptions/'.length), '/me/chats', HOUR),
 										clientState: 'other',
 									}
 								: { id: 'new' },
@@ -597,9 +600,9 @@ describe('Microsoft Teams Trigger Node', () => {
 					own('x', '/me/chats', HOUR),
 				]);
 				(microsoftApiRequest.call as Mock).mockImplementation(
-					async (_ctx: unknown, method: string, path: string) => {
+					async (_ctx: unknown, method: string, path: RequestPath) => {
 						if (method !== 'GET') throw forbidden(ctx);
-						const id = path.slice('/v1.0/subscriptions/'.length);
+						const id = path.value.slice('/v1.0/subscriptions/'.length);
 						return { ...own(id, '/me/chats', HOUR), clientState: id === 'a' ? 'secret' : 'other' };
 					},
 				);
@@ -693,7 +696,7 @@ describe('Microsoft Teams Trigger Node', () => {
 				expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 					ctx,
 					'POST',
-					'/v1.0/subscriptions',
+					requestPath`/v1.0/subscriptions`,
 					expect.objectContaining({
 						changeType: 'created',
 						notificationUrl: 'https://webhook.url',
@@ -1115,17 +1118,47 @@ describe('Microsoft Teams Trigger Node', () => {
 				value: [
 					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '1' } },
 					{ subscriptionId: 'subX', clientState: 'wrong', resourceData: { id: '2' } },
+					{ subscriptionId: 'sub1', clientState: 'secret', resourceData: { id: '3' } },
 				],
 			});
 
 			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
 
 			expect(res.status).not.toHaveBeenCalled();
-			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }]] });
+			expect(result).toEqual({ workflowData: [[{ json: { id: '1' } }, { json: { id: '3' } }]] });
 			expect(ctx.logger.debug).toHaveBeenCalledWith(
 				'Microsoft Teams Trigger: rejected notifications without the stored clientState',
 				expect.objectContaining({ workflowId: 'wf1', rejected: 1, subscriptionIds: ['subX'] }),
 			);
+		});
+
+		it('emits every change notification of a batch as an item of one execution', async () => {
+			const change = (id: string) => ({
+				subscriptionId: 'sub1',
+				clientState: 'secret',
+				resourceData: { id },
+			});
+			const { ctx, res } = arrange({ value: [change('m1'), change('m2'), change('m3')] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				workflowData: [[{ json: { id: 'm1' } }, { json: { id: 'm2' } }, { json: { id: 'm3' } }]],
+			});
+		});
+
+		it('emits the notification without clientState when it has no resourceData', async () => {
+			const bare = { subscriptionId: 'sub1', clientState: 'secret', changeType: 'created' };
+			const { ctx } = arrange({ value: [bare, { ...bare, resourceData: { id: 'm2' } }] });
+
+			const result = await new MicrosoftTeamsTrigger().webhook.call(ctx);
+
+			expect(result).toEqual({
+				workflowData: [
+					[{ json: { subscriptionId: 'sub1', changeType: 'created' } }, { json: { id: 'm2' } }],
+				],
+			});
 		});
 
 		it('caps the logged subscription ids of the rejected notifications', async () => {
@@ -1216,7 +1249,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(res.status).toHaveBeenCalledTimes(1);
@@ -1314,7 +1347,7 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'POST',
-				'/v1.0/subscriptions',
+				requestPath`/v1.0/subscriptions`,
 				expect.objectContaining({ resource: '/me/chats', expirationDateTime: expectedExpiry }),
 			);
 			expect(res.status).toHaveBeenCalledWith(202);
@@ -1340,13 +1373,13 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(res.status).toHaveBeenCalledWith(202);
 			expect(result).toEqual({
 				noWebhookResponse: true,
-				workflowData: [[{ json: change1.resourceData }], [{ json: change2.resourceData }]],
+				workflowData: [[{ json: change1.resourceData }, { json: change2.resourceData }]],
 			});
 		});
 
@@ -1370,9 +1403,9 @@ describe('Microsoft Teams Trigger Node', () => {
 				listed('sub2', 60),
 			]);
 			(microsoftApiRequest.call as Mock).mockImplementation(
-				async (_ctx: unknown, method: string, path: string) => {
+				async (_ctx: unknown, method: string, path: RequestPath) => {
 					if (method !== 'PATCH') return {};
-					if (path === '/v1.0/subscriptions/sub1') {
+					if (path.value === '/v1.0/subscriptions/sub1') {
 						throw new NodeApiError(ctx.getNode(), { message: 'Forbidden', httpCode: '403' });
 					}
 					return listed('sub2', 4318);
@@ -1389,13 +1422,13 @@ describe('Microsoft Teams Trigger Node', () => {
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub1',
+				requestPath`/v1.0/subscriptions/sub1`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(microsoftApiRequest.call).toHaveBeenCalledWith(
 				ctx,
 				'PATCH',
-				'/v1.0/subscriptions/sub2',
+				requestPath`/v1.0/subscriptions/sub2`,
 				{ expirationDateTime: expectedExpiry },
 			);
 			expect(microsoftApiRequestAllItems.call).toHaveBeenCalledTimes(1);

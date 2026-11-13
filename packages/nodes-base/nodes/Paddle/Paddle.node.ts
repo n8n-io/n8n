@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { couponFields, couponOperations } from './CouponDescription';
 import { paddleApiRequest, paddleApiRequestAllItems, validateJSON } from './GenericFunctions';
@@ -116,7 +116,7 @@ export class Paddle implements INodeType {
 			// Get all payment so they can be selected in payment rescheduling
 			async getPayments(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/2.0/subscription/payments';
+				const endpoint = requestPath`/2.0/subscription/payments`;
 				const paymentResponse = await paddleApiRequest.call(this, endpoint, 'POST', {});
 
 				// Alert user if there's no payments present to be loaded into payments property
@@ -143,7 +143,7 @@ export class Paddle implements INodeType {
 			// Get all Products so they can be selected in coupon creation when assigning products
 			async getProducts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = '/2.0/product/get_products';
+				const endpoint = requestPath`/2.0/product/get_products`;
 				const products = await paddleApiRequest.call(this, endpoint, 'POST', {});
 
 				// Alert user if there's no products present to be loaded into payments property
@@ -241,7 +241,7 @@ export class Paddle implements INodeType {
 								body.description = additionalFields.description as string;
 							}
 
-							const endpoint = '/2.1/product/create_coupon';
+							const endpoint = requestPath`/2.1/product/create_coupon`;
 
 							responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 							responseData = responseData.response.coupon_codes.map((coupon: string) => ({
@@ -253,7 +253,7 @@ export class Paddle implements INodeType {
 					if (operation === 'getAll') {
 						const productId = this.getNodeParameter('productId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const endpoint = '/2.0/product/list_coupons';
+						const endpoint = requestPath`/2.0/product/list_coupons`;
 
 						body.product_id = productId;
 
@@ -340,7 +340,7 @@ export class Paddle implements INodeType {
 							}
 						}
 
-						const endpoint = '/2.1/product/update_coupon';
+						const endpoint = requestPath`/2.1/product/update_coupon`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 						responseData = responseData.response;
@@ -395,7 +395,7 @@ export class Paddle implements INodeType {
 								body.is_one_off_charge = additionalFields.isOneOffCharge as boolean;
 							}
 						}
-						const endpoint = '/2.0/subscription/payments';
+						const endpoint = requestPath`/2.0/subscription/payments`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
@@ -413,7 +413,7 @@ export class Paddle implements INodeType {
 						body.payment_id = paymentId;
 						body.date = body.to = moment(date).format('YYYY-MM-DD');
 
-						const endpoint = '/2.0/subscription/payments_reschedule';
+						const endpoint = requestPath`/2.0/subscription/payments_reschedule`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 					}
@@ -421,7 +421,7 @@ export class Paddle implements INodeType {
 				if (resource === 'plan') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const endpoint = '/2.0/subscription/plans';
+						const endpoint = requestPath`/2.0/subscription/plans`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
@@ -437,7 +437,7 @@ export class Paddle implements INodeType {
 
 						body.plan = planId;
 
-						const endpoint = '/2.0/subscription/plans';
+						const endpoint = requestPath`/2.0/subscription/plans`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 						responseData = responseData.response;
@@ -446,7 +446,7 @@ export class Paddle implements INodeType {
 				if (resource === 'product') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const endpoint = '/2.0/product/get_products';
+						const endpoint = requestPath`/2.0/product/get_products`;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
@@ -460,7 +460,7 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'order') {
 					if (operation === 'get') {
-						const endpoint = '/1.0/order';
+						const endpoint = requestPath`/1.0/order`;
 						const checkoutId = this.getNodeParameter('checkoutId', i) as string;
 
 						body.checkout_id = checkoutId;
@@ -505,7 +505,7 @@ export class Paddle implements INodeType {
 							}
 						}
 
-						const endpoint = '/2.0/subscription/users';
+						const endpoint = requestPath`/2.0/subscription/users`;
 
 						if (returnAll) {
 							responseData = await paddleApiRequestAllItems.call(
