@@ -43,7 +43,7 @@ test.describe(
 
 				await expect(n8n.instanceAi.getOutOfCreditsError()).toBeVisible({ timeout: 60_000 });
 				await expect(
-					n8n.instanceAi.getAssistantMessageText("You've run out of AI credits"),
+					n8n.instanceAi.getAssistantMessageText("You've run out of Assistant credits"),
 				).toBeVisible();
 				await expect(n8n.instanceAi.getOutOfCreditsUpgradeButton()).toBeVisible();
 			},
