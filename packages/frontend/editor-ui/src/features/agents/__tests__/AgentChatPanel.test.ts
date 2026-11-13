@@ -462,7 +462,6 @@ describe('AgentChatPanel', () => {
 			}) => Promise<boolean>;
 			channel: AgentChatChannel;
 			centerEmptyState: boolean;
-			showFirstMessagePreview: boolean;
 			newSession: boolean;
 			clientContext: () => Record<string, unknown> | undefined;
 			placeholder: string;
@@ -945,41 +944,6 @@ describe('AgentChatPanel', () => {
 				expect(composer(wrapper).props('modelValue')).toBe('use Teams');
 				wrapper.unmount();
 			});
-		});
-	});
-
-	describe('showFirstMessagePreview', () => {
-		it('shows the first message right away, without centering the empty state', async () => {
-			sendMessageMock.mockReturnValue(new Promise(() => {}));
-			const wrapper = mountPanel({ showFirstMessagePreview: true, newSession: true });
-
-			(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
-			await flushPromises();
-
-			const messageList = wrapper.findComponent({ name: 'AgentChatMessageList' });
-			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
-			expect(messageList.props('messages')).toEqual([
-				expect.objectContaining({ role: 'user', content: 'hello agent' }),
-			]);
-			expect(messageList.props('messagingState')).toBe('waitingFirstChunk');
-			expect(
-				wrapper
-					.get('aside')
-					.classes()
-					.some((c) => c.includes('centeredEmpty')),
-			).toBe(false);
-			wrapper.unmount();
-		});
-
-		it('keeps the empty state until the server accepts the message when it is off', async () => {
-			sendMessageMock.mockReturnValue(new Promise(() => {}));
-			const wrapper = mountPanel({ newSession: true });
-
-			(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
-			await flushPromises();
-
-			expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(true);
-			wrapper.unmount();
 		});
 	});
 

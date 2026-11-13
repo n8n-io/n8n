@@ -5964,3 +5964,115 @@ describe('useAgentChatStream — interaction extensions', () => {
 		});
 	});
 });
+
+describe('useAgentChatStream — first message of a new session', () => {
+	beforeEach(() => {
+		pushListeners.length = 0;
+		vi.stubGlobal('localStorage', { getItem: vi.fn(() => '') });
+	});
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('shows the message when it is sent and keeps it until its run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		// Before the run starts, the server holds the message in its queue, not in history.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [{ id: 'q-1', message: 'Hello', createdAt: new Date().toISOString() }],
+		});
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.messagingState.value).toBe('waitingFirstChunk');
+
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.queuedMessages.value).toEqual([]);
+
+		stream.emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
+	it('moves the message to the queue when the stream ends before its run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		const queued = { id: 'q-1', message: 'Hello', createdAt: new Date().toISOString() };
+		getAgentChatQueueMock.mockResolvedValue({ items: [queued] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+		expect(hook.queuedMessages.value).toEqual([]);
+
+		stream.close();
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.queuedMessages.value).toEqual([expect.objectContaining({ id: 'q-1' })]);
+		hook.detachStream();
+	});
+
+	it.each([
+		[
+			'refuses a busy turn',
+			() =>
+				makeSseResponse([{ type: 'error', message: 'Busy', errorCode: 'turn_already_running' }]),
+		],
+		[
+			'answers with an HTTP error',
+			() => new Response(null, { status: 500, statusText: 'Server error' }),
+		],
+	] as const)('removes the message when the server %s', async (_case, response) => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => response()),
+		);
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		expect(hook.messages.value).toHaveLength(1);
+		await sending;
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([]);
+		expect(hook.messagingState.value).toBe('idle');
+	});
+});

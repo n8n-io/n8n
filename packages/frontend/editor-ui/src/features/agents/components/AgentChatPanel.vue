@@ -135,7 +135,6 @@ const props = withDefaults(
 		 * new chat gets its first message, and shows that message right away when sent.
 		 */
 		centerEmptyState?: boolean;
-		showFirstMessagePreview?: boolean;
 		budgetCards?: boolean;
 		/**
 		 * Persists a raised budget cap. Omitted when the user cannot edit the
@@ -180,7 +179,6 @@ const props = withDefaults(
 		backgroundJobsActive: false,
 		channel: 'chat',
 		centerEmptyState: false,
-		showFirstMessagePreview: false,
 		budgetCards: false,
 		increaseBudget: undefined,
 		clientContext: undefined,
@@ -1109,8 +1107,7 @@ const chatPlaceholder = computed(() => {
  * already shows: a second send before the first run starts must not replace it.
  */
 function previewFirstMessage(text: string, files: File[] = []): ChatMessage | undefined {
-	const previewEnabled = props.centerEmptyState || props.showFirstMessagePreview;
-	if (!previewEnabled || messages.value.length > 0 || firstMessagePreview.value) {
+	if (!props.centerEmptyState || messages.value.length > 0 || firstMessagePreview.value) {
 		return undefined;
 	}
 	firstMessagePreview.value = {
