@@ -408,6 +408,9 @@ paths:
   /users/{userId}/role:
     patch:
       $ref: ./handlers/users/spec/paths/changeRole.generated.yml
+  /users/{userId}/locale:
+    patch:
+      $ref: ./handlers/users/spec/paths/changeLocale.generated.yml
   /variables:
     get:
       $ref: ./handlers/variables/spec/paths/getVariables.generated.yml

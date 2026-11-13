@@ -1,4 +1,5 @@
 import {
+	ChangeUserLocalePublicDto,
 	CreateUsersPublicDto,
 	DeleteUserQueryPublicDto,
 	GetUserQueryDto,
@@ -22,6 +23,7 @@ import {
 	Body,
 	Delete,
 	Get,
+	GlobalScope,
 	Licensed,
 	Param,
 	Patch,
@@ -195,5 +197,27 @@ export class UsersPublicController {
 		@Body body: RoleChangeRequestDto,
 	): Promise<void> {
 		await this.userService.changeGlobalRole(req.user, userId, body, req.publicApiClient);
+	}
+
+	@Patch('/:userId/locale')
+	@ApiKeyScope('user:changeLocale')
+	@GlobalScope('user:changeLocale')
+	@ApiSummary("Change a user's language")
+	@ApiDescription(
+		'Set or clear the UI language of a user. Set `locale` to a language code that the instance offers, or to `null` to use the instance default language. The endpoint is available only when `N8N_LOCALE_USER_OVERRIDE` is `true`.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(400, { description: 'The locale is not available.' })
+	@ApiErrorResponse(404, {
+		description: 'No user with that ID, or personal languages are turned off on this instance.',
+	})
+	async changeLocale(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('userId', userUuidParamSchema) userId: string,
+		@Body body: ChangeUserLocalePublicDto,
+	): Promise<void> {
+		await this.userService.changeLocale(req.user, userId, body.locale, req.publicApiClient);
 	}
 }

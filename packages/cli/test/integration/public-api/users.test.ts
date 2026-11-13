@@ -1,4 +1,5 @@
 import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -10,6 +11,7 @@ import { GLOBAL_MEMBER_ROLE, ServiceAccountRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { LocaleService } from '@/services/locale.service';
 import { Telemetry } from '@/telemetry';
 import { CHANGE_ROLE_ERROR_MESSAGES } from '@/services/user.service';
 import { createCustomRoleWithScopeSlugs, createRole } from '@test-integration/db/roles';
@@ -549,6 +551,140 @@ describe('Users in Public API', () => {
 				const storedUser = await getUserById(member.id);
 				expect(storedUser.role.slug).toBe('global:admin');
 			});
+		});
+	});
+
+	describe('PATCH /users/:id/locale', () => {
+		const globalConfig = Container.get(GlobalConfig);
+
+		beforeEach(() => {
+			globalConfig.locales.userOverride = true;
+			vi.spyOn(Container.get(LocaleService), 'isAvailable').mockImplementation((code) =>
+				['en', 'de'].includes(code),
+			);
+		});
+
+		afterEach(() => {
+			globalConfig.locales.userOverride = false;
+			vi.restoreAllMocks();
+		});
+
+		it('sets the locale of a user', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+			const member = await createMember();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send({ locale: 'de' });
+
+			expect(response.status).toBe(204);
+			const storedUser = await getUserById(member.id);
+			expect(storedUser.settings?.locale).toBe('de');
+		});
+
+		it('clears the locale of a user on null', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+			const member = await createUser({ role: GLOBAL_MEMBER_ROLE, settings: { locale: 'de' } });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send({ locale: null });
+
+			expect(response.status).toBe(204);
+			const storedUser = await getUserById(member.id);
+			expect(storedUser.settings?.locale).toBeUndefined();
+		});
+
+		it('rejects an API key without the user:changeLocale scope', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+			const member = await createMember();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send({ locale: 'de' });
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects a signed-in member', async () => {
+			const member = await createMember();
+			const otherMember = await createMember();
+
+			const response = await testServer
+				.publicApiAgentWithCookie(member)
+				.patch(`/users/${otherMember.id}/locale`)
+				.send({ locale: 'de' });
+
+			expect(response.status).toBe(403);
+		});
+
+		it('accepts a signed-in owner', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+
+			const response = await testServer
+				.publicApiAgentWithCookie(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send({ locale: 'de' });
+
+			expect(response.status).toBe(204);
+		});
+
+		it('returns 404 for an unknown user', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch('/users/00000000-0000-4000-8000-000000000000/locale')
+				.send({ locale: 'de' });
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects a locale that is not available', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+			const member = await createMember();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send({ locale: 'xx' });
+
+			expect(response.status).toBe(400);
+			expect(response.body).toHaveProperty('message', 'Unknown locale: "xx"');
+		});
+
+		it.each([{}, { locale: '' }, { locale: 1 }])('rejects the body %j', async (body) => {
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+			const member = await createMember();
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.patch(`/users/${member.id}/locale`)
+				.send(body);
+
+			expect(response.status).toBe(400);
+		});
+
+		it('returns 404 for every change when personal locales are turned off', async () => {
+			globalConfig.locales.userOverride = false;
+			const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
+			const member = await createUser({ role: GLOBAL_MEMBER_ROLE, settings: { locale: 'de' } });
+
+			for (const locale of ['en', null]) {
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.patch(`/users/${member.id}/locale`)
+					.send({ locale });
+
+				expect(response.status).toBe(404);
+				expect(response.body).toEqual({ message: 'not found' });
+			}
+			const storedUser = await getUserById(member.id);
+			expect(storedUser.settings?.locale).toBe('de');
 		});
 	});
 });

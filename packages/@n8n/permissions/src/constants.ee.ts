@@ -72,6 +72,7 @@ export const RESOURCES = {
 	user: [
 		'resetPassword',
 		'changeRole',
+		'changeLocale',
 		'enforceMfa',
 		'generateInviteLink',
 		...DEFAULT_OPERATIONS,
@@ -151,7 +152,7 @@ export const API_KEY_RESOURCES = {
 	otel: ['manage'] as const,
 	ldap: ['manage', 'sync'] as const,
 	project: ['create', 'update', 'delete', 'list', 'export', 'manageMembers'] as const,
-	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
+	user: ['read', 'list', 'create', 'changeRole', 'changeLocale', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,

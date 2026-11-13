@@ -1,0 +1,44 @@
+operationId: changeLocale
+tags:
+  - User
+summary: Change a user's language
+description: |-
+  Set or clear the UI language of a user. Set `locale` to a language code that the instance offers, or to `null` to use the instance default language. The endpoint is available only when `N8N_LOCALE_USER_OVERRIDE` is `true`.
+
+  Requires the `user:changeLocale` API key scope.
+x-required-scope: user:changeLocale
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the user.
+    name: userId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          locale:
+            type: string
+            nullable: true
+            minLength: 1
+        required:
+          - locale
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    description: The locale is not available.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    description: No user with that ID, or personal languages are turned off on this instance.
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

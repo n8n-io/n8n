@@ -28,7 +28,6 @@ import { loadLanguage, setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { getLocaleCatalog } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -36,6 +35,7 @@ import { useStyles } from '@n8n/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { useEffectiveLocale } from '@/app/composables/useEffectiveLocale';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type {
 	WorkflowDocumentId,
@@ -45,7 +45,6 @@ import type {
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
-const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const workflowId = useWorkflowId();
@@ -85,10 +84,7 @@ useMcpDiscoveryEnrollment();
 // EOF Experiment cleanup
 
 const loading = ref(true);
-// The personal locale wins. Signed-out users and users without one get the instance default.
-const effectiveLocale = computed(
-	() => usersStore.currentUser?.settings?.locale || rootStore.defaultLocale,
-);
+const effectiveLocale = useEffectiveLocale();
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 

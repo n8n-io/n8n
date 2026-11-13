@@ -402,6 +402,85 @@ describe('UserService', () => {
 		});
 	});
 
+	describe('changeLocale', () => {
+		const actor = Object.assign(new Person(), { id: 'owner-1' });
+
+		beforeEach(() => {
+			globalConfig.locales = { available: {}, userOverride: true };
+			localeService.isAvailable.mockReset();
+		});
+
+		it('sets the locale of the target user and emits an event', async () => {
+			localeService.isAvailable.mockReturnValue(true);
+			const target = Object.assign(new Person(), { id: 'user-1', settings: {} });
+			userRepository.findOneBy.mockResolvedValueOnce(target);
+
+			await userService.changeLocale(actor, 'user-1', 'de', 'other');
+
+			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
+			expect(userRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: { locale: 'de' } }),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('user-changed-locale', {
+				userId: 'owner-1',
+				targetUserId: 'user-1',
+				publicApi: 'other',
+				locale: 'de',
+			});
+		});
+
+		it('clears the locale on null', async () => {
+			const target = Object.assign(new Person(), {
+				id: 'user-1',
+				settings: { userActivated: true, locale: 'de' },
+			});
+			userRepository.findOneBy.mockResolvedValueOnce(target);
+
+			await userService.changeLocale(actor, 'user-1', null, 'other');
+
+			expect(userRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: { userActivated: true } }),
+			);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'user-changed-locale',
+				expect.objectContaining({ locale: null }),
+			);
+		});
+
+		it('rejects an unknown locale', async () => {
+			localeService.isAvailable.mockReturnValue(false);
+
+			await expect(userService.changeLocale(actor, 'user-1', 'xx', 'other')).rejects.toThrow(
+				'Unknown locale: "xx"',
+			);
+			expect(userRepository.save).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError for an unknown user', async () => {
+			localeService.isAvailable.mockReturnValue(true);
+			userRepository.findOneBy.mockResolvedValueOnce(null);
+
+			await expect(userService.changeLocale(actor, 'missing', 'de', 'other')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it.each(['de', null])(
+			'returns not found for %s when the user override is turned off, without loading the user',
+			async (locale) => {
+				globalConfig.locales.userOverride = false;
+
+				await expect(userService.changeLocale(actor, 'user-1', locale, 'other')).rejects.toThrow(
+					NotFoundError,
+				);
+				expect(userRepository.findOneBy).not.toHaveBeenCalled();
+				expect(userRepository.save).not.toHaveBeenCalled();
+			},
+		);
+	});
+
 	describe('update', () => {
 		// We need to use `save` so that that the subscriber in
 		// packages/@n8n/db/src/entities/Project.ts receives the full user.

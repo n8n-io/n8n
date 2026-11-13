@@ -448,6 +448,14 @@ export type RelayEventMap = ModuleEventMap & {
 		targetUserNewRole: string;
 	};
 
+	'user-changed-locale': {
+		userId: string;
+		targetUserId: string;
+		publicApi: PublicApiCaller;
+		/** `null` when the change cleared the personal locale. */
+		locale: string | null;
+	};
+
 	'user-retrieved-user': {
 		userId: string;
 		publicApi: PublicApiCaller;

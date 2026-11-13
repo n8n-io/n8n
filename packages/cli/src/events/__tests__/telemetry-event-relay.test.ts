@@ -4197,6 +4197,28 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `user-changed-locale` event', () => {
+			const event: RelayEventMap['user-changed-locale'] = {
+				userId: 'user123',
+				targetUserId: 'user456',
+				locale: 'de',
+				publicApi: 'other',
+			};
+
+			eventService.emit('user-changed-locale', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.USER_CHANGED_USER_LANGUAGE,
+				{
+					user_id: 'user123',
+					target_user_id: 'user456',
+					locale: 'de',
+					public_api: true,
+					public_api_client: 'other',
+				},
+			);
+		});
+
 		it('should track on `user-retrieved-user` event', () => {
 			const event: RelayEventMap['user-retrieved-user'] = {
 				userId: 'user123',
