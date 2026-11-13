@@ -4,6 +4,15 @@ export const assistantSurfaceSchema = z
 	.enum(['aia', 'mcp'])
 	.describe('Assistant surface that acted. The settings area cannot fire this event');
 
+/** The runtimes that run an n8n Assistant thread. */
+export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
+export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
+export const assistantRuntimeSchema = z
+	.enum(ASSISTANT_RUNTIMES)
+	.describe(
+		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
+	);
+
 export const publicApiClientSchema = z
 	.enum(['editor_ui', 'other'])
 	.describe(

@@ -4,7 +4,11 @@ import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
-import type { WorkflowSetupApplyPayload, WorkflowSetupOutcome } from './workflowSetup.types';
+import type {
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+	WorkflowSetupSection,
+} from './workflowSetup.types';
 import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
 
 const props = defineProps<{
@@ -23,7 +27,7 @@ const props = defineProps<{
 
 // The parent sends the answer, and settles the card through `outcome`.
 const emit = defineEmits<{
-	apply: [payload: WorkflowSetupApplyPayload];
+	apply: [payload: WorkflowSetupApplyPayload, sections: WorkflowSetupSection[]];
 	defer: [];
 }>();
 
@@ -38,7 +42,7 @@ const ctx = provideWorkflowSetupContext({
 	threadId: toRef(props, 'threadId'),
 	inputThreadId: toRef(props, 'inputThreadId'),
 	outcome: toRef(props, 'outcome'),
-	emitApply: (payload) => emit('apply', payload),
+	emitApply: (payload, sections) => emit('apply', payload, sections),
 	emitDefer: () => emit('defer'),
 });
 </script>
