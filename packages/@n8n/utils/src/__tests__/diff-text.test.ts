@@ -33,7 +33,12 @@ it('bounds table allocations for unequal input sizes', () => {
 		const result = diffText(from, 'replacement');
 		expect(result).toMatchObject({ added: 1, removed: 10_000 });
 		expect(allocate.mock.calls.length).toBeLessThanOrEqual(2);
-		for (const [cells] of allocate.mock.calls) expect(cells).toBeLessThanOrEqual(4_000_000);
+		for (const allocation of allocate.mock.results) {
+			expect(allocation.type).toBe('return');
+			if (allocation.type === 'return') {
+				expect(allocation.value.byteLength).toBeLessThanOrEqual(16_000_000);
+			}
+		}
 	} finally {
 		allocate.mockRestore();
 	}
