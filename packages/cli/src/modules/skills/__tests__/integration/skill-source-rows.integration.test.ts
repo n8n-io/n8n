@@ -154,7 +154,7 @@ describe('Sources in the skills table', () => {
 		it.each([
 			['credential_missing', 'credential_issue'],
 			['not_found', 'source_unavailable'],
-			['archive_too_large', 'check_failed'],
+			['archive_too_large', 'source_unavailable'],
 		])(
 			'shows %s health to viewers, and clears it after a successful check',
 			async (reason, health) => {

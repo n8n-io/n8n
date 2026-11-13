@@ -3,9 +3,21 @@ import {
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
+	ReplaceSkillSourceCredentialDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Middleware,
+	Param,
+	Post,
+	ProjectScope,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -15,8 +27,8 @@ import { SkillSyncService } from '../services/skill-sync.service';
 /**
  * Skill Sync: connect a source, import its skills, check a source for updates, and stop syncing
  * one skill. The services check
- * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
- * scope of the source decides who may change it.
+ * the per-user Skill Sync flag again, for callers other than this controller. The source decides
+ * access. Credential routes also check the scope in the URL.
  */
 @RestController('/skill-sources')
 export class SkillSourceController {
@@ -94,6 +106,28 @@ export class SkillSourceController {
 		return { ok: true };
 	}
 
+	@Get('/:sourceId/credentials')
+	@GlobalScope('skill:update')
+	async replacementCredentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSourceService.listReplacementCredentials(req.user, sourceId, null);
+	}
+
+	@Post('/:sourceId/credential')
+	@GlobalScope('skill:update')
+	async replaceCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: ReplaceSkillSourceCredentialDto,
+	) {
+		await this.skillSourceService.replaceCredential(req.user, sourceId, payload.credentialId, null);
+		return { ok: true };
+	}
+
 	/**
 	 * Check for updates: checks the source, as the hourly check does. A source checked less
 	 * than a minute ago is not checked again.
@@ -101,5 +135,52 @@ export class SkillSourceController {
 	@Post('/:sourceId/check')
 	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSyncService.checkNow(req.user, sourceId);
+	}
+}
+
+/** Project-scoped credential changes use the project in the URL and check the source scope too. */
+@RestController('/projects/:projectId/skill-sources')
+export class ProjectSkillSourceCredentialController {
+	constructor(
+		private readonly skillSourceService: SkillSourceService,
+		private readonly flagGate: SkillSyncFlagGate,
+	) {}
+
+	@Middleware()
+	async requireSkillSyncEnabled(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		if (!(await this.flagGate.isEnabled(req.user))) {
+			res.status(404).send('Not found');
+			return;
+		}
+		next();
+	}
+
+	@Get('/:sourceId/credentials')
+	@ProjectScope('projectSkill:update')
+	async credentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.skillSourceService.listReplacementCredentials(req.user, sourceId, projectId);
+	}
+
+	@Post('/:sourceId/credential')
+	@ProjectScope('projectSkill:update')
+	async replace(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('projectId') projectId: string,
+		@Body payload: ReplaceSkillSourceCredentialDto,
+	) {
+		await this.skillSourceService.replaceCredential(
+			req.user,
+			sourceId,
+			payload.credentialId,
+			projectId,
+		);
+		return { ok: true };
 	}
 }

@@ -31,6 +31,7 @@ import type {
 import { rowContent, storedContentOf } from '../utils/skill-content';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { skillSourceBackoffSeconds } from '../utils/skill-source-backoff';
+import { skillSourceHealth } from '../utils/skill-source-health';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
@@ -241,7 +242,9 @@ export class SkillSyncService {
 		// Still waiting after a rate limit: no request, and the wait does not grow. The check time
 		// stays, because n8n did not read the source, so the task still checks it first next time.
 		if ((previousBackoff?.until ?? 0) > checkedAt.getTime()) {
-			await this.sourceRepository.recordDelayed(source.id);
+			if (await this.sourceRepository.recordDelayed(source)) {
+				await this.trackHealthChange(source, 'rate_limited');
+			}
 			throw new SkillSourceReadError(
 				'rate_limited',
 				'The source limits how often n8n can read it. n8n checks again later.',
@@ -251,7 +254,7 @@ export class SkillSyncService {
 			const auth = await this.authOf(source, client);
 			const cursor = client.probe ? await client.probe(source.locator, auth) : undefined;
 			if (cursor !== undefined && cursor === source.probeCursor) {
-				await this.sourceRepository.recordCheck(source.id, { checkedAt, errorReason: null });
+				await this.recordCheck(source, { checkedAt, errorReason: null });
 				if (this.backoff.get(access) === previousBackoff) this.backoff.delete(access);
 				return;
 			}
@@ -260,7 +263,7 @@ export class SkillSyncService {
 			// A link that another check changed meanwhile was not written: no cursor, so the next
 			// check reads every skill again.
 			const next = conflict ? null : cursor;
-			await this.sourceRepository.recordCheck(source.id, {
+			await this.recordCheck(source, {
 				checkedAt,
 				errorReason: null,
 				...(next !== undefined ? { probeCursor: { from: source.probeCursor, to: next } } : {}),
@@ -286,11 +289,35 @@ export class SkillSyncService {
 					attempts,
 				});
 			}
-			await this.sourceRepository.recordCheck(source.id, {
+			await this.recordCheck(source, {
 				checkedAt,
 				errorReason: skillSourceReasonOf(error) ?? 'unexpected',
 			});
 			throw error;
+		}
+	}
+
+	private async recordCheck(
+		source: SkillSourceConnection,
+		result: Parameters<SkillSourceRepository['recordCheck']>[1],
+	) {
+		const written = await this.sourceRepository.recordCheck(source.id, {
+			...result,
+			credentialId: source.credentialId,
+			previousErrorReason: source.lastErrorReason,
+		});
+		if (written) await this.trackHealthChange(source, result.errorReason);
+	}
+
+	private async trackHealthChange(source: SkillSourceConnection, reason: string | null) {
+		const previous = skillSourceHealth(source.lastErrorReason);
+		const health = skillSourceHealth(reason);
+		if (previous !== health) {
+			await this.skillsTelemetry.sourceHealthChanged({
+				provider: source.type,
+				previous_health: previous,
+				health,
+			});
 		}
 	}
 
@@ -302,7 +329,15 @@ export class SkillSyncService {
 		source: SkillSourceConnection,
 		client: SkillSourceClient,
 	): Promise<SkillSourceAuth | undefined> {
-		if (!source.credentialId) return undefined;
+		if (!source.credentialId) {
+			if (source.credentialRequired) {
+				throw new SkillSourceRequestError(
+					'credential_missing',
+					'The credential of this source is gone. Replace it to check for updates.',
+				);
+			}
+			return undefined;
+		}
 		let credential;
 		try {
 			credential = await this.credentials.resolve(source.credentialId, {
@@ -350,6 +385,7 @@ export class SkillSyncService {
 				batch.map(async (link) => {
 					const fetched = await this.fetch(source, client, link, auth, revision);
 					const row = latest.get(link.skillId);
+					if (!(await this.sourceRepository.setLinkAvailability(link, !fetched))) return 'conflict';
 					if (!fetched || !row) return undefined;
 					return await this.compare(source.type, link, fetched, rowContent(row));
 				}),
@@ -364,7 +400,7 @@ export class SkillSyncService {
 
 	/**
 	 * The skill at the revision. Undefined when its folder is gone from the source: the skill
-	 * keeps its version, and the health of missing skills comes later. A SKILL.md that n8n
+	 * keeps its version, and the source tooltip names it. A SKILL.md that n8n
 	 * cannot parse comes back as `unreadable`, so it becomes a blocked update, as at import. A
 	 * source that refuses the read, such as a tarball that answers 403, fails the whole check,
 	 * so the cursor stays and the next check reads the source again.
@@ -517,5 +553,6 @@ export class SkillSyncService {
 
 /** A credential, or the public access of a source type, as a rate limit applies to it. */
 function accessKey(source: SkillSourceConnection): string {
-	return source.credentialId ? `credential:${source.credentialId}` : `public:${source.type}`;
+	if (source.credentialId) return `credential:${source.credentialId}`;
+	return source.credentialRequired ? `missing:${source.id}` : `public:${source.type}`;
 }

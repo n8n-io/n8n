@@ -4,6 +4,7 @@ import {
 	type SkillSourceCredentialOption,
 	type SkillSourceDiscovery,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -21,6 +22,7 @@ import { GithubOAuth2Api } from 'n8n-nodes-base/credentials/GithubOAuth2Api.cred
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import nock from 'nock';
 import { generateKeyPairSync } from 'node:crypto';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { deleteAllSkills } from '../../testing';
@@ -29,6 +31,8 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
+import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
+import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { OauthService } from '@/oauth/oauth.service';
 
 import {
@@ -72,6 +76,7 @@ describe('Skill Sync with credentials', () => {
 	let owner: SuperAgentTest;
 	let editor: SuperAgentTest;
 	let member: SuperAgentTest;
+	let viewer: SuperAgentTest;
 	let team: Project;
 	let personal: Project;
 	let teamCredential: CredentialsEntity;
@@ -104,6 +109,9 @@ describe('Skill Sync with credentials', () => {
 		personal = await getPersonalProject(memberUser);
 		await linkUserToProject(editorUser, team, 'project:editor');
 		await linkUserToProject(editorUser, otherTeam, 'project:editor');
+		const viewerUser = await createMember();
+		viewer = server.authAgentFor(viewerUser);
+		await linkUserToProject(viewerUser, team, 'project:viewer');
 		const inProject = (project: Project) => ({ project, role: 'credential:owner' as const });
 		teamCredential = await saveCredential(ghCredential('Team GitHub', TOKEN), inProject(team));
 		otherTeamCredential = await saveCredential(
@@ -180,6 +188,7 @@ describe('Skill Sync with credentials', () => {
 
 	afterEach(() => {
 		github.stop();
+		vi.restoreAllMocks();
 	});
 
 	const get = async <T>(agent: SuperAgentTest, path: string, status = 200) =>
@@ -673,6 +682,151 @@ describe('Skill Sync with credentials', () => {
 
 		const lastErrorOf = async (sourceId: string) =>
 			(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).lastErrorReason;
+
+		const credentialPath = (sourceId: string) =>
+			`/projects/${team.id}/skill-sources/${sourceId}/credential`;
+		const sourceRow = async (agent: SuperAgentTest, sourceId: string) => {
+			const { data } = await get<SkillSourceListItem[]>(agent, '/skill-sources');
+			return data.find(({ id }) => id === sourceId)!;
+		};
+
+		it.each(['expired', 'deleted'] as const)(
+			'recovers a source with a %s credential after replacement',
+			async (failure) => {
+				const updated = vi.spyOn(Container.get(SkillsTelemetry), 'updatedSourceCredential');
+				const healthChanged = vi.spyOn(Container.get(SkillsTelemetry), 'sourceHealthChanged');
+				const { sourceId, skillId } = await importPrivate();
+				const original = await db().findOneByOrFail(SkillSourceLink, { skillId });
+				if (failure === 'expired') {
+					await db().update(
+						SkillSourceConnection,
+						{ id: sourceId },
+						{ credentialId: badCredential.id },
+					);
+				} else {
+					const temporary = await saveCredential(ghCredential('Temporary GitHub', TOKEN), {
+						project: team,
+						role: 'credential:owner',
+					});
+					await db().update(
+						SkillSourceConnection,
+						{ id: sourceId },
+						{ credentialId: temporary.id },
+					);
+					await db().delete(CredentialsEntity, { id: temporary.id });
+					expect((await sourceRow(viewer, sourceId)).health).toBe('credential_issue');
+				}
+				github.requests.refs = 0;
+				await Container.get(SkillSyncService).checkAll();
+				const row = await sourceRow(viewer, sourceId);
+				expect(row).toMatchObject({ health: 'credential_issue', canReplaceCredential: false });
+				expect(row).not.toHaveProperty('credentialId');
+				expect(row).not.toHaveProperty('credentialName');
+				if (failure === 'deleted') expect(github.requests.refs).toBe(0);
+				expect((await sourceRow(editor, sourceId)).canReplaceCredential).toBe(true);
+				await post(editor, credentialPath(sourceId), { credentialId: oauthCredential.id });
+				expect((await sourceRow(viewer, sourceId)).health).toBe('connected');
+				expect(await db().findOneByOrFail(SkillSourceLink, { skillId })).toEqual(original);
+				await Container.get(SkillSyncService).checkAll();
+				expect(await lastErrorOf(sourceId)).toBeNull();
+				expect(updated).toHaveBeenCalledWith(
+					{ provider: 'github', status: 'success' },
+					expect.any(String),
+				);
+				expect(healthChanged.mock.calls.map(([props]) => props)).toEqual([
+					{ provider: 'github', previous_health: 'connected', health: 'credential_issue' },
+					{ provider: 'github', previous_health: 'credential_issue', health: 'connected' },
+				]);
+			},
+		);
+
+		it('keeps the current credential when the replacement cannot read the source', async () => {
+			const { sourceId } = await importPrivate();
+			const { meta } = await post(
+				editor,
+				credentialPath(sourceId),
+				{ credentialId: badCredential.id },
+				400,
+			);
+			expect(meta).toEqual({ reason: 'credential_invalid' });
+			expect(
+				(await db().findOneByOrFail(SkillSourceConnection, { id: sourceId })).credentialId,
+			).toBe(teamCredential.id);
+		});
+
+		it('keeps replacement health when a check with the old credential fails later', async () => {
+			const { sourceId } = await importPrivate();
+			const started = createDeferredPromise<undefined>();
+			const oldResult = createDeferredPromise<string>();
+			vi.spyOn(Container.get(GitHubSkillSourceClient), 'probe').mockImplementationOnce(async () => {
+				started.resolve(undefined);
+				return await oldResult.promise;
+			});
+			const check = Container.get(SkillSyncService).checkAll();
+			await started.promise;
+			await post(editor, credentialPath(sourceId), { credentialId: oauthCredential.id });
+			oldResult.reject(
+				new SkillSourceReadError('credential_invalid', 'The old credential expired.'),
+			);
+			await check;
+			expect((await sourceRow(viewer, sourceId)).health).toBe('connected');
+		});
+
+		it('keeps a deleted credential visible while public access waits after a rate limit', async () => {
+			const { sourceId } = await importPrivate();
+			await db().update(SkillSourceConnection, { id: sourceId }, { credentialId: null });
+			const backoff = Reflect.get(Container.get(SkillSyncService), 'backoff') as Map<
+				string,
+				{ until: number; attempts: number }
+			>;
+			backoff.set('public:github', { until: Date.now() + 3_600_000, attempts: 1 });
+			try {
+				await Container.get(SkillSyncService).checkAll();
+				expect(await lastErrorOf(sourceId)).toBe('credential_missing');
+			} finally {
+				backoff.clear();
+			}
+		});
+
+		it('lists only usable replacements and refuses viewers, outsiders, other scopes, and the flag off', async () => {
+			const { sourceId } = await importPrivate();
+			const path = credentialPath(sourceId);
+			const { data } = await get<SkillSourceCredentialOption[]>(editor, `${path}s`);
+			expect(data.map(({ id }) => id)).toContain(oauthCredential.id);
+			expect(data.map(({ id }) => id)).not.toContain(otherTeamCredential.id);
+			await get(viewer, `${path}s`, 403);
+			await post(viewer, path, { credentialId: oauthCredential.id }, 403);
+			await post(member, path, { credentialId: oauthCredential.id }, 403);
+			await post(editor, path, { credentialId: otherTeamCredential.id }, 403);
+			await post(editor, path, { credentialId: 'unknown' }, 403);
+			await post(
+				owner,
+				`/skill-sources/${sourceId}/credential`,
+				{ credentialId: ownerCredential.id },
+				404,
+			);
+			await post(editor, path, {}, 400);
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await get(editor, `${path}s`, 404);
+			await post(editor, path, { credentialId: oauthCredential.id }, 404);
+		});
+
+		it('replaces a Global source credential only with an admin-owned credential', async () => {
+			const payload = { url: PRIVATE, scope: 'instance', credentialId: ownerCredential.id };
+			const { data: discovery } = await post<SkillSourceDiscovery>(
+				owner,
+				'/skill-sources/discover',
+				payload,
+			);
+			const { data: source } = await post<SkillSourceConnectResponse>(owner, '/skill-sources', {
+				...payload,
+				skillKeys: discovery.skills.map(({ key }) => key),
+			});
+			const path = `/skill-sources/${source.sourceId}/credential`;
+			await post(owner, path, { credentialId: memberCredential.id }, 403);
+			await post(editor, path, { credentialId: teamCredential.id }, 403);
+			await post(owner, path, { credentialId: ownerCredential.id });
+		});
 
 		it('reads the source with its stored credential, without a user', async () => {
 			const { sourceId, skillId } = await importPrivate();

@@ -15,7 +15,7 @@ describe('SkillSourceHealth', () => {
 		{ health: 'connected', label: 'Connected', description: 'Not checked yet.' },
 		{
 			health: 'credential_issue',
-			label: 'Credential issue',
+			label: 'Credential expired',
 			description: "n8n can't use this source's credential.",
 		},
 		{
@@ -25,36 +25,29 @@ describe('SkillSourceHealth', () => {
 				"The repository or branch is missing, or n8n doesn't have access. Your skills keep their last accepted version.",
 		},
 		{
-			health: 'unreachable',
-			label: 'Unreachable',
-			description: "n8n couldn't reach this source. Your skills keep their last accepted version.",
-		},
-		{
 			health: 'delayed',
-			label: 'Delayed',
+			label: 'Checking delayed',
 			description: 'GitHub has limited requests. n8n will check again later.',
 		},
-		{
-			health: 'check_failed',
-			label: 'Check failed',
-			description:
-				"n8n couldn't complete the update check. Your skills keep their last accepted version.",
-		},
 	])('shows $health with keyboard-accessible details', async ({ health, label, description }) => {
-		const { getByRole } = render({ props: { source: { health, lastCheckedAt: null } } });
+		const { getByRole } = render({
+			props: { source: { health, lastCheckedAt: null, missingSkills: [] } },
+		});
 
 		await userEvent.tab();
 
 		expect(getByRole('button', { name: label })).toHaveFocus();
 		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(description);
 		expect(getByRole('button', { name: label })).toHaveAccessibleDescription(
-			expect.stringContaining('n8n checks every hour by default.'),
+			expect.stringContaining('n8n checks this source every hour.'),
 		);
 	});
 
 	it('shows the time of the last check', async () => {
 		const lastCheckedAt = '2026-10-01T12:30:00.000Z';
-		const { getByRole } = render({ props: { source: { health: 'connected', lastCheckedAt } } });
+		const { getByRole, queryByTestId } = render({
+			props: { source: { health: 'connected', lastCheckedAt, missingSkills: ['pdf', 'docx'] } },
+		});
 
 		await userEvent.tab();
 
@@ -63,6 +56,10 @@ describe('SkillSourceHealth', () => {
 		);
 		expect(getByRole('button', { name: 'Connected' })).toHaveAccessibleDescription(
 			expect.stringContaining('Last check: Oct 1, 2026'),
+		);
+		expect(queryByTestId('skill-source-health-badge')).toBeNull();
+		expect(await screen.findByTestId('tooltip-content')).toHaveTextContent(
+			'Skill folders not found: pdf, docx. Your skills keep working',
 		);
 	});
 });

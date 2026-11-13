@@ -496,6 +496,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt

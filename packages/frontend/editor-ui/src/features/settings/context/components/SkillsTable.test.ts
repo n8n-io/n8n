@@ -389,6 +389,8 @@ describe('SkillsTable', () => {
 			updatesBlocked: 0,
 			health: 'connected',
 			lastCheckedAt: null,
+			missingSkills: [],
+			canReplaceCredential: false,
 			canReview: true,
 			canDelete: true,
 			...overrides,
@@ -438,11 +440,11 @@ describe('SkillsTable', () => {
 
 		it('names the source menu and keeps health visible without review permission', () => {
 			const { getByRole, queryByTestId } = renderGrouped({
-				sources: [source({ canReview: false, health: 'unreachable', updatesAvailable: 2 })],
+				sources: [source({ canReview: false, health: 'source_unavailable', updatesAvailable: 2 })],
 			});
 
 			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
-			expect(getByRole('button', { name: 'Unreachable' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument();
 			expect(queryByTestId('skill-group-updates')).toBeNull();
 		});
 
@@ -563,6 +565,22 @@ describe('SkillsTable', () => {
 			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 
 			expect(emitted('checkSource')).toEqual([[source()]]);
+		});
+
+		it('offers credential replacement only when the source permits it', async () => {
+			const row = source({ canReplaceCredential: true });
+			const { getByTestId, emitted, rerender } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(
+					document.querySelector('[data-test-id="action-replaceCredential"]'),
+				).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
+			expect(emitted('replaceCredential')).toEqual([[row]]);
+			await rerender({ sources: [source({ canReview: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
 		});
 
 		it('opens the repository in GitHub', async () => {

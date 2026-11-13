@@ -12,10 +12,10 @@ export function skillSourceHealth(errorReason: string | null): SkillSourceHealth
 		case 'not_found':
 			return 'source_unavailable';
 		case 'unreachable':
-			return 'unreachable';
+			return 'source_unavailable';
 		case 'rate_limited':
 			return 'delayed';
 		default:
-			return 'check_failed';
+			return 'source_unavailable';
 	}
 }

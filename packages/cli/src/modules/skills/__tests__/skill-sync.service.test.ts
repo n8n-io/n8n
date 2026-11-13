@@ -141,6 +141,7 @@ describe('SkillSyncService', () => {
 					id,
 					type: 'github',
 					credentialId: null,
+					credentialRequired: false,
 					probeCursor: 'current',
 					lastCheckedAt: null,
 				}),
@@ -164,7 +165,7 @@ describe('SkillSyncService', () => {
 			await expect(sync.checkNow(user, secondId)).rejects.toThrow();
 
 			expect(probe).toHaveBeenCalledTimes(2);
-			expect(sources.recordDelayed).toHaveBeenCalledWith(secondId);
+			expect(sources.recordDelayed).toHaveBeenCalledWith(expect.objectContaining({ id: secondId }));
 		},
 	);
 });

@@ -41,6 +41,10 @@ export class SkillSourceConnection extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
+	/** Stays true after the credential is deleted, so the source never falls back to public access. */
+	@Column({ type: 'boolean', default: false })
+	credentialRequired: boolean;
+
 	@Column({ type: 'varchar', length: 32, default: 'connected' })
 	status: SkillSourceStatus;
 

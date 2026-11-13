@@ -4,6 +4,7 @@ import {
 	type SkillSourceCheckResponse,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
 import { PostHogClient } from '@n8n/backend-services';
 import {
@@ -329,7 +330,8 @@ describe('Skill source checks', () => {
 		});
 
 		it('keeps a skill whose folder is gone, and checks the others', async () => {
-			const { docx, xlsx } = await importAll();
+			const { sourceId, docx, xlsx } = await importAll();
+			const version = await findLatestSkillVersion(xlsx);
 			const files = github.files('acme/skills');
 			delete files['skills/xlsx/SKILL.md'];
 			github.push('acme/skills', { ...files, 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
@@ -337,7 +339,21 @@ describe('Skill source checks', () => {
 			await sync().checkAll();
 
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
-			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
+			expect(await linkOf(xlsx)).toMatchObject({
+				state: 'source_unavailable',
+				pendingContentHash: null,
+			});
+			expect(await findLatestSkillVersion(xlsx)).toEqual(version);
+			const sources = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(sources.find(({ id }) => id === sourceId)?.missingSkills).toEqual(['xlsx']);
+			await viewer.get(`/skills/${xlsx}`).expect(200);
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+			await sync().checkAll();
+			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date' });
+			expect((await viewer.get('/skill-sources').expect(200)).body.data[0].missingSkills).toEqual(
+				[],
+			);
 		});
 
 		it('blocks an update whose SKILL.md n8n cannot parse, and reports it once', async () => {
@@ -362,6 +378,27 @@ describe('Skill source checks', () => {
 			);
 		});
 
+		it('keeps a pending update when its folder disappears and restores it when the folder returns', async () => {
+			const { docx } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			await sync().checkAll();
+			const pending = (await linkOf(docx)).pendingContentHash;
+			const files = github.files('acme/skills');
+			delete files['skills/docx/SKILL.md'];
+			github.push('acme/skills', files);
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({
+				state: 'source_unavailable',
+				pendingContentHash: pending,
+			});
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({
+				state: 'update_available',
+				pendingContentHash: pending,
+			});
+		});
+
 		it('stores each update once when two checks of a source run at the same time', async () => {
 			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
 			const { sourceId, docx } = await importAll();
@@ -384,6 +421,7 @@ describe('Skill source checks', () => {
 			// A secondary rate limit sends `retry-after` with a 403.
 			{ failure: { status: 403, headers: { 'retry-after': '1' } }, reason: 'rate_limited' },
 		])('stores $reason on the source when GitHub answers $failure', async ({ failure, reason }) => {
+			const healthChanged = vi.spyOn(Container.get(SkillsTelemetry), 'sourceHealthChanged');
 			const { sourceId, docx } = await importAll();
 			github.failWith = failure;
 
@@ -391,12 +429,19 @@ describe('Skill source checks', () => {
 
 			expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: reason });
 			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date' });
+			const [row] = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(row.health).toBe(reason === 'rate_limited' ? 'delayed' : 'source_unavailable');
+			await sync().checkAll();
+			expect(healthChanged).toHaveBeenCalledTimes(1);
+			expect(healthChanged.mock.calls[0][0]).not.toHaveProperty('user_id');
 
 			github.failWith = undefined;
 			await sync().checkAll();
 			expect(await sourceOf(sourceId)).toMatchObject({
 				lastErrorReason: reason === 'rate_limited' ? 'rate_limited' : null,
 			});
+			expect(healthChanged).toHaveBeenCalledTimes(reason === 'rate_limited' ? 1 : 2);
 		});
 
 		it('waits as long as GitHub asked after a rate limit, with no request', async () => {

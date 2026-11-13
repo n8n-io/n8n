@@ -7,6 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | createdById | uuid |  | true |  | [public.user](public.user.md) | Creator. The check task reads the feature flag of this user. NULL after the user is deleted |
 | credentialId | varchar(36) |  | true |  | [public.credentials_entity](public.credentials_entity.md) | Credential that reads a private source. NULL = public access |
+| credentialRequired | boolean | false | false |  |  | True when the source requires a credential, also after that credential is deleted |
 | id | uuid |  | false | [public.skill_source_link](public.skill_source_link.md) |  | UUIDv7, made by the application |
 | identityKey | varchar(255) |  | false |  |  | Source type, host, owner and repository in lower case, e.g. "github:github.com/acme/skills". The duplicate rules compare it |
 | lastCheckedAt | timestamp(3) with time zone |  | true |  |  | End of the last check. NULL before the first check |
@@ -28,6 +29,7 @@
 | FK_b3474e16029bf15a015e3f3a8d6 | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE SET NULL |
 | PK_c121774d21c9f67119b1d0d865a | PRIMARY KEY | PRIMARY KEY (id) |
 | skill_source_createdAt_not_null | n | NOT NULL "createdAt" |
+| skill_source_credentialRequired_not_null | n | NOT NULL "credentialRequired" |
 | skill_source_id_not_null | n | NOT NULL id |
 | skill_source_identityKey_not_null | n | NOT NULL "identityKey" |
 | skill_source_locator_not_null | n | NOT NULL locator |
@@ -58,6 +60,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
