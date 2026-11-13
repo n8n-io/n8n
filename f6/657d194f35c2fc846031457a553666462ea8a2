@@ -1,0 +1,31 @@
+.claude/plugins/n8n/agents/autodev-planner.md
+  s_2f7d745c1f33d3::t_d912db33a9c3e1 14
+.claude/plugins/n8n/agents/autodev-test-reviewer.md
+  s_2f7d745c1f33d3::t_2e0ad8f9893406 10
+.claude/plugins/n8n/commands/browse.md
+  s_2f7d745c1f33d3::t_06bed957a94f05 22-25,58,60,63-65,92-98
+.claude/plugins/n8n/commands/changes-review.md
+  s_2f7d745c1f33d3::t_f17423dbb20723 20-22,26,30
+.claude/plugins/n8n/skills/change-story/SKILL.md
+  s_2f7d745c1f33d3::t_38d23b401a7c4c 35-37,116-117,224,229-231
+.claude/plugins/n8n/skills/change-story/references/evidence-capture.md
+  s_2f7d745c1f33d3::t_7edef3c9d20b15 18-26,29,43-47,51-52,58-60
+.claude/plugins/n8n/skills/dev-flow/SKILL.md
+  s_2f7d745c1f33d3::t_88a4438b088622 251,265,293-294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6657d194f35c2fc846031457a553666462ea8a2",
+  "prompts": {},
+  "sessions": {
+    "s_2f7d745c1f33d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "383bb0e3-c6b8-41c7-b230-9a9301010b08",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
