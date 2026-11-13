@@ -356,6 +356,42 @@ Use `--json` to get the full preview:
 - `check` and `revision`, for `apply` only: what blocks the Apply, and the value
   to pass to `--expected-preview-revision`.
 
+## `promotion-environment list-apply-changes`
+
+Preview what Apply changes on the whole instance: its projects, folders,
+workflows, credentials, data tables, variables, and tags.
+
+```bash
+n8n-cli promotion-environment list-apply-changes env-2
+n8n-cli promotion-environment list-apply-changes env-2 --json
+```
+
+Run it before [`apply`](#promotion-environment-apply). Connect the environment
+first. This command works on an `instance` Apply environment only. The API key
+needs `promotions:apply`.
+
+The table has the same columns as
+[`list-changes`](#promotion-environment-list-changes), with two differences:
+
+- `PROJECT` names the project that holds the resource. Empty for instance-wide
+  resources, such as a credential that no project holds.
+- There is no `SELECTABLE` column. Apply takes every change, so you can't select
+  a resource.
+
+Apply deletes each team project that the package does not hold. The table lists
+such a project as `deleted`, together with everything in it.
+
+Use `--json` to get the full preview:
+
+- `commitSha` and `source`: the commit and branch that the preview read. Pass
+  them to the `--expected-*` flags of `apply`.
+- `resources` and `dependencies`: as for `list-changes`.
+- `check`: what blocks the Apply. A team project that Apply deletes is a
+  `project-deletion` conflict. `movedWorkflows` and `movedFolders` list the
+  workflows and folders that the branch and this instance hold in different
+  projects. Apply can't move them between projects, so it refuses them.
+- `revision`: the value to pass to `--expected-preview-revision`.
+
 ## `promotion-environment promote-selection`
 
 Read a chosen set of a project's workflows and folders now, and push their
@@ -397,7 +433,8 @@ package. This overwrites the instance to match the branch.
 ```bash
 n8n-cli promotion-environment apply env-2
 n8n-cli promotion-environment apply env-2 \
-  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --expected-preview-revision=<revision>
 ```
 
 | Flag | Description |
@@ -405,16 +442,18 @@ n8n-cli promotion-environment apply env-2 \
 | `--expected-environment-id` | ID of the Apply environment that you reviewed. |
 | `--expected-branch` | Branch that you reviewed. |
 | `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
+| `--expected-preview-revision` | `revision` of the Apply preview that you reviewed, from `list-apply-changes env-2 --json`. |
 
 Without the `--expected-*` flags, the command applies the branch tip. With them,
 the command applies only the source that you reviewed. Pass all three flags or
-none.
+none. With `--expected-preview-revision`, the command applies only when this
+instance still matches the preview that you reviewed.
 
 | Result | Exit code | What happened |
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `preview-changed` | `3` | Only for `apply-selection` and `apply-selection-continue` with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
+| `preview-changed` | `3` | Only with `--expected-preview-revision`: the Apply preview changed since you reviewed it, because this instance or the branch changed. Nothing was imported. Review the changes again. |
 | `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
@@ -443,14 +482,22 @@ Continue an Apply that was `blocked`, after you resolve the missing bindings, ac
 ```bash
 n8n-cli promotion-environment apply-continue env-2 \
   --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha>
+n8n-cli promotion-environment apply-continue env-2 \
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<full sha> \
+  --expected-preview-revision=<revision> --confirm-destructive-changes
 ```
 
 The three `--expected-*` flags are required. Use the `environmentId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
 command runs the Apply check again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
-`source-changed` means that you must review again. The server keeps no session,
-so run the command again when it exits `4`.
+`source-changed` or `preview-changed` means that you must review again. The
+server keeps no session, so run the command again when it exits `4`.
+
+Setting up bindings changes the preview, so an earlier
+`--expected-preview-revision` no longer matches. To continue only with a preview
+that you reviewed, run `list-apply-changes env-2 --json` again and pass its new
+`revision`.
 
 Add `--confirm-destructive-changes` to also apply destructive data table
 changes and delete projects:
@@ -460,27 +507,28 @@ changes and delete projects:
 - Team projects that the package does not hold. Each project is deleted with
   everything in it. You can't undo this.
 
-The flag applies all such changes when the command runs. This includes changes
-and projects that the blocked Apply did not report. Without the flag, a
+Without `--expected-preview-revision`, the flag applies all such changes when
+the command runs. This includes changes and projects that the blocked Apply did
+not report. With `--expected-preview-revision`, the flag covers only the changes
+and project deletions of the preview that you reviewed. Without the flag, a
 destructive change or a project deletion blocks the command, and it exits `4`.
 
 ## Apply a reviewed commit
 
 ```bash
-# 1. Review the changes. Take the commit SHA from the same response as the rows:
-#    a second request can read a newer commit.
-n8n-cli promotion-environment list-changes proj-abc apply --json > reviewed-changes.json
-jq '{commitSha, source, resources}' reviewed-changes.json
+# 1. Review the changes. Take the source, commit SHA, and revision from the same
+#    response as the rows: a second request can read a newer commit.
+n8n-cli promotion-environment list-apply-changes env-2 --json > reviewed-changes.json
+jq '{commitSha, source, revision}' reviewed-changes.json
 
-# 2. Read the branch of the Apply environment.
-n8n-cli promotion-environment get env-2 --jq '.settings.branchName'
-
-# 3. Apply that commit only.
+# 2. Apply that commit only, and only while this instance matches the preview.
 n8n-cli promotion-environment apply env-2 \
-  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<sha from step 1>
+  --expected-environment-id=env-2 --expected-branch=main --expected-commit-sha=<sha from step 1> \
+  --expected-preview-revision=<revision from step 1>
 
+# 3. On exit code 3, the source or this instance changed. Go back to step 1.
 # 4. On exit code 4, resolve the missing bindings, access requirements, or conflicts.
-#    Then run the apply-continue command that step 3 printed.
+#    Then run the apply-continue command that step 2 printed.
 ```
 
 ## `promotion-environment apply-selection`

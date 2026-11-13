@@ -6,7 +6,10 @@ import type {
 } from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
 import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
 import type { PromotionMissingProject } from '@n8n/api-types/dist/dto/promotions/promotion-apply-check.dto';
-import type { PromotionPreview } from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
+import type {
+	PromotionInstanceApplyPreview,
+	PromotionPreview,
+} from '@n8n/api-types/dist/dto/promotions/promotion-preview.dto';
 import type { CreateProjectPublicDto } from '@n8n/api-types/dist/dto/project/project-public.dto';
 
 export interface PaginatedResponse<T> {
@@ -161,7 +164,7 @@ export type ApplyPackageResult =
 	| (ApplyPackageIdentity & { status: 'source-changed' })
 	| (ApplyPackageIdentity & { status: 'preview-changed' });
 
-export type { PromotionPreview };
+export type { PromotionInstanceApplyPreview, PromotionPreview };
 
 /** A repository that the token of a Git host provider can access. */
 export interface PromotionRepository {
@@ -457,21 +460,32 @@ export class N8nClient {
 		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
 	}
 
-	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
-		return await this.post<ApplyPackageResult>(
-			`/promotions/environments/${id}/apply`,
-			expectedSource ? { expectedSource } : undefined,
-		);
+	async listInstanceApplyChanges(id: string) {
+		return await this.get<PromotionInstanceApplyPreview>(`/promotions/environments/${id}/changes`);
+	}
+
+	async applyPackage(
+		id: string,
+		expectedSource?: PromotionExpectedSource,
+		expectedPreviewRevision?: string,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply`, {
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+			expectedPreviewRevision,
+		});
 	}
 
 	async continueApplyPackage(
 		id: string,
 		expectedSource: PromotionExpectedSource,
 		confirmDestructiveChanges?: boolean,
+		expectedPreviewRevision?: string,
 	) {
 		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
 			expectedSource,
 			confirmDestructiveChanges,
+			expectedPreviewRevision,
 		});
 	}
 

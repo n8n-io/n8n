@@ -1,7 +1,8 @@
 import type { Config } from '@oclif/core';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
-import type { N8nClient, PromotionPreview } from '../client';
+import type { N8nClient, PromotionInstanceApplyPreview, PromotionPreview } from '../client';
+import PromotionEnvironmentListApplyChanges from '../commands/promotion-environment/list-apply-changes';
 import PromotionEnvironmentListChanges from '../commands/promotion-environment/list-changes';
 
 interface ListChangesFlags {
@@ -70,6 +71,7 @@ const ROWS = [
 		type: 'workflow',
 		id: 'wf-1',
 		name: 'Weekly report',
+		project: 'project:proj-1',
 		change: 'modified',
 		folder: 'Reports',
 		usedBy: undefined,
@@ -79,6 +81,7 @@ const ROWS = [
 		type: 'credential',
 		id: 'cred-1',
 		name: 'Billing API',
+		project: undefined,
 		change: 'modified',
 		folder: undefined,
 		usedBy: 'wf-2',
@@ -142,5 +145,86 @@ describe('promotion-environment list-changes command', () => {
 		await command.run();
 
 		expect(logToStderr).toHaveBeenCalledWith(expect.stringContaining('review-1'));
+	});
+});
+
+describe('promotion-environment list-apply-changes command', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('lists a deleted project with everything in it, and names the project of each row', async () => {
+		const preview = {
+			commitSha: 'abc123',
+			source: { environmentId: 'env-1', branchName: 'main' },
+			resources: [
+				resource({
+					key: 'project:proj-2',
+					type: 'project',
+					name: 'Marketing',
+					parentKey: null,
+					change: 'deleted',
+				}),
+				resource({
+					key: 'folder:folder-2',
+					type: 'folder',
+					name: 'Campaigns',
+					parentKey: 'project:proj-2',
+					change: 'deleted',
+				}),
+				resource({
+					key: 'workflow:wf-3',
+					type: 'workflow',
+					name: 'Newsletter',
+					parentKey: 'project:proj-2',
+					change: 'deleted',
+				}),
+				resource({
+					key: 'workflow:wf-4',
+					type: 'workflow',
+					name: 'Launch',
+					parentKey: 'folder:folder-2',
+					change: 'deleted',
+				}),
+			],
+			dependencies: [],
+			check: {},
+			revision: 'b'.repeat(64),
+		} as unknown as PromotionInstanceApplyPreview;
+		const command = new PromotionEnvironmentListApplyChanges([], {} as Config);
+		const internals = command as unknown as ListChangesInternals;
+		const listInstanceApplyChanges = vi.fn().mockResolvedValue(preview);
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { id: 'env-1' },
+			flags: { format: 'table' },
+		} as unknown as Awaited<ReturnType<ListChangesInternals['parse']>>);
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			listInstanceApplyChanges,
+		} as unknown as N8nClient);
+		const output = vi.spyOn(internals, 'output').mockImplementation(() => {});
+
+		await command.run();
+
+		const row = (type: string, id: string, name: string, project?: string, folder?: string) => ({
+			type,
+			id,
+			name,
+			project,
+			change: 'deleted',
+			folder,
+			usedBy: undefined,
+			selectable: false,
+		});
+		expect(listInstanceApplyChanges).toHaveBeenCalledWith('env-1');
+		expect(output).toHaveBeenCalledWith(
+			[
+				row('project', 'proj-2', 'Marketing'),
+				row('folder', 'folder-2', 'Campaigns', 'Marketing'),
+				row('workflow', 'wf-3', 'Newsletter', 'Marketing'),
+				row('workflow', 'wf-4', 'Launch', 'Marketing', 'Campaigns'),
+			],
+			expect.anything(),
+			{ columns: ['type', 'id', 'name', 'project', 'change', 'folder', 'usedBy'] },
+		);
 	});
 });

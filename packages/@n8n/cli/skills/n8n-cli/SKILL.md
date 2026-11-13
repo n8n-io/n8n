@@ -238,22 +238,26 @@ n8n-cli promotion-provider list-branches <providerId> <fullPath> --json         
 Apply a reviewed commit only:
 
 ```bash
-# Review the changes. Take the commit SHA from the same response as the rows:
-# a second request can read a newer commit.
-n8n-cli promotion-environment list-changes <projectId> apply --json > reviewed-changes.json
-jq '{commitSha, source, resources}' reviewed-changes.json
-# The branch comes from the Apply environment.
-n8n-cli promotion-environment get <applyId> --jq '.settings.branchName'
+# Review the changes. The table lists each changed resource with its PROJECT. A team project
+# that the package does not hold is listed as deleted, with everything in it. Take the source,
+# the commit SHA and the revision from the same response as the rows: a second request can
+# read a newer commit.
+n8n-cli promotion-environment list-apply-changes <applyId> --json > reviewed-changes.json
+jq '{commitSha, source, revision}' reviewed-changes.json
 
 n8n-cli promotion-environment apply <applyId> \
-  --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
-# Exit 3: the source changed since the review. Review again.
+  --expected-environment-id=<source.environmentId> --expected-branch=<source.branchName> \
+  --expected-commit-sha=<commitSha> --expected-preview-revision=<revision>
+# Exit 3: the source or this instance changed since the review. Review again.
 # Exit 4: the Apply check found missing bindings, access requirements, or conflicts. Resolve them,
 # then run the apply-continue command that apply printed:
 n8n-cli promotion-environment apply-continue <applyId> \
   --expected-environment-id=<applyId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Setting up bindings changes the preview. To continue only with a reviewed preview, run
+# list-apply-changes again and add --expected-preview-revision=<new revision>.
 # To also apply destructive data table changes and delete the team projects that the
-# package does not hold, add --confirm-destructive-changes.
+# package does not hold, add --confirm-destructive-changes. With --expected-preview-revision,
+# it covers only what that preview showed.
 ```
 
 Promote or apply a selection of a project:
@@ -337,14 +341,16 @@ Key points:
   ready.
 - A project can have one environment for each direction. A direction without a
   project environment uses the instance environment.
-- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
-  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`
+  or `preview-changed`) or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
   read `counts`. With `--json`, a `blocked` result lists what is missing under
   `check`.
 - The `--expected-environment-id`, `--expected-branch`, and
   `--expected-commit-sha` flags go together: pass all three or none. The commit
-  SHA must be the full SHA. `--expected-preview-revision` is separate and works
-  only with `apply-selection` and `apply-selection-continue`.
+  SHA must be the full SHA. `--expected-preview-revision` is separate. It works
+  with `apply`, `apply-continue`, `apply-selection`, and
+  `apply-selection-continue`. Take it from `list-apply-changes` for a whole-instance
+  Apply and from `list-changes <projectId> apply` for a selection.
 - API key scopes for this group are named `promotions:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 
