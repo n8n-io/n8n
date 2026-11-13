@@ -855,7 +855,14 @@ async function handleSubmit(
 	}
 
 	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
-		await startAssistantAgentThread(selectedProject.value, message, attachments, restoreDraft);
+		await startAssistantAgentThread(
+			selectedProject.value,
+			message,
+			attachments,
+			restoreDraft,
+			authorship,
+			mentionCounts,
+		);
 		return;
 	}
 
@@ -958,6 +965,8 @@ async function startAssistantAgentThread(
 	message: string,
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
+	authorship: InstanceAiMessageAuthorship,
+	mentionCounts: AssistantMentionCounts,
 ) {
 	const acceptString = ASSISTANT_AGENT_ACCEPTED_MIME_TYPES;
 	const fileAttachments: InstanceAiFileAttachment[] = [];
@@ -987,6 +996,8 @@ async function startAssistantAgentThread(
 			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
 		),
 		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+		authorship,
+		mentionCounts,
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
 	stashAssistantAgentLaunch(pendingMessage.threadId, {

@@ -5,24 +5,25 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 export async function sendGridApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 
 	body: any = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
-	const host = 'api.sendgrid.com/v3';
-
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
 		body,
-		uri: `https://${host}${endpoint}`,
+		uri: requestUrl`https://api.sendgrid.com/v3${endpoint}`,
 		json: true,
 	};
 
@@ -39,7 +40,7 @@ export async function sendGridApiRequest(
 
 export async function sendGridApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	propertyName: string,
 
@@ -50,11 +51,8 @@ export async function sendGridApiRequestAllItems(
 
 	let responseData;
 
-	let uri;
-
 	do {
-		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query, uri); // possible bug, as function does not have uri parameter
-		uri = responseData._metadata.next;
+		responseData = await sendGridApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		const limit = query.limit as number | undefined;
 		if (limit && returnData.length >= limit) {

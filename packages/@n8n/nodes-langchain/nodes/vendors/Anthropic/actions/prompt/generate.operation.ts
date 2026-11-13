@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { PromptResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
@@ -41,10 +41,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body = {
 		task,
 	};
-	const response = (await apiRequest.call(this, 'POST', '/v1/experimental/generate_prompt', {
-		body,
-		enableAnthropicBetas: { promptTools: true },
-	})) as PromptResponse;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1/experimental/generate_prompt`,
+		{
+			body,
+			enableAnthropicBetas: { promptTools: true },
+		},
+	)) as PromptResponse;
 
 	if (simplify) {
 		return [

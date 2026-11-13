@@ -7,8 +7,14 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+} from 'n8n-workflow';
 
 import { checklistFields, checklistOperations } from './ChecklistDescription';
 import { checklistItemFields, checklistItemOperations } from './ChecklistItemDescription';
@@ -34,7 +40,8 @@ export class ClickUp implements INodeType {
 		name: 'clickUp',
 		icon: 'file:clickup.svg',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		description: 'Consume ClickUp API (Beta)',
 		defaults: {
@@ -204,7 +211,7 @@ export class ClickUp implements INodeType {
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { teams } = await clickupApiRequest.call(this, 'GET', '/team');
+				const { teams } = await clickupApiRequest.call(this, 'GET', requestPath`/team`);
 				for (const team of teams) {
 					const teamName = team.name;
 					const teamId = team.id;
@@ -220,7 +227,11 @@ export class ClickUp implements INodeType {
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const teamId = this.getCurrentNodeParameter('team') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { spaces } = await clickupApiRequest.call(this, 'GET', `/team/${teamId}/space`);
+				const { spaces } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/team/${teamId}/space`,
+				);
 				for (const space of spaces) {
 					const spaceName = space.name;
 					const spaceId = space.id;
@@ -236,7 +247,11 @@ export class ClickUp implements INodeType {
 			async getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { folders } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/folder`);
+				const { folders } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/space/${spaceId}/folder`,
+				);
 				for (const folder of folders) {
 					const folderName = folder.name;
 					const folderId = folder.id;
@@ -252,7 +267,11 @@ export class ClickUp implements INodeType {
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const folderId = this.getCurrentNodeParameter('folder') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { lists } = await clickupApiRequest.call(this, 'GET', `/folder/${folderId}/list`);
+				const { lists } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/folder/${folderId}/list`,
+				);
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -268,7 +287,11 @@ export class ClickUp implements INodeType {
 			async getFolderlessLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { lists } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/list`);
+				const { lists } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/space/${spaceId}/list`,
+				);
 				for (const list of lists) {
 					const listName = list.name;
 					const listId = list.id;
@@ -285,11 +308,11 @@ export class ClickUp implements INodeType {
 				const listId = this.getCurrentNodeParameter('list') as string;
 				const taskId = this.getCurrentNodeParameter('task') as string;
 				const returnData: INodePropertyOptions[] = [];
-				let url: string;
+				let url: RequestPath;
 				if (listId) {
-					url = `/list/${listId}/member`;
+					url = requestPath`/list/${listId}/member`;
 				} else if (taskId) {
-					url = `/task/${taskId}/member`;
+					url = requestPath`/task/${taskId}/member`;
 				} else {
 					return returnData;
 				}
@@ -310,7 +333,11 @@ export class ClickUp implements INodeType {
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const spaceId = this.getCurrentNodeParameter('space') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { tags } = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
+				const { tags } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/space/${spaceId}/tag`,
+				);
 				for (const tag of tags) {
 					const tagName = tag.name;
 					const tagId = tag.name;
@@ -329,7 +356,7 @@ export class ClickUp implements INodeType {
 				const { data: tags } = await clickupApiRequest.call(
 					this,
 					'GET',
-					`/team/${teamId}/time_entries/tags`,
+					requestPath`/team/${teamId}/time_entries/tags`,
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
@@ -346,7 +373,11 @@ export class ClickUp implements INodeType {
 			async getStatuses(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { statuses } = await clickupApiRequest.call(this, 'GET', `/list/${listId}`);
+				const { statuses } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/list/${listId}`,
+				);
 				for (const status of statuses) {
 					const statusName = status.status;
 					const statusId = status.status;
@@ -363,7 +394,11 @@ export class ClickUp implements INodeType {
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const listId = this.getCurrentNodeParameter('list') as string;
 				const returnData: INodePropertyOptions[] = [];
-				const { fields } = await clickupApiRequest.call(this, 'GET', `/list/${listId}/field`);
+				const { fields } = await clickupApiRequest.call(
+					this,
+					'GET',
+					requestPath`/list/${listId}/field`,
+				);
 				for (const field of fields) {
 					const fieldName = field.name;
 					const fieldId = field.id;
@@ -384,7 +419,9 @@ export class ClickUp implements INodeType {
 				const { tasks } = await clickupApiRequest.call(
 					this,
 					'GET',
-					`/list/${listId}/task?archived=${archived}`,
+					requestPath`/list/${listId}/task`,
+					{},
+					{ archived },
 				);
 				for (const task of tasks) {
 					const taskName = task.name;
@@ -406,6 +443,7 @@ export class ClickUp implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
+		const version = this.getNode().typeVersion;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -421,7 +459,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/task/${taskId}/checklist`,
+							requestPath`/task/${taskId}/checklist`,
 							body,
 						);
 						responseData = responseData.checklist;
@@ -431,7 +469,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/checklist/${checklistId}`,
+							requestPath`/checklist/${checklistId}`,
 						);
 						responseData = { success: true };
 					}
@@ -448,7 +486,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'PUT',
-							`/checklist/${checklistId}`,
+							requestPath`/checklist/${checklistId}`,
 							body,
 						);
 						responseData = responseData.checklist;
@@ -468,7 +506,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/checklist/${checklistId}/checklist_item`,
+							requestPath`/checklist/${checklistId}/checklist_item`,
 							body,
 						);
 						responseData = responseData.checklist;
@@ -479,7 +517,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/checklist/${checklistId}/checklist_item/${checklistItemId}`,
+							requestPath`/checklist/${checklistId}/checklist_item/${checklistItemId}`,
 						);
 						responseData = { success: true };
 					}
@@ -503,7 +541,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'PUT',
-							`/checklist/${checklistId}/checklist_item/${checklistItemId}`,
+							requestPath`/checklist/${checklistId}/checklist_item/${checklistItemId}`,
 							body,
 						);
 						responseData = responseData.checklist;
@@ -527,13 +565,17 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/${commentOn}/${id}/comment`,
+							requestPath`/${commentOn}/${id}/comment`,
 							body,
 						);
 					}
 					if (operation === 'delete') {
 						const commentId = this.getNodeParameter('comment', i) as string;
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/comment/${commentId}`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/comment/${commentId}`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
@@ -543,7 +585,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/${commentsOn}/${id}/comment`,
+							requestPath`/${commentsOn}/${id}/comment`,
 							{},
 							qs,
 						);
@@ -563,7 +605,12 @@ export class ClickUp implements INodeType {
 						if (updateFields.resolved) {
 							body.resolved = updateFields.resolved as boolean;
 						}
-						responseData = await clickupApiRequest.call(this, 'PUT', `/comment/${commentId}`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/comment/${commentId}`,
+							body,
+						);
 						responseData = { success: true };
 					}
 				}
@@ -577,18 +624,26 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/space/${spaceId}/folder`,
+							requestPath`/space/${spaceId}/folder`,
 							body,
 						);
 					}
 					if (operation === 'delete') {
 						const folderId = this.getNodeParameter('folder', i) as string;
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/folder/${folderId}`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/folder/${folderId}`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						const folderId = this.getNodeParameter('folder', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/folder/${folderId}`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'GET',
+							requestPath`/folder/${folderId}`,
+						);
 					}
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i);
@@ -600,7 +655,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/space/${spaceId}/folder`,
+							requestPath`/space/${spaceId}/folder`,
 							{},
 							qs,
 						);
@@ -614,7 +669,12 @@ export class ClickUp implements INodeType {
 						if (updateFields.name) {
 							body.name = updateFields.name as string;
 						}
-						responseData = await clickupApiRequest.call(this, 'PUT', `/folder/${folderId}`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/folder/${folderId}`,
+							body,
+						);
 					}
 				}
 				if (resource === 'goal') {
@@ -642,17 +702,26 @@ export class ClickUp implements INodeType {
 								.split(',')
 								.map((e: string) => parseInt(e, 10));
 						}
-						responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/goal`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'POST',
+							requestPath`/team/${teamId}/goal`,
+							body,
+						);
 						responseData = responseData.goal;
 					}
 					if (operation === 'delete') {
 						const goalId = this.getNodeParameter('goal', i) as string;
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/goal/${goalId}`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/goal/${goalId}`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						const goalId = this.getNodeParameter('goal', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/goal/${goalId}`);
+						responseData = await clickupApiRequest.call(this, 'GET', requestPath`/goal/${goalId}`);
 						responseData = responseData.goal;
 					}
 					if (operation === 'getAll') {
@@ -661,7 +730,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/team/${teamId}/goal`,
+							requestPath`/team/${teamId}/goal`,
 							{},
 							qs,
 						);
@@ -694,7 +763,12 @@ export class ClickUp implements INodeType {
 								.split(',')
 								.map((e: string) => parseInt(e, 10));
 						}
-						responseData = await clickupApiRequest.call(this, 'PUT', `/goal/${goalId}`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/goal/${goalId}`,
+							body,
+						);
 						responseData = responseData.goal;
 					}
 				}
@@ -755,7 +829,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/goal/${goalId}/key_result`,
+							requestPath`/goal/${goalId}/key_result`,
 							body,
 						);
 						responseData = responseData.key_result;
@@ -765,7 +839,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/key_result/${keyResultId}`,
+							requestPath`/key_result/${keyResultId}`,
 						);
 						responseData = { success: true };
 					}
@@ -794,7 +868,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'PUT',
-							`/key_result/${keyResultId}`,
+							requestPath`/key_result/${keyResultId}`,
 							body,
 						);
 						responseData = responseData.key_result;
@@ -820,7 +894,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/team/${teamId}/guest`,
+							requestPath`/team/${teamId}/guest`,
 							body,
 						);
 						responseData = responseData.team;
@@ -831,7 +905,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/team/${teamId}/guest/${guestId}`,
+							requestPath`/team/${teamId}/guest/${guestId}`,
 						);
 						responseData = { success: true };
 					}
@@ -841,7 +915,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/team/${teamId}/guest/${guestId}`,
+							requestPath`/team/${teamId}/guest/${guestId}`,
 						);
 						responseData = responseData.team;
 					}
@@ -865,7 +939,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'PUT',
-							`/team/${teamId}/guest/${guestId}`,
+							requestPath`/team/${teamId}/guest/${guestId}`,
 							body,
 						);
 						responseData = responseData.team;
@@ -928,7 +1002,12 @@ export class ClickUp implements INodeType {
 							delete body.content;
 							body.markdown_content = additionalFields.content as string;
 						}
-						responseData = await clickupApiRequest.call(this, 'POST', `/list/${listId}/task`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'POST',
+							requestPath`/list/${listId}/task`,
+							body,
+						);
 					}
 					if (operation === 'update') {
 						const taskId = this.getNodeParameter('id', i) as string;
@@ -988,7 +1067,12 @@ export class ClickUp implements INodeType {
 							delete body.content;
 							body.markdown_content = updateFields.content as string;
 						}
-						responseData = await clickupApiRequest.call(this, 'PUT', `/task/${taskId}`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/task/${taskId}`,
+							body,
+						);
 					}
 					if (operation === 'get') {
 						const taskId = this.getNodeParameter('id', i) as string;
@@ -1004,7 +1088,13 @@ export class ClickUp implements INodeType {
 						if (includeMarkdownDescription) {
 							qs.include_markdown_description = true;
 						}
-						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`, {}, qs);
+						responseData = await clickupApiRequest.call(
+							this,
+							'GET',
+							requestPath`/task/${taskId}`,
+							{},
+							qs,
+						);
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -1072,7 +1162,7 @@ export class ClickUp implements INodeType {
 								this,
 								'tasks',
 								'GET',
-								`/list/${listId}/task`,
+								requestPath`/list/${listId}/task`,
 								{},
 								qs,
 							);
@@ -1082,7 +1172,7 @@ export class ClickUp implements INodeType {
 								this,
 								'tasks',
 								'GET',
-								`/list/${listId}/task`,
+								requestPath`/list/${listId}/task`,
 								{},
 								qs,
 							);
@@ -1096,7 +1186,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
-								`/task/${taskId}/member`,
+								requestPath`/task/${taskId}/member`,
 								{},
 								qs,
 							);
@@ -1106,7 +1196,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
-								`/task/${taskId}/member`,
+								requestPath`/task/${taskId}/member`,
 								{},
 								qs,
 							);
@@ -1138,25 +1228,31 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/task/${taskId}/field/${fieldId}`,
+							requestPath`/task/${taskId}/field/${fieldId}`,
 							body,
 						);
 					}
 					if (operation === 'delete') {
 						const taskId = this.getNodeParameter('id', i) as string;
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/task/${taskId}`, {});
+						responseData = await clickupApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/task/${taskId}`,
+							{},
+						);
 						responseData = { success: true };
 					}
 				}
 				if (resource === 'taskTag') {
 					if (operation === 'add') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const tagName = this.getNodeParameter('tagName', i) as string;
+						const name = version < 1.1 ? decodePathValue(tagName) : tagName;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/task/${taskId}/tag/${name}`,
+							requestPath`/task/${taskId}/tag/${name}`,
 							{},
 							additionalFields,
 						);
@@ -1164,12 +1260,13 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'remove') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const tagName = this.getNodeParameter('tagName', i) as string;
+						const name = version < 1.1 ? decodePathValue(tagName) : tagName;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/task/${taskId}/tag/${name}`,
+							requestPath`/task/${taskId}/tag/${name}`,
 							{},
 							additionalFields,
 						);
@@ -1183,7 +1280,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/list/${listId}/task/${taskId}`,
+							requestPath`/list/${listId}/task/${taskId}`,
 						);
 						responseData = { success: true };
 					}
@@ -1193,7 +1290,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/list/${listId}/task/${taskId}`,
+							requestPath`/list/${listId}/task/${taskId}`,
 						);
 						responseData = { success: true };
 					}
@@ -1209,7 +1306,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/task/${taskId}/dependency`,
+							requestPath`/task/${taskId}/dependency`,
 							body,
 						);
 						responseData = { success: true };
@@ -1223,7 +1320,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/task/${taskId}/dependency`,
+							requestPath`/task/${taskId}/dependency`,
 							{},
 							qs,
 						);
@@ -1255,7 +1352,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'PUT',
-							`/team/${teamId}/time_entries/${timeEntryId}`,
+							requestPath`/team/${teamId}/time_entries/${timeEntryId}`,
 							body,
 						);
 						responseData = responseData.data;
@@ -1276,7 +1373,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/team/${teamId}/time_entries`,
+							requestPath`/team/${teamId}/time_entries`,
 							{},
 							qs,
 						);
@@ -1292,11 +1389,11 @@ export class ClickUp implements INodeType {
 						const teamId = this.getNodeParameter('team', i) as string;
 						const running = this.getNodeParameter('running', i) as boolean;
 
-						let endpoint = `/team/${teamId}/time_entries/current`;
+						let endpoint = requestPath`/team/${teamId}/time_entries/current`;
 
 						if (!running) {
 							const timeEntryId = this.getNodeParameter('timeEntry', i) as string;
-							endpoint = `/team/${teamId}/time_entries/${timeEntryId}`;
+							endpoint = requestPath`/team/${teamId}/time_entries/${timeEntryId}`;
 						}
 
 						responseData = await clickupApiRequest.call(this, 'GET', endpoint);
@@ -1323,7 +1420,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/team/${teamId}/time_entries`,
+							requestPath`/team/${teamId}/time_entries`,
 							body,
 						);
 						responseData = responseData.data;
@@ -1338,7 +1435,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/team/${teamId}/time_entries/start`,
+							requestPath`/team/${teamId}/time_entries/start`,
 							body,
 						);
 						responseData = responseData.data;
@@ -1348,7 +1445,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/team/${teamId}/time_entries/stop`,
+							requestPath`/team/${teamId}/time_entries/stop`,
 						);
 
 						if (responseData.data) {
@@ -1365,7 +1462,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/team/${teamId}/time_entries/${timeEntryId}`,
+							requestPath`/team/${teamId}/time_entries/${timeEntryId}`,
 						);
 						responseData = responseData.data;
 					}
@@ -1389,7 +1486,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/team/${teamId}/time_entries/tags`,
+							requestPath`/team/${teamId}/time_entries/tags`,
 							body,
 						);
 						responseData = { success: true };
@@ -1400,7 +1497,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/team/${teamId}/time_entries/tags`,
+							requestPath`/team/${teamId}/time_entries/tags`,
 						);
 
 						responseData = responseData.data;
@@ -1420,7 +1517,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/team/${teamId}/time_entries/tags`,
+							requestPath`/team/${teamId}/time_entries/tags`,
 							body,
 						);
 						responseData = { success: true };
@@ -1442,7 +1539,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/space/${spaceId}/tag`,
+							requestPath`/space/${spaceId}/tag`,
 							body,
 						);
 						responseData = { success: true };
@@ -1453,14 +1550,18 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
-							`/space/${spaceId}/tag/${name}`,
+							requestPath`/space/${spaceId}/tag/${name}`,
 						);
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'GET',
+							requestPath`/space/${spaceId}/tag`,
+						);
 						responseData = responseData.tags;
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
@@ -1480,7 +1581,12 @@ export class ClickUp implements INodeType {
 								tag_fg: foregroundColor,
 							},
 						};
-						await clickupApiRequest.call(this, 'PUT', `/space/${spaceId}/tag/${tagName}`, body);
+						await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/space/${spaceId}/tag/${tagName}`,
+							body,
+						);
 						responseData = { success: true };
 					}
 				}
@@ -1515,7 +1621,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'POST',
-								`/space/${spaceId}/list`,
+								requestPath`/space/${spaceId}/list`,
 								body,
 							);
 						} else {
@@ -1523,7 +1629,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'POST',
-								`/folder/${folderId}/list`,
+								requestPath`/folder/${folderId}/list`,
 								body,
 							);
 						}
@@ -1535,7 +1641,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
-								`/list/${listId}/member`,
+								requestPath`/list/${listId}/member`,
 								{},
 								qs,
 							);
@@ -1545,7 +1651,7 @@ export class ClickUp implements INodeType {
 							responseData = await clickupApiRequest.call(
 								this,
 								'GET',
-								`/list/${listId}/member`,
+								requestPath`/list/${listId}/member`,
 								{},
 								qs,
 							);
@@ -1555,17 +1661,25 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'customFields') {
 						const listId = this.getNodeParameter('list', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}/field`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'GET',
+							requestPath`/list/${listId}/field`,
+						);
 						responseData = responseData.fields;
 					}
 					if (operation === 'delete') {
 						const listId = this.getNodeParameter('list', i) as string;
-						responseData = await clickupApiRequest.call(this, 'DELETE', `/list/${listId}`);
+						responseData = await clickupApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/list/${listId}`,
+						);
 						responseData = { success: true };
 					}
 					if (operation === 'get') {
 						const listId = this.getNodeParameter('list', i) as string;
-						responseData = await clickupApiRequest.call(this, 'GET', `/list/${listId}`);
+						responseData = await clickupApiRequest.call(this, 'GET', requestPath`/list/${listId}`);
 					}
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i);
@@ -1574,10 +1688,10 @@ export class ClickUp implements INodeType {
 						if (filters.archived) {
 							qs.archived = filters.archived as boolean;
 						}
-						let endpoint = `/space/${spaceId}/list`;
+						let endpoint = requestPath`/space/${spaceId}/list`;
 						if (!folderless) {
 							const folderId = this.getNodeParameter('folder', i) as string;
-							endpoint = `/folder/${folderId}/list`;
+							endpoint = requestPath`/folder/${folderId}/list`;
 						}
 
 						qs.limit = this.getNodeParameter('limit', i);
@@ -1610,7 +1724,12 @@ export class ClickUp implements INodeType {
 						if (updateFields.unsetStatus) {
 							body.unset_status = updateFields.unsetStatus as boolean;
 						}
-						responseData = await clickupApiRequest.call(this, 'PUT', `/list/${listId}`, body);
+						responseData = await clickupApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/list/${listId}`,
+							body,
+						);
 					}
 				}
 

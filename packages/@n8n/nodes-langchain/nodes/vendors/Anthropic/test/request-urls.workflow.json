@@ -1,0 +1,131 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a01",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "get",
+				"fileId": "file_011CNha8iCJcU1wXNR6q4V8w"
+			},
+			"type": "@n8n/n8n-nodes-langchain.anthropic",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a02",
+			"name": "Get File",
+			"credentials": {
+				"anthropicApi": {
+					"id": "123",
+					"name": "Anthropic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "deleteFile",
+				"fileId": "file_011CNha8iCJcU1wXNR6q4V8w"
+			},
+			"type": "@n8n/n8n-nodes-langchain.anthropic",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a03",
+			"name": "Delete File",
+			"credentials": {
+				"anthropicApi": {
+					"id": "123",
+					"name": "Anthropic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"operation": "list",
+				"limit": 1
+			},
+			"type": "@n8n/n8n-nodes-langchain.anthropic",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a04",
+			"name": "List Files",
+			"credentials": {
+				"anthropicApi": {
+					"id": "123",
+					"name": "Anthropic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"modelId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-5-20250929"
+				},
+				"messages": {
+					"values": [
+						{
+							"content": "Summarize the attached document"
+						}
+					]
+				},
+				"addAttachments": true,
+				"attachmentsUrls": "https://api.anthropic.com/v1/files/file_011CPMxVD3fHLUhvTqtsQA5w",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.anthropic",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a05",
+			"name": "Message a Model",
+			"credentials": {
+				"anthropicApi": {
+					"id": "123",
+					"name": "Anthropic account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "prompt",
+				"task": "A chef for a meal prep planning service"
+			},
+			"type": "@n8n/n8n-nodes-langchain.anthropic",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"id": "5b0e1c43-2f0b-4b3c-9a43-0d7d3f4c1a06",
+			"name": "Generate Prompt",
+			"credentials": {
+				"anthropicApi": {
+					"id": "123",
+					"name": "Anthropic account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Get File", "type": "main", "index": 0 }]]
+		},
+		"Get File": {
+			"main": [[{ "node": "Delete File", "type": "main", "index": 0 }]]
+		},
+		"Delete File": {
+			"main": [[{ "node": "List Files", "type": "main", "index": 0 }]]
+		},
+		"List Files": {
+			"main": [[{ "node": "Message a Model", "type": "main", "index": 0 }]]
+		},
+		"Message a Model": {
+			"main": [[{ "node": "Generate Prompt", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

@@ -5,23 +5,29 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function wordpressApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
 	const authType = this.getNodeParameter('authType', 0, 'basicAuth') as string;
 	const isOAuth2 = authType === 'oAuth2';
 
-	let baseUri: string;
+	let uri: RequestUrl;
 	let credentialType: string;
 	let rejectUnauthorized: boolean | undefined;
 
@@ -34,11 +40,11 @@ export async function wordpressApiRequest(
 		} catch {
 			site = site.split('/')[0];
 		}
-		baseUri = `https://public-api.wordpress.com/wp/v2/sites/${site}`;
+		uri = requestUrl`https://public-api.wordpress.com/wp/v2/sites/${site}${resource}`;
 	} else {
 		const credentials = await this.getCredentials('wordpressApi');
 		credentialType = 'wordpressApi';
-		baseUri = `${credentials.url as string}/wp-json/wp/v2`;
+		uri = requestUrl`${credentials.url}/wp-json/wp/v2${resource}`;
 		rejectUnauthorized = !(credentials.allowUnauthorizedCerts as boolean);
 	}
 
@@ -52,15 +58,17 @@ export async function wordpressApiRequest(
 		headers['Cache-Control'] = 'no-cache';
 	}
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers,
 		method,
 		qs,
 		body,
-		uri: uri ?? `${baseUri}${resource}`,
-		...(rejectUnauthorized !== undefined ? { rejectUnauthorized } : {}),
+		uri,
 		json: true,
 	};
+	if (rejectUnauthorized !== undefined) {
+		options.rejectUnauthorized = rejectUnauthorized;
+	}
 	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
@@ -75,7 +83,7 @@ export async function wordpressApiRequest(
 export async function wordpressApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -89,7 +97,7 @@ export async function wordpressApiRequestAllItems(
 
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);

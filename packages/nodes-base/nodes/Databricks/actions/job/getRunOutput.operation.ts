@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { JOBS_ARRAY_PAGE_SIZE, JOBS_PAGES_MAX } from '../../constants';
@@ -25,7 +25,7 @@ async function resolveTargets(
 			context,
 			credentialType,
 			host,
-			'/api/2.2/jobs/runs/get',
+			requestPath`/api/2.2/jobs/runs/get`,
 			{ run_id: runId },
 			pageToken,
 		);
@@ -71,13 +71,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const items: INodeExecutionData[] = [];
 	for (const target of targets) {
-		const output: DatabricksRunOutput = await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: `${host}/api/2.2/jobs/runs/get-output`,
-			qs: { run_id: target.runId },
-			headers: { Accept: 'application/json' },
-			json: true,
-		});
+		const output: DatabricksRunOutput = await databricksApiRequest(
+			this,
+			credentialType,
+			requestUrl`${host}/api/2.2/jobs/runs/get-output`,
+			{
+				method: 'GET',
+				qs: { run_id: target.runId },
+				headers: { Accept: 'application/json' },
+				json: true,
+			},
+		);
 		items.push({
 			json: {
 				run_id: runId,

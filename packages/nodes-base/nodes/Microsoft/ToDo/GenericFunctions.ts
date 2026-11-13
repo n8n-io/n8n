@@ -7,8 +7,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { validateUserTargetId } from '../GenericFunctions';
 
@@ -46,12 +48,12 @@ export function getToDoCredentialType(
 
 /**
  * Builds the `/users/{id}` Graph root for an app-only request. The id is validated before
- * `encodeURIComponent` so a malformed id throws (and is not echoed back).
+ * encoding so a malformed id throws (and is not echoed back).
  */
-export function getServicePrincipalResourceRoot(rawId: string, node: INode): string {
+export function getServicePrincipalResourceRoot(rawId: string, node: INode): RequestPath {
 	const id = String(rawId ?? '').trim();
 	validateUserTargetId(id, node);
-	return `/users/${encodeURIComponent(id)}`;
+	return requestPath`/users/${id}`;
 }
 
 /**
@@ -68,7 +70,7 @@ export function getServicePrincipalResourceRoot(rawId: string, node: INode): str
 export function resolveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
-): string | undefined {
+): RequestPath | undefined {
 	if (getToDoCredentialType.call(this) !== 'microsoftEntraServicePrincipalApi') {
 		return undefined;
 	}
@@ -87,12 +89,12 @@ export function resolveScopeRoot(
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	itemIndex: number,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = { json: true },
+	option: Pick<IRequestOptions, 'json'> = { json: true },
 ) {
 	const credentialType = getToDoCredentialType.call(this);
 	const isServicePrincipal = credentialType === 'microsoftEntraServicePrincipalApi';
@@ -107,24 +109,20 @@ export async function microsoftApiRequest(
 	// resolved per item (`userTarget` accepts expressions). Only page-1 (relative)
 	// requests are scoped — paginated follow-ups pass an absolute `@odata.nextLink` as
 	// `uri`, used verbatim.
-	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
-	if (!uri && isServicePrincipal) {
-		const scopeRoot = resolveScopeRoot.call(this, itemIndex);
-		if (scopeRoot) {
-			uriToUse = `${baseUrl}/v1.0${scopeRoot}${resource}`;
-		}
-	}
+	const scopeRoot = !uri && isServicePrincipal ? resolveScopeRoot.call(this, itemIndex) : undefined;
 
-	const options: IRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		method,
-		body,
-		qs,
-		uri: uriToUse,
-	};
 	try {
+		const options: LegacyRequestOptions = {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			method,
+			body,
+			qs,
+			...(uri
+				? { uri }
+				: { uri: requestUrl`${baseUrl}/v1.0${scopeRoot ?? requestPath`/me`}${resource}` }),
+		};
 		Object.assign(options, option);
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
@@ -149,7 +147,7 @@ export async function microsoftApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	itemIndex: number,
 	body: IDataObject = {},
 	query: IDataObject = {},

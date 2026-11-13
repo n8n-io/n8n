@@ -63,4 +63,20 @@ describe('recordConsumedAuth / redactedHeaders', () => {
 		expect(Object.keys(req)).toEqual(['headers']);
 		expect({ ...req }).toEqual({ headers: { authorization: 'Bearer secret' } });
 	});
+
+	it('should redact a recorded header regardless of casing', () => {
+		const req = request({ authorization: 'Bearer secret', 'x-tenant-id': 'acme' });
+
+		recordConsumedAuth(req, ['Authorization']);
+
+		expect(redactedHeaders(req)).toEqual({ authorization: REDACTED, 'x-tenant-id': 'acme' });
+	});
+
+	it('should redact a mixed-case header key', () => {
+		const req = request({ 'X-Api-Key': 'secret-value' });
+
+		recordConsumedAuth(req, ['x-api-key']);
+
+		expect(redactedHeaders(req)).toEqual({ 'X-Api-Key': REDACTED });
+	});
 });

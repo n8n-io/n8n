@@ -35,6 +35,17 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 	return item;
 };
 
+export function removeRequestOptions(error: unknown) {
+	if (typeof error !== 'object' || error === null) return;
+
+	Reflect.deleteProperty(error, 'options');
+
+	const cause = Reflect.get(error, 'cause');
+	if (typeof cause === 'object' && cause !== null) {
+		Reflect.deleteProperty(cause, 'options');
+	}
+}
+
 export const REDACTED = '**hidden**';
 
 export const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';

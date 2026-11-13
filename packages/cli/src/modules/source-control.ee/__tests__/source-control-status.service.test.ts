@@ -893,7 +893,7 @@ describe('getStatus', () => {
 	describe('telemetry', () => {
 		const user = globalAdminUserWithId;
 
-		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is not set', async () => {
+		it('emits `source-control-user-started-push-ui` with publicApi: false when no public API client is set', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
@@ -906,35 +906,21 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is `ui`', async () => {
+		it('emits `source-control-user-started-push-ui` with the public API client', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
-				origin: 'ui',
+				publicApi: 'editor_ui',
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'source-control-user-started-push-ui',
-				expect.objectContaining({ userId: user.id, publicApi: false }),
+				expect.objectContaining({ userId: user.id, publicApi: 'editor_ui' }),
 			);
 		});
 
-		it('emits `source-control-user-started-push-ui` with publicApi: true when origin is `publicApi`', async () => {
-			await sourceControlStatusService.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: true,
-				origin: 'publicApi',
-			});
-
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'source-control-user-started-push-ui',
-				expect.objectContaining({ userId: user.id, publicApi: true }),
-			);
-		});
-
-		it('emits `source-control-user-started-pull-ui` with publicApi: false when origin is not set', async () => {
+		it('emits `source-control-user-started-pull-ui` with publicApi: false when no public API client is set', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
@@ -947,17 +933,17 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-pull-ui` with publicApi: true when origin is `publicApi`', async () => {
+		it('emits `source-control-user-started-pull-ui` with the public API client', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
 				preferLocalVersion: false,
-				origin: 'publicApi',
+				publicApi: 'other',
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'source-control-user-started-pull-ui',
-				expect.objectContaining({ userId: user.id, publicApi: true }),
+				expect.objectContaining({ userId: user.id, publicApi: 'other' }),
 			);
 		});
 	});

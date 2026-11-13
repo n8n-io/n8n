@@ -106,6 +106,36 @@ describe('Instance AI thread history', () => {
 		).toEqual([ids[1], ids[0]]);
 	});
 
+	it('pages messages with a timestamp and id cursor across rows written in the same millisecond', async () => {
+		await Container.get(InstanceAiMessageRepository).delete({ threadId: ids[3] });
+		const messageIds = ['a1', 'a2', 'a3', 'a4', 'a5'].map((suffix) => ids[0].slice(0, -2) + suffix);
+		await memory.saveMessages({
+			threadId: ids[3],
+			resourceId: 'user-1',
+			messages: messageIds.map((id, index) => ({
+				id,
+				role: 'user' as const,
+				content: [{ type: 'text' as const, text: id }],
+				// Rows 2 to 4 share a timestamp, so the second page starts inside the tie.
+				createdAt: index >= 1 && index <= 3 ? newer : new Date(newer.getTime() + index - 2),
+			})),
+		});
+
+		const pagedIds: string[][] = [];
+		let before: { createdAt: Date; id: string } | undefined;
+		for (let hasMore = true; hasMore; ) {
+			const page = await memory.listMessages({ threadId: ids[3], limit: 2, before });
+			pagedIds.unshift(page.messages.map((message) => message.id));
+			before = page.messages[0] && {
+				createdAt: page.messages[0].createdAt,
+				id: page.messages[0].id,
+			};
+			hasMore = page.hasMore;
+		}
+
+		expect(pagedIds).toEqual([messageIds.slice(0, 1), messageIds.slice(1, 3), messageIds.slice(3)]);
+	});
+
 	it('excludes internal producer threads from actor lists and searches', async () => {
 		const internalThreadId = randomUUID();
 		await repository.insert({

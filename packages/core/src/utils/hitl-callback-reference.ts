@@ -1,6 +1,6 @@
 import { APPROVAL_CALLBACK_PREFIX, decodeStepId } from '@n8n/utils/approval-callback';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /** Prefix of an engine v1 callback reference. The Telegram Trigger keys its forwarding on it. */
 export const HITL_CALLBACK_PREFIX = 'nhitl1|';

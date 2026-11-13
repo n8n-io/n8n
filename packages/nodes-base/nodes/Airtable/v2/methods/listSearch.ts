@@ -4,7 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -20,7 +20,7 @@ export async function baseSearch(
 		};
 	}
 
-	const response = await apiRequest.call(this, 'GET', 'meta/bases', undefined, qs);
+	const response = await apiRequest.call(this, 'GET', requestPath`meta/bases`, undefined, qs);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -67,7 +67,13 @@ export async function tableSearch(
 		};
 	}
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${baseId}/tables`, undefined, qs);
+	const response = await apiRequest.call(
+		this,
+		'GET',
+		requestPath`meta/bases/${baseId}/tables`,
+		undefined,
+		qs,
+	);
 
 	if (filter) {
 		const results: INodeListSearchItems[] = [];
@@ -112,7 +118,7 @@ export async function viewSearch(
 		}) as string,
 	);
 
-	const response = await apiRequest.call(this, 'GET', `meta/bases/${baseId}/tables`);
+	const response = await apiRequest.call(this, 'GET', requestPath`meta/bases/${baseId}/tables`);
 
 	const tableData = ((response.tables as IDataObject[]) || []).find((table: IDataObject) => {
 		return table.id === tableId;

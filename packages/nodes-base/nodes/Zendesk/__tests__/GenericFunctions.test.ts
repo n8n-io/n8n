@@ -1,3 +1,5 @@
+import { requestPath } from 'n8n-workflow';
+
 import { zendeskApiRequest } from '../GenericFunctions';
 
 const MARKETPLACE_HEADERS = {
@@ -39,7 +41,7 @@ describe('Zendesk > GenericFunctions', () => {
 			marketplaceAppId: 'app-1',
 		});
 
-		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets');
+		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/tickets`);
 
 		expect(sentHeaders()).toEqual(MARKETPLACE_HEADERS);
 	});
@@ -51,9 +53,17 @@ describe('Zendesk > GenericFunctions', () => {
 			marketplaceOrganizationId: 'org-1',
 		});
 
-		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets', {}, {}, undefined, {
-			headers: { 'Content-Type': 'application/json' },
-		});
+		await zendeskApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/tickets`,
+			{},
+			{},
+			undefined,
+			{
+				headers: { 'Content-Type': 'application/json' },
+			},
+		);
 
 		expect(sentHeaders()).toEqual({ 'Content-Type': 'application/json' });
 	});
@@ -61,7 +71,7 @@ describe('Zendesk > GenericFunctions', () => {
 	it('should send no marketplace headers for API token authentication', async () => {
 		setUp('apiToken');
 
-		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets');
+		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/tickets`);
 
 		expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('zendeskApi');
 		expect(sentHeaders()).toBeUndefined();
@@ -75,13 +85,33 @@ describe('Zendesk > GenericFunctions', () => {
 			marketplaceAppId: 'app-1',
 		});
 
-		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', '/tickets', {}, {}, undefined, {
-			headers: { 'Content-Type': 'application/json' },
-		});
+		await zendeskApiRequest.call(
+			mockExecuteFunctions,
+			'GET',
+			requestPath`/tickets`,
+			{},
+			{},
+			undefined,
+			{
+				headers: { 'Content-Type': 'application/json' },
+			},
+		);
 
 		expect(sentHeaders()).toEqual({
 			...MARKETPLACE_HEADERS,
 			'Content-Type': 'application/json',
 		});
+	});
+
+	it('should encode path values and join them with the subdomain URL', async () => {
+		setUp('apiToken', { subdomain: 'acme' });
+
+		const userId = '7/related?x=1';
+		await zendeskApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/users/${userId}`);
+
+		const [, options] = mockExecuteFunctions.helpers.requestWithAuthentication.mock.calls[0];
+		expect(String(options.uri)).toBe(
+			'https://acme.zendesk.com/api/v2/users/7%2Frelated%3Fx=1.json',
+		);
 	});
 });

@@ -5,10 +5,10 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-	IRequestOptions,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import { capitalize } from '@utils/utilities';
 
@@ -212,7 +212,7 @@ function delegatedApiError(this: SharePointContext, error: GraphRequestError): N
 export async function microsoftApiRequest(
 	this: SharePointContext,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -230,8 +230,7 @@ export async function microsoftApiRequest(
 	// but it must stay on the credential's Graph host: the bearer token must
 	// never travel to an unexpected origin. Graph's own @odata.nextLink is
 	// always same-origin, so nothing legitimate is refused.
-	const target = uri ?? `${baseUrl}${resource}`;
-	if (new URL(target).origin !== new URL(baseUrl).origin) {
+	if (uri && new URL(uri).origin !== new URL(baseUrl).origin) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Refusing to send credentials to an unexpected host',
@@ -240,15 +239,15 @@ export async function microsoftApiRequest(
 	// Deliberately the family's request stack (Teams/Excel/OneDrive use the
 	// same deprecated helpers): the error mapping above is shape-coupled to
 	// its wrapped errors — migrate together with the family, not solo.
-	const options: IRequestOptions = {
+	const options = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		uri: target,
 		json: true,
+		...(uri ? { uri } : { uri: requestUrl`${baseUrl}${resource}` }),
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
@@ -270,7 +269,7 @@ export async function microsoftApiRequestAllItems(
 	this: SharePointContext,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	limit?: number,

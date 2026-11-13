@@ -7,13 +7,14 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { WorkflowRepository, type User } from '@n8n/db';
-import { ProjectScopeService } from '@n8n/backend-services';
+import { CredentialsFinderService, ProjectScopeService } from '@n8n/backend-services';
 import { Container, Service } from '@n8n/di';
 import { ForbiddenError, UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import { getStaticSubworkflowId } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 
 import {
@@ -27,7 +28,7 @@ import { AgentSkillRefsService } from './agent-skill-refs.service';
 import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { assertSingleConnections } from './integrations/single-connection';
-import { decomposeJsonConfig } from './json-config/agent-config-composition';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { pruneMissingConfigReferences } from './json-config/prune-missing-config-references';
 import { AgentRepository } from './repositories/agent.repository';
@@ -48,7 +49,10 @@ import {
 	type PlannedAgentDestinations,
 } from './utils/agent-definition';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
-import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
+import {
+	findChangedCredentialReferences,
+	visitAgentCredentialReferences,
+} from './utils/visit-agent-credential-references';
 import {
 	findHttpRequestToolUrlFromAiViolations,
 	validateNodeToolConfigs,
@@ -73,6 +77,7 @@ export class AgentConfigPreparationService {
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly agentPolicyService: AgentPolicyService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	async prepareForSave(
@@ -94,6 +99,11 @@ export class AgentConfigPreparationService {
 		const { validatedConfig, credentialProvider } = await this.prepareConfig(
 			rawConfig,
 			entity.projectId,
+			user,
+		);
+		await this.assertUsableCredentialChanges(
+			validatedConfig,
+			isNew ? null : composeJsonConfig(entity, previousSkillRefs),
 			user,
 		);
 		const previousSchema = entity.schema ? toAgentDocument(entity.schema, previousSkillRefs) : null;
@@ -171,6 +181,7 @@ export class AgentConfigPreparationService {
 		projectId: string,
 		user: User,
 		planned: PlannedAgentDestinations = {},
+		previousConfig: AgentJsonConfig | null = null,
 	) {
 		const prepared = await this.validateDefinition(agentId, definition);
 		const credentialProvider = createAgentCredentialProvider(
@@ -188,6 +199,7 @@ export class AgentConfigPreparationService {
 					);
 				}
 			});
+			await this.assertUsableCredentialChanges(prepared.config, previousConfig, user);
 			if (prepared.config.tools !== undefined) {
 				await this.nodeToolAiGatewayService.assignManagedCredentials(
 					prepared.config.tools.filter((tool) => tool.enabled !== false),
@@ -277,6 +289,31 @@ export class AgentConfigPreparationService {
 			}
 			throw new UserError(`Workflow "${id}" is missing or inaccessible.`);
 		}
+	}
+
+	/**
+	 * Reading a credential does not grant its use. A user may keep a credential
+	 * that the config already holds, but needs usage rights to add one or to
+	 * change the entry that holds it.
+	 */
+	private async assertUsableCredentialChanges(next: unknown, previous: unknown, user: User) {
+		// Apply the schema defaults to the stored config too, so a default does not count as a change.
+		const normalized = previous ? await this.validateConfig(previous) : undefined;
+		const baseline = normalized?.valid ? normalized.config : previous;
+		for (const id of findChangedCredentialReferences(next, baseline)) {
+			if (!(await findUsableMcpCredential(this.credentialsFinderService, id, user))) {
+				throw new UserError(`Credential "${id}" is missing or inaccessible.`);
+			}
+		}
+	}
+
+	/** Returns the IDs of `credentialIds` that the user may use, not only read. */
+	async filterUsableCredentialIds(credentialIds: Iterable<string>, user: User) {
+		const usable = new Set<string>();
+		for (const id of credentialIds) {
+			if (await findUsableMcpCredential(this.credentialsFinderService, id, user)) usable.add(id);
+		}
+		return usable;
 	}
 
 	async prepareConfig(config: unknown, projectId: string, user: User) {

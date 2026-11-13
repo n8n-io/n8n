@@ -4,8 +4,9 @@ import type {
 	ILoadOptionsFunctions,
 	INode,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -70,13 +71,13 @@ describe('Microsoft Teams Transport', () => {
 		it('returns /v1.0/teams under the Service Principal credential', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(SERVICE_PRINCIPAL_AUTH);
 
-			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/teams');
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions).value).toBe('/v1.0/teams');
 		});
 
 		it('returns /v1.0/me/joinedTeams under OAuth2 (default)', () => {
 			mockExecuteFunctions.getNodeParameter.mockReturnValue(undefined);
 
-			expect(joinedTeamsEndpoint.call(mockExecuteFunctions)).toBe('/v1.0/me/joinedTeams');
+			expect(joinedTeamsEndpoint.call(mockExecuteFunctions).value).toBe('/v1.0/me/joinedTeams');
 		});
 	});
 
@@ -148,9 +149,11 @@ describe('Microsoft Teams Transport', () => {
 			expect(mockLoadOptions.getCredentials).toHaveBeenCalledWith(SERVICE_PRINCIPAL_AUTH);
 			expect(loadOptionsRequestWithAuthentication).toHaveBeenCalledWith(
 				SERVICE_PRINCIPAL_AUTH,
-				expect.objectContaining({ uri: 'https://graph.microsoft.com/v1.0/teams' }),
+				expect.objectContaining({
+					uri: expect.objectContaining({ value: 'https://graph.microsoft.com/v1.0/teams' }),
+				}),
 			);
-			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri as string;
+			const calledUri = loadOptionsRequestWithAuthentication.mock.calls[0][1].uri.value as string;
 			expect(calledUri).not.toContain('/me/joinedTeams');
 			expect(loadOptionsRequestOAuth2).not.toHaveBeenCalled();
 		});
@@ -194,7 +197,7 @@ describe('Microsoft Teams Transport', () => {
 
 			const { results } = await getGroups.call(mockLoadOptions);
 
-			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri as string;
+			const calledUri = loadOptionsRequestOAuth2.mock.calls[0][1].uri.value as string;
 			expect(calledUri).toContain('/v1.0/me/joinedTeams');
 			expect(calledUri).not.toContain('/v1.0/groups');
 			expect(results.map((r) => r.value)).toEqual(['g1', 'g2']);
@@ -415,7 +418,7 @@ describe('Microsoft Teams Transport', () => {
 		// `requestWithAuthentication` wraps the raw error in a NodeApiError before the kernel sees it
 		const wrapped = (message: string) =>
 			new NodeApiError(mockNode, graphError(message) as unknown as JsonObject);
-		const post = async (resource = '/v1.0/subscriptions') =>
+		const post = async (resource: RequestPath = requestPath`/v1.0/subscriptions`) =>
 			(await microsoftApiRequest
 				.call(mockExecuteFunctions, 'POST', resource, {})
 				.catch((e: Error) => e)) as NodeApiError;
@@ -470,7 +473,7 @@ describe('Microsoft Teams Transport', () => {
 				permission: 'Chat.Read',
 			},
 		];
-		const unhintedRows: Array<{ when: string; graphText: string; resource?: string }> = [
+		const unhintedRows: Array<{ when: string; graphText: string; resource?: RequestPath }> = [
 			{ when: 'the hinted permissions appear only as granted roles', graphText: GRANTED_403 },
 			{ when: 'the refused resource has no hint', graphText: MAIL_403 },
 			{ when: 'the subscription quota is not one', graphText: LIMIT_OF_TEN_403 },
@@ -478,7 +481,7 @@ describe('Microsoft Teams Transport', () => {
 			{
 				when: 'the refused members path is not a subscription',
 				graphText: MEMBERS_403,
-				resource: `/v1.0/teams/${TEAM_ID}/members`,
+				resource: requestPath`/v1.0/teams/${TEAM_ID}/members`,
 			},
 		];
 

@@ -20,7 +20,7 @@ describe('Microsoft Excel (SharePoint) Node — Table: Get Many', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: '/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/tables?%24top=10',
+					path: '/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/tables?%24top=10',
 					statusCode: 200,
 					responseBody: {
 						value: [

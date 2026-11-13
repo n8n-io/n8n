@@ -11,7 +11,12 @@ import { WorkflowRemover } from '../workflow-remover';
 import type { ImportContext, OverwriteDeletionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
-const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
+const context: ImportContext = {
+	user,
+	projectId: 'proj-1',
+	folderId: null,
+	publicApi: 'editor_ui',
+};
 
 type Placement = { id: string; name: string; parentFolderId: string | null; isArchived?: boolean };
 
@@ -506,6 +511,7 @@ describe('WorkflowRemover.apply', () => {
 
 		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
 			skipArchived: true,
+			publicApi: 'editor_ui',
 		});
 		expect(workflowService.delete).not.toHaveBeenCalled();
 		expect(summaries).toEqual(summaryOf('archived'));
@@ -519,8 +525,11 @@ describe('WorkflowRemover.apply', () => {
 		// Archive first: it is the step that unpublishes, and `delete` refuses a published workflow.
 		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
 			skipArchived: true,
+			publicApi: 'editor_ui',
 		});
-		expect(workflowService.delete).toHaveBeenCalledExactlyOnceWith(user, 'stale');
+		expect(workflowService.delete).toHaveBeenCalledExactlyOnceWith(user, 'stale', false, {
+			publicApi: 'editor_ui',
+		});
 		expect(summaries).toEqual(summaryOf('deleted'));
 	});
 

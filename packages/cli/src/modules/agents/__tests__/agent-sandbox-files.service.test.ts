@@ -1,5 +1,6 @@
 import type { Workspace, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { PostHogClient } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,8 +10,6 @@ import {
 } from '../agent-chat-attachment.service';
 import { AgentSandboxFilesService, normalizeOutputPath } from '../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
-
-import type { PostHogClient } from '@/posthog';
 
 const HASH = 'a'.repeat(64);
 const scope = { agentId: 'agent-1', projectId: 'project-1', threadId: 'thread-1' };

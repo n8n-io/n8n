@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -89,7 +90,7 @@ export const execute: ConfluenceOperation = async function (
 
 	const comments = await fetchPaginatedResults.call(
 		this,
-		`/wiki/api/v2/pages/${encodeURIComponent(pageId)}/footer-comments`,
+		requestPath`/wiki/api/v2/pages/${pageId}/footer-comments`,
 		total,
 		qs,
 	);

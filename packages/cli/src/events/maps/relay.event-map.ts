@@ -11,6 +11,7 @@ import type {
 	PromotionProviderAuthType,
 	PromotionProviderType,
 	PromotionReviewType,
+	PublicApiRateLimitSettings,
 	RedactionFloor,
 } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
@@ -28,7 +29,10 @@ import type {
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
-import type { PromotionFailureKind } from '@/modules/promotions.ee/promotion-telemetry';
+import type {
+	ClosedHostStatus,
+	PromotionFailureKind,
+} from '@/modules/promotions.ee/promotion-telemetry';
 import type { CredentialAuthProbeOutcome } from '@/services/credentials-tester.service';
 import type {
 	CredentialExportPolicy,
@@ -52,7 +56,7 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
-import type { PublicApiClient } from '@/public-api/public-api-client';
+import type { PublicApiCaller, PublicApiClient } from '@/public-api/public-api-client';
 
 import type { AiEventMap } from './ai.event-map';
 import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
@@ -146,7 +150,7 @@ export type RelayEventMap = ModuleEventMap & {
 	'workflow-created': {
 		user: UserLike;
 		workflow: IWorkflowBase;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		projectId: string;
 		projectType: string;
 		uiContext?: string;
@@ -204,25 +208,25 @@ export type RelayEventMap = ModuleEventMap & {
 		 */
 		workflowName: string;
 		projectId: string | undefined;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'workflow-archived': {
 		user: UserLike;
 		workflowId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'workflow-unarchived': {
 		user: UserLike;
 		workflowId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'workflow-saved': {
 		user: UserLike;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		previousWorkflow?: IWorkflowDb;
 		aiBuilderAssisted?: boolean;
 		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
@@ -233,7 +237,7 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		workflowId: string;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		source?: WorkflowActionSource;
 	};
 
@@ -241,7 +245,7 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		workflowId: string;
 		workflow: IWorkflowDb;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		deactivatedVersionId: string | null;
 		source?: WorkflowActionSource;
 	};
@@ -348,7 +352,7 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike | null;
 		/** The system that deleted the user without a user request. */
 		source?: 'scim';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		targetUserOldStatus: 'active' | 'invited';
 		migrationStrategy?: 'transfer_data' | 'delete_data';
 		targetUserId?: string;
@@ -358,7 +362,7 @@ export type RelayEventMap = ModuleEventMap & {
 	'user-invited': {
 		user: UserLike;
 		targetUserId: string[];
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		emailSent: boolean;
 		inviteeRole: string;
 	};
@@ -412,48 +416,48 @@ export type RelayEventMap = ModuleEventMap & {
 	'user-changed-role': {
 		userId: string;
 		targetUserId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		targetUserNewRole: string;
 	};
 
 	'user-retrieved-user': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-users': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-execution': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-executions': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retried-execution': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-workflow': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-workflow-version': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'user-retrieved-all-workflows': {
 		userId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -484,7 +488,7 @@ export type RelayEventMap = ModuleEventMap & {
 			| 'Credentials shared'
 			| 'Project shared'
 			| 'Email change confirmation';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -493,18 +497,18 @@ export type RelayEventMap = ModuleEventMap & {
 
 	'public-api-key-created': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'public-api-key-deleted': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		isOwn: boolean;
 	};
 
 	'public-api-key-rotated': {
 		user: UserLike;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'public-api-invoked': {
@@ -531,7 +535,7 @@ export type RelayEventMap = ModuleEventMap & {
 			| 'Credentials shared'
 			| 'Project shared'
 			| 'Email change confirmation';
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -544,7 +548,7 @@ export type RelayEventMap = ModuleEventMap & {
 		credentialId: string;
 		credentialName: string;
 		credentialDescriptionLength?: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
@@ -596,7 +600,7 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	/**
@@ -613,7 +617,7 @@ export type RelayEventMap = ModuleEventMap & {
 		/** 1-based index of this chunk. */
 		chunk: number;
 		chunkCount: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'credentials-user-disconnected': {
@@ -846,7 +850,7 @@ export type RelayEventMap = ModuleEventMap & {
 		workflowUpdates: number;
 		workflowConflicts: number;
 		credConflicts: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'source-control-user-finished-pull-ui': {
@@ -866,7 +870,7 @@ export type RelayEventMap = ModuleEventMap & {
 		credsEligible: number;
 		credsEligibleWithConflicts: number;
 		variablesEligible: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	'source-control-user-finished-push-ui': {
@@ -875,7 +879,7 @@ export type RelayEventMap = ModuleEventMap & {
 		workflowsPushed: number;
 		credsPushed: number;
 		variablesPushed: number;
-		publicApi: boolean;
+		publicApi: PublicApiCaller;
 	};
 
 	// #endregion
@@ -1349,6 +1353,18 @@ export type RelayEventMap = ModuleEventMap & {
 		projectId: string;
 	};
 
+	'agent-archived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
+	'agent-unarchived': {
+		user: UserLike;
+		agentId: string;
+		projectId: string;
+	};
+
 	// #region Instance Policies
 
 	'instance-policies-updated': { user: UserLike } & (
@@ -1371,6 +1387,13 @@ export type RelayEventMap = ModuleEventMap & {
 		user: UserLike;
 		before: RedactionFloor;
 		after: RedactionFloor;
+	};
+
+	/** `before` and `after` hold only the limits and windows that changed. */
+	'public-api-rate-limit-updated': {
+		user: UserLike;
+		before: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
+		after: Partial<Omit<PublicApiRateLimitSettings, 'enabled'>>;
 	};
 
 	// #endregion
@@ -1588,6 +1611,21 @@ export type RelayEventMap = ModuleEventMap & {
 		/** Time from the review opening to this approval. */
 		reviewAgeMs: number;
 		outcome: 'merged' | 'failed';
+		failureKind?: PromotionFailureKind;
+		durationMs: number;
+	};
+
+	'promotion-review-closed': {
+		user: UserLike;
+		reviewId: string;
+		/** Null when the environment was deleted after the review opened. */
+		environmentId: string | null;
+		reviewType: PromotionReviewType;
+		/** Time from the review opening to this close. */
+		reviewAgeMs: number;
+		/** What the host reported at close time. Null when the close failed before n8n asked the host. */
+		hostStatus: ClosedHostStatus | null;
+		outcome: 'closed' | 'failed';
 		failureKind?: PromotionFailureKind;
 		durationMs: number;
 	};

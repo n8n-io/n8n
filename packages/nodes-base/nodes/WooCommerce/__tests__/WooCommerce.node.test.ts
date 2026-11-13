@@ -1,5 +1,5 @@
 import { NodeOperationError } from 'n8n-workflow';
-import type { IDataObject } from 'n8n-workflow';
+import type { IDataObject, RequestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import * as GenericFunctions from '../GenericFunctions';
@@ -48,9 +48,11 @@ describe('WooCommerce Node', () => {
 
 	describe('Order: Get operation', () => {
 		it('returns exactly one item per input item when each Order ID is valid', async () => {
-			woocommerceApiRequestMock.mockImplementation(async (_method: string, endpoint: string) => ({
-				id: endpoint.split('/').pop(),
-			}));
+			woocommerceApiRequestMock.mockImplementation(
+				async (_method: string, endpoint: RequestPath) => ({
+					id: String(endpoint).split('/').pop(),
+				}),
+			);
 
 			const items = [{ orderId: '14' }, { orderId: '15' }, { orderId: '16' }];
 			const mockThis = createMockExecuteFunctions('order', 'get', items);
@@ -60,7 +62,7 @@ describe('WooCommerce Node', () => {
 			expect(result[0]).toHaveLength(3);
 			// Single-resource calls only — never the list endpoint.
 			for (const call of woocommerceApiRequestMock.mock.calls) {
-				expect(call[1]).toMatch(/^\/orders\/\d+$/);
+				expect(String(call[1])).toMatch(/^\/orders\/\d+$/);
 			}
 		});
 

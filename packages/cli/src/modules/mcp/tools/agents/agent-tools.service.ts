@@ -63,10 +63,16 @@ import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash, getAgentSkillHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { findUsableMcpCredential } from '@/modules/mcp-registry/mcp-credential-access';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService, UrlService, NodeTypesProxy } from '@n8n/backend-services';
+import {
+	CredentialsFinderService,
+	NodeTypesProxy,
+	ProjectScopeService,
+	UrlService,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
@@ -488,6 +494,7 @@ export class McpAgentToolsService {
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly slackSetup: McpAgentSlackSetup,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
 	/**
@@ -522,7 +529,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.listAgentVersionsTool(user));
 		registerIfAllowed(this.listAgentSessionsTool(user));
 		registerIfAllowed(this.getAgentSessionTool(user));
-		registerIfAllowed(this.deleteAgentTool(user));
+		registerIfAllowed(this.archiveAgentTool(user));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
 		registerIfAllowed(this.updateIntegrationTool(user));
@@ -1079,27 +1086,27 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private deleteAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private archiveAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
 		return {
-			name: 'delete_agent',
+			name: 'archive_agent',
 			config: {
-				description: 'Permanently delete an Agent and its associated resources.',
+				description:
+					'Archive an Agent. An archived Agent is unpublished and hidden. A user can restore it in n8n.',
 				inputSchema: agentIdentityShape,
 				annotations: {
-					title: 'Delete Agent',
+					title: 'Archive Agent',
 					readOnlyHint: false,
 					destructiveHint: true,
 					idempotentHint: true,
-					openWorldHint: true,
+					openWorldHint: false,
 				},
 			},
 			handler: async ({ agentId }) =>
-				await this.run(user, 'delete_agent', { agentId }, async () => {
+				await this.run(user, 'archive_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					const deleted = await this.agentsService.delete(agentId, projectId);
-					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
-					return { ok: true, deleted: true, agentId };
+					await this.agentPublishService.archiveAgent(agentId, projectId, user, undefined, 'mcp');
+					return { ok: true, archived: true, agentId };
 				}),
 		};
 	}
@@ -1861,7 +1868,7 @@ export class McpAgentToolsService {
 			if (!input.credential) {
 				throw new UserError('credential is required when authentication is not none');
 			}
-			await this.requireAccessibleCredential(credentialProvider, input.credential);
+			await this.requireUsableCredential(user, credentialProvider, input.credential);
 		}
 
 		try {
@@ -2093,12 +2100,19 @@ export class McpAgentToolsService {
 		return createAgentCredentialProvider(this.credentialsService, projectId, user);
 	}
 
-	private async requireAccessibleCredential(
+	/** The credential must be listed for the project and usable by the user, not only readable. */
+	private async requireUsableCredential(
+		user: User,
 		credentialProvider: CredentialProvider,
 		credentialId: string,
 	) {
 		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
-		if (!credential) throw new UserError('Credential not found or not accessible');
+		if (
+			!credential ||
+			!(await findUsableMcpCredential(this.credentialsFinderService, credentialId, user))
+		) {
+			throw new UserError('Credential not found or not accessible');
+		}
 		return credential;
 	}
 
@@ -2116,6 +2130,9 @@ export class McpAgentToolsService {
 	private async resolveAgent(user: User, agentId: string): Promise<ProjectAgent> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		if (agent.isArchived) {
+			throw new UserError(`Agent "${agentId}" is archived and cannot be accessed.`);
+		}
 		if (!agent.availableInMCP) {
 			throw new UserError(
 				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',

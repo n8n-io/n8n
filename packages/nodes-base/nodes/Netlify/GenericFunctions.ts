@@ -6,27 +6,28 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function netlifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		qs: query,
 		body,
-		uri: uri || `https://api.netlify.com/api/v1${endpoint}`,
+		uri: requestUrl`https://api.netlify.com/api/v1${endpoint}`,
 		json: true,
 	};
 
@@ -52,7 +53,7 @@ export async function netlifyApiRequest(
 export async function netlifyRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -64,7 +65,7 @@ export async function netlifyRequestAllItems(
 	query.per_page = 100;
 
 	do {
-		responseData = await netlifyApiRequest.call(this, method, endpoint, body, query, undefined, {
+		responseData = await netlifyApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		query.page++;

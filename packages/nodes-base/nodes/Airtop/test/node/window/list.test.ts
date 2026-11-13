@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as list from '../../../actions/window/list.operation';
@@ -52,7 +53,7 @@ describe('Test Airtop, window list operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/sessions/test-session-123/windows',
+			requestPath`/sessions/test-session-123/windows`,
 			undefined,
 		);
 
