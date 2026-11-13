@@ -1,14 +1,14 @@
 # Working Skills.sh integration
 
-The Skills Hub now has a Discover tab. It searches Skills.sh and sends Save and Try through the existing GitHub importer. The integration uses the existing `136_skill_sync` opt-in flag. No database migration is needed.
+The Skills Hub has a Discover tab with popular and trending skills, category filters, search, and an in-app detail page. Save and Try use the existing GitHub importer. The integration uses the existing `136_skill_sync` opt-in flag. No database migration is needed.
 
 This is a working discovery pilot. The API access and content limits in [the research report](README.md) still apply.
 
 ## User flow
 
 1. Open Settings → Context → Skills → Discover.
-2. Search for a task. Results show the skill name, repository, install count, and Skills.sh page.
-3. Select Save skill or Try skill.
+2. Browse the popular list, switch to Trending, filter a category, or search for a task. Cards show the author description, repository, install count, and an official badge when Skills.sh supplies one.
+3. Open a skill inside n8n. Review its purpose, instructions, files, declared requirements, license, and available audit results. GitHub adds repository stars, topics, and the last push date. Select Save skill or Try skill from either the card or detail page.
 4. Choose a scope. The dialog has the repository prefilled. GitHub credentials remain optional for public sources.
 5. Review the matching skill in the existing GitHub import dialog. The review shows the author description, content, scanner findings, and omitted files.
 6. Save imports the selected skill and keeps it in the Skills Hub. Try imports it, creates a draft agent with its local skill ID, and opens Agent Test.
@@ -44,20 +44,27 @@ sequenceDiagram
 
 | Area | Change |
 | --- | --- |
-| API types | `skills/skill-catalog.schema.ts` defines the query and catalog response. |
-| Skills backend | `SkillCatalogService` calls the public search endpoint through `OutboundHttp`. It validates every record and builds fixed GitHub and Skills.sh links. |
-| Route access | `SkillCatalogController` checks the existing flag. Global and project routes have explicit list scopes and per-user limits of 30 requests per minute. |
-| Network bounds | One explicit search returns at most 24 records. The request has a 10-second timeout and 1 MiB response limit. Redirects are disabled. |
-| Skills Hub | `SkillsDiscover.vue` handles search, unavailable states, Save, Try, and retry. `SettingsSkillsView.vue` hosts the tab. |
+| API types | `skills/skill-catalog.schema.ts` defines browse, search, metadata, and detail contracts. |
+| Skills backend | `SkillCatalogService` uses `OutboundHttp` for Skills.sh search, public rankings, downloaded snapshots, and audits. It validates records and builds fixed source links. Optional GitHub metadata has a separate cache. |
+| Rankings | The public site embeds its first 600 ranked records in serialized page data. The adapter parses JSON without executing scripts. It keeps the supplied order and excludes sources that the GitHub importer cannot use. A changed page shape produces an unavailable state. |
+| Route access | Global and project routes have explicit list scopes and the existing feature gate. Per-user route limits are 30 requests per minute for browse, search, and detail, and 60 for card metadata. |
+| Network bounds | Search returns at most 24 records, with a 1 MiB response limit. New upstream calls share four request slots and a 2 MiB response limit. All requests have a 10-second timeout and disable redirects. Downloads accept at most 256 files and 256 Ki characters per file. |
+| Caching | Rankings cache for one minute. Skill snapshots and details cache for 15 minutes. Repository metadata caches for one hour. Concurrent requests for the same cached key share a fetch. Snapshot and detail caches have byte limits. |
+| Skills Hub | `SkillsDiscover.vue` loads the popular list on entry. It displays 12 cards at a time and enriches visible descriptions with up to three concurrent requests. `SkillCatalogDetail.vue` provides Overview, Instructions, and Files tabs. A `catalogSkill` URL parameter supports direct links and browser navigation. |
+| Categories | Deterministic n8n rules use the skill name first and the author description second. The UI labels these as n8n groupings. These are provisional categories, not author claims or a Skills.sh taxonomy. |
 | GitHub review | `SkillSourceConnectDialog.vue` accepts a catalog item. It imports only one exact name match, using the opaque key returned by GitHub discovery. It rejects missing and ambiguous matches. |
 | Agent draft | The existing `createAgent` API accepts a partial configuration. The request passes the stored skill ID. It leaves model selection to the existing defaults and builder. |
 
-The app reads all imported files from GitHub. It does not import a Skills.sh download, execute the Skills CLI, or interpret the catalog slug as a GitHub folder.
+The detail page displays the Skills.sh snapshot. The app still reads all imported files from GitHub and reviews them again before saving. It does not execute the Skills CLI or interpret the catalog slug as a GitHub folder.
 
 ## Limits to review
 
 - The anonymous search endpoint is used by the official Skills CLI. A stable service agreement for n8n is still unverified. The authenticated v1 API is not integrated.
-- Search records do not supply categories, descriptions, audits, or model scores. The dialog gets the author description from GitHub. Other details link to Skills.sh. The app does not fill missing metadata with guesses.
+- The ranking adapter depends on public website data rather than a stable API contract. Replace it with supported catalog access before production. The anonymous snapshot and audit routes also need a supported access agreement.
+- Search records do not supply descriptions or audits. Snapshot downloads add author descriptions, instructions, and frontmatter. Audit and repository failures leave those optional fields out. No model scores or satisfaction ratings are invented.
+- Popular and search counts are total installs. Trending counts are labeled recent installs. The app preserves Skills.sh's ranking rather than calculating its own trend score.
+- Categories use simple rules. Review their accuracy before making them a production taxonomy. Repository topics are shown as repository metadata, not skill-specific categories.
+- These bounds reduce request bursts. They are not a cross-instance quota manager. The pilot reports upstream rate limits; it does not bypass them or implement automatic retry storms.
 - Install counts are popularity data. They do not measure runs or success.
 - The existing importer allows one repository connection per scope. It blocks adding another skill from that repository once connected. The integration keeps that rule. A later import-more feature must reuse the stored connection and its access checks.
 - The existing importer preserves `SKILL.md` and supported Markdown references. It omits other files, including scripts and some license files. The review lists omissions. [CONTEXT-481](https://linear.app/n8n/issue/CONTEXT-481) tracks broader file support.

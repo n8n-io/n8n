@@ -62,3 +62,15 @@ Live browser checks used a separate database under `/private/tmp/n8n-skills-mark
 The local test account has no model credentials. No LLM conversation was run. The existing Agent Test UI made 404 requests for its new, empty chat thread and an Instance AI request returned 403. These did not stop the draft, attached skill, or Test panel from opening. Catalog and import pages had no console errors.
 
 The preview needed IPv4-first DNS on this host. A normal Node request stalled on the Skills.sh connection. The same bounded request succeeded with IPv4-first DNS. The application code does not change DNS policy.
+
+## Rich catalog update — November 13, 2026
+
+- Backend: 75 tests passed across catalog service, controller access, page parsing, categorization, and the existing skill-file parser.
+- Frontend: 164 tests passed across Discover, Settings Skills, and the GitHub import dialog. Tests cover initial popular results, trending, categories, detail navigation, instructions, files, metadata failure, and Save/Try reuse.
+- API types built successfully. The backend compiled with `build:unchecked` for the local preview. Changed-file Biome, ESLint, Oxlint, and Stylelint checks passed. Full frontend typechecking and full-repository checks remain for CI.
+- Live popular and trending pages supplied 569 and 571 supported GitHub listings at the time of the check. The UI preserved their ordering and distinguished total from recent installs.
+- Live details showed author instructions, license text, file omissions, five audit providers, and GitHub repository stars. Direct detail links survived reload. Category filters and return navigation worked without leaving n8n.
+- Try from the detail page reused the existing saved skill and opened a draft agent with that local skill attached. No model call ran. The existing empty-thread requests in Agent Test still returned 404.
+- Catalog and detail pages had no browser console errors. Layout checks passed at 1360 and 1024 pixels. The existing Settings sidebar leaves too little content width at 390 pixels; phone support needs a change to the shared Settings shell.
+
+Screenshots: [popular catalog](evidence/rich-discover-desktop.png), [skill detail](evidence/rich-detail-desktop.png), and [filtered trending catalog](evidence/rich-trending-filtered.png).

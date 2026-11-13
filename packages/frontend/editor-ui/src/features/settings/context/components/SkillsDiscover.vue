@@ -1,13 +1,29 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import type { SkillCatalogItem, SkillDetail } from '@n8n/api-types';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import {
+	SKILL_CATALOG_CATEGORIES,
+	type SkillCatalogCategory,
+	type SkillCatalogItem,
+	type SkillCatalogSummary,
+	type SkillCatalogView,
+	type SkillDetail,
+} from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { N8nButton, N8nCallout, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCallout,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nTabs,
+	N8nText,
+} from '@n8n/design-system';
 
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 import { createAgent } from '@/features/agents/composables/useAgentApi';
@@ -18,10 +34,20 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from './SkillSourceConnectDialog.vue';
-import { getSkill, searchSkillCatalog } from '../skills.api';
+import SkillCatalogDetail from './SkillCatalogDetail.vue';
+import {
+	browseSkillCatalog,
+	getSkillCatalogMetadata,
+	getSkill,
+	searchSkillCatalog,
+} from '../skills.api';
+import { categoryLabel } from '../skillCatalog.utils';
 import { parseScope } from '../skills.utils';
 
-const props = defineProps<{ scopeOptions: AgentSkillModalScopeOption[] }>();
+const props = withDefaults(
+	defineProps<{ scopeOptions: AgentSkillModalScopeOption[]; active?: boolean }>(),
+	{ active: true },
+);
 const emit = defineEmits<{
 	connected: [result: SkillSourceConnected];
 	openSource: [sourceId: string];
@@ -32,6 +58,7 @@ const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const router = useRouter();
+const route = useRoute();
 const { showError, showMessage } = useToast();
 
 const query = ref('');
@@ -47,10 +74,144 @@ const savedTrialId = ref<string>();
 const savedForTrial = ref<SkillDetail>();
 const testAgent = ref<{ projectId: string; agentId: string }>();
 const importedSkills = ref(new Map<string, string>());
+const view = ref<SkillCatalogView>('popular');
+const category = ref<SkillCatalogCategory | 'all'>('all');
+const searchActive = ref(false);
+const visibleCount = ref(12);
+const summaries = ref(new Map<string, SkillCatalogSummary>());
+const pendingSummaries = new Set<string>();
+const failedSummaries = new Set<string>();
+const openedItem = ref<SkillCatalogItem>();
+let mounted = true;
+const projectId = computed(() => parseScope(props.scopeOptions[0]?.value ?? '').projectId);
+const viewOptions = computed(() => [
+	{ value: 'popular', label: i18n.baseText('settings.context.skills.catalog.popular') },
+	{ value: 'trending', label: i18n.baseText('settings.context.skills.catalog.trending') },
+]);
+const categoryFor = (item: SkillCatalogItem) =>
+	summaries.value.get(item.id)?.category ?? item.category ?? 'other';
+const filteredItems = computed(() =>
+	items.value.filter((item) => category.value === 'all' || categoryFor(item) === category.value),
+);
+const visibleItems = computed(() => filteredItems.value.slice(0, visibleCount.value));
+const categories = computed(() =>
+	SKILL_CATALOG_CATEGORIES.filter((value) =>
+		items.value.some((item) => categoryFor(item) === value),
+	),
+);
 let searchRun = 0;
 onBeforeUnmount(() => {
 	searchRun += 1;
+	mounted = false;
 });
+
+function enrichCards() {
+	if (!mounted || !props.active || openedItem.value) return;
+	for (const item of visibleItems.value) {
+		if (pendingSummaries.size >= 3) break;
+		if (
+			summaries.value.has(item.id) ||
+			pendingSummaries.has(item.id) ||
+			failedSummaries.has(item.id)
+		)
+			continue;
+		pendingSummaries.add(item.id);
+		void getSkillCatalogMetadata(rootStore.restApiContext, item.id, projectId.value)
+			.then((summary) => {
+				if (mounted) summaries.value.set(item.id, summary);
+			})
+			.catch(() => {
+				failedSummaries.add(item.id);
+			})
+			.finally(() => {
+				pendingSummaries.delete(item.id);
+				enrichCards();
+			});
+	}
+}
+watch(() => visibleItems.value.map((item) => item.id).join(','), enrichCards);
+watch(
+	() => props.active,
+	(active) => {
+		if (active && !searched.value && !loading.value) void browse();
+		else if (active) enrichCards();
+	},
+	{ immediate: true },
+);
+watch(category, () => {
+	visibleCount.value = 12;
+});
+watch(view, () => {
+	void browse();
+});
+watch(
+	() => route.query.catalogSkill,
+	(id) => {
+		if (
+			typeof id !== 'string' ||
+			!/^[a-zA-Z0-9][a-zA-Z0-9-]*\/[a-zA-Z0-9_][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(
+				id,
+			)
+		) {
+			openedItem.value = undefined;
+			return;
+		}
+		const [owner, repo, slug] = id.split('/');
+		openedItem.value = items.value.find((item) => item.id === id) ?? {
+			id,
+			name: slug,
+			slug,
+			source: `${owner}/${repo}`,
+			githubUrl: `https://github.com/${owner}/${repo}`,
+			catalogUrl: `https://skills.sh/${id}`,
+		};
+	},
+	{ immediate: true },
+);
+
+function openDetails(item: SkillCatalogItem) {
+	openedItem.value = item;
+	void router.push({ query: { ...route.query, catalogSkill: item.id } });
+}
+
+function closeDetails() {
+	openedItem.value = undefined;
+	const { catalogSkill: _id, ...query } = route.query;
+	void router.push({ query });
+	enrichCards();
+}
+
+async function browse() {
+	query.value = '';
+	searchActive.value = false;
+	category.value = 'all';
+	await loadCatalog();
+}
+
+async function loadCatalog(term?: string) {
+	if (!props.scopeOptions.length) return;
+	const run = ++searchRun;
+	loading.value = true;
+	loadFailed.value = false;
+	items.value = [];
+	visibleCount.value = 12;
+	try {
+		const result = term
+			? await searchSkillCatalog(rootStore.restApiContext, term, projectId.value)
+			: await browseSkillCatalog(rootStore.restApiContext, view.value, projectId.value);
+		if (run !== searchRun) return;
+		items.value = result.items;
+		if (openedItem.value) {
+			openedItem.value =
+				items.value.find((item) => item.id === openedItem.value?.id) ?? openedItem.value;
+		}
+		searched.value = true;
+	} catch {
+		if (run === searchRun) loadFailed.value = true;
+	} finally {
+		if (run === searchRun) loading.value = false;
+	}
+}
 
 const trialScopes = computed(() =>
 	props.scopeOptions.filter((option) => {
@@ -77,21 +238,9 @@ async function search(term = query.value) {
 	query.value = term;
 	const trimmed = term.trim();
 	if (trimmed.length < 2 || trimmed.length > 100 || !props.scopeOptions.length) return;
-	const run = ++searchRun;
-	const scope = parseScope(props.scopeOptions[0].value);
-	loading.value = true;
-	loadFailed.value = false;
-	items.value = [];
-	try {
-		const result = await searchSkillCatalog(rootStore.restApiContext, trimmed, scope.projectId);
-		if (run !== searchRun) return;
-		items.value = result.items;
-		searched.value = true;
-	} catch {
-		if (run === searchRun) loadFailed.value = true;
-	} finally {
-		if (run === searchRun) loading.value = false;
-	}
+	searchActive.value = true;
+	category.value = 'all';
+	await loadCatalog(trimmed);
 }
 
 function startImport(item: SkillCatalogItem, action: 'save' | 'try') {
@@ -173,107 +322,203 @@ async function onExisting(skillId: string) {
 
 <template>
 	<section :class="$style.discover" data-test-id="skills-discover">
-		<div>
-			<N8nHeading tag="h2" size="medium">{{
-				i18n.baseText('settings.context.skills.catalog.title')
-			}}</N8nHeading>
-			<N8nText tag="p" color="text-light">{{
-				i18n.baseText('settings.context.skills.catalog.description')
-			}}</N8nText>
-		</div>
-		<form :class="$style.search" @submit.prevent="search()">
-			<N8nInput
-				v-model="query"
-				:maxlength="100"
-				:placeholder="i18n.baseText('settings.context.skills.catalog.searchPlaceholder')"
-				:aria-label="i18n.baseText('settings.context.skills.catalog.searchLabel')"
-				data-test-id="skill-catalog-search"
+		<SkillCatalogDetail
+			v-if="openedItem"
+			:item="openedItem"
+			:project-id="projectId"
+			:view="searchActive ? undefined : view"
+			:busy="busy"
+			:saved="importedSkills.has(openedItem.id)"
+			:can-save="!!scopeOptions.length"
+			:can-try="!!trialScopes.length"
+			@back="closeDetails"
+			@save="startImport(openedItem, 'save')"
+			@try="startImport(openedItem, 'try')"
+		/>
+		<div v-else :class="$style.discover">
+			<div :class="$style.intro">
+				<N8nHeading tag="h2" size="medium">{{
+					i18n.baseText('settings.context.skills.catalog.title')
+				}}</N8nHeading>
+				<N8nText tag="p" color="text-light">{{
+					i18n.baseText('settings.context.skills.catalog.description')
+				}}</N8nText>
+			</div>
+			<form :class="$style.search" @submit.prevent="search()">
+				<N8nInput
+					v-model="query"
+					:maxlength="100"
+					:placeholder="i18n.baseText('settings.context.skills.catalog.searchPlaceholder')"
+					:aria-label="i18n.baseText('settings.context.skills.catalog.searchLabel')"
+					data-test-id="skill-catalog-search"
+					><template #prefix><N8nIcon icon="search" /></template
+				></N8nInput>
+				<N8nButton
+					type="submit"
+					:loading="loading"
+					:disabled="query.trim().length < 2 || !scopeOptions.length"
+					data-test-id="skill-catalog-search-button"
+					data-attr="skill-catalog-search"
+					>{{ i18n.baseText('generic.search') }}</N8nButton
+				>
+			</form>
+			<div v-if="searchActive" :class="$style.resultHeading">
+				<N8nHeading tag="h3" size="small">{{
+					i18n.baseText('settings.context.skills.catalog.searchResults')
+				}}</N8nHeading
+				><N8nButton variant="outline" @click="browse">{{
+					i18n.baseText('settings.context.skills.catalog.clearSearch')
+				}}</N8nButton>
+			</div>
+			<N8nTabs
+				v-else
+				v-model="view"
+				:options="viewOptions"
+				variant="modern"
+				data-test-id="skill-catalog-views"
 			/>
-			<N8nButton
-				type="submit"
-				:loading="loading"
-				:disabled="query.trim().length < 2 || !scopeOptions.length"
-				data-test-id="skill-catalog-search-button"
-				data-attr="skill-catalog-search"
-				>{{ i18n.baseText('generic.search') }}</N8nButton
+			<div
+				:class="$style.filters"
+				:aria-label="i18n.baseText('settings.context.skills.catalog.categories')"
 			>
-		</form>
-		<div v-if="!searched && !loading && !loadFailed" :class="$style.suggestions">
-			<N8nText color="text-light">{{
-				i18n.baseText('settings.context.skills.catalog.suggestions')
+				<N8nButton
+					:variant="category === 'all' ? 'solid' : 'outline'"
+					size="small"
+					:aria-pressed="category === 'all'"
+					data-attr="skill-category-all"
+					@click="category = 'all'"
+					>{{ i18n.baseText('settings.context.skills.catalog.allCategories') }}</N8nButton
+				>
+				<N8nButton
+					v-for="value in categories"
+					:key="value"
+					:variant="category === value ? 'solid' : 'outline'"
+					size="small"
+					:aria-pressed="category === value"
+					data-test-id="skill-category"
+					data-attr="skill-category"
+					@click="category = value"
+					>{{ categoryLabel(value, i18n) }}</N8nButton
+				>
+			</div>
+			<div :class="$style.resultHeading">
+				<N8nText size="small" color="text-light">{{
+					loading
+						? i18n.baseText('settings.context.skills.catalog.loading')
+						: i18n.baseText('settings.context.skills.catalog.resultCount', {
+								interpolate: { count: filteredItems.length },
+								adjustToNumber: filteredItems.length,
+							})
+				}}</N8nText
+				><N8nText size="small" color="text-light">{{
+					i18n.baseText('settings.context.skills.catalog.categorySource')
+				}}</N8nText>
+			</div>
+			<N8nCallout v-if="loadFailed" theme="warning" data-test-id="skill-catalog-error">
+				{{ i18n.baseText('settings.context.skills.catalog.loadError') }}
+				<N8nButton variant="outline" @click="searchActive ? search() : browse()">{{
+					i18n.baseText('settings.context.skills.catalog.retry')
+				}}</N8nButton>
+			</N8nCallout>
+			<N8nText
+				v-if="searched && !loading && !loadFailed && !filteredItems.length"
+				data-test-id="skill-catalog-empty"
+				>{{ i18n.baseText('settings.context.skills.catalog.empty') }}</N8nText
+			>
+			<div :class="$style.grid" :aria-busy="loading">
+				<article
+					v-for="item in visibleItems"
+					:key="item.id"
+					:class="$style.card"
+					data-test-id="skill-catalog-card"
+				>
+					<div :class="$style.cardTop">
+						<N8nBadge>{{ categoryLabel(categoryFor(item), i18n) }}</N8nBadge
+						><N8nBadge v-if="item.isOfficial">{{
+							i18n.baseText('settings.context.skills.catalog.official')
+						}}</N8nBadge>
+					</div>
+					<div :class="$style.cardIdentity">
+						<button
+							:class="$style.cardTitle"
+							:aria-label="item.name"
+							data-test-id="skill-catalog-title"
+							data-attr="skill-catalog-detail"
+							@click="openDetails(item)"
+						>
+							<N8nHeading tag="h3" size="small">{{ item.name }}</N8nHeading>
+						</button>
+						<N8nText size="small" color="text-light">{{ item.source }}</N8nText>
+					</div>
+					<N8nText tag="p" color="text-light" :class="$style.cardDescription">{{
+						summaries.get(item.id)?.description ??
+						i18n.baseText('settings.context.skills.catalog.descriptionFallback')
+					}}</N8nText>
+					<div v-if="item.installs !== undefined" :class="$style.installs">
+						<N8nIcon
+							:icon="!searchActive && view === 'trending' ? 'trending-up' : 'download'"
+							size="small"
+						/><N8nText size="small"
+							>{{ item.installs.toLocaleString() }}
+							{{
+								i18n.baseText(
+									!searchActive && view === 'trending'
+										? 'settings.context.skills.catalog.recentInstalls'
+										: 'settings.context.skills.catalog.totalInstalls',
+								)
+							}}</N8nText
+						>
+					</div>
+					<button
+						:class="$style.detailsLink"
+						data-attr="skill-catalog-detail"
+						@click="openDetails(item)"
+					>
+						{{ i18n.baseText('settings.context.skills.catalog.details') }}
+					</button>
+					<div :class="$style.actions">
+						<N8nButton
+							variant="outline"
+							:disabled="busy || !trialScopes.length"
+							data-test-id="skill-catalog-try"
+							data-attr="skill-catalog-try"
+							@click="startImport(item, 'try')"
+							>{{ i18n.baseText('settings.context.skills.catalog.try') }}</N8nButton
+						>
+						<N8nButton
+							:disabled="busy || !scopeOptions.length || importedSkills.has(item.id)"
+							data-test-id="skill-catalog-save"
+							data-attr="skill-catalog-save"
+							@click="startImport(item, 'save')"
+							>{{
+								i18n.baseText(
+									importedSkills.has(item.id)
+										? 'settings.context.skills.catalog.saved'
+										: 'settings.context.skills.catalog.save',
+								)
+							}}</N8nButton
+						>
+					</div>
+				</article>
+			</div>
+			<div v-if="filteredItems.length > visibleCount" :class="$style.loadMore">
+				<N8nButton
+					variant="outline"
+					data-attr="skill-catalog-load-more"
+					@click="visibleCount += 12"
+					>{{ i18n.baseText('settings.context.skills.catalog.loadMore') }}</N8nButton
+				>
+			</div>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('settings.context.skills.catalog.limits')
 			}}</N8nText>
-			<N8nButton
-				v-for="term in ['pdf', 'frontend', 'testing']"
-				:key="term"
-				variant="outline"
-				@click="search(term)"
-				>{{ term }}</N8nButton
-			>
 		</div>
-		<N8nCallout v-if="loadFailed" theme="warning" data-test-id="skill-catalog-error">
-			{{ i18n.baseText('settings.context.skills.catalog.loadError') }}
-			<a href="https://skills.sh" target="_blank" rel="noopener noreferrer">{{
-				i18n.baseText('settings.context.skills.catalog.openCatalog')
-			}}</a>
-		</N8nCallout>
 		<N8nCallout v-if="savedTrialId" theme="info" data-test-id="skill-catalog-saved-for-trial">
 			{{ i18n.baseText('settings.context.skills.catalog.savedForTrial') }}
 			<N8nButton variant="outline" :loading="creatingAgent" @click="openTestAgent">{{
 				i18n.baseText('settings.context.skills.catalog.openTest')
 			}}</N8nButton>
 		</N8nCallout>
-		<N8nText
-			v-if="searched && !loading && !loadFailed && !items.length"
-			data-test-id="skill-catalog-empty"
-			>{{ i18n.baseText('settings.context.skills.catalog.empty') }}</N8nText
-		>
-		<div :class="$style.grid" :aria-busy="loading">
-			<article
-				v-for="item in items"
-				:key="item.id"
-				:class="$style.card"
-				data-test-id="skill-catalog-card"
-			>
-				<div>
-					<N8nHeading tag="h3" size="small">{{ item.name }}</N8nHeading>
-					<N8nText size="small" color="text-light">{{ item.source }}</N8nText>
-				</div>
-				<N8nText>{{
-					i18n.baseText('settings.context.skills.catalog.installs', {
-						interpolate: { count: item.installs.toLocaleString() },
-					})
-				}}</N8nText>
-				<a :href="item.catalogUrl" target="_blank" rel="noopener noreferrer">{{
-					i18n.baseText('settings.context.skills.catalog.details')
-				}}</a>
-				<div :class="$style.actions">
-					<N8nButton
-						variant="outline"
-						:disabled="busy || !trialScopes.length"
-						data-test-id="skill-catalog-try"
-						data-attr="skill-catalog-try"
-						@click="startImport(item, 'try')"
-						>{{ i18n.baseText('settings.context.skills.catalog.try') }}</N8nButton
-					>
-					<N8nButton
-						:disabled="busy || !scopeOptions.length || importedSkills.has(item.id)"
-						data-test-id="skill-catalog-save"
-						data-attr="skill-catalog-save"
-						@click="startImport(item, 'save')"
-						>{{
-							i18n.baseText(
-								importedSkills.has(item.id)
-									? 'settings.context.skills.catalog.saved'
-									: 'settings.context.skills.catalog.save',
-							)
-						}}</N8nButton
-					>
-				</div>
-			</article>
-		</div>
-		<N8nText size="small" color="text-light">{{
-			i18n.baseText('settings.context.skills.catalog.limits')
-		}}</N8nText>
 		<SkillSourceConnectDialog
 			v-model:open="connectOpen"
 			:scope-options="importScopes"
@@ -293,7 +538,7 @@ async function onExisting(skillId: string) {
 	gap: var(--spacing--lg);
 }
 .search,
-.suggestions,
+.filters,
 .actions {
 	display: flex;
 	gap: var(--spacing--xs);
@@ -306,7 +551,7 @@ async function onExisting(skillId: string) {
 }
 .grid {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--md);
 }
 .card {
@@ -322,6 +567,60 @@ async function onExisting(skillId: string) {
 }
 .actions {
 	margin-top: auto;
+	padding-top: var(--spacing--xs);
+}
+.intro,
+.cardIdentity {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+.resultHeading,
+.cardTop {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+	flex-wrap: wrap;
+}
+.cardTitle,
+.detailsLink {
+	background: none;
+	border: none;
+	padding: 0;
+	cursor: pointer;
+	text-align: left;
+	color: inherit;
+}
+.cardTitle:hover {
+	text-decoration: underline;
+}
+.detailsLink {
+	color: var(--color--primary);
+	font-size: var(--font-size--sm);
+	align-self: flex-start;
+}
+.cardDescription {
+	display: -webkit-box;
+	-webkit-line-clamp: 3;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	// Reserve three text lines without exposing part of a clipped fourth line.
+	min-height: 3lh;
+}
+.installs {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+.loadMore {
+	display: flex;
+	justify-content: center;
+}
+@media (max-width: 1100px) {
+	.grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 @media (max-width: 600px) {
 	.grid {

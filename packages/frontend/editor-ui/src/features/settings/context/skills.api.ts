@@ -1,5 +1,8 @@
 import type {
 	SkillCatalogResponse,
+	SkillCatalogView,
+	SkillCatalogSummary,
+	SkillCatalogDetail,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -25,6 +28,49 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 
 const ENDPOINT = '/skills';
 const SOURCES_ENDPOINT = '/skill-sources';
+
+function catalogEndpoint(projectId?: string) {
+	return projectId ? `/skill-catalog/projects/${encodeURIComponent(projectId)}` : '/skill-catalog';
+}
+
+export async function browseSkillCatalog(
+	context: IRestApiContext,
+	view: SkillCatalogView,
+	projectId?: string,
+) {
+	return await makeRestApiRequest<SkillCatalogResponse>(
+		context,
+		'GET',
+		`${catalogEndpoint(projectId)}/browse`,
+		{ view },
+	);
+}
+
+export async function getSkillCatalogMetadata(
+	context: IRestApiContext,
+	id: string,
+	projectId?: string,
+) {
+	return await makeRestApiRequest<SkillCatalogSummary>(
+		context,
+		'GET',
+		`${catalogEndpoint(projectId)}/metadata`,
+		{ id },
+	);
+}
+
+export async function getSkillCatalogDetail(
+	context: IRestApiContext,
+	id: string,
+	projectId?: string,
+) {
+	return await makeRestApiRequest<SkillCatalogDetail>(
+		context,
+		'GET',
+		`${catalogEndpoint(projectId)}/detail`,
+		{ id },
+	);
+}
 
 export async function searchSkillCatalog(
 	context: IRestApiContext,

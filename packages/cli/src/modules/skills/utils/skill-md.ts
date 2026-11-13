@@ -136,7 +136,7 @@ function normalizeText(text: string): string {
 }
 
 /** Forward slashes and no leading `./`, so a path from any checkout names the same file. */
-function normalizePath(path: string): string {
+export function normalizePath(path: string): string {
 	return path.replaceAll('\\', '/').replace(/^(\.\/)+/, '');
 }
 

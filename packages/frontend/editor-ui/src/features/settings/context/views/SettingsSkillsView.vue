@@ -115,7 +115,13 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
-const skillsTab = ref('owned');
+const skillsTab = ref(typeof route.query.catalogSkill === 'string' ? 'discover' : 'owned');
+watch(
+	() => route.query.catalogSkill,
+	(id) => {
+		if (typeof id === 'string') skillsTab.value = 'discover';
+	},
+);
 const skillsTabs = computed(() => [
 	{ value: 'owned', label: i18n.baseText('settings.context.skills.catalog.yourSkills') },
 	{ value: 'discover', label: i18n.baseText('settings.context.skills.catalog.discover') },
@@ -942,6 +948,7 @@ onMounted(async () => {
 			v-if="skillSyncEnabled && scopeOptions.length"
 			v-show="skillsTab === 'discover'"
 			:scope-options="scopeOptions"
+			:active="skillsTab === 'discover'"
 			@connected="onSourceConnected"
 			@open-source="openCatalogSource"
 		/>
