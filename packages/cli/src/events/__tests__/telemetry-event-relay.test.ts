@@ -2017,6 +2017,28 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should buffer on `public-api-invoked` event from the n8n node', () => {
+			const event: RelayEventMap['public-api-invoked'] = {
+				userId: 'user123',
+				path: '/api/v1/workflows',
+				method: 'GET',
+				apiVersion: 'v1',
+				userAgent: 'n8n-cli',
+				client: 'n8n_node',
+			};
+
+			eventService.emit('public-api-invoked', event);
+
+			expect(telemetry.trackApiInvocation).toHaveBeenCalledWith({
+				user_id: 'user123',
+				path: '/api/v1/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'n8n_node',
+				user_agent: 'n8n-cli',
+			});
+		});
+
 		it('should track on `public-api-key-created` event', () => {
 			const event: RelayEventMap['public-api-key-created'] = {
 				user: {
@@ -2225,6 +2247,11 @@ describe('TelemetryEventRelay', () => {
 				descriptionLength: 0,
 				publicApi: 'editor_ui',
 				expected: { public_api: true, public_api_client: 'editor_ui' },
+			},
+			{
+				descriptionLength: 0,
+				publicApi: 'n8n_node',
+				expected: { public_api: true, public_api_client: 'n8n_node' },
 			},
 			{
 				descriptionLength: 18,
