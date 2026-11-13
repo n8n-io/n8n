@@ -190,7 +190,7 @@ it('emits success only after the move completes', async () => {
 
 async function select(view: ReturnType<typeof setup>, testId: string, label: string) {
 	await userEvent.click(view.getByTestId(testId));
-	await userEvent.click(await view.findByRole('option', { name: label, exact: true }));
+	await userEvent.click(await view.findByRole('option', { name: label }));
 }
 
 it('names both select triggers and focuses them when their labels are clicked', async () => {
@@ -292,8 +292,8 @@ it.each([
 		const view = render({ pinia, props: { source: currentSource } });
 		expect(view.getByTestId('skill-scope-badge')).toHaveTextContent(label);
 		await userEvent.click(view.getByTestId('source-move-scope'));
-		expect(view.queryByRole('option', { name: label, exact: true })).not.toBeInTheDocument();
-		expect(view.getByRole('option', { name: 'Target', exact: true })).toBeVisible();
+		expect(view.queryByRole('option', { name: label })).not.toBeInTheDocument();
+		expect(view.getByRole('option', { name: 'Target' })).toBeVisible();
 	},
 );
 

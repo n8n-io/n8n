@@ -449,12 +449,12 @@ function close(open: boolean) {
 			<N8nCallout v-if="error" theme="danger" role="alert">{{ error }}</N8nCallout>
 		</N8nDialogBody>
 		<N8nDialogFooter>
-			<N8nButton variant="subtle" :disabled="moving" @click="close(false)">{{
+			<N8nButton variant="ghost" :disabled="moving" @click="close(false)">{{
 				i18n.baseText('generic.cancel')
 			}}</N8nButton>
 			<N8nButton
 				v-if="scope"
-				variant="subtle"
+				variant="ghost"
 				:disabled="moving || checking"
 				data-test-id="source-move-recheck"
 				@click="recheck"
