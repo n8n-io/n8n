@@ -11,15 +11,8 @@ vi.mock('@n8n/di', () => ({
 
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import {
-	ApplicationError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-	Workflow,
-} from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, NodeOperationError, Workflow } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import type {
 	INodeType,
 	INodeTypes,

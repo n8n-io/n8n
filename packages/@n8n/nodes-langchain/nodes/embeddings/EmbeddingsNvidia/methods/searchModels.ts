@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 /**
  * Curated set of NVIDIA NeMo Retriever embedding models that accept the `input_type`
@@ -33,7 +34,7 @@ export async function searchModels(
 	const credentials = await this.getCredentials<{ url: string }>('nvidiaApi');
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, 'nvidiaApi', {
-		url: `${credentials.url}/models`,
+		url: requestUrl`${credentials.url}/models`,
 	})) as { data?: NvidiaModel[] };
 
 	const supported = new Set(NVIDIA_EMBEDDING_MODELS);

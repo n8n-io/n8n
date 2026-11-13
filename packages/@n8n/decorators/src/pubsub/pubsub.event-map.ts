@@ -146,6 +146,8 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		/** Absent when a main or worker of an older version sends the event. */
+		userId?: string;
 		asBinary: boolean;
 	};
 

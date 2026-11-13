@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
+	requestPath,
 } from 'n8n-workflow';
 
 import { lonescaleApiRequest } from './GenericFunctions';
@@ -61,7 +62,7 @@ export class LoneScaleTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getWorkflows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const data = await lonescaleApiRequest.call(this, 'GET', '/workflows');
+				const data = await lonescaleApiRequest.call(this, 'GET', requestPath`/workflows`);
 				return (data as Array<{ title: string; id: string }>)?.map((d) => ({
 					name: d.title,
 					value: d.id,
@@ -79,7 +80,7 @@ export class LoneScaleTrigger implements INodeType {
 				const webhook = await lonescaleApiRequest.call(
 					this,
 					'GET',
-					`/workflows/${workflowId}/hook?type=n8n`,
+					requestPath`/workflows/${workflowId}/hook?type=n8n`,
 				);
 				if (webhook.target_url === webhookUrl) {
 					webhookData.webhookId = webhook.webhook_id;
@@ -98,7 +99,7 @@ export class LoneScaleTrigger implements INodeType {
 				const webhook = await lonescaleApiRequest.call(
 					this,
 					'POST',
-					`/workflows/${workflowId}/hook`,
+					requestPath`/workflows/${workflowId}/hook`,
 					body,
 				);
 				webhookData.webhookId = webhook.webhook_id;
@@ -110,7 +111,7 @@ export class LoneScaleTrigger implements INodeType {
 					await lonescaleApiRequest.call(
 						this,
 						'DELETE',
-						`/workflows/${webhookData.webhookId}/hook?type=n8n`,
+						requestPath`/workflows/${webhookData.webhookId}/hook?type=n8n`,
 					);
 				} catch (error) {
 					return false;

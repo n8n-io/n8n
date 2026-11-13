@@ -3,8 +3,9 @@ import type {
 	INodeListSearchResult,
 	INodePropertyOptions,
 	JsonObject,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { escapeODataValue } from '../../../utils/query-escaping';
 import { DATAVERSE_API_PATH } from './constants';
@@ -79,7 +80,7 @@ function parameterValue(value: unknown): string {
 
 async function dataverseGet<T>(
 	ctx: ILoadOptionsFunctions,
-	path: string,
+	path: RequestPath | string,
 	qs: DataverseQuery = {},
 	headers: DataverseHeaders = {},
 ): Promise<T> {
@@ -236,7 +237,7 @@ function safeStringify(value: unknown): string {
 export async function getEntitySets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const response = await dataverseGet<ODataCollection<EntityDefinition>>(
 		this,
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{
 			// Only project fields we actually consume client-side. The three
 			// `Is*` booleans are filtered server-side via `$filter`, so there's
@@ -289,7 +290,7 @@ export async function searchRows(
 	// we can't thread these through it — one extra metadata GET per page.
 	const metadata = await dataverseGet<ODataCollection<EntityDefinition>>(
 		this,
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{
 			$select: 'PrimaryIdAttribute,PrimaryNameAttribute',
 			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
@@ -316,7 +317,7 @@ export async function searchRows(
 		if (trimmedFilter && nameAttribute) {
 			qs.$filter = `contains(${nameAttribute},'${escapeODataValue(trimmedFilter)}')`;
 		}
-		response = await dataverseGet<RowPage>(this, `/${entitySet}`, qs, pageHeaders);
+		response = await dataverseGet<RowPage>(this, requestPath`/${entitySet}`, qs, pageHeaders);
 	}
 
 	const results = (response.value ?? []).flatMap((row) => {
@@ -352,7 +353,7 @@ async function getColumns(
 	// layer URL-encodes spaces/quotes; do not pre-encode.
 	const lookup = await dataverseGet<ODataCollection<{ LogicalName: string }>>(
 		ctx,
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{
 			$select: 'LogicalName',
 			$filter: `EntitySetName eq '${escapeODataValue(entitySet)}'`,
@@ -364,7 +365,7 @@ async function getColumns(
 	// path segment; the HTTP layer encodes the single quotes around it.
 	const attrs = await dataverseGet<ODataCollection<AttributeDefinition>>(
 		ctx,
-		`/EntityDefinitions(LogicalName='${logicalName}')/Attributes`,
+		requestPath`/EntityDefinitions(LogicalName='${logicalName}')/Attributes`,
 		{
 			$select:
 				'LogicalName,DisplayName,AttributeOf,IsValidODataAttribute,IsValidForRead,IsValidForCreate,IsValidForUpdate,AttributeType',

@@ -5,23 +5,23 @@ import type {
 	ILoadOptionsFunctions,
 	JsonObject,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function demioApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('demioApi');
-		let options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			headers: {
 				'Api-Key': credentials.apiKey,
 				'Api-Secret': credentials.apiSecret,
@@ -29,11 +29,9 @@ export async function demioApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri || `https://my.demio.com/api/v1${resource}`,
+			uri: requestUrl`https://my.demio.com/api/v1${resource}`,
 			json: true,
 		};
-
-		options = Object.assign({}, options, option);
 
 		return await this.helpers.request(options);
 	} catch (error) {

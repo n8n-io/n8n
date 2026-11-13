@@ -190,7 +190,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'GET',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 				},
 			);
@@ -309,7 +309,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'POST',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 					body: {
 						url: 'https://example.com/webhook',
@@ -342,7 +342,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'POST',
-					url: 'https://api.currents.dev/v1/webhooks',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks' }),
 					qs: { projectId: 'project-123' },
 					body: {
 						url: 'https://example.com/webhook',
@@ -387,7 +387,9 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'PUT',
-					url: 'https://api.currents.dev/v1/webhooks/hook%2Fid%3Fx%23y',
+					url: expect.objectContaining({
+						value: 'https://api.currents.dev/v1/webhooks/hook%2Fid%3Fx%23y',
+					}),
 					body: {
 						hookEvents: ['RUN_FINISH', 'RUN_TIMEOUT'],
 					},
@@ -421,7 +423,7 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'PUT',
-					url: 'https://api.currents.dev/v1/webhooks/hook-123',
+					url: expect.objectContaining({ value: 'https://api.currents.dev/v1/webhooks/hook-123' }),
 					body: {
 						url: 'https://example.com/new-webhook',
 						hookEvents: ['RUN_START'],
@@ -454,7 +456,9 @@ describe('CurrentsTriggerHelpers', () => {
 				'currentsApi',
 				{
 					method: 'DELETE',
-					url: 'https://api.currents.dev/v1/webhooks/parent%2Fchild',
+					url: expect.objectContaining({
+						value: 'https://api.currents.dev/v1/webhooks/parent%2Fchild',
+					}),
 				},
 			);
 		});

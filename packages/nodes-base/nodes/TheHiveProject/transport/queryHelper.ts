@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { theHiveApiRequest } from './requestApi';
 import type { QueryScope } from '../helpers/interfaces';
@@ -61,7 +62,7 @@ export async function theHiveApiQuery(
 			_name: 'count',
 		});
 
-		const count = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+		const count = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 		responseData.push({ count });
 	} else if (limit) {
@@ -73,7 +74,7 @@ export async function theHiveApiQuery(
 		};
 
 		query.push(pagination);
-		responseData = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+		responseData = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 	} else {
 		let to = 500;
 		let from = 0;
@@ -87,7 +88,7 @@ export async function theHiveApiQuery(
 				extraData,
 			};
 
-			response = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+			response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, {
 				query: [...query, pagination],
 			});
 

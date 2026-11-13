@@ -26,6 +26,7 @@ import {
 	DataTableRowsRepository,
 	type DataTable,
 	DataTableRepository,
+	DataTableSizeValidator,
 } from '@n8n/backend-module-data-table';
 
 import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
@@ -4446,6 +4447,139 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		};
 
 		await authOwnerAgent.post(`/projects/${ownerProject.id}/data-tables`).send(payload).expect(400);
+	});
+
+	test('should not create the table when the rows exceed the remaining storage', async () => {
+		const csvContent = 'name\n' + 'x\n'.repeat(2000);
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		vi.spyOn(
+			Container.get(DataTableSizeValidator),
+			'getRemainingStorageBytes',
+		).mockResolvedValueOnce(100_000);
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send({
+				name: 'Too Large Import',
+				columns: [{ name: 'name', type: 'string' }],
+				fileId: uploadResponse.body.data.id,
+			})
+			.expect(400);
+
+		expect(response.body.message).toContain('Data table size limit exceeded');
+		expect(await dataTableRepository.count()).toBe(0);
+	});
+});
+
+describe('POST /projects/:projectId/data-tables/:dataTableId/import-csv', () => {
+	const uploadCsv = async (csvContent: string): Promise<string> => {
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		return uploadResponse.body.data.id;
+	};
+
+	const importCsv = (dataTableId: string, fileId: string) =>
+		authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables/${dataTableId}/import-csv`)
+			.send({ fileId });
+
+	const countRows = async (dataTableId: string): Promise<number> => {
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		return rowsResponse.body.data.count;
+	};
+
+	let dataTable: DataTable;
+
+	beforeEach(async () => {
+		dataTable = await createDataTable(ownerProject, {
+			columns: [{ name: 'name', type: 'string' }],
+			data: [{ name: 'Existing' }],
+		});
+	});
+
+	test('should import the rows of the CSV file', async () => {
+		const fileId = await uploadCsv('name\nAlice\nBob\n');
+
+		const response = await importCsv(dataTable.id, fileId).expect(200);
+
+		expect(response.body.data.importedRowCount).toBe(2);
+		expect(await countRows(dataTable.id)).toBe(3);
+	});
+
+	test('should import a file with more rows than one batch', async () => {
+		const fileId = await uploadCsv('name\n' + 'x\n'.repeat(2500));
+
+		const response = await importCsv(dataTable.id, fileId).expect(200);
+
+		expect(response.body.data.importedRowCount).toBe(2500);
+		expect(await countRows(dataTable.id)).toBe(2501);
+	});
+
+	test('should reject a second import of the same file', async () => {
+		const fileId = await uploadCsv('name\nAlice\n');
+		await importCsv(dataTable.id, fileId).expect(200);
+
+		const response = await importCsv(dataTable.id, fileId).expect(400);
+
+		expect(response.body.message).toContain('was already imported');
+		expect(await countRows(dataTable.id)).toBe(2);
+	});
+
+	test('should import the file only once when the same file is imported in parallel', async () => {
+		const fileId = await uploadCsv('name\nAlice\nBob\n');
+
+		const responses = await Promise.all([
+			importCsv(dataTable.id, fileId),
+			importCsv(dataTable.id, fileId),
+			importCsv(dataTable.id, fileId),
+		]);
+
+		expect(responses.map((r) => r.status).sort()).toEqual([200, 400, 400]);
+		expect(await countRows(dataTable.id)).toBe(3);
+	});
+
+	test('should reject a file id that does not belong to an uploaded file', async () => {
+		const fileId = await uploadCsv('name\nAlice\n');
+
+		await importCsv(dataTable.id, `${fileId}.importing`).expect(400);
+		await importCsv(dataTable.id, '../outside').expect(400);
+
+		expect(await countRows(dataTable.id)).toBe(1);
+	});
+
+	test('should import no rows when the rows exceed the remaining storage', async () => {
+		const fileId = await uploadCsv('name\n' + 'x\n'.repeat(2000));
+
+		vi.spyOn(
+			Container.get(DataTableSizeValidator),
+			'getRemainingStorageBytes',
+		).mockResolvedValueOnce(100_000);
+
+		const response = await importCsv(dataTable.id, fileId).expect(400);
+
+		expect(response.body.message).toContain('Data table size limit exceeded');
+		expect(await countRows(dataTable.id)).toBe(1);
+	});
+
+	test('should import no rows when a value does not match the column type', async () => {
+		const numberTable = await createDataTable(ownerProject, {
+			columns: [{ name: 'age', type: 'number' }],
+		});
+		const fileId = await uploadCsv('age\n' + '1\n'.repeat(1500) + 'not-a-number\n');
+
+		await importCsv(numberTable.id, fileId).expect(400);
+
+		expect(await countRows(numberTable.id)).toBe(0);
 	});
 });
 

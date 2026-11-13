@@ -521,6 +521,7 @@ export async function provisionOnboardingThread(
  * into the same write so binding a subject and recording where it opened from
  * (e.g. the agent-preview view) costs one round trip, not two.
  *
+ * A supplied draft id keeps the mounted runtime available if binding fails.
  * Shared by `InstanceAiChatPanel` (embed/), which used to run this in two
  * separate steps.
  */
@@ -528,9 +529,10 @@ export async function provisionSubjectThread(
 	subject: InstanceAiEmbedSubject,
 	launch: InstanceAiThreadLaunch,
 	extraMetadata?: Record<string, unknown>,
+	draftThreadId?: string,
 ): Promise<string> {
 	const store = useInstanceAiStore();
-	const threadId = uuidv4();
+	const threadId = draftThreadId ?? uuidv4();
 	await store.syncThread(threadId, subject.projectId, launch);
 
 	let targetMetadata: Record<string, unknown> = {};
@@ -566,7 +568,10 @@ export async function provisionSubjectThread(
 		// The thread now exists server-side — leaving it target-less would strand
 		// an unbound conversation the user never asked to start. Silent: the
 		// caller already surfaces its own failure toast.
-		await store.deleteThread(threadId, { silent: true });
+		await store.deleteThread(threadId, {
+			silent: true,
+			...(draftThreadId ? { preserveRuntime: true } : {}),
+		});
 		throw error;
 	}
 

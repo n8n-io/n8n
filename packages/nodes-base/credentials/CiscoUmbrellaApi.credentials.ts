@@ -54,12 +54,10 @@ export class CiscoUmbrellaApi implements ICredentialType {
 	];
 
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
-		const url = 'https://api.umbrella.com';
 		const { access_token } = (await this.helpers.httpRequest({
 			method: 'POST',
-			url: `${
-				url.endsWith('/') ? url.slice(0, -1) : url
-			}/auth/v2/token?grant_type=client_credentials`,
+			url: 'https://api.umbrella.com/auth/v2/token',
+			qs: { grant_type: 'client_credentials' },
 			auth: {
 				username: credentials.apiKey as string,
 				password: credentials.secret as string,

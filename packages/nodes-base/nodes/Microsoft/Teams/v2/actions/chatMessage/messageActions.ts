@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { chatRLC } from '../../descriptions';
 import { readTextParameter } from '../../helpers/parameters';
@@ -23,7 +23,7 @@ async function fetchSignedInUserId(this: IExecuteFunctions): Promise<string> {
 	const user: unknown = await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/me',
+		requestPath`/v1.0/me`,
 		{},
 		{ $select: 'id' },
 	);

@@ -32,6 +32,14 @@ describe('LoneScale Node', () => {
 				count: 1,
 				custom: {},
 			});
+
+		nock(baseUrl)
+			.post('/lists', { name: 'Q4 Leads', entity: 'PEOPLE' })
+			.reply(200, { id: '68f1c2a9d4e5', name: 'Q4 Leads', entity: 'PEOPLE' });
+
+		nock(baseUrl)
+			.post('/lists/68f1c2a9d4e5/item', { first_name: 'Tim', last_name: 'Cook' })
+			.reply(200, { id: 'it_1001', status: 'created' });
 	});
 
 	new NodeTestHarness().setupTests({ credentials });

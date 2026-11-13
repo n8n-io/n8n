@@ -6,10 +6,12 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { FileUploadError } from '../errors/data-table-file-upload.error';
 
 vi.mock('fs', async () => ({
 	promises: {
 		unlink: vi.fn(),
+		rename: vi.fn(),
 		readdir: vi.fn(),
 		stat: vi.fn(),
 	},
@@ -78,6 +80,46 @@ describe('DataTableFileCleanupService', () => {
 			await expect(service.deleteFile(maliciousFileId)).rejects.toThrowError(
 				'Path traversal detected',
 			);
+		});
+	});
+
+	describe('claimFile', () => {
+		it('should rename the file and return the claimed file id', async () => {
+			(fs.rename as Mock).mockResolvedValue(undefined);
+
+			await expect(service.claimFile('abc123_-XY')).resolves.toBe('abc123_-XY.importing');
+
+			expect(fs.rename).toHaveBeenCalledWith(
+				path.join(uploadDir, 'abc123_-XY'),
+				path.join(uploadDir, 'abc123_-XY.importing'),
+			);
+		});
+
+		it('should reject a second claim of the same file', async () => {
+			const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+			error.code = 'ENOENT';
+			(fs.rename as Mock).mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+			await service.claimFile('abc123');
+
+			await expect(service.claimFile('abc123')).rejects.toThrow(FileUploadError);
+		});
+
+		it.each(['abc123.importing', '../abc123', 'abc/123', ''])(
+			'should reject the file id %j without touching the disk',
+			async (fileId) => {
+				await expect(service.claimFile(fileId)).rejects.toThrow(FileUploadError);
+
+				expect(fs.rename).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should rethrow errors other than a missing file', async () => {
+			const error = new Error('Permission denied') as NodeJS.ErrnoException;
+			error.code = 'EPERM';
+			(fs.rename as Mock).mockRejectedValue(error);
+
+			await expect(service.claimFile('abc123')).rejects.toThrow('Permission denied');
 		});
 	});
 
@@ -163,6 +205,38 @@ describe('DataTableFileCleanupService', () => {
 				});
 			},
 		);
+
+		it('should keep an old claimed file until the import deletes it', async () => {
+			const claimingService = new DataTableFileCleanupService(globalConfig, logger);
+			(fs.rename as Mock).mockResolvedValue(undefined);
+			(fs.readdir as Mock).mockResolvedValue(['abc123.importing', OLD_FILE]);
+			(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
+
+			const claimedFileId = await claimingService.claimFile('abc123');
+			await claimingService.cleanupOrphanedFiles(new AbortController().signal);
+
+			expect((fs.unlink as Mock).mock.calls).toEqual([[path.join(uploadDir, OLD_FILE)]]);
+
+			await claimingService.deleteFile(claimedFileId);
+			(fs.unlink as Mock).mockClear();
+			await claimingService.cleanupOrphanedFiles(new AbortController().signal);
+
+			expect((fs.unlink as Mock).mock.calls).toEqual([
+				[path.join(uploadDir, 'abc123.importing')],
+				[path.join(uploadDir, OLD_FILE)],
+			]);
+		});
+
+		it('should delete an old claimed file that no import in this process holds', async () => {
+			(fs.readdir as Mock).mockResolvedValue(['left-over.importing']);
+			(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
+
+			await cleanup();
+
+			expect((fs.unlink as Mock).mock.calls).toEqual([
+				[path.join(uploadDir, 'left-over.importing')],
+			]);
+		});
 
 		it('should stop before the next file when the signal is aborted', async () => {
 			const controller = new AbortController();

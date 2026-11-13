@@ -272,6 +272,31 @@ describe('useInstanceAiStore - runtime registry', () => {
 		);
 	});
 
+	it('keeps a draft runtime when failed provisioning removes its saved thread', async () => {
+		const store = useInstanceAiStore();
+		const runtime = store.getOrCreateRuntime('thread-1');
+		const disposeSpy = vi.spyOn(runtime, 'dispose');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+
+		await expect(
+			store.deleteThread('thread-1', { silent: true, preserveRuntime: true }),
+		).resolves.toBe(true);
+
+		expect(mockDeleteThread).toHaveBeenCalled();
+		expect(disposeSpy).not.toHaveBeenCalled();
+		expect(store.getRuntime('thread-1')).toBe(runtime);
+		expect(store.threads).toEqual([]);
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mockEnsureThread).toHaveBeenCalledTimes(2);
+		store.disposeRuntime('thread-1');
+	});
+
 	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
 		const store = useInstanceAiStore();
 		await store.syncThread('thread-1', 'project-1', {

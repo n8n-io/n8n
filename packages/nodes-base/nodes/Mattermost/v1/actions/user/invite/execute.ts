@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -12,7 +13,7 @@ export async function invite(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `teams/${teamId}/invite/email`;
+	const endpoint = requestPath`teams/${teamId}/invite/email`;
 	const body = emails;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);

@@ -194,6 +194,8 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'content-change': [hasContent: boolean];
+	/** The composer text became empty: a send or the user cleared it. `sendHostMessage` does not. */
+	'draft-cleared': [];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
@@ -215,6 +217,19 @@ const emit = defineEmits<{
 	];
 	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
 	'stream-event': [event: AgentSseEvent];
+	/**
+	 * The chat posts a new message now, before the server answers, so a refused
+	 * send emits this too. Typed text that cancels an open card emits this, but
+	 * answers to the card do not.
+	 */
+	'message-sending': [
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			isFirstMessage: boolean;
+		},
+	];
 }>();
 
 defineSlots<{
@@ -1193,6 +1208,17 @@ async function onSubmit(): Promise<SubmitResult> {
 	return await submitDraft(inputText.value.trim(), [...attachedFiles.value]);
 }
 
+function emitMessageSending(message: {
+	text: string;
+	files: File[];
+	clientContext?: Record<string, unknown>;
+}) {
+	emit('message-sending', {
+		...message,
+		isFirstMessage: !messages.value.some((entry) => entry.role === 'user'),
+	});
+}
+
 /** Returns a check that is true while the panel still shows the chat it showed at the call. */
 function captureTarget(): () => boolean {
 	const target = {
@@ -1230,6 +1256,8 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';
+		// Steering sends the text without the files or the client context.
+		emitMessageSending({ text, files: [] });
 		const result = await cancelAndSteer(text, () => {
 			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
@@ -1329,6 +1357,7 @@ async function sendRequest(request: SendRequest): Promise<SubmitResult> {
 			externalAttachedFiles = [];
 			consumeQueuedExternalMessage(text);
 		};
+		emitMessageSending({ text, files, clientContext });
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;
@@ -1461,6 +1490,12 @@ function isDirty(): boolean {
 }
 
 watch(isDirty, (hasContent) => emit('content-change', hasContent), { immediate: true });
+watch(
+	() => inputText.value.trim() === '',
+	(isEmpty) => {
+		if (isEmpty) emit('draft-cleared');
+	},
+);
 
 /** Puts text into the composer without sending it. */
 function setDraft(text: string) {

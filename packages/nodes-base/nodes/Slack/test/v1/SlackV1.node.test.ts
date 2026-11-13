@@ -2,6 +2,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mockDeep } from 'vitest-mock-extended';
 import type { Mock, MockInstance } from 'vitest';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../../V1/GenericFunctions';
 import { SlackV1 } from '../../V1/SlackV1.node';
@@ -77,7 +78,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				expect.objectContaining({ types: 'public_channel,private_channel' }),
 			);
@@ -98,7 +99,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				expect.objectContaining({ types: 'public_channel,private_channel' }),
 			);
@@ -120,7 +121,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.invite',
+				requestPath`/conversations.invite`,
 				{ channel: 'C123456789', users: 'U111111111,U222222222' },
 				{},
 			);
@@ -140,7 +141,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.invite',
+				requestPath`/conversations.invite`,
 				{ channel: 'C123456789', users: 'U111111111,U222222222' },
 				{},
 			);
@@ -161,7 +162,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.open',
+				requestPath`/conversations.open`,
 				{ users: 'U111111111,U222222222', return_im: true },
 				{},
 			);
@@ -180,7 +181,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.open',
+				requestPath`/conversations.open`,
 				{ users: 'U111111111,U222222222' },
 				{},
 			);
@@ -203,7 +204,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				expect.objectContaining({ channels: 'C111111111,C222222222' }),
 				{},
 				{ 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -228,7 +229,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				expect.objectContaining({ channels: 'C111111111,C222222222' }),
 				{},
 				{ 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -253,7 +254,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/files.list',
+				requestPath`/files.list`,
 				{},
 				expect.objectContaining({ types: 'images,pdfs' }),
 			);
@@ -274,7 +275,7 @@ describe('SlackV1 — multiOptions parameter normalization', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'files',
 				'GET',
-				'/files.list',
+				requestPath`/files.list`,
 				{},
 				expect.objectContaining({ types: 'images,pdfs' }),
 			);

@@ -4,21 +4,23 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 export async function apiTemplateIoApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs = {},
 	body = {},
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 		},
-		uri: `https://api.apitemplate.io/v1${endpoint}`,
+		uri: requestUrl`https://api.apitemplate.io/v1${endpoint}`,
 		method,
 		qs,
 		body,
@@ -52,7 +54,7 @@ export async function apiTemplateIoApiRequest(
 
 export async function loadResource(this: ILoadOptionsFunctions, resource: 'image' | 'pdf') {
 	const target = resource === 'image' ? ['JPEG', 'PNG'] : ['PDF'];
-	const templates = await apiTemplateIoApiRequest.call(this, 'GET', '/list-templates');
+	const templates = await apiTemplateIoApiRequest.call(this, 'GET', requestPath`/list-templates`);
 	const filtered = templates.filter(({ format }: { format: 'PDF' | 'JPEG' | 'PNG' }) =>
 		target.includes(format),
 	);

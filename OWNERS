@@ -29,6 +29,7 @@ packages/@n8n/db/                                       @n8n-io/core-execution
 packages/@n8n/typeorm/                                  @n8n-io/core-execution
 packages/@n8n/blob-storage/                             @n8n-io/core-execution
 packages/@n8n/engine/                                   @n8n-io/core-execution
+packages/@n8n/code-runtime-js/                          @n8n-io/core-execution required
 packages/@n8n/task-runner/                              @n8n-io/core-execution
 packages/@n8n/task-runner-python/                       @n8n-io/core-execution
 packages/@n8n/expression-runtime/                       @n8n-io/core-execution
@@ -419,6 +420,7 @@ packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts @n8n-
 .github/workflows/                                      @n8n-io/qa-dx required
 .github/workflows/community-pr-close-stale.yml          @n8n-io/community-engineering
 .github/scripts/                                        @n8n-io/qa-dx required
+.github/scripts/link-check/                             @n8n-io/nodes
 .github/actions/                                        @n8n-io/qa-dx required
 .github/poutine-rules/                                  @n8n-io/qa-dx required
 docker/                                                 @n8n-io/qa-dx

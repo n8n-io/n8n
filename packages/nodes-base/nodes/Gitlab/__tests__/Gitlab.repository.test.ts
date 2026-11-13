@@ -41,6 +41,24 @@ describe('Gitlab Node - Repository Operations', () => {
 		});
 	});
 
+	describe('repository:get with slashes in owner and repository', () => {
+		beforeAll(() => {
+			api().get('/projects/group%2Fsub%2Fproject').query(true).reply(200, {
+				id: 1,
+				name: 'test-repo',
+				path_with_namespace: 'test-owner/test-repo',
+				default_branch: 'main',
+				visibility: 'private',
+			});
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['repository.get.slashNames.workflow.json'],
+			customAssertions: () => expect(nock.isDone()).toBe(true),
+		});
+	});
+
 	describe('repository:get with a missing project', () => {
 		beforeEach(() => {
 			api()

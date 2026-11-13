@@ -1,0 +1,59 @@
+{
+	"name": "Autopilot contact ID by version",
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0101"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "a%2Bb%40example.com"
+			},
+			"name": "Get Contact V1",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0102",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "get",
+				"contactId": "a%2Bb%40example.com"
+			},
+			"name": "Get Contact V1.1",
+			"type": "n8n-nodes-base.autopilot",
+			"typeVersion": 1.1,
+			"position": [300, 200],
+			"id": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e0103",
+			"credentials": { "autopilotApi": { "id": "1", "name": "Autopilot account" } }
+		}
+	],
+	"pinData": {
+		"Get Contact V1": [{ "json": { "version": "1" } }],
+		"Get Contact V1.1": [{ "json": { "version": "1.1" } }]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Get Contact V1", "type": "main", "index": 0 },
+					{ "node": "Get Contact V1.1", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": { "executionOrder": "v1" },
+	"versionId": "c1a6f0a4-6f7a-4c55-9d43-4b5a1d6e01ff",
+	"meta": { "instanceId": "test" },
+	"id": "AutopilotVersions",
+	"tags": []
+}

@@ -134,6 +134,7 @@ test('should start a task runner and the policy modules', async () => {
 		'policy-infrastructure',
 		'type-availability-policies',
 	]);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), ['execution-ledger']);
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {

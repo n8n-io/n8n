@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { SPLUNK } from '../../../v1/types';
 import * as user from '../../../v2/actions/user';
@@ -36,7 +37,7 @@ describe('Splunk, user resource', () => {
 		const responseData = await user.create.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/services/authentication/users',
+			requestPath`/services/authentication/users`,
 			{ name: 'John Doe', password: 'password', roles: ['role1', 'role2'] },
 		);
 
@@ -51,28 +52,50 @@ describe('Splunk, user resource', () => {
 
 	test('deleteUser operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 		executeFunctions.getNodeParameter.mockReturnValue('12345');
 		(transport.splunkApiRequest as Mock).mockReturnValue({});
 		const responseData = await user.deleteUser.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/services/authentication/users/12345',
+			requestPath`/services/authentication/users/12345`,
 		);
 		expect(responseData).toEqual({ success: true });
 	});
 
 	test('get operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 		executeFunctions.getNodeParameter.calledWith('userId', 0).mockReturnValue('12345');
 
 		(transport.splunkApiJsonRequest as Mock).mockReturnValue([{ test: 'test' }]);
 		const responseData = await user.get.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/authentication/users/12345',
+			requestPath`/services/authentication/users/12345`,
 		);
 		expect(responseData).toEqual([{ test: 'test' }]);
 	});
+
+	test.each([
+		[2, 'My Item'],
+		[2.1, 'My%20Item'],
+	])(
+		'get operation sends the id as entered from version 2.1 (version %s)',
+		async (typeVersion, id) => {
+			const executeFunctions = mock<IExecuteFunctions>();
+			executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+			executeFunctions.getNodeParameter.calledWith('userId', 0).mockReturnValue('My%20Item');
+			(transport.splunkApiJsonRequest as Mock).mockReturnValue([]);
+
+			await user.get.execute.call(executeFunctions, 0);
+
+			expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/services/authentication/users/${id}`,
+			);
+		},
+	);
 
 	test('getAll operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
@@ -82,7 +105,7 @@ describe('Splunk, user resource', () => {
 		const responseData = await user.getAll.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiJsonRequest).toHaveBeenCalledWith(
 			'GET',
-			'/services/authentication/users',
+			requestPath`/services/authentication/users`,
 			{},
 			{ count: 0 },
 		);
@@ -91,6 +114,7 @@ describe('Splunk, user resource', () => {
 
 	test('update operation', async () => {
 		const executeFunctions = mock<IExecuteFunctions>();
+		executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
 		executeFunctions.getNodeParameter
 			.calledWith('updateFields', 0)
 			.mockReturnValue({ roles: ['role1', 'role2'], email: 'testW@example.com' });
@@ -112,7 +136,7 @@ describe('Splunk, user resource', () => {
 		const responseData = await user.update.execute.call(executeFunctions, 0);
 		expect(transport.splunkApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/services/authentication/users/12345',
+			requestPath`/services/authentication/users/12345`,
 			{ email: 'testW@example.com', roles: ['role1', 'role2'] },
 		);
 

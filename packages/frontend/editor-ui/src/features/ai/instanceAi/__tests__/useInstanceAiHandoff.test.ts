@@ -672,6 +672,27 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('preserves a mounted draft runtime when its target metadata write fails', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+				undefined,
+				'draft-thread',
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.syncThread).toHaveBeenCalledWith('draft-thread', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.deleteThread).toHaveBeenCalledWith('draft-thread', {
+			silent: true,
+			preserveRuntime: true,
+		});
+	});
+
 	it('opens a thread with a composer draft without sending it', async () => {
 		const { openThreadWithDraft } = useInstanceAiHandoff();
 
