@@ -1,4 +1,4 @@
-import { skillSourceHealth } from '../utils/skill-source-health';
+import { canTakeCredential, skillSourceHealth } from '../utils/skill-source-health';
 
 describe('skillSourceHealth', () => {
 	it.each([
@@ -15,5 +15,16 @@ describe('skillSourceHealth', () => {
 		['unknown_reason', 'source_unavailable'],
 	])('shows the health for %s', (reason, expected) => {
 		expect(skillSourceHealth(reason)).toBe(expected);
+	});
+});
+
+describe('canTakeCredential', () => {
+	it.each([
+		[{ credentialRequired: true, credentialId: 'c', lastErrorReason: null }, true],
+		[{ credentialRequired: true, credentialId: null, lastErrorReason: null }, true],
+		[{ credentialRequired: false, credentialId: null, lastErrorReason: 'not_found' }, true],
+		[{ credentialRequired: false, credentialId: null, lastErrorReason: null }, false],
+	])('decides for %o', (source, expected) => {
+		expect(canTakeCredential(source)).toBe(expected);
 	});
 });

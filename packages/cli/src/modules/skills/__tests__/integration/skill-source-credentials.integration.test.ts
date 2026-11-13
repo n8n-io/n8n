@@ -796,7 +796,7 @@ describe('Skill Sync with credentials', () => {
 			expect(data.map(({ id }) => id)).not.toContain(otherTeamCredential.id);
 			await get(viewer, `${path}s`, 403);
 			await post(viewer, path, { credentialId: oauthCredential.id }, 403);
-			await post(member, path, { credentialId: oauthCredential.id }, 403);
+			await post(member, path, { credentialId: oauthCredential.id }, 404);
 			await post(editor, path, { credentialId: otherTeamCredential.id }, 403);
 			await post(editor, path, { credentialId: 'unknown' }, 403);
 			await post(
@@ -809,6 +809,26 @@ describe('Skill Sync with credentials', () => {
 			postHog.getFeatureFlags.mockResolvedValue({});
 			await get(editor, `${path}s`, 404);
 			await post(editor, path, { credentialId: oauthCredential.id }, 404);
+			await get(viewer, `${path}s`, 404);
+			await get(member, `${path}s`, 404);
+			await get(member, `/skill-sources/${sourceId}/credentials`, 404);
+		});
+
+		it('repairs a private source whose credential was deleted before credentialRequired existed', async () => {
+			const { sourceId } = await importPrivate();
+			// The migration backfill leaves this state, and the first check then fails.
+			await db().update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ credentialId: null, credentialRequired: false, lastErrorReason: 'not_found' },
+			);
+			expect((await sourceRow(editor, sourceId)).canReplaceCredential).toBe(true);
+
+			await post(editor, credentialPath(sourceId), { credentialId: teamCredential.id });
+
+			const stored = await db().findOneByOrFail(SkillSourceConnection, { id: sourceId });
+			expect(stored).toMatchObject({ credentialId: teamCredential.id, credentialRequired: true });
+			expect((await sourceRow(editor, sourceId)).health).toBe('connected');
 		});
 
 		it('replaces a Global source credential only with an admin-owned credential', async () => {
@@ -901,6 +921,15 @@ describe('Skill Sync with credentials', () => {
 			};
 
 			beforeEach(() => backoff().clear());
+
+			it('refuses a credential for a healthy public source', async () => {
+				const publicSource = await importPublic();
+				expect((await sourceRow(editor, publicSource)).canReplaceCredential).toBe(false);
+				await post(editor, credentialPath(publicSource), { credentialId: teamCredential.id }, 400);
+				expect(
+					(await db().findOneByOrFail(SkillSourceConnection, { id: publicSource })).credentialId,
+				).toBeNull();
+			});
 
 			it('still reads a source with a credential while public access waits', async () => {
 				const privateSource = (await importPrivate()).sourceId;

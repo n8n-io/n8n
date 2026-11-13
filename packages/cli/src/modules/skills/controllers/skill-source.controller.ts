@@ -6,18 +6,7 @@ import {
 	ReplaceSkillSourceCredentialDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import {
-	Body,
-	Delete,
-	Get,
-	GlobalScope,
-	Middleware,
-	Param,
-	Post,
-	ProjectScope,
-	Query,
-	RestController,
-} from '@n8n/decorators';
+import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -27,8 +16,8 @@ import { SkillSyncService } from '../services/skill-sync.service';
 /**
  * Skill Sync: connect a source, import its skills, check a source for updates, and stop syncing
  * one skill. The services check
- * the per-user Skill Sync flag again, for callers other than this controller. The source decides
- * access. Credential routes also check the scope in the URL.
+ * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
+ * scope of the source decides who may change it, after the flag gate answers 404.
  */
 @RestController('/skill-sources')
 export class SkillSourceController {
@@ -107,7 +96,6 @@ export class SkillSourceController {
 	}
 
 	@Get('/:sourceId/credentials')
-	@GlobalScope('skill:update')
 	async replacementCredentials(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -117,7 +105,6 @@ export class SkillSourceController {
 	}
 
 	@Post('/:sourceId/credential')
-	@GlobalScope('skill:update')
 	async replaceCredential(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -138,7 +125,7 @@ export class SkillSourceController {
 	}
 }
 
-/** Project-scoped credential changes use the project in the URL and check the source scope too. */
+/** Project credential routes. The service checks that the source belongs to the project in the URL. */
 @RestController('/projects/:projectId/skill-sources')
 export class ProjectSkillSourceCredentialController {
 	constructor(
@@ -156,7 +143,6 @@ export class ProjectSkillSourceCredentialController {
 	}
 
 	@Get('/:sourceId/credentials')
-	@ProjectScope('projectSkill:update')
 	async credentials(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -167,7 +153,6 @@ export class ProjectSkillSourceCredentialController {
 	}
 
 	@Post('/:sourceId/credential')
-	@ProjectScope('projectSkill:update')
 	async replace(
 		req: AuthenticatedRequest,
 		_res: Response,

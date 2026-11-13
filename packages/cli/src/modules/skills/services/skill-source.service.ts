@@ -19,7 +19,13 @@ import {
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UnexpectedError,
+} from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7, validate as isUuid } from 'uuid';
@@ -56,7 +62,7 @@ import {
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { skillPreview } from '../utils/skill-preview';
-import { skillSourceHealth } from '../utils/skill-source-health';
+import { canTakeCredential, skillSourceHealth } from '../utils/skill-source-health';
 import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
@@ -273,8 +279,7 @@ export class SkillSourceService {
 				missingSkills: missingLinks
 					.filter(({ sourceId }) => sourceId === source.id)
 					.flatMap(({ skillId }) => missingNames.get(skillId)?.name ?? []),
-				canReplaceCredential:
-					canReview(source) && (source.credentialRequired || source.credentialId !== null),
+				canReplaceCredential: canReview(source) && canTakeCredential(source),
 				canReview: canReview(source),
 				canDelete: canDelete(source),
 			};
@@ -346,6 +351,9 @@ export class SkillSourceService {
 		}
 		if (!(await this.skillAccess.canOnSource(user, source, 'replaceCredential'))) {
 			throw new ForbiddenError('You are not allowed to replace the credential of this source.');
+		}
+		if (!canTakeCredential(source)) {
+			throw new BadRequestError('This source reads a public repository and needs no credential.');
 		}
 		return { source, client };
 	}
