@@ -2227,6 +2227,11 @@ describe('TelemetryEventRelay', () => {
 				expected: { public_api: true, public_api_client: 'editor_ui' },
 			},
 			{
+				descriptionLength: 0,
+				publicApi: 'n8n_node',
+				expected: { public_api: true, public_api_client: 'n8n_node' },
+			},
+			{
 				descriptionLength: 18,
 				publicApi: 'other',
 				expected: { public_api: true, public_api_client: 'other' },

@@ -71,7 +71,10 @@ interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: { editor_ui: Record<string, number> };
+	endpoints_by_client: {
+		editor_ui: Record<string, number>;
+		n8n_node: Record<string, number>;
+	};
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
@@ -566,9 +569,9 @@ export class Telemetry {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
 			user_agents: {},
-			clients: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
@@ -576,10 +579,10 @@ export class Telemetry {
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
 
-		// Only editor UI calls are counted per endpoint for now to help keep event size down.
-		if (client === 'editor_ui') {
-			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
-			editorUiEndpoints[endpointKey] = (editorUiEndpoints[endpointKey] ?? 0) + 1;
+		// Calls from unidentified clients are not counted per endpoint to keep event size down.
+		if (client !== 'other') {
+			const clientEndpoints = entry.endpoints_by_client[client];
+			clientEndpoints[endpointKey] = (clientEndpoints[endpointKey] ?? 0) + 1;
 		}
 
 		if (user_agent) {

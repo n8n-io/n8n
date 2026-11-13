@@ -5,7 +5,5 @@ export const assistantSurfaceSchema = z
 	.describe('Assistant surface that acted. The settings area cannot fire this event');
 
 export const publicApiClientSchema = z
-	.enum(['editor_ui', 'other'])
-	.describe(
-		'Set when public_api is true. editor_ui when the n8n editor called the route, other for any other client.',
-	);
+	.enum(['editor_ui', 'n8n_node', 'other'])
+	.describe('Set when public_api is true. other is the default catch-all value.');
