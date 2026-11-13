@@ -114,6 +114,14 @@ export class OutboundRedactor {
 		if (key && isSensitiveKey(key)) return PLACEHOLDER;
 		if (typeof value === 'string') return this.scrub(value);
 		if (Array.isArray(value)) return value.map((item) => this.redactValue(item));
+		// Uploads and streams are not JSON: walking them would turn bytes into numbered keys.
+		if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
+			return `[binary body, ${value.byteLength} bytes]`;
+		}
+		if (value instanceof URLSearchParams) return this.scrub(value.toString());
+		if (isRecord(value) && !isPlainObject(value)) {
+			return `[${value.constructor?.name ?? 'non-JSON'} body]`;
+		}
 		if (isRecord(value)) {
 			return Object.fromEntries(
 				Object.entries(value).map(([childKey, child]) => [
@@ -151,4 +159,9 @@ function parseJsonObject(text: string): unknown {
 	} catch {
 		return undefined;
 	}
+}
+
+function isPlainObject(value: object): boolean {
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
 }

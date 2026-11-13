@@ -289,4 +289,31 @@ describe('SimulationSessionService', () => {
 		expect(second).toBe(first);
 		expect(backend.openWorld).toHaveBeenCalledTimes(1);
 	});
+
+	it('blocks a workflow tool of a test chat in queue mode, where the hooks do not reach workers', async () => {
+		const { service } = setup({ backend: llmBackend(), queueMode: true });
+		const session = await service.openForDraftRun(openInput);
+		const handler = vi.fn();
+
+		await expect(
+			session!.interceptor(
+				{
+					tool: { name: 'Create_ticket', description: '', metadata: { kind: 'workflow' }, handler },
+					toolCallId: 'tc-1',
+					input: {},
+				},
+				async () => await handler(),
+			),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('keeps the sessions of two agents apart when they share a chat ID', async () => {
+		const { service } = setup({ backend: llmBackend() });
+
+		const first = await service.openForDraftRun(openInput);
+		const second = await service.openForDraftRun({ ...openInput, agentId: 'agent-2' });
+
+		expect(second).not.toBe(first);
+	});
 });

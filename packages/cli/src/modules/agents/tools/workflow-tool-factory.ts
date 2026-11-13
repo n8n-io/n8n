@@ -37,7 +37,7 @@ import {
 	TimeoutExecutionCancelledError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -455,11 +455,16 @@ async function stopPausedInstrumentedRun(executionId: string, workflowId: string
 		const { ExecutionService } = await import('@/executions/execution.service.js');
 		await Container.get(ExecutionService).stop(executionId, [workflowId]);
 	} catch (error) {
+		// Not reported as a safe refusal: the paused run may still resume for real.
 		Container.get(Logger).error('Failed to stop a paused instrumented workflow run', {
 			executionId,
 			workflowId,
 			error: error instanceof Error ? error.message : String(error),
 		});
+		throw new UnexpectedError(
+			`The workflow paused, and its execution ${executionId} could not be stopped. Stop it in the executions list.`,
+			{ cause: error },
+		);
 	}
 }
 

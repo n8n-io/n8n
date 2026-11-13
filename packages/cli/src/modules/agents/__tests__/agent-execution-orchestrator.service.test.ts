@@ -2343,6 +2343,33 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it.each([
+		{ simulated: true, wakes: false },
+		{ simulated: false, wakes: true },
+	])(
+		'wakes pending background jobs after a draft turn only when it is not a test run (test run: $simulated)',
+		async ({ simulated, wakes }) => {
+			const { service, runtimeCacheService, wakeService } = makeService();
+			runtimeCacheService.getRuntime.mockResolvedValue(
+				makeRuntime([{ type: 'finish', finishReason: 'stop' }]),
+			);
+
+			await collect(
+				service.executeForChat({
+					agentId,
+					projectId,
+					message: 'hello',
+					user,
+					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+					simulation: vi.fn().mockResolvedValue(simulated ? mock<SimulationSession>() : undefined),
+				}),
+			);
+
+			if (wakes) expect(wakeService.onParentTurnFinished).toHaveBeenCalledWith('thread-1');
+			else expect(wakeService.onParentTurnFinished).not.toHaveBeenCalled();
+		},
+	);
+
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {
 			service,

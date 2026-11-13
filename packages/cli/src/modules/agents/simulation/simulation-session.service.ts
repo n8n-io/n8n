@@ -56,9 +56,10 @@ export class SimulationSessionService {
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		// A chat that is already a test run stays one, even if the flag reads off for a moment.
-		const cached = this.sessions.get(input.testChatId);
+		const key = sessionKey(input);
+		const cached = this.sessions.get(key);
 		if (cached) {
-			this.sessions.touch(input.testChatId);
+			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
 			cached.updateCapabilities(
 				await this.capabilitiesFor(await this.describeAgent(input.agentId, input.projectId)),
@@ -66,10 +67,10 @@ export class SimulationSessionService {
 			return cached;
 		}
 		// Overlapping turns of a new chat share one open, so the chat gets one world.
-		const opening = this.opening.get(input.testChatId);
+		const opening = this.opening.get(key);
 		if (opening) return await opening;
-		const open = this.openNew(input).finally(() => this.opening.delete(input.testChatId));
-		this.opening.set(input.testChatId, open);
+		const open = this.openNew(input).finally(() => this.opening.delete(key));
+		this.opening.set(key, open);
 		return await open;
 	}
 
@@ -106,7 +107,7 @@ export class SimulationSessionService {
 			capabilities,
 			queueMode: this.executionsConfig.mode === 'queue',
 		});
-		this.sessions.set(input.testChatId, session);
+		this.sessions.set(sessionKey(input), session);
 		return session;
 	}
 
@@ -262,4 +263,9 @@ interface DescribedAgent {
 	agent: SimulatedAgent;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
+}
+
+/** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
+function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
+	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
 }
