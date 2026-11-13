@@ -86,23 +86,19 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	})),
 }));
 
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
+// Workflow error nudge
 const nudge = vi.hoisted(() => ({
 	dismiss: vi.fn(),
 	release: vi.fn(),
 	trigger: vi.fn(),
 }));
 
-vi.mock(
-	'@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError',
-	() => ({
-		WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS: 'content-toast workflow-error-nudge-toast',
-		dismissWorkflowErrorNudge: nudge.dismiss,
-		releaseWorkflowErrorNudge: nudge.release,
-		useSurfaceAssistantOnWorkflowError: () => ({ triggerOnWorkflowError: nudge.trigger }),
-	}),
-);
-// EOF Experiment cleanup
+vi.mock('@/features/ai/instanceAi/workflowErrorNudge/composables/useWorkflowErrorNudge', () => ({
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS: 'content-toast workflow-error-nudge-toast',
+	dismissWorkflowErrorNudge: nudge.dismiss,
+	releaseWorkflowErrorNudge: nudge.release,
+	useWorkflowErrorNudge: () => ({ triggerOnWorkflowError: nudge.trigger }),
+}));
 
 describe('refreshWalletAfterBilledRun()', () => {
 	beforeEach(() => {
@@ -1119,7 +1115,6 @@ describe('manual execution stats tracking', () => {
 	});
 });
 
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 describe('workflow error nudge', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());

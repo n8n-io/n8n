@@ -1125,12 +1125,22 @@ describe('Promote and Apply', () => {
 		]);
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).not.toBeNull();
 
-		const result = await service.continueApply(environments.apply.id, owner, {
-			expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
-			confirmDestructiveChanges: true,
-		});
+		const deleteProject = vi.spyOn(projectService, 'deleteProject');
+		const result = await service.continueApply(
+			environments.apply.id,
+			owner,
+			{
+				expectedSource: { environmentId: blocked.environmentId, ...blocked.git },
+				confirmDestructiveChanges: true,
+			},
+			'editor_ui',
+		);
 		assert(result.status === 'applied');
 
+		expect(deleteProject).toHaveBeenCalledWith(owner, removedProject.id, {
+			publicApi: 'editor_ui',
+		});
+		deleteProject.mockRestore();
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
 		expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({
 			name: 'Orders',

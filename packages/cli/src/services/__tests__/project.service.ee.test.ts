@@ -194,9 +194,11 @@ describe('ProjectService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				projectService.addUsersToProject(user, projectId, [
-					{ userId: '1234', role: 'project:admin' },
-				]),
+				projectService.addUsersToProject({
+					user,
+					projectId,
+					relations: [{ userId: '1234', role: 'project:admin' }],
+				}),
 			).rejects.toThrowError("Can't add users to personal projects.");
 		});
 
@@ -210,9 +212,11 @@ describe('ProjectService', () => {
 
 			// ACT & ASSERT
 			await expect(
-				projectService.addUsersToProject(user, projectId, [
-					{ userId: '1234', role: PROJECT_OWNER_ROLE_SLUG },
-				]),
+				projectService.addUsersToProject({
+					user,
+					projectId,
+					relations: [{ userId: '1234', role: PROJECT_OWNER_ROLE_SLUG }],
+				}),
 			).rejects.toThrowError("Can't add a personalOwner to a team project.");
 		});
 
@@ -231,10 +235,15 @@ describe('ProjectService', () => {
 			roleService.isRoleLicensed.mockReturnValue(true);
 
 			// ACT
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'existing', role: 'project:admin' },
-				{ userId: 'newcomer', role: 'project:viewer' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [
+					{ userId: 'existing', role: 'project:admin' },
+					{ userId: 'newcomer', role: 'project:viewer' },
+				],
+				publicApi: 'editor_ui',
+			});
 
 			// ASSERT: mailer called once, only for the newcomer
 			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
@@ -242,6 +251,7 @@ describe('ProjectService', () => {
 				sharer: user,
 				newSharees: [{ userId: 'newcomer', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
+				publicApi: 'editor_ui',
 			});
 		});
 
@@ -256,10 +266,14 @@ describe('ProjectService', () => {
 				instanceUser('member', 'global:member'),
 			]);
 
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'admin', role: 'project:viewer' },
-				{ userId: 'member', role: 'project:viewer' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [
+					{ userId: 'admin', role: 'project:viewer' },
+					{ userId: 'member', role: 'project:viewer' },
+				],
+			});
 
 			expect(projectRelationRepository.save).toHaveBeenCalledWith([
 				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
@@ -269,6 +283,7 @@ describe('ProjectService', () => {
 				sharer: user,
 				newSharees: [{ userId: 'member', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
+				publicApi: false,
 			});
 		});
 
@@ -286,9 +301,11 @@ describe('ProjectService', () => {
 			roleService.isRoleLicensed.mockReturnValue(true);
 
 			// ACT
-			await projectService.addUsersToProject(user, projectId, [
-				{ userId: 'existing', role: 'project:admin' },
-			]);
+			await projectService.addUsersToProject({
+				user,
+				projectId,
+				relations: [{ userId: 'existing', role: 'project:admin' }],
+			});
 
 			// ASSERT
 			expect(userManagementMailer.notifyProjectShared).not.toHaveBeenCalled();

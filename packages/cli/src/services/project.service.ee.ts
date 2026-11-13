@@ -39,6 +39,7 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
@@ -146,7 +147,10 @@ export class ProjectService {
 	async deleteProject(
 		user: User,
 		projectId: string,
-		{ migrateToProject }: { migrateToProject?: string } = {},
+		{
+			migrateToProject,
+			publicApi = false,
+		}: { migrateToProject?: string; publicApi?: PublicApiCaller } = {},
 	) {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
@@ -218,7 +222,7 @@ export class ProjectService {
 			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId, true);
+				await workflowService.delete(user, sharedWorkflow.workflowId, true, { publicApi });
 			}
 		}
 
@@ -610,12 +614,14 @@ export class ProjectService {
 		sharer: User,
 		project: Project,
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>,
+		publicApi: PublicApiCaller,
 	) {
 		if (newSharees.length === 0) return;
 		await this.userManagementMailer.notifyProjectShared({
 			sharer,
 			newSharees,
 			project: { id: project.id, name: project.name },
+			publicApi,
 		});
 	}
 
@@ -635,11 +641,17 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUsersToProject(
-		user: User,
-		projectId: string,
-		relations: Array<{ userId: string; role: AssignableProjectRole }>,
-	) {
+	async addUsersToProject({
+		user,
+		projectId,
+		relations,
+		publicApi = false,
+	}: {
+		user: User;
+		projectId: string;
+		relations: Array<{ userId: string; role: AssignableProjectRole }>;
+		publicApi?: PublicApiCaller;
+	}) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
@@ -670,7 +682,7 @@ export class ProjectService {
 			})),
 		);
 
-		await this.notifyNewSharees(user, project, newSharees);
+		await this.notifyNewSharees(user, project, newSharees, publicApi);
 		await this.emitProjectMembersUpdated(user, projectId);
 	}
 
@@ -735,7 +747,7 @@ export class ProjectService {
 			added.push(...toInsert);
 		}
 
-		await this.notifyNewSharees(user, project, added);
+		await this.notifyNewSharees(user, project, added, false);
 		await this.emitProjectMembersUpdated(user, project.id);
 
 		return { project, added, conflicts };

@@ -12,6 +12,7 @@ import type { OperationContext, Transaction } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { KnowledgeFile } from '../../entities/knowledge-file.entity';
+import { KnowledgeConfig } from '../../knowledge.config';
 import type { KnowledgeConsumerScope } from '../../knowledge-consumer-scope';
 import { createKnowledgeTelemetryHmac } from '../../telemetry/helpers';
 import type { KnowledgeFileRepository } from '../../repositories/knowledge-file.repository';
@@ -165,12 +166,14 @@ describe('KnowledgeFileService', () => {
 	let logger: Mocked<Logger>;
 	let service: KnowledgeFileService;
 
-	function makeService(diagnosticsEnabled = true) {
+	function makeService(diagnosticsEnabled = true, limits: Partial<KnowledgeConfig> = {}) {
 		return new KnowledgeFileService(
 			agentFileRepository as unknown as KnowledgeFileRepository,
 			agentKnowledgeFileStore,
 			mock<InstanceSettings>({ hmacSignatureSecret: instanceSecret }),
 			mock<GlobalConfig>({ diagnostics: { enabled: diagnosticsEnabled } }),
+			// A fresh instance keeps the defaults; the getters derive the byte limits from the overrides.
+			Object.assign(new KnowledgeConfig(), limits),
 			logger,
 		);
 	}
@@ -508,6 +511,115 @@ describe('KnowledgeFileService', () => {
 		).rejects.toThrow('Knowledge base limit reached');
 		expect(agentFileRepository.all()).toHaveLength(1);
 		expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
+	});
+
+	it('states the default total size limit in gigabytes', async () => {
+		await agentFileRepository.save(
+			makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+		);
+
+		await expect(
+			service.uploadFiles(scope, [makeMulterFile({ size: 1 })], reserveRow),
+		).rejects.toThrow("Knowledge base limit reached. The total size can't be larger than 1.5 GB.");
+	});
+
+	describe('configured limits', () => {
+		it('rejects a total above a lower configured limit that the default would accept, stated in megabytes', async () => {
+			service = makeService(true, { maxTotalSizeMb: 500 });
+			await agentFileRepository.save(makeAgentFile({ fileSizeBytes: 500 * 1024 * 1024 }));
+
+			await expect(
+				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], reserveRow),
+			).rejects.toThrow(
+				"Knowledge base limit reached. The total size can't be larger than 500 MB.",
+			);
+			expect(agentKnowledgeFileStore.write).not.toHaveBeenCalled();
+		});
+
+		it('states a configured limit above one gigabyte in gigabytes', async () => {
+			service = makeService(true, { maxTotalSizeMb: 2000 });
+			await agentFileRepository.save(makeAgentFile({ fileSizeBytes: 2000 * 1024 * 1024 }));
+
+			await expect(
+				service.uploadFiles(scope, [makeMulterFile({ size: 1 })], reserveRow),
+			).rejects.toThrow(
+				"Knowledge base limit reached. The total size can't be larger than 1.95 GB.",
+			);
+		});
+
+		it('accepts a total above the default limit when the configured limit is higher', async () => {
+			service = makeService(true, { maxTotalSizeMb: 2000 });
+			await agentFileRepository.save(
+				makeAgentFile({ fileSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES }),
+			);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const tempFilePath = path.join(tempDirectory, 'notes.txt');
+				await writeFile(tempFilePath, 'x');
+
+				await expect(
+					service.uploadFiles(
+						scope,
+						[makeMulterFile({ originalname: 'notes.txt', path: tempFilePath, size: 1 })],
+						reserveRow,
+					),
+				).resolves.toHaveLength(1);
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
+
+		it('rejects PDF text above a lower configured file size limit', async () => {
+			service = makeService(true, { maxFileSizeMb: 1 });
+			loadMock.mockResolvedValue([{ pageContent: 'a'.repeat(1024 * 1024 + 1) }]);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'large.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
+
+				await expect(
+					service.uploadFiles(
+						scope,
+						[
+							makeMulterFile({
+								originalname: 'large.pdf',
+								mimetype: 'application/pdf',
+								path: pdfFilePath,
+							}),
+						],
+						reserveRow,
+					),
+				).rejects.toThrow('The text in "large.pdf" is larger than 1 MB');
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
+
+		it('accepts PDF text above the default file size limit when the configured limit is higher', async () => {
+			service = makeService(true, { maxFileSizeMb: 50 });
+			loadMock.mockResolvedValue([{ pageContent: 'a'.repeat(MAX_AGENT_FILE_SIZE_BYTES + 1) }]);
+			const tempDirectory = await mkdtemp(path.join(tmpdir(), 'agent-knowledge-upload-'));
+			try {
+				const pdfFilePath = path.join(tempDirectory, 'large.pdf');
+				await writeFile(pdfFilePath, '%PDF-1.4');
+
+				await expect(
+					service.uploadFiles(
+						scope,
+						[
+							makeMulterFile({
+								originalname: 'large.pdf',
+								mimetype: 'application/pdf',
+								path: pdfFilePath,
+							}),
+						],
+						reserveRow,
+					),
+				).resolves.toHaveLength(1);
+			} finally {
+				await rm(tempDirectory, { recursive: true, force: true });
+			}
+		});
 	});
 
 	describe('rejection reasons', () => {

@@ -2443,11 +2443,12 @@ describe('PromotionsService', () => {
 		});
 
 		it('imports n8n with the fixed policy and counts the result by status', async () => {
-			const result = await service.apply(ENVIRONMENT_ID, actor);
+			const result = await service.apply(ENVIRONMENT_ID, actor, undefined, 'editor_ui');
 
 			expect(n8nPackagesService.planPackage).toHaveBeenCalledWith(
 				{
 					user: actor,
+					publicApi: 'editor_ui',
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
@@ -2777,7 +2778,12 @@ describe('PromotionsService', () => {
 				{ workflowIds: ['w1'], selectedWorkflowIds: ['w1'], deletedWorkflowIds: [] },
 				{ workflowIds: ['deleted'], selectedWorkflowIds: [], deletedWorkflowIds: ['deleted'] },
 			])('classifies $workflowIds for import or deletion', async (selection) => {
-				await service.applyProjectSelection('p1', actor, { workflowIds: selection.workflowIds });
+				await service.applyProjectSelection(
+					'p1',
+					actor,
+					{ workflowIds: selection.workflowIds },
+					'other',
+				);
 
 				expect(inventoryReader.read).toHaveBeenCalledExactlyOnceWith(
 					expect.any(GitCommitPackageReader),
@@ -2794,6 +2800,7 @@ describe('PromotionsService', () => {
 				expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledWith(
 					{
 						user: actor,
+						publicApi: 'other',
 						projectConflictPolicy: 'overwrite',
 						overwriteDeletionPolicy: 'hard-delete',
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',

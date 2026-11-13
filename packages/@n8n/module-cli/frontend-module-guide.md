@@ -254,8 +254,9 @@ runDataDisplayModes: [
 ],
 ```
 
-- `id` is also the saved display mode and the telemetry `view` value. Do not change it after a
-  release. The ids in `BUILT_IN_DISPLAY_MODES` are reserved.
+- `id` must be lowercase kebab-case, such as `chart` or `geo-map`. It is also the saved display
+  mode and the telemetry `view` value. Do not change it after a release. The ids in
+  `BUILT_IN_DISPLAY_MODES` are reserved.
 - `canRender` decides if the select offers the mode. It gets all items of the selected run, not
   filtered by search. It must be synchronous and cheap, because it runs on every data change.
 - `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,

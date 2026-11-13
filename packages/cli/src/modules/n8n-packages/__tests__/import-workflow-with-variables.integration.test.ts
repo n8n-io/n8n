@@ -116,7 +116,7 @@ describe('variable error consumers', () => {
 		await createProjectVariable('MATCHED', 'same-value', project);
 		const orchestrator = Container.get(ImportOrchestrator);
 		const input: ImportOrchestrationInput = {
-			context: { user: owner, projectId: project.id, folderId: null },
+			context: { user: owner, projectId: project.id, folderId: null, publicApi: false },
 			folders: [],
 			workflows: [],
 			credentialRequest: {

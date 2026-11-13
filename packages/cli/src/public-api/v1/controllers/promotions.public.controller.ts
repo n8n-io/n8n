@@ -75,6 +75,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 const tags = ['Promotions'];
 
@@ -590,7 +591,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async applyPackage(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
@@ -600,6 +601,7 @@ export class PromotionsPublicController {
 			promotionEnvironmentId,
 			req.user,
 			input.expectedSource,
+			req.publicApiClient,
 		);
 	}
 
@@ -620,7 +622,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async continueApplyPackage(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
@@ -630,6 +632,7 @@ export class PromotionsPublicController {
 			promotionEnvironmentId,
 			req.user,
 			input,
+			req.publicApiClient,
 		);
 	}
 
@@ -744,12 +747,17 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async applyProjectSelection(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: ApplySelectionDto,
 	): Promise<ApplyPackageResultDto> {
-		return await (await this.promotionsService()).applyProjectSelection(projectId, req.user, input);
+		return await (await this.promotionsService()).applyProjectSelection(
+			projectId,
+			req.user,
+			input,
+			req.publicApiClient,
+		);
 	}
 
 	@Post('/projects/:projectId/apply/continue')
@@ -770,7 +778,7 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(423)
 	@ApiErrorResponse(503)
 	async continueApplyProjectSelection(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: ContinueApplySelectionDto,
@@ -779,6 +787,7 @@ export class PromotionsPublicController {
 			projectId,
 			req.user,
 			input,
+			req.publicApiClient,
 		);
 	}
 
