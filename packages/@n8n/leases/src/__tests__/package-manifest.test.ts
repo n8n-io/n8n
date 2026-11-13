@@ -17,8 +17,8 @@ const importSpecifiers = (code: string) => {
 	const stripped = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 	const patterns = [
 		/(?:import|export)\b[^'"]*?\bfrom\s*['"]([^'"]+)['"]/g,
-		/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-		/\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+		/\bimport\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g,
+		/\brequire\s*\(\s*['"`]([^'"`]+)['"`]\s*\)/g,
 		/\bimport\s+['"]([^'"]+)['"]/g,
 	];
 	return patterns.flatMap((pattern) => [...stripped.matchAll(pattern)].map((match) => match[1]));
