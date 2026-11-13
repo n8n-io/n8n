@@ -353,7 +353,7 @@ function aggregateService(dir: string): IDataTableProjectAggregateService {
 		readdirSync(dir)
 			.filter((f) => f.endsWith('.json'))
 			.map((f) => readTable(dir, f.slice(0, -'.json'.length)));
-	const asTable = (t: StoredTable): DataTable => ({
+	const asTable = (t: StoredTable): DataTable & { project: Record<string, unknown> } => ({
 		id: t.id,
 		name: t.name,
 		columns: t.columns.map((c, index) => ({
@@ -366,6 +366,8 @@ function aggregateService(dir: string): IDataTableProjectAggregateService {
 		createdAt: new Date(0),
 		updatedAt: new Date(0),
 		projectId: 'fallback-host',
+		// n8n's queries join the project (`id`, `name`, `type`, `icon`), also for a new table.
+		project: { id: 'fallback-host', name: 'fallback-host', type: 'team', icon: null },
 	});
 	return {
 		getProjectId: () => 'fallback-host',
@@ -389,12 +391,7 @@ function aggregateService(dir: string): IDataTableProjectAggregateService {
 			const data = all()
 				.filter((t) => !names || names.some((n) => t.name.toLowerCase().includes(n)))
 				.filter((t) => !ids || ids.includes(t.id))
-				// n8n's list query joins the project (`id`, `name`, `type`, `icon`); "create if not
-				// exists" returns that row, so the keys must match.
-				.map((t) => ({
-					...asTable(t),
-					project: { id: 'fallback-host', name: 'fallback-host', type: 'team', icon: null },
-				}));
+				.map(asTable);
 			const skip = options.skip ?? 0;
 			const page =
 				options.take === undefined ? data.slice(skip) : data.slice(skip, skip + options.take);

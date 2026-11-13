@@ -125,7 +125,11 @@ describe('fileDataTableProvider list', () => {
 			{} as Parameters<typeof provider.getDataTableAggregateProxy>[0],
 			{} as Parameters<typeof provider.getDataTableAggregateProxy>[1],
 		);
-		await aggregate.createDataTable({ name: 'ledger', columns: [{ name: 'a', type: 'string' }] });
+		const created = await aggregate.createDataTable({
+			name: 'ledger',
+			columns: [{ name: 'a', type: 'string' }],
+		});
+		expect(Object.keys(created)).toContain('project');
 		const { data } = await aggregate.getManyAndCount({ filter: { name: 'ledger' } });
 		expect(Object.keys(data[0]).sort()).toEqual([
 			'columns',
