@@ -469,6 +469,19 @@ describe('advancing after a decision', () => {
 			expect(router.currentRoute.value.fullPath).toBe('/inbox/reviews/req-2');
 		});
 
+		it('selects nothing when the user clears the selection while the page loads', async () => {
+			const nextPage = createDeferredPromise<ListInboxResponse>();
+			vi.mocked(inboxApi.fetchInbox).mockReturnValue(nextPage.promise);
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			closeLastResult();
+			await waitAllPromises();
+			getByTestId('clear-review').click();
+			nextPage.resolve(inboxPage([nextResult]));
+			await waitAllPromises();
+			expect(router.currentRoute.value.fullPath).toBe('/inbox');
+		});
+
 		it('shows the no-selection state when the next page fails', async () => {
 			vi.mocked(inboxApi.fetchInbox).mockRejectedValue(new Error('offline'));
 			const { getByText } = renderComponent();
