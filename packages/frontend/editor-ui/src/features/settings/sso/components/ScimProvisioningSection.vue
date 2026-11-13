@@ -113,7 +113,7 @@ function onGenerateClick() {
 }
 
 // The SSO page saves and discards SCIM with the SAML and OIDC settings.
-defineExpose({ hasUnsavedChanges, saving, save, discard });
+defineExpose({ hasUnsavedChanges, saving, save, discard, reload: load });
 
 onMounted(load);
 

@@ -107,6 +107,12 @@ describe('ScimProvisioningSection', () => {
 		expect(await findByTestId('sso-scim-preview-badge')).toHaveTextContent('Preview');
 	});
 
+	it('names the select for assistive technology', async () => {
+		const { findByRole } = renderComponent({ props: { ssoEnabled: true } });
+
+		expect(await findByRole('combobox', { name: 'SCIM provisioning' })).toBeInTheDocument();
+	});
+
 	it('does not save the select value on change', async () => {
 		const { getByTestId } = renderComponent({ props: { ssoEnabled: true } });
 		await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());

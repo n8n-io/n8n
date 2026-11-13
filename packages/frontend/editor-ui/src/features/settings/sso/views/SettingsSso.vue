@@ -116,10 +116,15 @@ async function saveAll(): Promise<boolean> {
 		const saved = await activeForm.value.onSave();
 		if (!saved) return false;
 	}
-	if (scimSectionRef.value?.hasUnsavedChanges) {
-		return await scimSectionRef.value.save();
+	const scimSection = scimSectionRef.value;
+	if (!scimSection) return true;
+	// Turning SSO off also turns SCIM off on the backend. Drop the pending SCIM
+	// change, which the backend would reject, and show the saved state.
+	if (!isSsoLoginEnabled.value) {
+		await scimSection.reload();
+		return true;
 	}
-	return true;
+	return scimSection.hasUnsavedChanges ? await scimSection.save() : true;
 }
 
 async function onSaveBarSave() {

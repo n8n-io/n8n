@@ -964,6 +964,45 @@ describe('SettingsSso View', () => {
 			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
 		});
 
+		it('does not send a SCIM change when the same save turns SSO off', async () => {
+			setUpScim();
+			confirmMessage.mockResolvedValue('confirm');
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isSamlLoginEnabled = true;
+			ssoStore.samlConfig = { ...samlConfig, loginEnabled: true };
+			ssoStore.getSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: true });
+			// The real store reads the saved login state again after a save.
+			ssoStore.saveSamlConfig.mockImplementation(async () => {
+				ssoStore.isSamlLoginEnabled = false;
+				return { ...samlConfig, loginEnabled: false };
+			});
+
+			const { getByTestId } = renderView();
+			await waitFor(() =>
+				expect(getByTestId('sso-provider-url')).toHaveValue(samlConfig.metadataUrl),
+			);
+			await chooseScimValue(getByTestId, 'Enabled');
+
+			await userEvent.click(within(getByTestId('sso-toggle')).getByRole('combobox'));
+			const disabledOptions = await screen.findAllByRole('option', { name: 'Disabled' });
+			await userEvent.click(disabledOptions[0]);
+			const getScimConfigCalls = vi.mocked(getScimConfig).mock.calls.length;
+			// In the browser the SCIM reload runs while the save goes on, so it ends late.
+			const savedScimConfig = await vi.mocked(getScimConfig).getMockImplementation()!();
+			vi.mocked(getScimConfig).mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(() => resolve(savedScimConfig), 100)),
+			);
+
+			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+
+			await waitFor(() => expect(ssoStore.saveSamlConfig).toHaveBeenCalled());
+			await waitFor(() =>
+				expect(vi.mocked(getScimConfig).mock.calls.length).toBeGreaterThan(getScimConfigCalls),
+			);
+			expect(setScimEnabled).not.toHaveBeenCalled();
+			vi.mocked(getScimConfig).mockResolvedValue(savedScimConfig);
+		});
+
 		it('discards the SCIM select change', async () => {
 			setUpScim();
 			ssoStore.isSamlLoginEnabled = true;
