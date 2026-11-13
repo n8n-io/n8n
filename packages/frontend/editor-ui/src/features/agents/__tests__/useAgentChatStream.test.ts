@@ -6018,6 +6018,92 @@ describe('useAgentChatStream — first message of a new session', () => {
 		hook.detachStream();
 	});
 
+	it('shows the message once when history holds its run before the run starts', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		// The run starts on the server before its stream event reaches the chat.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'server-id',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+					executionId: 'A',
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: 'A',
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+
+		stream.emit([
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
+	it('shows the message once when its run starts before the history refresh', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		// Like the panel, an accepted send clears the credits stop, which rebuilds the list.
+		const sending = hook.sendMessage('Hello', undefined, () =>
+			hook.clearBudgetNotices(new Set(['budget.credits'])),
+		);
+		stream.emit([
+			{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' },
+			{
+				type: 'execution-started',
+				executionId: 'A',
+				sessionId: 'thread-new',
+				inputMessageIds: ['server-id'],
+			},
+		]);
+		await sending;
+		await flushPromises();
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello', executionId: 'A' }),
+		]);
+		stream.close([{ type: 'done', executionId: 'A' }]);
+		hook.detachStream();
+	});
+
 	it('moves the message to the queue when the stream ends before its run starts', async () => {
 		let stream!: ReturnType<typeof makeControllableSseResponse>;
 		vi.stubGlobal(

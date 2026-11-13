@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onScopeDispose, shallowRef, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, shallowRef, toRaw, type Ref } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
@@ -159,6 +159,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * chat does not flash empty. The run takes the message over, or the send removes it.
 	 */
 	const earlySend = shallowRef<{ message: ChatMessage; queueId?: string }>();
+	// A list rebuilt with `map` or `filter` holds proxies, which `indexOf` does not match.
+	const indexOfMessage = (message: ChatMessage) =>
+		messages.value.findIndex((item) => toRaw(item) === toRaw(message));
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	/**
@@ -299,10 +302,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						extensions,
 					),
 				);
-				// History holds a message only after its run starts.
+				// A new session's history holds its first message only after its run starts.
 				const early = earlySend.value?.message;
 				messages.value =
-					early && !history.some((message) => message.id === early.id)
+					early && !history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER)
 						? [...history, early]
 						: history;
 				isRecovering.value = false;
@@ -1097,7 +1100,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					// The run takes the place of the message that its send showed early.
 					const isEarly = earlySend.value?.message === session.userMessage;
 					if (isEarly) earlySend.value = undefined;
-					const earlyIndex = isEarly ? messages.value.indexOf(session.userMessage) : -1;
+					const earlyIndex = isEarly ? indexOfMessage(session.userMessage) : -1;
 					if (earlyIndex >= 0) {
 						messages.value.splice(earlyIndex, 1, ...(started ? [] : [startedMessage]));
 					} else if (!started) {
@@ -1932,7 +1935,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					const early = earlySend.value;
 					if (early?.message === userMessage) {
 						earlySend.value = undefined;
-						const index = messages.value.indexOf(userMessage);
+						const index = indexOfMessage(userMessage);
 						if (index >= 0) messages.value.splice(index, 1);
 						// The queue list hid the accepted message while the chat showed it.
 						if (early.queueId) void refreshQueue();
