@@ -57,6 +57,7 @@ import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentServiceAccountService } from './agent-service-account.service';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -183,6 +184,7 @@ export class AgentsService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
 	/**
@@ -326,6 +328,7 @@ export class AgentsService {
 		options: DraftAgentCreateOptions,
 	) {
 		return await this.transactionRunner.run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			// Insert-only: a reused client id must not overwrite the winning draft.
 			await this.agentRepository.insertNew(agent, ctx);
 			if (options.tagIds !== undefined) {
@@ -459,6 +462,7 @@ export class AgentsService {
 			{ projectId },
 		);
 		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			try {
 				await this.agentRepository.insertNew(agent, ctx);
 			} catch (error) {
