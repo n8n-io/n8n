@@ -62,7 +62,7 @@ export interface ProviderCapabilities {
 	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
 	promptCaching: false | 'ttl' | true;
 	/** Whether the provider has selectable processing tiers (`config.serviceTier`). OpenAI only. */
-	serviceTier?: boolean;
+	serviceTier: boolean;
 	webSearch: false | NativeWebSearchCanonicalTool;
 	providerTools: ReadonlyArray<NativeWebSearchCanonicalTool | 'openai.image_generation'>;
 	/**
@@ -77,6 +77,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
 		thinking: 'budgetTokens',
 		promptCaching: 'ttl',
+		serviceTier: false,
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
 		attachments: { image: true, pdf: true, audio: false },
@@ -87,6 +88,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	'google-vertex-anthropic': {
 		thinking: 'budgetTokens',
 		promptCaching: 'ttl',
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: { image: true, pdf: true, audio: false },
@@ -102,6 +104,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	google: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: { image: true, pdf: true, audio: true },
@@ -109,6 +112,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	xai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -116,6 +120,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	groq: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -123,6 +128,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	deepseek: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -130,6 +136,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	mistral: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -137,6 +144,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	openrouter: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -145,6 +153,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	custom: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -152,6 +161,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	moonshotai: {
 		thinking: 'reasoningEffort',
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -159,6 +169,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	alibaba: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -166,6 +177,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	minimax: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -173,6 +185,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	cohere: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
@@ -180,6 +193,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	ollama: {
 		thinking: false,
 		promptCaching: false,
+		serviceTier: false,
 		webSearch: false,
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
