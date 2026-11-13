@@ -38,6 +38,8 @@ An import that unpublishes a workflow requires `workflow:deactivate`.
 An import that archives a published workflow requires only `workflow:delete`.
 If your pipeline imports packages that publish or unpublish workflows, add these scopes to its API key.
 
+Package imports that create a missing credential now require the `credential:create` API key scope, also under the default `create-stub` mode.
+
 ## Promotions (preview)
 
 The change preview endpoint `GET /api/v1/promotions/projects/{projectId}/changes/{direction}` no longer returns `changes`.
