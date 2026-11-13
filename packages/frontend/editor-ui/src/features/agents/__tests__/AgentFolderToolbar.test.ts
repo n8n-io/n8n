@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { N8nDropdownMenu } from '@n8n/design-system';
 import AgentFolderToolbar from '../components/AgentFolderToolbar.vue';
 
 vi.mock('@/features/core/folders/components/ProjectBreadcrumb.vue', () => ({
@@ -14,6 +15,7 @@ vi.mock('@n8n/design-system', () => ({
 			'<nav><slot name="prepend" /><button v-for="item in items" :key="item.id" :data-resourceid="item.id" @click="$emit(\'item-selected\', item)">{{ item.label }}</button></nav>',
 	},
 	N8nDropdownMenu: {
+		props: ['items'],
 		emits: ['select'],
 		template: '<button data-test-id="actions" @click="$emit(\'select\', \'create\')" />',
 	},
@@ -34,11 +36,13 @@ function render(props: { folderId?: string | null; canCreate?: boolean } = {}) {
 }
 
 describe('AgentFolderToolbar', () => {
-	it('shows the project and no folder creation button at the project root', () => {
+	it('shows the project and folder actions at the project root', () => {
 		const wrapper = render();
 
 		expect(wrapper.find('[data-test-id="home-project"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-folder-create"]').exists()).toBe(false);
+		expect(wrapper.getComponent(N8nDropdownMenu).props('items')).toEqual([
+			expect.objectContaining({ id: 'create' }),
+		]);
 	});
 
 	it('creates a folder from the breadcrumb actions', async () => {

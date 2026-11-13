@@ -44,7 +44,6 @@ const rootStore = useRootStore();
 const toast = useToast();
 const { projectName, projectIcon } = useAgentProjectBreadcrumb(computed(() => props.projectId));
 const name = ref('');
-const target = ref(PROJECT_ROOT);
 const removal = ref('');
 const deleteConfirmText = ref('');
 const busy = ref(false);
@@ -145,7 +144,6 @@ watch(
 		if (!action) return;
 
 		name.value = action.name ?? '';
-		target.value = action.parentFolderId ?? PROJECT_ROOT;
 		removal.value = '';
 		deleteConfirmText.value = '';
 		error.value = '';
@@ -175,11 +173,6 @@ watch(
 	{ immediate: true },
 );
 
-function onLocationSelected(location: ChangeLocationSearchResult) {
-	selectedLocation.value = location;
-	target.value = location.resource === 'project' ? PROJECT_ROOT : location.id;
-}
-
 function onDestinationError(cause: unknown) {
 	selectedLocation.value = null;
 	toast.showError(cause, i18n.baseText('agents.folders.error'));
@@ -206,6 +199,10 @@ async function save() {
 
 	try {
 		const context = rootStore.restApiContext;
+		const target =
+			selectedLocation.value?.resource === 'project'
+				? PROJECT_ROOT
+				: (selectedLocation.value?.id ?? PROJECT_ROOT);
 
 		if (action.mode === 'create') {
 			await createFolder(
@@ -218,20 +215,15 @@ async function save() {
 		} else if (action.id && action.mode === 'rename') {
 			await renameFolder(context, props.projectId, action.id, name.value);
 		} else if (action.id && action.mode === 'moveFolder') {
-			await moveFolder(context, props.projectId, action.id, target.value);
+			await moveFolder(context, props.projectId, action.id, target);
 		} else if (action.id && action.mode === 'moveAgent') {
-			await moveAgent(
-				context,
-				props.projectId,
-				action.id,
-				target.value === PROJECT_ROOT ? null : target.value,
-			);
+			await moveAgent(context, props.projectId, action.id, target === PROJECT_ROOT ? null : target);
 		} else if (action.id && action.mode === 'delete') {
 			await deleteFolder(
 				context,
 				props.projectId,
 				action.id,
-				removal.value === 'archive' ? undefined : target.value,
+				removal.value === 'archive' ? undefined : target,
 			);
 		}
 
@@ -298,7 +290,7 @@ async function save() {
 						autofocus
 						:teleported="false"
 						data-testid="agent-folder-target"
-						@location:selected="onLocationSelected"
+						@location:selected="selectedLocation = $event"
 						@load:error="onDestinationError"
 					/>
 				</div>
@@ -338,7 +330,7 @@ async function save() {
 									resource-type="agent"
 									:teleported="false"
 									data-testid="agent-folder-target"
-									@location:selected="onLocationSelected"
+									@location:selected="selectedLocation = $event"
 									@load:error="onDestinationError"
 								/>
 							</div>

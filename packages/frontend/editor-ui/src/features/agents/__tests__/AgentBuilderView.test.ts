@@ -1078,6 +1078,44 @@ describe('AgentBuilderView — preview routing', () => {
 		},
 	);
 
+	it('keeps unsaved Agents out of the folder move flow', async () => {
+		const { useSettingsStore } = await import('@n8n/stores/settings.store');
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const wrapper = await renderView({
+			seedStores: () => {
+				vi.spyOn(useSettingsStore(), 'isFoldersFeatureEnabled', 'get').mockReturnValue(true);
+			},
+			stubs: {
+				AgentFolderDialog: {
+					name: 'AgentFolderDialog',
+					props: ['projectId', 'action'],
+					template: '<div />',
+				},
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('headerActions')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'move-folder' })]),
+		);
+
+		header.vm.$emit('header-action', 'move-folder');
+		await flushPromises();
+
+		expect(wrapper.findComponent({ name: 'AgentFolderDialog' }).props('action')).toBeNull();
+		expect(createAgentMock).not.toHaveBeenCalled();
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('update:config', { instructions: 'Answer support mail' });
+
+		await vi.waitFor(() => {
+			expect(header.props('headerActions')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'move-folder' })]),
+			);
+		});
+	});
+
 	it('includes the Agent name when opening the move dialog from the builder', async () => {
 		const wrapper = await renderView({
 			stubs: {

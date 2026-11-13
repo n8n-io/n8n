@@ -8,8 +8,8 @@ withDefaults(
 		resourceCount: number;
 		resourceLabel: string;
 		subFolderCount: number;
-		createdAt: number | string;
-		updatedAt: number | string;
+		createdAt: string;
+		updatedAt: string;
 		testIdPrefix?: string;
 	}>(),
 	{ testIdPrefix: 'folder-card' },
@@ -45,7 +45,7 @@ const i18n = useI18n();
 			:data-test-id="`${testIdPrefix}-last-updated`"
 		>
 			{{ i18n.baseText('workerList.item.lastUpdated') }}
-			<TimeAgo :date="String(updatedAt)" />
+			<TimeAgo :date="updatedAt" />
 		</N8nText>
 		<N8nText
 			:class="[$style.infoCell, $style.created]"
@@ -54,7 +54,7 @@ const i18n = useI18n();
 			:data-test-id="`${testIdPrefix}-created`"
 		>
 			{{ i18n.baseText('workflows.item.created') }}
-			<TimeAgo :date="String(createdAt)" />
+			<TimeAgo :date="createdAt" />
 		</N8nText>
 	</div>
 </template>

@@ -2785,7 +2785,12 @@ const folderMoveAction = ref<AgentFolderAction | null>(null);
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [];
 
-	if (agent.value && effectiveCanEditAgent.value && settingsStore.isFoldersFeatureEnabled) {
+	if (
+		agent.value &&
+		!isUnsaved.value &&
+		effectiveCanEditAgent.value &&
+		settingsStore.isFoldersFeatureEnabled
+	) {
 		actions.push({
 			id: 'move-folder',
 			label: locale.baseText('agents.folders.move'),
@@ -2965,6 +2970,10 @@ async function saveN8nChatDescription(description: string): Promise<void> {
 
 async function onHeaderAction(action: string) {
 	if (action === 'move-folder') {
+		if (isUnsaved.value) {
+			return;
+		}
+
 		folderMoveAction.value = {
 			mode: 'moveAgent',
 			id: agentId.value,
