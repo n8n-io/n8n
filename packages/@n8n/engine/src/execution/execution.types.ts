@@ -241,8 +241,8 @@ export interface StepError {
 	stack?: string;
 	/**
 	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
+	 * owns only `name`/`message`/`stack`. An executor supplies it with
+	 * `attachStepErrorDetails`.
 	 */
 	details?: JsonValue;
 }

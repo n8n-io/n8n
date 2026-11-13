@@ -42,25 +42,44 @@ function serializeLifecycleEvent(
 	const bytes = Buffer.byteLength(serialized.result);
 	if (bytes <= maxFrameBytes) return { ok: true, frame: serialized.result };
 
-	// Only the outputs of a completed step can grow past the limit. Without them
-	// the event still tells the consumer that the step completed; the outputs stay
-	// readable from the data plane.
-	if (event.type === 'step:completed' && event.outputs !== undefined) {
-		const { outputs: _outputs, ...withoutOutputs } = event;
-		const frame = JSON.stringify(withoutOutputs);
-		if (Buffer.byteLength(frame) <= maxFrameBytes) {
-			logger.debug('Sent a lifecycle event without its outputs: it exceeds the frame size limit', {
+	// An event over the limit sheds what the host can read from the data plane
+	// instead: a completed step's outputs, or a failed step's details, then its
+	// stack. An event that is still over the limit without them is dropped.
+	for (const slimmer of slimmerForms(event)) {
+		const frame = JSON.stringify(slimmer);
+		if (Buffer.byteLength(frame) > maxFrameBytes) continue;
+		logger.debug(
+			'Sent a lifecycle event without its largest part: it exceeds the frame size limit',
+			{
 				executionId: event.executionId,
-				stepId: event.stepId,
+				stepId: slimmer.stepId,
+				type: event.type,
 				bytes,
-			});
-			return { ok: true, frame };
-		}
+			},
+		);
+		return { ok: true, frame };
 	}
 
 	return failure(logger, 'Dropped a lifecycle event that exceeds the frame size limit', event, {
 		bytes,
 	});
+}
+
+/** A step's event without its largest part, then without the next one. Other events have none. */
+function* slimmerForms(
+	event: LifecycleEvent,
+): Generator<Extract<LifecycleEvent, { stepId: string }>> {
+	if (event.type === 'step:completed') {
+		if (event.outputs === undefined) return;
+		const { outputs: _outputs, ...withoutOutputs } = event;
+		yield withoutOutputs;
+		return;
+	}
+	if (event.type !== 'step:failed') return;
+	const { details: _details, ...withoutDetails } = event.error;
+	yield { ...event, error: withoutDetails };
+	const { stack: _stack, ...messageOnly } = withoutDetails;
+	yield { ...event, error: messageOnly };
 }
 
 function deserializeLifecycleEvent(frame: string, logger: Logger): Result<LifecycleEvent, Error> {

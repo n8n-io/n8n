@@ -34,6 +34,21 @@ const stepCompleted = (
 	outputs: outputs as never,
 });
 
+const stepFailed = (
+	executionId: string,
+	stepId: string,
+	error: Extract<LifecycleEvent, { type: 'step:failed' }>['error'],
+): LifecycleEvent => ({
+	type: 'step:failed',
+	executionId,
+	stepId,
+	nodeId: 'node-1',
+	nodeName: 'Node 1',
+	iteration: 0,
+	at,
+	error,
+});
+
 const completed = (executionId: string): LifecycleEvent => ({
 	type: 'execution:completed',
 	executionId,
@@ -200,8 +215,13 @@ describe('createLifecycleEventCodec', () => {
 			result: withoutOutputs,
 		});
 		expect(logger.debug).toHaveBeenCalledWith(
-			'Sent a lifecycle event without its outputs: it exceeds the frame size limit',
-			{ executionId: 'exec-1', stepId: 'step-1', bytes: Buffer.byteLength(JSON.stringify(event)) },
+			'Sent a lifecycle event without its largest part: it exceeds the frame size limit',
+			{
+				executionId: 'exec-1',
+				stepId: 'step-1',
+				type: 'step:completed',
+				bytes: Buffer.byteLength(JSON.stringify(event)),
+			},
 		);
 	});
 
@@ -227,6 +247,55 @@ describe('createLifecycleEventCodec', () => {
 		expect(codec.serialize(event)).toEqual({ ok: true, frame });
 		expect(logger.warn).not.toHaveBeenCalled();
 		expect(logger.debug).not.toHaveBeenCalled();
+	});
+
+	it('sends a failed step without its error details when they push the frame over the limit', () => {
+		const logger = mockLogger();
+		const codec = createLifecycleEventCodec(logger, 512);
+		const event = stepFailed('exec-1', 'step-1', {
+			name: 'NodeApiError',
+			message: 'boom',
+			stack: 'at x',
+			details: { context: { body: 'x'.repeat(1000) } },
+		});
+
+		const frameResult = codec.serialize(event);
+
+		expect(codec.deserialize(frameResult.frame as string)).toEqual({
+			ok: true,
+			result: { ...event, error: { name: 'NodeApiError', message: 'boom', stack: 'at x' } },
+		});
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Sent a lifecycle event without its largest part: it exceeds the frame size limit',
+			expect.objectContaining({ executionId: 'exec-1', type: 'step:failed' }),
+		);
+	});
+
+	it('sheds the stack too when the details alone were not enough', () => {
+		const codec = createLifecycleEventCodec(mockLogger(), 300);
+		const event = stepFailed('exec-1', 'step-1', {
+			name: 'Error',
+			message: 'boom',
+			stack: 'x'.repeat(1000),
+			details: { a: 1 },
+		});
+
+		const frameResult = codec.serialize(event);
+
+		expect(codec.deserialize(frameResult.frame as string)).toEqual({
+			ok: true,
+			result: { ...event, error: { name: 'Error', message: 'boom' } },
+		});
+	});
+
+	it('still drops a failed step whose message alone is over the limit', () => {
+		const codec = createLifecycleEventCodec(mockLogger(), 64);
+
+		const frameResult = codec.serialize(
+			stepFailed('exec-1', 'step-1', { name: 'Error', message: 'x'.repeat(1000) }),
+		);
+
+		expect(frameResult.ok).toBe(false);
 	});
 
 	it('makes the sender publish nothing for an event it cannot encode', () => {
