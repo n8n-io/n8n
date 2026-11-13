@@ -43,6 +43,8 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
 import { AgentChatRelayService } from './agent-chat-relay.service';
+import { AgentChatResumeService } from './agent-chat-resume.service';
+import { toResumeJson } from './queue/agent-turn-request.types';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
@@ -90,6 +92,7 @@ export class AgentChatController {
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
 		private readonly plans: AgentPlanService,
+		private readonly chatResumeService: AgentChatResumeService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -220,35 +223,20 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
-			let executionId: string | undefined;
-			const stream = this.agentExecutionOrchestratorService.resumeForChat({
+		await this.chatResumeService.relay(
+			res,
+			{
+				kind: 'chat-resume',
+				surface: 'n8n-chat',
 				agentId,
 				projectId: req.params.projectId,
+				userId: req.user.id,
 				runId: payload.runId,
 				toolCallId: payload.toolCallId,
-				resumeData: payload.resumeData,
-				user: req.user,
-				usePublishedVersion: true,
-				integrationType: N8N_CHAT_INTEGRATION_TYPE,
-				chatSurface: 'n8n-chat',
-				expectedMemory: { resourceId: productionChatMemoryResourceId(req.user.id) },
-				onExecutionStarted,
-				onExecutionRecorded: (id) => {
-					executionId = id;
-				},
-			});
-			let suspended = false;
-			let failed = false;
-			for await (const chunk of stream) {
-				onChunk(chunk);
-				if (chunk.type === 'tool-call-suspended') suspended = true;
-				if (chunk.type === 'error') failed = true;
-			}
-			if (!suspended && !failed) {
-				send({ type: 'done', ...(executionId ? { executionId } : {}) });
-			}
-		});
+				resumeData: toResumeJson(payload.resumeData),
+			},
+			req.user,
+		);
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -328,29 +316,20 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const { projectId } = req.params;
-		const { runId, toolCallId, resumeData } = payload;
-		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
-			const result = await this.agentTestRunService.resumePreparedDraftRun({
+		await this.chatResumeService.relay(
+			res,
+			{
+				kind: 'chat-resume',
+				surface: 'preview',
 				agentId,
-				projectId,
-				runId,
-				toolCallId,
-				resumeData,
-				user: req.user,
-				chatSurface: 'preview',
-				errorMode: 'forward',
-				onChunk,
-				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
-				onExecutionStarted,
-			});
-			if (result.status === 'completed') {
-				send({
-					type: 'done',
-					...(result.executionId ? { executionId: result.executionId } : {}),
-				});
-			}
-		});
+				projectId: req.params.projectId,
+				userId: req.user.id,
+				runId: payload.runId,
+				toolCallId: payload.toolCallId,
+				resumeData: toResumeJson(payload.resumeData),
+			},
+			req.user,
+		);
 	}
 
 	@Delete('/:agentId/chat/:threadId/executions/:executionId')

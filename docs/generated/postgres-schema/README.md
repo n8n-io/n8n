@@ -37,6 +37,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
 | [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
+| [public.agent_turn_request](public.agent_turn_request.md) | 6 |  | BASE TABLE |
 | [public.agent_version_skill_dependency](public.agent_version_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 19 |  | BASE TABLE |
@@ -853,6 +854,14 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_512_ grantKey
   varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_turn_request" {
+  varchar_64_ claimedBy
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_32_ kind
+  json payload
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_version_skill_dependency" {

@@ -4,14 +4,16 @@ import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentQueueLifecycle } from '../queue/agent-queue-lifecycle.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
-import type { AgentTurnQueue, AgentDrainJobData } from '../queue/agent-turn-queue.service';
+import type { AgentTurnQueue, AgentTurnJobHandlers } from '../queue/agent-turn-queue.service';
 
 describe('AgentQueueLifecycle', () => {
 	const turnQueue = mock<AgentTurnQueue>();
 	const consumer = mock<AgentMessageQueueConsumer>();
+	const chatResume = mock<AgentChatResumeService>();
 	let registry: InstanceRegistryProxyService;
 	const refreshRegistration = vi.fn(async () => {});
 
@@ -20,6 +22,7 @@ describe('AgentQueueLifecycle', () => {
 			mock<AgentTurnPlacement>(placement),
 			turnQueue,
 			consumer,
+			chatResume,
 			registry,
 			{ workerConcurrency: 3 } as AgentsConfig,
 			mockLogger(),
@@ -55,15 +58,17 @@ describe('AgentQueueLifecycle', () => {
 		expect(consumer.startOnWorker).not.toHaveBeenCalled();
 	});
 
-	it('pulls drain jobs and advertises agent turns on a worker', async () => {
+	it('pulls agent jobs and advertises agent turns on a worker', async () => {
 		await setup({ runsTurnsOnWorker: true }).startOnWorker();
 		expect(consumer.startOnWorker).toHaveBeenCalledOnce();
-		expect(turnQueue.process).toHaveBeenCalledWith(3, expect.any(Function));
+		expect(turnQueue.process).toHaveBeenCalledWith(3, expect.any(Object));
 		expect(registry.localCapabilities()).toEqual([AGENT_TURNS_CAPABILITY]);
 
-		const handler = turnQueue.process.mock.calls[0][1] as (job: AgentDrainJobData) => Promise<void>;
-		await handler({ threadId: 'thread' });
+		const handlers = turnQueue.process.mock.calls[0][1] as AgentTurnJobHandlers;
+		await handlers.drain({ threadId: 'thread' });
 		expect(consumer.drainForJob).toHaveBeenCalledWith('thread');
+		await handlers.request({ requestId: 'request' });
+		expect(chatResume.runRequest).toHaveBeenCalledWith('request');
 	});
 
 	it('withdraws the capability on shutdown', async () => {

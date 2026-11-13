@@ -9,12 +9,29 @@ export const AGENT_TURN_QUEUE_NAME = 'agent-turns';
 
 const DRAIN_JOB = 'drain';
 
+const REQUEST_JOB = 'request';
+
 /**
  * A drain job carries only the thread id. The worker claims the next message
  * from the database, so a lost, late or duplicate job cannot run a turn twice.
  */
 export interface AgentDrainJobData {
 	threadId: string;
+}
+
+/**
+ * A request job carries only the id of an `agent_turn_request` row. The
+ * worker claims the row before it runs the turn, so the turn runs at most once.
+ */
+export interface AgentRequestJobData {
+	requestId: string;
+}
+
+type AgentTurnJobData = AgentDrainJobData | AgentRequestJobData;
+
+export interface AgentTurnJobHandlers {
+	drain: (data: AgentDrainJobData) => Promise<void>;
+	request: (data: AgentRequestJobData) => Promise<void>;
 }
 
 /**
@@ -26,7 +43,7 @@ export interface AgentDrainJobData {
  */
 @Service()
 export class AgentTurnQueue {
-	private queue?: Bull.Queue<AgentDrainJobData>;
+	private queue?: Bull.Queue<AgentTurnJobData>;
 
 	private paused = false;
 
@@ -51,7 +68,7 @@ export class AgentTurnQueue {
 		// A stalled turn is marked interrupted by the owner check, never retried.
 		const settings = { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 };
 
-		const queue = new BullQueue<AgentDrainJobData>(AGENT_TURN_QUEUE_NAME, {
+		const queue = new BullQueue<AgentTurnJobData>(AGENT_TURN_QUEUE_NAME, {
 			prefix,
 			settings,
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
@@ -77,12 +94,32 @@ export class AgentTurnQueue {
 		);
 	}
 
-	/** Start pulling drain jobs on this worker. */
-	process(concurrency: number, handler: (data: AgentDrainJobData) => Promise<void>): void {
+	/** Ask a worker to run the turn stored in an `agent_turn_request` row. */
+	async enqueueRequest(requestId: string): Promise<void> {
 		if (!this.queue) return;
-		void this.queue.process(DRAIN_JOB, concurrency, async (job: Bull.Job<AgentDrainJobData>) => {
+		await this.queue.add(
+			REQUEST_JOB,
+			{ requestId },
+			{
+				jobId: `request:${requestId}`,
+				attempts: 1,
+				removeOnComplete: true,
+				removeOnFail: true,
+			},
+		);
+	}
+
+	/**
+	 * Start pulling jobs on this worker. All job kinds share one concurrency
+	 * limit, so `concurrency` caps the turns that this worker runs at once.
+	 */
+	process(concurrency: number, handlers: AgentTurnJobHandlers): void {
+		if (!this.queue) return;
+		void this.queue.process('*', concurrency, async (job: Bull.Job<AgentTurnJobData>) => {
 			if (this.paused) return;
-			await handler(job.data);
+			const { data } = job;
+			if (job.name === REQUEST_JOB && 'requestId' in data) await handlers.request(data);
+			else if (job.name === DRAIN_JOB && 'threadId' in data) await handlers.drain(data);
 		});
 	}
 

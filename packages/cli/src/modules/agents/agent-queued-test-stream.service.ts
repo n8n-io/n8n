@@ -34,6 +34,7 @@ export class AgentQueuedTestStreamService {
 			sequence: number;
 			recoveryDeadline?: number;
 			relayDeadline?: number;
+			lastEventAt: number;
 			send: (event: AgentSseEvent) => void;
 			close: () => void;
 		}
@@ -77,7 +78,13 @@ export class AgentQueuedTestStreamService {
 			stream.close();
 			done.resolve();
 		};
-		const listener = { accepted: false, sequence: 0, send: stream.send, close };
+		const listener = {
+			accepted: false,
+			sequence: 0,
+			lastEventAt: Date.now(),
+			send: stream.send,
+			close,
+		};
 		this.listeners.set(queueId, listener);
 		stream.abortSignal.addEventListener('abort', close, { once: true });
 		if (stream.abortSignal.aborted) close();
@@ -87,6 +94,8 @@ export class AgentQueuedTestStreamService {
 			accepted: () => {
 				listener.accepted = true;
 			},
+			/** Time of the last relayed event or heartbeat, to detect a lost producer. */
+			lastEventAt: () => listener.lastEventAt,
 		};
 	}
 
@@ -207,6 +216,7 @@ export class AgentQueuedTestStreamService {
 			return;
 		}
 		listener.sequence = sequence;
+		listener.lastEventAt = Date.now();
 		listener.recoveryDeadline = undefined;
 		listener.relayDeadline = Date.now() + AgentQueuedTestStreamService.RELAY_TIMEOUT_MS;
 		if (event !== undefined) listener.send(event);

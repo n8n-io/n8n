@@ -350,6 +350,7 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentTurnRequest } = await import('./entities/agent-turn-request.entity.js');
 		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
 		const { AgentBudgetAppliedCall } = await import(
 			'./entities/agent-budget-applied-call.entity.js'
@@ -401,6 +402,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentTurnRequest,
 			AgentBudgetSpend,
 			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,

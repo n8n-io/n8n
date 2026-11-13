@@ -37,6 +37,11 @@ import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentChatRelayService } from '../agent-chat-relay.service';
+import { AgentChatResumeService } from '../agent-chat-resume.service';
+import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
+import type { AgentTurnRequestRepository } from '../repositories/agent-turn-request.repository';
+import type { UserRepository } from '@n8n/db';
 import type { AgentsService } from '../agents.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
@@ -127,6 +132,17 @@ function makeController() {
 		agentsConfig,
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
 		plans,
+		new AgentChatResumeService(
+			mockLogger(),
+			testCluster(),
+			mock<AgentTurnPlacement>({ workersAvailable: async () => false }),
+			mock<AgentTurnQueue>(),
+			mock<AgentTurnRequestRepository>(),
+			previewStreams,
+			mock<UserRepository>(),
+			agentTestRunService,
+			agentExecutionOrchestratorService,
+		),
 	);
 
 	return {

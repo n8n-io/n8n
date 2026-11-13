@@ -63,6 +63,7 @@ describe('AgentChatRelayService', () => {
 			const subscription = {
 				accepted: vi.fn(),
 				close: vi.fn(),
+				lastEventAt: vi.fn(() => Date.now()),
 				done: new Promise<void>((resolve) => {
 					finish = resolve;
 				}),

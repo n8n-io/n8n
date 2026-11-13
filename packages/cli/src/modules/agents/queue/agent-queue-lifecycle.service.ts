@@ -5,6 +5,7 @@ import { AgentsConfig } from '@n8n/config';
 import { HIGHEST_SHUTDOWN_PRIORITY, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
+import { AgentChatResumeService } from '../agent-chat-resume.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
@@ -26,6 +27,7 @@ export class AgentQueueLifecycle {
 		private readonly placement: AgentTurnPlacement,
 		private readonly turnQueue: AgentTurnQueue,
 		private readonly consumer: AgentMessageQueueConsumer,
+		private readonly chatResume: AgentChatResumeService,
 		private readonly registry: InstanceRegistryProxyService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly logger: Logger,
@@ -45,8 +47,9 @@ export class AgentQueueLifecycle {
 		await this.turnQueue.init();
 		this.consumer.startOnWorker();
 		const concurrency = this.agentsConfig.workerConcurrency;
-		this.turnQueue.process(concurrency, async ({ threadId }) => {
-			await this.consumer.drainForJob(threadId);
+		this.turnQueue.process(concurrency, {
+			drain: async ({ threadId }) => await this.consumer.drainForJob(threadId),
+			request: async ({ requestId }) => await this.chatResume.runRequest(requestId),
 		});
 		await this.advertise(AGENT_TURNS_CAPABILITY);
 		this.logger.info('This worker runs agent turns', { concurrency });
