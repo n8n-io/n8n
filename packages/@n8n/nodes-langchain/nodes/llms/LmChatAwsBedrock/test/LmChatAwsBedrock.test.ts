@@ -1,6 +1,12 @@
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse } from '@langchain/aws';
-import { makeN8nLlmFailedAttemptHandler, getNodeProxyAgent } from '@n8n/ai-utilities';
+import { AIMessage } from '@langchain/core/messages';
+import type { ChatGeneration, LLMResult } from '@langchain/core/outputs';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getNodeProxyAgent,
+} from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -9,7 +15,7 @@ import type { Mocked } from 'vitest';
 
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
-import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
+import { bedrockTokensUsageParser, LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
 vi.mock('@langchain/aws', () => ({
 	ChatBedrockConverse: vi.fn(),
@@ -36,6 +42,7 @@ const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
 const MockedNodeHttpHandler = vi.mocked(NodeHttpHandler);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
+const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
 
@@ -100,6 +107,21 @@ describe('LmChatAwsBedrock', () => {
 	});
 
 	describe('supplyData', () => {
+		it('configures tracing to read Bedrock token usage', async () => {
+			const ctx = setupMockContext();
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedN8nLlmTracing).toHaveBeenCalledWith(ctx, {
+				tokensUsageParser: bedrockTokensUsageParser,
+			});
+		});
+
 		it('should use credential region for standard model IDs', async () => {
 			const ctx = setupMockContext();
 			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
@@ -906,6 +928,41 @@ describe('LmChatAwsBedrock', () => {
 					'AccessDenied',
 				);
 			});
+		});
+	});
+});
+
+describe('bedrockTokensUsageParser', () => {
+	it('sums usage metadata from Bedrock chat generations', () => {
+		const result: LLMResult = {
+			generations: [
+				[
+					{
+						text: '',
+						message: new AIMessage({
+							content: [
+								{ type: 'reasoning_content', reasoning_content: { text: 'Reasoning' } },
+								{ type: 'text', text: 'Answer' },
+							],
+							usage_metadata: { input_tokens: 23, output_tokens: 9, total_tokens: 32 },
+						}),
+					} as ChatGeneration,
+				],
+			],
+		};
+
+		expect(bedrockTokensUsageParser(result)).toEqual({
+			completionTokens: 9,
+			promptTokens: 23,
+			totalTokens: 32,
+		});
+	});
+
+	it('returns zero usage when Bedrock does not report metadata', () => {
+		expect(bedrockTokensUsageParser({ generations: [[{ text: 'Answer' }]] })).toEqual({
+			completionTokens: 0,
+			promptTokens: 0,
+			totalTokens: 0,
 		});
 	});
 });

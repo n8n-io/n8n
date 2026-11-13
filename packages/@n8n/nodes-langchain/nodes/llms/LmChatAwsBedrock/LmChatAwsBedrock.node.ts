@@ -1,5 +1,7 @@
 import type { GuardrailTrace, PerformanceConfigLatency } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse, type ChatBedrockConverseInput } from '@langchain/aws';
+import { isAIMessage, isBaseMessage } from '@langchain/core/messages';
+import type { LLMResult } from '@langchain/core/outputs';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -23,6 +25,32 @@ import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import { listInferenceProfiles, listModels } from './methods/listModels';
+
+export function bedrockTokensUsageParser(result: LLMResult): {
+	completionTokens: number;
+	promptTokens: number;
+	totalTokens: number;
+} {
+	let completionTokens = 0;
+	let promptTokens = 0;
+	let totalTokens = 0;
+
+	for (const generations of result.generations) {
+		for (const generation of generations) {
+			const message = 'message' in generation ? generation.message : undefined;
+			if (!isBaseMessage(message) || !isAIMessage(message)) continue;
+
+			const usage = message.usage_metadata;
+			if (!usage) continue;
+
+			completionTokens += usage.output_tokens;
+			promptTokens += usage.input_tokens;
+			totalTokens += usage.total_tokens;
+		}
+	}
+
+	return { completionTokens, promptTokens, totalTokens };
+}
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -379,7 +407,7 @@ export class LmChatAwsBedrock implements INodeType {
 			client,
 			model: modelName,
 			region,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [new N8nLlmTracing(this, { tokensUsageParser: bedrockTokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		};
 

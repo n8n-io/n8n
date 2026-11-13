@@ -1,6 +1,6 @@
 import type { Serialized } from '@langchain/core/load/serializable';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage } from '@langchain/core/messages';
+import { AIMessage, isAIMessage } from '@langchain/core/messages';
 import type { ChatGeneration, Generation, LLMResult } from '@langchain/core/outputs';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
@@ -887,6 +887,30 @@ describe('N8nLlmTracing', () => {
 			);
 		});
 
+		it('should estimate tokens from text blocks when generation text is empty', async () => {
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			const generations: LLMResult['generations'] = [
+				[
+					{
+						text: '',
+						message: new AIMessage({
+							content: [
+								{ type: 'reasoning_content', reasoning_content: { text: 'Internal reasoning' } },
+								{ type: 'text', text: 'Final answer' },
+							],
+						}),
+					} as ChatGeneration,
+				],
+			];
+
+			estimateTokensFromStringList.mockResolvedValue(7);
+
+			const result = await tracer.estimateTokensFromGeneration(generations);
+
+			expect(result).toBe(7);
+			expect(estimateTokensFromStringList).toHaveBeenCalledWith(['Final answer'], 'gpt-4o');
+		});
+
 		it('should estimate tokens from string list', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
 
@@ -914,6 +938,51 @@ describe('N8nLlmTracing', () => {
 	});
 
 	describe('custom token usage parser', () => {
+		it('should parse provider usage from the original chat generation', async () => {
+			const customParser = vi.fn((result: LLMResult) => {
+				const generation = result.generations[0]?.[0] as ChatGeneration | undefined;
+				const usage =
+					generation && isAIMessage(generation.message)
+						? generation.message.usage_metadata
+						: undefined;
+
+				return {
+					completionTokens: usage?.output_tokens ?? 0,
+					promptTokens: usage?.input_tokens ?? 0,
+					totalTokens: usage?.total_tokens ?? 0,
+				};
+			});
+			const tracer = new N8nLlmTracing(mockExecutionFunctions, {
+				tokensUsageParser: customParser,
+			});
+			const runId = 'bedrock-run';
+			tracer.runsMap[runId] = { index: 0, messages: ['Test'], options: {} };
+			const output: LLMResult = {
+				generations: [
+					[
+						{
+							text: '',
+							message: new AIMessage({
+								content: [{ type: 'text', text: 'Response' }],
+								usage_metadata: { input_tokens: 11, output_tokens: 5, total_tokens: 16 },
+							}),
+						} as ChatGeneration,
+					],
+				],
+			};
+
+			await tracer.handleLLMEnd(output, runId);
+
+			const outputGroups = mockExecutionFunctions.addOutputData.mock.calls[0]?.[2];
+			expect(Array.isArray(outputGroups)).toBe(true);
+			if (!Array.isArray(outputGroups)) throw new Error('Expected LLM output data');
+
+			const outputData = outputGroups[0][0].json;
+			expect(outputData).toMatchObject({
+				tokenUsage: { completionTokens: 5, promptTokens: 11, totalTokens: 16 },
+			});
+		});
+
 		it('should use custom token usage parser', async () => {
 			const customParser = vi.fn().mockReturnValue({
 				completionTokens: 100,
