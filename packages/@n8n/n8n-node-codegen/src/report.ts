@@ -13,7 +13,7 @@ function formatTable(rows: OperationRow[]): string[] {
 	const cells = rows.map((row) => [
 		row.excludeReason === undefined ? 'in node' : 'excluded',
 		row.operation.operationId,
-		row.operation.summary ?? '',
+		row.operation.summary,
 		row.operation.method,
 		row.operation.apiPath,
 		notes(row),
@@ -31,8 +31,7 @@ export function formatReport(rows: OperationRow[]): string {
 	}
 
 	const lines: string[] = [];
-	for (const title of [...rowsByTitle.keys()].sort((a, b) => a.localeCompare(b))) {
-		const resourceRows = rowsByTitle.get(title) ?? [];
+	for (const [title, resourceRows] of [...rowsByTitle].sort(([a], [b]) => a.localeCompare(b))) {
 		lines.push(`${title}: ${resourceRows.length}`, ...formatTable(resourceRows), '');
 	}
 

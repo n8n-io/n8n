@@ -1,8 +1,8 @@
 import { generate } from './generate';
-import { findRepoRoot, n8nNodeConfig } from './n8n-node.config';
+import { N8N_NODE_CONFIG } from './n8n-node.config';
 
 async function main() {
-	const { report, errors } = await generate(n8nNodeConfig(findRepoRoot(process.cwd())));
+	const { report, errors } = await generate(N8N_NODE_CONFIG);
 	console.log(report);
 	if (errors.length > 0) {
 		console.error(`\nThe node cannot be generated:\n- ${errors.join('\n- ')}`);

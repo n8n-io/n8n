@@ -38,7 +38,7 @@ export interface SpecTag {
 
 export interface SpecOperation {
 	operationId: string;
-	summary?: string;
+	summary: string;
 	method: HttpMethod;
 	apiPath: string;
 	tag: SpecTag;

@@ -1,4 +1,4 @@
-import { N8N_SPEC_OPTIONS } from '../n8n-node.config';
+import { N8N_NODE_CONFIG } from '../n8n-node.config';
 import { parseYaml } from '../spec/parse-yaml';
 import { readSpec } from '../spec/read-spec';
 
@@ -110,12 +110,15 @@ const readOperation = (operation: Record<string, unknown>) =>
 			},
 			envelope: ENVELOPE,
 		},
-		N8N_SPEC_OPTIONS,
+		N8N_NODE_CONFIG.spec,
 	).operations[0];
 
 describe('readSpec', () => {
 	it('should read the tags, the operations and the parameters of a YAML spec', () => {
-		const spec = readSpec({ routes: parseYaml(ROUTES_YAML), envelope: ENVELOPE }, N8N_SPEC_OPTIONS);
+		const spec = readSpec(
+			{ routes: parseYaml(ROUTES_YAML), envelope: ENVELOPE },
+			N8N_NODE_CONFIG.spec,
+		);
 
 		const buildAndRun = { name: 'BuildAndRun', displayName: 'Build and run' };
 		const workflow = { name: 'Workflow', displayName: 'Workflows', group: buildAndRun };
@@ -264,7 +267,10 @@ describe('readSpec', () => {
 
 	it.each([
 		['no summary', { summary: undefined }],
-		['header parameter "X-Dry-Run"', { parameters: [{ name: 'X-Dry-Run', in: 'header' }] }],
+		[
+			'header parameter "X-Dry-Run"',
+			{ parameters: [{ name: 'X-Dry-Run', in: 'header', schema: { type: 'string' } }] },
+		],
 		[
 			'multipart/form-data request body',
 			{ requestBody: { content: { 'multipart/form-data': { schema: { type: 'object' } } } } },
@@ -297,7 +303,7 @@ describe('readSpec', () => {
 	it('should fail when a path has a key that is not an HTTP method', () => {
 		const routes = { paths: { '/workflows': { parameters: [] } } };
 
-		expect(() => readSpec({ routes, envelope: ENVELOPE }, N8N_SPEC_OPTIONS)).toThrow(
+		expect(() => readSpec({ routes, envelope: ENVELOPE }, N8N_NODE_CONFIG.spec)).toThrow(
 			'the generator does not know "parameters"',
 		);
 	});
@@ -306,7 +312,7 @@ describe('readSpec', () => {
 		const operation = { operationId: 'getWorkflow', tags: ['Workflow'], responses: {} };
 		const routes = { paths: { '/a': { get: operation }, '/b': { post: operation } } };
 
-		expect(() => readSpec({ routes, envelope: ENVELOPE }, N8N_SPEC_OPTIONS)).toThrow(
+		expect(() => readSpec({ routes, envelope: ENVELOPE }, N8N_NODE_CONFIG.spec)).toThrow(
 			'two operations have the ID "getWorkflow"',
 		);
 	});
@@ -314,7 +320,7 @@ describe('readSpec', () => {
 	it('should fail when the parent of a tag is not a tag', () => {
 		const envelope = { tags: [{ name: 'Tags', 'x-displayName': 'Tags', 'x-parent': 'Missing' }] };
 
-		expect(() => readSpec({ routes: { paths: {} }, envelope }, N8N_SPEC_OPTIONS)).toThrow(
+		expect(() => readSpec({ routes: { paths: {} }, envelope }, N8N_NODE_CONFIG.spec)).toThrow(
 			'the tag "Tags" has the parent "Missing"',
 		);
 	});

@@ -1,6 +1,8 @@
-import { defineOverrides } from './define-overrides';
+interface Overrides {
+	exclude: Record<string, string>;
+}
 
-export const overrides = defineOverrides({
+export const overrides = {
 	exclude: {
 		activateWorkflow: 'Not reviewed yet',
 		addProjectToPromotionEnvironment: 'Not reviewed yet',
@@ -179,4 +181,4 @@ export const overrides = defineOverrides({
 		updateWorkflowTags: 'Not reviewed yet',
 		upsertDataTableRow: 'Not reviewed yet',
 	},
-});
+} satisfies Overrides;

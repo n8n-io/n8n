@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { parse } from '../parse';
 import type {
 	ApiParameter,
 	HttpMethod,
@@ -44,7 +45,7 @@ const parameterSchema = z.object({
 	required: z.boolean().optional(),
 	deprecated: z.boolean().optional(),
 	description: z.string().optional(),
-	schema: schemaSchema.optional(),
+	schema: schemaSchema,
 });
 
 const operationSchema = z.object({
@@ -76,13 +77,6 @@ const envelopeSchema = z.object({
 	),
 });
 
-function parse<T>(schema: z.ZodType<T>, value: unknown, subject: string): T {
-	const result = schema.safeParse(value);
-	if (result.success) return result.data;
-	const issues = result.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`);
-	throw new Error(`Cannot read ${subject}:\n- ${issues.join('\n- ')}`);
-}
-
 function readTags(envelope: unknown): SpecTag[] {
 	const { tags } = parse(envelopeSchema, envelope, 'the tags of the spec');
 
@@ -112,10 +106,9 @@ function readBodyParameters(operation: Operation, blockers: string[]): ApiParame
 	const { requestBody } = operation;
 	if (!requestBody) return [];
 
-	const mediaTypes = Object.keys(requestBody.content);
 	const body = requestBody.content[JSON_MEDIA_TYPE]?.schema;
 	if (!body) {
-		if (mediaTypes.length > 0) blockers.push(`${mediaTypes[0]} request body`);
+		blockers.push(`${Object.keys(requestBody.content).join(', ')} request body`);
 		return [];
 	}
 
@@ -162,7 +155,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 		if (paginated && (name === options.cursorParameter || name === options.limitParameter)) {
 			continue;
 		}
-		const schema = parameter.schema ?? {};
+		const { schema } = parameter;
 		parameters.push({
 			name,
 			location: parameter.in,
@@ -216,7 +209,7 @@ export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 
 			operations.set(operationId, {
 				operationId,
-				summary: operation.summary,
+				summary: operation.summary ?? '',
 				method,
 				apiPath,
 				tag,
