@@ -3073,11 +3073,13 @@ async function onHeaderAction(action: string) {
  */
 function draftAgentResource(personalisation: AgentJsonConfig['personalisation']): AgentResource {
 	const now = new Date().toISOString();
+
 	return {
 		resourceType: 'agent',
 		id: agentId.value,
 		name: locale.baseText('agents.new.defaultName'),
 		projectId: projectId.value,
+		parentFolderId: typeof route.query.folderId === 'string' ? route.query.folderId : null,
 		schema: personalisation ? { personalisation } : null,
 		availableInMCP: false,
 		isCompiled: false,

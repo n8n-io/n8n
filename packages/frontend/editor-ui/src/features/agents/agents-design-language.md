@@ -17,6 +17,9 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+Include the selected folder path for an unsaved Agent. Keep the path through
+its first save. Use saved placement for saved Agents.
+
 ## Folder subtitles
 
 Use the shared `FolderCardSubtitle` for Agent and workflow folder metadata.

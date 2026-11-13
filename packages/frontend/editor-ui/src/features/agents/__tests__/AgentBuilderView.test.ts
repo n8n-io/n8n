@@ -1144,11 +1144,21 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(unsavedAgentIds.has('a1')).toBe(false);
 	});
 
-	it('keeps folder placement on the first save of a pending Agent', async () => {
+	it('keeps folder placement before and after the first save of a pending Agent', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		routeQuery.folderId = 'support-folder';
+		getAgentMock.mockResolvedValue(makeAgentResponse({ parentFolderId: 'support-folder' }));
+		createAgentMock.mockResolvedValueOnce(
+			makeCreationResponse(undefined, { parentFolderId: 'support-folder' }),
+		);
 		const wrapper = await renderView();
 		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('agent')).toMatchObject({ parentFolderId: 'support-folder' });
+		expect(header.props('isUnsaved')).toBe(true);
+		expect(createAgentMock).not.toHaveBeenCalled();
+
 		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
 
@@ -1156,6 +1166,18 @@ describe('AgentBuilderView — preview routing', () => {
 			id: 'a1',
 			parentFolderId: 'support-folder',
 		});
+		await vi.waitFor(() => expect(header.props('isUnsaved')).toBe(false));
+		expect(header.props('agent')).toMatchObject({ parentFolderId: 'support-folder' });
+	});
+
+	it('uses the saved folder placement when the URL has an old folder ID', async () => {
+		routeQuery.folderId = 'old-folder';
+		getAgentMock.mockResolvedValue(makeAgentResponse({ parentFolderId: null }));
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('isUnsaved')).toBe(false);
+		expect(header.props('agent')).toMatchObject({ parentFolderId: null });
 	});
 
 	it('does not persist a pending agent for an auto-applied default model', async () => {
