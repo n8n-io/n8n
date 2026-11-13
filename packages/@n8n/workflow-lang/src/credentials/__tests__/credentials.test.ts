@@ -221,7 +221,10 @@ describe('deriveInject', () => {
 	it('has manual rules for the Notion and OpenAI types', () => {
 		expect(deriveInject(registry, 'notionApi')).toEqual({
 			kind: 'manual',
-			inject: { headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' } },
+			inject: {
+				headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' },
+				defaultHeaders: { 'Notion-Version': '2022-02-22' },
+			},
 			reasons: [],
 		});
 		expect(deriveInject(registry, 'openAiApi', { apiKey: 'k', organizationId: '' }).inject).toEqual(
@@ -391,7 +394,13 @@ describe.runIf(nodesBaseBuilt)('with the built n8n-nodes-base package', () => {
 		['airtableTokenApi', { headers: { Authorization: 'Bearer {{$credentials.accessToken}}' } }],
 		['gmailOAuth2', OAUTH2_INJECT],
 		['googleSheetsOAuth2Api', OAUTH2_INJECT],
-		['notionApi', { headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' } }],
+		[
+			'notionApi',
+			{
+				headers: { Authorization: 'Bearer {{$credentials.apiKey}} ' },
+				defaultHeaders: { 'Notion-Version': '2022-02-22' },
+			},
+		],
 	])('derives the inject of %s', (type, inject) => {
 		expect(deriveInject(real, type).inject).toEqual(inject);
 	});

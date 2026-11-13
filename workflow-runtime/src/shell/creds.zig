@@ -56,6 +56,9 @@ pub const Store = struct {
             if (inj.object.get("headers")) |h| if (h == .object) {
                 out.headers = h.object;
             };
+            if (inj.object.get("defaultHeaders")) |h| if (h == .object) {
+                out.default_headers = h.object;
+            };
             if (inj.object.get("qs")) |q| if (q == .object) {
                 out.qs = q.object;
             };
@@ -148,6 +151,9 @@ pub const Slot = struct {
     name: []const u8,
     data: std.json.Value,
     headers: ?std.json.ObjectMap = null,
+    /// Headers that the credential sets only when the request has none of
+    /// that name (`inject.defaultHeaders`, spec section 7).
+    default_headers: ?std.json.ObjectMap = null,
     qs: ?std.json.ObjectMap = null,
     /// Members added to a JSON object body.
     body: ?std.json.ObjectMap = null,
@@ -385,6 +391,22 @@ test "credential templates" {
     var cnt = Out.counter();
     try substitute("ab{{$credentials.n}}", s.data, .none, &cnt, &missing);
     try std.testing.expectEqual(@as(usize, 4), cnt.len);
+}
+
+test "a slot reads inject.defaultHeaders" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const store = try Store.parse(arena.allocator(),
+        \\{"notion":{"type":"notionApi","data":{"apiKey":"k"},
+        \\ "inject":{"headers":{"Authorization":"Bearer {{$credentials.apiKey}} "},
+        \\ "defaultHeaders":{"Notion-Version":"2022-02-22"}}},
+        \\ "plain":{"data":{}}}
+    );
+    const s = store.slot("notion").?;
+    const dh = s.default_headers.?;
+    try std.testing.expectEqual(@as(usize, 1), dh.count());
+    try std.testing.expectEqualStrings("2022-02-22", dh.get("Notion-Version").?.string);
+    try std.testing.expect(store.slot("plain").?.default_headers == null);
 }
 
 test "a workflow store falls back to the global store" {

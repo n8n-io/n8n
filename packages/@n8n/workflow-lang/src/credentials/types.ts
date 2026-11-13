@@ -113,12 +113,28 @@ export interface LoadResult {
 	failures: Array<{ name: string; error: string }>;
 }
 
+/** A credential type with the instance that the node package exports. */
+export interface LoadedCredentialType {
+	info: CredentialTypeInfo;
+	/** The credential type instance, for its real `authenticate`. */
+	instance: unknown;
+}
+
+export interface ClassLoadResult {
+	types: LoadedCredentialType[];
+	/** Credential types that failed to load, with the error message. */
+	failures: Array<{ name: string; error: string }>;
+}
+
 /**
  * Loads every credential type that a built node package lists in
- * `dist/known/credentials.json`. A package that is not built is skipped.
+ * `dist/known/credentials.json`, with its instance. A package that is not
+ * built is skipped.
  */
-export function loadCredentialTypes(packageDirs: string[] = DEFAULT_NODE_PACKAGES): LoadResult {
-	const types: CredentialTypeInfo[] = [];
+export function loadCredentialClasses(
+	packageDirs: string[] = DEFAULT_NODE_PACKAGES,
+): ClassLoadResult {
+	const types: LoadedCredentialType[] = [];
 	const failures: Array<{ name: string; error: string }> = [];
 	const seen = new Set<string>();
 	for (const dir of packageDirs) {
@@ -136,7 +152,8 @@ export function loadCredentialTypes(packageDirs: string[] = DEFAULT_NODE_PACKAGE
 				const exported: unknown = require(join(dir, sourcePath));
 				const ctor: unknown = isRecord(exported) ? exported[className] : undefined;
 				if (typeof ctor !== 'function') throw new Error(`no class ${className}`);
-				types.push(describeCredentialType(Reflect.construct(ctor, []), packageName));
+				const instance = Reflect.construct(ctor, []);
+				types.push({ info: describeCredentialType(instance, packageName), instance });
 				seen.add(name);
 			} catch (error) {
 				failures.push({ name, error: error instanceof Error ? error.message : String(error) });
@@ -144,6 +161,15 @@ export function loadCredentialTypes(packageDirs: string[] = DEFAULT_NODE_PACKAGE
 		}
 	}
 	return { types, failures };
+}
+
+/**
+ * Loads every credential type that a built node package lists in
+ * `dist/known/credentials.json`. A package that is not built is skipped.
+ */
+export function loadCredentialTypes(packageDirs: string[] = DEFAULT_NODE_PACKAGES): LoadResult {
+	const { types, failures } = loadCredentialClasses(packageDirs);
+	return { types: types.map((t) => t.info), failures };
 }
 
 function readPackageName(dir: string): string {
