@@ -213,6 +213,22 @@ function setTypeError(value: Json, type: string, name: string, index: number): n
  */
 function asNumber(value: Json, name: string, index: number, ignore?: boolean): Json {
 	if (value == null) return null;
+	// A Date of a v1 node (a database timestamp) is a Date in v1, and \`Number(date)\` is its time.
+	// It reaches us as the text that \`Date.toJSON\` gives: only that exact form is read as a date.
+	if (typeof value === 'string' && value.length === 24) {
+		// YYYY-MM-DDTHH:MM:SS.sssZ, checked by position (no regular expressions in workflows).
+		const marks = '----------T--:--:--.---Z';
+		let date = true;
+		for (let i = 0; i < 24 && date; i++) {
+			const c = value[i];
+			const want = marks[i];
+			date = want === '-' && i !== 4 && i !== 7 ? c >= '0' && c <= '9' : c === want;
+		}
+		if (date) {
+			const time = Date.parse(value);
+			if (!isNaN(time)) return time;
+		}
+	}
 	const n = Number(value);
 	// An empty string is 0, as n8n's Set node 3.4 gives it (\`Number('')\`).
 	if (isNaN(n)) return ignore === true ? value : setTypeError(value, 'number', name, index);

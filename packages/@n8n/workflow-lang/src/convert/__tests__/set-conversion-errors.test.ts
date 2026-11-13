@@ -88,6 +88,24 @@ describe('Set node: ignore type conversion errors', () => {
 		]);
 	});
 
+	it('reads the JSON text of a Date as its time, as v1 reads a Date', async () => {
+		const converted = convertWorkflow(
+			workflow(
+				[
+					...field('at', 'number', '={{ "2026-11-13T07:57:02.277Z" }}'),
+					...field('day', 'number', '={{ "2026-11-13" }}'),
+				],
+				{ ignoreConversionErrors: true },
+			),
+		);
+		expect(converted.ok).toBe(true);
+		const out = await run(converted.source);
+		expect(out.status).toBe('ok');
+		const set = (out.result as Record<string, unknown[]>).Set;
+		// Only the exact form of `Date.toJSON` is a date; other date text stays as v1 has it.
+		expect(set[0]).toEqual({ at: Date.parse('2026-11-13T07:57:02.277Z'), day: '2026-11-13' });
+	});
+
 	it('fails with the text and the item index of v1', async () => {
 		const converted = convertWorkflow(workflow(field('n', 'number', '={{ $json.n }}')));
 		expect(converted.ok).toBe(true);
