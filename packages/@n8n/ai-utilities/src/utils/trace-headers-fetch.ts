@@ -8,14 +8,14 @@ import { aiClientFetch } from './http-proxy-agent';
  */
 export function withTraceHeaders(
 	baseFetch: typeof fetch,
-	getTraceHeaders: () => Record<string, string> | undefined,
+	getTraceHeaders: () => Record<string, string>,
 	logger?: Logger,
 ): typeof fetch {
 	return async (input, init) => {
 		let tracedInit: RequestInit | undefined;
 		try {
 			const traceHeaders = getTraceHeaders();
-			if (traceHeaders && Object.keys(traceHeaders).length) {
+			if (Object.keys(traceHeaders).length) {
 				// Headers in init replace the headers of a Request input, so start from those.
 				const headers = new Headers(
 					init?.headers ?? (input instanceof Request ? input.headers : undefined),

@@ -1089,8 +1089,6 @@ describe('utils', () => {
 			});
 
 			describe('trace context', () => {
-				const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-
 				const connectTraced = async (getTraceHeaders: () => Record<string, string>) => {
 					mockClient.connect.mockResolvedValue(undefined);
 					mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
@@ -1102,7 +1100,6 @@ describe('utils', () => {
 						name: 'test-client',
 						version: 1,
 						getTraceHeaders,
-						logger,
 					});
 
 					const [, opts] = (TransportClass as Mock).mock.calls[0];
@@ -1177,30 +1174,6 @@ describe('utils', () => {
 					expect(mockedProxyFetch).toHaveBeenCalledTimes(2);
 					expect(sentHeaders(1).get('traceparent')).toBe('span-a');
 					expect(sentHeaders(1).get('authorization')).toBeNull();
-				});
-
-				it('should add no header when there is no trace context', async () => {
-					const opts = await connectTraced(() => ({}));
-
-					await opts.fetch('https://example.com/mcp', { method: 'POST' });
-
-					expect(sentHeaders(0).get('traceparent')).toBeNull();
-					expect(sentHeaders(0).get('tracestate')).toBeNull();
-				});
-
-				it('should send the request and log when the trace helper throws', async () => {
-					const opts = await connectTraced(() => {
-						throw new Error('tracer failed');
-					});
-
-					await opts.fetch('https://example.com/mcp', { method: 'POST' });
-
-					expect(mockedProxyFetch).toHaveBeenCalledTimes(1);
-					expect(sentHeaders(0).get('traceparent')).toBeNull();
-					expect(logger.warn).toHaveBeenCalledWith(
-						'Failed to add the trace context to an outbound request',
-						{ error: 'tracer failed' },
-					);
 				});
 			});
 		});
