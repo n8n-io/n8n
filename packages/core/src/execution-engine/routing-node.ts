@@ -116,6 +116,7 @@ export class RoutingNode {
 				itemIndex,
 				executeData,
 				abortSignal,
+				context.credentialOptions,
 			);
 
 			itemContext.push({

@@ -1,5 +1,6 @@
 import { createRunExecutionData } from 'n8n-workflow';
 import type {
+	IGetDecryptedCredentialsOptions,
 	INodeExecutionData,
 	INodePropertyRouting,
 	INodeType,
@@ -17,10 +18,14 @@ import { RoutingNode } from './routing-node';
  * against one empty item.
  */
 export async function runStandaloneRouting(
-	context: Pick<NodeExecutionContext, 'workflow' | 'node' | 'additionalData' | 'mode'>,
+	context: Pick<
+		NodeExecutionContext,
+		'workflow' | 'node' | 'additionalData' | 'mode' | 'getExecutionContext'
+	>,
 	nodeType: INodeType,
 	routing: INodePropertyRouting,
 	extraKeys: IWorkflowDataProxyAdditionalKeys = {},
+	credentialOptions?: IGetDecryptedCredentialsOptions,
 ): Promise<INodeExecutionData[]> {
 	const { workflow, node, additionalData, mode } = context;
 	const executeContext = new ExecuteContext(
@@ -28,12 +33,16 @@ export async function runStandaloneRouting(
 		node,
 		additionalData,
 		mode,
-		createRunExecutionData(),
+		// Keep the caller's context. Loading a credential writes it to the shared `additionalData`.
+		createRunExecutionData({ executionData: { runtimeData: context.getExecutionContext() } }),
 		0,
 		[],
 		{ main: [[{ json: {} }]] },
 		{ node, data: {}, source: null },
 		[],
+		undefined,
+		undefined,
+		credentialOptions,
 	);
 	const routingNodeType: INodeType = {
 		...nodeType,
@@ -46,5 +55,9 @@ export async function runStandaloneRouting(
 		},
 	};
 	const routingNode = new RoutingNode(executeContext, routingNodeType, undefined, extraKeys);
-	return (await routingNode.runNode())?.[0] ?? [];
+	const items = (await routingNode.runNode())?.[0] ?? [];
+	// "On Error: Continue" returns a failed request as an item. A trigger cannot output it.
+	const failed = items.find((item) => item.error);
+	if (failed?.error) throw failed.error;
+	return items;
 }

@@ -28,7 +28,7 @@ vi.mock('fast-glob', () => ({
 
 import { NodeTypes } from '@test/helpers';
 
-import { CUSTOM_NODES_PACKAGE_NAME } from '../constants';
+import { commonPollingParameters, CUSTOM_NODES_PACKAGE_NAME } from '../constants';
 import { CustomDirectoryLoader } from '../custom-directory-loader';
 import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
@@ -1075,5 +1075,84 @@ describe('DirectoryLoader', () => {
 			DirectoryLoader.applyDeclarativeNodeOptionParameters(nodeType);
 			expect(nodeType.description.properties).toEqual([]);
 		});
+	});
+});
+
+describe('DirectoryLoader declarative polling trigger', () => {
+	const filePath = 'dist/Node1/Node1.node.js';
+
+	// A plain object, not a deep mock, so the loader sees `poll` as undefined.
+	const makePollingTriggerNode = (poll?: INodeType['poll']): INodeType => ({
+		description: {
+			displayName: 'Node 1',
+			icon: 'fa:play',
+			name: 'node1',
+			group: ['trigger'],
+			version: 1,
+			description: '',
+			defaults: {},
+			inputs: [],
+			outputs: ['main'],
+			properties: [],
+			trigger: {
+				type: 'polling',
+				routing: { request: { method: 'GET', url: '/items' } },
+				cursor: { type: 'id', field: 'id' },
+			},
+		},
+		poll,
+	});
+
+	const load = (nodeType: INodeType) => {
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeType);
+		const loader = new CustomDirectoryLoader('/not/a/real/path');
+		loader.loadNodeFromFile(filePath);
+		return loader.nodeTypes.node1.type as INodeType;
+	};
+
+	it('builds poll() and adds the polling parameters', () => {
+		const nodeType = load(makePollingTriggerNode());
+
+		expect(nodeType.poll).toBeInstanceOf(Function);
+		expect(nodeType.description.polling).toBe(true);
+		expect(nodeType.description.properties).toEqual(commonPollingParameters);
+	});
+
+	it('keeps a poll() that the class defines itself', () => {
+		const ownPoll = vi.fn();
+		const nodeType = load(makePollingTriggerNode(ownPoll));
+
+		expect(nodeType.poll).toBe(ownPoll);
+		expect(nodeType.description.polling).toBe(true);
+		expect(nodeType.description.properties).toEqual(commonPollingParameters);
+	});
+
+	it('does not add poll() to a node without a trigger', () => {
+		const nodeType = makePollingTriggerNode();
+		delete nodeType.description.trigger;
+
+		const loaded = load(nodeType);
+
+		expect(loaded.poll).toBeUndefined();
+		expect(loaded.description.polling).toBeUndefined();
+	});
+
+	it('builds poll() only for the versions of a versioned node that declare a trigger', () => {
+		const v1 = makePollingTriggerNode();
+		delete v1.description.trigger;
+		const v2 = makePollingTriggerNode();
+		v2.description.version = 2;
+		const versionedNode = mock<IVersionedNodeType>({
+			description: { name: 'node1', codex: {}, iconUrl: undefined, icon: undefined },
+			currentVersion: 2,
+			nodeVersions: { 1: v1, 2: v2 },
+		} as unknown as Parameters<typeof mock<IVersionedNodeType>>[0]);
+		vi.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(versionedNode);
+
+		new CustomDirectoryLoader('/not/a/real/path').loadNodeFromFile(filePath);
+
+		expect(v1.poll).toBeUndefined();
+		expect(v2.poll).toBeInstanceOf(Function);
+		expect(v2.description.polling).toBe(true);
 	});
 });
