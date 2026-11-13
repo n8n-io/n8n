@@ -403,7 +403,7 @@ function nodeCount(workflow: Pick<IWorkflowBase, 'nodes'>): number {
  * not involved says more than one that never mentioned it.
  */
 function provenance(
-	source: WorkflowActionSource | undefined,
+	source: WorkflowActionSource | 'transfer' | undefined,
 	aiBuilderAssisted?: boolean,
 ): IDataObject {
 	return {
