@@ -8,7 +8,7 @@ const NOTIFICATIONS = {
 test.describe(
 	'Inject previous execution',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('can map keys from previous execution @engine:v2', async ({ n8n }) => {

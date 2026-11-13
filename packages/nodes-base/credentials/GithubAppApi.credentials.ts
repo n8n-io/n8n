@@ -1,12 +1,13 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
-import type {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticateGeneric,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 export class GithubAppApi implements ICredentialType {
@@ -63,7 +64,7 @@ export class GithubAppApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 	): Promise<ICredentialDataDecryptedObject> {
 		const now = Math.floor(Date.now() / 1000);
-		const baseUrl = String(credentials.server ?? 'https://api.github.com').replace(/\/$/, '');
+		const url = requestUrl`${credentials.server ?? 'https://api.github.com'}/app/installations/${credentials.installationId}/access_tokens`;
 		const privateKey = formatPemBlock(credentials.privateKey as string);
 
 		let appJwt: string;
@@ -87,7 +88,7 @@ export class GithubAppApi implements ICredentialType {
 		try {
 			response = await this.helpers.httpRequest({
 				method: 'POST',
-				url: `${baseUrl}/app/installations/${credentials.installationId}/access_tokens`,
+				url,
 				headers: {
 					Authorization: `Bearer ${appJwt}`,
 					Accept: 'application/vnd.github+json',

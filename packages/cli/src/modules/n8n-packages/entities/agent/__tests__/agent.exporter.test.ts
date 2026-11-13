@@ -55,6 +55,7 @@ function setup() {
 		name: 'Current name',
 		projectId: 'source-project',
 		availableInMCP: true,
+		isArchived: false,
 		versionId: 'draft-version',
 		activeVersionId: 'published-version',
 		activeVersion: mock<AgentHistory>({ versionId: 'published-version' }),

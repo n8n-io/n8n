@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { apiRequest, pollTaskResult } from '../transport';
@@ -39,7 +39,7 @@ describe('AlicloudModelStudio Transport', () => {
 			const result = await apiRequest.call(
 				mockExecuteFunctions,
 				'POST',
-				'/api/v1/services/aigc/text-generation/generation',
+				requestPath`/api/v1/services/aigc/text-generation/generation`,
 				{ body: { model: 'qwen3.5-flash', input: { messages: [] }, parameters: {} } },
 			);
 
@@ -47,7 +47,7 @@ describe('AlicloudModelStudio Transport', () => {
 				'alibabaCloudApi',
 				expect.objectContaining({
 					method: 'POST',
-					url: 'https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+					url: requestUrl`https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation`,
 					body: { model: 'qwen3.5-flash', input: { messages: [] }, parameters: {} },
 					json: true,
 				}),
@@ -55,23 +55,35 @@ describe('AlicloudModelStudio Transport', () => {
 			expect(result).toEqual(mockResponse);
 		});
 
-		it('should pass through query string and option parameters', async () => {
+		it('should pass through query string parameters', async () => {
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/api/v1/tasks/123', {
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/api/v1/tasks/123`, {
 				qs: { page: 1 },
-				option: { timeout: 5000 },
 			});
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'alibabaCloudApi',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://dashscope-intl.aliyuncs.com/api/v1/tasks/123',
+					url: requestUrl`https://dashscope-intl.aliyuncs.com/api/v1/tasks/123`,
 					qs: { page: 1 },
-					timeout: 5000,
 				}),
 			);
+		});
+
+		it('should encode path values that contain a slash', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/api/v1/tasks/${'task-1/models'}`,
+			);
+
+			expect(
+				String(mockExecuteFunctions.helpers.httpRequestWithAuthentication.mock.calls[0][1].url),
+			).toBe('https://dashscope-intl.aliyuncs.com/api/v1/tasks/task-1%2Fmodels');
 		});
 
 		it('should normalize response.error === null to undefined', async () => {
@@ -80,7 +92,7 @@ describe('AlicloudModelStudio Transport', () => {
 				error: null,
 			});
 
-			const result = await apiRequest.call(mockExecuteFunctions, 'POST', '/api/v1/test');
+			const result = await apiRequest.call(mockExecuteFunctions, 'POST', requestPath`/api/v1/test`);
 
 			expect(result.error).toBeUndefined();
 		});
@@ -92,12 +104,12 @@ describe('AlicloudModelStudio Transport', () => {
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/api/v1/tasks/123');
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/api/v1/tasks/123`);
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'alibabaCloudApi',
 				expect.objectContaining({
-					url: 'https://dashscope-us.aliyuncs.com/api/v1/tasks/123',
+					url: requestUrl`https://dashscope-us.aliyuncs.com/api/v1/tasks/123`,
 				}),
 			);
 		});
@@ -109,12 +121,12 @@ describe('AlicloudModelStudio Transport', () => {
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/api/v1/tasks/456');
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/api/v1/tasks/456`);
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'alibabaCloudApi',
 				expect.objectContaining({
-					url: 'https://ws123.eu-central-1.maas.aliyuncs.com/api/v1/tasks/456',
+					url: requestUrl`https://ws123.eu-central-1.maas.aliyuncs.com/api/v1/tasks/456`,
 				}),
 			);
 		});
@@ -126,12 +138,12 @@ describe('AlicloudModelStudio Transport', () => {
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/api/v1/tasks/789');
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/api/v1/tasks/789`);
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'alibabaCloudApi',
 				expect.objectContaining({
-					url: 'https://gateway.example.com/v1/gateway/alibaba/api/v1/tasks/789',
+					url: requestUrl`https://gateway.example.com/v1/gateway/alibaba/api/v1/tasks/789`,
 				}),
 			);
 		});

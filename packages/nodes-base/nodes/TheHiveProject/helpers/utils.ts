@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { UserError, type IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export function splitAndTrim(str: string | string[]) {
 	if (typeof str === 'string') {

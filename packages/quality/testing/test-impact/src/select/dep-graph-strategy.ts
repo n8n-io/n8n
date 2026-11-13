@@ -16,7 +16,12 @@ export class DependencyGraphStrategy implements SelectionStrategy {
 		private readonly map: ImpactMap,
 		private readonly importers: WorkspaceImporters,
 		private readonly changedDeps: string[],
-		private readonly opts: { allSpecs?: string[] } = {},
+		private readonly opts: {
+			allSpecs?: string[];
+			/** The package dirs to scope instead of every dir that declares a changed
+			 *  dep. See `runtimeDepScopeDirs` in select.ts. */
+			scopeDirs?: string[];
+		} = {},
 	) {}
 
 	resolve(): ResolveResult {
@@ -39,7 +44,7 @@ export class DependencyGraphStrategy implements SelectionStrategy {
 		}
 		// Every changed dep is declared by at least one importer, so the walk
 		// always resolves to at least those dirs.
-		const dirs = dependentDirs(this.changedDeps, this.importers);
+		const dirs = this.opts.scopeDirs ?? dependentDirs(this.changedDeps, this.importers);
 		// Resolve each dependent package dir through the map. A package.json path
 		// has no own map entry, so sibling fallback scopes it to the specs covering
 		// that package's files.

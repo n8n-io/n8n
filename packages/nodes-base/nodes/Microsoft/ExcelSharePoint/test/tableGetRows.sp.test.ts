@@ -14,7 +14,7 @@ const credentials = {
 
 describe('Microsoft Excel (SharePoint), Service Principal table => getRows smoke', () => {
 	const tablePath =
-		'/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/tables/Table1';
+		'/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/tables/Table1';
 
 	nock('https://graph.microsoft.com')
 		.matchHeader('Authorization', 'Bearer test-access-token')

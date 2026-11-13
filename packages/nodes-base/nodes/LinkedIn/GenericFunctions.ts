@@ -4,10 +4,11 @@ import type {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
-	IRequestOptions,
 	IHttpRequestMethods,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 function resolveHeaderData(fullResponse: any) {
 	if (fullResponse.statusCode === 201) {
 		return { urn: fullResponse.headers['x-restli-id'] };
@@ -19,7 +20,7 @@ function resolveHeaderData(fullResponse: any) {
 export async function linkedInApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath | string,
 
 	body: any = {},
 	binary?: boolean,
@@ -33,7 +34,7 @@ export async function linkedInApiRequest(
 
 	const baseUrl = 'https://api.linkedin.com';
 
-	let options: IRequestOptions = {
+	let options: LegacyRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
@@ -41,7 +42,13 @@ export async function linkedInApiRequest(
 		},
 		method,
 		body,
-		url: binary ? endpoint : `${baseUrl}${endpoint.includes('v2') ? '' : '/rest'}${endpoint}`,
+		...(typeof endpoint === 'string'
+			? { url: endpoint }
+			: {
+					url: endpoint.value.includes('v2')
+						? requestUrl`${baseUrl}${endpoint}`
+						: requestUrl`${baseUrl}/rest${endpoint}`,
+				}),
 		json: true,
 	};
 

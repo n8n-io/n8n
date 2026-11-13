@@ -1,5 +1,5 @@
 import type { OutboundHttp } from '@n8n/backend-network';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { generateKeyPairSync } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 

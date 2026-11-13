@@ -1668,6 +1668,33 @@ describe('workflows tool', () => {
 			).resolves.toBeUndefined();
 		});
 
+		it('keeps the read-only note with investigation source guidance', async () => {
+			const context = createWorkspaceContext(new Map());
+			context.assertInThreadProject = vi.fn().mockRejectedValue(
+				new Error('This workflow has a pending suggestion.', {
+					cause: new OutsideThreadProjectError(),
+				}),
+			);
+			const tool = createWorkflowToolRouter(context, {
+				surface: 'full',
+				sourceGuidance: 'Edit the investigation candidate.',
+			});
+
+			const result = await executeTool<{ filePath?: string; note?: string }>(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1' },
+				{} as never,
+			);
+
+			expect(result.filePath).toBeUndefined();
+			expect(result.note).toBe(
+				'Read-only: the source was not written to a file. This workflow has a pending suggestion.',
+			);
+			await expect(
+				getWorkflowSourceFileBinding(context, 'src/workflows/test-wf.workflow.ts'),
+			).resolves.toBeUndefined();
+		});
+
 		it('reports a failed project lookup as an error, not as read-only', async () => {
 			const context = createWorkspaceContext(new Map());
 			context.assertInThreadProject = vi.fn().mockRejectedValue(new Error('lookup failed'));

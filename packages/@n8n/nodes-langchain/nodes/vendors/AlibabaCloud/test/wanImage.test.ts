@@ -1,9 +1,11 @@
+import { requestPath } from 'n8n-workflow';
+
 import { planWanImage } from '../helpers/wanImage';
 
-const IMAGE_GENERATION = '/api/v1/services/aigc/image-generation/generation';
-const TEXT2IMAGE = '/api/v1/services/aigc/text2image/image-synthesis';
-const IMAGE2IMAGE = '/api/v1/services/aigc/image2image/image-synthesis';
-const MULTIMODAL = '/api/v1/services/aigc/multimodal-generation/generation';
+const IMAGE_GENERATION = requestPath`/api/v1/services/aigc/image-generation/generation`;
+const TEXT2IMAGE = requestPath`/api/v1/services/aigc/text2image/image-synthesis`;
+const IMAGE2IMAGE = requestPath`/api/v1/services/aigc/image2image/image-synthesis`;
+const MULTIMODAL = requestPath`/api/v1/services/aigc/multimodal-generation/generation`;
 
 describe('planWanImage', () => {
 	it.each([

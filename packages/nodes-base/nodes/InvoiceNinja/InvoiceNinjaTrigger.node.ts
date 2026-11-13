@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -134,7 +135,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 						this,
 						'data',
 						'GET',
-						'/webhooks',
+						requestPath`/webhooks`,
 					);
 
 					for (const webhook of registeredWebhooks) {
@@ -160,7 +161,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				let responseData;
 
 				if (apiVersion === 'v4') {
-					const endpoint = '/hooks';
+					const endpoint = requestPath`/hooks`;
 
 					const body = {
 						target_url: webhookUrl,
@@ -172,7 +173,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				}
 
 				if (apiVersion === 'v5') {
-					const endpoint = '/webhooks';
+					const endpoint = requestPath`/webhooks`;
 
 					const body = {
 						target_url: webhookUrl,
@@ -194,10 +195,10 @@ export class InvoiceNinjaTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				const apiVersion = this.getNodeParameter('apiVersion', 0) as string;
-				const hooksEndpoint = apiVersion === 'v4' ? '/hooks' : '/webhooks';
+				const hooksEndpoint = apiVersion === 'v4' ? requestPath`/hooks` : requestPath`/webhooks`;
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `${hooksEndpoint}/${webhookData.webhookId}`;
+					const endpoint = requestPath`${hooksEndpoint}/${webhookData.webhookId}`;
 
 					try {
 						await invoiceNinjaApiRequest.call(this, 'DELETE', endpoint);

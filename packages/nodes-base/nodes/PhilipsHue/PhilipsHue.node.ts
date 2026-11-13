@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { getUser, philipsHueApiRequest } from './GenericFunctions';
 import { lightFields, lightOperations } from './LightDescription';
@@ -62,9 +62,17 @@ export class PhilipsHue implements INodeType {
 
 				const user = await getUser.call(this);
 
-				const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
+				const lights = await philipsHueApiRequest.call(
+					this,
+					'GET',
+					requestPath`/api/${user}/lights`,
+				);
 
-				const groups = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/groups`);
+				const groups = await philipsHueApiRequest.call(
+					this,
+					'GET',
+					requestPath`/api/${user}/groups`,
+				);
 
 				for (const light of Object.keys(lights as IDataObject)) {
 					let lightName = lights[light].name;
@@ -129,7 +137,7 @@ export class PhilipsHue implements INodeType {
 					const data = await philipsHueApiRequest.call(
 						this,
 						'PUT',
-						`/api/${user}/lights/${lightId}/state`,
+						requestPath`/api/${user}/lights/${lightId}/state`,
 						body,
 					);
 
@@ -147,7 +155,7 @@ export class PhilipsHue implements INodeType {
 					responseData = await philipsHueApiRequest.call(
 						this,
 						'DELETE',
-						`/api/${user}/lights/${lightId}`,
+						requestPath`/api/${user}/lights/${lightId}`,
 					);
 				}
 				if (operation === 'getAll') {
@@ -155,7 +163,11 @@ export class PhilipsHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
+					const lights = await philipsHueApiRequest.call(
+						this,
+						'GET',
+						requestPath`/api/${user}/lights`,
+					);
 
 					responseData = Object.values(lights as IDataObject);
 
@@ -172,7 +184,7 @@ export class PhilipsHue implements INodeType {
 					responseData = await philipsHueApiRequest.call(
 						this,
 						'GET',
-						`/api/${user}/lights/${lightId}`,
+						requestPath`/api/${user}/lights/${lightId}`,
 					);
 				}
 			}

@@ -4,7 +4,7 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 const DISCRIMINATOR_NAMES = new Set(['operation', 'mode', 'resource']);
 

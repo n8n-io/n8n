@@ -14,10 +14,10 @@ import {
 	isSubMinuteCron,
 	toCronExpression,
 	TriggerCloseError,
-	UserError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 

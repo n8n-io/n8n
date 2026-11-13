@@ -1,4 +1,5 @@
-import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import { normalizeEndpoint } from '../../../../utils/normalizeEndpoint';

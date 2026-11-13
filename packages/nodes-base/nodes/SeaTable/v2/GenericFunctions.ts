@@ -8,8 +8,10 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	ICollaborator,
@@ -17,7 +19,6 @@ import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,
-	IEndpointVariables,
 	IName,
 	IRow,
 	IRowObject,
@@ -25,7 +26,9 @@ import type {
 	IFile,
 } from './actions/Interfaces';
 import { schema } from './Schema';
-import type { TDtableMetadataColumns, TEndpointVariableName } from './types';
+import type { TDtableMetadataColumns } from './types';
+
+export type SeaTableEndpoint = RequestPath | ((dtableUuid?: string) => RequestPath);
 
 const userBaseUri = (uri?: string) => {
 	if (uri === undefined) return uri;
@@ -45,11 +48,11 @@ export async function getBaseAccessToken(
 ) {
 	if (ctx?.base?.access_token !== undefined) return;
 
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			Authorization: `Token ${ctx?.credentials?.token}`,
 		},
-		url: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
+		url: requestUrl`${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
 		json: true,
 	};
 	try {
@@ -67,28 +70,14 @@ export function escapeSqlIdentifier(value: string): string {
 	return value.replace(/`/g, '``');
 }
 
-function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
-	const endpointVariables: IEndpointVariables = {};
-	endpointVariables.access_token = ctx?.base?.access_token;
-	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
-
-	return endpoint.replace(
-		/{{ *(access_token|dtable_uuid|server) *}}/g,
-		(match: string, name: TEndpointVariableName) => {
-			return (endpointVariables[name] as string) || match;
-		},
-	);
-}
-
 export async function seaTableApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	ctx: ICtx,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: SeaTableEndpoint,
 	body: IDataObject | FormData | string | Buffer = {},
 	qs: IDataObject = {},
-	url: string = '',
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('seaTableApi');
 
@@ -96,16 +85,18 @@ export async function seaTableApiRequest(
 
 	await getBaseAccessToken.call(this, ctx);
 
+	const path = typeof endpoint === 'function' ? endpoint(ctx.base?.dtable_uuid) : endpoint;
+
 	// some API endpoints require the api_token instead of base_access_token.
 	const token =
-		endpoint.indexOf('/api/v2.1/dtable/app-download-link/') === 0 ||
-		endpoint == '/api/v2.1/dtable/app-upload-link/' ||
-		endpoint.indexOf('/seafhttp/upload-api') === 0
+		path.value.indexOf('/api/v2.1/dtable/app-download-link/') === 0 ||
+		path.value == '/api/v2.1/dtable/app-upload-link/' ||
+		path.value.indexOf('/seafhttp/upload-api') === 0
 			? `${ctx?.credentials?.token}`
 			: `${ctx?.base?.access_token}`;
 
-	let options: IRequestOptions = {
-		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
+		uri: requestUrl`${resolveBaseUri(ctx)}${path}`,
 		headers: {
 			Authorization: `Token ${token}`,
 		},
@@ -120,12 +111,12 @@ export async function seaTableApiRequest(
 	}
 
 	// remove header from download request.
-	if (endpoint.indexOf('/seafhttp/files/') === 0) {
+	if (path.value.indexOf('/seafhttp/files/') === 0) {
 		delete options.headers;
 	}
 
 	// enhance header for upload request
-	if (endpoint.indexOf('/seafhttp/upload-api') === 0) {
+	if (path.value.indexOf('/seafhttp/upload-api') === 0) {
 		options.json = true;
 		options.headers = {
 			...options.headers,
@@ -151,7 +142,7 @@ export async function getBaseCollaborators(
 		this,
 		{},
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/related-users/',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/related-users/`,
 	);
 	const collaborators: ICollaborator[] = collaboratorsResult.user_list || [];
 	return collaborators;
@@ -168,7 +159,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		'/api-gateway/api/v2/dtables/{{dtable_uuid}}/metadata',
+		(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/metadata`,
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {

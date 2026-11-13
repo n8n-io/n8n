@@ -80,7 +80,7 @@ const columns = computed(() => [
 	},
 	{
 		prop: 'runAt',
-		label: 'Run at',
+		label: locale.baseText('evaluation.listRuns.runAt'),
 		sortable: true,
 		showOverflowTooltip: true,
 		formatter: (row: TestRunRecord) => {

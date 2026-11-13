@@ -35,7 +35,7 @@ import {
 	type SubAgentSource,
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -45,7 +45,6 @@ import { UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -990,7 +989,7 @@ export class AgentRuntimeReconstructionService {
 					headers.set(key, value);
 				}
 				for (const [key, value] of Object.entries(
-					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: N8N_VERSION }),
+					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: getN8nVersion() }),
 				)) {
 					headers.set(key, value);
 				}

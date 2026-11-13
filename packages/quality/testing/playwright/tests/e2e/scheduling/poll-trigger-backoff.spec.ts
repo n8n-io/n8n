@@ -16,7 +16,7 @@ test.use(migratedPollTestConfig);
 test.describe(
 	'Poll Trigger error backoff',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should skip the tick that falls inside the backoff window, then recover once it elapses', async ({

@@ -1,4 +1,5 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -16,7 +17,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const SHEET_PATH = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1`;
+const SHEET_PATH = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1`;
 const SHEET = {
 	address: 'Sheet1!A1:B4',
 	values: [
@@ -50,8 +51,8 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 	};
 
 	const mockSheetReads = () => {
-		apiRequest.mockImplementation(async (method: string, resource: string) => {
-			if (method === 'GET' && resource.endsWith('/usedRange')) return { ...SHEET };
+		apiRequest.mockImplementation(async (method: string, resource: RequestPath) => {
+			if (method === 'GET' && resource.value.endsWith('/usedRange')) return { ...SHEET };
 			return {
 				address: 'Sheet1!A1:B2',
 				values: [
@@ -87,7 +88,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		const result = await node.execute.call(ctx);
 
 		const [, resource, body] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B4')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B4')`);
 		expect(body).toEqual({
 			values: [
 				['Name', 'Email'],
@@ -105,8 +106,8 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 	it('writes trailing empty rows back unchanged in Update — no trim, dimensions preserved', async () => {
 		setParams({ ...baseParams, operation: 'update' });
 		ctx.getInputData.mockReturnValue([{ json: { Name: 'Franklin', Email: 'frank@example.com' } }]);
-		apiRequest.mockImplementation(async (method: string, resource: string) => {
-			if (method === 'GET' && resource.endsWith('/usedRange')) {
+		apiRequest.mockImplementation(async (method: string, resource: RequestPath) => {
+			if (method === 'GET' && resource.value.endsWith('/usedRange')) {
 				return {
 					address: 'Sheet1!A1:B5',
 					values: [...SHEET.values, ['', '']],
@@ -118,7 +119,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		await node.execute.call(ctx);
 
 		const [, resource, body] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B5')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B5')`);
 		expect((body as { values: string[][] }).values).toHaveLength(5);
 		expect((body as { values: string[][] }).values.at(-1)).toEqual(['', '']);
 	});
@@ -126,8 +127,8 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 	it('appends below the used range, not the selected range', async () => {
 		setParams({ ...baseParams, operation: 'upsert', range: 'A1:B2' });
 		ctx.getInputData.mockReturnValue([{ json: { Name: 'New Person', Email: 'new@example.com' } }]);
-		apiRequest.mockImplementation(async (method: string, resource: string) => {
-			if (method === 'GET' && resource.includes('/usedRange')) {
+		apiRequest.mockImplementation(async (method: string, resource: RequestPath) => {
+			if (method === 'GET' && resource.value.includes('/usedRange')) {
 				return { address: 'Sheet1!A1:B4' };
 			}
 			if (method === 'GET') {
@@ -144,9 +145,12 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 
 		await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', `${SHEET_PATH}/range(address='A1:B2')`);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`${SHEET_PATH}/range(address='A1:B2')`,
+		);
 		const [, resource, body] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B5')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B5')`);
 		expect((body as { values: string[][] }).values.at(-1)).toEqual([
 			'New Person',
 			'new@example.com',
@@ -177,10 +181,10 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		await node.execute.call(ctx);
 
 		const [, resource] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B3')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B3')`);
 		expect(apiRequest).not.toHaveBeenCalledWith(
 			'GET',
-			`${SHEET_PATH}/usedRange`,
+			requestPath`${SHEET_PATH}/usedRange`,
 			{},
 			{ $select: 'address' },
 		);
@@ -211,7 +215,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		await node.execute.call(ctx);
 
 		const [, resource, body] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B5')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B5')`);
 		expect((body as { values: string[][] }).values.at(-1)).toEqual([
 			'New Person',
 			'new@example.com',
@@ -263,7 +267,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		const result = await node.execute.call(ctx);
 
 		const [, resource, body] = patchCall()!;
-		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B4')`);
+		expect(resource).toEqual(requestPath`${SHEET_PATH}/range(address='A1:B4')`);
 		expect(body).toEqual({
 			values: [
 				['Name', 'Email'],

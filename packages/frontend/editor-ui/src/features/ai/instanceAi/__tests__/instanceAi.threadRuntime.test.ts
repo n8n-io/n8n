@@ -9,6 +9,7 @@ import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAgentNode,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
@@ -2658,6 +2659,31 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 		expect(runtime.isAwaitingConfirmation).toBe(false);
 	});
 
+	it('counts as awaiting user input while its run is active, although it is not in the panel', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-active',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+		runtime.activeRunId = 'run-1';
+
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.isAwaitingUserInput).toBe(true);
+	});
+
+	it('does not count as awaiting user input once its run has ended', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-ended',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.isAwaitingUserInput).toBe(false);
+	});
+
 	it('leaves other confirmations on the same tool in the panel', () => {
 		const runtime = seedConfirmation({
 			requestId: 'req-plain',
@@ -3197,7 +3223,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				],
 				children: [],
 				timeline: [],
-			},
+			} satisfies InstanceAiAgentNode,
 			status: 'completed',
 			backgroundTasks: [],
 		};
@@ -3343,6 +3369,57 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 		// The historical build really was hydrated (so "not tracked" is meaningful,
 		// not just an empty no-op hydration).
 		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
+
+	test('does not track for a workflow that only appears in an older history page', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-new',
+					role: 'user',
+					createdAt: new Date().toISOString(),
+					content: 'Thanks',
+					reasoning: '',
+					isStreaming: false,
+				},
+			],
+			nextEventId: 11,
+			nextCursor: 'cursor-1',
+		});
+		await activeRuntime(registry).loadHistoricalMessages();
+		const { agentTree } = runSyncWithBuild({
+			runId: 'run-old',
+			messageGroupId: 'mg-old',
+			workflowId: 'wf-old',
+			toolCallId: 'tc-old',
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-old',
+					runId: 'run-old',
+					messageGroupId: 'mg-old',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree,
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadOlderMessages();
+
+		expect(activeRuntime(registry).messages.map((msg) => msg.id)).toEqual(['msg-old', 'msg-new']);
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
 		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
 			'User viewed new builder workflow',
 			expect.anything(),
@@ -3761,5 +3838,112 @@ describe('createThreadRuntime - follow-up run after a reconnect', () => {
 			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
 		).toEqual(['req-move']);
 		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - older history pages', () => {
+	const threadId = 'thread-older';
+	const message = (
+		id: string,
+		role: 'user' | 'assistant',
+		messageGroupId?: string,
+	): ThreadRuntime['messages'][number] => ({
+		id,
+		role,
+		messageGroupId,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+	});
+
+	async function hydratedRuntime() {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime(threadId);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
+			nextCursor: 'cursor-1',
+			nextEventId: 0,
+		});
+		await runtime.loadHistoricalMessages();
+		return runtime;
+	}
+
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('prepends older pages until the thread start and skips messages it already has', async () => {
+		const runtime = await hydratedRuntime();
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [
+				message('u1', 'user', 'g1'),
+				message('a1', 'assistant', 'g1'),
+				message('a2-older-copy', 'assistant', 'g2'),
+				message('u2', 'user'),
+			],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			threadId,
+			100,
+			undefined,
+			'cursor-1',
+		);
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'a1', 'u2', 'a2']);
+		expect(runtime.hasOlderMessages).toBe(false);
+
+		await runtime.loadOlderMessages();
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+	});
+
+	test('drops a page that returns after a reset', async () => {
+		const runtime = await hydratedRuntime();
+		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+
+		const loading = runtime.loadOlderMessages();
+		runtime.resetState();
+		resolveOlder({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextCursor: 'cursor-0',
+			nextEventId: 0,
+		});
+		await loading;
+
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+		expect(runtime.messages).toEqual([]);
+		expect(runtime.hasOlderMessages).toBe(false);
+	});
+
+	test('rethrows a failed request and keeps the cursor for a retry', async () => {
+		const runtime = await hydratedRuntime();
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
 	});
 });

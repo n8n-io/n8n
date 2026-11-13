@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 /**
  * ServiceNow encoded queries separate clauses with `^` (and `^OR`, `^NQ`), and
@@ -21,12 +23,11 @@ export const ENCODED_QUERY_DELIMITERS = ['^'];
 export async function serviceNowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'headers' | 'json' | 'encoding' | 'resolveWithFullResponse'> = {},
 ): Promise<any> {
 	const headers = {} as IDataObject;
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
@@ -39,14 +40,14 @@ export async function serviceNowApiRequest(
 		credentials = await this.getCredentials('serviceNowOAuth2Api');
 	}
 
-	const options = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers,
 		method,
 		qs,
 		body,
-		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
+		uri: requestUrl`https://${credentials.subdomain}.service-now.com/api${resource}`,
 		json: true,
-	} satisfies IRequestOptions;
+	};
 	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
@@ -55,8 +56,8 @@ export async function serviceNowApiRequest(
 		Object.assign(options, option);
 	}
 
-	if (options.qs.limit) {
-		delete options.qs.limit;
+	if (qs.limit) {
+		delete qs.limit;
 	}
 
 	try {
@@ -71,7 +72,7 @@ export async function serviceNowApiRequest(
 export async function serviceNowRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
@@ -83,7 +84,7 @@ export async function serviceNowRequestAllItems(
 
 	query.sysparm_limit = page;
 
-	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
+	responseData = await serviceNowApiRequest.call(this, method, resource, body, query, {
 		resolveWithFullResponse: true,
 	});
 	returnData.push.apply(returnData, responseData.body.result as IDataObject[]);
@@ -94,7 +95,7 @@ export async function serviceNowRequestAllItems(
 	for (let iteration = 1; iteration < iterations; iteration++) {
 		query.sysparm_limit = page;
 		query.sysparm_offset = iteration * page;
-		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, undefined, {
+		responseData = await serviceNowApiRequest.call(this, method, resource, body, query, {
 			resolveWithFullResponse: true,
 		});
 
@@ -106,15 +107,22 @@ export async function serviceNowRequestAllItems(
 
 export async function serviceNowDownloadAttachment(
 	this: IExecuteFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	fileName: string,
 	contentType: string,
 ) {
-	const fileData = await serviceNowApiRequest.call(this, 'GET', `${endpoint}/file`, {}, {}, '', {
-		json: false,
-		encoding: null,
-		resolveWithFullResponse: true,
-	});
+	const fileData = await serviceNowApiRequest.call(
+		this,
+		'GET',
+		requestPath`${endpoint}/file`,
+		{},
+		{},
+		{
+			json: false,
+			encoding: null,
+			resolveWithFullResponse: true,
+		},
+	);
 	const binaryData = await this.helpers.prepareBinaryData(
 		Buffer.from(fileData.body as string),
 		fileName,

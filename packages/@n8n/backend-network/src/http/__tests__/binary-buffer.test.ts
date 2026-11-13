@@ -1,6 +1,6 @@
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { Readable } from 'node:stream';
 import { createGunzip } from 'node:zlib';
 

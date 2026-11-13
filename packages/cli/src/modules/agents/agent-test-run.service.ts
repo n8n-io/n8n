@@ -1,16 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
 import {
 	type CredentialProvider,
 	type SerializableAgentState,
 	type StreamChunk,
 } from '@n8n/agents';
-import {
-	APPROVAL_RESUME_SCHEMA,
-	APPROVAL_SUSPEND_SCHEMA,
-	type ApprovalSuspendPayload,
-} from '@n8n/agents/tool';
-import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import type { ApprovalSuspendPayload } from '@n8n/agents/tool';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,6 +21,7 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { findPendingStandardApproval, parseStandardApprovalSuspension } from './standard-approval';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
@@ -129,27 +124,12 @@ export type AgentTestRunResult =
 	| (PreparedDraftRunResult & { sessionId: string })
 	| Exclude<PrepareDraftRunResult, { status: 'ready' }>;
 
-const expectedApprovalResumeJsonSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA);
-
 export class InvalidAgentTestRunCheckpointError extends UserError {
 	readonly code = 'invalid_checkpoint';
 
 	constructor() {
 		super('This test run can no longer be resumed.');
 	}
-}
-
-export function parseStandardApprovalSuspension(
-	suspension: AgentTestRunSuspension,
-): ApprovalSuspendPayload | undefined {
-	const payload = APPROVAL_SUSPEND_SCHEMA.safeParse(suspension.suspendPayload);
-	if (
-		!payload.success ||
-		!isDeepStrictEqual(suspension.resumeSchema, expectedApprovalResumeJsonSchema)
-	) {
-		return undefined;
-	}
-	return payload.data;
 }
 
 export function collectStandardApprovals(
@@ -428,23 +408,13 @@ export class AgentTestRunService {
 			throw error;
 		}
 
-		const pendingToolCall = checkpoint?.pendingToolCalls[continuation.toolCallId];
-		const expectedResourceId = draftChatMemoryResourceId(userId);
-		if (
-			checkpoint?.status !== 'suspended' ||
-			checkpoint.persistence?.delegated === true ||
-			checkpoint.persistence?.threadId !== continuation.sessionId ||
-			checkpoint.persistence?.resourceId !== expectedResourceId ||
-			!pendingToolCall?.suspended ||
-			pendingToolCall.runId !== continuation.runId ||
-			!parseStandardApprovalSuspension({
-				runId: pendingToolCall.runId,
-				toolCallId: pendingToolCall.toolCallId,
-				toolName: pendingToolCall.toolName,
-				suspendPayload: pendingToolCall.suspendPayload,
-				resumeSchema: pendingToolCall.resumeSchema,
-			})
-		) {
+		const expected = {
+			runId: continuation.runId,
+			toolCallId: continuation.toolCallId,
+			threadId: continuation.sessionId,
+			resourceId: draftChatMemoryResourceId(userId),
+		};
+		if (!findPendingStandardApproval(checkpoint, expected)) {
 			throw new InvalidAgentTestRunCheckpointError();
 		}
 	}

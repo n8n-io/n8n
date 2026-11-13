@@ -15,11 +15,23 @@ import { computed } from 'vue';
 
 const props = defineProps<{
 	detail: SelfHealingResultDetail;
-	workflowName: string;
+	workflowNames: Map<string, string>;
 	statusLabel: string;
 }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+
+const workflowName = computed(
+	() => props.workflowNames.get(props.detail.workflowId) ?? props.detail.workflowId,
+);
+const subWorkflows = computed(() =>
+	props.detail.suggestions
+		.filter(({ workflowId }) => workflowId !== props.detail.workflowId)
+		.map(({ workflowId }) => ({
+			id: workflowId,
+			name: props.workflowNames.get(workflowId) ?? workflowId,
+		})),
+);
 
 const usageRows = computed(() => {
 	const usage = props.detail.usage;
@@ -124,6 +136,26 @@ const usageRows = computed(() => {
 					<span :class="$style.link">
 						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
 						<span :class="$style.workflowName">{{ workflowName }}</span>
+					</span>
+				</N8nLink>
+			</div>
+			<div v-if="subWorkflows.length > 0" :class="$style.section">
+				<N8nText bold color="text-light" size="medium">{{
+					i18n.baseText('inbox.selfHealing.metadata.subWorkflows')
+				}}</N8nText>
+				<N8nLink
+					v-for="subWorkflow in subWorkflows"
+					:key="subWorkflow.id"
+					:to="{ name: VIEWS.WORKFLOW, params: { workflowId: subWorkflow.id } }"
+					theme="text"
+					size="medium"
+					:underline="false"
+					:class="$style.plainLink"
+					data-test-id="self-healing-sub-workflow-link"
+				>
+					<span :class="$style.link">
+						<N8nIcon icon="workflow" size="medium" :class="$style.workflowIcon" />
+						<span :class="$style.workflowName">{{ subWorkflow.name }}</span>
 					</span>
 				</N8nLink>
 			</div>

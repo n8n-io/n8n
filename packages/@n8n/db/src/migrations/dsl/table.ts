@@ -1,6 +1,6 @@
 import type { Driver, TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
 import { Table, TableCheck, TableColumn, TableForeignKey, TableUnique } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import LazyPromise from 'p-lazy';
 
 import { Column } from './column';

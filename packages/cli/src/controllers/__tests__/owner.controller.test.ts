@@ -1,10 +1,10 @@
 import type { DismissBannerRequestDto } from '@n8n/api-types';
+import type { PostHogClient } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthService } from '@/auth/auth.service';
 import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@n8n/errors';
-import type { PostHogClient } from '@/posthog';
 import type { BannerService } from '@/services/banner.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UserService } from '@/services/user.service';

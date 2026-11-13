@@ -54,6 +54,15 @@ export const credentials: INodeCredentialDescription[] = [
 		},
 	},
 	{
+		name: 'oAuth2Api',
+		required: true,
+		displayOptions: {
+			show: {
+				authentication: ['oAuth2Api'],
+			},
+		},
+	},
+	{
 		name: 'httpMultipleHeadersAuth',
 		required: true,
 		displayOptions: {

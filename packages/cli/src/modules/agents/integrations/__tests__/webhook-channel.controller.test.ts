@@ -6,11 +6,14 @@ import { WebhookChannelController } from '../platforms/webhook/webhook-channel.c
 
 describe('WebhookChannelController route access scopes', () => {
 	// The caller is not an n8n user: the channel's own authentication runs in the handler.
-	expectProjectScopedAgentRoutes(WebhookChannelController, new Set(['respond']));
+	expectProjectScopedAgentRoutes(WebhookChannelController, new Set(['respond', 'decide']));
 
-	it('limits the requests of one IP address with the configured limit', () => {
-		const route = getRoutesByHandlerName(WebhookChannelController).get('respond');
+	it.each(['respond', 'decide'])(
+		'limits the requests of one IP address to %s with the configured limit',
+		(handlerName) => {
+			const route = getRoutesByHandlerName(WebhookChannelController).get(handlerName);
 
-		expect(route?.ipRateLimit).toEqual({ limit: 300 });
-	});
+			expect(route?.ipRateLimit).toEqual({ limit: 300 });
+		},
+	);
 });

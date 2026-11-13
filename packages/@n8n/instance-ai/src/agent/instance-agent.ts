@@ -303,6 +303,7 @@ export async function createInstanceAgent(
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				midRunObservation,
+				policy,
 				onTaskUsage,
 				model: memoryModel,
 			} = memoryConfig.observationalMemory;
@@ -311,6 +312,7 @@ export async function createInstanceAgent(
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
+				...policy,
 				...(onTaskUsage || memoryModel
 					? {
 							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),

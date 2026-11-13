@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { IDataObject, INode, IPollFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -79,7 +80,7 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
 				method: 'GET',
-				uri: 'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
+				uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/messages`,
 				qs: expect.objectContaining({ $top: 1 }),
 			}),
 		);
@@ -101,7 +102,7 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
-				uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/messages',
+				uri: requestUrl`https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23@tenant.onmicrosoft.com/messages`,
 			}),
 		);
 	});
@@ -116,7 +117,7 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
 			'microsoftEntraServicePrincipalApi',
 			expect.objectContaining({
-				uri: `https://graph.microsoft.com/v1.0/users/user%40example.com/mailFolders/${folderId}/messages`,
+				uri: requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/mailFolders/${folderId}/messages`,
 			}),
 		);
 	});
@@ -129,8 +130,8 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 
 		const callArgs = mockRequestWithAuthentication.mock.calls[0];
 		expect(callArgs[0]).toBe('microsoftEntraServicePrincipalApi');
-		expect((callArgs[1] as IDataObject).uri).toBe(
-			'https://graph.microsoft.com/v1.0/users/user%40example.com/messages',
+		expect((callArgs[1] as IDataObject).uri).toEqual(
+			requestUrl`https://graph.microsoft.com/v1.0/users/user@example.com/messages`,
 		);
 		const qs = (callArgs[1] as IDataObject).qs as IDataObject;
 		expect(qs.$filter).toBe(

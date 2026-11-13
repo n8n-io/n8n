@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	formatTitle,
@@ -215,7 +215,7 @@ export async function archive(this: IExecuteFunctions, items: INodeExecutionData
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${toPathSegment(getPageId.call(this, i))}`,
+				requestPath`/pages/${getPageId.call(this, i)}`,
 				{ in_trash: true },
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
@@ -246,7 +246,7 @@ export async function create(this: IExecuteFunctions, items: INodeExecutionData[
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'POST',
-				'/pages',
+				requestPath`/pages`,
 				body,
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
@@ -271,7 +271,7 @@ export async function getMarkdown(this: IExecuteFunctions, items: INodeExecution
 			const response = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
+				requestPath`/pages/${getPageId.call(this, i)}/markdown`,
 				{},
 				includeTranscript ? { include_transcript: true } : {},
 			);
@@ -303,7 +303,7 @@ export async function search(this: IExecuteFunctions, items: INodeExecutionData[
 				this,
 				'results',
 				'POST',
-				'/search',
+				requestPath`/search`,
 				body,
 				limit ? { limit } : {},
 			);
@@ -328,7 +328,7 @@ export async function updateMarkdown(this: IExecuteFunctions, items: INodeExecut
 			const response = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
+				requestPath`/pages/${getPageId.call(this, i)}/markdown`,
 				getMarkdownUpdateBody.call(this, i),
 			);
 			const executionData = this.helpers.constructExecutionMetaData(

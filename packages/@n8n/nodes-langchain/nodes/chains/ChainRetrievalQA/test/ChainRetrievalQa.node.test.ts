@@ -4,7 +4,8 @@ import type { BaseRetriever } from '@langchain/core/retrievers';
 import { FakeChatModel, FakeLLM, FakeRetriever } from '@langchain/core/utils/testing';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions, NodeConnectionType } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ChainRetrievalQa } from '../ChainRetrievalQa.node';
 

@@ -147,7 +147,7 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/repos/some-owner/some-repo/hooks',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks' }),
 				expect.objectContaining({
 					config: expect.objectContaining({
 						secret: expect.any(String),
@@ -173,12 +173,12 @@ describe('GithubTrigger Node', () => {
 			// Fetched by id, and without the create body, which holds the new secret.
 			expect(apiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				{},
 			);
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ secret: expect.stringMatching(/^[0-9a-f]{64}$/) }),
 				}),
@@ -200,7 +200,7 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				{
 					config: {
 						url: 'https://example.com/webhook',
@@ -228,7 +228,7 @@ describe('GithubTrigger Node', () => {
 
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ insecure_ssl: '1' }),
 				}),
@@ -268,7 +268,7 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookId).toBe('123');
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/123',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/123' }),
 				expect.objectContaining({ events: ['push'] }),
 			);
 		});
@@ -483,7 +483,7 @@ describe('GithubTrigger Node', () => {
 			expect(webhookData.webhookSecret).toHaveLength(64);
 			expect(apiRequestSpy).toHaveBeenLastCalledWith(
 				'PATCH',
-				'/repos/some-owner/some-repo/hooks/424242',
+				expect.objectContaining({ value: '/repos/some-owner/some-repo/hooks/424242' }),
 				expect.objectContaining({
 					config: expect.objectContaining({ secret: webhookData.webhookSecret }),
 				}),

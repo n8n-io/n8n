@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
@@ -57,7 +58,7 @@ describe('MiniMax listSearch', () => {
 			await modelSearch.call(mockLoadOptionsFunctions);
 
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/v1/models');
+			expect(mockApiRequest).toHaveBeenCalledWith('GET', requestPath`/v1/models`);
 		});
 	});
 });

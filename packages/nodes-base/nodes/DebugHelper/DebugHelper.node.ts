@@ -5,12 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	NodeApiError,
-	NodeConnectionTypes,
-	NodeOperationError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { generateGarbageMemory, runGarbageCollector } from './functions';
 import {

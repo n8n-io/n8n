@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import type * as _importType0 from 'crypto';
+import { requestUrl } from 'n8n-workflow';
 import type { IHookFunctions, IDataObject, IWebhookFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 
@@ -57,7 +58,7 @@ describe('CalendlyTrigger', () => {
 		} as unknown as Mocked<IHookFunctions>;
 
 		requestWithAuthentication.mockImplementation(async (_credentialsType, requestOptions) => {
-			if (requestOptions.uri === 'https://api.calendly.com/users/me') {
+			if (String(requestOptions.uri) === 'https://api.calendly.com/users/me') {
 				return {
 					resource: {
 						uri: userUri,
@@ -68,7 +69,7 @@ describe('CalendlyTrigger', () => {
 
 			if (
 				requestOptions.method === 'POST' &&
-				requestOptions.uri === 'https://api.calendly.com/webhook_subscriptions'
+				String(requestOptions.uri) === 'https://api.calendly.com/webhook_subscriptions'
 			) {
 				return {
 					resource: {
@@ -79,7 +80,7 @@ describe('CalendlyTrigger', () => {
 
 			if (
 				requestOptions.method === 'GET' &&
-				requestOptions.uri === 'https://api.calendly.com/webhook_subscriptions'
+				String(requestOptions.uri) === 'https://api.calendly.com/webhook_subscriptions'
 			) {
 				return { collection: [] };
 			}
@@ -99,7 +100,7 @@ describe('CalendlyTrigger', () => {
 				'calendlyApi',
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://api.calendly.com/webhook_subscriptions',
+					uri: requestUrl`https://api.calendly.com/webhook_subscriptions`,
 					body: {
 						url: webhookUrl,
 						events: ['invitee.created'],
@@ -128,7 +129,7 @@ describe('CalendlyTrigger', () => {
 				'calendlyApi',
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://api.calendly.com/webhook_subscriptions',
+					uri: requestUrl`https://api.calendly.com/webhook_subscriptions`,
 					body: {
 						url: webhookUrl,
 						events: ['invitee.created', 'invitee.canceled'],
@@ -153,7 +154,7 @@ describe('CalendlyTrigger', () => {
 	describe('webhookMethods.default.checkExists', () => {
 		it('should return true when matching webhook subscription exists', async () => {
 			requestWithAuthentication.mockImplementation(async (_credentialsType, requestOptions) => {
-				if (requestOptions.uri === 'https://api.calendly.com/users/me') {
+				if (String(requestOptions.uri) === 'https://api.calendly.com/users/me') {
 					return {
 						resource: {
 							uri: userUri,
@@ -181,7 +182,7 @@ describe('CalendlyTrigger', () => {
 				'calendlyApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.calendly.com/webhook_subscriptions',
+					uri: requestUrl`https://api.calendly.com/webhook_subscriptions`,
 					qs: {
 						scope: 'user',
 						organization: organizationUri,
@@ -193,7 +194,7 @@ describe('CalendlyTrigger', () => {
 
 		it('should return false when webhook subscription events do not match', async () => {
 			requestWithAuthentication.mockImplementation(async (_credentialsType, requestOptions) => {
-				if (requestOptions.uri === 'https://api.calendly.com/users/me') {
+				if (String(requestOptions.uri) === 'https://api.calendly.com/users/me') {
 					return {
 						resource: {
 							uri: userUri,
@@ -232,7 +233,7 @@ describe('CalendlyTrigger', () => {
 				'calendlyApi',
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: webhookUri,
+					uri: requestUrl`https://api.calendly.com/webhook_subscriptions/WEBHOOK_ID`,
 				}),
 			);
 			expect(webhookData.webhookURI).toBeUndefined();

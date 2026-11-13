@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
+import { vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 
 import N8nIcon from '../N8nIcon';
@@ -232,6 +233,48 @@ describe('N8nListbox', () => {
 		);
 		expect(custom.querySelector('[data-icon]')).toBeNull();
 		expect(custom).toContainElement(getByTestId('custom-leading'));
+	});
+
+	it('highlights the selected item on mount without focusing or scrolling it', async () => {
+		const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+		const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+		try {
+			const { getByRole } = render(Harness, { props: { modelValue: 'v1' } });
+			const selected = getByRole('option', { name: 'v1' });
+
+			await vi.waitFor(() => {
+				expect(selected).toHaveAttribute('data-highlighted');
+			});
+
+			expect(selected).toHaveAttribute('tabindex', '0');
+			expect(focus.mock.instances).not.toContain(selected);
+			expect(scrollIntoView.mock.instances).not.toContain(selected);
+			expect(selected).not.toHaveFocus();
+		} finally {
+			focus.mockRestore();
+			scrollIntoView.mockRestore();
+		}
+	});
+
+	it('scrolls the highlighted item into view when the value changes', async () => {
+		const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+		try {
+			const { getByRole } = render(ControlledExternal);
+
+			await nextTick();
+			await nextTick();
+			scrollIntoView.mockClear();
+
+			await userEvent.click(getByRole('button', { name: 'Set v2' }));
+			await nextTick();
+			await nextTick();
+
+			const next = getByRole('option', { name: 'v2' });
+			expect(next).toHaveAttribute('data-highlighted');
+			expect(scrollIntoView.mock.instances).toContain(next);
+		} finally {
+			scrollIntoView.mockRestore();
+		}
 	});
 
 	it('puts caller attributes on the list root and the label on the listbox', () => {

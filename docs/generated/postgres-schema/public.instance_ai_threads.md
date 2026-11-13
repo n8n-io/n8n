@@ -99,9 +99,14 @@ erDiagram
 }
 "public.instance_ai_observation_cursors" {
   timestamp_3__with_time_zone createdAt
+  varchar_255_ lastModelId
   timestamp_3__with_time_zone lastObservedAt
   varchar_36_ lastObservedMessageId
+  integer lastRequestTokens
   uuid observationScopeId FK
+  timestamp_3__with_time_zone resumeFromAt
+  varchar_36_ resumeFromMessageId
+  text resumeNotes
   timestamp_3__with_time_zone updatedAt
 }
 "public.instance_ai_observation_locks" {

@@ -7,21 +7,22 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function acuitySchedulingApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
 	_option: IDataObject = {},
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -29,7 +30,7 @@ export async function acuitySchedulingApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://acuityscheduling.com/api/v1${resource}`,
+		uri: requestUrl`https://acuityscheduling.com/api/v1${resource}`,
 		json: true,
 	};
 

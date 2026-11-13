@@ -4,18 +4,20 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
 ) {
 	const propertyType = this.getNodeParameter('propertyType', 0, 'universal') as string;
 	const baseURL =
@@ -23,7 +25,7 @@ export async function googleApiRequest(
 			? 'https://analyticsdata.googleapis.com'
 			: 'https://analyticsreporting.googleapis.com';
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -31,11 +33,9 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `${baseURL}${endpoint}`,
+		uri: uri ?? requestUrl`${baseURL}${endpoint}`,
 		json: true,
 	};
-
-	options = Object.assign({}, options, option);
 
 	try {
 		if (Object.keys(body).length === 0) {
@@ -68,10 +68,10 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri?: string,
+	uri?: RequestUrl,
 ) {
 	const propertyType = this.getNodeParameter('propertyType', 0, 'universal') as string;
 	const returnData: IDataObject[] = [];

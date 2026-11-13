@@ -3,30 +3,37 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string;
 	qs?: IDataObject;
-	uri?: string;
-	option?: IDataObject;
+	option?: Pick<
+		IRequestOptions,
+		'formData' | 'json' | 'encoding' | 'useStream' | 'resolveWithFullResponse'
+	> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	};
 };
 
 export async function apiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	parameters?: RequestParameters,
 ) {
 	const { body, qs, option } = parameters ?? {};
 
 	const credentials = await this.getCredentials('openAiApi');
 
-	let uri = `https://api.openai.com/v1${endpoint}`;
+	const baseUrl = credentials.url || 'https://api.openai.com/v1';
 	let headers = parameters?.headers ?? {};
-	if (credentials.url) {
-		uri = `${credentials?.url}${endpoint}`;
-	}
 
 	if (
 		credentials.header &&
@@ -40,12 +47,12 @@ export async function apiRequest(
 		};
 	}
 
-	const options = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers,
 		method,
 		body,
 		qs,
-		uri,
+		uri: requestUrl`${baseUrl}${endpoint}`,
 		json: true,
 	};
 

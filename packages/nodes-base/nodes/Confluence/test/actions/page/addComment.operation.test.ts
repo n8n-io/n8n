@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { description, execute } from '../../../actions/page/addComment.operation';
@@ -42,7 +42,7 @@ describe('page:addComment', () => {
 	it('posts a top-level comment on the resolved page', async () => {
 		const result = await execute.call(mockExecuteCtx(baseParams), 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			pageId: '123',
 			body: { representation: 'storage', value: '<p>Nice page</p>' },
 		});
@@ -60,7 +60,7 @@ describe('page:addComment', () => {
 		await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			parentCommentId: '999',
 			body: { representation: 'storage', value: '<p>Nice page</p>' },
 		});
@@ -69,7 +69,7 @@ describe('page:addComment', () => {
 	it('treats a whitespace-only parent comment ID as absent', async () => {
 		await execute.call(mockExecuteCtx({ ...baseParams, parentCommentId: '   ' }), 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			pageId: '123',
 			body: { representation: 'storage', value: '<p>Nice page</p>' },
 		});
@@ -85,7 +85,7 @@ describe('page:addComment', () => {
 			0,
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			pageId: '123',
 			body: { representation: 'storage', value: '<p>Already <b>markup</b></p>' },
 		});
@@ -103,7 +103,7 @@ describe('page:addComment', () => {
 			0,
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/api/v2/footer-comments`, {
 			pageId: '123',
 			body: { representation: 'atlas_doc_format', value: bodyAdf },
 		});

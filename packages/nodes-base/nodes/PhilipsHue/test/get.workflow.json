@@ -1,0 +1,53 @@
+{
+	"name": "[TEST] Hue get",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "2d2011c1-032f-5703-829d-5fce592ba12a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"lightId": "1"
+			},
+			"type": "n8n-nodes-base.philipsHue",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"id": "add3be39-e340-5ac1-bba9-b15f0fabb039",
+			"name": "Get Light",
+			"credentials": {
+				"philipsHueOAuth2Api": {
+					"id": "1",
+					"name": "PhilipHue account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Light": [
+			{
+				"json": {
+					"name": "Hue color lamp 1",
+					"type": "Extended color light"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Light",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

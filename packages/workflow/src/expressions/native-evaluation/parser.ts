@@ -108,10 +108,7 @@ function parseNodeName(node: AstNode | namedTypes.MemberExpression['property']):
 function parseLegacyNodeName(node: namedTypes.MemberExpression): string | null {
 	if (node.computed === true) return parseNodeName(node.property);
 
-	const { property } = node;
-	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
-
-	return property.name;
+	return parseStaticKey(node.property);
 }
 
 // `$('Name')`, `$input` or `$node['Name']` in object/receiver position, or
@@ -207,8 +204,15 @@ function parseComputedKey(
 }
 
 // `a.b`: the key is an identifier.
+// `.$` declines: the engine's DollarSignValidator accepts it only in some
+// positions, so the engine decides.
 function parseStaticKey(property: namedTypes.MemberExpression['property']): string | null {
-	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
+	if (property.type !== 'Identifier' || property.name === '$') {
+		return null;
+	}
+	if (!isSafeObjectProperty(property.name)) {
+		return null;
+	}
 
 	return property.name;
 }

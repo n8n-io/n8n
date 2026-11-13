@@ -61,4 +61,41 @@ describe('Telegram', () => {
 
 		new NodeTestHarness().setupTests({ credentials, workflowFiles: ['binaryData.workflow.json'] });
 	});
+
+	describe('File requests', () => {
+		const fileCredentials = {
+			telegramApi: {
+				accessToken: '123456789:AAH-fake_Token-abc',
+				baseUrl: 'https://api.telegram.org',
+			},
+		};
+		const getFileResponse = {
+			ok: true,
+			result: {
+				file_id: 'BQACAgIAAxkBAAIBG2Zf-file_id',
+				file_unique_id: 'AgADuQQAAkW1',
+				file_size: 9,
+				file_path: 'documents/file_1.pdf',
+			},
+		};
+
+		beforeAll(() => {
+			const mock = nock(fileCredentials.telegramApi.baseUrl);
+			mock
+				.post('/bot123456789:AAH-fake_Token-abc/getFile', {
+					file_id: 'BQACAgIAAxkBAAIBG2Zf-file_id',
+				})
+				.times(2)
+				.reply(200, getFileResponse);
+			mock
+				.get('/file/bot123456789:AAH-fake_Token-abc/documents/file_1.pdf')
+				.reply(200, 'test-file');
+		});
+
+		new NodeTestHarness().setupTests({
+			credentials: fileCredentials,
+			workflowFiles: ['file.workflow.json'],
+			customAssertions: () => expect(nock.isDone()).toBe(true),
+		});
+	});
 });

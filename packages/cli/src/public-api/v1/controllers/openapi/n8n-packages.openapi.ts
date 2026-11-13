@@ -66,7 +66,8 @@ export const IMPORT_DESCRIPTION =
 	'one, the key needs `workflow:deactivate`. Skipped workflows and workflows marked as ' +
 	'archived in the package need neither publication scope. Archiving or restoring a matched ' +
 	'workflow needs `workflow:delete`. Restoring and publishing a workflow requires both ' +
-	'`workflow:delete` and `workflow:activate`. ' +
+	'`workflow:delete` and `workflow:activate`. Archiving or restoring a matched Agent needs ' +
+	'`agent:delete`. ' +
 	'Destination-project permissions and dependency scopes still apply.\n\n' +
 	'The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and ' +
 	'totals in `counts.agents`. Definition import and publication have separate outcomes. ' +

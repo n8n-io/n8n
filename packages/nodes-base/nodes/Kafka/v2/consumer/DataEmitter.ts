@@ -2,7 +2,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { raceAbort } from '@n8n/utils/race-abort';
 import { sleep } from '@n8n/utils/sleep';
 import type { INodeExecutionData, IRun, ITriggerFunctions } from 'n8n-workflow';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { MAX_TIMER_DELAY_MS, resolveRetryDelay } from '../../utils';
 

@@ -23,9 +23,9 @@ interface V1ChatRequest {
 	stopSequences?: string[];
 }
 
-interface V1ToolCall {
+interface V1ToolCall<TParameters = Record<string, unknown>> {
 	name: string;
-	parameters: Record<string, unknown>;
+	parameters: TParameters;
 }
 
 interface V1ChatHistoryItem {
@@ -47,16 +47,21 @@ interface V1Tool {
 }
 
 /** Subset of the v1 response that ChatCohere reads back from the client. */
-interface V1ChatResponse {
+interface V1ChatResponse<TParameters = Record<string, unknown>> {
 	text: string;
-	toolCalls?: V1ToolCall[];
+	toolCalls?: Array<V1ToolCall<TParameters>>;
 	meta?: { tokens?: { inputTokens?: number; outputTokens?: number } };
 	finishReason?: string;
 }
 
 type V1StreamEvent =
 	| { eventType: 'text-generation'; text: string }
-	| { eventType: 'stream-end'; response: V1ChatResponse };
+	| { eventType: 'stream-end'; response: V1ChatResponse<string> };
+
+// The SDK passes through these API fields but does not declare them.
+interface V2ToolCallDelta extends Cohere.ChatToolCallStartEventDelta {
+	message?: { tool_calls?: Cohere.ChatToolCallStartEventDeltaToolCall };
+}
 
 function parseArguments(args?: string): Record<string, unknown> {
 	if (!args) return {};
@@ -231,15 +236,17 @@ async function* translateStream(
 				break;
 			}
 			case 'tool-call-start': {
+				const delta: V2ToolCallDelta | undefined = event.delta;
 				const index = event.index ?? toolNames.length;
-				toolNames[index] = event.delta?.toolCall?.function?.name ?? '';
-				toolArgs[index] = event.delta?.toolCall?.function?.arguments ?? '';
+				toolNames[index] = delta?.message?.tool_calls?.function?.name ?? '';
+				toolArgs[index] = delta?.message?.tool_calls?.function?.arguments ?? '';
 				break;
 			}
 			case 'tool-call-delta': {
+				const delta: V2ToolCallDelta | undefined = event.delta;
 				const index = event.index ?? 0;
 				toolArgs[index] =
-					(toolArgs[index] ?? '') + (event.delta?.toolCall?.function?.arguments ?? '');
+					(toolArgs[index] ?? '') + (delta?.message?.tool_calls?.function?.arguments ?? '');
 				break;
 			}
 			case 'message-end': {
@@ -252,10 +259,11 @@ async function* translateStream(
 		}
 	}
 
-	const toolCalls: V1ToolCall[] = [];
+	const toolCalls: Array<V1ToolCall<string>> = [];
 	for (let index = 0; index < toolNames.length; index++) {
 		if (toolNames[index]) {
-			toolCalls.push({ name: toolNames[index], parameters: parseArguments(toolArgs[index]) });
+			// ChatCohere copies parameters into tool-call chunks, which require JSON strings.
+			toolCalls.push({ name: toolNames[index], parameters: toolArgs[index] || '{}' });
 		}
 	}
 

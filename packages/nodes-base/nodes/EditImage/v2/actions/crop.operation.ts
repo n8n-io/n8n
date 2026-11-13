@@ -1,5 +1,5 @@
 import type { Canvas } from '@napi-rs/canvas';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { getNumber, type OperationData } from '../helpers';
 
