@@ -137,6 +137,8 @@ const triggerIcon = computed((): IconName => {
 			return 'sparkles';
 		case 'n8n_chat_production':
 			return 'message-square';
+		case 'webhook':
+			return 'plug';
 		default:
 			return 'bolt-filled';
 	}

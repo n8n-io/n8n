@@ -283,7 +283,7 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
-	it('labels an API channel session with the channel name', async () => {
+	it('shows an API channel session with the channel name and icon', async () => {
 		const wrapper = await renderTimeline();
 		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
 			thread: sessionThread('thread-a'),
@@ -291,8 +291,8 @@ describe('AgentSessionTimelineView', () => {
 		});
 		await nextTick();
 
-		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata').trigger.label).toBe(
-			'API',
+		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata').trigger).toEqual(
+			expect.objectContaining({ label: 'API', icon: 'plug' }),
 		);
 	});
 
