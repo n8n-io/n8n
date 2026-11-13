@@ -11,6 +11,7 @@ const getMockedExecuteFunctions = ({
 	mimeType = 'image/png',
 	invalidApiResponse = false,
 	blockedApiResponse = false,
+	emptyApiResponse = false,
 }: {
 	prompt?: string;
 	outputProperty?: string;
@@ -19,6 +20,7 @@ const getMockedExecuteFunctions = ({
 	mimeType?: string;
 	invalidApiResponse?: boolean;
 	blockedApiResponse?: boolean;
+	emptyApiResponse?: boolean;
 } = {}): IExecuteFunctions => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
@@ -79,17 +81,19 @@ const getMockedExecuteFunctions = ({
 							blockReasonMessage: 'The prompt is not allowed',
 						},
 					}
-				: invalidApiResponse
-					? { invalid: 'response' }
-					: {
-							candidates: [
-								{
-									content: {
-										parts: [{ inlineData: { data: outputBuffer.toString('base64'), mimeType } }],
+				: emptyApiResponse
+					? {}
+					: invalidApiResponse
+						? { candidates: 'invalid' }
+						: {
+								candidates: [
+									{
+										content: {
+											parts: [{ inlineData: { data: outputBuffer.toString('base64'), mimeType } }],
+										},
 									},
-								},
-							],
-						},
+								],
+							},
 		);
 
 	executeFunctions.helpers.httpRequest
@@ -200,6 +204,14 @@ describe('Gemini Node image edit', () => {
 
 		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
 			'Gemini blocked the prompt (reason: PROHIBITED_CONTENT)',
+		);
+	});
+
+	it('should report an empty Gemini response with the shared error', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ emptyApiResponse: true });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Gemini returned an empty response',
 		);
 	});
 
