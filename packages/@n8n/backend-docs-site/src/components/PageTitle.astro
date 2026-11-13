@@ -1,0 +1,112 @@
+---
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+import { render } from 'astro:content';
+import { contactFor } from '../lib/contacts';
+
+// Show the length, the review date, and the contact person of the page.
+// The remark plugin adds `minutes` to the rendered front matter.
+const { entry } = Astro.locals.starlightRoute;
+const data: Record<string, unknown> = entry.data;
+const { remarkPluginFrontmatter: counted } = await render(entry);
+
+const minutes = typeof counted.minutes === 'number' ? counted.minutes : undefined;
+const reviewed = data.last_reviewed instanceof Date ? data.last_reviewed : undefined;
+const reviewedLabel = reviewed?.toLocaleDateString('en-US', {
+	year: 'numeric',
+	month: 'short',
+	timeZone: 'UTC',
+});
+const contact = typeof data.contact === 'string' ? contactFor(data.contact) : undefined;
+---
+
+<Default />
+{
+	(minutes || reviewed || contact) && (
+		<ul class="doc-meta" aria-label="About this page">
+			{minutes && (
+				<li title="Reading time">
+					<svg viewBox="0 0 16 16" aria-hidden="true">
+						<circle cx="8" cy="8" r="6.25" />
+						<path d="M8 4.75V8l2.25 1.5" />
+					</svg>
+					<span><span class="sr-only">Reading time: </span>{`${minutes}m`}</span>
+				</li>
+			)}
+			{reviewed && (
+				<li title="Last reviewed">
+					<svg viewBox="0 0 16 16" aria-hidden="true">
+						<rect x="2" y="3" width="12" height="11" rx="2" />
+						<path d="M2 6.5h12M5.5 1.75v2.5M10.5 1.75v2.5M6 10l1.5 1.5L10.25 8.75" />
+					</svg>
+					<span>
+						<span class="sr-only">Last reviewed: </span>
+						<time datetime={reviewed.toISOString().slice(0, 10)}>{reviewedLabel}</time>
+					</span>
+				</li>
+			)}
+			{contact && (
+				<li title={`For questions on this topic, ask ${contact.name}`}>
+					<a href={contact.url}>
+						<img class="doc-meta-avatar" src={contact.avatar} width="16" height="16" alt="" fetchpriority="high" />
+						<span>
+							<span class="sr-only">For questions on this topic, ask </span>
+							{contact.name}
+						</span>
+					</a>
+				</li>
+			)}
+		</ul>
+	)
+}
+
+<style>
+	.doc-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 0.875rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.doc-meta li {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		margin: 0;
+		padding: 0.25rem 0.625rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 999px;
+		font-size: var(--sl-text-xs);
+		line-height: 1.25rem;
+		color: var(--sl-color-gray-3);
+	}
+	.doc-meta a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		color: inherit;
+		text-decoration: none;
+	}
+	.doc-meta li:has(> a):hover {
+		border-color: var(--sl-color-accent);
+		color: var(--sl-color-white);
+	}
+	.doc-meta-avatar {
+		width: 1rem;
+		height: 1rem;
+		border-radius: 50%;
+		/* A gray circle shows until the image loads, so the pill does not look empty. */
+		background: var(--sl-color-gray-5);
+		flex-shrink: 0;
+	}
+	.doc-meta svg {
+		width: 0.875rem;
+		height: 0.875rem;
+		flex-shrink: 0;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.25;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+</style>
