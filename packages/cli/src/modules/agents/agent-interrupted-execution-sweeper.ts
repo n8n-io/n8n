@@ -61,7 +61,7 @@ export class AgentInterruptedExecutionSweeper {
 					Time.seconds.toMilliseconds;
 				const staleBefore = new Date(Date.now() - graceMs);
 				if (execution.updatedAt > staleBefore) continue;
-				if (await this.executionService.finalizeInterruptedExecution(execution, staleBefore)) {
+				if (await this.executionService.finalizeInterruptedExecution(execution, { staleBefore })) {
 					this.logger.info('Marked abandoned agent execution as interrupted', {
 						executionId: execution.id,
 						threadId: execution.threadId,

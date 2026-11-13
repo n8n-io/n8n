@@ -9,6 +9,7 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentExecutionMetrics } from '../agent-execution-metrics';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
+import { AgentInstanceShuttingDownError } from '../agent-instance-shutting-down.error';
 import { SESSION_STOPPED_REASON } from '../agent-session-stop-reason';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentUsageTelemetryService } from '../agent-usage-telemetry.service';
@@ -441,7 +442,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				id,
 				expect.objectContaining({ timeline: initialTimeline }),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -724,6 +725,54 @@ describe('AgentExecutionService', () => {
 		}
 	});
 
+	describe('shutdown', () => {
+		it('refuses new turns after shutdown begins', async () => {
+			service.beginShutdown();
+
+			await expect(startSnapshotExecution()).rejects.toThrow(AgentInstanceShuttingDownError);
+			expect(agentExecutionRepository.saveInContext).not.toHaveBeenCalled();
+		});
+
+		it('marks local turns interrupted as their owner, then stops them', async () => {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			const running = {
+				id: 'execution-1',
+				threadId: 'thread-1',
+				startedAt: new Date(),
+				updatedAt: new Date(),
+				timeline: null,
+				ownerKey: 'instance-a',
+			};
+			agentExecutionRepository.findRunningByIds.mockResolvedValue([running]);
+			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+			expect(await service.interruptLocalExecutions()).toBe(1);
+
+			expect(agentExecutionRepository.findRunningByIds).toHaveBeenCalledWith(['execution-1']);
+			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ status: 'interrupted' }),
+				{ ownerKey: 'instance-a' },
+				expect.any(Object),
+			);
+			expect(signal.aborted).toBe(true);
+			expect(String(signal.reason)).toContain('n8n shut down');
+			expect(service.localExecutionIds()).toEqual([]);
+		});
+
+		it('still stops local turns when the database is unreachable', async () => {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			agentExecutionRepository.findRunningByIds.mockRejectedValue(new Error('database down'));
+
+			expect(await service.interruptLocalExecutions()).toBe(0);
+
+			expect(signal.aborted).toBe(true);
+			expect(service.localExecutionIds()).toEqual([]);
+		});
+	});
+
 	it.each([false, true])(
 		'drains paused snapshots after an input check (consumed: %s)',
 		async (consumed) => {
@@ -915,7 +964,7 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ finishReason: 'guardrail', guardrailCode: 'budget.monthly' }),
-			undefined,
+			{ ownerKey: 'instance-a' },
 			expect.any(Object),
 			undefined,
 		);
@@ -989,7 +1038,7 @@ describe('AgentExecutionService', () => {
 		expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 			'execution-1',
 			expect.objectContaining({ status: 'success', totalTokens: 5, model: 'mock' }),
-			undefined,
+			{ ownerKey: 'instance-a' },
 			expect.any(Object),
 			undefined,
 		);
@@ -1019,7 +1068,7 @@ describe('AgentExecutionService', () => {
 				cacheReadTokens: 8,
 				cacheWriteTokens: 2,
 			}),
-			undefined,
+			{ ownerKey: 'instance-a' },
 			expect.any(Object),
 			undefined,
 		);
@@ -1107,7 +1156,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -1221,7 +1270,7 @@ describe('AgentExecutionService', () => {
 						storedAt: 'db',
 						failureSummary: null,
 					}),
-					undefined,
+					{ ownerKey: 'instance-a' },
 					expect.any(Object),
 					undefined,
 				);
@@ -1623,7 +1672,7 @@ describe('AgentExecutionService', () => {
 					status: 'error',
 					error: MAX_ITERATIONS_STOPPED_MESSAGE,
 				}),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -1747,7 +1796,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({ status: 'awaiting' }),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -1771,7 +1820,7 @@ describe('AgentExecutionService', () => {
 			expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
 				'execution-1',
 				expect.objectContaining({ status: 'success' }),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -1812,7 +1861,7 @@ describe('AgentExecutionService', () => {
 					storedAt: 'db',
 					failureSummary: null,
 				}),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
@@ -1954,7 +2003,7 @@ describe('AgentExecutionService', () => {
 					timeline: [...partial],
 					thread: makeThread(),
 				} as AgentExecution,
-				new Date(Date.now() - 120_000),
+				{ staleBefore: new Date(Date.now() - 120_000) },
 			);
 
 			await vi.waitFor(() =>
@@ -1982,7 +2031,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
-				expect.any(Date),
+				{ staleBefore: expect.any(Date) },
 				{},
 			);
 			expect(agentExecutionLogStore.write).not.toHaveBeenCalled();
@@ -2029,7 +2078,7 @@ describe('AgentExecutionService', () => {
 						},
 					},
 				}),
-				undefined,
+				{ ownerKey: 'instance-a' },
 				expect.any(Object),
 				undefined,
 			);
