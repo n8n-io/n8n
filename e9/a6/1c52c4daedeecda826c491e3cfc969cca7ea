@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/settings/environments/promotion-checkout-cleanup-multimain.spec.ts
+  s_3f0be57a237a94::t_d85e04b9c85ad9 1-28,31-57,59-61,65-167
+  s_3f0be57a237a94::t_188c72ee334033 29-30
+  s_3f0be57a237a94::t_34cbe8711a934d 58,62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9a61c52c4daedeecda826c491e3cfc969cca7ea",
+  "prompts": {},
+  "sessions": {
+    "s_3f0be57a237a94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a69826ca-27b9-4b9e-8a82-fd3ff131c8ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
