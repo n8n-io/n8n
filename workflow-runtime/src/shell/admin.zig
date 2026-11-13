@@ -300,6 +300,9 @@ pub const Event = union(enum) {
     service: struct { line: []const u8 },
 
     /// `step` and `trace` events may be dropped when the queue is full.
+    /// The shell asks this only for a line that it does not put in the
+    /// outbox: a `step` or `trace` line of an execution with data is durable
+    /// (spec 9.2).
     pub fn droppable(e: Event) bool {
         return e == .step or e == .trace;
     }
@@ -320,7 +323,8 @@ pub fn encodeDurable(comptime S: type, out: *S, ev: Event, at: i64, shard: u32, 
     try printOut(S, out, ",\"shard\":{d},\"seq\":{d},\"at\":{d}}}\n", .{ shard, seq, at });
 }
 
-/// True for the kinds that go to the outbox: n8n must not lose them.
+/// True for the kinds that always go to the outbox: n8n must not lose them.
+/// A `step` or `trace` line goes there too when its execution has data.
 pub fn durable(ev: Event) bool {
     return switch (ev) {
         .started, .waiting, .finished, .static_data => true,

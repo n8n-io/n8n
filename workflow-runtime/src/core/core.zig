@@ -233,6 +233,9 @@ pub const Action = struct {
     conn: u64 = 0,
     module: u16 = 0,
     idempotent: bool = false,
+    /// The execution has `heap.exec_flag_data`: n8n keeps its node data, so
+    /// its `step` and `trace` events are durable (spec 9.2).
+    data: bool = false,
     key: [32]u8 = undefined,
     payload: []const u8 = &.{},
 };
@@ -2168,7 +2171,7 @@ fn statusEvent(s: *State, slot: SlotId, step_idx: u32, st: StepStatus, payload: 
     // Status events cost nothing unless someone watches this execution.
     if (!stepWatched(s, slot, st)) return;
     const data = s.regions[slot].exec().flags & heap.exec_flag_data != 0;
-    try emit(s, .{ .kind = .status, .exec_id = s.slot_exec[slot], .step = step_idx, .aux = @backingInt(st), .module = s.slot_module[slot], .conn = @bitCast(wake_ms), .payload = if (data) payload else "" });
+    try emit(s, .{ .kind = .status, .exec_id = s.slot_exec[slot], .step = step_idx, .aux = @backingInt(st), .module = s.slot_module[slot], .conn = @bitCast(wake_ms), .payload = if (data) payload else "", .data = data });
 }
 
 /// Step events (spec 9.2) go out for an execution that someone watches: a
@@ -2197,7 +2200,10 @@ fn traceAction(s: *State, slot: SlotId, vm: *ops.Vm, req: interp.TraceReq, scrat
     b.append(",\"items\":") catch return error.ArenaFull;
     b.append(items) catch return error.ArenaFull;
     b.byte('}') catch return error.ArenaFull;
-    try emit(s, .{ .kind = .trace_items, .exec_id = s.slot_exec[slot], .module = s.slot_module[slot], .payload = b.finish() });
+    // `ctx.trace` runs only for an execution with `trace: true`, which also
+    // has the data flag (spec 9.3). The shell still reads the flag itself.
+    const data = s.regions[slot].exec().flags & heap.exec_flag_data != 0;
+    try emit(s, .{ .kind = .trace_items, .exec_id = s.slot_exec[slot], .module = s.slot_module[slot], .payload = b.finish(), .data = data });
 }
 
 fn finish(s: *State, slot: SlotId, status_in: heap.ExecStatus, scratch: *Arena) StepError!void {
