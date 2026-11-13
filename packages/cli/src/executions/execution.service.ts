@@ -9,6 +9,7 @@ import type {
 	IExecutionBase,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import {
@@ -44,6 +45,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import {
 	BadRequestError,
@@ -258,17 +260,20 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	async retry({
-		executionId,
-		options = {},
-		sharedWorkflowIds,
-		user,
-	}: {
-		executionId: string;
-		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
-		sharedWorkflowIds: string[];
-		user: User;
-	}): Promise<RetriedExecution> {
+	async retry(
+		{
+			executionId,
+			options = {},
+			sharedWorkflowIds,
+			user,
+		}: {
+			executionId: string;
+			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+			sharedWorkflowIds: string[];
+			user: User;
+		},
+		ctx: OperationContext = {},
+	): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -422,6 +427,7 @@ export class ExecutionService {
 			projectId,
 			projectName,
 			source: 'user-retry',
+			loginId: loginIdOf(ctx),
 		});
 
 		const summary: RetriedExecution = {
@@ -455,6 +461,7 @@ export class ExecutionService {
 		await this.executionRedactionServiceProxy.processExecution(response, {
 			user,
 			redactExecutionData: options.redactExecutionData,
+			ctx,
 		});
 
 		return response;

@@ -18,6 +18,7 @@ import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -343,7 +344,7 @@ describe('ExecutionService', () => {
 				workflowRunner,
 				concurrencyControl,
 				mock(),
-				mock(),
+				eventService,
 				redactionProxy,
 				mock(),
 				ownershipService,
@@ -442,6 +443,34 @@ describe('ExecutionService', () => {
 			expect(retried).not.toHaveProperty('customData');
 			expect(retried).not.toHaveProperty('annotation');
 			expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		it('should pass the login id to the workflow-executed event', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs(), {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ source: 'user-retry', loginId: 'login-1' }),
+			);
+		});
+
+		it('should emit no login id on the workflow-executed event without an operation context', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'workflow-executed');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
 		});
 
 		it('should mark the retry as awaited to completion', async () => {

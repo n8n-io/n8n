@@ -1,8 +1,9 @@
-import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
+import type { CreatePromotionEnvironmentDto, UpdatePromotionEnvironmentDto } from '@n8n/api-types';
 import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -58,6 +59,9 @@ describe('PromotionEnvironmentsService', () => {
 	let service: PromotionEnvironmentsService;
 
 	const ENVIRONMENT_ID = '0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b';
+	const loginCtx: OperationContext = {
+		security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+	};
 
 	const provider = () =>
 		({
@@ -205,10 +209,27 @@ describe('PromotionEnvironmentsService', () => {
 		});
 	});
 
+	it('emits an event that describes the environment it creates', async () => {
+		environmentRepository.insertEnvironment.mockResolvedValue(environment());
+		const { name, scope, providerId, remote, direction, settings } = environment();
+		const input = { name, scope, providerId, remote, direction, settings };
+
+		await service.create(input as CreatePromotionEnvironmentDto, actor, loginCtx);
+
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'promotion-environment-created',
+			expect.objectContaining({
+				user: actor,
+				environmentId: ENVIRONMENT_ID,
+				loginId: 'login-1',
+			}),
+		);
+	});
+
 	it('emits an event that describes the environment it deletes', async () => {
 		environmentRepository.deleteEnvironment.mockResolvedValue(true);
 
-		await service.delete(ENVIRONMENT_ID, actor);
+		await service.delete(ENVIRONMENT_ID, actor, loginCtx);
 
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
 			user: actor,
@@ -219,6 +240,7 @@ describe('PromotionEnvironmentsService', () => {
 			repository: 'git@github.com:o/r.git',
 			direction: 'promote',
 			environmentScope: 'projects',
+			loginId: 'login-1',
 		});
 	});
 
@@ -262,7 +284,7 @@ describe('PromotionEnvironmentsService', () => {
 	it('does not report the provider as changed when the request resends the current one', async () => {
 		environmentRepository.updateEnvironment.mockResolvedValue(true);
 
-		await service.update(ENVIRONMENT_ID, { name: 'Renamed', providerId: 'prov1' }, actor);
+		await service.update(ENVIRONMENT_ID, { name: 'Renamed', providerId: 'prov1' }, actor, loginCtx);
 
 		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
 			user: actor,
@@ -274,6 +296,7 @@ describe('PromotionEnvironmentsService', () => {
 			direction: 'promote',
 			environmentScope: 'projects',
 			changedFields: ['name'],
+			loginId: 'login-1',
 		});
 	});
 

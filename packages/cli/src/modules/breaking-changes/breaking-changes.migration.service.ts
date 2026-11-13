@@ -1,6 +1,6 @@
 import type { WorkflowMigrationResult } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
@@ -51,6 +51,7 @@ export class BreakingChangeMigrationService {
 		workflowId: string,
 		user: User,
 		options: { source?: WorkflowActionSource } = {},
+		ctx: OperationContext = {},
 	): Promise<WorkflowMigrationResult> {
 		const migration = this.migrationRegistry.get(ruleId);
 		if (!migration) {
@@ -112,11 +113,17 @@ export class BreakingChangeMigrationService {
 
 		workflow.nodes = nodes;
 		workflow.connections = connections;
-		const updated = await this.workflowService.update(user, workflow, workflowId, {
-			versionName: 'Automated node migration',
-			expectedChecksum,
-			source: options.source,
-		});
+		const updated = await this.workflowService.update(
+			user,
+			workflow,
+			workflowId,
+			{
+				versionName: 'Automated node migration',
+				expectedChecksum,
+				source: options.source,
+			},
+			ctx,
+		);
 
 		this.logger.info('Applied automated node migration', {
 			ruleId,

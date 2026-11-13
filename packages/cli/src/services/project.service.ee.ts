@@ -151,6 +151,7 @@ export class ProjectService {
 			migrateToProject,
 			publicApi = false,
 		}: { migrateToProject?: string; publicApi?: PublicApiCaller } = {},
+		ctx: OperationContext = {},
 	) {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
@@ -222,7 +223,7 @@ export class ProjectService {
 			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId, true, { publicApi });
+				await workflowService.delete(user, sharedWorkflow.workflowId, true, { publicApi }, ctx);
 			}
 		}
 
@@ -234,7 +235,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedCredential of ownedCredentials) {
-				await credentialsService.delete(user, sharedCredential.credentials.id);
+				await credentialsService.delete(user, sharedCredential.credentials.id, {}, ctx);
 			}
 		}
 
@@ -615,6 +616,7 @@ export class ProjectService {
 		project: Project,
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>,
 		publicApi: PublicApiCaller,
+		ctx: OperationContext = {},
 	) {
 		if (newSharees.length === 0) return;
 		await this.userManagementMailer.notifyProjectShared({
@@ -622,6 +624,7 @@ export class ProjectService {
 			newSharees,
 			project: { id: project.id, name: project.name },
 			publicApi,
+			ctx,
 		});
 	}
 
@@ -641,17 +644,20 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
-	async addUsersToProject({
-		user,
-		projectId,
-		relations,
-		publicApi = false,
-	}: {
-		user: User;
-		projectId: string;
-		relations: Array<{ userId: string; role: AssignableProjectRole }>;
-		publicApi?: PublicApiCaller;
-	}) {
+	async addUsersToProject(
+		{
+			user,
+			projectId,
+			relations,
+			publicApi = false,
+		}: {
+			user: User;
+			projectId: string;
+			relations: Array<{ userId: string; role: AssignableProjectRole }>;
+			publicApi?: PublicApiCaller;
+		},
+		ctx: OperationContext = {},
+	) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
 
@@ -682,7 +688,7 @@ export class ProjectService {
 			})),
 		);
 
-		await this.notifyNewSharees(user, project, newSharees, publicApi);
+		await this.notifyNewSharees(user, project, newSharees, publicApi, ctx);
 		await this.emitProjectMembersUpdated(user, projectId);
 	}
 

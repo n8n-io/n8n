@@ -2648,12 +2648,14 @@ describe('Promotions in Public API', () => {
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
 						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						'proj1',
 						expect.objectContaining({ id: restrictedOwner.id }),
 						selectionBody,
 						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();
@@ -2752,6 +2754,7 @@ describe('Promotions in Public API', () => {
 					expect.objectContaining({ id: owner.id }),
 					{},
 					'other',
+					undefined,
 				);
 			} finally {
 				initial.mockRestore();
@@ -2835,12 +2838,14 @@ describe('Promotions in Public API', () => {
 						expect.objectContaining({ id: restrictedOwner.id }),
 						reviewedBody,
 						'other',
+						undefined,
 					);
 					expect(continuation).toHaveBeenCalledWith(
 						id,
 						expect.objectContaining({ id: restrictedOwner.id }),
 						reviewedBody,
 						'other',
+						undefined,
 					);
 				} finally {
 					initial.mockRestore();

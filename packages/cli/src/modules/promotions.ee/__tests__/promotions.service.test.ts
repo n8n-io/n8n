@@ -3,8 +3,15 @@ import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { Person } from '@n8n/db';
-import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import type {
+	OperationContext,
+	Project,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -2468,6 +2475,7 @@ describe('PromotionsService', () => {
 					tagConflictPolicy: 'rename',
 					layoutConflictPolicy: 'follow-package',
 					credentialPersonalRoute: 'exclude',
+					ctx: {},
 				},
 				expect.any(GitCommitPackageReader),
 				'enforce',
@@ -2695,6 +2703,33 @@ describe('PromotionsService', () => {
 			},
 		);
 
+		it('passes the operation context to the import plan and the project deletion', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+			projectRepository.findTeamProjectIds.mockResolvedValue(['p1', 'p2', 'p3']);
+			projectRepository.findTeamProjectInfoByIds.mockResolvedValue([
+				{ id: 'p3', name: 'Gamma' },
+			] as never);
+
+			const result = await service.continueApply(
+				ENVIRONMENT_ID,
+				actor,
+				{ ...request, confirmDestructiveChanges: true },
+				false,
+				ctx,
+			);
+
+			expect(result).toMatchObject({ status: 'applied' });
+			expect(n8nPackagesService.planPackage.mock.calls[0][0].ctx).toBe(ctx);
+			expect(projectService.deleteProject).toHaveBeenCalledExactlyOnceWith(
+				actor,
+				'p3',
+				{ publicApi: false },
+				ctx,
+			);
+		});
+
 		it('keeps importer errors and does not reconcile projects after failure', async () => {
 			n8nPackagesService.applyPackagePlan.mockRejectedValueOnce(
 				new BadRequestError('Import blocked'),
@@ -2809,12 +2844,23 @@ describe('PromotionsService', () => {
 						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
+						ctx: {},
 					},
 					expect.any(GitCommitPackageReader),
 					planned,
 					'enforce',
 				);
 				expect(check).toHaveBeenCalledWith(plan, inventory, planned, noMoves);
+			});
+
+			it('passes the operation context to the selection import plan', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }, false, ctx);
+
+				expect(n8nPackagesService.planPackageSelection.mock.calls[0][0].ctx).toBe(ctx);
 			});
 
 			it.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(

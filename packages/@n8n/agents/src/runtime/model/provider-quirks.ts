@@ -27,6 +27,12 @@ export interface ProviderQuirks {
 	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
+	/**
+	 * Replay tool-call IDs exactly as the provider returned them. Otherwise the
+	 * runtime replaces IDs outside `[A-Za-z0-9_-]` with a hash, because Anthropic
+	 * rejects them.
+	 */
+	keepsToolCallIds?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -158,6 +164,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			anthropicThinkingToProviderOptions(thinking, modelId),
 	},
 	openai: {
+		// QUIRK(openai): OpenAI-compatible gateways can store data in the
+		// tool-call ID and read it back on the next request. LiteLLM stores
+		// Gemini's thought signature there in standard base64, so a changed ID
+		// makes Gemini reject the request.
+		keepsToolCallIds: true,
 		// QUIRK(openai): the Responses API pairs each function_call item with a
 		// reasoning item; dropping the reasoning part from history makes the next
 		// request fail with "function_call was provided without its required
@@ -216,6 +227,8 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// reasoning parts on its own, but attaches no providerMetadata to them, so
 		// the runtime keeps the parts by text alone, on the current tool chain only.
 		replayReasoningText: true,
+		// QUIRK(custom): same as openai, see keepsToolCallIds there.
+		keepsToolCallIds: true,
 	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };

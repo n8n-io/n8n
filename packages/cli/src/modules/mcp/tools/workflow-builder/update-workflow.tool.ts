@@ -1,7 +1,12 @@
 import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import {
+	type OperationContext,
+	type User,
+	type SharedWorkflowRepository,
+	WorkflowEntity,
+} from '@n8n/db';
 import { UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import {
@@ -1147,6 +1152,7 @@ export const createUpdateWorkflowTool = (
 	} = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => {
 	// Bound once: these never vary per call, so the call sites below show only
 	// what is being validated.
@@ -1392,13 +1398,19 @@ export const createUpdateWorkflowTool = (
 						: undefined;
 				expectedTagNames = result.tagNames;
 				updateAttempted = true;
-				const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-					aiBuilderAssisted: hasNonTagOperations,
-					source: 'n8n-mcp',
-					versionName: versionMetadata.name,
-					versionDescription: versionMetadata.description,
-					...(tagIds !== undefined ? { tagIds } : {}),
-				});
+				const updatedWorkflow = await workflowService.update(
+					user,
+					workflowUpdateData,
+					workflowId,
+					{
+						aiBuilderAssisted: hasNonTagOperations,
+						source: 'n8n-mcp',
+						versionName: versionMetadata.name,
+						versionDescription: versionMetadata.description,
+						...(tagIds !== undefined ? { tagIds } : {}),
+					},
+					ctx,
+				);
 
 				const baseUrl = urlService.getInstanceBaseUrl();
 				const workflowUrl = `${baseUrl}/workflow/${updatedWorkflow.id}`;

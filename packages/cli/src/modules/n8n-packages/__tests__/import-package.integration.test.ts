@@ -12,7 +12,8 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import type { Folder, Project } from '@n8n/db';
+import type { Folder, OperationContext, Project } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import {
 	ProjectRepository,
 	SharedWorkflowRepository,
@@ -23,6 +24,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
@@ -1282,6 +1284,33 @@ describe('Package import event emission', () => {
 					requirements: 0,
 				},
 			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('adds the login of the operation context to the import events', async () => {
+		const owner = await createOwner();
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		try {
+			await importPackage({
+				user: owner,
+				ctx,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-login-1', name: 'Login One' }),
+				]),
+			});
+
+			const loginIdOfEvent = (eventName: string) =>
+				emitSpy.mock.calls
+					.filter(([name]) => name === eventName)
+					.map(([, payload]) => (payload as { loginId?: string }).loginId);
+			expect(loginIdOfEvent('workflow-created')).toEqual(['login-1']);
+			expect(loginIdOfEvent('n8n-package-imported')).toEqual(['login-1']);
 		} finally {
 			emitSpy.mockRestore();
 		}

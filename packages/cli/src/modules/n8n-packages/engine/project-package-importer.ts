@@ -235,6 +235,7 @@ export class ProjectPackageImporter {
 		const { workflows: published, agentOutcomes } = await this.importOrchestrator.publishPackage({
 			user: request.user,
 			publicApi: request.publicApi,
+			ctx: request.ctx,
 			content: applied.map(({ content }) => content),
 			policy: request.publishingPolicy,
 			subWorkflowRequirements: manifest.requirements?.workflows,
@@ -417,6 +418,7 @@ export class ProjectPackageImporter {
 		return {
 			context: {
 				user: request.user,
+				ctx: request.ctx,
 				projectId: project.id,
 				folderId: null,
 				publicApi: request.publicApi,

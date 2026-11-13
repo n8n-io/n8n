@@ -1166,12 +1166,15 @@ describe('Projects in Public API', () => {
 				});
 
 				expect(response.status).toBe(201);
-				expect(addUsers).toHaveBeenCalledWith({
-					user: expect.objectContaining({ id: owner.id }),
-					projectId: project.id,
-					relations: payload.relations,
-					publicApi: 'other',
-				});
+				expect(addUsers).toHaveBeenCalledWith(
+					{
+						user: expect.objectContaining({ id: owner.id }),
+						projectId: project.id,
+						relations: payload.relations,
+						publicApi: 'other',
+					},
+					undefined,
+				);
 				addUsers.mockRestore();
 				expect(response.text).toBe('');
 				expect(response.headers['content-type']).toBeUndefined();

@@ -8,7 +8,7 @@ import {
 	PostHogClient,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
+import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
 import {
 	isPerson,
 	TransactionRunner,
@@ -49,6 +49,7 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
@@ -235,6 +236,7 @@ export class UserService {
 		toInviteUsers: { [key: string]: string },
 		role: AssignableGlobalRole,
 		publicApi: PublicApiCaller,
+		ctx: OperationContext = {},
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
@@ -289,6 +291,7 @@ export class UserService {
 						publicApi,
 						emailSent: result.emailSent,
 						inviteeRole: role, // same role for all invited users
+						loginId: loginIdOf(ctx),
 					});
 				} catch (e) {
 					if (e instanceof Error) {
@@ -296,6 +299,7 @@ export class UserService {
 							user: owner,
 							messageType: 'New user invite',
 							publicApi,
+							loginId: loginIdOf(ctx),
 						});
 						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
@@ -317,7 +321,12 @@ export class UserService {
 		return `${domain}/signup?token=${token}`;
 	}
 
-	async inviteUsers(owner: User, invitations: Invitation[], publicApi: PublicApiCaller = false) {
+	async inviteUsers(
+		owner: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		const emails = invitations.map(({ email }) => email);
 
 		const existingUsers = await this.personRepository.findManyByEmail(emails);
@@ -373,6 +382,7 @@ export class UserService {
 			Object.fromEntries(createdUsers),
 			invitations[0].role, // same role for all invited users
 			publicApi,
+			ctx,
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
@@ -556,7 +566,12 @@ export class UserService {
 		return { users, count };
 	}
 
-	async inviteUser(inviter: User, invitations: Invitation[], publicApi: PublicApiCaller = false) {
+	async inviteUser(
+		inviter: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		if (invitations.length === 0) return [];
 
 		// While SCIM is on, admins can invite the people that the identity provider
@@ -601,7 +616,12 @@ export class UserService {
 			return { email, role };
 		});
 
-		const { usersInvited, usersCreated } = await this.inviteUsers(inviter, attributes, publicApi);
+		const { usersInvited, usersCreated } = await this.inviteUsers(
+			inviter,
+			attributes,
+			publicApi,
+			ctx,
+		);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
@@ -620,6 +640,7 @@ export class UserService {
 		idToDelete: string,
 		transferId?: string,
 		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -738,6 +759,7 @@ export class UserService {
 			targetUserId: idToDelete,
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,
+			loginId: loginIdOf(ctx),
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.toPublic(userToDelete)]);
