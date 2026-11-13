@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -13,7 +13,12 @@ import { PageHideTelemetryController } from '../page-hide-telemetry.controller';
 describe('PageHideTelemetryController', () => {
 	const telemetry = mock<Telemetry>();
 	const controller = new PageHideTelemetryController(telemetry);
-	const req = mock<AuthenticatedRequest>({ user: { id: 'user-1' } });
+	const req = mock<AuthenticatedRequest>({
+		user: { id: 'user-1', role: { scopes: [{ slug: 'instanceAi:message' }] } },
+	});
+	const reqWithoutScope = mock<AuthenticatedRequest>({
+		user: { id: 'user-2', role: { scopes: [] } },
+	});
 	const res = mock<Response>();
 	const allowed = TELEMETRY_EVENT.INSTANCE_AI.USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN;
 
@@ -56,6 +61,16 @@ describe('PageHideTelemetryController', () => {
 			is_awaiting_user: expect.any(Boolean),
 			user_id: 'user-1',
 		});
+	});
+
+	it('rejects a user who lacks the scope that the event needs', () => {
+		expect(() =>
+			controller.track(reqWithoutScope, res, {
+				event: allowed.name,
+				properties: { thread_id: 'thread-1', is_awaiting_user: false },
+			}),
+		).toThrow(ForbiddenError);
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 
 	it('rejects an event name that is not registered', () => {

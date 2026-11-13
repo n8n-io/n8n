@@ -82,7 +82,7 @@ useAssistantAwayTelemetry({
 	threadId: () => props.threadId,
 	// A run that waits for the user is still active.
 	isRunning: () => thread.isStreaming || thread.isSendingMessage,
-	isAwaitingUser: () => thread.isAwaitingConfirmation,
+	isAwaitingUser: () => thread.isAwaitingUserInput,
 	isReady: () => thread.hydrationStatus === 'ready',
 });
 const rootStore = useRootStore();

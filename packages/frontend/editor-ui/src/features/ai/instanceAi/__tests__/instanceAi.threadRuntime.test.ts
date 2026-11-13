@@ -2658,6 +2658,31 @@ describe('createThreadRuntime - inline MCP connect confirmation', () => {
 		expect(runtime.isAwaitingConfirmation).toBe(false);
 	});
 
+	it('counts as awaiting user input while its run is active, although it is not in the panel', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-active',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+		runtime.activeRunId = 'run-1';
+
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.isAwaitingUserInput).toBe(true);
+	});
+
+	it('does not count as awaiting user input once its run has ended', () => {
+		const runtime = seedConfirmation({
+			requestId: 'req-mcp-ended',
+			severity: 'info',
+			message: 'To search the web',
+			mcpConnectRequest: { servers: [{ serverSlug: 'brave', title: 'Brave' }] },
+		});
+
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.isAwaitingUserInput).toBe(false);
+	});
+
 	it('leaves other confirmations on the same tool in the panel', () => {
 		const runtime = seedConfirmation({
 			requestId: 'req-plain',
