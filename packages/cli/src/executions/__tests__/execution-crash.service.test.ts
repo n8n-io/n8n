@@ -363,6 +363,18 @@ describe('ExecutionCrashService', () => {
 			await vi.waitFor(() => expect(recordedEnded()).toEqual([endedFactsOf(first)]));
 		});
 
+		test('records an ended row for a waiting execution that ran out of resume attempts', async () => {
+			const waiting = crashedExecution('1', { mode: 'webhook' });
+			executionRepository.markAsCrashedFrom.mockImplementation(async (_id, _status, options) => {
+				options?.onTransitioned?.([waiting]);
+				return await Promise.resolve(true);
+			});
+
+			await crashService.markAsCrashedFrom('1', 'waiting', 'resume-limit', 2);
+
+			await vi.waitFor(() => expect(recordedEnded()).toEqual([endedFactsOf(waiting)]));
+		});
+
 		test('has no runtime for an execution that never started', async () => {
 			transitions([crashedExecution('1', { startedAt: null })]);
 
