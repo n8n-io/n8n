@@ -13,6 +13,7 @@ import {
 	appVisibilitySchema,
 } from './app.schema';
 import { MAX_APP_BINDINGS } from './app-binding.schema';
+import { appPlanSchema } from './app-plan.schema';
 import { folderNameSchema } from './folder.schema';
 import type { McpRegistryServerIconResponse } from './mcp-registry.schema';
 import { TimeZoneSchema } from './timezone.schema';
@@ -873,12 +874,21 @@ export const appBlueprintSchema = z.object({
 	theme: z.enum(['light', 'dark', 'both']),
 	bindings: z.array(appBlueprintBindingSchema).max(MAX_APP_BINDINGS).optional(),
 	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
+	/** Screens and components, shown as a wireframe before approval. */
+	plan: appPlanSchema.optional(),
 });
 export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
 
 export const appBlueprintResumeSchema = z.object({
 	approved: z.boolean(),
 	blueprint: appBlueprintSchema,
+	/** A requested change to the plan. The tool hands it back to the agent to revise the blueprint. */
+	revise: z
+		.object({
+			feedback: z.string().trim().min(1).max(4000),
+			planIds: z.array(z.string().max(40)).max(20).optional(),
+		})
+		.optional(),
 });
 export type AppBlueprintResume = z.infer<typeof appBlueprintResumeSchema>;
 
