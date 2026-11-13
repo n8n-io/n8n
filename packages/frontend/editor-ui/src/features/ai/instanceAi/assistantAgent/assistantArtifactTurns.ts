@@ -72,10 +72,12 @@ function appendToolCalls(turnCalls: ArtifactToolCall[], next: ArtifactToolCall[]
 			continue;
 		}
 		const previous = turnCalls[index];
-		turnCalls[index] = {
-			...toolCall,
-			args: Object.keys(toolCall.args).length > 0 ? toolCall.args : previous.args,
-		};
+		// A copy without input cannot name the tool that a `call_tool` call runs,
+		// so keep the earlier name together with the earlier arguments.
+		turnCalls[index] =
+			Object.keys(toolCall.args).length > 0
+				? toolCall
+				: { ...toolCall, toolName: previous.toolName, args: previous.args };
 	}
 }
 
