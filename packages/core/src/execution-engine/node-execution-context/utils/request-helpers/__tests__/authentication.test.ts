@@ -606,6 +606,38 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 			},
 		);
 
+		const refreshCalls = () =>
+			mockAdditionalData.credentialsHelper.preAuthentication.mock.calls.filter(
+				([, , , , expired]) => expired,
+			).length;
+
+		test('refreshes only once when the refresh after a resolved 401 fails', async () => {
+			const refreshError = new Error('token endpoint unavailable');
+			mockAdditionalData.credentialsHelper.preAuthentication
+				.mockResolvedValueOnce({ accessToken: 'stale' })
+				.mockRejectedValueOnce(refreshError);
+			proxyRequestToAxiosMock.mockResolvedValueOnce(unauthorized);
+
+			await expect(get()).rejects.toSatisfy(
+				(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === refreshError,
+			);
+			expect(refreshCalls()).toBe(1);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('sends at most twice when the resend after a resolved 401 fails', async () => {
+			const resendError = new Error('socket hang up');
+			proxyRequestToAxiosMock
+				.mockResolvedValueOnce(unauthorized)
+				.mockRejectedValueOnce(resendError);
+
+			await expect(get()).rejects.toSatisfy(
+				(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === resendError,
+			);
+			expect(refreshCalls()).toBe(1);
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+		});
+
 		test('refreshes but does NOT resend a drained stream body on a resolved 401', async () => {
 			proxyRequestToAxiosMock.mockResolvedValueOnce(unauthorized);
 

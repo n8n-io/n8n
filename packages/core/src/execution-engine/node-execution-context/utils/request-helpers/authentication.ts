@@ -222,6 +222,7 @@ export async function requestWithAuthentication(
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 	let requestSent = false;
+	let unauthorized: { response: { body?: unknown }; credentials: ICredentialDataDecryptedObject };
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
@@ -301,40 +302,16 @@ export async function requestWithAuthentication(
 
 		// With `simple: false` (the HTTP Request node's "Never Error") a rejected token resolves
 		// as a 401 response instead of throwing, so the catch below never refreshes it. Read the
-		// status and give a 401 the same refresh-and-resend a thrown 401 gets.
+		// status and give a 401 the same refresh-and-resend a thrown 401 gets, after the catch.
 		// oxlint-disable-next-line typescript/no-deprecated
 		const response = await proxyRequestToAxios(workflow, additionalData, node, {
 			...requestOptions,
 			resolveWithFullResponse: true,
 		});
-		if (response?.statusCode === 401) {
-			const refreshed = await additionalData.credentialsHelper.preAuthentication(
-				{ helpers: this.helpers },
-				credentialsDecrypted,
-				credentialsType,
-				node,
-				true,
-			);
-			if (refreshed) {
-				Object.assign(credentialsDecrypted, refreshed);
-				if (hasSingleUseBody(requestOptions)) {
-					this.logger.warn(
-						`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Returning the original response instead.`,
-					);
-				} else {
-					requestOptions = await additionalData.credentialsHelper.authenticate(
-						credentialsDecrypted,
-						credentialsType,
-						requestOptions as IHttpRequestOptions,
-						workflow,
-						node,
-					);
-					// oxlint-disable-next-line typescript/no-deprecated
-					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
-				}
-			}
+		if (response?.statusCode !== 401) {
+			return requestOptions.resolveWithFullResponse ? response : response?.body;
 		}
-		return requestOptions.resolveWithFullResponse ? response : response?.body;
+		unauthorized = { response, credentials: credentialsDecrypted };
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -375,4 +352,65 @@ export async function requestWithAuthentication(
 			throw new NodeApiError(this.getNode(), error);
 		}
 	}
+
+	// This runs outside the try above, so a failure here does not start the catch's
+	// refresh-and-resend a second time.
+	return await refreshAndResendUnauthorized.call(
+		this,
+		credentialsType,
+		unauthorized,
+		requestOptions,
+		workflow,
+		node,
+		additionalData,
+	);
+}
+
+/**
+ * Refreshes the credential once after a `simple: false` request resolved with a 401 and resends
+ * the request. Returns the 401 response when the credential has nothing to refresh, or when the
+ * request body was consumed and cannot be sent again.
+ */
+async function refreshAndResendUnauthorized(
+	this: IAllExecuteFunctions,
+	credentialsType: string,
+	unauthorized: { response: { body?: unknown }; credentials: ICredentialDataDecryptedObject },
+	requestOptions: LegacyRequestOptions,
+	workflow: Workflow,
+	node: INode,
+	additionalData: IWorkflowExecuteAdditionalData,
+) {
+	try {
+		const refreshed = await additionalData.credentialsHelper.preAuthentication(
+			{ helpers: this.helpers },
+			unauthorized.credentials,
+			credentialsType,
+			node,
+			true,
+		);
+		if (refreshed) {
+			Object.assign(unauthorized.credentials, refreshed);
+			if (!hasSingleUseBody(requestOptions)) {
+				const authenticated = await additionalData.credentialsHelper.authenticate(
+					unauthorized.credentials,
+					credentialsType,
+					requestOptions as IHttpRequestOptions,
+					workflow,
+					node,
+				);
+				// oxlint-disable-next-line typescript/no-deprecated
+				return await proxyRequestToAxios(workflow, additionalData, node, authenticated);
+			}
+			this.logger.warn(
+				`Request for credential type "${credentialsType}" was not retried after refreshing the credential: its multipart/stream body was consumed by the first attempt and cannot be sent again. Returning the original response instead.`,
+			);
+		}
+	} catch (error) {
+		if (error instanceof ExecutionBaseError || hasPolicyRefusalMarker(error)) throw error;
+
+		throw new NodeApiError(this.getNode(), error);
+	}
+	return requestOptions.resolveWithFullResponse
+		? unauthorized.response
+		: unauthorized.response.body;
 }
