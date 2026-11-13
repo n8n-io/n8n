@@ -446,7 +446,9 @@ export function useCanvasPreview({
 	const pendingAppPlan = computed(() => getPendingAppPlan(thread.artifactTurns) ?? null);
 
 	// The plan part the builder works on, for the progress of the active app.
+	// Only while the agent runs: after the run, the last announced part is done too.
 	const activeAppBuildingPlanId = computed(() => {
+		if (!thread.isStreaming) return null;
 		const progress = getLatestAppProgress(thread.artifactTurns);
 		return progress && progress.appId === activeApp.value?.id ? progress.planId : null;
 	});

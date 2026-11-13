@@ -673,6 +673,8 @@ export function planOverlayMain(
 	let ring: HTMLElement | null = null;
 	let tipFor: Element | null = null;
 	let hideTimer = 0;
+	// Parts known to be built, also when their page is not open.
+	const doneIds = new Set<string>();
 
 	function el(tag: string, className?: string, text?: string): HTMLElement {
 		const node = doc.createElement(tag);
@@ -699,7 +701,19 @@ export function planOverlayMain(
 			return !shell || !shell.classList.contains('wf-app');
 		}
 		const node = doc.querySelector(`[data-plan-id="${id}"]`);
-		return !!node && !node.classList.contains('wf-block');
+		if (node) return !node.classList.contains('wf-block');
+		// A part on another page is not in the DOM. The builder follows `buildOrder`, so the
+		// parts before the announced one are done, and the plan can mark a part as built.
+		return (
+			doneIds.has(id) ||
+			byId[id]?.status === 'built' ||
+			(!!buildingId && order.indexOf(id) < order.indexOf(buildingId))
+		);
+	}
+
+	function markDoneThrough(id: string, inclusive: boolean) {
+		const end = order.indexOf(id) + (inclusive ? 1 : 0);
+		order.slice(0, Math.max(0, end)).forEach((done) => doneIds.add(done));
 	}
 
 	function currentId(): string | undefined {
@@ -986,6 +1000,9 @@ export function planOverlayMain(
 		if (type === 'building') {
 			const id = 'planId' in data && typeof data.planId === 'string' ? data.planId : null;
 			if (id !== buildingId) follow = true;
+			// The builder moved on or stopped: the previous step is done.
+			if (buildingId) markDoneThrough(buildingId, id === null);
+			if (id) markDoneThrough(id, false);
 			buildingId = id;
 			const page = id && id !== 'shell' ? screenFor(id) : undefined;
 			if (follow && page) goToPage(page);

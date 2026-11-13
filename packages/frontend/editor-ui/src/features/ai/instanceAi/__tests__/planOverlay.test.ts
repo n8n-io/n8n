@@ -132,3 +132,48 @@ describe('plan overlay hover card', () => {
 		vi.useRealTimers();
 	});
 });
+
+describe('plan overlay parts on other pages', () => {
+	it('counts parts that the open page does not render once the builder moved past them', async () => {
+		const send = (planId: string | null) =>
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: { source: 'n8n-app-plan', type: 'building', planId },
+					source: window,
+				}),
+			);
+		const posted = vi.spyOn(window.parent, 'postMessage');
+		const twoPages = appPlanSchema.parse({
+			screens: [
+				{ id: 'list', name: 'List', components: [{ id: 'rows', kind: 'table', label: 'Rows' }] },
+				{
+					id: 'record',
+					name: 'Record',
+					path: '/rows/:id',
+					components: [
+						{ id: 'body', kind: 'detail', label: 'Record' },
+						{ id: 'reject', kind: 'button', label: 'Reject' },
+					],
+				},
+			],
+			buildOrder: ['shell', 'rows', 'body', 'reject'],
+		});
+		document.body.innerHTML = renderWireframeBody(twoPages);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, {
+			plan: twoPages,
+			progress: 'parent',
+		});
+		// The built app: a router shows the list page only.
+		build('shell');
+		build('rows');
+		document.querySelector('[data-plan-screen="record"]')!.remove();
+		const last = () => posted.mock.calls.at(-1)?.[0] as { built: number; current?: string };
+
+		send('reject');
+		await vi.waitFor(() => expect(last()).toMatchObject({ built: 3, current: 'Reject' }));
+
+		send(null);
+		await vi.waitFor(() => expect(last().built).toBe(4));
+		expect(last().current).toBeUndefined();
+	});
+});

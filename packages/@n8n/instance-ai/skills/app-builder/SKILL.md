@@ -250,6 +250,8 @@ watches the preview, so the first commit must come fast:
    or agent that does not exist yet, create it now, bind it, and load or save
    real data through the binding. If an earlier step already created it, reuse
    it. When you create a resource, set its `resourceId` in `public/plan.json`.
+   Set the `status` of the component to `built` in `public/plan.json`: the
+   preview counts parts on pages that are not open from it.
    Then build and commit, with the component label as the commit label.
 3. When the nav is built, it replaces the wireframe screen switching. Keep the
    `data-plan-screen` sections or switch to Vue Router.
