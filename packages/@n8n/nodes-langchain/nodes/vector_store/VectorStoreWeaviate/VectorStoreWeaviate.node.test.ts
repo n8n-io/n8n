@@ -411,11 +411,15 @@ describe('VectorStoreWeaviate.node', () => {
 		const deleteCollection = vi.fn();
 		const removeTenants = vi.fn();
 		const closeClient = vi.fn();
+		const collectionExists = vi.fn();
+		const createFromJson = vi.fn();
 		const client = mock<WeaviateClient>({
 			close: closeClient,
 			collections: mock<WeaviateClient['collections']>({
 				delete: deleteCollection,
 				get: vi.fn().mockReturnValue({ tenants: { remove: removeTenants } }),
+				exists: collectionExists,
+				createFromJson,
 			}),
 		});
 		const documents = [new LcDocument({ pageContent: 'A cat', metadata: {} })];
@@ -431,10 +435,11 @@ describe('VectorStoreWeaviate.node', () => {
 
 		beforeEach(() => {
 			connectSpy.mockResolvedValue(client);
-			deleteCollection.mockClear();
-			removeTenants.mockClear();
-			closeClient.mockClear();
 			deleteCollection.mockReset();
+			removeTenants.mockReset();
+			closeClient.mockClear();
+			collectionExists.mockReset().mockResolvedValue(true);
+			createFromJson.mockReset();
 			vi.mocked(WeaviateStore.fromDocuments).mockClear();
 		});
 
@@ -474,6 +479,20 @@ describe('VectorStoreWeaviate.node', () => {
 			expect(deleteCollection).toHaveBeenCalledWith('TestCollection');
 		});
 
+		it('should create the collection from the schema for each item in node version 1', async () => {
+			collectionExists.mockResolvedValue(false);
+
+			await insert({ jsonSchema: '{ "vectorizer": "none" }' }, 1);
+
+			expect(createFromJson).toHaveBeenCalledWith({ class: 'TestCollection', vectorizer: 'none' });
+		});
+
+		it('should not create the collection in a batch, because beforeInsert does it', async () => {
+			await insert({ jsonSchema: '{ "vectorizer": "none" }' });
+
+			expect(createFromJson).not.toHaveBeenCalled();
+		});
+
 		describe('beforeInsert', () => {
 			const clear = async (options: Record<string, unknown>) =>
 				await node.beforeInsert(createContext(options), embeddings, 0);
@@ -499,6 +518,15 @@ describe('VectorStoreWeaviate.node', () => {
 				expect(deleteCollection).not.toHaveBeenCalled();
 			});
 
+			it('should skip the clear step when the collection does not exist', async () => {
+				collectionExists.mockResolvedValue(false);
+
+				await clear({ clearStore: true, tenant: 'tenantA' });
+
+				expect(removeTenants).not.toHaveBeenCalled();
+				expect(deleteCollection).not.toHaveBeenCalled();
+			});
+
 			it('should close the client after the clear step', async () => {
 				await clear({ clearStore: true });
 
@@ -510,6 +538,102 @@ describe('VectorStoreWeaviate.node', () => {
 
 				await expect(clear({ clearStore: true })).rejects.toThrow('clear failed');
 				expect(closeClient).toHaveBeenCalledTimes(1);
+			});
+
+			describe('collection JSON schema', () => {
+				const schema = {
+					class: 'TestCollection',
+					vectorizer: 'none',
+					properties: [{ name: 'text', dataType: ['text'] }],
+				};
+
+				beforeEach(() => {
+					collectionExists.mockResolvedValue(false);
+				});
+
+				it('should create the collection from a JSON string when it does not exist', async () => {
+					await clear({ jsonSchema: JSON.stringify(schema) });
+
+					expect(collectionExists).toHaveBeenCalledWith('TestCollection');
+					expect(createFromJson).toHaveBeenCalledWith(schema);
+				});
+
+				it('should accept a schema that is already an object', async () => {
+					await clear({ jsonSchema: schema });
+
+					expect(createFromJson).toHaveBeenCalledWith(schema);
+				});
+
+				it('should use the collection name when the schema has no class', async () => {
+					const { class: _class, ...withoutClass } = schema;
+					const jsonSchema = { ...withoutClass };
+
+					await clear({ jsonSchema });
+
+					expect(createFromJson).toHaveBeenCalledWith(schema);
+					// The node parameter keeps its value
+					expect(jsonSchema).toEqual(withoutClass);
+				});
+
+				it('should not create the collection when it exists', async () => {
+					collectionExists.mockResolvedValue(true);
+
+					await clear({ jsonSchema: schema });
+
+					expect(createFromJson).not.toHaveBeenCalled();
+				});
+
+				it('should clear the store first, and then create the collection', async () => {
+					collectionExists.mockResolvedValueOnce(true);
+
+					await clear({ clearStore: true, jsonSchema: schema });
+
+					expect(deleteCollection.mock.invocationCallOrder[0]).toBeLessThan(
+						createFromJson.mock.invocationCallOrder[0],
+					);
+				});
+
+				it.each([
+					[{ ...schema, class: 'OtherCollection' }, 'must match the collection name'],
+					['{ not json', 'is not valid JSON'],
+					['[1, 2]', 'must be an object'],
+					['{ "class": 5 }', 'must be an object'],
+				])('should throw for the schema %j and keep the data', async (jsonSchema, message) => {
+					await expect(clear({ clearStore: true, jsonSchema })).rejects.toThrow(message);
+
+					expect(deleteCollection).not.toHaveBeenCalled();
+					expect(createFromJson).not.toHaveBeenCalled();
+				});
+
+				it('should create a missing collection when Clear Data is on and a tenant is set', async () => {
+					await clear({ clearStore: true, tenant: 'tenantA', jsonSchema: schema });
+
+					expect(removeTenants).not.toHaveBeenCalled();
+					expect(createFromJson).toHaveBeenCalledWith(schema);
+				});
+
+				it('should remove the tenant and keep an existing collection', async () => {
+					collectionExists.mockResolvedValue(true);
+
+					await clear({ clearStore: true, tenant: 'tenantA', jsonSchema: schema });
+
+					expect(removeTenants).toHaveBeenCalledWith([{ name: 'tenantA' }]);
+					expect(createFromJson).not.toHaveBeenCalled();
+				});
+
+				it('should accept a collection that another execution created at the same time', async () => {
+					collectionExists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+					createFromJson.mockRejectedValueOnce(new Error('class name already exists'));
+
+					await expect(clear({ jsonSchema: schema })).resolves.toBeUndefined();
+				});
+
+				it('should throw the creation error when the collection still does not exist', async () => {
+					createFromJson.mockRejectedValueOnce(new Error('invalid schema'));
+
+					await expect(clear({ jsonSchema: schema })).rejects.toThrow('invalid schema');
+					expect(closeClient).toHaveBeenCalledTimes(1);
+				});
 			});
 		});
 	});
