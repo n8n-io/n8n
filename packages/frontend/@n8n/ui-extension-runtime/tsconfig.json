@@ -1,0 +1,22 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"rootDirs": [".", "../design-system/src"],
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"allowJs": true,
+		"incremental": false,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"types": ["vite/client", "vitest/globals", "unplugin-icons/types/vue"],
+		"paths": {
+			"@n8n/design-system*": ["../design-system/src*"]
+		},
+		"lib": ["esnext", "dom", "dom.iterable"],
+		// `@n8n/design-system` is read from source, and its source needs this.
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "../design-system/src/shims-modules.d.ts"]
+}

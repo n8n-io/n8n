@@ -64,6 +64,7 @@
     "@n8n/frontend-module-sdk": "workspace:*",
     "@n8n/frontend-module-self-healing": "workspace:*",
     "@n8n/frontend-module-type-availability-policies": "workspace:*",
+    "@n8n/frontend-module-ui-extensions": "workspace:*",
     "@n8n/frontend-test-utils": "workspace:*",
     "@n8n/frontend-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",

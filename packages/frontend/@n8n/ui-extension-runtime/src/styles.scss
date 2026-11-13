@@ -1,0 +1,15 @@
+// The design-system tokens and the base font. The view frame loads only this
+// stylesheet and the styles of the registered components.
+@use '@n8n/design-system/css/primitives';
+@use '@n8n/design-system/css/tokens';
+@use '@n8n/design-system/css/reset';
+@use '@n8n/design-system/css/fonts/geist';
+
+body {
+	margin: 0;
+	padding: var(--spacing--sm);
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	color: var(--text-color);
+	background-color: transparent;
+}
