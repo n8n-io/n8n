@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';

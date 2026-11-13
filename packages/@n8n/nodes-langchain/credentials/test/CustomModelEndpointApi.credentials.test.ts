@@ -1,10 +1,11 @@
+import { UserError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../../utils/custom-model-endpoint/credential-data';
 import { CustomModelEndpointApi } from '../CustomModelEndpointApi.credentials';

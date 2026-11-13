@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { messageFromBody, truncateMessage } from './error-handling';
 import { oauth2BasicCredentials } from './headers';

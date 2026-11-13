@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -7,7 +8,6 @@ import type {
 	INodeProperties,
 	Icon,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
