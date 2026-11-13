@@ -94,7 +94,10 @@ export class LoadNodesAndCredentials {
 
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
-			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+			this.excludeNodes.push(
+				'n8n-nodes-base.e2eTest',
+				'n8n-nodes-base.e2eTestDeclarativePollingTrigger',
+			);
 		}
 
 		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {

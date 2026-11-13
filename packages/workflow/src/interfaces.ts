@@ -3011,6 +3011,25 @@ export interface INodePropertyRouting {
 	send?: INodeRequestSend;
 }
 
+/** How a declarative polling trigger finds the new items and the next cursor. */
+export type DeclarativePollingCursor =
+	| { type: 'timestamp'; field: string }
+	| { type: 'id'; field: string }
+	| ((
+			this: IPollFunctions,
+			items: INodeExecutionData[],
+			cursor: IDataObject | undefined,
+	  ) => Promise<{ items: INodeExecutionData[]; cursor: IDataObject | undefined }>);
+
+export interface IDeclarativePollingTrigger {
+	type: 'polling';
+	/** The poll request. Expressions can use `$cursor`. */
+	routing: INodePropertyRouting;
+	cursor: DeclarativePollingCursor;
+	/** Manual runs return the last `maxResults` items (default 1) and store no cursor. */
+	manual?: { maxResults?: number };
+}
+
 export type PostReceiveAction =
 	| ((
 			this: IExecuteSingleFunctions,
@@ -3247,6 +3266,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
+	/** Preview. The loader builds `poll()` from it, unless the class defines `poll()`. */
+	trigger?: IDeclarativePollingTrigger;
 	supportsCORS?: true | undefined;
 	requestDefaults?: DeclarativeRestApiSettings.HttpRequestOptions;
 	requestOperations?: IN8nRequestOperations;
@@ -3436,6 +3457,8 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$secrets?: IDataObject;
 	$pageCount?: number;
 	$tool?: { name: string; parameters: string };
+	/** The stored cursor of a declarative polling trigger, or `{}` when there is none. */
+	$cursor?: IDataObject;
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */

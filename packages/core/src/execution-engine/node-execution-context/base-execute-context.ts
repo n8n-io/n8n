@@ -11,6 +11,7 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 	ICredentialDataDecryptedObject,
+	IGetDecryptedCredentialsOptions,
 	CallbackManager,
 	IExecuteWorkflowInfo,
 	RelatedExecution,
@@ -66,6 +67,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		readonly inputData: ITaskDataConnections,
 		readonly executeData: IExecuteData,
 		readonly abortSignal?: AbortSignal,
+		readonly credentialOptions?: IGetDecryptedCredentialsOptions,
 	) {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
 	}
@@ -131,6 +133,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.executeData,
 			this.connectionInputData,
 			itemIndex,
+			this.credentialOptions,
 		);
 	}
 
