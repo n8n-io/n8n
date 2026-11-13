@@ -80,6 +80,8 @@ export interface AgentRuntimeInstrumentation {
 	 * run uses it to block the tools that the simulation cannot serve.
 	 */
 	toolCallInterceptor?: ToolCallInterceptor;
+	/** A test run: the executions of delegated sub-agents are marked simulated too. */
+	simulatedRun?: boolean;
 	/**
 	 * Leaves out the model provider's own tools (native web search and any
 	 * configured `providerTools`). They run inside the provider's call, where no

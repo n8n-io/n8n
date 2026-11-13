@@ -7,7 +7,6 @@ import { Service } from '@n8n/di';
 import { NotFoundError, UnexpectedError } from '@n8n/errors';
 
 import { Time } from '@n8n/constants';
-import { In } from '@n8n/typeorm';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { TtlMap } from '@/utils/ttl-map';
@@ -19,6 +18,8 @@ import { toAgentDocument } from '../json-config/agent-document';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
+import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
+import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
 import { redactMcpUrl } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
@@ -59,9 +60,10 @@ export class SimulationSessionService {
 
 	async openForDraftRun(input: OpenSimulationInput): Promise<SimulationSession | undefined> {
 		// A chat that is already a test run stays one, even if the flag reads off for a moment.
-		const cached = this.sessions.get(input.testChatId);
+		const key = sessionKey(input);
+		const cached = this.sessions.get(key);
 		if (cached) {
-			this.sessions.touch(input.testChatId);
+			this.sessions.touch(key);
 			// Keep the same session, so its cached runtime stays valid, but use the current tools.
 			cached.updateCapabilities(
 				await this.capabilitiesFor(await this.describeAgent(input.agentId, input.projectId)),
@@ -69,10 +71,10 @@ export class SimulationSessionService {
 			return cached;
 		}
 		// Overlapping turns of a new chat share one open, so the chat gets one world.
-		const opening = this.opening.get(input.testChatId);
+		const opening = this.opening.get(key);
 		if (opening) return await opening;
-		const open = this.openNew(input).finally(() => this.opening.delete(input.testChatId));
-		this.opening.set(input.testChatId, open);
+		const open = this.openNew(input).finally(() => this.opening.delete(key));
+		this.opening.set(key, open);
 		return await open;
 	}
 
@@ -94,7 +96,11 @@ export class SimulationSessionService {
 			try {
 				world = await backend.openWorld({
 					testChatId: input.testChatId,
-					agent,
+					// Tools n8n blocks (SSE MCP servers, custom code) stay out of the world too.
+					agent: {
+						...agent,
+						tools: agent.tools.filter((tool) => !described.hostGaps.has(tool.toolName)),
+					},
 					firstMessage: input.message,
 					...(savedWorld?.backend === backend.id ? { saved: savedWorld.state } : {}),
 				});
@@ -122,7 +128,7 @@ export class SimulationSessionService {
 			queueMode: this.executionsConfig.mode === 'queue',
 			previousWorld: savedWorld,
 		});
-		this.sessions.set(input.testChatId, session);
+		this.sessions.set(sessionKey(input), session);
 		return session;
 	}
 
@@ -159,7 +165,12 @@ export class SimulationSessionService {
 		const hostGaps = new Map<string, string>();
 
 		const tools: SimulatedTool[] = [];
-		for (const tool of summarizeTools(config, saved.tools ?? {}, sanitizeToolName)) {
+		// The runtime leaves disabled tools out, so the list does too.
+		const enabledConfig = {
+			...config,
+			tools: config.tools?.filter((ref) => ref.enabled !== false),
+		};
+		for (const tool of summarizeTools(enabledConfig, saved.tools ?? {}, sanitizeToolName)) {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
 			const server =
 				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
@@ -193,13 +204,16 @@ export class SimulationSessionService {
 			const gap = nodeSimulationGap(ref.node.nodeType, ref.node.nodeParameters);
 			if (gap) hostGaps.set(nodeNameToToolName(ref.name), gap);
 		}
-		for (const [toolName, gap] of await this.workflowEngineGaps(config)) {
+		for (const [toolName, gap] of await this.workflowEngineGaps(enabledConfig, projectId)) {
 			if (!hostGaps.has(toolName)) hostGaps.set(toolName, gap);
 		}
-		for (const integration of saved.integrations ?? []) {
-			if (!isCredentialAgentIntegration(integration)) continue;
-			tools.push({ toolName: integration.type, kind: 'integration' });
-			hostGaps.set(integration.type, 'Chat integration actions cannot run in a test run yet.');
+		// Named as the runtime names them: `slack_context`, `slack_action`, `slack_2_action`.
+		const integrations = (saved.integrations ?? []).filter(isCredentialAgentIntegration);
+		for (const descriptor of getIntegrationToolConnectionDescriptors(integrations, agentId)) {
+			for (const toolName of [descriptor.contextToolName, descriptor.actionToolName]) {
+				tools.push({ toolName, kind: 'integration' });
+				hostGaps.set(toolName, 'Chat integration tools cannot run in a test run yet.');
+			}
 		}
 
 		return {
@@ -216,23 +230,20 @@ export class SimulationSessionService {
 
 	/**
 	 * Workflow tools whose workflow runs on Engine v2. The run would go to the data plane,
-	 * where the test run's hooks do not reach; the runtime refuses it as well.
+	 * where the test run's hooks do not reach; the runtime refuses it as well. Legacy refs
+	 * without an id are found by name, as the runtime finds them.
 	 */
-	private async workflowEngineGaps(config: AgentJsonConfig): Promise<Map<string, string>> {
+	private async workflowEngineGaps(
+		config: AgentJsonConfig,
+		projectId: string,
+	): Promise<Map<string, string>> {
 		const gaps = new Map<string, string>();
-		const refs = (config.tools ?? []).flatMap((ref) =>
-			ref.type === 'workflow' && ref.enabled !== false && ref.workflowId ? [ref] : [],
-		);
+		const refs = (config.tools ?? []).flatMap((ref) => (ref.type === 'workflow' ? [ref] : []));
 		if (refs.length === 0) return gaps;
-		const workflows = await this.workflowRepository.find({
-			where: { id: In(refs.flatMap((ref) => (ref.workflowId ? [ref.workflowId] : []))) },
-			select: ['id', 'settings'],
-		});
-		const onEngineV2 = new Set(
-			workflows.filter((workflow) => workflow.settings?.engineType === 'v2').map(({ id }) => id),
-		);
+		const workflows = await findWorkflowToolWorkflows(this.workflowRepository, refs, projectId);
 		for (const ref of refs) {
-			if (!ref.workflowId || !onEngineV2.has(ref.workflowId)) continue;
+			const workflow = workflows.get(ref.workflowId ?? ref.workflow);
+			if (workflow?.settings?.engineType !== 'v2') continue;
 			gaps.set(
 				sanitizeToolName(ref.name ?? ref.workflow),
 				'Workflows that run on Engine v2 cannot run in a test run yet.',
@@ -273,11 +284,13 @@ export class SimulationSessionService {
 		const forBackend = agent.tools.filter((tool) => !hostGaps.has(tool.toolName));
 		const backend = this.registry.get();
 		let served = new Map<string, ToolTestCapability>();
+		let describeFailed = false;
 		if (backend && forBackend.length > 0) {
 			try {
 				const described = await backend.describeTools({ ...agent, tools: forBackend });
-				served = new Map(described.map((tool) => [tool.toolName, tool]));
+				served = new Map(described.map((tool) => [tool.toolName, withBlockReason(tool)]));
 			} catch (error) {
+				describeFailed = true;
 				this.logger.warn('[SafeTesting] The simulator failed to describe tools', {
 					agentId: agent.agentId,
 					error: error instanceof Error ? error.message : String(error),
@@ -300,6 +313,9 @@ export class SimulationSessionService {
 			if (gap) return blocked('not_simulatable', gap);
 			if (!backend)
 				return blocked('simulator_unavailable', 'No simulator is set up on this instance.');
+			if (describeFailed) {
+				return blocked('simulator_unavailable', 'The simulator could not describe its tools.');
+			}
 			return (
 				served.get(tool.toolName) ??
 				blocked('unsupported_by_simulator', 'The simulator does not support this tool yet.')
@@ -312,4 +328,15 @@ interface DescribedAgent {
 	agent: SimulatedAgent;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
+}
+
+/** A session belongs to one chat of one agent and user, so a reused chat ID never shares a world. */
+function sessionKey({ user, projectId, agentId, testChatId }: OpenSimulationInput): string {
+	return `${user.id}:${projectId}:${agentId}:${testChatId}`;
+}
+
+/** A backend that blocks a tool without saying why still gets a reason the panel can show. */
+function withBlockReason(tool: ToolTestCapability): ToolTestCapability {
+	if (tool.testability !== 'blocked' || tool.reason) return tool;
+	return { ...tool, reason: 'unsupported_by_simulator' };
 }

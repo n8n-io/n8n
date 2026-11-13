@@ -919,6 +919,34 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		expect(providerTools?.map((tool) => tool.name)).not.toContain('openai.web_search');
 	});
 
+	it('gives inline children no provider tools in a test run', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'high-key' });
+		const service = makeReconstructionService();
+		const entity = makeAgentEntity(
+			{ webSearch: { enabled: true } },
+			{
+				model: 'openai/gpt-4o',
+				subAgents: {
+					modelsByDifficulty: {
+						high: { model: 'anthropic/claude-sonnet-4-5', credential: 'high-cred' },
+					},
+				},
+			},
+		);
+
+		await service.reconstructFromAgentEntity(
+			storedRunSource(entity),
+			credentialProvider,
+			'test',
+			undefined,
+			undefined,
+			{ disableProviderTools: true },
+		);
+
+		expect(getInjectedResolveInlineSubAgentProviderTools()).toBeUndefined();
+	});
+
 	it('omits inlineSubAgentModelsByDifficulty when no difficulty mappings are configured', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		const service = makeReconstructionService();

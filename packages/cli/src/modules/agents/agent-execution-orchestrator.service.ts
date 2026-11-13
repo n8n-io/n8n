@@ -265,6 +265,11 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
 	onAdmitted?: (executionId: string) => Promise<void>;
+	/**
+	 * A test run. Background jobs left on the thread must not wake when it settles:
+	 * a wake run is not simulated, so it would call real services.
+	 */
+	simulated?: boolean;
 	onRuntimeStarted?: () => void;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
@@ -1317,9 +1322,10 @@ export class AgentExecutionOrchestratorService {
 			chatSurface: config.chatSurface,
 			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
-			onSettled: config.isWakeRun
-				? undefined
-				: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
+			onSettled:
+				config.isWakeRun || config.simulated
+					? undefined
+					: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
 			prepare: async () => await this.prepareChatTurn(config),
 		});
 	}
@@ -1501,7 +1507,10 @@ export class AgentExecutionOrchestratorService {
 			onExecutionStarted: config.onExecutionStarted,
 			onExecutionRecorded: config.onExecutionRecorded,
 			onSettled: async (suspended) => {
-				if (!suspended) await this.requestPendingBackgroundWake(threadId);
+				// A wake run is not simulated, so a test run leaves pending background jobs parked.
+				if (!suspended && !config.simulationSession) {
+					await this.requestPendingBackgroundWake(threadId);
+				}
 			},
 			prepare: async () => await this.prepareChatResume(config, checkpoint, runtime),
 		});
@@ -1810,6 +1819,7 @@ export class AgentExecutionOrchestratorService {
 		const messageContext = this.createN8nChatMessageContext(memory, user.id);
 
 		return this.streamChatResponse({
+			...(config.simulationSession ? { simulated: true } : {}),
 			pauseReport: config.pauseReport,
 			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,

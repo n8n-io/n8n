@@ -114,6 +114,14 @@ export class OutboundRedactor {
 		if (key && isSensitiveKey(key)) return PLACEHOLDER;
 		if (typeof value === 'string') return this.scrub(value);
 		if (Array.isArray(value)) return value.map((item) => this.redactValue(item));
+		// Uploads and streams are not JSON: walking them would turn bytes into numbered keys.
+		if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
+			return `[binary body, ${value.byteLength} bytes]`;
+		}
+		if (value instanceof URLSearchParams) return this.scrub(value.toString());
+		if (isRecord(value) && !isPlainObject(value)) {
+			return `[${value.constructor?.name ?? 'non-JSON'} body]`;
+		}
 		if (isRecord(value)) {
 			return Object.fromEntries(
 				Object.entries(value).map(([childKey, child]) => [
@@ -153,6 +161,8 @@ function parseJsonObject(text: string): unknown {
 	}
 }
 
+const REDACTED_MCP_URL = '[REDACTED MCP URL]';
+
 /**
  * An MCP server URL with its user info and every query value removed. MCP servers that take
  * a key in the URL use any parameter name (`?key=`, `?apiKey=`), and their credential is never
@@ -163,11 +173,19 @@ export function redactMcpUrl(url: string): string {
 	try {
 		parsed = new URL(url);
 	} catch {
-		return url.split('?')[0];
+		// Without a parsed URL its user info cannot be told apart, so nothing of it is kept.
+		return REDACTED_MCP_URL;
 	}
+	// Other schemes (`user:pw@host`) parse as opaque URLs that keep their user info.
+	if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return REDACTED_MCP_URL;
 	parsed.username = '';
 	parsed.password = '';
 	for (const name of new Set(parsed.searchParams.keys()))
 		parsed.searchParams.set(name, PLACEHOLDER);
 	return parsed.toString();
+}
+
+function isPlainObject(value: object): boolean {
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
 }

@@ -350,13 +350,42 @@ describe('SimulationSession', () => {
 		expect(call).toMatchObject({ mcpServerName: 'docs' });
 	});
 
-	it('leaves out provider tools and routes web search through the fallback tool', () => {
-		const session = new SimulationSession({ testChatId: 't', capabilities: [] });
-
+	it('leaves out provider tools and serves the fallback web search from the world', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: { results: [{ title: 'n8n', url: 'https://n8n.io', snippet: 'Workflows' }] },
+		});
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' }],
+		});
 		const instrumentation = session.instrumentation();
+		const tool: BuiltTool = {
+			name: 'web_search',
+			description: '',
+			handler: async (input) =>
+				await instrumentation.webSearch!(
+					input as Parameters<NonNullable<typeof instrumentation.webSearch>>[0],
+				),
+		};
+
+		const result = await session.interceptor(
+			{ tool, toolCallId: 'tc-1', input: { query: 'n8n' } },
+			async () => await tool.handler!({ query: 'n8n' }, {}),
+		);
 
 		expect(instrumentation.disableProviderTools).toBe(true);
-		expect(instrumentation.webSearch).toEqual(expect.any(Function));
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ protocol: 'web_search', body: { query: 'n8n' } }),
+			expect.objectContaining({ toolName: 'web_search', toolCallId: 'tc-1' }),
+		);
+		expect(result).toEqual({
+			results: [{ title: 'n8n', url: 'https://n8n.io', snippet: 'Workflows' }],
+		});
+		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'simulated_made_up' });
 	});
 
 	it('keeps the world state for the test chat', () => {
@@ -534,6 +563,33 @@ describe('SimulationSession', () => {
 			}),
 		).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('blocks a chat integration tool with the reason the list gives it', async () => {
+		const session = new SimulationSession({
+			testChatId: 't',
+			world: makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} }),
+			capabilities: [
+				{
+					toolName: 'slack_action',
+					kind: 'integration',
+					testability: 'blocked',
+					reason: 'not_simulatable',
+					detail: 'Chat integration tools cannot run in a test run yet.',
+				},
+			],
+		});
+		const handler = vi.fn();
+
+		await expect(
+			runTool(session, { name: 'slack_action', description: '', handler }),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(handler).not.toHaveBeenCalled();
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'Chat integration tools cannot run in a test run yet.',
+		});
 	});
 
 	it('blocks a node tool without a node type, even with a simulated list entry', async () => {

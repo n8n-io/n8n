@@ -32,6 +32,24 @@ describe('nodeSimulationGap', () => {
 		expect(nodeSimulationGap(nodeType)).toEqual(expect.any(String));
 	});
 
+	it.each([
+		'n8n-nodes-base.postgresTool',
+		'n8n-nodes-base.emailSendTool',
+		'n8n-nodes-base.codeTool',
+	])('blocks the tool variant %s like its node', (nodeType) => {
+		expect(nodeSimulationGap(nodeType)).toEqual(expect.any(String));
+	});
+
+	it('lets the tool variant of an HTTP node run', () => {
+		expect(nodeSimulationGap('n8n-nodes-base.slackTool')).toBeUndefined();
+	});
+
+	it('blocks dispatch-and-wait, which waits for an outside workflow', () => {
+		expect(nodeSimulationGap('n8n-nodes-base.github', { operation: 'dispatchAndWait' })).toEqual(
+			expect.any(String),
+		);
+	});
+
 	it('blocks send-and-wait on an otherwise allowed node', () => {
 		expect(nodeSimulationGap('n8n-nodes-base.slack', { operation: 'sendAndWait' })).toEqual(
 			expect.any(String),

@@ -1420,11 +1420,14 @@ export class AgentRuntimeReconstructionService {
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
 					: {}),
-				// Provider tools run inside the provider's call, out of the test run's reach.
-				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
-					instrumentation?.disableProviderTools
-						? []
-						: buildProviderToolsForModel(config, modelConfig),
+				// Provider tools run inside the provider's call, out of the test run's reach. Without
+				// the resolver, the delegate tool also tells the model that children get none.
+				...(instrumentation?.disableProviderTools
+					? {}
+					: {
+							resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+								buildProviderToolsForModel(config, modelConfig),
+						}),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });

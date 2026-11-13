@@ -143,7 +143,7 @@ export interface ThreadDetail {
 export interface ThreadListItem
 	extends Omit<
 			AgentExecutionThread,
-			'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner'
+			'generateId' | 'setUpdateDate' | 'ownerId' | 'accessScope' | 'owner' | 'simulation'
 		>,
 		AgentSessionPreviewAccess {
 	firstMessage: string | null;
@@ -911,7 +911,14 @@ export class AgentExecutionService {
 		]);
 
 		return threads.map((thread) => {
-			const { ownerId: _ownerId, accessScope: _accessScope, owner: _owner, ...t } = thread;
+			// `simulation` is the test run's stored world: internal state, not part of the API.
+			const {
+				ownerId: _ownerId,
+				accessScope: _accessScope,
+				owner: _owner,
+				simulation: _simulation,
+				...t
+			} = thread;
 			const source = sourceMap.get(t.id) ?? null;
 			return {
 				...t,

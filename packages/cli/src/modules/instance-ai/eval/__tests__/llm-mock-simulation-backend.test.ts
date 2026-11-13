@@ -7,12 +7,15 @@ import { generateAgentScenarioSeed } from '../agent-scenario-seed';
 import { LlmMockSimulationBackend } from '../llm-mock-simulation-backend';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
-import { createWebSearchMock } from '../web-search-mock';
+import { createWebSearchMock, WEB_SEARCH_MOCK_FAILURE_NOTE } from '../web-search-mock';
 
 vi.mock('../agent-scenario-seed', () => ({ generateAgentScenarioSeed: vi.fn() }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
-vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
+vi.mock('../web-search-mock', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../web-search-mock')>()),
+	createWebSearchMock: vi.fn(),
+}));
 
 const seed = {
 	openingMessage: 'Post the release note',
@@ -53,8 +56,12 @@ describe('LlmMockSimulationBackend', () => {
 
 	it('serves node, workflow, MCP and web search tools, and nothing else', async () => {
 		const { backend } = setup();
+		const withWorkflow: SimulatedAgent = {
+			...agent,
+			tools: [...agent.tools, { toolName: 'Lookup_workflow', kind: 'workflow' }],
+		};
 
-		await expect(backend.describeTools(agent)).resolves.toEqual([
+		await expect(backend.describeTools(withWorkflow)).resolves.toEqual([
 			{ toolName: 'Send_Slack', kind: 'node', testability: 'simulated' },
 			{ toolName: 'linear', kind: 'mcp', testability: 'simulated' },
 			{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' },
@@ -63,6 +70,7 @@ describe('LlmMockSimulationBackend', () => {
 				testability: 'blocked',
 				reason: 'unsupported_by_simulator',
 			}),
+			{ toolName: 'Lookup_workflow', kind: 'workflow', testability: 'simulated' },
 		]);
 	});
 
@@ -109,6 +117,23 @@ describe('LlmMockSimulationBackend', () => {
 		});
 	});
 
+	it('says unavailable when the mock failed to generate a reply, so the call is blocked', async () => {
+		const { backend, httpMock } = setup();
+		httpMock.mockResolvedValue({
+			statusCode: 200,
+			headers: {},
+			body: { _evalMockError: true, message: 'Mock generation failed: timeout' },
+		});
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		await expect(
+			world.handleRequest(
+				{ protocol: 'http', method: 'GET', url: 'https://slack.com/api/conversations.list' },
+				{ toolName: 'Send_Slack', nodeType: 'n8n-nodes-base.slack' },
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
+	});
+
 	it('says unsupported when the mock has no answer, so the call is blocked', async () => {
 		const { backend, httpMock } = setup();
 		httpMock.mockResolvedValue(undefined);
@@ -139,6 +164,29 @@ describe('LlmMockSimulationBackend', () => {
 		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
 			expect.objectContaining({ scenarioHints: 'hi', globalContext: seed.globalContext }),
 		);
+	});
+
+	it('says unavailable when the MCP or web search mock failed to generate a reply', async () => {
+		const { backend, mcpFetch, webSearch } = setup();
+		mcpFetch.mockResolvedValue(
+			new Response('{"jsonrpc":"2.0","id":1,"error":{"code":-32603,"message":"timeout"}}', {
+				status: 200,
+			}),
+		);
+		webSearch.mockResolvedValue({ query: 'n8n', results: [], note: WEB_SEARCH_MOCK_FAILURE_NOTE });
+		const world = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+
+		const mcpReply = await world.handleRequest(
+			{ protocol: 'mcp', method: 'POST', url: 'https://mcp.linear.app/mcp', body: {} },
+			{ toolName: 'linear_create_issue', mcpServerName: 'linear' },
+		);
+		const searchReply = await world.handleRequest(
+			{ protocol: 'web_search', method: 'POST', url: 'simulation://web-search', body: {} },
+			{ toolName: 'web_search' },
+		);
+
+		expect(mcpReply).toMatchObject({ outcome: 'unavailable' });
+		expect(searchReply).toMatchObject({ outcome: 'unavailable' });
 	});
 
 	it('answers MCP and web search through their mocks', async () => {
@@ -183,5 +231,26 @@ describe('LlmMockSimulationBackend', () => {
 		});
 		expect(webSearch).toHaveBeenCalledWith({ query: 'n8n' });
 		expect(searchReply).toMatchObject({ outcome: 'served', body: { results: [] } });
+	});
+
+	it('keeps the simulated writes of earlier turns in a saved world', async () => {
+		const { backend } = setup();
+		const first = await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'hi' });
+		const firstOptions = vi.mocked(createLlmMockHandler).mock.calls[0][0];
+		const write = {
+			hostname: 'slack.com',
+			method: 'POST',
+			endpoint: '/api/chat.postMessage',
+			nodeName: 'Send_Slack',
+			body: '{"text":"v2"}',
+		};
+		firstOptions?.writeLedger?.push(write);
+
+		const saved = structuredClone(first.save());
+		await backend.openWorld({ testChatId: 'chat-1', agent, firstMessage: 'later', saved });
+
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ writeLedger: [write] }),
+		);
 	});
 });
