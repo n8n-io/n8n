@@ -8,9 +8,9 @@ describe('AgentInterruptedExecutionSweepTask', () => {
 	const sweeper = mock<AgentInterruptedExecutionSweeper>();
 	const task: SystemTask = new AgentInterruptedExecutionSweepTask(sweeper);
 
-	it('declares the liveness grace as a durable cluster cadence', () => {
+	it('declares a durable cluster cadence shorter than the liveness grace', () => {
 		expect(task.name).toBe('agent-interrupted-execution-sweep');
-		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 120 });
+		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 60 });
 		expect(task.target).toEqual({
 			scope: 'cluster',
 			scheduler: { retryOnFailure: true },

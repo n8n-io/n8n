@@ -12,7 +12,7 @@ export class AgentInterruptedExecutionSweepTask implements SystemTask {
 	readonly name = 'agent-interrupted-execution-sweep';
 
 	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
-		AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS,
+		AgentInterruptedExecutionSweeper.SWEEP_INTERVAL_SECONDS,
 	);
 
 	readonly target = clusterTarget({

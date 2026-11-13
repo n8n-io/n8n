@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" boolean NOT NULL DEFAULT (FALSE), "finishReason" varchar(32), "guardrailCode" varchar(64), "cacheReadTokens" integer, "cacheWriteTokens" integer, "parentExecutionId" varchar(36), CONSTRAINT "CHK_agent_execution_storedAt" CHECK (((("storedAt" IN ('db', 'fs', 's3', 'az'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((((("hitlStatus" IN ('suspended', 'resumed')))))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted', 'awaiting')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_733b72a69d4573039b417a629f7" FOREIGN KEY ("parentExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
+CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "startedAt" datetime(3), "stoppedAt" datetime(3), "duration" integer NOT NULL DEFAULT (0), "userMessage" text, "model" varchar(255), "promptTokens" integer, "completionTokens" integer, "totalTokens" integer, "cost" real, "timeline" text, "error" text, "hitlStatus" varchar(16), "source" varchar(32), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "attachments" text, "failureSummary" text, "author" text, "acceptsSteering" boolean NOT NULL DEFAULT (FALSE), "finishReason" varchar(32), "guardrailCode" varchar(64), "cacheReadTokens" integer, "cacheWriteTokens" integer, "parentExecutionId" varchar(36), "ownerKey" varchar(64), "stopRequest" varchar(16) CHECK ("stopRequest" IN ('foreground', 'all', 'session')), CONSTRAINT "CHK_agent_execution_storedAt" CHECK (((("storedAt" IN ('db', 'fs', 's3', 'az'))))), CONSTRAINT "CHK_agent_execution_hitlStatus" CHECK ((((((("hitlStatus" IN ('suspended', 'resumed')))))))), CONSTRAINT "CHK_agent_execution_status" CHECK ("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted', 'awaiting')), CONSTRAINT "FK_add2432fb6034cc18b6af299dce" FOREIGN KEY ("threadId") REFERENCES "agent_execution_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_733b72a69d4573039b417a629f7" FOREIGN KEY ("parentExecutionId") REFERENCES "agent_execution" ("id") ON DELETE SET NULL ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -31,11 +31,13 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 | hitlStatus | varchar(16) |  | true |  |  |  |
 | id | varchar(36) |  | false | [agent_background_job](agent_background_job.md) [agent_execution](agent_execution.md) [agent_execution_message_links](agent_execution_message_links.md) [agent_message_queue](agent_message_queue.md) |  |  |
 | model | varchar(255) |  | true |  |  |  |
+| ownerKey | varchar(64) |  | true |  |  |  |
 | parentExecutionId | varchar(36) |  | true |  | [agent_execution](agent_execution.md) |  |
 | promptTokens | INTEGER |  | true |  |  |  |
 | source | varchar(32) |  | true |  |  |  |
 | startedAt | datetime(3) |  | true |  |  |  |
 | status | varchar(16) |  | false |  |  |  |
+| stopRequest | varchar(16) |  | true |  |  |  |
 | stoppedAt | datetime(3) |  | true |  |  |  |
 | storedAt | varchar(2) | 'db' | false |  |  |  |
 | threadId | varchar(128) |  | false |  | [agent_execution_threads](agent_execution_threads.md) |  |
@@ -48,6 +50,7 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("stopRequest" IN ('foreground', 'all', 'session')) |
 | - | CHECK | CHECK (((("storedAt" IN ('db', 'fs', 's3', 'az'))))) |
 | - | CHECK | CHECK ((((((("hitlStatus" IN ('suspended', 'resumed')))))))) |
 | - | CHECK | CHECK ("status" IN ('running', 'success', 'error', 'cancelled', 'interrupted', 'awaiting')) |
@@ -94,11 +97,13 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_64_ ownerKey
   varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
+  varchar_16_ stopRequest
   datetime_3_ stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK

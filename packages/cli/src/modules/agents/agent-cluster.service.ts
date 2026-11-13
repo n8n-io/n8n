@@ -2,7 +2,7 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { MAX_PUBSUB_PAYLOAD_BYTES } from '@n8n/backend-services';
+import { InstanceRegistryProxyService, MAX_PUBSUB_PAYLOAD_BYTES } from '@n8n/backend-services';
 
 /**
  * One place that answers cluster questions for the agents module.
@@ -17,7 +17,32 @@ export class AgentClusterService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly instanceRegistry: InstanceRegistryProxyService,
 	) {}
+
+	/**
+	 * Instance registry key of this process. A restart gets a new key, so a
+	 * turn that records this key cannot be mistaken for a turn of the next
+	 * process on the same host. Null when the registry is not loaded.
+	 */
+	get instanceKey(): string | null {
+		return this.instanceRegistry.getLocalInstance()?.instanceKey ?? null;
+	}
+
+	/**
+	 * Keys of the processes that the registry reports as alive. Returns null
+	 * when the answer cannot be trusted: a failed registry read returns an
+	 * empty list, and this process is always registered, so a list without
+	 * this process means the read failed. Do not interrupt a turn on null.
+	 */
+	async activeInstanceKeys(): Promise<Set<string> | null> {
+		const own = this.instanceKey;
+		if (!own) return null;
+		const keys = new Set(
+			(await this.instanceRegistry.getAllInstances()).map(({ instanceKey }) => instanceKey),
+		);
+		return keys.has(own) ? keys : null;
+	}
 
 	/**
 	 * True when another process can hold agent state that a change here must

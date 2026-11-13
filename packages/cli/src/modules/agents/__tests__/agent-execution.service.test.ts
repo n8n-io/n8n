@@ -29,6 +29,7 @@ import type { AgentMessageQueueRepository } from '../repositories/agent-message-
 import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import { testCluster } from './test-utils/cluster';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
 
@@ -125,7 +126,7 @@ describe('AgentExecutionService', () => {
 
 		agentExecutionRepository = mock<AgentExecutionRepository>();
 		agentExecutionRepository.findRunningByThread.mockResolvedValue([]);
-		agentExecutionRepository.touchRunning.mockResolvedValue(true);
+		agentExecutionRepository.touchRunning.mockResolvedValue({ owned: true, stopRequest: null });
 		queueRepository.findActive.mockResolvedValue(null);
 		queueRepository.findHead.mockResolvedValue(null);
 		checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
@@ -161,6 +162,7 @@ describe('AgentExecutionService', () => {
 			messageRepository,
 			new SystemAgentRegistry(),
 			projectDeletion,
+			testCluster({ instanceKey: 'instance-a' }),
 		);
 	});
 
@@ -524,7 +526,7 @@ describe('AgentExecutionService', () => {
 				agentExecutionRepository.saveInContext.mockResolvedValue({
 					id: 'execution-1',
 				} as AgentExecution);
-				agentExecutionRepository.touchRunning.mockResolvedValue(true);
+				agentExecutionRepository.touchRunning.mockResolvedValue({ owned: true, stopRequest: null });
 				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
 
 				const recording = service.startExecutionRecording(
@@ -542,7 +544,10 @@ describe('AgentExecutionService', () => {
 				const { executionId } = await recording;
 				expect(memoryBackend.getThread).not.toHaveBeenCalled();
 				await vi.advanceTimersByTimeAsync(30_000);
-				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith('execution-1');
+				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(
+					'execution-1',
+					'instance-a',
+				);
 
 				expect(executionUpdateBroadcaster.notify).toHaveBeenCalledWith({
 					projectId: 'project-1',
@@ -553,7 +558,10 @@ describe('AgentExecutionService', () => {
 				expect(agentExecutionRepository.create).toHaveBeenCalledWith(
 					expect.objectContaining({ status: 'running' }),
 				);
-				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(executionId);
+				expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(
+					executionId,
+					'instance-a',
+				);
 
 				const finalization = service.finalizeExecution(executionId, {
 					threadId: 'thread-1',
@@ -617,8 +625,8 @@ describe('AgentExecutionService', () => {
 			const signal = service.getAbortSignal('execution-1');
 			agentExecutionRepository.touchRunning
 				.mockRejectedValueOnce(new Error('temporarily unavailable'))
-				.mockResolvedValueOnce(true)
-				.mockResolvedValue(false);
+				.mockResolvedValueOnce({ owned: true, stopRequest: null })
+				.mockResolvedValue({ owned: false });
 			await vi.advanceTimersByTimeAsync(30_000);
 			expect(signal.aborted).toBe(false);
 
@@ -643,6 +651,67 @@ describe('AgentExecutionService', () => {
 			expect(signal.aborted).toBe(true);
 			await vi.advanceTimersByTimeAsync(30_000);
 			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledTimes(3);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('records this process as the owner and heartbeats with its key', async () => {
+		vi.useFakeTimers();
+		try {
+			agentExecutionRepository.create.mockImplementation((data) => data as AgentExecution);
+			await startSnapshotExecution();
+			expect(agentExecutionRepository.create).toHaveBeenCalledWith(
+				expect.objectContaining({ ownerKey: 'instance-a', stopRequest: null }),
+			);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(agentExecutionRepository.touchRunning).toHaveBeenCalledWith(
+				'execution-1',
+				'instance-a',
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('aborts the turn when the heartbeat fails for longer than the limit', async () => {
+		vi.useFakeTimers();
+		try {
+			await startSnapshotExecution();
+			const signal = service.getAbortSignal('execution-1');
+			agentExecutionRepository.touchRunning.mockRejectedValue(new Error('database down'));
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(signal.aborted).toBe(false);
+
+			await vi.advanceTimersByTimeAsync(AgentExecutionService.heartbeatFailureLimitMs - 60_000);
+			expect(signal.aborted).toBe(true);
+			expect(String(signal.reason)).toContain('could not reach the database');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('applies a durable stop request once through the registered handler', async () => {
+		vi.useFakeTimers();
+		try {
+			const handler = vi.fn();
+			service.onDurableStopRequest(handler);
+			await startSnapshotExecution();
+			agentExecutionRepository.touchRunning.mockResolvedValue({
+				owned: true,
+				stopRequest: 'session',
+			});
+
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(handler).toHaveBeenCalledTimes(1);
+			expect(handler).toHaveBeenCalledWith({
+				executionId: 'execution-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				stopRequest: 'session',
+			});
 		} finally {
 			vi.useRealTimers();
 		}
@@ -977,6 +1046,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				testCluster({ instanceKey: 'instance-a' }),
 			);
 
 			const record = makeMessageRecord({
@@ -1084,6 +1154,7 @@ describe('AgentExecutionService', () => {
 					messageRepository,
 					new SystemAgentRegistry(),
 					projectDeletion,
+					testCluster({ instanceKey: 'instance-a' }),
 				);
 
 				const record = makeMessageRecord({
@@ -1784,6 +1855,7 @@ describe('AgentExecutionService', () => {
 				messageRepository,
 				new SystemAgentRegistry(),
 				projectDeletion,
+				testCluster({ instanceKey: 'instance-a' }),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

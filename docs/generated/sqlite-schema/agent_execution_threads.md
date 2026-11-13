@@ -130,11 +130,13 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_64_ ownerKey
   varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt
   varchar_16_ status
+  varchar_16_ stopRequest
   datetime_3_ stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK

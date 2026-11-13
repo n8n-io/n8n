@@ -44,7 +44,12 @@ import {
 	AgentExecutionThread,
 	type AgentThreadAccess,
 } from './entities/agent-execution-thread.entity';
-import { AgentExecution, type AgentExecutionHitlStatus } from './entities/agent-execution.entity';
+import {
+	AgentExecution,
+	type AgentExecutionHitlStatus,
+	type AgentExecutionStopRequest,
+} from './entities/agent-execution.entity';
+import { AgentClusterService } from './agent-cluster.service';
 import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
@@ -155,6 +160,14 @@ export interface ThreadListItem
 
 const TIMELINE_SNAPSHOT_RETRY_DELAY_MS = 1_000;
 
+/** A stop request that the heartbeat found on the row of a local turn. */
+export interface DurableStopRequest {
+	executionId: string;
+	agentId: string;
+	threadId: string;
+	stopRequest: AgentExecutionStopRequest;
+}
+
 @Service()
 export class AgentExecutionService {
 	/** Batch size mirrors ExecutionPersistence.bulkDeletionBatchSize. */
@@ -162,7 +175,19 @@ export class AgentExecutionService {
 
 	private static readonly heartbeatIntervalMs = 30_000;
 
+	/**
+	 * Abort a turn whose heartbeat failed for this long. The sweeper interrupts
+	 * a row after `LIVENESS_GRACE_SECONDS` (2 minutes) without a heartbeat. The
+	 * turn must stop first, or a resumed or queued turn can run next to it.
+	 */
+	static readonly heartbeatFailureLimitMs = 90_000;
+
 	private readonly heartbeatTimers = new Map<string, NodeJS.Timeout>();
+
+	/** Thread of each turn that runs in this process, for durable stop requests. */
+	private readonly activeExecutions = new Map<string, { agentId: string; threadId: string }>();
+
+	private stopRequestHandler?: (request: DurableStopRequest) => void;
 	private readonly executionControllers = new Map<string, AbortController>();
 
 	private readonly pendingTimelineSnapshots = new Map<
@@ -207,7 +232,17 @@ export class AgentExecutionService {
 		private readonly messageRepository: AgentMessageRepository,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly cluster: AgentClusterService,
 	) {}
+
+	/**
+	 * The heartbeat calls this handler when it finds a stop request on the row
+	 * of a local turn. The stop service registers it, because it owns the
+	 * logic for each stop scope.
+	 */
+	onDurableStopRequest(handler: (request: DurableStopRequest) => void): void {
+		this.stopRequestHandler = handler;
+	}
 
 	async startExecutionRecording(
 		params: StartExecutionParams,
@@ -275,6 +310,8 @@ export class AgentExecutionService {
 			hitlStatus: null,
 			source: params.source ?? null,
 			attachments: null,
+			ownerKey: this.cluster.instanceKey,
+			stopRequest: null,
 		});
 		const inserted = await this.agentExecutionRepository.saveInContext(execution, ctx);
 
@@ -394,6 +431,10 @@ export class AgentExecutionService {
 		params: StartExecutionParams,
 	): void {
 		this.executionControllers.set(execution.id, new AbortController());
+		this.activeExecutions.set(execution.id, {
+			agentId: params.agentId,
+			threadId: params.threadId,
+		});
 		this.startHeartbeat(execution.id);
 		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
@@ -572,27 +613,63 @@ export class AgentExecutionService {
 	}
 
 	private startHeartbeat(executionId: string): void {
+		const ownerKey = this.cluster.instanceKey;
+		let lastSuccess = Date.now();
+		let stopApplied = false;
 		const timer = setInterval(() => {
 			void this.agentExecutionRepository
-				.touchRunning(executionId)
-				.then((owned) => {
-					if (!owned) this.abortLostExecution(executionId);
+				.touchRunning(executionId, ownerKey)
+				.then((heartbeat) => {
+					lastSuccess = Date.now();
+					if (!heartbeat.owned) {
+						this.abortLostExecution(executionId, 'Agent execution ownership was lost');
+						return;
+					}
+					if (heartbeat.stopRequest && !stopApplied) {
+						stopApplied = true;
+						this.applyDurableStop(executionId, heartbeat.stopRequest);
+					}
 				})
 				.catch((error: unknown) => {
+					const failingForMs = Date.now() - lastSuccess;
 					this.logger.warn('Failed to heartbeat a running agent execution', {
 						executionId,
+						failingForMs,
 						error: error instanceof Error ? error.message : String(error),
 					});
+					// Fail closed: the sweeper will soon treat this turn as abandoned.
+					if (failingForMs >= AgentExecutionService.heartbeatFailureLimitMs) {
+						this.abortLostExecution(
+							executionId,
+							'Agent execution stopped because n8n could not reach the database',
+						);
+					}
 				});
 		}, AgentExecutionService.heartbeatIntervalMs);
 		timer.unref();
 		this.heartbeatTimers.set(executionId, timer);
 	}
 
-	private abortLostExecution(executionId: string): void {
-		this.executionControllers
-			.get(executionId)
-			?.abort(new OperationalError('Agent execution ownership was lost'));
+	private applyDurableStop(executionId: string, stopRequest: AgentExecutionStopRequest): void {
+		const active = this.activeExecutions.get(executionId);
+		if (!active) return;
+		this.logger.info('Applying a durable stop request to a running agent execution', {
+			executionId,
+			stopRequest,
+		});
+		try {
+			if (this.stopRequestHandler) {
+				this.stopRequestHandler({ executionId, stopRequest, ...active });
+			} else {
+				this.stopExecution(executionId);
+			}
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
+	}
+
+	private abortLostExecution(executionId: string, reason: string): void {
+		this.executionControllers.get(executionId)?.abort(new OperationalError(reason));
 		this.stopHeartbeat(executionId);
 	}
 
@@ -601,6 +678,12 @@ export class AgentExecutionService {
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
 		this.executionControllers.delete(executionId);
+		this.activeExecutions.delete(executionId);
+	}
+
+	/** Ids of the turns that run in this process. */
+	localExecutionIds(): string[] {
+		return [...this.heartbeatTimers.keys()];
 	}
 
 	private ensureTimelineSnapshotWrite(executionId: string): void {

@@ -64,11 +64,13 @@ erDiagram
   varchar_16_ hitlStatus
   varchar_36_ id
   varchar_255_ model
+  varchar_64_ ownerKey
   varchar_36_ parentExecutionId FK
   integer promptTokens
   varchar_32_ source
   timestamp_3__with_time_zone startedAt
   varchar_16_ status
+  varchar_16_ stopRequest
   timestamp_3__with_time_zone stoppedAt
   varchar_2_ storedAt
   varchar_128_ threadId FK

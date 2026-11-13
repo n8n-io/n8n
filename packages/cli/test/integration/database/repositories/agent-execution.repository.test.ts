@@ -227,6 +227,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			systemAgents,
 			Container.get(AgentProjectDeletionRepository),
+			testCluster(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(
@@ -1657,6 +1658,7 @@ describe('AgentExecutionRepository', () => {
 			mock<AgentBackgroundJobService>(),
 			mock<AgentWakeService>(),
 			new AgentsConfig(),
+			testCluster(),
 		);
 		await sweeper.sweep();
 		const recovered = await repository.findOneByOrFail({ id: executionId });
@@ -3426,7 +3428,7 @@ describe('AgentExecutionRepository', () => {
 				updatedAt: new Date(cutoff.getTime() - 1),
 			});
 			const stale = await repository.findOneByOrFail({ id: active.admission.executionId });
-			await repository.touchRunning(stale.id);
+			await repository.touchRunning(stale.id, null);
 			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(false);
 			await repository.update(stale.id, { updatedAt: new Date(cutoff.getTime() - 1) });
 			expect(await local.executionService.finalizeInterruptedExecution(stale, cutoff)).toBe(true);
@@ -4878,6 +4880,47 @@ describe('AgentExecutionRepository', () => {
 			expect(firstPage.threads.map(({ id }) => id)).toEqual([newest.id]);
 			expect(secondPage.threads.map(({ id }) => id)).toEqual([oldest.id]);
 			expect(secondPage.nextCursor).toBeNull();
+		});
+	});
+
+	describe('execution owner and durable stop', () => {
+		const staleAt = new Date('2026-01-01T00:00:00.000Z');
+		const runningRow = async (ownerKey: string | null) => {
+			const thread = await createThread();
+			const execution = await createExecution({ threadId: thread.id, status: 'running', ownerKey });
+			await repository.update(execution.id, { updatedAt: staleAt });
+			return execution.id;
+		};
+
+		it('lets only the owner, or any process for a legacy row, heartbeat a turn', async () => {
+			const owned = await runningRow('instance-a');
+			expect(await repository.touchRunning(owned, 'instance-b')).toEqual({ owned: false });
+			expect(await repository.touchRunning(owned, 'instance-a')).toEqual({
+				owned: true,
+				stopRequest: null,
+			});
+			const legacy = await runningRow(null);
+			expect(await repository.touchRunning(legacy, 'instance-b')).toMatchObject({ owned: true });
+		});
+
+		it('records a stop without refreshing liveness and keeps a wider request', async () => {
+			const executionId = await runningRow('instance-a');
+			await repository.requestStop([executionId], 'all');
+			await repository.requestStop([executionId], 'foreground');
+			const row = await repository.findOneByOrFail({ id: executionId });
+			expect(row.stopRequest).toBe('all');
+			expect(row.updatedAt.getTime()).toBe(staleAt.getTime());
+			expect(await repository.touchRunning(executionId, 'instance-a')).toEqual({
+				owned: true,
+				stopRequest: 'all',
+			});
+		});
+
+		it('ignores a stop for a turn that already ended', async () => {
+			const thread = await createThread();
+			const done = await createExecution({ threadId: thread.id, status: 'success' });
+			await repository.requestStop([done.id], 'session');
+			expect((await repository.findOneByOrFail({ id: done.id })).stopRequest).toBeNull();
 		});
 	});
 

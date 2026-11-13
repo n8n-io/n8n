@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecution, type AgentExecutionStopRequest } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { AgentExecutionMessageLink } from '../entities/agent-execution-message-link.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
@@ -15,8 +15,13 @@ import type {
 
 export type RunningAgentExecution = Pick<
 	AgentExecution,
-	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline'
+	'id' | 'threadId' | 'startedAt' | 'updatedAt' | 'timeline' | 'ownerKey'
 >;
+
+/** Result of one heartbeat of a running turn. */
+export type AgentExecutionHeartbeat =
+	/** The row is no longer running, or another process owns it. */
+	{ owned: false } | { owned: true; stopRequest: AgentExecutionStopRequest | null };
 
 const USAGE_COLUMNS = [
 	'id',
@@ -135,7 +140,7 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 
 	async findRunning(): Promise<RunningAgentExecution[]> {
 		return await this.find({
-			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline'],
+			select: ['id', 'threadId', 'startedAt', 'updatedAt', 'timeline', 'ownerKey'],
 			where: { status: 'running' },
 		});
 	}
@@ -171,12 +176,52 @@ export class AgentExecutionRepository extends BaseRepository<AgentExecution> {
 		return await this.findOne({ where: { threadId }, order: { createdAt: 'DESC', id: 'DESC' } });
 	}
 
-	async touchRunning(executionId: string): Promise<boolean> {
-		const result = await this.update(
-			{ id: executionId, status: 'running' },
-			{ updatedAt: new Date() },
-		);
-		return result.affected === 1;
+	/**
+	 * Heartbeat of a running turn. Only the owner can refresh the row, so a
+	 * process that lost the turn sees `owned: false`. Rows without an owner
+	 * come from processes that ran before the owner column.
+	 */
+	async touchRunning(
+		executionId: string,
+		ownerKey: string | null,
+	): Promise<AgentExecutionHeartbeat> {
+		const column = this.manager.connection.driver.escape('ownerKey');
+		const qb = this.createQueryBuilder()
+			.update(AgentExecution)
+			.set({ updatedAt: new Date() })
+			.where({ id: executionId, status: 'running' });
+		if (ownerKey) {
+			qb.andWhere(`(${column} = :ownerKey OR ${column} IS NULL)`, { ownerKey });
+		} else {
+			qb.andWhere({ ownerKey: IsNull() });
+		}
+		const result = await qb.execute();
+		if (result.affected !== 1) return { owned: false };
+		const row = await this.findOne({ select: ['id', 'stopRequest'], where: { id: executionId } });
+		return { owned: true, stopRequest: row?.stopRequest ?? null };
+	}
+
+	/**
+	 * Record a stop request on running turns. A foreground stop does not
+	 * replace a wider request that is already recorded.
+	 */
+	async requestStop(
+		executionIds: string[],
+		request: AgentExecutionStopRequest,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		const updatedAt = manager.connection.driver.escape('updatedAt');
+		for (let i = 0; i < executionIds.length; i += PARENT_ID_BATCH_SIZE) {
+			const qb = manager
+				.createQueryBuilder()
+				.update(AgentExecution)
+				// The stop is not a heartbeat. Keep the liveness timestamp.
+				.set({ stopRequest: request, updatedAt: () => updatedAt })
+				.where({ id: In(executionIds.slice(i, i + PARENT_ID_BATCH_SIZE)), status: 'running' });
+			if (request === 'foreground') qb.andWhere({ stopRequest: IsNull() });
+			await qb.execute();
+		}
 	}
 
 	async updateTimelineIfRunning(

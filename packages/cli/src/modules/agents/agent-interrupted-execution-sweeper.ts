@@ -3,6 +3,7 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
 import { AgentWakeService } from './background/agent-wake.service';
@@ -12,6 +13,17 @@ import { AgentExecutionRepository } from './repositories/agent-execution.reposit
 export class AgentInterruptedExecutionSweeper {
 	static readonly LIVENESS_GRACE_SECONDS = 2 * Time.minutes.toSeconds;
 
+	/**
+	 * Grace for a turn whose owner left the instance registry. The registry
+	 * drops a process 60 s after its last registry heartbeat. A fresh row
+	 * heartbeat means the owner still reaches the database, so wait one turn
+	 * heartbeat (30 s) plus margin before the sweeper takes the turn.
+	 */
+	static readonly OWNER_GONE_GRACE_SECONDS = 45;
+
+	/** How often the sweep runs. Shorter than the liveness grace so owner loss is found sooner. */
+	static readonly SWEEP_INTERVAL_SECONDS = 60;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: AgentExecutionRepository,
@@ -19,6 +31,7 @@ export class AgentInterruptedExecutionSweeper {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentWakeService: AgentWakeService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly cluster: AgentClusterService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -32,23 +45,27 @@ export class AgentInterruptedExecutionSweeper {
 			return;
 		}
 
-		const graceMs =
-			AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS * Time.seconds.toMilliseconds;
+		// Null when the registry answer cannot be trusted. Then only the liveness rule applies.
+		const activeOwners = running.some(({ ownerKey }) => ownerKey)
+			? await this.cluster.activeInstanceKeys()
+			: null;
 		for (const execution of running) {
 			if (this.stopped(signal, 'finalize')) return;
 			try {
-				if (execution.updatedAt.getTime() > Date.now() - graceMs) {
-					continue;
-				}
-				if (
-					await this.executionService.finalizeInterruptedExecution(
-						execution,
-						new Date(Date.now() - graceMs),
-					)
-				) {
+				const ownerGone =
+					activeOwners !== null && !!execution.ownerKey && !activeOwners.has(execution.ownerKey);
+				const graceMs =
+					(ownerGone
+						? AgentInterruptedExecutionSweeper.OWNER_GONE_GRACE_SECONDS
+						: AgentInterruptedExecutionSweeper.LIVENESS_GRACE_SECONDS) *
+					Time.seconds.toMilliseconds;
+				const staleBefore = new Date(Date.now() - graceMs);
+				if (execution.updatedAt > staleBefore) continue;
+				if (await this.executionService.finalizeInterruptedExecution(execution, staleBefore)) {
 					this.logger.info('Marked abandoned agent execution as interrupted', {
 						executionId: execution.id,
 						threadId: execution.threadId,
+						ownerGone,
 					});
 				}
 			} catch (error) {

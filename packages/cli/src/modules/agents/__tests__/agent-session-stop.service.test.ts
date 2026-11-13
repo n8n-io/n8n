@@ -4,7 +4,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@n8n/backend-services';
+import { InstanceRegistryProxyService, type Publisher } from '@n8n/backend-services';
 
 import { AgentClusterService } from '../agent-cluster.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -30,13 +30,19 @@ describe('AgentSessionStopService', () => {
 		executionService,
 		queue,
 		publisher,
-		new AgentClusterService(config, mock<GlobalConfig>(), mock<InstanceSettings>()),
+		new AgentClusterService(
+			config,
+			mock<GlobalConfig>(),
+			mock<InstanceSettings>(),
+			new InstanceRegistryProxyService(),
+		),
 		systemAgents,
 		chatExecutions,
 		streams,
 		attachments,
 		threads,
 	);
+	const applyDurableStop = executionService.onDurableStopRequest.mock.calls[0][0];
 	const thread = mock<AgentExecutionThread>({
 		id: 'thread-1',
 		projectId: 'project-1',
@@ -175,6 +181,31 @@ describe('AgentSessionStopService', () => {
 		expect(chatExecutions.cancelSessionWork).toHaveBeenCalledTimes(1);
 		expect(attachments.deleteByIds).toHaveBeenCalledWith(prepared.attachmentIds);
 	});
+	describe('durable stop requests found by the heartbeat', () => {
+		const request = { executionId: 'execution-1', agentId: 'agent-1', threadId: 'thread-1' };
+
+		it('stops the session for a session request', () => {
+			applyDurableStop({ ...request, stopRequest: 'session' });
+			expect(executionService.stopExecution).toHaveBeenCalledWith('execution-1');
+			expect(chatExecutions.stopSessionExecutions).toHaveBeenCalledWith('agent-1', 'thread-1', [
+				'execution-1',
+			]);
+		});
+
+		it.each(['foreground', 'all'] as const)('aborts the chat turn for a %s request', (scope) => {
+			chatExecutions.abortLocalExecution.mockReturnValueOnce(true);
+			applyDurableStop({ ...request, stopRequest: scope });
+			expect(chatExecutions.abortLocalExecution).toHaveBeenCalledWith('execution-1', scope);
+			expect(executionService.stopExecution).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the runtime signal when no chat turn is registered', () => {
+			chatExecutions.abortLocalExecution.mockReturnValueOnce(false);
+			applyDurableStop({ ...request, stopRequest: 'all' });
+			expect(executionService.stopExecution).toHaveBeenCalledWith('execution-1');
+		});
+	});
+
 	it('stops all project sessions and cancels suspended background work', async () => {
 		threads.findMemoryThreadsForProject.mockResolvedValue([thread]);
 		await service.stopProjectSessions('project-1');

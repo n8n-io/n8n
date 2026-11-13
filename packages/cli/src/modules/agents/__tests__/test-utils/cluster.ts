@@ -1,3 +1,5 @@
+import type { InstanceRegistration } from '@n8n/api-types';
+import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import type { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -11,6 +13,10 @@ export interface TestClusterOptions {
 	instanceType?: InstanceSettings['instanceType'];
 	isLeader?: boolean;
 	hostId?: string;
+	/** Registry key of this process. Omit to run without an instance registry. */
+	instanceKey?: string;
+	/** Keys the registry reports as alive. Defaults to this process only. */
+	activeInstanceKeys?: string[];
 }
 
 /** A real cluster service over plain config, so tests describe the topology, not the flags. */
@@ -24,5 +30,14 @@ export function testCluster(options: TestClusterOptions = {}): AgentClusterServi
 		isLeader: options.isLeader ?? true,
 		hostId: options.hostId ?? 'main-test',
 	} as InstanceSettings;
-	return new AgentClusterService(executionsConfig, globalConfig, instanceSettings);
+	const registry = new InstanceRegistryProxyService();
+	const { instanceKey } = options;
+	if (instanceKey) {
+		const registration = (key: string) => ({ instanceKey: key }) as InstanceRegistration;
+		registry.registerProvider({
+			getLocalInstance: () => registration(instanceKey),
+			getAllInstances: async () => (options.activeInstanceKeys ?? [instanceKey]).map(registration),
+		});
+	}
+	return new AgentClusterService(executionsConfig, globalConfig, instanceSettings, registry);
 }

@@ -8,8 +8,9 @@ import type { AgentBackgroundJobService } from '../background/agent-background-j
 import type { AgentWakeService } from '../background/agent-wake.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+import { testCluster, type TestClusterOptions } from './test-utils/cluster';
 
-function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
+function setup(options: { backgroundTasksEnabled?: boolean; cluster?: TestClusterOptions } = {}) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
@@ -25,6 +26,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		backgroundJobService,
 		agentWakeService,
 		agentsConfig,
+		testCluster(options.cluster),
 	);
 	return {
 		sweeper,
@@ -88,6 +90,72 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		await sweeper.sweep();
 
 		expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+	});
+
+	describe('owner check', () => {
+		const now = new Date('2026-01-01T00:10:00.000Z');
+		const ownedRow = (ownerKey: string, secondsAgo: number) =>
+			({
+				id: `execution-${ownerKey}`,
+				threadId: 'thread-1',
+				status: 'running',
+				startedAt: new Date(0),
+				updatedAt: new Date(now.getTime() - secondsAgo * 1000),
+				ownerKey,
+			}) as AgentExecution;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(now);
+		});
+
+		it('interrupts a turn whose owner left the registry after the short grace', async () => {
+			const { sweeper, repository, executionService } = setup({
+				cluster: { instanceKey: 'main-a', activeInstanceKeys: ['main-a'] },
+			});
+			const row = ownedRow('worker-gone', 50);
+			repository.findRunning.mockResolvedValue([row]);
+
+			await sweeper.sweep();
+
+			expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
+				row,
+				new Date(now.getTime() - AgentInterruptedExecutionSweeper.OWNER_GONE_GRACE_SECONDS * 1000),
+			);
+		});
+
+		it('keeps a turn whose owner left the registry but still heartbeats the row', async () => {
+			const { sweeper, repository, executionService } = setup({
+				cluster: { instanceKey: 'main-a', activeInstanceKeys: ['main-a'] },
+			});
+			repository.findRunning.mockResolvedValue([ownedRow('worker-gone', 10)]);
+
+			await sweeper.sweep();
+
+			expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+		});
+
+		it('uses the liveness grace for a turn whose owner is alive', async () => {
+			const { sweeper, repository, executionService } = setup({
+				cluster: { instanceKey: 'main-a', activeInstanceKeys: ['main-a', 'worker-b'] },
+			});
+			repository.findRunning.mockResolvedValue([ownedRow('worker-b', 50)]);
+
+			await sweeper.sweep();
+
+			expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+		});
+
+		it('ignores the registry when its read does not contain this process', async () => {
+			const { sweeper, repository, executionService } = setup({
+				cluster: { instanceKey: 'main-a', activeInstanceKeys: [] },
+			});
+			repository.findRunning.mockResolvedValue([ownedRow('worker-b', 50)]);
+
+			await sweeper.sweep();
+
+			expect(executionService.finalizeInterruptedExecution).not.toHaveBeenCalled();
+		});
 	});
 
 	it('runs full reconciliation when the feature is on, and still reconciles workflow jobs when it is off', async () => {
