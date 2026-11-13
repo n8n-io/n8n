@@ -110,6 +110,30 @@ describe('withToolGuardrails', () => {
 		expect(await hooks[0].beforeTool?.(ctx('read_file', { note: 'a secret' }))).toBeUndefined();
 	});
 
+	it('resolves a node ref whose config name registers sanitized', async () => {
+		// Node tools register under `nodeNameToToolName(config.name)`, so the
+		// human-readable config name "Google Drive" must find the tool.
+		const toolRegistry: ToolRegistry = new Map([
+			['Google_Drive', { kind: 'node', nodeType: 'n8n-nodes-base.googleDriveTool' }],
+		]);
+		const attached = withToolGuardrails(base, {
+			toolGuardrails: [
+				{
+					kind: 'keywords',
+					id: 'g1',
+					stage: 'before',
+					keywords: ['secret'],
+					tools: [{ type: 'node', name: 'Google Drive' }],
+				},
+			],
+			toolRegistry,
+		});
+		const hook = attached.guardrails?.hooks[0];
+
+		const stop = await hook?.beforeTool?.(ctx('Google_Drive', { note: 'a secret' }));
+		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+	});
+
 	it('registers before-stage guardrails on beforeTool only, after-stage on afterTool', () => {
 		const [beforeHook] = hooksFor([
 			{
@@ -254,5 +278,43 @@ describe('withToolGuardrails', () => {
 
 		const stop = await hooks[0].beforeTool?.(ctx('read_file', { note: 'anything' }));
 		expect(stop).toEqual({ action: 'stop', code: 'guardrail.keywords.g1' });
+	});
+
+	it.each([
+		{
+			kind: 'secretKeys',
+			id: 'g1',
+			stage: 'before',
+			permissiveness: 'balanced' as const,
+			tools: [{ type: 'node', name: 'read_file' }],
+			tripping: { note: 'token sk-abcdefghij1234567890KLMNOP' },
+			clean: { note: 'just words' },
+		},
+		{
+			kind: 'urls',
+			id: 'g2',
+			stage: 'before',
+			tools: [{ type: 'node', name: 'read_file' }],
+			tripping: { note: 'see http://example.com/docs' },
+			clean: { note: 'no links here' },
+		},
+		{
+			kind: 'customRegex',
+			id: 'g3',
+			stage: 'before',
+			regex: [{ name: 'ORDER', value: 'ORD-\\d{4}' }],
+			tools: [{ type: 'node', name: 'read_file' }],
+			tripping: { note: 'order ORD-1234 shipped' },
+			clean: { note: 'order missing' },
+		},
+	])('enforces the $kind kind end to end', async (guardrail) => {
+		const { kind, id, tripping, clean, ...config } = guardrail;
+		const hooks = hooksFor([{ kind, id, ...config } as AgentToolGuardrailConfig]);
+
+		const stop = await hooks[0].beforeTool?.(ctx('read_file', tripping));
+		expect(stop).toEqual({ action: 'stop', code: `guardrail.${kind}.${id}` });
+
+		const allowed = await hooks[0].beforeTool?.(ctx('read_file', clean));
+		expect(allowed).toBeUndefined();
 	});
 });

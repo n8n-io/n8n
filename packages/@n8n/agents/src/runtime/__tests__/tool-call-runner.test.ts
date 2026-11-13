@@ -305,7 +305,10 @@ describe('ToolCallRunner guardrail after-stage stop', () => {
 			},
 		});
 
-		expect(outcome).toMatchObject({ outcome: 'error' });
+		expect(outcome).toMatchObject({
+			outcome: 'error',
+			error: expect.stringContaining('Tool result blocked by guardrail: guardrail.urls.g1'),
+		});
 		// The tool ran; only its result is refused.
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
