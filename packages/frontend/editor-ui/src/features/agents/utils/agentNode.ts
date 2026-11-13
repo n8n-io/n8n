@@ -13,10 +13,12 @@ export function isAgentNodeV2(
 	return node?.type === MESSAGE_AN_AGENT_NODE_TYPE && (node.typeVersion ?? 0) >= 2;
 }
 
-// Rendered size of the v2 AI Agent canvas card. CanvasNodeAgent.vue binds its
-// width from here; the height is content-driven, so [1] is only a layout
-// fallback estimate used before the card has been measured.
-export const AGENT_NODE_SIZE: [number, number] = [GRID_SIZE * 20, GRID_SIZE * 8];
+// Rendered width of the v2 AI Agent canvas card. CanvasNodeAgent.vue binds its
+// width from here.
+export const DEFAULT_AGENT_WIDTH = GRID_SIZE * 20;
+// The card's height is content-driven, so this is only a layout fallback
+// estimate used before the card has been measured.
+export const DEFAULT_AGENT_HEIGHT = GRID_SIZE * 8;
 
 /**
  * Offset of the card's main handle from its top. The card is content-sized, so

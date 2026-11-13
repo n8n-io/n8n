@@ -22,12 +22,12 @@ import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 // Width comes from the shared constant so canvas placement and tidy-up layout
 // stay in sync with the rendered card.
-const cardStyle = { width: `${AGENT_NODE_SIZE[0]}px` };
+const cardStyle = { width: `${DEFAULT_AGENT_WIDTH}px` };
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -314,7 +314,7 @@ watch(
 	// Own stacking context so the header/body/glow z-indexes below stay local and
 	// never compete with the connection handles (which must stay on top).
 	isolation: isolate;
-	// Width is bound inline from AGENT_NODE_SIZE — see cardStyle in the script.
+	// Width is bound inline from DEFAULT_AGENT_WIDTH — see cardStyle in the script.
 	border-radius: var(--agent-card--radius);
 }
 

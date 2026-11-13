@@ -64,12 +64,18 @@ const hasExecutionPinData = computed(
 	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
-const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
-	useNodeConnections({
-		inputs,
-		outputs,
-		connections,
-	});
+const {
+	mainOutputs,
+	mainOutputConnections,
+	mainInputs,
+	mainInputConnections,
+	nonMainInputs,
+	nonMainOutputs,
+} = useNodeConnections({
+	inputs,
+	outputs,
+	connections,
+});
 
 const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
@@ -116,6 +122,7 @@ const nodeSize = computed(() =>
 		mainInputs.value.length,
 		mainOutputs.value.length,
 		nonMainInputs.value.length,
+		nonMainOutputs.value.length,
 		isExperimentalNdvActive.value,
 	),
 );
