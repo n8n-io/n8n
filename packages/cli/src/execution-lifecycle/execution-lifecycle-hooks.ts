@@ -37,6 +37,7 @@ import {
 	STICKY_NODE_TYPE,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import throttle from 'lodash/throttle';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
@@ -555,34 +556,28 @@ function hookFunctionsPushSubExecution(
 	pushRef: string,
 ) {
 	const pushInstance = Container.get(Push);
-
-	let cachedTotalNodes: number | undefined;
-	const getTotalNodes = (): number => (cachedTotalNodes ??= countReachableNodes(workflowData));
+	const totalNodes = countReachableNodes(workflowData);
 
 	// Unique nodes, not executions: a looping child re-runs the same nodes, and
 	// counting each run would push the indicator past its total.
 	const reachedNodeNames = new Set<string>();
+	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
 
 	// Each push is a pubsub broadcast in scaling mode, and only the latest state
 	// renders, so coalesce to one per window.
-	const getThrottleMs = () => (getTotalNodes() >= 50 ? 250 : 100);
-	// Starting the window now keeps a child that ends within it silent.
-	let lastEmitAt = Date.now();
-	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
-	let timer: NodeJS.Timeout | undefined;
-
-	function flush() {
-		clearTimeout(timer);
-		timer = undefined;
-		if (!pending) return;
-		pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, pushRef);
-		lastEmitAt = Date.now();
-		pending = undefined;
-	}
+	const sendLatest = throttle(
+		() => {
+			if (!pending) return;
+			pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, pushRef);
+			pending = undefined;
+		},
+		totalNodes >= 50 ? 250 : 100,
+	);
+	// An empty leading call opens the first window, so a child that ends within it stays silent.
+	sendLatest();
 
 	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
 		reachedNodeNames.add(nodeName);
-
 		pending = {
 			parentExecutionId: parentExecution.executionId,
 			parentNodeName: parentNode.name,
@@ -590,24 +585,14 @@ function hookFunctionsPushSubExecution(
 			currentNodeName: nodeName,
 			// Not clamped to `totalNodes`: that is only an estimate, this is exact.
 			currentNodeIndex: reachedNodeNames.size,
-			totalNodes: getTotalNodes(),
+			totalNodes,
 		};
-		const throttleMs = getThrottleMs();
-		const elapsed = Date.now() - lastEmitAt;
-		if (elapsed >= throttleMs) {
-			flush();
-			return;
-		}
-		if (timer) return;
-		timer = setTimeout(flush, throttleMs - elapsed);
-		// Never hold the process open for a progress overlay.
-		timer.unref?.();
+		sendLatest();
 	});
 
 	hooks.addHandler('workflowExecuteAfter', function () {
-		// A snapshot flushed after the child ends would arrive after the parent node's own events.
-		clearTimeout(timer);
-		timer = undefined;
+		// A snapshot sent after the child ends would arrive after the parent node's own events.
+		sendLatest.cancel();
 		pending = undefined;
 	});
 }
