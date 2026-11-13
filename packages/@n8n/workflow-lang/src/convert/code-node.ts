@@ -32,13 +32,14 @@ import { emitStep, lowerFallback } from './steps.ts';
 /** n8n globals that the host does not give to code steps. */
 const MISSING_GLOBALS = ['$evaluateExpression', '$secrets'];
 
-/** Wraps a wire item as an n8n item: `$binary` becomes `binary`. */
-const WRAP = `const __wrap = (j) => {
+/** Wraps a wire item as an n8n item: `$binary` becomes `binary`, and v1's paired item is the position. */
+const WRAP = `const __wrap = (j, index) => {
+	const pairedItem = { item: index };
 	if (j !== null && typeof j === 'object' && j.$binary) {
 		const { $binary, ...json } = j;
-		return { json, binary: $binary };
+		return { json, binary: $binary, pairedItem };
 	}
-	return { json: j };
+	return { json: j, pairedItem };
 };
 `;
 
@@ -127,7 +128,7 @@ const $ = (name) => {
 		const fail = () => { throw new Error("Node '" + name + "' hasn't been executed"); };
 		return { all: fail, first: fail, last: fail, itemMatching: fail, get item() { return fail(); }, isExecuted: false };
 	}
-	const list = (__nodes[name] || []).map((json) => ({ json }));
+	const list = (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
 	// itemMatching pairs by position; every item pairs with the only item of a one-item list.
 	const itemMatching = (k) => (list.length === 1 ? list[0] : list[k]);
 	return { all: () => list, first: () => list[0], last: () => list[list.length - 1], item: list[0], itemMatching, isExecuted: list.length > 0 };
@@ -137,8 +138,8 @@ const $workflow = __context.$workflow;
 const $runIndex = __context.$runIndex ?? 0;
 const $executionId = __context.$executionId;
 const $prevNode = __context.$prevNode;
-const $node = new Proxy({}, { get: (_, name) => ({ json: (__nodes[name] || [])[0] }) });
-const $items = (name) => (__nodes[name] || []).map((json) => ({ json }));
+const $node = new Proxy({}, { get: (_, name) => ({ json: (__nodes[name] || [])[0], pairedItem: { item: 0 } }) });
+const $items = (name) => (__nodes[name] || []).map((json, k) => ({ json, pairedItem: { item: k } }));
 // Legacy \`$item(k)\` of v1's data proxy: the data of item k, with v1's errors. One run of each node.
 const __input = items.slice();
 const $item = (k) => {
@@ -181,7 +182,7 @@ const FUNCTION_ITEM_BINARY = `	const getBinaryData = () => __item.binary;
 `;
 
 export function allItemsCode(user: string, nodes: boolean, legacyFunction = false): string {
-	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${legacyFunction ? FUNCTION_BINARY : ''}items = items.map(__wrap);
+	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}${legacyFunction ? FUNCTION_BINARY : ''}items = items.map((j, k) => __wrap(j, k));
 const $input = { all: () => items, first: () => items[0], last: () => items[items.length - 1], item: items[0] };
 // As n8n's runner: in "all items" mode, $json and $input.item are the first item.
 const $json = items[0]?.json;
@@ -195,7 +196,7 @@ ${user}
 }
 
 export function eachItemCode(user: string, nodes: boolean, functionItem: boolean): string {
-	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}const __all = items.map(__wrap);
+	return `${nodes ? NODES_PROLOGUE : ''}${WRAP}const __all = items.map((j, k) => __wrap(j, k));
 const __out = [];
 for (let $itemIndex = 0; $itemIndex < __all.length; $itemIndex++) {
 	const __item = __all[$itemIndex];
