@@ -4,7 +4,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { requestUrl } from 'n8n-workflow';
@@ -19,7 +19,8 @@ vi.mock('@n8n/ai-utilities');
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 describe('LmOpenAi', () => {
 	let lmOpenAi: LmOpenAi;
@@ -56,6 +57,7 @@ describe('LmOpenAi', () => {
 	beforeEach(() => {
 		lmOpenAi = new LmOpenAi();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	afterEach(() => {
@@ -76,15 +78,16 @@ describe('LmOpenAi', () => {
 			);
 		});
 
-		it('should wire the bounded aiClientFetch into the OpenAI client', async () => {
+		it('should wire the traced aiClientFetch into the OpenAI client', async () => {
 			const mockContext = setupMockContext();
 
 			await lmOpenAi.supplyData.call(mockContext, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(mockContext);
 
 			expect(OpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 					}),
 				}),
 			);

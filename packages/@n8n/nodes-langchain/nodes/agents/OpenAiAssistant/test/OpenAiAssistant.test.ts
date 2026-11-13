@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { aiClientFetch } from '@n8n/ai-utilities';
+import { createAiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
@@ -41,7 +41,8 @@ vi.mock('@utils/tracing', () => ({
 }));
 
 const MockedOpenAIClient = vi.mocked(OpenAIClient);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 describe('OpenAiAssistant', () => {
 	let node: OpenAiAssistant;
@@ -83,19 +84,21 @@ describe('OpenAiAssistant', () => {
 	beforeEach(() => {
 		node = new OpenAiAssistant();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('execute', () => {
-		it('should wire the bounded aiClientFetch into the OpenAI client', async () => {
+		it('should wire the traced aiClientFetch into the OpenAI client', async () => {
 			const ctx = setupMockContext();
 
 			await node.execute.call(ctx);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('openAiApi');
 			expect(MockedOpenAIClient).toHaveBeenCalledWith(
 				expect.objectContaining({
 					apiKey: 'test-openai-key',
-					fetch: mockedAiClientFetch,
+					fetch: tracedFetch,
 				}),
 			);
 		});

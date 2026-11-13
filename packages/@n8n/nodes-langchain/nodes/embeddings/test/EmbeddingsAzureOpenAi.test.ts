@@ -1,5 +1,5 @@
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
-import { aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
+import { createAiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -49,8 +49,12 @@ vi.mock('@n8n/ai-utilities', async () => {
 		...actual,
 		logWrapper: vi.fn().mockImplementation(() => vi.fn()),
 		getProxyAgent: vi.fn().mockImplementation(() => new MockProxyAgent()),
+		createAiClientFetch: vi.fn(),
 	};
 });
+
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 const MockedAzureOpenAIEmbeddings = vi.mocked(AzureOpenAIEmbeddings);
 
@@ -118,6 +122,7 @@ describe('AzureOpenAIEmbeddings', () => {
 	beforeEach(() => {
 		embeddingsAzureOpenAi = new EmbeddingsAzureOpenAi();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	afterEach(() => {
@@ -141,6 +146,7 @@ describe('AzureOpenAIEmbeddings', () => {
 			});
 
 			await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(mockContext);
 
 			expect(MockedAzureOpenAIEmbeddings).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -150,7 +156,7 @@ describe('AzureOpenAIEmbeddings', () => {
 					azureOpenAIApiVersion: 'v1',
 					azureOpenAIBasePath: 'https://test-resource-name.openai.azure.com/openai/deployments',
 					configuration: {
-						fetch: aiClientFetch,
+						fetch: tracedFetch,
 						fetchOptions: {
 							dispatcher: expect.any(MockProxyAgent),
 						},
@@ -262,7 +268,7 @@ describe('AzureOpenAIEmbeddings', () => {
 					apiKey: 'test-api-key',
 					model: 'text-embedding-3-large',
 					configuration: expect.objectContaining({
-						fetch: aiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://test.services.ai.azure.com/openai/v1',
 					}),
 				}),

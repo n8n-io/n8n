@@ -2,7 +2,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+	createAiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -15,7 +19,8 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 describe('LmChatLemonade', () => {
 	let node: LmChatLemonade;
@@ -55,20 +60,22 @@ describe('LmChatLemonade', () => {
 	beforeEach(() => {
 		node = new LmChatLemonade();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('supplyData', () => {
-		it('should wire the bounded aiClientFetch into ChatOpenAI', async () => {
+		it('should wire the traced aiClientFetch into ChatOpenAI', async () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('lemonadeApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'Llama-3.2-1B-Instruct-Hybrid',
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'http://localhost:8000/api/v1',
 					}),
 				}),

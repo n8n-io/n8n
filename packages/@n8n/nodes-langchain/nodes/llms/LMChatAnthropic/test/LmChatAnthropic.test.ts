@@ -7,7 +7,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
@@ -27,13 +27,14 @@ vi.mock('@n8n/ai-utilities', () => ({
 	makeN8nLlmFailedAttemptHandler: vi.fn(),
 	N8nLlmTracing: vi.fn(),
 	getProxyAgent: vi.fn(),
-	aiClientFetch: vi.fn(),
+	createAiClientFetch: vi.fn(),
 }));
 
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 
 describe('LmChatAnthropic', () => {
@@ -81,6 +82,7 @@ describe('LmChatAnthropic', () => {
 	beforeEach(() => {
 		lmChatAnthropic = new LmChatAnthropic();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	afterEach(() => {
@@ -124,6 +126,7 @@ describe('LmChatAnthropic', () => {
 			});
 
 			const result = await lmChatAnthropic.supplyData.call(mockContext, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(mockContext);
 
 			expect(mockContext.getCredentials).toHaveBeenCalledWith('anthropicApi');
 			expect(mockContext.getNodeParameter).toHaveBeenCalledWith('model.value', 0);
@@ -141,7 +144,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},

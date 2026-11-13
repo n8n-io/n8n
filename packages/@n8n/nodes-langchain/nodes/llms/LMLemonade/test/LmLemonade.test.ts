@@ -2,7 +2,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	createAiClientFetch,
+	getProxyAgent,
+} from '@n8n/ai-utilities';
 import { createResultOk } from '@n8n/utils/result';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions, NodeEgressFilter } from 'n8n-workflow';
@@ -15,7 +19,8 @@ vi.mock('@n8n/ai-utilities');
 
 const MockedOpenAI = vi.mocked(OpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 const egressFilter: NodeEgressFilter = {
@@ -64,20 +69,22 @@ describe('LmLemonade', () => {
 	beforeEach(() => {
 		node = new LmLemonade();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('supplyData', () => {
-		it('should wire the bounded aiClientFetch into the OpenAI client', async () => {
+		it('should wire the traced aiClientFetch into the OpenAI client', async () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('lemonadeApi');
 			expect(MockedOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					model: 'Llama-3.2-1B-Instruct-Hybrid',
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'http://localhost:8000/api/v1',
 					}),
 				}),

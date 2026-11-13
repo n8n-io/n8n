@@ -2,7 +2,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, getProxyAgent, aiClientFetch } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+	createAiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -15,7 +19,8 @@ vi.mock('@n8n/ai-utilities');
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 describe('LmChatAlibabaCloud', () => {
 	let node: LmChatAlibabaCloud;
@@ -56,6 +61,7 @@ describe('LmChatAlibabaCloud', () => {
 	beforeEach(() => {
 		node = new LmChatAlibabaCloud();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('node description', () => {
@@ -83,6 +89,7 @@ describe('LmChatAlibabaCloud', () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('alibabaCloudApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
@@ -93,7 +100,7 @@ describe('LmChatAlibabaCloud', () => {
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
 					}),
 				}),
@@ -211,7 +218,7 @@ describe('LmChatAlibabaCloud', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
 					}),
 				}),
@@ -232,7 +239,7 @@ describe('LmChatAlibabaCloud', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://ws-abc123.eu-central-1.maas.aliyuncs.com/compatible-mode/v1',
 					}),
 				}),
@@ -252,7 +259,7 @@ describe('LmChatAlibabaCloud', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
 					}),
 				}),
@@ -272,7 +279,7 @@ describe('LmChatAlibabaCloud', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
 					}),
 				}),
@@ -292,7 +299,7 @@ describe('LmChatAlibabaCloud', () => {
 				expect.objectContaining({
 					apiKey: 'gateway-jwt-token',
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://gateway.example.com/v1/gateway/alibaba/compatible-mode/v1',
 					}),
 				}),

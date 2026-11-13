@@ -9,7 +9,7 @@ import {
 	createRefreshingAuthFetch,
 	makeN8nLlmFailedAttemptHandler,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 } from '@n8n/ai-utilities';
 import { DATABRICKS_PARTNER_USER_AGENT } from 'n8n-nodes-base/dist/nodes/Databricks/constants';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
@@ -29,7 +29,8 @@ const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHa
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 const mockedGetDatabricksTokenProvider = vi.mocked(getDatabricksTokenProvider);
 const mockedCreateRefreshingAuthFetch = vi.mocked(createRefreshingAuthFetch);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 const mockTokenProvider = {
 	getToken: vi.fn(async () => 'test-token'),
@@ -87,6 +88,7 @@ describe('LmChatDatabricks', () => {
 	beforeEach(() => {
 		node = new LmChatDatabricks();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('node description', () => {
@@ -134,13 +136,14 @@ describe('LmChatDatabricks', () => {
 			);
 		});
 
-		it('should build the refreshing fetch on top of the bounded aiClientFetch', async () => {
+		it('should build the refreshing fetch on top of the traced aiClientFetch', async () => {
 			const ctx = setupMockContext();
 
 			await node.supplyData.call(ctx, 0);
 
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 			expect(mockedCreateRefreshingAuthFetch).toHaveBeenCalledWith(
-				expect.objectContaining({ baseFetch: mockedAiClientFetch }),
+				expect.objectContaining({ baseFetch: tracedFetch }),
 			);
 		});
 
