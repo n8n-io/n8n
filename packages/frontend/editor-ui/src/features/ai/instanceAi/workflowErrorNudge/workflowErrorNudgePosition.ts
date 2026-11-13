@@ -1,4 +1,3 @@
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
 // Re-stacks the error toasts after the "Fix with n8n Assistant" button is added, so the gap between toasts stays symmetrical.
 export const WORKFLOW_ERROR_NUDGE_GAP_PX = 16;
 
