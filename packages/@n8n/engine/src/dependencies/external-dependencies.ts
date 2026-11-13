@@ -49,12 +49,30 @@ export interface StepExecutionContext {
 	responseExpectation: ResponseExpectation;
 }
 
+/** One live edge's share of an input slot: the row that fed it, and how many items it put there. */
+export interface StepInputSource {
+	nodeId: string;
+	outputIndex: number;
+	iteration: number;
+	/** List length of the value this edge delivered; 1 for a value that is not a list. */
+	itemCount: number;
+}
+
+/**
+ * Per input slot, the live edges that fed it, in the order their items appear
+ * in the slot. Empty for a slot no live edge fed. Several edges into one slot
+ * concatenate, so an executor that links items to their origin reads this.
+ */
+export type StepInputSources = StepInputSource[][];
+
 /** A single step handed to an executor. */
 export interface StepExecutionRequest {
 	/** The graph node to run; `node.config` is the step-type-specific payload. */
 	node: GraphNode;
 	/** Input slots gathered from predecessor steps; slot contents are opaque. */
 	inputs: StepSlots;
+	/** Which rows fed `inputs`, slot by slot. */
+	inputSources: StepInputSources;
 	context: StepExecutionContext;
 	/**
 	 * Response emitter allows the step executor to send messages to the control

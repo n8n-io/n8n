@@ -8,4 +8,6 @@ export type {
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	StepInputSource,
+	StepInputSources,
 } from './external-dependencies';
