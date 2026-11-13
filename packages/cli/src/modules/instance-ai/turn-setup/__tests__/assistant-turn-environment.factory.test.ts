@@ -12,8 +12,10 @@ import {
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
+import type { InstanceAiAdapterService } from '../../instance-ai.adapter.service';
 import { QuotaExhaustedStreamError } from '../assistant-credits';
 import { AssistantTurnEnvironmentFactory } from '../assistant-turn-environment.factory';
+import { AssistantTurnOverrides } from '../assistant-turn-overrides';
 import type { AssistantTurnRuntime } from '../assistant-turn-runtime';
 
 const user = { id: 'user-1' } as User;
@@ -61,7 +63,8 @@ function createSetupFactory() {
 		aiService: { isProxyEnabled: vi.fn(() => false) },
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
-		evalCredentialAllowlists: {},
+		// The real default, so that the tests see "no override" unless a test sets one.
+		turnOverrides: new AssistantTurnOverrides(),
 		modelService: {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
@@ -145,6 +148,35 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(environment.orchestrationContext.promptConfiguration).toMatchObject({
 				version: 'progressive@1',
 			});
+		});
+
+		it('reads the credential settings of the thread from the turn overrides on each call', async () => {
+			const { factory, fields } = createSetupFactory();
+			const { turnOverrides } = fields;
+			const target = { credentialType: 'slackApi', baseUrl: 'http://stub', urlField: 'url' };
+			const allowlist = vi.spyOn(turnOverrides, 'getCredentialIdAllowlist');
+			vi.spyOn(turnOverrides, 'shouldBypassCredentialTest').mockReturnValue(true);
+			vi.spyOn(turnOverrides, 'getCredentialTestTarget').mockReturnValue(target);
+
+			await factory.create(params, createRuntime());
+
+			const [, options] = fields.adapterService.createContext.mock
+				.calls[0] as unknown as Parameters<InstanceAiAdapterService['createContext']>;
+			expect(options?.getCredentialIdAllowlist?.()).toBeUndefined();
+			// A change after the turn setup applies to the next call.
+			allowlist.mockReturnValue(['cred-1']);
+			expect(options?.getCredentialIdAllowlist?.()).toEqual(['cred-1']);
+			expect(allowlist).toHaveBeenCalledWith(params.threadId);
+			expect(options?.shouldBypassCredentialTest?.('cred-1')).toBe(true);
+			expect(turnOverrides.shouldBypassCredentialTest).toHaveBeenCalledWith(
+				params.threadId,
+				'cred-1',
+			);
+			expect(options?.getCredentialTestTarget?.('slackApi')).toBe(target);
+			expect(turnOverrides.getCredentialTestTarget).toHaveBeenCalledWith(
+				params.threadId,
+				'slackApi',
+			);
 		});
 
 		it('wires the runtime hooks into the contexts', async () => {
