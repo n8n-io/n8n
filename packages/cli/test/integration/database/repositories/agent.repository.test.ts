@@ -1,7 +1,6 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
 import { Person, TransactionRunner, type WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -215,7 +214,6 @@ describe('AgentRepository', () => {
 				mock<AgentSetupCompletionService>(),
 				mock(),
 				definitionService,
-				mock<GlobalConfig>({ tags: { disabled: false } }),
 				mock<TagService>(),
 			);
 			const person = Object.assign(new Person(), { firstName: 'Test', lastName: 'User' });

@@ -23,7 +23,6 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
@@ -164,7 +163,6 @@ export class AgentsService {
 		private readonly setupCompletion: AgentSetupCompletionService,
 		private readonly n8nChatFlag: N8nChatFlagService,
 		private readonly definitionService: AgentDefinitionService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
 	) {}
 
@@ -540,8 +538,8 @@ export class AgentsService {
 	}
 
 	/**
-	 * Checks a tag write would succeed: tags enabled, the agent in the given
-	 * project, every tag id existing. Returns the tags in request order.
+	 * Checks that the agent is in the given project and every tag id exists.
+	 * Returns the tags in request order.
 	 * Callers that write tags after another write (the config update) validate
 	 * first, so a rejected tag list cannot leave that earlier write committed.
 	 */
@@ -550,7 +548,6 @@ export class AgentsService {
 		projectId: string,
 		tagIds: string[],
 	): Promise<TagEntity[]> {
-		this.assertTagsEnabled();
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -579,20 +576,13 @@ export class AgentsService {
 	}
 
 	/**
-	 * Validates requested tags before an agent is created, so a disabled-tags
-	 * instance or a missing tag id cannot leave a half-created agent behind.
+	 * Validates requested tags before an agent is created, so a missing tag id
+	 * cannot leave a half-created agent behind.
 	 * Returns the tag entities for the create response.
 	 */
 	private async resolveCreateTags(tagIds: string[] | undefined): Promise<TagEntity[] | undefined> {
 		if (tagIds === undefined) return undefined;
-		this.assertTagsEnabled();
 		return await this.resolveAgentTags(tagIds);
-	}
-
-	private assertTagsEnabled(): void {
-		if (this.globalConfig.tags.disabled) {
-			throw new BadRequestError('Tags are disabled on this instance');
-		}
 	}
 
 	async findImportCandidates(

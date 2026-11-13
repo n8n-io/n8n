@@ -17,7 +17,6 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
-	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
