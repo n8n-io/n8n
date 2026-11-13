@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_9416adef5f807e::t_414393c2d3e01a 12838-12859
+packages/@n8n/agents/src/runtime/tools/tool-call-runner.ts
+  s_9416adef5f807e::t_f55a77048029a6 430-433,447
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_9416adef5f807e::t_1047135e0f6866 106-109
+packages/@n8n/api-types/src/schemas/__tests__/agent-safe-testing.schema.test.ts
+  s_9416adef5f807e::t_5c54470efdecc6 1-20
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9416adef5f807e::t_494b66ca608d28 35-58
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_9416adef5f807e::t_9a01f0e38fcd47 2346-2372
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_9416adef5f807e::t_b50261dbcbfac0 653
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_9416adef5f807e::t_810335e0682adf 268-272,1325-1328,1504-1507,1816
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_9416adef5f807e::t_81ddca3d93f18c 154-157
+packages/cli/src/modules/agents/evaluation/agent-evaluation.contracts.ts
+  s_9416adef5f807e::t_fa3ac33d6c4765 83-84
+packages/cli/src/modules/agents/simulation/__tests__/non-http-node-types.test.ts
+  s_9416adef5f807e::t_5a4a9cc39bd331 35-52
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_9416adef5f807e::t_a9e5eb0941aecf 98-117
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9416adef5f807e::t_ad062f5a3742df 292-318
+packages/cli/src/modules/agents/simulation/non-http-node-types.ts
+  s_9416adef5f807e::t_50491341971034 51,54-58,70-72
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_9416adef5f807e::t_962c6b22e239e2 117-124,163-167
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9416adef5f807e::t_b35e326c12feed 59-60,62,70,72-73,110,267-271
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9416adef5f807e::t_09eff5dfb55099 16,194,282
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_9416adef5f807e::t_c6208944160669 225-248
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_9416adef5f807e::t_7a13fafabec0c6 349-352
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_9416adef5f807e::t_9f50e5c2a32a15 488-508
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_9416adef5f807e::t_dcd00f83063c44 40,458,464-467
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9416adef5f807e::t_362b5c95b8ba5b 94-110
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9416adef5f807e::t_85f7aa1ba94a5e 99-102,125-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb9d0298da60025eb2be07ce973889b75c8dfa0d",
+  "prompts": {},
+  "sessions": {
+    "s_9416adef5f807e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bf350b5-81ad-4f81-8310-868370228261",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
