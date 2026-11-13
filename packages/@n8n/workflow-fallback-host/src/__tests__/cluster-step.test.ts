@@ -25,23 +25,79 @@ interface FakeModule {
 	FakeChatModel: new (options: object) => object;
 }
 
+interface TracingModule {
+	N8nLlmTracing: new (context: ISupplyDataFunctions) => object;
+}
+
+/** The description of a test model sub-node. */
+function modelDescription(displayName: string, name: string): INodeType['description'] {
+	return {
+		displayName,
+		name,
+		group: ['transform'],
+		version: 1,
+		description: 'Test model',
+		defaults: { name: displayName },
+		inputs: [],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
+		properties: [],
+	};
+}
+
 /** A chat model sub-node whose model answers with the text of the prompt. */
 function fakeChatModelNode(): INodeType {
 	return {
-		description: {
-			displayName: 'Fake Chat Model',
-			name: 'fakeChatModel',
-			group: ['transform'],
-			version: 1,
-			description: 'Test model',
-			defaults: { name: 'Fake Chat Model' },
-			inputs: [],
-			outputs: [NodeConnectionTypes.AiLanguageModel],
-			properties: [],
-		},
+		description: modelDescription('Fake Chat Model', 'fakeChatModel'),
 		async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 			const testing = langchainRequire('@langchain/core/utils/testing') as FakeModule;
 			return { response: new testing.FakeChatModel({}) };
+		},
+	};
+}
+
+/**
+ * A fake chat model with the tracing callback of the real model nodes. It records a run of
+ * the sub-node when the model is called, as n8n does, and not when n8n builds the model.
+ */
+function tracedChatModelNode(): INodeType {
+	return {
+		description: modelDescription('Traced Chat Model', 'tracedChatModel'),
+		async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
+			const testing = langchainRequire('@langchain/core/utils/testing') as FakeModule;
+			const { N8nLlmTracing } = langchainRequire('@n8n/ai-utilities') as TracingModule;
+			return {
+				response: new testing.FakeChatModel({ callbacks: [new N8nLlmTracing(this)] }),
+			};
+		},
+	};
+}
+
+/** A tool sub-node whose call throws, so the run of the tool fails. */
+function brokenToolNode(): INodeType {
+	return {
+		description: {
+			displayName: 'Broken Tool',
+			name: 'brokenTool',
+			group: ['transform'],
+			version: 1,
+			description: 'A tool that fails',
+			defaults: { name: 'Broken Tool' },
+			inputs: [],
+			outputs: [NodeConnectionTypes.AiTool],
+			properties: [],
+		},
+		async execute(): Promise<never> {
+			throw new Error('tool failed');
+		},
+	};
+}
+
+/** A chat model sub-node that fails while n8n builds the model. */
+function failingSupplyModelNode(): INodeType {
+	return {
+		description: modelDescription('Failing Chat Model', 'failingChatModel'),
+		async supplyData(): Promise<SupplyData> {
+			throw new Error('model setup failed');
 		},
 	};
 }
@@ -65,16 +121,26 @@ async function readBody(request: IncomingMessage): Promise<unknown> {
 
 describe('cluster steps', () => {
 	const fakeType = 'test.fakeChatModel';
+	const tracedType = 'test.tracedChatModel';
+	const failingType = 'test.failingChatModel';
+	const brokenType = 'test.brokenTool';
 	let server: Server;
 	let baseUrl = '';
 	const requests: unknown[] = [];
 	const answers: unknown[] = [];
+	/** The status of every answer of the server, for a model call that fails. */
+	let failStatus: number | undefined;
 
 	beforeAll(async () => {
 		server = createServer((request, response) => {
 			void readBody(request).then((body) => {
 				requests.push(body);
 				response.setHeader('content-type', 'application/json');
+				if (failStatus !== undefined) {
+					response.statusCode = failStatus;
+					response.end(JSON.stringify({ error: { message: 'server failed' } }));
+					return;
+				}
 				response.end(JSON.stringify(answers.shift() ?? completion({ content: 'none' }, 'stop')));
 			});
 		});
@@ -90,7 +156,39 @@ describe('cluster steps', () => {
 	const runner = () =>
 		new NodeStepRunner({
 			credentials: { get: async () => ({ apiKey: 'test-key', url: baseUrl }) },
-			nodeTypes: new HostNodeTypes({ [fakeType]: fakeChatModelNode() }),
+			nodeTypes: new HostNodeTypes({
+				[fakeType]: fakeChatModelNode(),
+				[tracedType]: tracedChatModelNode(),
+				[failingType]: failingSupplyModelNode(),
+				[brokenType]: brokenToolNode(),
+			}),
+		});
+
+	/** A Basic LLM Chain with one model sub-node: the arguments of a cluster step. */
+	const chainArgs = (
+		modelType: string,
+		parameters: JsonObject,
+		onError: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput',
+	) =>
+		parseNodeStepArgs({
+			name: 'Basic LLM Chain',
+			type: '@n8n/n8n-nodes-langchain.chainLlm',
+			typeVersion: 1.5,
+			parameters,
+			items: [{}],
+			onError,
+			subRuns: true,
+			outputs: 'all',
+			subNodes: [
+				{
+					name: 'Model',
+					type: modelType,
+					typeVersion: 1,
+					parameters: {},
+					connection: 'ai_languageModel',
+					target: 'Basic LLM Chain',
+				},
+			],
 		});
 
 	it('runs a chain with a fake chat model sub-node', async () => {
@@ -317,6 +415,164 @@ describe('cluster steps', () => {
 			tool_call_id: 'call_1',
 			// The Set node of the callee ran: v1 evaluated its expression in the callee workflow.
 			content: expect.stringContaining('shipped by Order status'),
+		});
+	});
+
+	// v1 records a sub-node run only when the code of the sub-node runs and writes its data,
+	// or when its `supplyData` throws. A root that fails before it calls the model leaves no
+	// run for the model, so the cluster step reports none either.
+	describe('sub-node runs', () => {
+		it('reports no run for a model that the root never calls (continueErrorOutput)', async () => {
+			requests.length = 0;
+			// `promptType: 'auto'` reads `chatInput`, which the item has not: the root fails
+			// before it prompts the model.
+			const args = chainArgs(tracedType, { promptType: 'auto' }, 'continueErrorOutput');
+			const result = await runner().run(args, { step: 'chain', key: 'k4' });
+			expect(result).toEqual([
+				{ items: [] },
+				{ items: [{ error: 'No prompt specified' }] },
+				{ subRuns: {} },
+			]);
+			// The model was built but never called, so it sent no request.
+			expect(requests).toHaveLength(0);
+		});
+
+		it('reports no run for a model that the root never calls (continueRegularOutput)', async () => {
+			requests.length = 0;
+			const args = chainArgs(tracedType, { promptType: 'auto' }, 'continueRegularOutput');
+			const result = await runner().run(args, { step: 'chain', key: 'k5' });
+			expect(result).toEqual([{ items: [{ error: 'No prompt specified' }] }, { subRuns: {} }]);
+			expect(requests).toHaveLength(0);
+		});
+
+		it('reports the run of a model that the root calls', async () => {
+			answers.length = 0;
+			const args = chainArgs(
+				tracedType,
+				{ promptType: 'define', text: 'Hi?' },
+				'continueErrorOutput',
+			);
+			const result = await runner().run(args, { step: 'chain', key: 'k6' });
+			expect(result).toEqual([
+				{ items: [{ text: 'Hi?' }] },
+				{ items: [] },
+				{ subRuns: { Model: [{ error: null }] } },
+			]);
+		});
+
+		it('reports the failed run of a model whose call throws', async () => {
+			requests.length = 0;
+			failStatus = 400;
+			try {
+				const args = parseNodeStepArgs({
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 3.1,
+					parameters: { promptType: 'define', text: 'Hi?' },
+					items: [{}],
+					onError: 'continueErrorOutput',
+					subRuns: true,
+					outputs: 'all',
+					subNodes: [
+						{
+							name: 'OpenAI Chat Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1.2,
+							parameters: {
+								model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' },
+								options: {},
+							},
+							credential: 'openAi',
+							connection: 'ai_languageModel',
+							target: 'AI Agent',
+						},
+					],
+				});
+				const result = await runner().run(args, { step: 'agent', key: 'k7' });
+				// v1 records the run of the model with the error of the call, as it did call it.
+				expect(result).toEqual([
+					{ items: [] },
+					{ items: [{ error: 'Bad request - please check your parameters' }] },
+					{
+						subRuns: {
+							'OpenAI Chat Model': [{ error: 'Bad request - please check your parameters' }],
+						},
+					},
+				]);
+			} finally {
+				failStatus = undefined;
+			}
+		});
+
+		it('reports the error of a tool run that fails', async () => {
+			requests.length = 0;
+			answers.length = 0;
+			answers.push(
+				completion(
+					{
+						content: null,
+						tool_calls: [
+							{
+								id: 'call_1',
+								type: 'function',
+								// The tool node throws when n8n calls it.
+								function: { name: 'Broken_Tool', arguments: JSON.stringify({ input: '5*' }) },
+							},
+						],
+					},
+					'tool_calls',
+				),
+				completion({ content: 'The tool failed.' }, 'stop'),
+			);
+			const args = parseNodeStepArgs({
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 3.1,
+				parameters: { promptType: 'define', text: 'What is 5 times?' },
+				items: [{}],
+				subRuns: true,
+				outputs: 'all',
+				subNodes: [
+					{
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						parameters: { model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' }, options: {} },
+						credential: 'openAi',
+						connection: 'ai_languageModel',
+						target: 'AI Agent',
+					},
+					{
+						name: 'Broken Tool',
+						type: brokenType,
+						typeVersion: 1,
+						parameters: {},
+						connection: 'ai_tool',
+						target: 'AI Agent',
+					},
+				],
+			});
+			const result = await runner().run(args, { step: 'agent', key: 'k9' });
+			expect(result[0]).toEqual({ items: [{ output: 'The tool failed.' }] });
+			const runs = (result[1] as { subRuns: Record<string, Array<{ error: string | null }>> })
+				.subRuns;
+			expect(runs['Broken Tool']).toHaveLength(1);
+			// The run of a tool that failed keeps the message of the tool, as v1 does.
+			expect(runs['Broken Tool'][0].error).toEqual(expect.stringContaining('tool failed'));
+		});
+
+		it('reports the run of a sub-node whose supplyData throws', async () => {
+			const args = chainArgs(
+				failingType,
+				{ promptType: 'define', text: 'Hi?' },
+				'continueErrorOutput',
+			);
+			const result = await runner().run(args, { step: 'chain', key: 'k8' });
+			expect(result).toEqual([
+				{ items: [] },
+				{ items: [{ error: 'Error in sub-node Model' }] },
+				{ subRuns: { Model: [{ error: 'model setup failed' }] } },
+			]);
 		});
 	});
 });

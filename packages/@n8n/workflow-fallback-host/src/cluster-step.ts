@@ -37,7 +37,12 @@ import type {
 	NodeConnectionType,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createRunExecutionData, isNodeClassInstance, Workflow } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	isNodeClassInstance,
+	NodeOperationError,
+	Workflow,
+} from 'n8n-workflow';
 
 import type { HostNodeTypes } from './node-types';
 
@@ -142,6 +147,7 @@ export class ClusterRunner {
 	): Promise<INodeExecutionData[][]> {
 		const root = this.toNode(meta.step, args);
 		const subs = args.subNodes.map((sub) => this.toNode(`${meta.step}/${sub.name}`, sub));
+		const subNames = new Set(subs.map((node) => node.name));
 		const own = new Set([root.name, ...subs.map((n) => n.name)]);
 		const before = (args.context?.nodes ?? []).filter((n) => !own.has(n.name));
 		const workflow = new Workflow({
@@ -176,9 +182,8 @@ export class ClusterRunner {
 				async () => await this.runNode(run, root, inputs),
 			);
 		} finally {
-			// The runs of the nodes before the root are not runs of the cluster.
-			const skip = new Set([root.name, ...before.map((n) => n.name)]);
-			report?.(subNodeRuns(run.runExecutionData, skip));
+			// Runs of the nodes before the root are not runs of the cluster.
+			report?.(subNodeRuns(run.runExecutionData, subNames));
 		}
 	}
 
@@ -300,9 +305,13 @@ export class ClusterRunner {
 			} catch (error) {
 				// AI tools continue on error, so the root gets the message, unless the node says to stop.
 				if (node.onError === 'stopWorkflow') throw error;
-				data = taskData(started, 'error', {
-					[action.type]: [[{ json: { error: messageOf(error) } }]],
-				});
+				data = taskData(
+					started,
+					'error',
+					{ [action.type]: [[{ json: { error: messageOf(error) } }]] },
+					// v1 keeps the error of the failed run on the task data, so the tool's message is
+					new NodeOperationError(node, error instanceof Error ? error : messageOf(error)),
+				);
 			}
 			(run.runExecutionData.resultData.runData[node.name] ??= []).push(data);
 			response.actionResponses.push({ action, data });
@@ -314,10 +323,25 @@ export class ClusterRunner {
 /** For each sub-node that ran, one entry for each run, with its error message or null. */
 export type SubNodeRuns = Record<string, Array<{ error: string | null }>>;
 
-function subNodeRuns(data: IRunExecutionData, skip: Set<string>): SubNodeRuns {
+/**
+ * The runs of the cluster's sub-nodes, as n8n's v1 engine records them.
+ *
+ * v1 gives a sub-node a run only when the code of that node runs and writes its
+ * data, or when its `supplyData` throws:
+ * - a model, a memory, an output parser or a tool writes the run from its own
+ *   callback at call time (`N8nLlmTracing.handleLLMStart`, `N8nStructuredOutputParser.parse`,
+ *   the tool invocation of `getInputConnectionData`), not when `supplyData` builds the object;
+ * - `getInputConnectionData` writes the run of a sub-node whose `supplyData` throws.
+ * A root that fails before it calls the model therefore leaves no run for the model in
+ * v1, and n8n-core writes the run data here under the same conditions. So this reads
+ * the run data the host recorded and reports only the sub-nodes of this cluster that
+ * got a run: an entry for another node, or an empty list, is not a run.
+ */
+function subNodeRuns(data: IRunExecutionData, subNames: Set<string>): SubNodeRuns {
 	const out: SubNodeRuns = {};
-	for (const [name, runs] of Object.entries(data.resultData.runData)) {
-		if (skip.has(name)) continue;
+	for (const name of subNames) {
+		const runs = data.resultData.runData[name];
+		if (runs === undefined || runs.length === 0) continue;
 		out[name] = runs.map((r) => ({
 			error: r.error
 				? (r.error.message ?? 'error')
@@ -333,8 +357,9 @@ function taskData(
 	started: number,
 	executionStatus: 'success' | 'error',
 	data: Record<string, INodeExecutionData[][]>,
+	error?: ITaskData['error'],
 ): ITaskData {
-	return {
+	const task: ITaskData = {
 		startTime: started,
 		executionTime: Date.now() - started,
 		executionIndex: 0,
@@ -342,6 +367,8 @@ function taskData(
 		executionStatus,
 		data,
 	};
+	if (error !== undefined) task.error = error;
+	return task;
 }
 
 function hasKey(value: unknown, key: string): boolean {
