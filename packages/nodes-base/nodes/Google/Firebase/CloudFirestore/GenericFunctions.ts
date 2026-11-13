@@ -1,4 +1,6 @@
 import moment from 'moment-timezone';
+
+import { UserError } from '@n8n/errors';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -6,20 +8,29 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { isSafeObjectProperty, NodeApiError } from 'n8n-workflow';
+import {
+	decodePathValue,
+	isSafeObjectProperty,
+	NodeApiError,
+	requestPath,
+	requestUrl,
+} from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	uri: string | null = null,
+	uri?: RequestUrl,
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
@@ -29,7 +40,7 @@ export async function googleApiRequest(
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
-		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
+		uri: uri ?? requestUrl`https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
 	try {
@@ -59,11 +70,11 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},
-	uri: string | null = null,
+	uri?: RequestUrl,
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -77,6 +88,29 @@ export async function googleApiRequestAllItems(
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
+}
+
+export const toPathValue = (nodeVersion: number, value: string) =>
+	nodeVersion < 1.2 ? decodePathValue(value) : value;
+
+export function documentsPath(
+	projectId: string,
+	database: string,
+	collection: string,
+	nodeVersion: number,
+): RequestPath {
+	return collection
+		.split('/')
+		.filter((segment, index, segments) => {
+			if (!segment && index > 0 && index < segments.length - 1) {
+				throw new UserError('The collection path cannot contain empty segments');
+			}
+			return Boolean(segment);
+		})
+		.reduce(
+			(path, segment) => requestPath`${path}/${toPathValue(nodeVersion, segment)}`,
+			requestPath`/${projectId}/databases/${database}/documents`,
+		);
 }
 
 const isValidDate = (str: string) =>

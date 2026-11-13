@@ -1,4 +1,5 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, RequestPath } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { microsoftApiRequest } from '../transport';
 
@@ -8,14 +9,14 @@ import { microsoftApiRequest } from '../transport';
  */
 async function closeSessionQuietly(
 	this: IExecuteFunctions,
-	workbookRoot: string,
+	workbookRoot: RequestPath,
 	headers: IDataObject,
 ): Promise<void> {
 	try {
 		await microsoftApiRequest.call(
 			this,
 			'POST',
-			`${workbookRoot}/workbook/closeSession`,
+			requestPath`${workbookRoot}/workbook/closeSession`,
 			{},
 			{},
 			undefined,
@@ -34,13 +35,13 @@ async function closeSessionQuietly(
  */
 export async function withWorkbookSession<T>(
 	this: IExecuteFunctions,
-	workbookRoot: string,
+	workbookRoot: RequestPath,
 	send: (headers: IDataObject) => Promise<T>,
 ): Promise<T> {
 	const { id } = await (microsoftApiRequest<{ id: string }>).call(
 		this,
 		'POST',
-		`${workbookRoot}/workbook/createSession`,
+		requestPath`${workbookRoot}/workbook/createSession`,
 		{ persistChanges: true },
 	);
 	const headers: IDataObject = { 'workbook-session-id': id };

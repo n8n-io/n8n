@@ -8,6 +8,7 @@ import {
 import { VIEWS } from '@n8n/frontend-constants/views';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
+import * as api from '../self-healing.api';
 import { useSelfHealingStore } from '../self-healing.store';
 import SelfHealingConfigView from './SelfHealingConfigView.vue';
 
@@ -22,6 +23,10 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('@n8n/design-system', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/design-system')>()),
 	useMessage: () => ({ confirm }),
+}));
+vi.mock('../self-healing.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../self-healing.api')>()),
+	fetchWorkflowDependencies: vi.fn(),
 }));
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUser: { id: 'creator' } }),
@@ -85,6 +90,7 @@ beforeEach(() => {
 		],
 	};
 	vi.spyOn(store, 'load').mockResolvedValue();
+	vi.mocked(api.fetchWorkflowDependencies).mockResolvedValue({});
 });
 
 it('creates an enabled configuration with the creator as reviewer', async () => {
@@ -97,7 +103,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 	const view = await renderView('new');
 	const button = await view.findByRole('button', { name: 'Create configuration' });
 	expect(button).toBeEnabled();
-	expect(view.queryByRole('switch')).not.toBeInTheDocument();
+	expect(view.queryByRole('switch', { name: /enable/i })).not.toBeInTheDocument();
 	const reviewer = within(view.getByTestId('self-healing-selected-reviewer'));
 	expect(reviewer.getByText('Test Reviewer (you)')).toBeVisible();
 	expect(reviewer.getAllByText(/\(you\)/)).toHaveLength(1);
@@ -111,7 +117,7 @@ it('creates an enabled configuration with the creator as reviewer', async () => 
 				workflowIds: [],
 				reviewerIds: ['creator'],
 				includeAllProjectMembers: false,
-				includeSubWorkflows: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,
@@ -256,6 +262,103 @@ it('keeps the sub-workflow setting when saving edits', async () => {
 	);
 });
 
+it('saves the sub-workflow setting from its switch', async () => {
+	const store = useSelfHealingStore();
+	store.configurations.project = [configuration];
+	const save = vi.spyOn(store, 'save').mockResolvedValue(configuration);
+	const view = await renderView('1');
+	const toggle = await view.findByRole('switch', { name: 'Include sub-workflows' });
+	expect(toggle).not.toBeChecked();
+	await fireEvent.click(toggle);
+	await fireEvent.click(view.getByRole('button', { name: 'Save changes' }));
+
+	expect(save).toHaveBeenCalledWith(
+		'project',
+		expect.objectContaining({ scope: 'all', includeSubWorkflows: true }),
+		1,
+	);
+});
+
+describe('sub-workflow coverage', () => {
+	const dependency = (id: string, name: string) => ({ type: 'workflowCall' as const, id, name });
+
+	beforeEach(() => {
+		const store = useSelfHealingStore();
+		store.options.project.workflows = [
+			{ id: 'workflow', name: 'Production workflow' },
+			{ id: 'child', name: 'Child workflow' },
+			{ id: 'grandchild', name: 'Grandchild workflow' },
+		];
+		store.configurations.project = [
+			{ ...configuration, scope: 'selected', workflowIds: ['workflow'] },
+		];
+		vi.mocked(api.fetchWorkflowDependencies).mockImplementation(async (_context, ids) =>
+			Object.fromEntries(
+				ids.map((id) => [
+					id,
+					{
+						inaccessibleCount: 0,
+						dependencies:
+							id === 'workflow'
+								? [
+										dependency('child', 'Child workflow'),
+										dependency('external', 'Other project workflow'),
+										{ type: 'credentialId' as const, id: 'credential', name: 'Credential' },
+									]
+								: id === 'child'
+									? [dependency('grandchild', 'Grandchild workflow')]
+									: [],
+					},
+				]),
+			),
+		);
+	});
+
+	it('follows sub-workflows in this project and explains the ones a fix cannot change', async () => {
+		const view = await renderView('1');
+		const row = within(await view.findByTestId('self-healing-selected-workflow'));
+
+		expect(
+			await row.findByText(
+				"2 sub-workflows aren't covered. 1 sub-workflow in another project isn't covered.",
+			),
+		).toBeVisible();
+		expect(row.getByTestId('self-healing-sub-workflow-pill')).toHaveTextContent('3');
+		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['workflow']);
+		expect(api.fetchWorkflowDependencies).toHaveBeenCalledWith(expect.anything(), ['child']);
+		expect(api.fetchWorkflowDependencies).not.toHaveBeenCalledWith(
+			expect.anything(),
+			expect.arrayContaining(['external']),
+		);
+
+		await fireEvent.click(view.getByRole('switch', { name: 'Include sub-workflows' }));
+
+		expect(row.getByText("1 sub-workflow in another project isn't covered.")).toBeVisible();
+	});
+
+	it('keeps sub-workflows of another selection available in the picker', async () => {
+		const view = await renderView('1');
+		await fireEvent.click(await view.findByRole('switch', { name: 'Include sub-workflows' }));
+		await fireEvent.click(view.getAllByRole('button', { name: 'Show popup' })[0]);
+
+		expect(await view.findByRole('option', { name: 'Child workflow' })).not.toHaveAttribute(
+			'aria-disabled',
+			'true',
+		);
+	});
+
+	it('shows no coverage summary when the dependency lookup fails', async () => {
+		vi.mocked(api.fetchWorkflowDependencies).mockRejectedValue(new Error('Offline'));
+		const view = await renderView('1');
+		const row = await view.findByTestId('self-healing-selected-workflow');
+		await waitAllPromises();
+
+		expect(row).toHaveTextContent('Production workflow');
+		expect(row).not.toHaveTextContent(/covered|Checking/);
+		expect(within(row).queryByTestId('self-healing-sub-workflow-pill')).not.toBeInTheDocument();
+	});
+});
+
 it.each([
 	'/projects/project/settings',
 	'/projects/project/settings/self-healing/2',
@@ -317,7 +420,7 @@ it('selects workflow rows and reviewers before saving', async () => {
 			workflowIds: ['workflow'],
 			reviewerIds: ['creator'],
 			includeAllProjectMembers: false,
-			includeSubWorkflows: false,
+			includeSubWorkflows: true,
 			enabled: true,
 		},
 		undefined,
@@ -610,7 +713,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: [],
 				includeAllProjectMembers: true,
-				includeSubWorkflows: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,
@@ -652,7 +755,7 @@ describe('project members', () => {
 				workflowIds: [],
 				reviewerIds: ['creator', 'maya'],
 				includeAllProjectMembers: false,
-				includeSubWorkflows: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			},
 			undefined,

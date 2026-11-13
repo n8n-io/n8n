@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
@@ -181,7 +182,7 @@ export async function execute(
 			const response = await discordApiRequest.call(
 				this,
 				'POST',
-				`/guilds/${guildId}/channels`,
+				requestPath`/guilds/${guildId}/channels`,
 				body,
 			);
 

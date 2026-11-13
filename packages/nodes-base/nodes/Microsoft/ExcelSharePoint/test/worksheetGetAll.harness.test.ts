@@ -27,7 +27,7 @@ describe('Microsoft Excel (SharePoint) Node — Sheet: Get Many', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: `/v1.0/shares/${shareId}/driveItem?%24select=id%2CparentReference`,
+					path: `/v1.0/shares/${shareId}/driveItem?%24select=id,parentReference`,
 					statusCode: 200,
 					responseBody: {
 						id: 'ITEM123',
@@ -39,7 +39,7 @@ describe('Microsoft Excel (SharePoint) Node — Sheet: Get Many', () => {
 				},
 				{
 					method: 'get',
-					path: '/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets?%24top=10',
+					path: '/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets?%24top=10',
 					statusCode: 200,
 					responseBody: {
 						value: [

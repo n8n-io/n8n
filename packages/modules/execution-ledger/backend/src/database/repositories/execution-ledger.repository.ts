@@ -14,7 +14,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ExecutionLedgerEntity } from '../entities/execution-ledger.entity';
 

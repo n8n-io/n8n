@@ -1,5 +1,5 @@
 import type { INodeListSearchResult, INodeParameterResourceLocator } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
@@ -34,11 +34,11 @@ export async function getDrives(
 
 	const response = (
 		paginationToken
-			? await microsoftApiRequest.call(this, 'GET', '', {}, {}, paginationToken)
+			? await microsoftApiRequest.call(this, 'GET', requestPath``, {}, {}, paginationToken)
 			: await microsoftApiRequest.call(
 					this,
 					'GET',
-					`/v1.0/sites/${encodeURIComponent(siteId)}/drives`,
+					requestPath`/v1.0/sites/${siteId}/drives`,
 					{},
 					{ $select: 'id,name,system' },
 				)

@@ -1,0 +1,417 @@
+{
+	"name": "FileMaker Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"action": "record",
+				"layout": "Contacts",
+				"recid": 42
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000001",
+			"name": "FileMaker > Get Records By ID",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "records",
+				"layout": "Contacts",
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000002",
+			"name": "FileMaker > Get Records",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "find",
+				"layout": "Contacts",
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [660, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000003",
+			"name": "FileMaker > Find Records",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "create",
+				"layout": "Contacts",
+				"fieldsParametersUi": {
+					"fields": [
+						{
+							"name": "name",
+							"value": "Nathan"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [880, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000004",
+			"name": "FileMaker > Create Record",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "edit",
+				"layout": "Contacts",
+				"recid": 42,
+				"fieldsParametersUi": {
+					"fields": [
+						{
+							"name": "name",
+							"value": "Jan"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [1100, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000005",
+			"name": "FileMaker > Edit Record",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "duplicate",
+				"layout": "Contacts",
+				"recid": 42
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [1320, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000006",
+			"name": "FileMaker > Duplicate Record",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "delete",
+				"layout": "Contacts",
+				"recid": 42
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [1540, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000007",
+			"name": "FileMaker > Delete Record",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"action": "performscript",
+				"layout": "Contacts",
+				"script": "SendEmail",
+				"scriptParam": "hello"
+			},
+			"type": "n8n-nodes-base.filemaker",
+			"typeVersion": 1,
+			"position": [1760, 0],
+			"id": "6f2b1c1e-0000-4000-8000-000000000008",
+			"name": "FileMaker > Perform Script",
+			"credentials": {
+				"fileMaker": {
+					"id": "fm1",
+					"name": "FileMaker account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"FileMaker > Get Records By ID": [
+			{
+				"json": {
+					"response": {
+						"data": [
+							{
+								"fieldData": {
+									"name": "Nathan"
+								},
+								"portalData": {},
+								"recordId": "42",
+								"modId": "1"
+							}
+						]
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Get Records": [
+			{
+				"json": {
+					"response": {
+						"data": [
+							{
+								"fieldData": {
+									"name": "Nathan"
+								},
+								"portalData": {},
+								"recordId": "42",
+								"modId": "1"
+							}
+						]
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Find Records": [
+			{
+				"json": {
+					"response": {
+						"data": [
+							{
+								"fieldData": {
+									"name": "Nathan"
+								},
+								"portalData": {},
+								"recordId": "42",
+								"modId": "1"
+							}
+						]
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Create Record": [
+			{
+				"json": {
+					"response": {
+						"recordId": "43",
+						"modId": "0"
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Edit Record": [
+			{
+				"json": {
+					"response": {
+						"modId": "2"
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Duplicate Record": [
+			{
+				"json": {
+					"response": {
+						"recordId": "44",
+						"modId": "0"
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Delete Record": [
+			{
+				"json": {
+					"response": {},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		],
+		"FileMaker > Perform Script": [
+			{
+				"json": {
+					"response": {
+						"scriptResult": "done",
+						"scriptError": "0"
+					},
+					"messages": [
+						{
+							"code": "0",
+							"message": "OK"
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Get Records By ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Get Records By ID": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Get Records",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Get Records": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Find Records",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Find Records": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Create Record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Create Record": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Edit Record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Edit Record": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Duplicate Record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Duplicate Record": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Delete Record",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"FileMaker > Delete Record": {
+			"main": [
+				[
+					{
+						"node": "FileMaker > Perform Script",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

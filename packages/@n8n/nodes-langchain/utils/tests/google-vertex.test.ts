@@ -1,6 +1,7 @@
 import { getGoogleAccessToken } from 'n8n-nodes-base/google-service-account';
 import {
 	NodeHelpers,
+	requestUrl,
 	Workflow,
 	type ICredentialsDecrypted,
 	type ICredentialTestFunctions,
@@ -230,7 +231,7 @@ describe('googleVertexAiCredentialTest', () => {
 			expect(request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://aiplatform.googleapis.com/v1/projects/${expected}/locations`,
+					uri: requestUrl`https://aiplatform.googleapis.com/v1/projects/${expected}/locations`,
 					headers: { Authorization: 'Bearer test-access-token' },
 					qs: { pageSize: 1 },
 				}),

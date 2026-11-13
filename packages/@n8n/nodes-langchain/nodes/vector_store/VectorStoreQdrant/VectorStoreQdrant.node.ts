@@ -3,6 +3,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import { type Schemas as QdrantSchemas } from '@qdrant/js-client-rest';
+import { UnexpectedError } from '@n8n/errors';
 import { assertParamIsString, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { createQdrantClient, type QdrantCredential } from './Qdrant.utils';
@@ -11,19 +12,26 @@ import { qdrantCollectionsSearch } from '../shared/methods/listSearch';
 import { qdrantCollectionRLC } from '../shared/descriptions';
 
 class ExtendedQdrantVectorStore extends QdrantVectorStore {
-	private static defaultFilter: IDataObject = {};
+	private defaultFilter: IDataObject = {};
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: QdrantLibArgs,
 		defaultFilter: IDataObject = {},
-	): Promise<QdrantVectorStore> {
-		ExtendedQdrantVectorStore.defaultFilter = defaultFilter;
-		return await super.fromExistingCollection(embeddings, args);
+	): Promise<ExtendedQdrantVectorStore> {
+		// The parent factory builds the instance with `new this(...)`, so it is of this subclass
+		const store = await super.fromExistingCollection(embeddings, args);
+		if (!(store instanceof ExtendedQdrantVectorStore)) {
+			throw new UnexpectedError(
+				'Qdrant store factory did not return an ExtendedQdrantVectorStore instance',
+			);
+		}
+		store.defaultFilter = defaultFilter;
+		return store;
 	}
 
 	async similaritySearch(query: string, k: number, filter?: IDataObject, callbacks?: Callbacks) {
-		const mergedFilter = { ...ExtendedQdrantVectorStore.defaultFilter, ...filter };
+		const mergedFilter = { ...this.defaultFilter, ...filter };
 		return await super.similaritySearch(query, k, mergedFilter, callbacks);
 	}
 }

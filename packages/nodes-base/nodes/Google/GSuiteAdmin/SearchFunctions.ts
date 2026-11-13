@@ -4,6 +4,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -16,7 +17,7 @@ export async function searchUsers(this: ILoadOptionsFunctions): Promise<INodeLis
 		this,
 		'users',
 		'GET',
-		'/directory/v1/users',
+		requestPath`/directory/v1/users`,
 		{},
 		qs,
 	);
@@ -44,7 +45,7 @@ export async function searchGroups(this: ILoadOptionsFunctions): Promise<INodeLi
 		this,
 		'groups',
 		'GET',
-		'/directory/v1/groups',
+		requestPath`/directory/v1/groups`,
 		{},
 		qs,
 	);
@@ -71,7 +72,7 @@ export async function searchDevices(this: ILoadOptionsFunctions): Promise<INodeL
 	const responseData = await googleApiRequest.call(
 		this,
 		'GET',
-		'/directory/v1/customer/my_customer/devices/chromeos/',
+		requestPath`/directory/v1/customer/my_customer/devices/chromeos/`,
 		{},
 		qs,
 	);

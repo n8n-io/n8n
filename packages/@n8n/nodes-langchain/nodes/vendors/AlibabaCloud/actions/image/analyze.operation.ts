@@ -1,5 +1,5 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
 import type { IModelStudioRequestBody } from '../../helpers/interfaces';
 import { modelRLC } from '../descriptions';
@@ -198,7 +198,7 @@ export async function execute(
 	const response = await apiRequest.call(
 		this,
 		'POST',
-		'/api/v1/services/aigc/multimodal-generation/generation',
+		requestPath`/api/v1/services/aigc/multimodal-generation/generation`,
 		{
 			body,
 		},

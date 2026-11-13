@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { decodePathValue, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { Subscriber } from './MailerLite.Interface';
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
@@ -25,7 +25,7 @@ export class MailerLiteV2 implements INodeType {
 			displayName: 'MailerLite',
 			name: 'mailerLite',
 			group: ['input'],
-			version: [2],
+			version: [2, 2.1],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume Mailer Lite API',
 			defaults: {
@@ -74,6 +74,7 @@ export class MailerLiteV2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const version = this.getNode().typeVersion;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'subscriber') {
@@ -107,7 +108,12 @@ export class MailerLiteV2 implements INodeType {
 							}
 						}
 
-						responseData = await mailerliteApiRequest.call(this, 'POST', '/subscribers', body);
+						responseData = await mailerliteApiRequest.call(
+							this,
+							'POST',
+							requestPath`/subscribers`,
+							body,
+						);
 						responseData = responseData.data;
 					}
 					//https://developers.mailerlite.com/reference#single-subscriber
@@ -117,7 +123,7 @@ export class MailerLiteV2 implements INodeType {
 						responseData = await mailerliteApiRequest.call(
 							this,
 							'GET',
-							`/subscribers/${subscriberId}`,
+							requestPath`/subscribers/${version < 2.1 ? decodePathValue(subscriberId) : subscriberId}`,
 						);
 
 						responseData = responseData.data as Subscriber[];
@@ -136,14 +142,20 @@ export class MailerLiteV2 implements INodeType {
 							responseData = await mailerliteApiRequestAllItems.call(
 								this,
 								'GET',
-								'/subscribers',
+								requestPath`/subscribers`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
+							responseData = await mailerliteApiRequest.call(
+								this,
+								'GET',
+								requestPath`/subscribers`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -177,7 +189,7 @@ export class MailerLiteV2 implements INodeType {
 						responseData = await mailerliteApiRequest.call(
 							this,
 							'PUT',
-							`/subscribers/${subscriberId}`,
+							requestPath`/subscribers/${version < 2.1 ? decodePathValue(subscriberId) : subscriberId}`,
 							body,
 						);
 					}

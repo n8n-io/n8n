@@ -5,6 +5,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -141,7 +142,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	responseData = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/messages/${messageId}`,
+		requestPath`/messages/${messageId}`,
 		index,
 		undefined,
 		qs,

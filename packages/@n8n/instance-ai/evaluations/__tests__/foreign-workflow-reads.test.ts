@@ -81,6 +81,40 @@ describe('findForeignWorkflowReads', () => {
 		expect(reads).toEqual(['other']);
 	});
 
+	it('ignores an Agent this build selected when a later call passes its id as workflowId', () => {
+		const reads = findForeignWorkflowReads(
+			[
+				call(
+					'agent_builder_select_agent',
+					{ agentRef: 'expense-filer', name: 'Expense Filer' },
+					{ result: { ok: true, agentId: 'my-agent', projectId: 'p1' } },
+				),
+				call('setup_credentials', { target: 'agent', workflowId: 'my-agent' }),
+			],
+			[],
+		);
+
+		expect(reads).toEqual([]);
+	});
+
+	it('ignores a seeded Agent passed as workflowId', () => {
+		const reads = findForeignWorkflowReads(
+			[call('setup_credentials', { target: 'agent', workflowId: 'seeded-agent' })],
+			['seeded-agent'],
+		);
+
+		expect(reads).toEqual([]);
+	});
+
+	it('still flags an Agent id this build neither selected nor seeded', () => {
+		const reads = findForeignWorkflowReads(
+			[call('setup_credentials', { target: 'agent', workflowId: 'other-agent' })],
+			[],
+		);
+
+		expect(reads).toEqual(['other-agent']);
+	});
+
 	it("flags an edit of another build's workflow, once", () => {
 		const reads = findForeignWorkflowReads(
 			[

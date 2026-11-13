@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { keysToSnakeCase, shopifyApiRequest, shopifyApiRequestAllItems } from './GenericFunctions';
 import { orderFields, orderOperations } from './OrderDescription';
@@ -123,7 +123,7 @@ export class Shopify implements INodeType {
 					this,
 					'products',
 					'GET',
-					'/products.json',
+					requestPath`/products.json`,
 					{},
 					{ fields: 'id,title' },
 				);
@@ -145,7 +145,7 @@ export class Shopify implements INodeType {
 					this,
 					'locations',
 					'GET',
-					'/locations.json',
+					requestPath`/locations.json`,
 					{},
 					{ fields: 'id,name' },
 				);
@@ -238,7 +238,7 @@ export class Shopify implements INodeType {
 								shipping.shippingAddressValues as IDataObject,
 							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'POST', '/orders.json', {
+						responseData = await shopifyApiRequest.call(this, 'POST', requestPath`/orders.json`, {
 							order: body,
 						});
 						responseData = responseData.order;
@@ -246,7 +246,11 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#delete-orders-order-id
 					if (operation === 'delete') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
-						responseData = await shopifyApiRequest.call(this, 'DELETE', `/orders/${orderId}.json`);
+						responseData = await shopifyApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/orders/${orderId}.json`,
+						);
 						responseData = { success: true };
 					}
 					//https://shopify.dev/docs/api/admin-rest/latest/resources/order#get-orders-order-id?fields=id,line-items,name,total-price
@@ -259,7 +263,7 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'GET',
-							`/orders/${orderId}.json`,
+							requestPath`/orders/${orderId}.json`,
 							{},
 							qs,
 						);
@@ -314,13 +318,19 @@ export class Shopify implements INodeType {
 								this,
 								'orders',
 								'GET',
-								'/orders.json',
+								requestPath`/orders.json`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await shopifyApiRequest.call(this, 'GET', '/orders.json', {}, qs);
+							responseData = await shopifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/orders.json`,
+								{},
+								qs,
+							);
 							responseData = responseData.orders;
 						}
 					}
@@ -350,9 +360,14 @@ export class Shopify implements INodeType {
 								shipping.shippingAddressValues as IDataObject,
 							)[0] as IAddress;
 						}
-						responseData = await shopifyApiRequest.call(this, 'PUT', `/orders/${orderId}.json`, {
-							order: body,
-						});
+						responseData = await shopifyApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/orders/${orderId}.json`,
+							{
+								order: body,
+							},
+						);
 						responseData = responseData.order;
 					}
 				} else if (resource === 'product') {
@@ -379,7 +394,7 @@ export class Shopify implements INodeType {
 
 						body.title = title;
 
-						responseData = await shopifyApiRequest.call(this, 'POST', '/products.json', {
+						responseData = await shopifyApiRequest.call(this, 'POST', requestPath`/products.json`, {
 							product: body,
 						});
 						responseData = responseData.product;
@@ -389,7 +404,7 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'DELETE',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 						);
 						responseData = { success: true };
 					}
@@ -400,7 +415,7 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'GET',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 							{},
 							qs,
 						);
@@ -419,13 +434,19 @@ export class Shopify implements INodeType {
 								this,
 								'products',
 								'GET',
-								'/products.json',
+								requestPath`/products.json`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
+							responseData = await shopifyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/products.json`,
+								{},
+								qs,
+							);
 							responseData = responseData.products;
 						}
 					}
@@ -448,7 +469,7 @@ export class Shopify implements INodeType {
 						responseData = await shopifyApiRequest.call(
 							this,
 							'PUT',
-							`/products/${productId}.json`,
+							requestPath`/products/${productId}.json`,
 							{ product: body },
 						);
 

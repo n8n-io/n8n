@@ -1,6 +1,6 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { SEND_AND_WAIT_OPERATION, type IExecuteFunctions } from 'n8n-workflow';
+import { SEND_AND_WAIT_OPERATION, requestPath, type IExecuteFunctions } from 'n8n-workflow';
 
 import { versionDescription } from '../../../../v2/actions/versionDescription';
 import { DiscordV2 } from '../../../../v2/DiscordV2.node';
@@ -73,7 +73,7 @@ describe('Test DiscordV2, message => sendAndWait', () => {
 
 		expect(transport.discordApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/channels/channelID/messages',
+			requestPath`/channels/channelID/messages`,
 			{
 				components: [
 					{

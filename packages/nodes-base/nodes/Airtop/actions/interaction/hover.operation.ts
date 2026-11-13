@@ -3,6 +3,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { constructInteractionRequest } from './helpers';
 import {
@@ -46,7 +47,7 @@ export async function execute(
 	const response = await apiRequest.call(
 		this,
 		'POST',
-		`/sessions/${sessionId}/windows/${windowId}/hover`,
+		requestPath`/sessions/${sessionId}/windows/${windowId}/hover`,
 		request,
 	);
 

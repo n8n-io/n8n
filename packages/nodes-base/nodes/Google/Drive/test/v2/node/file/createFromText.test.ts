@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import * as createFromText from '../../../../v2/actions/file/createFromText.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
@@ -60,7 +61,7 @@ describe('test GoogleDriveV2: file createFromText', () => {
 		expect(transport.googleApiRequest).toBeCalledTimes(2);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/upload/drive/v3/files',
+			requestPath`/upload/drive/v3/files`,
 			expect.anything(), // Buffer of content goes here
 			{ uploadType: 'multipart', supportsAllDrives: true },
 			undefined,
@@ -73,7 +74,7 @@ describe('test GoogleDriveV2: file createFromText', () => {
 		);
 		expect(transport.googleApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/drive/v3/files/42',
+			requestPath`/drive/v3/files/42`,
 			{
 				appProperties: { appKey1: 'appValue1' },
 				mimeType: 'text/plain',

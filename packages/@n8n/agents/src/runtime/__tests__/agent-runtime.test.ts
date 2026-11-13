@@ -421,6 +421,118 @@ function makeInterruptibleTool(): BuiltTool {
 // execution counters
 // ---------------------------------------------------------------------------
 
+describe('AgentRuntime — reasoning from another OpenAI org', () => {
+	const persistence = { threadId: 'reasoning-thread', resourceId: 'user-1' };
+	// OpenAI answers this when the encrypted reasoning comes from another org,
+	// for example after a change from Gateway credits to an own API key.
+	const rejection = new APICallError({
+		message: 'The encrypted content could not be verified.',
+		url: 'https://api.openai.com/v1/responses',
+		requestBodyValues: {},
+		statusCode: 400,
+		data: { error: { type: 'invalid_request_error', code: 'invalid_encrypted_content' } },
+	});
+
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const reply = (encrypted: string) => ({
+		role: 'assistant',
+		content: [
+			{
+				type: 'reasoning',
+				text: '',
+				providerOptions: {
+					openai: { itemId: `rs_${encrypted}`, reasoningEncryptedContent: encrypted },
+				},
+			},
+			{ type: 'text', text: 'OK' },
+		],
+	});
+
+	function answer(encrypted: string) {
+		generateText.mockResolvedValueOnce({
+			...makeGenerateSuccess(),
+			response: { messages: [reply(encrypted)] },
+		});
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			response: Promise.resolve({ messages: [reply(encrypted)] }),
+		});
+	}
+
+	function reject() {
+		generateText.mockRejectedValueOnce(rejection);
+		streamText.mockReturnValueOnce({
+			...makeStreamSuccess(),
+			stream: makeChunkStream([{ type: 'error', error: rejection }]),
+			finishReason: silentReject(rejection),
+		});
+	}
+
+	async function run(memory: InMemoryMemory, mode: 'generate' | 'stream', text: string) {
+		const runtime = new AgentRuntime({
+			name: 'reasoning-test',
+			model: 'openai/gpt-5-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			checkpointStorage: 'memory',
+		});
+		if (mode === 'generate') return (await runtime.generate(text, { persistence })).error;
+		const chunks = await collectChunks((await runtime.stream(text, { persistence })).stream);
+		return chunks.find((chunk) => chunk.type === 'error');
+	}
+
+	it.each(['generate', 'stream'] as const)(
+		'%s retries once without the rejected reasoning and keeps it out of later turns',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const sent = (call: number) => JSON.stringify(model.mock.calls[call][0].messages);
+			const memory = new InMemoryMemory();
+			// A real backend returns copies, so only a save can change stored history.
+			const load = memory.getMessages.bind(memory);
+			vi.spyOn(memory, 'getMessages').mockImplementation(async (...args) =>
+				structuredClone(await load(...args)),
+			);
+
+			answer('enc_gateway');
+			expect(await run(memory, mode, 'Hi')).toBeUndefined();
+
+			// A normal turn replays earlier reasoning unchanged, which keeps the prompt cache.
+			reject();
+			answer('enc_own');
+			expect(await run(memory, mode, 'Again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(3);
+			expect(sent(1)).toContain('enc_gateway');
+			expect(sent(2)).not.toContain('enc_gateway');
+
+			// The stored history no longer holds the rejected reasoning: no new retry.
+			answer('enc_next');
+			expect(await run(memory, mode, 'And again')).toBeUndefined();
+			expect(model).toHaveBeenCalledTimes(4);
+			expect(sent(3)).not.toContain('enc_gateway');
+			expect(sent(3)).toContain('enc_own');
+		},
+	);
+
+	it.each(['generate', 'stream'] as const)(
+		'%s reports the error when the retry fails too',
+		async (mode) => {
+			const model = mode === 'generate' ? generateText : streamText;
+			const memory = new InMemoryMemory();
+			answer('enc_gateway');
+			await run(memory, mode, 'Hi');
+
+			reject();
+			reject();
+			expect(await run(memory, mode, 'Again')).toBeDefined();
+			expect(model).toHaveBeenCalledTimes(3);
+		},
+	);
+});
+
 describe('AgentRuntime — rejected attachments', () => {
 	const persistence = { threadId: 'attachment-thread', resourceId: 'user-1' };
 	const rejection = Object.assign(

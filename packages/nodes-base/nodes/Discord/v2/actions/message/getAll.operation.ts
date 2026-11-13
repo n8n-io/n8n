@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
@@ -75,7 +76,7 @@ export async function execute(
 				response = await discordApiRequest.call(
 					this,
 					'GET',
-					`/channels/${channelId}/messages`,
+					requestPath`/channels/${channelId}/messages`,
 					undefined,
 					qs,
 				);
@@ -87,7 +88,7 @@ export async function execute(
 					responseData = await discordApiRequest.call(
 						this,
 						'GET',
-						`/channels/${channelId}/messages`,
+						requestPath`/channels/${channelId}/messages`,
 						undefined,
 						qs,
 					);

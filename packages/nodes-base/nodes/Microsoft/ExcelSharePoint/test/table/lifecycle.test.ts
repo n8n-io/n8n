@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -17,7 +18,7 @@ vi.mock('../../transport', async () => {
 });
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const WORKBOOK_ROOT = requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/items/ITEM123`;
 const NEW_TABLE = { id: '{T9}', name: 'Table9' };
 
 describe('Microsoft Excel (SharePoint) — Table: Create, Convert to Range, Delete', () => {
@@ -70,7 +71,7 @@ describe('Microsoft Excel (SharePoint) — Table: Create, Convert to Range, Dele
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables/add`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables/add`,
 			{ address: 'A1:B2', hasHeaders: true },
 		);
 		expect(result[0].map((item) => item.json)).toEqual([NEW_TABLE]);
@@ -87,14 +88,14 @@ describe('Microsoft Excel (SharePoint) — Table: Create, Convert to Range, Dele
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/usedRange`,
 			{},
 			{ $select: 'address' },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables/add`,
+			requestPath`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables/add`,
 			{ address: 'A1:C7', hasHeaders: false },
 		);
 	});
@@ -121,7 +122,7 @@ describe('Microsoft Excel (SharePoint) — Table: Create, Convert to Range, Dele
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			`${WORKBOOK_ROOT}/workbook/tables/%7BT1%7D/convertToRange`,
+			requestPath`${WORKBOOK_ROOT}/workbook/tables/%7BT1%7D/convertToRange`,
 		);
 		expect(result[0].map((item) => item.json)).toEqual([{ address: 'Sheet1!A1:B2' }]);
 	});
@@ -132,7 +133,10 @@ describe('Microsoft Excel (SharePoint) — Table: Create, Convert to Range, Dele
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', `${WORKBOOK_ROOT}/workbook/tables/%7BT1%7D`);
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`${WORKBOOK_ROOT}/workbook/tables/%7BT1%7D`,
+		);
 		expect(result[0].map((item) => item.json)).toEqual([{ success: true }]);
 	});
 });

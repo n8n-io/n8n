@@ -18,7 +18,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
-import type { AgentResource, AgentSkill, CustomToolEntry } from '../types';
+import type { AgentSkill, CustomToolEntry } from '../types';
+import type { AgentListItem } from '../agent.types';
 import { listAgentsPage } from '../composables/useAgentApi';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
@@ -127,7 +128,7 @@ const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value))
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter((agent) => agent.id !== props.agentId),
 );
-const archivedSubAgents = ref<AgentResource[]>([]);
+const archivedSubAgents = ref<AgentListItem[]>([]);
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen, enabled }) => {
 		const agent =
@@ -239,7 +240,7 @@ function knownArchivedSubAgents() {
 }
 
 // The project list hides archived agents. Load the selected sub-agents that it does not contain.
-async function fetchArchivedSubAgents(listedAgents: AgentResource[]) {
+async function fetchArchivedSubAgents(listedAgents: AgentListItem[]) {
 	const listedIds = new Set(listedAgents.map((agent) => agent.id));
 	const ids = selectedSubAgentIds.value.filter((agentId) => !listedIds.has(agentId));
 	if (ids.length === 0) return [];
@@ -540,12 +541,12 @@ async function openSubAgentsModal() {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
-			agents: availableSubAgents.value.map(({ id, name, schema }) => {
+			agents: availableSubAgents.value.map(({ id, name, personalisation }) => {
 				const selectedRef = selectedSubAgentRefs.value.find((ref) => ref.agentId === id);
 				return {
 					id,
 					name,
-					personalisation: schema?.personalisation,
+					personalisation: personalisation ?? undefined,
 					added: Boolean(selectedRef),
 					useWhen: selectedRef?.useWhen,
 					invalidReasons: subAgentIssueMessages.value.get(id) ?? [],
