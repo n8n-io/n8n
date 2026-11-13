@@ -12835,6 +12835,28 @@ describe('AgentRuntime — tool call interceptor', () => {
 		expect(handler).not.toHaveBeenCalled();
 	});
 
+	it('does not start the tool when the run was aborted before the interceptor calls run', async () => {
+		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
+		const tool: BuiltTool = {
+			name: 'send_message',
+			description: 'Send a message',
+			inputSchema: z.object({ text: z.string() }),
+			handler,
+		};
+		const controller = new AbortController();
+		const runtime = createInterceptedRuntime([tool], async (_call, run) => {
+			controller.abort();
+			return await run();
+		});
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-1', 'send_message', { text: 'hi' }),
+		);
+
+		await runtime.generate('send it', { abortSignal: controller.signal }).catch(() => undefined);
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
 	it('gives the model the interceptor result without running the tool', async () => {
 		const handler = vi.fn(async () => await Promise.resolve({ sent: true }));
 		const tool: BuiltTool = {
