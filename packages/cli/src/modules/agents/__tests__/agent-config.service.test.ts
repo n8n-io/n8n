@@ -376,9 +376,7 @@ describe('AgentConfigService', () => {
 	describe('updateConfig', () => {
 		describe('Human review', () => {
 			beforeEach(() => {
-				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
-					true,
-				);
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(true);
 			});
 			const configurations: AgentHitlConfiguration[] = [
 				{
@@ -398,9 +396,7 @@ describe('AgentConfigService', () => {
 			];
 
 			it('refuses a new human review while the module is disabled', async () => {
-				vi.spyOn(Container.get(AgentsConfig), 'humanInteractionsEnabled', 'get').mockReturnValue(
-					false,
-				);
+				vi.spyOn(Container.get(AgentsConfig), 'humanReviewEnabled', 'get').mockReturnValue(false);
 				const { service, agentRepository } = makeService();
 				const agent = makeAgent();
 				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);

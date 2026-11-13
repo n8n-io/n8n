@@ -7,6 +7,7 @@ import { defineComponent, h, nextTick, ref, shallowRef } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowToolConfigContent from '../components/WorkflowToolConfigContent.vue';
 import WorkflowToolInputs from '../components/WorkflowToolInputs.vue';
@@ -146,30 +147,32 @@ describe('WorkflowToolConfigContent', () => {
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
 	});
 
-	it('keeps approval controls together before Advanced', async () => {
-		const { getByTestId, getByRole, queryByRole } = renderForm(
-			createRef({ requireApproval: true }),
-			{
-				getConfig: () => null,
-				saveConfiguration: vi.fn(),
-			},
-		);
+	it('connects approval and Advanced as separate sections in one group', async () => {
+		mockedStore(useSettingsStore).isAgentModuleActive = vi.fn().mockReturnValue(true);
+		const { getByTestId, container } = renderForm(createRef({ requireApproval: true }), {
+			getConfig: () => null,
+			saveConfiguration: vi.fn(),
+		});
 		const toggle = getByTestId('agent-tool-approval-toggle');
-		const destination = getByRole('combobox', { name: 'agents.hitl.route' });
+		const destination = container.querySelector('[data-testid="agent-review"]')!;
+		const group = getByTestId('agent-workflow-tool-settings');
+		const approval = getByTestId('agent-workflow-tool-approval');
 		const advanced = getByTestId('agent-workflow-tool-advanced');
 
-		expect(
-			toggle.compareDocumentPosition(destination) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(destination).toContainElement(toggle);
 		expect(
 			destination.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+		expect(approval.parentElement).toBe(group);
+		expect(advanced.parentElement?.parentElement).toBe(group);
+		expect(approval).not.toContainElement(advanced);
+		expect(toggle).toBeVisible();
 		expect(advanced).toHaveAttribute('aria-expanded', 'false');
 		await fireEvent.click(advanced);
 		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
 
 		await fireEvent.click(toggle);
-		expect(queryByRole('combobox', { name: 'agents.hitl.route' })).not.toBeInTheDocument();
+		expect(container.querySelector('[data-testid="agent-review-add"]')).not.toBeInTheDocument();
 		expect(advanced).toHaveAttribute('aria-expanded', 'true');
 	});
 

@@ -19,17 +19,17 @@ describe('AgentsConfig plan tools', () => {
 	});
 });
 
-describe('AgentsConfig human interactions', () => {
+describe('AgentsConfig human review', () => {
 	afterEach(() => {
 		vi.unstubAllEnvs();
 		Container.reset();
 	});
 	it.each([
 		['', false],
-		['human-interactions', true],
+		['human-review', true],
 	])('enables configured approvals with modules=%s', (modules, enabled) => {
 		vi.stubEnv('N8N_AGENTS_MODULES', modules);
 		Container.reset();
-		expect(Container.get(AgentsConfig).humanInteractionsEnabled).toBe(enabled);
+		expect(Container.get(AgentsConfig).humanReviewEnabled).toBe(enabled);
 	});
 });

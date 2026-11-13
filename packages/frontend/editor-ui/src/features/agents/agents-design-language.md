@@ -231,6 +231,23 @@ Approval method uses Workflow on the left and Connected channel on the right.
 Disable switching to Connected channel when no supported channel is attached.
 Show the reason as a muted subtitle beside that option.
 
+### Pill fields
+
+Use `AgentPillField` for named selections in tool and review modals. Keep the
+label inside the border on the left. Use the same medium label size as modal fields. Put an optional subtitle below
+the label with the section subtitle size and colour. Align the selected pills to the right.
+Keep a ghost plus button at the far right. Centre labels vertically beside their controls, including when pills wrap. Centre the plus
+vertically with the pills. Use the large border radius and
+standard spacing tokens. Let pills wrap without clipping their shadows or controls.
+Truncate long names and keep their full name in the title. Keep the removable pill end padding compact; the remove button already supplies its hit area.
+
+The plus opens the options menu directly. Do not nest a select or input inside it. Exclude selected items. Show the item's icon
+and name in the menu and pill. The remove button detaches only that item.
+Keep selection order. Disable adding, editing, and removing under edit locks.
+Use a leading Create human review action in the tool review menu.
+Label the tool attachment field Before tools. Only list the Agent's attached
+tools and MCP servers. Keep its changes local until Save.
+
 ### Channel behavior settings
 
 Put optional channel behavior controls in the channel edit view after setup.
@@ -302,8 +319,11 @@ the dialog reaches this limit. Keep short modals sized to their content.
 Picker steps can keep a minimum height for their result list.
 
 Keep the approval toggle and its destination selector together in tool forms.
-Place Advanced settings after the approval controls. Put the Advanced header
-and expanded content inside one bordered container.
+Place Advanced settings after the approval controls. Join both sections in one
+bordered group with a divider and no gap. Keep approval controls outside the
+Advanced disclosure so they stay visible when it collapses. Use the standard
+button hover background on Advanced. Keep its header square at internal dividers
+and round only the corners that touch the outer group border.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
@@ -574,20 +594,24 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
+Show Human review in Settings for new and saved Agents when the module is enabled.
+Allow draft workflow review settings before the Agent is saved. Load channel
+destinations only after a saved Agent ID exists.
+
 Human review settings use `AgentChipRow` and `AgentChipButton`, as the Build
 page does. Each pill opens its configuration. Put the add action after the pills.
 Use the item context menu for removal. Do not show an Agent-wide default destination.
 
-Tools and MCP servers use an ordered row of Human review pills. Show each review's
+Tools and MCP servers use `AgentPillField` for their ordered Human review pills. Show each review's
 workflow or channel icon and name. Click its name to edit it. Put a remove action
-inside each pill. Put a plus action after the pills. Its searchable menu lists
+inside each pill. Keep the plus action at the right edge of the field. Its options menu lists
 unselected reviews and a leading Create human review action. Creating a review
 appends it to this tool's sequence. Removing a pill keeps the other reviews in order.
-Show Ask user when no reviews are selected. All selected reviews must approve.
+Show Ask user as a non-removable placeholder pill when no reviews are selected. Replace it when a reviewer is selected. Do not show an ordering hint. All selected reviews must approve.
 Run them in the order added. A rejection, expiry, or error stops the sequence.
-Label the row Human review for approval. For MCP servers, place it after tool
-permissions and use Human review for Ask first tools. Show it when at least one
-tool or category uses Ask first. Keep the approval toggle beside its review row.
+Label the row Reviewers, including for MCP servers. For MCP servers, place it after tool
+permissions. Show it when at least one
+tool or category uses Ask first. Keep Require approval inside the rounded review section. Hide the review controls when it is off. MCP servers keep their per-tool and category permissions.
 
 Configured reviews always handle approval, including in conversations.
 Only tools without a review ask the requester. Show a fixed waiting message
@@ -603,7 +627,19 @@ override state in the Agent JSON.
 
 Use the two-option switch for Approval method. Keep the no-channel reason beside
 the Connected channel label in smaller, muted text.
-Request expiry defaults to no expiry. Offer one hour, one day, and one week.
+Group Human review destination fields in a Settings Row Group below the method switch.
+Use a flat setting row for the method. Align it with section headings and leave
+`--spacing--xs` before the destination group.
+Keep the decision workflow in its own group in workflow mode. Group Review expiry
+and Before tools under Options. Put labels on the left and fill the right half
+with controls that start at one-third of the section width. Let longer values
+use more room. Use `padding: var(--spacing--sm) var(--spacing--md)` inside review configuration
+rows and tool approval sections. Centre labels vertically beside their controls.
+Use `--font-size--sm` for labels. Use `--font-size--2xs` and
+`--text-color--subtler` for subtitles. Let controls set row height. Keep section backgrounds transparent and dividers full width.
+Stack labels above full-width controls in narrow modals. Embed the tool pill
+field in its settings row without another border. Keep menus outside the group clipping area.
+Review expiry uses a select before Before tools and defaults to no expiry. Offer one hour, one day, and one week.
 Keep expiry local until Save, as the destination does.
 Keep Save disabled until the approval configuration is complete. Explain the missing
 workflow selection or channel configuration in a tooltip on hover and focus.
@@ -618,7 +654,7 @@ Destination type control. Use the same form field style for searchable destinati
 user results with a user icon. Keep search and pagination in the destination menu.
 Size the list to its results, up to six rows. Skip empty provider pages during
 lookup. Show Load more only with results and a continuation cursor.
-Show attached tools in a multiple select with the same icon and name pills as Build.
+Show attached tools in the Before tools pill field, with the same icons and names as Build.
 Keep attachment edits local until Save. Selecting a tool enables approval and appends this review to its sequence.
 Removing a selection detaches only this review. The other reviews keep their order.
 Removing the last review restores the current conversational approval behavior.

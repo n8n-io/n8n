@@ -28,6 +28,9 @@ function optionKey(option: AgentHitlOption) {
 function optionIcon(option?: AgentHitlOption) {
 	return option?.kind === 'user' ? 'user' : option?.kind === 'channel' ? 'hash' : props.icon;
 }
+function optionName(option: AgentHitlOption) {
+	return option.kind === 'channel' ? option.name.replace(/^#/, '') : option.name;
+}
 const keyedOptions = computed(() =>
 	options.value.map((option) => ({ ...option, key: optionKey(option) })),
 );
@@ -150,7 +153,7 @@ function move(event: KeyboardEvent) {
 			>
 				<N8nIcon :icon="optionIcon(modelValue)" :size="16" />
 				<span :class="[$style.value, !modelValue && $style.placeholder]">{{
-					modelValue?.name ?? label
+					modelValue ? optionName(modelValue) : label
 				}}</span>
 				<N8nIcon icon="chevron-down" :size="16" color="text-light" />
 			</button>
@@ -198,7 +201,7 @@ function move(event: KeyboardEvent) {
 								@click="select(item)"
 							>
 								<N8nIcon :icon="optionIcon(item)" :size="16" />
-								<span :class="$style.value">{{ item.name }}</span>
+								<span :class="$style.value">{{ optionName(item) }}</span>
 							</button>
 						</template>
 					</N8nRecycleScroller>

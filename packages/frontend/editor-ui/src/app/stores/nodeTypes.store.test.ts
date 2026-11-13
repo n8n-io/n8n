@@ -147,16 +147,13 @@ describe('useNodeTypesStore', () => {
 			expect(store.isNodeTypeModuleDisabled(MESSAGE_AN_AGENT)).toBe(true);
 		});
 
-		it.each([false, true])(
-			'shows decision nodes when Human interactions is enabled=%s',
-			(enabled) => {
-				if (enabled) activeModules.push('human-interactions');
-				for (const name of DECISION_NODES) expect(visibleNames().includes(name)).toBe(enabled);
-			},
-		);
+		it.each([false, true])('shows decision nodes when Human review is enabled=%s', (enabled) => {
+			if (enabled) activeModules.push('human-review');
+			for (const name of DECISION_NODES) expect(visibleNames().includes(name)).toBe(enabled);
+		});
 
 		it('keeps decision nodes hidden when the Agents module is disabled', () => {
-			activeModules = ['human-interactions'];
+			activeModules = ['human-review'];
 			for (const name of DECISION_NODES) expect(visibleNames()).not.toContain(name);
 		});
 

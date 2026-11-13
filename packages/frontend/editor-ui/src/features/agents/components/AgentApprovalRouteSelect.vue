@@ -1,35 +1,34 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { HUMAN_INTERACTIONS_MODULE } from '@n8n/constants';
-import {
-	N8nButton,
-	N8nCombobox2,
-	N8nIcon,
-	N8nIconButton,
-	N8nInputLabel,
-	N8nPopover,
-	N8nText,
-	N8nTooltip,
-	type ComboboxItem,
-} from '@n8n/design-system';
+import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApprovalRoute, AgentHitlConfiguration } from '@n8n/api-types';
 import type { AgentHitlContext } from './agent-hitl.types';
-import AgentChipButton from './AgentChipButton.vue';
+import AgentPillField from './AgentPillField.vue';
+import AgentToolConfigApprovalSetting from './AgentToolConfigApprovalSetting.vue';
 import AgentHitlConfigurationModal from './AgentHitlConfigurationModal.vue';
 
-const props = defineProps<{
-	modelValue?: AgentApprovalRoute;
-	context: AgentHitlContext;
-	projectId: string;
-	disabled?: boolean;
-	label?: string;
+const props = withDefaults(
+	defineProps<{
+		modelValue?: AgentApprovalRoute;
+		context: AgentHitlContext;
+		projectId: string;
+		disabled?: boolean;
+		embedded?: boolean;
+		label?: string;
+		approvalRequired?: boolean;
+	}>(),
+	{ approvalRequired: undefined },
+);
+const emit = defineEmits<{
+	'update:modelValue': [value: AgentApprovalRoute | undefined];
+	'update:approvalRequired': [value: boolean];
 }>();
-const emit = defineEmits<{ 'update:modelValue': [value: AgentApprovalRoute | undefined] }>();
 const i18n = useI18n();
 const label = computed(() => props.label ?? i18n.baseText('agents.hitl.route'));
-const enabled = computed(() => useSettingsStore().isAgentModuleActive(HUMAN_INTERACTIONS_MODULE));
+const enabled = computed(() => useSettingsStore().isAgentModuleActive(HUMAN_REVIEW_MODULE));
 const modalOpen = ref(false);
 const editing = ref<AgentHitlConfiguration>();
 const open = ref(false);
@@ -38,33 +37,40 @@ const selectedIds = computed(() =>
 	props.modelValue?.type === 'configuration' ? props.modelValue.configurationIds : [],
 );
 const selected = computed(() =>
-	selectedIds.value.map((id) => ({
-		id,
-		configuration: configurations.value.find((entry) => entry.id === id),
-	})),
+	selectedIds.value.map((id) => {
+		const configuration = configurations.value.find((entry) => entry.id === id);
+		return {
+			value: id,
+			label: configuration?.name ?? id,
+			icon: configuration?.method === 'workflow' ? ('workflow' as const) : configuration?.channel,
+			invalid: !configuration,
+			editable: !!configuration,
+		};
+	}),
 );
-const items = computed<ComboboxItem[]>(() => [
+const items = computed<Array<DropdownMenuItemProps<string>>>(() => [
 	{
-		value: '__create_review__',
+		id: '__create_review__',
 		label: i18n.baseText('agents.hitl.create'),
-		icon: 'plus',
-		onSelect: (event: Event) => {
-			event.preventDefault();
-			if (props.disabled) return;
-			open.value = false;
-			editing.value = undefined;
-			modalOpen.value = true;
-		},
+		icon: { type: 'icon', value: 'plus' },
+		suppressCloseAutoFocus: true,
 	},
-	{ type: 'separator' },
 	...configurations.value
 		.filter((configuration) => !selectedIds.value.includes(configuration.id))
-		.map((configuration) => ({
-			value: configuration.id,
+		.map((configuration, index) => ({
+			id: configuration.id,
 			label: configuration.name,
-			icon: configuration.method === 'workflow' ? ('workflow' as const) : configuration.channel,
+			icon: {
+				type: 'icon' as const,
+				value: configuration.method === 'workflow' ? ('workflow' as const) : configuration.channel,
+			},
+			divided: index === 0,
 		})),
 ]);
+function updateApprovalRequired(value: boolean) {
+	if (!props.disabled) emit('update:approvalRequired', value);
+}
+
 function update(ids: string[]) {
 	if (props.disabled) return;
 	emit(
@@ -73,6 +79,13 @@ function update(ids: string[]) {
 	);
 }
 function select(value: unknown) {
+	if (props.disabled) return;
+	if (value === '__create_review__') {
+		open.value = false;
+		editing.value = undefined;
+		modalOpen.value = true;
+		return;
+	}
 	if (typeof value !== 'string' || !configurations.value.some((entry) => entry.id === value))
 		return;
 	if (!selectedIds.value.includes(value)) update([...selectedIds.value, value]);
@@ -81,7 +94,8 @@ function select(value: unknown) {
 function remove(id: string) {
 	update(selectedIds.value.filter((value) => value !== id));
 }
-function edit(configuration: AgentHitlConfiguration | undefined) {
+function edit(id: string) {
+	const configuration = configurations.value.find((entry) => entry.id === id);
 	if (!configuration || props.disabled) return;
 	editing.value = configuration;
 	modalOpen.value = true;
@@ -106,82 +120,29 @@ watch(
 
 <template>
 	<div v-if="enabled" data-testid="agent-approval-route">
-		<N8nInputLabel :label="label">
-			<div :class="$style.reviews" role="group" :aria-label="label">
-				<N8nText v-if="!selected.length" size="small" color="text-light">{{
-					i18n.baseText('agents.hitl.useDefault')
-				}}</N8nText>
-				<AgentChipButton
-					v-for="{ id, configuration } in selected"
-					:key="id"
-					:clickable="false"
-					:class="$style.pill"
-					:icon="configuration?.method === 'workflow' ? 'workflow' : configuration?.channel"
-					:invalid="!configuration"
-					data-testid="agent-review-pill"
-				>
-					<span :class="$style.pillContent">
-						<button
-							type="button"
-							:class="$style.pillName"
-							:disabled="disabled || !configuration"
-							@click="edit(configuration)"
-						>
-							{{ configuration?.name ?? id }}
-						</button>
-						<N8nIconButton
-							icon="x"
-							variant="ghost"
-							size="small"
-							:disabled="disabled"
-							:aria-label="
-								i18n.baseText('agents.hitl.removeReview', {
-									interpolate: { name: configuration?.name ?? id },
-								})
-							"
-							data-testid="agent-review-remove"
-							@click="remove(id)"
-						/>
-					</span>
-				</AgentChipButton>
-				<N8nPopover
-					v-model:open="open"
-					:teleported="false"
-					align="end"
-					:content-class="$style.menu"
-				>
-					<template #trigger>
-						<N8nTooltip :content="i18n.baseText('agents.hitl.addReview')" :teleported="false">
-							<N8nButton
-								variant="ghost"
-								size="small"
-								icon-only
-								:disabled="disabled"
-								:aria-label="i18n.baseText('agents.hitl.addReview')"
-								data-testid="agent-review-add"
-							>
-								<template #icon><N8nIcon icon="plus" :size="16" /></template>
-							</N8nButton>
-						</N8nTooltip>
-					</template>
-					<template #content>
-						<N8nCombobox2
-							:items="items"
-							:disabled="disabled"
-							:teleported="false"
-							auto-focus
-							:open="true"
-							:aria-label="i18n.baseText('agents.hitl.selectReview')"
-							:placeholder="i18n.baseText('agents.hitl.selectReview')"
-							@update:model-value="select"
-						/>
-					</template>
-				</N8nPopover>
-			</div>
-		</N8nInputLabel>
-		<N8nText v-if="selected.length" size="small" color="text-light">{{
-			i18n.baseText('agents.hitl.reviewOrder')
-		}}</N8nText>
+		<AgentPillField
+			v-model:open="open"
+			:label="label"
+			:embedded="embedded"
+			:add-label="i18n.baseText('agents.hitl.addReview')"
+			:show-items="approvalRequired !== false"
+			:empty-text="i18n.baseText('agents.hitl.useDefault')"
+			:pills="selected"
+			:items="items"
+			:disabled="disabled"
+			test-id="agent-review"
+			@select="select"
+			@remove="remove"
+			@edit="edit"
+		>
+			<template v-if="approvalRequired !== undefined" #header>
+				<AgentToolConfigApprovalSetting
+					:model-value="approvalRequired"
+					:disabled="disabled"
+					@update:model-value="updateApprovalRequired"
+				/>
+			</template>
+		</AgentPillField>
 		<AgentHitlConfigurationModal
 			v-if="modalOpen"
 			:configuration="editing"
@@ -193,43 +154,10 @@ watch(
 			@close="modalOpen = false"
 		/>
 	</div>
+	<AgentToolConfigApprovalSetting
+		v-else-if="approvalRequired !== undefined"
+		:model-value="approvalRequired"
+		:disabled="disabled"
+		@update:model-value="updateApprovalRequired"
+	/>
 </template>
-
-<style module lang="scss">
-@use '@n8n/design-system/css/mixins/focus';
-.reviews {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
-	min-height: var(--height--xl);
-	padding: var(--spacing--2xs);
-	border: var(--border-width) solid var(--border-color);
-	border-radius: var(--radius--base);
-}
-.pill {
-	max-width: 100%;
-}
-.pillContent {
-	pointer-events: auto;
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	max-width: 100%;
-}
-.pillName {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	@include focus.focus-visible-ring;
-	border: 0;
-	padding: 0;
-	background: transparent;
-	color: inherit;
-	font: inherit;
-	cursor: pointer;
-}
-.menu {
-	width: var(--spacing--5xl);
-}
-</style>

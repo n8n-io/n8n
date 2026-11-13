@@ -9,7 +9,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { AgentsConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
@@ -38,11 +38,9 @@ import { AgentDecisionWorkflowService } from '@/modules/agents/approval/agent-de
 import { getAgentRuntimeDefinitionHash } from '@/modules/agents/utils/agent-config-hash';
 import { registerApprovalRuntime } from '@/modules/agents/approval/register-approval-runtime';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
-import {
-	AgentChatIntegration,
-	ChatIntegrationRegistry,
-} from '@/modules/agents/integrations/agent-chat-integration';
-import { AgentCredentialLookupService } from '@/modules/agents/integrations/agent-credential-lookup.service';
+import type { AgentChatIntegration } from '@/modules/agents/integrations/agent-chat-integration';
+import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
+import type { AgentCredentialLookupService } from '@/modules/agents/integrations/agent-credential-lookup.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import { slackHitl } from '@/modules/agents/integrations/platforms/slack/slack-hitl';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
@@ -136,10 +134,10 @@ const channel: INodeType = {
 const trigger: INodeType = {
 	description: {
 		name: 'agentDecisionTrigger',
-		displayName: 'Agent decision',
+		displayName: 'Agent review',
 		group: ['trigger'],
 		version: 1,
-		defaults: { name: 'Agent decision' },
+		defaults: { name: 'Agent review' },
 		description: 'Start the test approval',
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
@@ -223,7 +221,7 @@ describe('Durable channel approval lifecycle', () => {
 				Container.get(AgentBackgroundJobService),
 				jobs,
 				executions,
-				mock<AgentsConfig>({ humanInteractionsEnabled: true }),
+				mock<AgentsConfig>({ humanReviewEnabled: true }),
 			);
 			const config: AgentJsonConfig = {
 				name: 'Reviewer',
@@ -231,7 +229,7 @@ describe('Durable channel approval lifecycle', () => {
 				instructions: 'Review the request',
 				hitlConfigurations: [
 					{
-						id: 'interaction_test',
+						id: 'review_test',
 						name: 'Review',
 						method: 'channel',
 						channel: 'slack',
@@ -274,7 +272,7 @@ describe('Durable channel approval lifecycle', () => {
 			if (sequence && config.hitlConfigurations?.[0])
 				config.hitlConfigurations.push({
 					...config.hitlConfigurations[0],
-					id: 'interaction_second',
+					id: 'review_second',
 				});
 			const handler = vi.fn().mockResolvedValue({ saved: true });
 			const tool = new Tool('save')

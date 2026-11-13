@@ -4,7 +4,7 @@ Human review routes a saved Agent's tool approvals through decision workflows or
 its connected channels. A configured route always handles the request.
 Without a route, the tool keeps its existing conversational approval behavior.
 
-Enable the Agents module and include `human-interactions` in `N8N_AGENTS_MODULES`.
+Enable the Agents module and include `human-review` in `N8N_AGENTS_MODULES`.
 The option is off by default. It gates configuration writes, new configured
 requests, and decision node discovery. Pending requests can finish after it is off.
 Message an Agent still defaults to version 3.1. Select version 4 to let a workflow
@@ -14,7 +14,7 @@ wait for an Agent's approval request.
 
 | Destination | Support | Requirements |
 | --- | --- | --- |
-| Decision workflow | Supported | Start with Agent decision. Publish the workflow for published Agent runs. |
+| Decision workflow | Supported | Start with Agent review. Publish the workflow for published Agent runs. |
 | Slack | Supported | Connected credential. Channel and user read scopes for destination search. Invite the bot to the channel. |
 | Telegram | Supported | Connected credential. Numeric user ID. The user must first message the bot. |
 | Discord | Supported | Connected credential. Server and channel or user IDs. Server Members intent for user search. |
@@ -36,7 +36,7 @@ route applies to its Ask first tools.
 
 Definitions stay in `hitlConfigurations` in the Agent JSON. Assignments use
 `approvalRoute: { type: "configuration", configurationIds: [firstReviewId, secondReviewId] }`. New definition IDs
-use `interaction_<nanoid>`. Names follow the selected destination until the user
+use `review_<nanoid>`. Names follow the selected destination until the user
 sets a custom name. No separate configuration table is used.
 
 Package export includes decision workflow requirements. Import remaps their IDs.
@@ -52,7 +52,7 @@ A workflow tool must still have the version that was reviewed when it starts.
 
 ## Decision workflows
 
-The Agent decision trigger receives one item with these fields:
+The Agent review trigger receives one item with these fields:
 
 - `requestId`, `agentId`, and `toolName` identify the request.
 - `description` explains the proposed action.
@@ -63,7 +63,7 @@ The Agent decision trigger receives one item with these fields:
 
 Add review steps and return one terminal item with `{ approved: boolean }`.
 `reason` is optional. Existing send-and-wait nodes can return this shape directly.
-The optional Respond to Agent decision node creates the same result. Its default
+The optional Respond to agent review node creates the same result. Its default
 is rejection. An unconditional approval is not a human review step.
 
 ## Runtime and ownership

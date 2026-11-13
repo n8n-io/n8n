@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { N8nIcon, N8nSelect2, type IconName, type SelectOptionBase } from '@n8n/design-system';
+import { N8nIcon, type IconName, type DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -9,17 +9,21 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { hitlMcpServerKey, hitlToolKey } from '../utils/hitlConfiguration';
-import AgentChipButton from './AgentChipButton.vue';
+import AgentPillField from './AgentPillField.vue';
 
 const props = defineProps<{
 	modelValue: string[];
 	config: AgentJsonConfig | null;
+	disabled?: boolean;
+	embedded?: boolean;
 	getCustomToolName?: (id: string) => string | undefined;
 }>();
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-type ToolOption = SelectOptionBase<string> & {
+type ToolOption = {
+	value: string;
+	label: string;
 	icon: IconName;
 	nodeType: SimplifiedNodeType | null;
 };
@@ -47,81 +51,70 @@ const options = computed<ToolOption[]>(() => [
 			nodeTypesStore.getNodeType(server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE) ?? null,
 	})),
 ]);
-const selected = computed(() =>
-	options.value.filter((option) => props.modelValue.includes(option.value)),
-);
 const optionByValue = computed(
 	() => new Map(options.value.map((option) => [option.value, option])),
 );
-
-function update(value: unknown) {
-	if (Array.isArray(value) && value.every((key): key is string => typeof key === 'string'))
-		emit('update:modelValue', value);
+const selected = computed(() =>
+	props.modelValue
+		.map((value) => optionByValue.value.get(value))
+		.filter((option): option is ToolOption => !!option),
+);
+const available = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	options.value
+		.filter((option) => !props.modelValue.includes(option.value))
+		.map((option) => ({
+			id: option.value,
+			label: option.label,
+			icon: { type: 'icon', value: option.icon },
+		})),
+);
+function add(value: string) {
+	if (props.disabled || props.modelValue.includes(value) || !optionByValue.value.has(value)) return;
+	emit('update:modelValue', [...props.modelValue, value]);
+}
+function remove(value: string) {
+	if (!props.disabled)
+		emit(
+			'update:modelValue',
+			props.modelValue.filter((key) => key !== value),
+		);
 }
 </script>
 
 <template>
-	<N8nSelect2
-		:items="options"
-		:model-value="modelValue"
-		multiple
-		size="large"
-		:aria-label="i18n.baseText('agents.hitl.tools')"
-		:placeholder="i18n.baseText('agents.hitl.toolsPlaceholder')"
-		data-testid="agent-hitl-tools"
-		@update:model-value="update"
+	<AgentPillField
+		:label="i18n.baseText('agents.hitl.tools')"
+		:description="i18n.baseText('agents.hitl.toolsDescription')"
+		:add-label="i18n.baseText('agents.hitl.addTool')"
+		:pills="selected"
+		:items="available"
+		:disabled="disabled"
+		:embedded="embedded"
+		test-id="agent-hitl-tool"
+		@select="add"
+		@remove="remove"
 	>
-		<template #default>
-			<span v-if="selected.length" :class="$style.tags">
-				<AgentChipButton
-					v-for="tool in selected"
-					:key="tool.value"
-					:clickable="false"
-					:icon="tool.nodeType ? undefined : tool.icon"
-					:title="tool.label"
-					:class="$style.tag"
-					data-testid="agent-hitl-tool-tag"
-				>
-					<template v-if="tool.nodeType" #icon
-						><NodeIcon :node-type="tool.nodeType" :size="16"
-					/></template>
-					{{ tool.label }}
-				</AgentChipButton>
-			</span>
-			<span v-else :class="$style.placeholder">{{
-				i18n.baseText('agents.hitl.toolsPlaceholder')
-			}}</span>
+		<template #pill-icon="{ item }">
+			<NodeIcon
+				v-if="optionByValue.get(item.value)?.nodeType"
+				:node-type="optionByValue.get(item.value)?.nodeType"
+				:size="16"
+			/>
+			<N8nIcon v-else :icon="item.icon ?? 'globe'" :size="16" />
 		</template>
 		<template #item-leading="{ item, ui }">
 			<NodeIcon
-				v-if="optionByValue.get(String(item.value))?.nodeType"
-				:node-type="optionByValue.get(String(item.value))?.nodeType"
+				v-if="optionByValue.get(item.id)?.nodeType"
+				:node-type="optionByValue.get(item.id)?.nodeType"
 				:size="16"
 				:class="ui.class"
 			/>
 			<N8nIcon
 				v-else
-				:icon="optionByValue.get(String(item.value))?.icon ?? 'globe'"
+				:icon="optionByValue.get(item.id)?.icon ?? 'globe'"
 				:size="16"
 				:class="ui.class"
 			/>
 		</template>
-	</N8nSelect2>
+	</AgentPillField>
 </template>
-
-<style module lang="scss">
-.tags {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	// Keep pill shadows inside the select's clipped value area.
-	padding: var(--spacing--5xs);
-}
-.tag {
-	height: var(--height--sm);
-	max-width: 100%;
-}
-.placeholder {
-	color: var(--input--placeholder--color);
-}
-</style>

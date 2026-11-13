@@ -15,7 +15,7 @@ import type {
 } from '../types';
 import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.types';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { HUMAN_INTERACTIONS_MODULE } from '@n8n/constants';
+import { HUMAN_REVIEW_MODULE } from '@n8n/constants';
 import { useTypeAvailability } from '@n8n/frontend-module-type-availability-policies';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -411,8 +411,8 @@ defineExpose({ onSetupTaskAction });
 				>
 					<div :class="$style.settingsCards">
 						<AgentHitlPanel
-							v-if="!agentUnsaved && settingsStore.isAgentModuleActive(HUMAN_INTERACTIONS_MODULE)"
-							:agent-id="agentId"
+							v-if="settingsStore.isAgentModuleActive(HUMAN_REVIEW_MODULE)"
+							:agent-id="agentUnsaved ? '' : agentId"
 							:config="localConfig"
 							:custom-tools="agent?.tools"
 							:project-id="projectId"

@@ -7,7 +7,7 @@ it('links an unpublished decision workflow through its human review', () => {
 		{
 			code: 'incompatible_reference',
 			path: 'hitlConfigurations.0.workflowId',
-			capability: { kind: 'humanInteraction', id: 'interaction_id', index: 0 },
+			capability: { kind: 'humanReview', id: 'review_id', index: 0 },
 			reason: 'not_published',
 		},
 	];
@@ -17,7 +17,7 @@ it('links an unpublished decision workflow through its human review', () => {
 			[],
 			[
 				{
-					id: 'interaction_id',
+					id: 'review_id',
 					name: 'Review changes',
 					method: 'workflow',
 					workflowId: 'decision-workflow',

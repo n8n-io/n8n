@@ -184,6 +184,9 @@ const customToolTitle = computed(() => {
 const title = computed(() => (isCustomTool.value ? customToolTitle.value : nodeName.value));
 
 const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const hasReviewContext = computed(
+	() => supportsApproval.value && !!props.data.approvalContext && !!props.data.projectId,
+);
 const showApprovalSetting = computed(
 	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
 );
@@ -398,10 +401,10 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 			:class="$style.customToolViewer"
 		/>
 		<AgentToolConfigApprovalSetting
-			v-if="isCustomTool && showApprovalSetting"
+			v-if="isCustomTool && showApprovalSetting && !hasReviewContext"
 			v-model="approvalRequired"
 		/>
-		<div v-else :class="$style.configureTab">
+		<div v-if="!isCustomTool" :class="$style.configureTab">
 			<AgentToolConfigWorkflowContent
 				v-if="workflowInitialRef"
 				ref="workflowContentRef"
@@ -414,10 +417,15 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:node-name="handleNodeNameUpdate"
 				@update:approval-required="approvalRequired = $event"
 			>
-				<template #approvalSettings>
+				<template
+					v-if="data.approvalContext && data.projectId && supportsApproval"
+					#approvalSettings="{ embedded }"
+				>
 					<AgentApprovalRouteSelect
-						v-if="data.approvalContext && data.projectId && supportsApproval && approvalRequired"
+						v-if="data.approvalContext && data.projectId"
+						:embedded="embedded"
 						v-model="approvalRoute"
+						v-model:approval-required="approvalRequired"
 						:context="data.approvalContext"
 						:project-id="data.projectId"
 						:disabled="isRestricted"
@@ -452,7 +460,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:node="draftNode = $event"
 			/>
 			<AgentToolConfigApprovalSetting
-				v-if="!isMcpTool && initialNode && showApprovalSetting"
+				v-if="!isMcpTool && initialNode && showApprovalSetting && !hasReviewContext"
 				v-model="approvalRequired"
 				:disabled="isRestricted"
 			/>
@@ -471,7 +479,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				data.approvalContext &&
 				data.projectId &&
 				supportsApproval &&
-				(approvalRequired ||
+				((!isMcpTool && showApprovalSetting) ||
 					(isMcpTool &&
 						mcpPermissions &&
 						(mcpPermissions.categories.read === 'require_approval' ||
@@ -480,6 +488,8 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 			"
 			v-model="approvalRoute"
 			:label="isMcpTool ? i18n.baseText('agents.hitl.mcpRoute') : undefined"
+			:approval-required="isMcpTool ? undefined : approvalRequired"
+			@update:approval-required="approvalRequired = $event"
 			:context="data.approvalContext"
 			:project-id="data.projectId"
 			:disabled="isRestricted"

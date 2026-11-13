@@ -1040,7 +1040,7 @@ describe('updateParentExecutionWithChildResults', () => {
 			},
 		}) as unknown as IRun;
 
-	it('waits for all Agent decisions and preserves the caller input on resume', async () => {
+	it('waits for all Agent reviews and preserves the caller input on resume', async () => {
 		const persistence = mockInstance(ExecutionPersistence);
 		const parent = waitingParent();
 		const stack = parent.data.executionData!.nodeExecutionStack[0];

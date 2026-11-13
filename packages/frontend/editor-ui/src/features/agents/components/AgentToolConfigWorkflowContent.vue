@@ -69,13 +69,13 @@ defineExpose({
 		@update:valid="emit('update:valid', $event)"
 		@update:node-name="emit('update:node-name', $event)"
 	>
-		<template #commonSettings>
-			<AgentToolConfigApprovalSetting
-				v-if="props.showApprovalSetting"
-				:model-value="props.approvalRequired ?? false"
-				@update:model-value="emit('update:approvalRequired', $event)"
-			/>
-			<slot name="approvalSettings" />
+		<template v-if="props.showApprovalSetting" #commonSettings>
+			<slot name="approvalSettings" :embedded="true">
+				<AgentToolConfigApprovalSetting
+					:model-value="props.approvalRequired ?? false"
+					@update:model-value="emit('update:approvalRequired', $event)"
+				/>
+			</slot>
 		</template>
 	</WorkflowToolConfigContent>
 </template>

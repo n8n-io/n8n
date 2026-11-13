@@ -8,14 +8,14 @@ import {
 
 export class AgentDecisionResponse implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Respond to Agent decision',
+		displayName: 'Respond to agent review',
 		name: 'agentDecisionResponse',
 		icon: 'node:agent-decision-response',
 		iconColor: 'purple',
 		group: ['transform'],
 		version: 1,
 		description: 'Return approval or rejection to the Agent',
-		defaults: { name: 'Respond to Agent decision' },
+		defaults: { name: 'Respond to agent review' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [

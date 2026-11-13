@@ -55,12 +55,12 @@ const config: AgentJsonConfig = {
 	model: 'anthropic/test',
 	instructions: 'Help',
 };
-function render(configuration?: AgentHitlConfiguration, agentConfig = config) {
+function render(configuration?: AgentHitlConfiguration, agentConfig = config, agentId = 'agent') {
 	return mount(AgentHitlConfigurationModal, {
 		props: {
 			projectId: 'project',
 			nextNumber: 8,
-			context: { agentId: 'agent', getConfig: () => agentConfig, saveConfiguration: vi.fn() },
+			context: { agentId, getConfig: () => agentConfig, saveConfiguration: vi.fn() },
 			configuration,
 		},
 		global: {
@@ -150,7 +150,12 @@ it('explains the disabled Save on focus until a workflow is selected', async () 
 	expect(openWorkflow.attributes('aria-label')).toBe('Open workflow in a new tab');
 	expect(save.attributes('disabled')).toBeUndefined();
 	expect(trigger.attributes('tabindex')).toBeUndefined();
-	expect(wrapper.getComponent(N8nTooltip).props('disabled')).toBe(true);
+	expect(
+		wrapper
+			.findAllComponents(N8nTooltip)
+			.find((tooltip) => tooltip.find('[data-testid="agent-hitl-save-trigger"]').exists())
+			?.props('disabled'),
+	).toBe(true);
 	await save.trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ method: 'workflow', workflowId: 'review' }),
@@ -176,12 +181,21 @@ it('names a new workflow from the Agent and the next available number', async ()
 			name: 'Support Agent approval workflow 2',
 			projectId: 'project',
 			nodes: [
-				expect.objectContaining({ type: 'n8n-nodes-base.agentDecisionTrigger' }),
 				expect.objectContaining({
+					name: 'Agent review',
+					type: 'n8n-nodes-base.agentDecisionTrigger',
+				}),
+				expect.objectContaining({
+					name: 'Respond to agent review',
 					type: 'n8n-nodes-base.agentDecisionResponse',
 					parameters: { approved: false },
 				}),
 			],
+			connections: {
+				'Agent review': {
+					main: [[{ node: 'Respond to agent review', type: 'main', index: 0 }]],
+				},
+			},
 		}),
 	);
 	const save = wrapper.findAll('button').find((button) => button.text() === 'Save');
@@ -207,7 +221,12 @@ it('saves a Telegram destination and rejects a username', async () => {
 	expect(wrapper.find('[role="alert"]').exists()).toBe(false);
 	await wrapper.find('[data-testid="agent-hitl-telegram-user"]').setValue('12345');
 	expect(save.attributes('disabled')).toBeUndefined();
-	expect(wrapper.getComponent(N8nTooltip).props('disabled')).toBe(true);
+	expect(
+		wrapper
+			.findAllComponents(N8nTooltip)
+			.find((tooltip) => tooltip.find('[data-testid="agent-hitl-save-trigger"]').exists())
+			?.props('disabled'),
+	).toBe(true);
 	await save.trigger('click');
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({
@@ -345,7 +364,7 @@ it.each(['none', 3600, 86400, 604800] as const)('saves the request expiry %s', a
 	await flushPromises();
 	const selector = getSelect(wrapper, 'agent-hitl-expiry');
 	expect(selector.props('modelValue')).toBe('none');
-	selector.vm.$emit('update:modelValue', expiry);
+	selector.vm.$emit('update:modelValue', String(expiry));
 	await wrapper.vm.$nextTick();
 	await wrapper
 		.findAll('button')
@@ -366,7 +385,7 @@ it('opens a saved expiry and allows requests with no expiry again', async () => 
 	});
 	await flushPromises();
 	const selector = getSelect(wrapper, 'agent-hitl-expiry');
-	expect(selector.props('modelValue')).toBe(86400);
+	expect(selector.props('modelValue')).toBe('86400');
 	selector.vm.$emit('update:modelValue', 'none');
 	await wrapper.vm.$nextTick();
 	await wrapper
@@ -463,7 +482,7 @@ it('generates names from workflow choices and keeps automatic naming after Save'
 	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
 	const saved = wrapper.emitted('save')?.[0]?.[0] as AgentHitlConfiguration;
 	expect(saved).toMatchObject({ name: 'Confirm deployment', nameOverridden: false });
-	expect(saved.id).toMatch(/^interaction_[A-Za-z0-9]{16}$/);
+	expect(saved.id).toMatch(/^review_[A-Za-z0-9]{16}$/);
 	const reopened = render(saved);
 	await flushPromises();
 	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
@@ -471,7 +490,7 @@ it('generates names from workflow choices and keeps automatic naming after Save'
 	expect(reopened.get('[data-testid="title"]').element).toHaveProperty('value', 'Review expenses');
 });
 
-it('adopts the created workflow name unless the user has renamed the interaction', async () => {
+it('adopts the created workflow name unless the user has renamed the review', async () => {
 	const wrapper = render();
 	await flushPromises();
 	const create = wrapper
@@ -564,4 +583,65 @@ it('renders a saved channel icon and label after loading without opening the sel
 	expect(select.attributes('aria-expanded')).toBe('false');
 	expect(select.text()).toBe('Slack');
 	expect(select.get('[data-icon="slack"]').exists()).toBe(true);
+});
+
+it('shows the expiry select before Before tools without helper text', async () => {
+	const wrapper = render();
+	await flushPromises();
+	const expiry = getSelect(wrapper, 'agent-hitl-expiry');
+	expect(expiry.props('size')).toBe('large');
+	expect(expiry.props('items')).toHaveLength(4);
+	expect(
+		expiry.element.compareDocumentPosition(wrapper.getComponent(AgentHitlToolsSelect).element) &
+			Node.DOCUMENT_POSITION_FOLLOWING,
+	).toBeTruthy();
+	expect(wrapper.text()).not.toContain("The tool won't run if the approval request expires.");
+});
+
+it('groups the workflow separately from review options', async () => {
+	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
+	await flushPromises();
+	const destination = wrapper.get('[data-testid="agent-hitl-destination-section"]');
+	const options = wrapper.get('[data-testid="agent-hitl-options-section"]');
+	expect(destination.find('[data-testid="agent-hitl-workflow"]').exists()).toBe(true);
+	expect(destination.find('[data-testid="agent-hitl-expiry"]').exists()).toBe(false);
+	expect(options.text()).toContain('Options');
+	expect(options.text()).toContain('Review expiry');
+	expect(options.text()).toContain('How long to wait for review');
+	expect(options.text()).toContain('Which tools require this review');
+	expect(destination.text()).toContain('Which workflow is used to request a review');
+	expect(options.find('[data-testid="agent-hitl-expiry"]').exists()).toBe(true);
+	expect(options.getComponent(AgentHitlToolsSelect).props('embedded')).toBe(true);
+	expect(destination.find('[data-testid="agent-hitl-method"]').exists()).toBe(false);
+});
+
+it('keeps channel and destination in the same section when the method changes', async () => {
+	const wrapper = render();
+	await flushPromises();
+	wrapper.getComponent(N8nSwitch).vm.$emit('update:modelValue', true);
+	await wrapper.vm.$nextTick();
+	getSelect(wrapper, 'agent-hitl-channel').vm.$emit('update:modelValue', 'slack:slack');
+	await wrapper.vm.$nextTick();
+	const destination = wrapper.get('[data-testid="agent-hitl-destination-section"]');
+	expect(destination.find('[data-testid="agent-hitl-channel"]').exists()).toBe(true);
+	expect(destination.findComponent(AgentHitlDestinationPicker).exists()).toBe(true);
+	expect(destination.text()).toContain('Which channel to use to review');
+	expect(destination.text()).toContain('Invite the bot to the channel before you select it.');
+	expect(destination.find('[data-testid="agent-hitl-workflow"]').exists()).toBe(false);
+	expect(wrapper.get('[data-testid="agent-hitl-options-section"]').text()).toContain(
+		'Before tools',
+	);
+});
+
+it('configures workflow review before the Agent is saved without calling channel endpoints', async () => {
+	const wrapper = render(undefined, config, '');
+	await flushPromises();
+	expect(mocks.channels).not.toHaveBeenCalled();
+	expect(wrapper.getComponent(N8nSwitch).props('disabled')).toBe(true);
+	wrapper.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	await wrapper.vm.$nextTick();
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+	expect(wrapper.emitted('save')?.[0]).toEqual([
+		expect.objectContaining({ method: 'workflow', workflowId: 'review' }),
+	]);
 });

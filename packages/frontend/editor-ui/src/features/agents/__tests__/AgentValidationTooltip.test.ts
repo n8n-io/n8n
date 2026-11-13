@@ -443,12 +443,12 @@ it('describes a decision trigger without exposing its configuration ID', () => {
 			{
 				code: 'incompatible_reference',
 				path: 'hitlConfigurations.0.workflowId',
-				capability: { kind: 'humanInteraction', id: 'interaction_internal', index: 0 },
+				capability: { kind: 'humanReview', id: 'review_internal', index: 0 },
 				reason: 'no_decision_trigger',
 			},
 		],
 	});
 	expect(wrapper.text()).toContain('agents.hitl.title');
 	expect(wrapper.text()).toContain('agents.hitl.validation.noDecisionTrigger');
-	expect(wrapper.text()).not.toContain('interaction_internal');
+	expect(wrapper.text()).not.toContain('review_internal');
 });

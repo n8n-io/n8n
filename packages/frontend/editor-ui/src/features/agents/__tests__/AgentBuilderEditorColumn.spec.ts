@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -142,6 +143,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentHitlPanel.vue', () => ({
+	default: {
+		name: 'AgentHitlPanel',
+		template: '<div data-testid="agent-hitl-panel" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
+	},
+}));
+
 vi.mock('../components/AgentBudgetPanel.vue', () => ({
 	default: {
 		name: 'AgentBudgetPanel',
@@ -198,12 +208,17 @@ async function mountColumn(
 		canEditAgent: boolean;
 		isPreviewOpen: boolean;
 		agent: AgentResource | null;
+		agentUnsaved: boolean;
+		humanReviewEnabled: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
 		'../components/AgentBuilderEditorColumn.vue'
 	);
 	const pinia = createPiniaWithEvalStore();
+	vi.mocked(useSettingsStore().isAgentModuleActive).mockReturnValue(
+		overrides.humanReviewEnabled ?? false,
+	);
 
 	return mount(AgentBuilderEditorColumn, {
 		props: {
@@ -223,6 +238,7 @@ async function mountColumn(
 			agent: overrides.agent ?? null,
 			projectId: 'project-1',
 			agentId: 'agent-1',
+			agentUnsaved: overrides.agentUnsaved,
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
@@ -571,6 +587,39 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.text()).toContain('Episodic Memory');
 		expect(wrapper.find('[data-testid="agent-episodic-memory-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-observational-memory-toggle"]').exists()).toBe(false);
+	});
+
+	it('shows Human review on a new Agent and starts channel lookup only after it is saved', async () => {
+		const wrapper = await mountColumn({
+			activeMainTab: 'settings',
+			agentUnsaved: true,
+			humanReviewEnabled: true,
+		});
+		const panel = wrapper.getComponent({ name: 'AgentHitlPanel' });
+		expect(panel.props('agentId')).toBe('');
+		expect(panel.props('disabled')).toBe(false);
+		const changes = {
+			hitlConfigurations: [{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' }],
+		};
+		panel.vm.$emit('update:config', changes);
+		expect(wrapper.emitted('update:config')?.[0]).toEqual([changes]);
+		await wrapper.setProps({ agentUnsaved: false });
+		expect(panel.props('agentId')).toBe('agent-1');
+	});
+
+	it('keeps Human review hidden for new Agents when the module is disabled', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings', agentUnsaved: true });
+		expect(wrapper.findComponent({ name: 'AgentHitlPanel' }).exists()).toBe(false);
+	});
+
+	it('keeps Human review read-only on a new Agent without edit permission', async () => {
+		const wrapper = await mountColumn({
+			activeMainTab: 'settings',
+			agentUnsaved: true,
+			humanReviewEnabled: true,
+			canEditAgent: false,
+		});
+		expect(wrapper.getComponent({ name: 'AgentHitlPanel' }).props('disabled')).toBe(true);
 	});
 
 	it('renders runtime settings only on the Settings tab', async () => {

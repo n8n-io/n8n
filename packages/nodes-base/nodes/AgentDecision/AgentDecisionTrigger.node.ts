@@ -14,14 +14,15 @@ import {
 
 export class AgentDecisionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Agent decision Trigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node -- Use the Human review product name.
+		displayName: 'Agent review',
 		name: 'agentDecisionTrigger',
 		icon: 'node:agent-decision-trigger',
 		iconColor: 'purple',
 		group: ['trigger'],
 		version: 1,
 		description: 'Start a workflow when an Agent requests tool approval',
-		defaults: { name: 'Agent decision' },
+		defaults: { name: 'Agent review' },
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
@@ -68,7 +69,7 @@ export class AgentDecisionTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		if (!Container.get(AgentsConfig).humanInteractionsEnabled)
+		if (!Container.get(AgentsConfig).humanReviewEnabled)
 			throw new NodeOperationError(this.getNode(), 'Human review is not enabled on this instance');
 		if (this.getMode() !== 'manual') return {};
 		return {
@@ -87,7 +88,7 @@ export class AgentDecisionTrigger implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions) {
-		if (!Container.get(AgentsConfig).humanInteractionsEnabled)
+		if (!Container.get(AgentsConfig).humanReviewEnabled)
 			throw new NodeOperationError(this.getNode(), 'Human review is not enabled on this instance');
 		return [this.getInputData()];
 	}

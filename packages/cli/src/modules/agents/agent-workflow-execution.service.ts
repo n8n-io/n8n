@@ -708,7 +708,7 @@ export class AgentWorkflowExecutionService {
 		if (
 			workflowContext?.supportsSuspension &&
 			!workflowContext.continuation &&
-			!this.agentsConfig.humanInteractionsEnabled
+			!this.agentsConfig.humanReviewEnabled
 		)
 			throw new UserError('Message an Agent version 4 requires human review to be enabled');
 		return await this.executeForWorkflowInternal({

@@ -307,7 +307,7 @@ export class AgentConfigPreparationService {
 		// Keep persisted provider tools consistent with the web-search settings.
 		const validatedConfig = reconcileNativeWebSearch(result.config);
 		if (
-			!Container.get(AgentsConfig).humanInteractionsEnabled &&
+			!Container.get(AgentsConfig).humanReviewEnabled &&
 			(validatedConfig.hitlConfigurations?.length ||
 				validatedConfig.tools?.some((tool) => tool.approvalRoute?.type === 'configuration') ||
 				validatedConfig.mcpServers?.some(

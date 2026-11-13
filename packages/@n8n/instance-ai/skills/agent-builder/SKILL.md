@@ -193,7 +193,7 @@ Use `hitlConfigurations` in the Agent JSON for named human reviews. Do not
 create a separate configuration resource. These definitions import and export
 with the Agent. A workflow configuration
 has `id`, `name`, `method: "workflow"`, and `workflowId`. Use the canonical
-Agent resource ID form `interaction_<nanoid>` for a new configuration. A channel configuration
+Agent resource ID form `review_<nanoid>` for a new configuration. A channel configuration
 has `id`, `name`, `method: "channel"`, `channel`, `credentialId`, and
 `recipient: { kind: "channel" | "user", id, name? }`. Use a Slack, Telegram, or
 Discord connection already configured on the Agent. Teams, WhatsApp, Linear, and n8n Chat are not configurable approval destinations. Discord also requires `guildId`. Telegram requires a numeric
@@ -219,10 +219,10 @@ The UI calls these definitions Human review. Tools select a Human review
 for approval. Reviews run in the listed order. Every review must approve before the tool runs.
 A rejection, expiry, or failed review stops the sequence.
 
-A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
+A decision workflow starts with Agent review (`n8n-nodes-base.agentDecisionTrigger`). Add
 review steps and return one terminal item with `{ approved: boolean }`.
 Existing send-and-wait nodes can return this item directly. The optional
-`n8n-nodes-base.agentDecisionResponse` node builds the same result. Never use
+Respond to agent review (`n8n-nodes-base.agentDecisionResponse`) node builds the same result. Never use
 an unconditional approval as a human review step. A production run uses the
 published decision workflow. Requests have no expiry by default. Set
 `expirySeconds` to 3600, 86400, or 604800 for a one-hour, one-day, or one-week

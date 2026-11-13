@@ -81,7 +81,7 @@ describe('NodeCatalogService', () => {
 		MockNodeTypeParser.mockClear();
 
 		activeModules = ['data-table', 'agents'];
-		moduleSettings = new Map([['agents', { modules: ['human-interactions'] }]]);
+		moduleSettings = new Map([['agents', { modules: ['human-review'] }]]);
 		// A plain stub: a deep mock would proxy the settings Map and break `Map#get`.
 		const moduleRegistry = {
 			isActive: (moduleName: string) => activeModules.includes(moduleName),
@@ -280,7 +280,7 @@ describe('NodeCatalogService', () => {
 				expect(mockSearchCodeBuilderNodes).toHaveBeenCalledWith(expect.anything(), ['agent']);
 			});
 
-			test('only offers decision nodes when human interactions is enabled', async () => {
+			test('only offers decision nodes when human review is enabled', async () => {
 				moduleSettings.set('agents', { modules: [] });
 				await service.initialize();
 				await service.searchNodes(['decision']);

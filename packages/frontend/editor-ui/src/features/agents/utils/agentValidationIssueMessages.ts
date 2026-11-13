@@ -15,7 +15,7 @@ const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey
 };
 
 const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'humanInteraction.incompatible_reference': 'agents.hitl.validation.incompatibleWorkflow',
+	'humanReview.incompatible_reference': 'agents.hitl.validation.incompatibleWorkflow',
 	'subAgent.missing_reference':
 		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
 	'subAgent.incompatible_reference':
@@ -50,7 +50,7 @@ export function resolveAgentValidationIssueMessageKey(
 	issue: AgentConfigValidationIssue,
 ): BaseTextKey {
 	const { kind, toolType } = issue.capability;
-	if (kind === 'humanInteraction' && issue.reason === 'not_published')
+	if (kind === 'humanReview' && issue.reason === 'not_published')
 		return 'agents.hitl.validation.unpublishedWorkflow';
 	return (
 		(issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url')

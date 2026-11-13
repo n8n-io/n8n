@@ -1,5 +1,5 @@
 import { getAgentRuntimeDefinitionHash } from '../../utils/agent-config-hash';
-import { AgentsConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
 import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
@@ -42,7 +42,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = 
 	const executions = mock<ExecutionPersistence>();
 	const loader = mock<CallableWorkflowLoader>();
 	const jobService = mock<AgentBackgroundJobService>();
-	const runtimeConfig = mock<AgentsConfig>({ humanInteractionsEnabled: true });
+	const runtimeConfig = mock<AgentsConfig>({ humanReviewEnabled: true });
 	const service = new AgentDecisionWorkflowService(
 		loader,
 		mock<SubworkflowPolicyChecker>(),
@@ -93,7 +93,7 @@ function setup(agentConfiguration: AgentJsonConfig = configuration, reviewIds = 
 	};
 }
 
-describe('Agent decision workflow approval', () => {
+describe('Agent review workflow approval', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
@@ -168,7 +168,7 @@ describe('Agent decision workflow approval', () => {
 			});
 			loader.loadWorkflow.mockResolvedValue({
 				id: 'decision-workflow',
-				nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+				nodes: [{ name: 'Agent review', type: 'n8n-nodes-base.agentDecisionTrigger' }],
 				settings: {},
 			} as WorkflowEntity);
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue({
@@ -281,7 +281,7 @@ describe('Agent decision workflow approval', () => {
 		channels.prepareWorkflow.mockResolvedValue({
 			id: 'caller',
 			name: 'Channel approval',
-			nodes: [{ name: 'Agent decision', type: 'n8n-nodes-base.agentDecisionTrigger' }],
+			nodes: [{ name: 'Agent review', type: 'n8n-nodes-base.agentDecisionTrigger' }],
 			connections: {},
 			settings: {},
 		} as never);
@@ -520,7 +520,7 @@ describe('Agent decision workflow approval', () => {
 						{
 							id: 'trigger',
 							disabled: false,
-							name: 'Agent decision',
+							name: 'Agent review',
 							type: 'n8n-nodes-base.agentDecisionTrigger',
 							typeVersion: 1,
 							position: [0, 0],
@@ -740,7 +740,7 @@ it('does not use a decision after the Agent definition changes', async () => {
 
 it('blocks new configured requests when the feature is disabled', async () => {
 	const { wrapped, context, runtimeConfig, loader, handler } = setup();
-	Object.defineProperty(runtimeConfig, 'humanInteractionsEnabled', { value: false });
+	Object.defineProperty(runtimeConfig, 'humanReviewEnabled', { value: false });
 	await expect(
 		wrapped.handler?.({}, { ...context, continuation: undefined, suspendPayload: undefined }),
 	).rejects.toThrow('not enabled');
@@ -749,7 +749,7 @@ it('blocks new configured requests when the feature is disabled', async () => {
 });
 it('allows a pending request to finish after the feature is disabled', async () => {
 	const { wrapped, context, runtimeConfig, jobs, handler } = setup();
-	Object.defineProperty(runtimeConfig, 'humanInteractionsEnabled', { value: false });
+	Object.defineProperty(runtimeConfig, 'humanReviewEnabled', { value: false });
 	jobs.findWorkflowJobByExecutionId.mockResolvedValue(
 		mock<AgentBackgroundJob>({ status: 'completed', result: '{"approved":true}' }),
 	);

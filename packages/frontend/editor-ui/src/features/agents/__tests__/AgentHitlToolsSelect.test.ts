@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
-import { N8nSelect2 } from '@n8n/design-system';
+import { flushPromises, enableAutoUnmount } from '@vue/test-utils';
+import AgentPillField from '../components/AgentPillField.vue';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import AgentHitlToolsSelect from '../components/AgentHitlToolsSelect.vue';
 
@@ -15,6 +16,9 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 			name === 'slack' ? { name: 'slack', displayName: 'Slack' } : null,
 	}),
 }));
+vi.unmock('reka-ui');
+
+enableAutoUnmount(afterEach);
 const config: AgentJsonConfig = {
 	name: 'Agent',
 	model: 'test',
@@ -33,34 +37,62 @@ const config: AgentJsonConfig = {
 		},
 	],
 };
-it('lists node, workflow, custom, and MCP tools with their names and icons', () => {
+it('lists attached tools with icons and shows selected tools as removable pills', async () => {
 	const wrapper = mount(AgentHitlToolsSelect, {
 		props: {
-			modelValue: ['tool:node:send_message', 'tool:workflow:Write'],
+			modelValue: [],
 			config,
 			getCustomToolName: () => 'Custom action',
 		},
 	});
-	expect(wrapper.getComponent(N8nSelect2).props('items')).toEqual([
+	expect(wrapper.getComponent(AgentPillField).props('items')).toEqual([
 		expect.objectContaining({
-			value: 'tool:node:send_message',
+			id: 'tool:node:send_message',
 			label: 'Send message',
-			nodeType: expect.objectContaining({ name: 'slack' }),
 		}),
-		expect.objectContaining({ label: 'Write', icon: 'workflow' }),
-		expect.objectContaining({ label: 'Custom action', icon: 'code' }),
-		expect.objectContaining({ label: 'Server', icon: 'mcp' }),
+		expect.objectContaining({ label: 'Write', icon: { type: 'icon', value: 'workflow' } }),
+		expect.objectContaining({ label: 'Custom action', icon: { type: 'icon', value: 'code' } }),
+		expect.objectContaining({ label: 'Server', icon: { type: 'icon', value: 'mcp' } }),
 	]);
-	const tags = wrapper.findAll('[data-testid="agent-hitl-tool-tag"]');
+	expect(wrapper.text()).toContain('Before tools');
+	await wrapper.setProps({ modelValue: ['tool:node:send_message', 'tool:workflow:Write'] });
+	const tags = wrapper.findAll('[data-testid="agent-hitl-tool-pill"]');
 	expect(tags.map((tag) => tag.element.tagName)).toEqual(['SPAN', 'SPAN']);
 	expect(tags[0].text()).toContain('Send message');
 	expect(tags[0].get('[data-testid="node-icon"]').text()).toBe('slack');
 	expect(tags[1].get('[data-icon="workflow"]').exists()).toBe(true);
 });
-it('emits selected tool keys and updates the pills from the selected values', async () => {
-	const wrapper = mount(AgentHitlToolsSelect, { props: { modelValue: [], config } });
-	wrapper.getComponent(N8nSelect2).vm.$emit('update:modelValue', ['tool:custom:custom']);
-	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['tool:custom:custom']]);
-	await wrapper.setProps({ modelValue: ['tool:custom:custom'] });
-	expect(wrapper.get('[data-testid="agent-hitl-tool-tag"]').text()).toBe('Custom');
+
+it('adds tools from the plus menu and removes only the selected tool', async () => {
+	const wrapper = mount(AgentHitlToolsSelect, {
+		props: { modelValue: ['tool:workflow:Write'], config },
+	});
+	const add = wrapper.get('[data-testid="agent-hitl-tool-add"]');
+	expect(add.attributes('aria-haspopup')).toBe('menu');
+	await add.trigger('click');
+	expect(add.attributes('aria-expanded')).toBe('true');
+	await flushPromises();
+	const options = wrapper.findAll('[role="menuitem"]');
+	expect(wrapper.find('input').exists()).toBe(false);
+	expect(options.map((option) => option.text())).toEqual(['slackSend message', 'Custom', 'Server']);
+	expect(options[0].get('[data-testid="node-icon"]').text()).toBe('slack');
+	await options[1].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+		['tool:workflow:Write', 'tool:custom:custom'],
+	]);
+	await wrapper.setProps({ modelValue: ['tool:workflow:Write', 'tool:custom:custom'] });
+	await wrapper.findAll('[data-testid="agent-hitl-tool-remove"]')[0].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([['tool:custom:custom']]);
+});
+it('keeps tool choices unchanged under a read-only lock', async () => {
+	const wrapper = mount(AgentHitlToolsSelect, {
+		props: { modelValue: ['tool:workflow:Write'], config, disabled: true },
+	});
+	expect(wrapper.get('[data-testid="agent-hitl-tool-add"]').attributes('disabled')).toBeDefined();
+	expect(
+		wrapper.get('[data-testid="agent-hitl-tool-remove"]').attributes('disabled'),
+	).toBeDefined();
+	wrapper.getComponent(AgentPillField).vm.$emit('select', 'tool:custom:custom');
+	wrapper.getComponent(AgentPillField).vm.$emit('remove', 'tool:workflow:Write');
+	expect(wrapper.emitted('update:modelValue')).toBeUndefined();
 });

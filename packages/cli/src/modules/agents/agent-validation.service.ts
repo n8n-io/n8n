@@ -407,7 +407,7 @@ export class AgentValidationService {
 		}
 		await this.collectToolIssues(ctx, findCredential, workflowsByReference, issues, scope);
 		await this.collectMcpServerIssues(config, findCredential, issues);
-		await this.collectInteractionIssues(ctx, findCredential, issues, scope);
+		await this.collectHumanReviewIssues(ctx, findCredential, issues, scope);
 
 		return this.dedupe(withoutIssuesOfLockedEntries(issues));
 	}
@@ -762,7 +762,7 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectInteractionIssues(
+	private async collectHumanReviewIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
 		issues: AgentConfigValidationIssue[],
@@ -794,7 +794,7 @@ export class AgentValidationService {
 		}
 		for (const [index, configuration] of configurations.entries()) {
 			const path = `hitlConfigurations.${index}`;
-			const capability = { kind: 'humanInteraction' as const, id: configuration.id, index };
+			const capability = { kind: 'humanReview' as const, id: configuration.id, index };
 			if (configuration.method === 'workflow') {
 				const workflow = await this.workflowRepository.findOneByAgentToolReference(
 					ctx.projectId,

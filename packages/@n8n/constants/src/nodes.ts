@@ -42,12 +42,12 @@ export function getNodeGatingModule(nodeType: string): NodeGatingModule | undefi
 	return isModuleGatedNodeType(nodeType) ? MODULE_GATED_NODE_TYPES[nodeType] : undefined;
 }
 
-export const HUMAN_INTERACTIONS_MODULE = 'human-interactions';
+export const HUMAN_REVIEW_MODULE = 'human-review';
 
-export const HUMAN_INTERACTION_NODE_TYPES = [
+export const HUMAN_REVIEW_NODE_TYPES = [
 	'n8n-nodes-base.agentDecisionTrigger',
 	'n8n-nodes-base.agentDecisionResponse',
 ] as const;
 
-export const isHumanInteractionNodeType = (nodeType: string): boolean =>
-	HUMAN_INTERACTION_NODE_TYPES.some((name) => name === nodeType);
+export const isHumanReviewNodeType = (nodeType: string): boolean =>
+	HUMAN_REVIEW_NODE_TYPES.some((name) => name === nodeType);

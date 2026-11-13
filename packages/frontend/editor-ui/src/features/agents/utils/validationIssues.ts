@@ -48,7 +48,7 @@ export function unpublishedWorkflowTools(
 	return issues
 		.filter((issue) => isWarningIssue(issue))
 		.map((issue) => {
-			if (issue.capability.kind === 'humanInteraction') {
+			if (issue.capability.kind === 'humanReview') {
 				const interaction =
 					issue.capability.index === undefined ? undefined : interactions[issue.capability.index];
 				return interaction?.method === 'workflow'

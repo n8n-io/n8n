@@ -205,7 +205,7 @@ export class AgentChannelHitlService {
 			nodes: [
 				{
 					id: 'agent-decision-trigger',
-					name: 'Agent decision',
+					name: 'Agent review',
 					type: AGENT_DECISION_TRIGGER_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
@@ -213,7 +213,7 @@ export class AgentChannelHitlService {
 				},
 				node,
 			],
-			connections: { 'Agent decision': { main: [[{ node: node.name, type: 'main', index: 0 }]] } },
+			connections: { 'Agent review': { main: [[{ node: node.name, type: 'main', index: 0 }]] } },
 			settings: {
 				callerPolicy: 'any',
 				saveDataSuccessExecution: 'all',

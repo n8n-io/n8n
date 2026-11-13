@@ -1,4 +1,4 @@
-import { AgentsConfig } from '@n8n/config';
+import type { AgentsConfig } from '@n8n/config';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import {
@@ -201,7 +201,7 @@ function makeService() {
 		skillRefs,
 		checkpointStorage,
 		backgroundJobs,
-		mock<AgentsConfig>({ humanInteractionsEnabled: true }),
+		mock<AgentsConfig>({ humanReviewEnabled: true }),
 	);
 
 	return {

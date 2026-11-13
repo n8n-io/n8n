@@ -6,13 +6,11 @@ import type { IExecuteFunctions, INode, INodeExecutionData, ITriggerFunctions } 
 import { AgentDecisionTrigger } from './AgentDecisionTrigger.node';
 
 const node = new AgentDecisionTrigger();
-beforeEach(() =>
-	Container.set(AgentsConfig, mock<AgentsConfig>({ humanInteractionsEnabled: true })),
-);
+beforeEach(() => Container.set(AgentsConfig, mock<AgentsConfig>({ humanReviewEnabled: true })));
 afterEach(() => Container.reset());
 
 it('rejects a new request when human review is disabled', async () => {
-	Container.set(AgentsConfig, mock<AgentsConfig>({ humanInteractionsEnabled: false }));
+	Container.set(AgentsConfig, mock<AgentsConfig>({ humanReviewEnabled: false }));
 	await expect(node.trigger.call(mock<ITriggerFunctions>())).rejects.toThrow(
 		'Human review is not enabled',
 	);
@@ -46,7 +44,7 @@ it.each(['[]', 'null', '123', '"text"', '{invalid'])(
 		const context = mock<ITriggerFunctions>();
 		context.getMode.mockReturnValue('manual');
 		context.getNodeParameter.mockReturnValue(example);
-		context.getNode.mockReturnValue(mock<INode>({ name: 'Agent decision' }));
+		context.getNode.mockReturnValue(mock<INode>({ name: 'Agent review' }));
 		const trigger = await node.trigger.call(context);
 		await expect(trigger.manualTriggerFunction?.()).rejects.toThrow(
 			example === '{invalid'

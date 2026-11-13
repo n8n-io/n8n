@@ -1,8 +1,11 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentApprovalRoute, AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
+import AgentToolConfigApprovalSetting from '../components/AgentToolConfigApprovalSetting.vue';
 import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
+
+vi.unmock('reka-ui');
 
 enableAutoUnmount(afterEach);
 const feature = vi.hoisted(() => ({ enabled: true }));
@@ -43,29 +46,24 @@ function render(modelValue?: AgentApprovalRoute) {
 async function openMenu(wrapper: ReturnType<typeof render>['wrapper']) {
 	await wrapper.get('[data-testid="agent-review-add"]').trigger('click');
 	await flushPromises();
-	await wrapper.get('input').trigger('focus');
-	await flushPromises();
 }
-it('shows the default and opens a searchable add menu with creation first', async () => {
+it('opens directly to review options with creation first and no input', async () => {
 	const { wrapper } = render();
-	expect(wrapper.text()).toContain('Human review for approval');
+	expect(wrapper.text()).toContain('Reviewers');
+	const placeholder = wrapper.get('[data-testid="agent-review-placeholder"]');
+	expect(placeholder.text()).toBe('Ask user');
+	expect(placeholder.find('button').exists()).toBe(false);
+	expect(wrapper.find('[data-testid="agent-review-remove"]').exists()).toBe(false);
 	expect(wrapper.text()).toContain('Ask user');
 	await openMenu(wrapper);
-	const options = wrapper.findAll('[role="option"]');
+	const options = wrapper.findAll('[role="menuitem"]');
 	expect(options.map((option) => option.text())).toEqual([
 		'Create human review',
 		'Finance data check',
 		'Team review',
 	]);
 	expect(options[0].find('[data-icon="plus"]').exists()).toBe(true);
-	await wrapper.get('input').setValue('team');
-	await flushPromises();
-	expect(
-		wrapper
-			.findAll('[role="option"]')
-			.filter((option) => option.isVisible())
-			.map((option) => option.text()),
-	).toEqual(['Team review']);
+	expect(wrapper.find('input').exists()).toBe(false);
 });
 it('appends a review after existing pills and excludes selected reviews from the menu', async () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow'] });
@@ -74,11 +72,11 @@ it('appends a review after existing pills and excludes selected reviews from the
 		true,
 	);
 	await openMenu(wrapper);
-	expect(wrapper.findAll('[role="option"]').map((option) => option.text())).toEqual([
+	expect(wrapper.findAll('[role="menuitem"]').map((option) => option.text())).toEqual([
 		'Create human review',
 		'Team review',
 	]);
-	await wrapper.findAll('[role="option"]')[1].trigger('click');
+	await wrapper.findAll('[role="menuitem"]')[1].trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
 		{ type: 'configuration', configurationIds: ['workflow', 'slack'] },
 	]);
@@ -89,7 +87,8 @@ it('appends a review after existing pills and excludes selected reviews from the
 		'Finance data check',
 		'Team review',
 	]);
-	expect(wrapper.text()).toContain('Reviews run in the order shown');
+	expect(wrapper.text()).not.toContain('Reviews run in the order shown');
+	expect(wrapper.find('[data-testid="agent-review-placeholder"]').exists()).toBe(false);
 });
 it('removes only the selected pill and falls back to Ask user after removing the last', async () => {
 	const { wrapper } = render({ type: 'configuration', configurationIds: ['workflow', 'slack'] });
@@ -100,6 +99,9 @@ it('removes only the selected pill and falls back to Ask user after removing the
 	await wrapper.setProps({ modelValue: { type: 'configuration', configurationIds: ['slack'] } });
 	await wrapper.get('[data-testid="agent-review-remove"]').trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[1]).toEqual([undefined]);
+	await wrapper.setProps({ modelValue: undefined });
+	expect(wrapper.get('[data-testid="agent-review-placeholder"]').text()).toBe('Ask user');
+	expect(wrapper.find('[data-testid="agent-review-remove"]').exists()).toBe(false);
 });
 it('opens an existing review for editing without changing its order', async () => {
 	const { wrapper, saveConfiguration } = render({
@@ -122,7 +124,7 @@ it('creates a review from the plus menu and appends it without changing existing
 		configurationIds: ['slack'],
 	});
 	await openMenu(wrapper);
-	await wrapper.findAll('[role="option"]')[0].trigger('click');
+	await wrapper.findAll('[role="menuitem"]')[0].trigger('click');
 	await flushPromises();
 	const created: AgentHitlConfiguration = {
 		id: 'new',
@@ -146,4 +148,41 @@ it('disables attachment and removal under a read-only lock', async () => {
 it('hides controls when the feature is disabled', () => {
 	feature.enabled = false;
 	expect(render().wrapper.find('[data-testid="agent-approval-route"]').exists()).toBe(false);
+});
+
+it('keeps the approval toggle inside the section and reveals choices when enabled', async () => {
+	const { wrapper } = render();
+	await wrapper.setProps({ approvalRequired: false });
+	const section = wrapper.get('[data-testid="agent-review"]');
+	expect(section.text()).toContain('Require approval');
+	expect(wrapper.find('[data-testid="agent-review-add"]').exists()).toBe(false);
+	wrapper.getComponent(AgentToolConfigApprovalSetting).vm.$emit('update:modelValue', true);
+	expect(wrapper.emitted('update:approvalRequired')?.[0]).toEqual([true]);
+	await wrapper.setProps({ approvalRequired: true });
+	expect(wrapper.find('[data-testid="agent-review-add"]').exists()).toBe(true);
+	await openMenu(wrapper);
+	await wrapper.setProps({ approvalRequired: false });
+	expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+	await wrapper.setProps({ approvalRequired: true });
+	expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+});
+it('keeps the standard approval toggle available when Human review is off', async () => {
+	feature.enabled = false;
+	const { wrapper } = render();
+	await wrapper.setProps({ approvalRequired: false });
+	expect(wrapper.findComponent(AgentToolConfigApprovalSetting).exists()).toBe(true);
+	expect(wrapper.find('[data-testid="agent-review"]').exists()).toBe(false);
+});
+
+it('replaces the Ask user placeholder when a reviewer is selected', async () => {
+	const { wrapper } = render();
+	await openMenu(wrapper);
+	await wrapper.findAll('[role="menuitem"]')[1].trigger('click');
+	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
+		{ type: 'configuration', configurationIds: ['workflow'] },
+	]);
+	await wrapper.setProps({ modelValue: { type: 'configuration', configurationIds: ['workflow'] } });
+	expect(wrapper.find('[data-testid="agent-review-placeholder"]').exists()).toBe(false);
+	expect(wrapper.text()).not.toContain('Ask user');
+	expect(wrapper.get('[data-testid="agent-review-pill"]').text()).toBe('Finance data check');
 });

@@ -245,7 +245,7 @@ export class AgentDecisionWorkflowService {
 				);
 			executionId = pending.data.executionId;
 		} else {
-			if (!this.config.humanInteractionsEnabled)
+			if (!this.config.humanReviewEnabled)
 				throw new UserError('Human review is not enabled on this instance');
 			if (tool.metadata?.kind === 'workflow' && typeof tool.metadata.workflowId === 'string') {
 				const target = await this.loader.loadWorkflow(
@@ -291,7 +291,7 @@ export class AgentDecisionWorkflowService {
 				(node) => node.type === AGENT_DECISION_TRIGGER_NODE_TYPE && !node.disabled,
 			);
 			if (!workflow || !trigger)
-				throw new UserError('Select a workflow with an Agent decision trigger');
+				throw new UserError('Select a workflow with an Agent review trigger');
 			if (configuration.method === 'workflow' && workflow.id === caller?.workflowId)
 				throw new UserError('A decision workflow cannot call itself');
 			const scope = decodeAgentSandboxHostMetadata(ctx.persistence.hostMetadata);

@@ -209,6 +209,9 @@ it('lists a channel and user with the same ID separately and keeps their icons a
 	const options = wrapper.findAll('[role="option"]');
 	expect(options).toHaveLength(2);
 	expect(options[0].find('[data-icon="hash"]').exists()).toBe(true);
+	expect(options[0].text()).toBe('review');
+	await wrapper.setProps({ modelValue: channel });
+	expect(trigger.text()).toBe('review');
 	expect(options[1].find('[data-icon="user"]').exists()).toBe(true);
 	await options[1].trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([user]);
