@@ -1,0 +1,378 @@
+{
+	"name": "Home Assistant Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "config",
+				"operation": "get"
+			},
+			"id": "home-assistant-0",
+			"name": "Config Get",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "config",
+				"operation": "check"
+			},
+			"id": "home-assistant-1",
+			"name": "Config Check",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "service",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "home-assistant-2",
+			"name": "Service Get Many",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "service",
+				"operation": "call",
+				"domain": "light",
+				"service": "turn_on",
+				"serviceAttributes": {
+					"attributes": [
+						{
+							"name": "entity_id",
+							"value": "light.kitchen"
+						}
+					]
+				}
+			},
+			"id": "home-assistant-3",
+			"name": "Service Call",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "state",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "home-assistant-4",
+			"name": "State Get Many",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "state",
+				"operation": "get",
+				"entityId": "light.kitchen"
+			},
+			"id": "home-assistant-5",
+			"name": "State Get",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "state",
+				"operation": "upsert",
+				"entityId": "sensor.outside_temperature",
+				"state": "21",
+				"stateAttributes": {
+					"attributes": [
+						{
+							"name": "unit_of_measurement",
+							"value": "C"
+						}
+					]
+				}
+			},
+			"id": "home-assistant-6",
+			"name": "State Upsert",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "home-assistant-7",
+			"name": "Event Get Many",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "event",
+				"operation": "create",
+				"eventType": "garage_door_opened",
+				"eventAttributes": {
+					"attributes": [
+						{
+							"name": "source",
+							"value": "n8n"
+						}
+					]
+				}
+			},
+			"id": "home-assistant-8",
+			"name": "Event Create",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "log",
+				"operation": "getErroLogs"
+			},
+			"id": "home-assistant-9",
+			"name": "Log Error Logs",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "log",
+				"operation": "getLogbookEntries",
+				"additionalFields": {
+					"startTime": "2024-05-01T08:00:00",
+					"entityId": "light.kitchen"
+				}
+			},
+			"id": "home-assistant-10",
+			"name": "Log Logbook Entries",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "template",
+				"operation": "create",
+				"template": "{{ states('light.kitchen') }}"
+			},
+			"id": "home-assistant-11",
+			"name": "Template Create",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "history",
+				"operation": "getAll",
+				"returnAll": true,
+				"additionalFields": {
+					"startTime": "2024-05-01T08:00:00"
+				}
+			},
+			"id": "home-assistant-12",
+			"name": "History Get Many",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "cameraProxy",
+				"operation": "getScreenshot",
+				"cameraEntityId": "camera.front_door",
+				"binaryPropertyName": "data"
+			},
+			"id": "home-assistant-13",
+			"name": "Camera Proxy Get Screenshot",
+			"type": "n8n-nodes-base.homeAssistant",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"homeAssistantApi": {
+					"id": "1",
+					"name": "Home Assistant account"
+				}
+			}
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Config Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Config Check",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Service Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Service Call",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "State Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "State Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "State Upsert",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Event Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log Error Logs",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Log Logbook Entries",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Template Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "History Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Camera Proxy Get Screenshot",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

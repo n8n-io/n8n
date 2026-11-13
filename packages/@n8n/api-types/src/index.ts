@@ -202,6 +202,8 @@ export {
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
 } from './schemas/workflow-version.schema';
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,

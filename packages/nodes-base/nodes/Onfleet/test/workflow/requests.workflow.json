@@ -1,0 +1,1140 @@
+{
+	"name": "Onfleet requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "6a1d0c2e-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "admin",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000001",
+			"name": "Get Admins",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 160],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"destination": {
+					"destinationProperties": {
+						"unparsed": true,
+						"address": "543 Howard St, San Francisco, CA 94105"
+					}
+				},
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000002",
+			"name": "Create Tasks Batch",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [440, 320],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"destination": {
+					"destinationProperties": {
+						"unparsed": true,
+						"address": "543 Howard St, San Francisco, CA 94105"
+					}
+				},
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000003",
+			"name": "Create Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"id": "pH0qbEc4fWMEqzNhcTvuxmSL"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000004",
+			"name": "Get Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 640],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"id": "8ab7c7f5"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000005",
+			"name": "Get Task By Short ID",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "clone",
+				"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+				"overrideFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000006",
+			"name": "Clone Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 960],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"id": "pH0qbEc4fWMEqzNhcTvuxmSL"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000007",
+			"name": "Delete Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1120],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"limit": 10,
+				"filters": {
+					"from": "2024-05-01T00:00:00.000Z",
+					"to": "2024-05-02T00:00:00.000Z"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000008",
+			"name": "Get Tasks",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1280],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "complete",
+				"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+				"success": true,
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000009",
+			"name": "Complete Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1440],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+				"updateFields": {
+					"notes": "Leave at the door"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000010",
+			"name": "Update Task",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "destination",
+				"operation": "create",
+				"unparsed": true,
+				"address": "543 Howard St, San Francisco, CA 94105",
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000011",
+			"name": "Create Destination",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1760],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "destination",
+				"operation": "get",
+				"id": "zrVXZi5aDzOZlAghZaLfGAfA"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000012",
+			"name": "Get Destination",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 1920],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "organization",
+				"operation": "get"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000013",
+			"name": "Get Organization",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2080],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "organization",
+				"operation": "getDelegatee",
+				"id": "yAM*fDkztrT3gUcz9mNDgNOL"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000014",
+			"name": "Get Delegatee",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2240],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"operation": "create",
+				"recipientName": "Jane Doe",
+				"recipientPhone": "+14155550123",
+				"additionalFields": {},
+				"options": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000015",
+			"name": "Create Recipient",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"operation": "update",
+				"id": "G7rcM2nqblmh8vj2do1FpaOQ",
+				"updateFields": {
+					"recipientNotes": "Ring twice"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000016",
+			"name": "Update Recipient",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2560],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"operation": "get",
+				"getBy": "id",
+				"id": "G7rcM2nqblmh8vj2do1FpaOQ"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000017",
+			"name": "Get Recipient",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2720],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "recipient",
+				"operation": "get",
+				"getBy": "phone",
+				"phone": "+14155550123"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000018",
+			"name": "Get Recipient By Phone",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 2880],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "admin",
+				"operation": "create",
+				"name": "Jane Doe",
+				"email": "jane@example.com",
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000019",
+			"name": "Create Admin",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3040],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "admin",
+				"operation": "update",
+				"id": "8AxaiKwMd~np7I*YP2NfukBE",
+				"updateFields": {
+					"name": "Jane Roe"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000020",
+			"name": "Update Admin",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3200],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "admin",
+				"operation": "delete",
+				"id": "8AxaiKwMd~np7I*YP2NfukBE"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000021",
+			"name": "Delete Admin",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3360],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "hub",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000022",
+			"name": "Get Hubs",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3520],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "hub",
+				"operation": "create",
+				"name": "Downtown",
+				"destination": {
+					"destinationProperties": {
+						"unparsed": true,
+						"address": "543 Howard St, San Francisco, CA 94105"
+					}
+				},
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000023",
+			"name": "Create Hub",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3680],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "hub",
+				"operation": "update",
+				"id": "tKxSfU7psqDQEBVn5e2VQ~*O",
+				"updateFields": {
+					"name": "Uptown"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000024",
+			"name": "Update Hub",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 3840],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "getAll",
+				"byLocation": false,
+				"returnAll": true,
+				"filters": {},
+				"options": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000025",
+			"name": "Get Workers",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4000],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "getAll",
+				"byLocation": true,
+				"longitude": -122.4,
+				"latitude": 37.7,
+				"returnAll": true,
+				"filters": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000026",
+			"name": "Get Workers By Location",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4160],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "get",
+				"id": "h*wSb*apKlDkUFnuLTtjPke7",
+				"options": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000027",
+			"name": "Get Worker",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4320],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "create",
+				"name": "John Roe",
+				"phone": "+14155550124",
+				"teams": ["nz1nHRbdIIUxM7Tmd1mR8Rzq"],
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000028",
+			"name": "Create Worker",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4480],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "update",
+				"id": "h*wSb*apKlDkUFnuLTtjPke7",
+				"updateFields": {
+					"name": "John Doe"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000029",
+			"name": "Update Worker",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4640],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "delete",
+				"id": "h*wSb*apKlDkUFnuLTtjPke7"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000030",
+			"name": "Delete Worker",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4800],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "getSchedule",
+				"id": "h*wSb*apKlDkUFnuLTtjPke7"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000031",
+			"name": "Get Schedule",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 4960],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "worker",
+				"operation": "setSchedule",
+				"id": "h*wSb*apKlDkUFnuLTtjPke7",
+				"schedule": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000032",
+			"name": "Set Schedule",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5120],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "container",
+				"operation": "get",
+				"containerType": "workers",
+				"containerId": "h*wSb*apKlDkUFnuLTtjPke7"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000033",
+			"name": "Get Container",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5280],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "container",
+				"operation": "addTask",
+				"containerType": "teams",
+				"containerId": "nz1nHRbdIIUxM7Tmd1mR8Rzq",
+				"type": -1,
+				"tasks": ["pH0qbEc4fWMEqzNhcTvuxmSL"],
+				"options": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000034",
+			"name": "Add Task To Container",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5440],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "container",
+				"operation": "updateTask",
+				"containerId": "h*wSb*apKlDkUFnuLTtjPke7",
+				"tasks": ["pH0qbEc4fWMEqzNhcTvuxmSL"],
+				"options": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000035",
+			"name": "Update Container Tasks",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5600],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000036",
+			"name": "Get Teams",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5760],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "get",
+				"id": "nz1nHRbdIIUxM7Tmd1mR8Rzq"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000037",
+			"name": "Get Team",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 5920],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "create",
+				"name": "Night shift",
+				"workers": ["h*wSb*apKlDkUFnuLTtjPke7"],
+				"managers": ["8AxaiKwMd~np7I*YP2NfukBE"],
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000038",
+			"name": "Create Team",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 6080],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "update",
+				"id": "nz1nHRbdIIUxM7Tmd1mR8Rzq",
+				"updateFields": {
+					"name": "Day shift"
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000039",
+			"name": "Update Team",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 6240],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "delete",
+				"id": "nz1nHRbdIIUxM7Tmd1mR8Rzq"
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000040",
+			"name": "Delete Team",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 6400],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "getTimeEstimates",
+				"id": "nz1nHRbdIIUxM7Tmd1mR8Rzq",
+				"filters": {
+					"dropOff": {
+						"dropOffProperties": {
+							"dropOffLongitude": -122.4,
+							"dropOffLatitude": 37.7
+						}
+					}
+				}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000041",
+			"name": "Get Time Estimates",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 6560],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "team",
+				"operation": "autoDispatch",
+				"id": "nz1nHRbdIIUxM7Tmd1mR8Rzq",
+				"additionalFields": {}
+			},
+			"id": "6a1d0c2e-0000-4000-8000-000000000042",
+			"name": "Auto Dispatch",
+			"type": "n8n-nodes-base.onfleet",
+			"typeVersion": 1,
+			"position": [220, 6720],
+			"credentials": {
+				"onfleetApi": {
+					"id": "1",
+					"name": "Onfleet account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Tasks Batch": [
+			{
+				"json": {
+					"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+					"shortId": "8ab7c7f5",
+					"state": 0
+				}
+			},
+			{
+				"json": {
+					"id": "second-task",
+					"shortId": "8ab7c7f5",
+					"state": 0
+				}
+			}
+		],
+		"Get Task": [
+			{
+				"json": {
+					"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+					"shortId": "8ab7c7f5",
+					"state": 0
+				}
+			}
+		],
+		"Get Task By Short ID": [
+			{
+				"json": {
+					"id": "pH0qbEc4fWMEqzNhcTvuxmSL",
+					"shortId": "8ab7c7f5",
+					"state": 0
+				}
+			}
+		],
+		"Delete Task": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Recipient By Phone": [
+			{
+				"json": {
+					"id": "G7rcM2nqblmh8vj2do1FpaOQ",
+					"name": "Jane Doe",
+					"phone": "+14155550123"
+				}
+			}
+		],
+		"Get Worker": [
+			{
+				"json": {
+					"id": "h*wSb*apKlDkUFnuLTtjPke7",
+					"name": "John Doe"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Admins",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Task By Short ID",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Clone Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Tasks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Task",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Destination",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Destination",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Organization",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Delegatee",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Recipient",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Recipient",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Recipient",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Recipient By Phone",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Admin",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Admin",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Admin",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Hubs",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Hub",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Hub",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Workers",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Workers By Location",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Worker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Worker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Worker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Worker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Schedule",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set Schedule",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Container",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Task To Container",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Container Tasks",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Teams",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Team",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Team",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Team",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Team",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Time Estimates",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Auto Dispatch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Admins": {
+			"main": [
+				[
+					{
+						"node": "Create Tasks Batch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

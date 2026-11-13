@@ -28,6 +28,7 @@ function makeDeps(overrides: Partial<Parameters<typeof buildVerifyMcpServerTool>
 		oauthService: mock<OauthService>(),
 		projectId: 'proj-1',
 		proxyFetch: vi.fn() as unknown as CustomFetch,
+		assertCredentialUsable: vi.fn(async () => {}),
 		...overrides,
 	};
 }
@@ -75,6 +76,27 @@ describe('buildVerifyMcpServerTool', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('checks the credential before it connects', async () => {
+		const assertCredentialUsable = vi.fn(async () => {
+			throw new Error('Credential not found or not accessible');
+		});
+		const tool = buildVerifyMcpServerTool(makeDeps({ assertCredentialUsable }));
+
+		const result = await tool.handler!(
+			{
+				name: 'docs',
+				url: 'https://example.test/mcp',
+				authentication: 'headerAuth',
+				credential: 'credential-1',
+			},
+			{} as never,
+		);
+
+		expect(assertCredentialUsable).toHaveBeenCalledWith('credential-1');
+		expect(result).toEqual({ ok: false, error: 'Credential not found or not accessible' });
+		expect(buildMcpClientForServerMock).not.toHaveBeenCalled();
 	});
 
 	it('returns { ok: true, tools } with name and description on success', async () => {

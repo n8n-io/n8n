@@ -1,0 +1,249 @@
+{
+	"name": "Mindee Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "toJson",
+				"options": {
+					"fileName": "receipt.json"
+				}
+			},
+			"id": "create-file",
+			"name": "Create File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [150, 0]
+		},
+		{
+			"parameters": {
+				"apiVersion": 1,
+				"resource": "receipt",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-0",
+			"name": "Receipt Predict V1",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"mindeeReceiptApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"apiVersion": 1,
+				"resource": "invoice",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-1",
+			"name": "Invoice Predict V1",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"mindeeInvoiceApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"apiVersion": 3,
+				"resource": "receipt",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-2",
+			"name": "Receipt Predict V3",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 2,
+			"position": [300, 300],
+			"credentials": {
+				"mindeeReceiptApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"apiVersion": 3,
+				"resource": "invoice",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-3",
+			"name": "Invoice Predict V3",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 2,
+			"position": [300, 450],
+			"credentials": {
+				"mindeeInvoiceApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"apiVersion": 4,
+				"resource": "receipt",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-4",
+			"name": "Receipt Predict V4",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 3,
+			"position": [300, 600],
+			"credentials": {
+				"mindeeReceiptApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"apiVersion": 4,
+				"resource": "invoice",
+				"operation": "predict",
+				"rawData": true
+			},
+			"id": "mindee-5",
+			"name": "Invoice Predict V4",
+			"type": "n8n-nodes-base.mindee",
+			"typeVersion": 3,
+			"position": [300, 750],
+			"credentials": {
+				"mindeeInvoiceApi": {
+					"id": "1",
+					"name": "Mindee account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Receipt Predict V1": [
+			{
+				"json": {
+					"document": {
+						"id": "receipt-v1"
+					}
+				}
+			}
+		],
+		"Invoice Predict V1": [
+			{
+				"json": {
+					"document": {
+						"id": "invoice-v1"
+					}
+				}
+			}
+		],
+		"Receipt Predict V3": [
+			{
+				"json": {
+					"document": {
+						"id": "receipt-v3"
+					}
+				}
+			}
+		],
+		"Invoice Predict V3": [
+			{
+				"json": {
+					"document": {
+						"id": "invoice-v3"
+					}
+				}
+			}
+		],
+		"Receipt Predict V4": [
+			{
+				"json": {
+					"document": {
+						"id": "receipt-v4"
+					}
+				}
+			}
+		],
+		"Invoice Predict V4": [
+			{
+				"json": {
+					"document": {
+						"id": "invoice-v4"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Create File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create File": {
+			"main": [
+				[
+					{
+						"node": "Receipt Predict V1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Predict V1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Receipt Predict V3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Predict V3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Receipt Predict V4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Invoice Predict V4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -47,10 +47,11 @@ describe('n8n workflow list search', () => {
 		const result = await searchWorkflows.call(context);
 
 		expect(context.getCredentials).toHaveBeenCalledWith('n8nApi');
-		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledExactlyOnceWith(
-			'n8nApi',
-			expect.objectContaining({ method: 'GET', uri: expectedUrl }),
-		);
+		expect(context.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
+		const [credentialType, options] = context.helpers.requestWithAuthentication.mock.calls[0];
+		expect(credentialType).toBe('n8nApi');
+		expect(options.method).toBe('GET');
+		expect(String(options.uri)).toBe(expectedUrl);
 		expect(result.results).toEqual([{ name: 'Example Workflow (#1)', value: 1 }]);
 	});
 });

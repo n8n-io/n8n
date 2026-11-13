@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import { BoxTrigger } from '../BoxTrigger.node';
 
@@ -235,7 +236,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 				expect.anything(),
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://api.box.com/2.0/webhooks',
+					uri: requestUrl`https://api.box.com/2.0/webhooks`,
 					body: {
 						address: 'https://n8n.io/webhook/box-test',
 						triggers: ['FILE.UPLOADED'],
@@ -270,7 +271,7 @@ describe('Box Trigger Webhook Lifecycle', () => {
 				expect.anything(),
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: 'https://api.box.com/2.0/webhooks/webhook_456',
+					uri: requestUrl`https://api.box.com/2.0/webhooks/webhook_456`,
 				}),
 				expect.anything(),
 			);

@@ -4,8 +4,9 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to SIGNL4
@@ -19,20 +20,20 @@ export async function SIGNL4ApiRequest(
 	method: IHttpRequestMethods,
 	body: string,
 	query: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> & { uri?: never; url?: never; baseURL?: never } = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('signl4Api');
 
 	const teamSecret = credentials?.teamSecret as string;
 
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: '*/*',
 		},
 		method,
 		body,
 		qs: query,
-		uri: `https://connect.signl4.com/webhook/${teamSecret}`,
+		uri: requestUrl`https://connect.signl4.com/webhook/${teamSecret}`,
 		json: true,
 	};
 

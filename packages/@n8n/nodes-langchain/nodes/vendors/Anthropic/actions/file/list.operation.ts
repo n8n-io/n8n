@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { File } from '../../helpers/interfaces';
 import { getBaseUrl } from '../../helpers/utils';
@@ -63,7 +63,7 @@ async function getAllFiles(this: IExecuteFunctions, baseUrl: string, i: number) 
 	let lastId: string | undefined = undefined;
 	const files: File[] = [];
 	while (hasMore) {
-		const response = (await apiRequest.call(this, 'GET', '/v1/files', {
+		const response = (await apiRequest.call(this, 'GET', requestPath`/v1/files`, {
 			qs: {
 				limit: 1000,
 				after_id: lastId,
@@ -82,7 +82,7 @@ async function getAllFiles(this: IExecuteFunctions, baseUrl: string, i: number) 
 }
 
 async function getFiles(this: IExecuteFunctions, baseUrl: string, i: number, limit: number) {
-	const response = (await apiRequest.call(this, 'GET', '/v1/files', {
+	const response = (await apiRequest.call(this, 'GET', requestPath`/v1/files`, {
 		qs: {
 			limit,
 		},

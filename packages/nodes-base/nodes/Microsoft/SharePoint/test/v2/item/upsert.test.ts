@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode, ResourceMapperValue } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -25,7 +26,7 @@ vi.mock('../../../transport', async () => {
 const SITE_ID = 'site1';
 const LIST_ID = 'list1';
 const ITEM_ID = 'item1';
-const ITEMS_PATH = `/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
+const ITEMS_PATH = requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
 
 const GRAPH_ITEM_REPLY: IDataObject = {
 	id: ITEM_ID,
@@ -107,7 +108,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'PATCH',
-			`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Title: 'Title 2' },
 			{},
 			undefined,
@@ -116,7 +117,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			`${ITEMS_PATH}/${ITEM_ID}`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}`,
 			{},
 			{ $expand: 'fields' },
 		);
@@ -223,7 +224,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'PATCH',
-			`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Link: { Url: 'https://example.com', Description: 'Example' } },
 			{},
 			undefined,

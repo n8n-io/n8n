@@ -5,25 +5,27 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function nasaApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'encoding'> = {},
 	uri?: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('nasaApi');
 
 	qs.api_key = credentials.api_key as string;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
-		uri: uri || `https://api.nasa.gov${endpoint}`,
+		uri: requestUrl`https://api.nasa.gov${endpoint}`,
 		json: true,
 	};
 
@@ -32,7 +34,7 @@ export async function nasaApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.request(uri ? { ...options, uri } : options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -42,7 +44,7 @@ export async function nasaApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	query: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];

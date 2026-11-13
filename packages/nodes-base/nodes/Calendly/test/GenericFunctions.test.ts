@@ -1,3 +1,4 @@
+import { requestPath, requestUrl } from 'n8n-workflow';
 import type { IHookFunctions } from 'n8n-workflow';
 
 import { calendlyApiRequest } from '../GenericFunctions';
@@ -20,13 +21,13 @@ describe('Calendly GenericFunctions', () => {
 	});
 
 	it('should use personal access token credentials for PAT authentication', async () => {
-		await calendlyApiRequest.call(mockHookFunctions, 'GET', '/users/me');
+		await calendlyApiRequest.call(mockHookFunctions, 'GET', requestPath`/users/me`);
 
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			'calendlyApi',
 			expect.objectContaining({
 				method: 'GET',
-				uri: 'https://api.calendly.com/users/me',
+				uri: requestUrl`https://api.calendly.com/users/me`,
 			}),
 		);
 	});
@@ -34,32 +35,32 @@ describe('Calendly GenericFunctions', () => {
 	it('should use OAuth2 credentials for OAuth2 authentication', async () => {
 		mockHookFunctions.getNodeParameter.mockReturnValue('oAuth2');
 
-		await calendlyApiRequest.call(mockHookFunctions, 'GET', '/users/me');
+		await calendlyApiRequest.call(mockHookFunctions, 'GET', requestPath`/users/me`);
 
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			'calendlyOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				uri: 'https://api.calendly.com/users/me',
+				uri: requestUrl`https://api.calendly.com/users/me`,
 			}),
 		);
 	});
 
 	it('should send requests to Calendly API v2', async () => {
-		await calendlyApiRequest.call(mockHookFunctions, 'POST', '/webhook_subscriptions', {
+		await calendlyApiRequest.call(mockHookFunctions, 'POST', requestPath`/webhook_subscriptions`, {
 			events: ['invitee.created'],
 		});
 
 		expect(requestWithAuthentication).toHaveBeenCalledWith(
 			expect.any(String),
 			expect.objectContaining({
-				uri: 'https://api.calendly.com/webhook_subscriptions',
+				uri: requestUrl`https://api.calendly.com/webhook_subscriptions`,
 			}),
 		);
 	});
 
 	it('should omit empty body and query string parameters', async () => {
-		await calendlyApiRequest.call(mockHookFunctions, 'GET', '/users/me');
+		await calendlyApiRequest.call(mockHookFunctions, 'GET', requestPath`/users/me`);
 
 		const requestOptions = requestWithAuthentication.mock.calls[0][1];
 		expect(requestOptions).not.toHaveProperty('body');

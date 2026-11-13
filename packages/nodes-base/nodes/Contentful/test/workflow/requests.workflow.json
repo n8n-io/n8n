@@ -1,0 +1,280 @@
+{
+	"name": "Contentful Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "space",
+				"operation": "get"
+			},
+			"id": "node-0",
+			"name": "Space Get",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contentType",
+				"operation": "get",
+				"environmentId": "master",
+				"contentTypeId": "cat",
+				"additionalFields": {}
+			},
+			"id": "node-1",
+			"name": "Content Type Get",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "entry",
+				"operation": "get",
+				"environmentId": "master",
+				"entryId": "nyancat",
+				"additionalFields": {}
+			},
+			"id": "node-2",
+			"name": "Entry Get",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"source": "previewApi",
+				"resource": "entry",
+				"operation": "get",
+				"environmentId": "master",
+				"entryId": "happycat",
+				"additionalFields": {}
+			},
+			"id": "node-3",
+			"name": "Entry Get Preview",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "entry",
+				"operation": "getAll",
+				"environmentId": "master",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"id": "node-4",
+			"name": "Entry Get Many",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "entry",
+				"operation": "getAll",
+				"environmentId": "master",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"id": "node-5",
+			"name": "Entry Get All",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "asset",
+				"operation": "getAll",
+				"environmentId": "master",
+				"limit": 1,
+				"additionalFields": {}
+			},
+			"id": "node-6",
+			"name": "Asset Get Many",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "locale",
+				"operation": "getAll",
+				"environmentId": "master",
+				"limit": 1
+			},
+			"id": "node-7",
+			"name": "Locale Get Many",
+			"type": "n8n-nodes-base.contentful",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"contentfulApi": {
+					"id": "1",
+					"name": "Contentful account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Space Get": [
+			{
+				"json": {
+					"name": "Acme Corp"
+				}
+			}
+		],
+		"Content Type Get": [
+			{
+				"json": {
+					"id": "name"
+				}
+			}
+		],
+		"Entry Get": [
+			{
+				"json": {
+					"name": "Nyan Cat"
+				}
+			}
+		],
+		"Entry Get Preview": [
+			{
+				"json": {
+					"name": "Happy Cat"
+				}
+			}
+		],
+		"Entry Get Many": [
+			{
+				"json": {
+					"name": "Nyan Cat"
+				}
+			}
+		],
+		"Entry Get All": [
+			{
+				"json": {
+					"name": "Nyan Cat"
+				}
+			}
+		],
+		"Asset Get Many": [
+			{
+				"json": {
+					"title": "Nyan Cat image"
+				}
+			}
+		],
+		"Locale Get Many": [
+			{
+				"json": {
+					"code": "en-US"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Space Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Type Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Entry Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Entry Get Preview",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Entry Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Entry Get All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Asset Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Locale Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

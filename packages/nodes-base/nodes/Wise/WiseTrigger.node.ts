@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { Profile } from './GenericFunctions';
 import { getTriggerName, livePublicKey, testPublicKey, wiseApiRequest } from './GenericFunctions';
@@ -89,7 +89,7 @@ export class WiseTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getProfiles(this: ILoadOptionsFunctions) {
-				const profiles = await wiseApiRequest.call(this, 'GET', 'v1/profiles');
+				const profiles = await wiseApiRequest.call(this, 'GET', requestPath`v1/profiles`);
 				return profiles.map(({ id, type }: Profile) => ({
 					name: type.charAt(0).toUpperCase() + type.slice(1),
 					value: id,
@@ -108,7 +108,7 @@ export class WiseTrigger implements INodeType {
 				const webhooks = await wiseApiRequest.call(
 					this,
 					'GET',
-					`v3/profiles/${profileId}/subscriptions`,
+					requestPath`v3/profiles/${profileId}/subscriptions`,
 				);
 				const trigger = getTriggerName(event);
 				for (const webhook of webhooks) {
@@ -140,7 +140,7 @@ export class WiseTrigger implements INodeType {
 				const webhook = await wiseApiRequest.call(
 					this,
 					'POST',
-					`v3/profiles/${profileId}/subscriptions`,
+					requestPath`v3/profiles/${profileId}/subscriptions`,
 					body,
 				);
 				webhookData.webhookId = webhook.id;
@@ -153,7 +153,7 @@ export class WiseTrigger implements INodeType {
 					await wiseApiRequest.call(
 						this,
 						'DELETE',
-						`v3/profiles/${profileId}/subscriptions/${webhookData.webhookId}`,
+						requestPath`v3/profiles/${profileId}/subscriptions/${webhookData.webhookId}`,
 					);
 				} catch (error) {
 					return false;

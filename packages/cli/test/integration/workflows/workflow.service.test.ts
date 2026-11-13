@@ -23,6 +23,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -30,6 +31,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -1145,6 +1147,25 @@ describe('activateWorkflow trigger cleanup', () => {
 			expect.stringContaining('Rolled back partial activation'),
 			{ workflowId: workflow.id },
 		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should not tear down triggers when the credential check refuses', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new TriggerCredentialAccessError(new UserError('Node "Trigger" cannot use the credential')),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'Node "Trigger" cannot use the credential',
+		);
+
+		expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 
 		const reloaded = await workflowRepository.findById(workflow.id);
 		expect(reloaded?.active).toBe(false);

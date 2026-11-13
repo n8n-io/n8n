@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../actions/page/removeLabel.operation';
 import { confluenceApiRequest } from '../../../transport';
@@ -30,7 +30,7 @@ describe('Confluence page:removeLabel operation', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/wiki/rest/api/content/123/label',
+			requestPath`/wiki/rest/api/content/123/label`,
 			{},
 			{ name: 'runbook' },
 		);
@@ -82,14 +82,14 @@ describe('Confluence page:removeLabel operation', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{},
 			{ title: 'Doc', limit: 250 },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'DELETE',
-			'/wiki/rest/api/content/777/label',
+			requestPath`/wiki/rest/api/content/777/label`,
 			{},
 			{ name: 'runbook' },
 		);
@@ -103,7 +103,7 @@ describe('Confluence page:removeLabel operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'DELETE',
-			'/wiki/rest/api/content/123/label',
+			requestPath`/wiki/rest/api/content/123/label`,
 			{},
 			{ name: 'team/qa' },
 		);

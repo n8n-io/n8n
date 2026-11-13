@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -14,23 +15,19 @@ export async function get(this: IExecuteFunctions, index: number) {
 	const onlyCurrent = this.getNodeParameter('options.onlyCurrent', index, true) as boolean;
 
 	//endpoint
-	const endpoint = `reports/${reportId}/?format=${format}&fd=${fd}&onlyCurrent=${onlyCurrent}`;
+	const endpoint = requestPath`reports/${reportId}/`;
+	const query = { format, fd, onlyCurrent };
 
 	if (format === 'JSON') {
-		const responseData = await apiRequest.call(
-			this,
-			requestMethod,
-			endpoint,
-			body,
-			{},
-			{ resolveWithFullResponse: true },
-		);
+		const responseData = await apiRequest.call(this, requestMethod, endpoint, body, query, {
+			resolveWithFullResponse: true,
+		});
 		return this.helpers.returnJsonArray(responseData.body as IDataObject);
 	}
 
 	const output: string = this.getNodeParameter('output', index) as string;
 
-	const response = await apiRequest.call(this, requestMethod, endpoint, body, {} as IDataObject, {
+	const response = await apiRequest.call(this, requestMethod, endpoint, body, query, {
 		encoding: null,
 		json: false,
 		resolveWithFullResponse: true,

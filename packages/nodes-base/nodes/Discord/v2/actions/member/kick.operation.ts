@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { getAuditLogReasonHeaders, parseDiscordError, prepareErrorData } from '../../helpers/utils';
@@ -35,7 +36,7 @@ export async function execute(
 			await discordApiRequest.call(
 				this,
 				'DELETE',
-				`/guilds/${guildId}/members/${userId}`,
+				requestPath`/guilds/${guildId}/members/${userId}`,
 				undefined,
 				undefined,
 				getAuditLogReasonHeaders.call(this, i),

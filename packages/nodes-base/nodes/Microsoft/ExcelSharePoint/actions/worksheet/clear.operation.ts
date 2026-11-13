@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	RequestPath,
+} from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -108,7 +114,7 @@ export async function execute(
 
 	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
 	// so a pasted Workbook/Site address is resolved once, not once per item.
-	const workbookRootCache = new Map<string, string>();
+	const workbookRootCache = new Map<string, RequestPath>();
 	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
@@ -116,10 +122,10 @@ export async function execute(
 			const settings = getSettings.call(this, i);
 
 			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
-			const sheetPath = `${workbookRoot}/workbook/worksheets/${encodeURIComponent(settings.worksheetId)}`;
+			const sheetPath = requestPath`${workbookRoot}/workbook/worksheets/${settings.worksheetId}`;
 			const clearPath = settings.range
-				? `${sheetPath}/range(address='${encodeURIComponent(settings.range)}')/clear`
-				: `${sheetPath}/range/clear`;
+				? requestPath`${sheetPath}/range(address='${settings.range}')/clear`
+				: requestPath`${sheetPath}/range/clear`;
 
 			await microsoftApiRequest.call(this, 'POST', clearPath, { applyTo: settings.applyTo });
 

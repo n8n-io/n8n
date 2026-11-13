@@ -6,25 +6,28 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 
 export async function twitterApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Pick<IRequestOptions, 'form'> = {},
 ) {
-	let options: IRequestOptions = {
+	let options: WithRequestTarget<IRequestOptions> = {
 		method,
 		body,
 		qs,
-		url: uri || `https://api.twitter.com/1.1${resource}`,
+		url: uri ?? requestUrl`https://api.twitter.com/1.1${resource}`,
 		json: true,
 	};
 	try {
@@ -47,7 +50,7 @@ export async function twitterApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
@@ -83,7 +86,7 @@ export async function uploadAttachments(
 	binaryProperties: string[],
 	i: number,
 ) {
-	const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
+	const uploadUri = requestUrl`https://upload.twitter.com/1.1/media/upload.json`;
 
 	const media: IDataObject[] = [];
 
@@ -110,7 +113,7 @@ export async function uploadAttachments(
 				media_data: binaryData.data,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+			response = await twitterApiRequest.call(this, 'POST', requestPath``, {}, {}, uploadUri, {
 				form,
 			});
 
@@ -123,7 +126,7 @@ export async function uploadAttachments(
 				media_type: binaryData.mimeType,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+			response = await twitterApiRequest.call(this, 'POST', requestPath``, {}, {}, uploadUri, {
 				form: attachmentBody,
 			});
 
@@ -146,7 +149,7 @@ export async function uploadAttachments(
 					segment_index: index,
 				};
 
-				response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+				response = await twitterApiRequest.call(this, 'POST', requestPath``, {}, {}, uploadUri, {
 					form: attachmentBody,
 				});
 
@@ -160,7 +163,7 @@ export async function uploadAttachments(
 				media_id: mediaId,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+			response = await twitterApiRequest.call(this, 'POST', requestPath``, {}, {}, uploadUri, {
 				form: attachmentBody,
 			});
 
