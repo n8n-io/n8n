@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentSetupSavedTelemetry.test.ts
+  s_d14e0169f95294::t_f959b9428e229c 110-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd67d0e8b23befd4893b46eadddeac3bd52e3873",
+  "prompts": {},
+  "sessions": {
+    "s_d14e0169f95294": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70a8a9d2-437c-4d5b-89ec-17a29de0c9b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
