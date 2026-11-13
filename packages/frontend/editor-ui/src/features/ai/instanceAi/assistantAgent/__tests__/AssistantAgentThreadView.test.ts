@@ -286,6 +286,13 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	}),
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('../../components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -417,6 +424,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 		]);
@@ -440,6 +448,15 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(getByTestId('input-menu-attach')).toBeDisabled();
+	});
+
+	it('shows the approval mode selector right after the "+" menu', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach').nextElementSibling).toBe(
+			getByTestId('approval-mode-selector-stub'),
+		);
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {

@@ -24,6 +24,7 @@ import {
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
 	getPendingAppTargetFromThreadMetadata,
+	threadTargetsAgent,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -3920,5 +3921,22 @@ describe('createThreadRuntime - older history pages', () => {
 		});
 		await runtime.loadOlderMessages();
 		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	it('is true for a thread with a bound or a pending agent', () => {
+		const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: { agentId: 'agent-1' } })).toBe(
+			false,
+		);
 	});
 });
