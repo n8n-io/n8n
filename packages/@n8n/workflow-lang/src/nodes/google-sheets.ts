@@ -72,6 +72,8 @@ interface SheetsParameters {
 	readVersion?: number;
 	/** Append checks the sheet's columns against `columns.schema` (version 4.4 and later). */
 	schemaCheck?: boolean;
+	/** Append sends the cells as RAW (version 4.0, v1's `cellFormatDefault`). */
+	legacyCellFormat?: boolean;
 	columns?: Columns;
 	options?: SheetsOptions;
 	/** `appendOrUpdate`: the parameters of each input item (v1 runs once for all items). */
@@ -372,6 +374,7 @@ export default defineNode<SheetsParameters>({
 				'documentId',
 				'sheetName',
 				'schemaCheck',
+				'legacyCellFormat',
 				'columns',
 				'columns.mappingMode',
 				'columns.value',
@@ -534,7 +537,9 @@ export default defineNode<SheetsParameters>({
 		}
 
 		const columns = parameters.columns ?? {};
-		const cellFormat = options.cellFormat || 'USER_ENTERED';
+		// v1 sends RAW cells before version 4.1 (`cellFormatDefault`), and USER_ENTERED after it.
+		const cellFormat =
+			options.cellFormat || (parameters.legacyCellFormat === true ? 'RAW' : 'USER_ENTERED');
 
 		if (operation === 'append') {
 			let dataMode = columns.mappingMode ?? 'defineBelow';

@@ -116,9 +116,10 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 	describe.each(EQUIVALENCE_CASES.map((c) => ({ ...c, label: c.name })))('$label', (c) => {
 		const recording = recordings[c.name];
 
-		it('has a v1 recording without error', () => {
+		it('has a v1 recording of the result that the case names', () => {
 			expect(recording).toBeDefined();
-			expect(recording.error).toBeUndefined();
+			// A case with `expectedError` names the error that v1 raises, and has no output.
+			expect(recording.error).toBe(c.expectedError);
 		});
 
 		it('compiles', () => {
@@ -145,7 +146,10 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 
 		it('sends the same requests and gives the same output', async () => {
 			const out = await runReference(workflowSource(c), fixture);
-			expect(out.status).toBe('ok');
+			expect(out.status).toBe(c.expectedError === undefined ? 'ok' : 'error');
+			if (c.expectedError !== undefined) {
+				expect(isRecord(out.result) ? out.result.message : out.result).toBe(c.expectedError);
+			}
 			// The data as the credentials file holds it (`buildCredentialsFile`).
 			const data = withDerivedValues(c.credential?.type ?? '', {
 				...(registry.get(c.credential?.type ?? '')?.defaults ?? {}),
@@ -191,7 +195,8 @@ describe.runIf(typesBuilt)('request equivalence with v1 nodes', () => {
 			expect(await withParsedMime(withoutFormat(requests))).toEqual(
 				await withParsedMime(withoutFormat(recording.requests)),
 			);
-			expect(out.result).toEqual(recording.output);
+			// The error is not the output of a run that failed.
+			if (c.expectedError === undefined) expect(out.result).toEqual(recording.output);
 		});
 	});
 });

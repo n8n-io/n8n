@@ -22,6 +22,11 @@ export interface EquivalenceCase {
 	 * recorder gives them to the v1 node through a recording data-table service.
 	 */
 	serviceResults?: unknown[];
+	/**
+	 * The message of the error that v1 raises. The case then compares the requests
+	 * up to the failure and the error, not the output. Without it, v1 must succeed.
+	 */
+	expectedError?: string;
 }
 
 /** One `ctx.service` call: the `service`, `op` and `args` of the effect. */
