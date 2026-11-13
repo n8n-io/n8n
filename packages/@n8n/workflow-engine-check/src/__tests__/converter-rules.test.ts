@@ -29,16 +29,23 @@ const merge = (typeVersion: number, mode: string) =>
 const splitInBatches = (parameters: INode['parameters'], typeVersion = 3) =>
 	node({ type: 'n8n-nodes-base.splitInBatches', typeVersion, parameters });
 
-/** Trigger -> node over `main`. */
+const loopBody = node({ id: 'body-id', name: 'Body' });
+
+/** Trigger -> node over `main`. A Split In Batches node also gets a body that returns to it. */
 function check(target: INode, extraConnections: IConnections = {}) {
-	return checkEngineV2Eligibility({
-		nodes: [trigger, target],
-		connections: {
-			[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
-			...extraConnections,
-		},
-		settings: {},
-	});
+	const nodes = [trigger, target];
+	const connections: IConnections = {
+		[trigger.name]: { main: [[{ node: target.name, type: 'main', index: 0 }]] },
+	};
+	if (target.type === 'n8n-nodes-base.splitInBatches') {
+		nodes.push(loopBody);
+		connections[target.name] = { main: [[], [{ node: loopBody.name, type: 'main', index: 0 }]] };
+		connections[loopBody.name] = { main: [[{ node: target.name, type: 'main', index: 0 }]] };
+	}
+	for (const [name, byType] of Object.entries(extraConnections)) {
+		connections[name] = { ...connections[name], ...byType };
+	}
+	return checkEngineV2Eligibility({ nodes, connections, settings: {} });
 }
 
 const toolConnection: IConnections = {
