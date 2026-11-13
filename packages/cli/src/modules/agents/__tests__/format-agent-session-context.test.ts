@@ -311,13 +311,19 @@ describe('formatFullSessionContextPage', () => {
 		options: { executionId?: string; maxChars?: number } = {},
 	): Page[] {
 		const pages: Page[] = [];
+		const seenCursors = new Set<string>();
 		let cursor: string | undefined;
 		do {
 			const page = formatFullSessionContextPage(makeThread(), executions, { ...options, cursor });
 			if (!page.ok) throw new Error(page.reason);
 			pages.push(page);
 			cursor = page.nextCursor ?? undefined;
+			if (cursor !== undefined) {
+				if (seenCursors.has(cursor)) throw new Error('Cursor repeated');
+				seenCursors.add(cursor);
+			}
 		} while (cursor !== undefined && pages.length < 1_000);
+		expect(cursor).toBeUndefined();
 		return pages;
 	}
 
@@ -487,5 +493,55 @@ describe('formatFullSessionContextPage', () => {
 				cursor: page.nextCursor!,
 			}),
 		).toEqual({ ok: false, reason: 'invalid_cursor' });
+	});
+
+	it('rejects a cursor from another session', () => {
+		const executions = [
+			makeExecution({ id: 'exec-1', userMessage: 'x'.repeat(500) }),
+			makeExecution({ id: 'exec-2', userMessage: 'Next' }),
+		];
+		const page = formatFullSessionContextPage(makeThread(), executions, { maxChars: 300 });
+		if (!page.ok) throw new Error(page.reason);
+
+		expect(
+			formatFullSessionContextPage(makeThread({ id: 'thread-2' }), executions, {
+				cursor: page.nextCursor!,
+			}),
+		).toEqual({ ok: false, reason: 'invalid_cursor' });
+	});
+
+	it('rejects a cursor with an offset past the end of its segment', () => {
+		const executions = [makeExecution({ id: 'exec-1', userMessage: 'x'.repeat(500) })];
+		const page = formatFullSessionContextPage(makeThread(), executions, { maxChars: 300 });
+		if (!page.ok) throw new Error(page.reason);
+		const decoded = JSON.parse(Buffer.from(page.nextCursor!, 'base64url').toString('utf8')) as {
+			offset: number;
+		};
+		const forged = Buffer.from(JSON.stringify({ ...decoded, offset: 1_000_000 })).toString(
+			'base64url',
+		);
+
+		expect(formatFullSessionContextPage(makeThread(), executions, { cursor: forged })).toEqual({
+			ok: false,
+			reason: 'invalid_cursor',
+		});
+	});
+
+	it('reports session_changed when the text at the cursor changed between pages', () => {
+		const running = makeExecution({
+			id: 'exec-1',
+			status: 'running',
+			userMessage: `${'a'.repeat(500)}-end`,
+		});
+		const first = formatFullSessionContextPage(makeThread(), [running], { maxChars: 300 });
+		if (!first.ok) throw new Error(first.reason);
+
+		const second = formatFullSessionContextPage(
+			makeThread(),
+			[{ ...running, status: 'success', duration: 9_999 }],
+			{ cursor: first.nextCursor! },
+		);
+
+		expect(second).toEqual({ ok: false, reason: 'session_changed' });
 	});
 });

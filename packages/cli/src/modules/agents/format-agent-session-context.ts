@@ -1,5 +1,6 @@
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { createHash } from 'node:crypto';
 
 import type { AgentSessionThread, AgentSessionTurn } from './agent-context.contracts';
 
@@ -270,15 +271,19 @@ export function formatPreviewSessionContext(
 
 export type FullSessionContextPage =
 	| { ok: true; transcript: string; nextCursor: string | null }
-	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' };
+	| { ok: false; reason: 'execution_not_found' | 'invalid_cursor' | 'session_changed' };
 
 interface TranscriptCursor {
+	/** The session that the cursor belongs to. */
+	sessionId: string;
 	/** The `executionId` scope that the cursor belongs to. */
 	scope: string | null;
 	/** The segment to continue in: `header`, `footer`, or `turn:<executionId>`. */
 	segment: string;
 	/** The character offset in the segment. */
 	offset: number;
+	/** Hash of the segment text. Detects a segment that changed between two calls. */
+	hash: string;
 }
 
 function encodeTranscriptCursor(cursor: TranscriptCursor): string {
@@ -290,18 +295,30 @@ function decodeTranscriptCursor(cursor: string): TranscriptCursor | null {
 		const parsed: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
 		if (
 			isRecord(parsed) &&
+			typeof parsed.sessionId === 'string' &&
 			(parsed.scope === null || typeof parsed.scope === 'string') &&
 			typeof parsed.segment === 'string' &&
 			typeof parsed.offset === 'number' &&
 			Number.isSafeInteger(parsed.offset) &&
-			parsed.offset >= 0
+			parsed.offset >= 0 &&
+			typeof parsed.hash === 'string'
 		) {
-			return { scope: parsed.scope, segment: parsed.segment, offset: parsed.offset };
+			return {
+				sessionId: parsed.sessionId,
+				scope: parsed.scope,
+				segment: parsed.segment,
+				offset: parsed.offset,
+				hash: parsed.hash,
+			};
 		}
 	} catch {
 		// Reported below as an invalid cursor.
 	}
 	return null;
+}
+
+function hashSegment(text: string): string {
+	return createHash('sha256').update(text).digest('base64url').slice(0, 16);
 }
 
 /** Moves a slice end back by one when it would split a UTF-16 surrogate pair. */
@@ -319,7 +336,10 @@ function sliceEndOutsideSurrogatePair(value: string, end: number, start: number)
  * transcript. `nextCursor` is `null` on the last page.
  *
  * The cursor points at a turn by its execution ID, so turns that are added
- * to the session between two calls do not move the position.
+ * to the session between two calls do not move the position. If the text at
+ * the cursor position changed since the cursor was made, for example in a turn
+ * that was still running, the result is `session_changed`. Only the turns from
+ * the cursor to the end of the page are formatted.
  */
 export function formatFullSessionContextPage(
 	thread: AgentSessionThread,
@@ -330,35 +350,42 @@ export function formatFullSessionContextPage(
 	const scoped = scopeExecutions(executions, executionId);
 	if (scoped === null) return { ok: false, reason: 'execution_not_found' };
 
-	const segments = [
-		{ key: 'header', text: formatPrefix(thread, scoped, executionId) },
-		...scoped.map((execution) => ({
-			key: `turn:${execution.id}`,
-			text: `\n${formatExecution(execution, undefined)}`,
-		})),
-		{ key: 'footer', text: `\n${PREVIEW_CONTEXT_CLOSE_TAG}` },
-	];
+	const keys = ['header', ...scoped.map((execution) => `turn:${execution.id}`), 'footer'];
+	const formatSegment = (index: number): string => {
+		if (index === 0) return formatPrefix(thread, scoped, executionId);
+		if (index === keys.length - 1) return `\n${PREVIEW_CONTEXT_CLOSE_TAG}`;
+		return `\n${formatExecution(scoped[index - 1], undefined)}`;
+	};
 
 	let index = 0;
 	let offset = 0;
+	let text = formatSegment(0);
 	if (cursor !== undefined) {
 		const decoded = decodeTranscriptCursor(cursor);
-		if (decoded === null || decoded.scope !== (executionId ?? null)) {
+		if (
+			decoded === null ||
+			decoded.sessionId !== thread.id ||
+			decoded.scope !== (executionId ?? null)
+		) {
 			return { ok: false, reason: 'invalid_cursor' };
 		}
-		index = segments.findIndex(({ key }) => key === decoded.segment);
+		index = keys.indexOf(decoded.segment);
 		if (index === -1) return { ok: false, reason: 'invalid_cursor' };
+		text = formatSegment(index);
+		if (decoded.hash !== hashSegment(text)) return { ok: false, reason: 'session_changed' };
+		if (decoded.offset >= text.length) return { ok: false, reason: 'invalid_cursor' };
 		offset = decoded.offset;
 	}
 
 	let transcript = '';
-	while (index < segments.length) {
-		const { text } = segments[index];
+	while (true) {
 		const budget = maxChars - transcript.length;
 		if (text.length - offset <= budget) {
-			if (offset < text.length) transcript += text.slice(offset);
+			transcript += text.slice(offset);
 			index++;
 			offset = 0;
+			if (index === keys.length) break;
+			text = formatSegment(index);
 			continue;
 		}
 		let end = sliceEndOutsideSurrogatePair(text, offset + budget, offset);
@@ -370,11 +397,13 @@ export function formatFullSessionContextPage(
 	}
 
 	const nextCursor =
-		index < segments.length
+		index < keys.length
 			? encodeTranscriptCursor({
+					sessionId: thread.id,
 					scope: executionId ?? null,
-					segment: segments[index].key,
+					segment: keys[index],
 					offset,
+					hash: hashSegment(text),
 				})
 			: null;
 	return { ok: true, transcript, nextCursor };

@@ -1067,8 +1067,14 @@ export class McpAgentToolsService {
 							cursor,
 						});
 						if (!page.ok) {
-							return page.reason === 'execution_not_found'
-								? executionNotFound
+							if (page.reason === 'execution_not_found') return executionNotFound;
+							return page.reason === 'session_changed'
+								? {
+										ok: false,
+										code: 'session_changed',
+										message:
+											'The session changed after this cursor was returned. Call get_agent_session without a cursor to read the transcript again.',
+									}
 								: {
 										ok: false,
 										code: 'invalid_cursor',

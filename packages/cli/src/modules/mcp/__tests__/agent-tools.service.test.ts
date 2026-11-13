@@ -1949,6 +1949,7 @@ describe('McpAgentToolsService', () => {
 					pages.push(page);
 					cursor = page.nextCursor ?? undefined;
 				} while (cursor !== undefined && pages.length < 50);
+				expect(cursor).toBeUndefined();
 				return pages;
 			}
 
@@ -2020,6 +2021,32 @@ describe('McpAgentToolsService', () => {
 
 				expect(result.isError).toBe(true);
 				expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+			});
+
+			it('reports session_changed when the turn at the cursor changed', async () => {
+				agentContextService.readSession.mockResolvedValue(longSession);
+				const first = await callTool('get_agent_session', {
+					agentId: 'agent-1',
+					sessionId: 'session-1',
+					output: 'full',
+				});
+				const nextCursor = (first.structuredContent as { nextCursor: string }).nextCursor;
+				agentContextService.readSession.mockResolvedValue({
+					...longSession,
+					executions: [
+						{ ...longSession.executions[0], duration: 99_999 },
+						...longSession.executions.slice(1),
+					],
+				});
+
+				const result = await callTool('get_agent_session', {
+					agentId: 'agent-1',
+					sessionId: 'session-1',
+					cursor: nextCursor,
+				});
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({ ok: false, code: 'session_changed' });
 			});
 		});
 	});
