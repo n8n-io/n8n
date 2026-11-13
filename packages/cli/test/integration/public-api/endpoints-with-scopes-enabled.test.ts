@@ -6,7 +6,7 @@ import {
 	randomName,
 	testDb,
 } from '@n8n/backend-test-utils';
-import { EngineConfig } from '@n8n/config';
+import { EngineConfig, GlobalConfig } from '@n8n/config';
 import type { Person, TagEntity, Variables } from '@n8n/db';
 import {
 	ApiKeyRepository,
@@ -366,6 +366,16 @@ describe('Public API endpoints with API key scopes', () => {
 			});
 
 			describe('PATCH /users/:id/locale', () => {
+				const globalConfig = Container.get(GlobalConfig);
+
+				beforeEach(() => {
+					globalConfig.locales.userOverride = true;
+				});
+
+				afterEach(() => {
+					globalConfig.locales.userOverride = false;
+				});
+
 				test('should change locale when API key has "user:changeLocale" scope', async () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['user:changeLocale'] });
 					const member = await createMember();

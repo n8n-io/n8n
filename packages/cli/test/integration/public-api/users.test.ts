@@ -565,7 +565,7 @@ describe('Users in Public API', () => {
 		});
 
 		afterEach(() => {
-			globalConfig.locales.userOverride = true;
+			globalConfig.locales.userOverride = false;
 			vi.restoreAllMocks();
 		});
 

@@ -67,7 +67,7 @@ describe('GlobalConfig', () => {
 		defaultLocale: 'en',
 		locales: {
 			available: {},
-			userOverride: true,
+			userOverride: false,
 		},
 		hideUsagePage: false,
 		deployment: {
