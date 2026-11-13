@@ -280,11 +280,12 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
+		const result = await this.gitService.setBranch(branch);
 		await this.sourceControlPreferencesService.setPreferences({
-			branchName: branch,
-			connected: branch?.length > 0,
+			branchName: result.currentBranch,
+			connected: result.currentBranch?.length > 0,
 		});
-		return await this.gitService.setBranch(branch);
+		return result;
 	}
 
 	// will reset the branch to the remote branch and pull
