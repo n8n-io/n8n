@@ -1,7 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { OutboundRedactor } from '../outbound-redaction';
+import { OutboundRedactor, redactMcpUrl } from '../outbound-redaction';
 
 const telegramToken = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
 
@@ -165,5 +165,21 @@ describe('OutboundRedactor', () => {
 		});
 
 		expect(request.url).toBe('https://acme.atlassian.net/rest/api/3/issue/ABC-1');
+	});
+});
+
+describe('redactMcpUrl', () => {
+	it('removes every query value and the user info, and keeps the path', () => {
+		expect(redactMcpUrl('https://user:pw@mcp.example.com/mcp?key=s3cret&team=t1')).toBe(
+			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&team=%5BREDACTED%5D',
+		);
+	});
+
+	it('leaves a URL without a query as it is', () => {
+		expect(redactMcpUrl('https://mcp.linear.app/mcp')).toBe('https://mcp.linear.app/mcp');
+	});
+
+	it('drops the query of a URL it cannot parse', () => {
+		expect(redactMcpUrl('not a url?token=abc')).toBe('not a url');
 	});
 });

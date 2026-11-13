@@ -44,7 +44,11 @@ const config = {
 		{ type: 'workflow', name: 'Create ticket', workflow: 'Create ticket', workflowId: 'wf-1' },
 		{ type: 'custom', id: 'custom-1' },
 	],
-	mcpServers: [{ name: 'linear', url: 'https://mcp.linear.app/mcp', transport: 'sse' }],
+	mcpServers: [
+		{ name: 'linear', url: 'https://mcp.linear.app/mcp', transport: 'sse' },
+		{ name: 'docs', url: 'https://mcp.example.com/mcp?key=s3cret-mcp-key' },
+	],
+	config: { webSearch: { enabled: true } },
 } as unknown as AgentJsonConfig;
 
 const world: SimulationWorld = {
@@ -207,9 +211,17 @@ describe('SimulationSessionService', () => {
 			}),
 			expect.objectContaining({ toolName: 'my_code', kind: 'custom', testability: 'blocked' }),
 			expect.objectContaining({ toolName: 'linear', kind: 'mcp', testability: 'blocked' }),
+			{ toolName: 'docs', kind: 'mcp', testability: 'simulated' },
+			{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' },
 		]);
 		expect(backend.describeTools).toHaveBeenCalledWith(
-			expect.objectContaining({ tools: [expect.objectContaining({ toolName: 'Send_Slack' })] }),
+			expect.objectContaining({
+				tools: [
+					expect.objectContaining({ toolName: 'Send_Slack' }),
+					expect.objectContaining({ toolName: 'docs' }),
+					expect.objectContaining({ toolName: 'web_search' }),
+				],
+			}),
 		);
 	});
 
@@ -241,6 +253,31 @@ describe('SimulationSessionService', () => {
 		expect(tools).toContainEqual(
 			expect.objectContaining({ toolName: 'create-ticket', testability: 'simulated' }),
 		);
+	});
+
+	it('lists web search when it is enabled, also when the model would search natively', async () => {
+		const { service } = setup({ backend: llmBackend() });
+
+		const tools = await service.describeTools('agent-1', 'project-1');
+
+		expect(tools).toContainEqual(
+			expect.objectContaining({
+				toolName: 'web_search',
+				kind: 'web_search',
+				testability: 'simulated',
+			}),
+		);
+	});
+
+	it('describes an MCP server to the simulator without the key in its URL', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend });
+
+		await service.describeTools('agent-1', 'project-1');
+
+		const described = JSON.stringify(vi.mocked(backend.describeTools).mock.calls[0][0]);
+		expect(described).not.toContain('s3cret-mcp-key');
+		expect(described).toContain('https://mcp.example.com/mcp?key=%5BREDACTED%5D');
 	});
 
 	it('marks a tool the backend leaves out as unsupported by the simulator', async () => {

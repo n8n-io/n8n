@@ -152,3 +152,22 @@ function parseJsonObject(text: string): unknown {
 		return undefined;
 	}
 }
+
+/**
+ * An MCP server URL with its user info and every query value removed. MCP servers that take
+ * a key in the URL use any parameter name (`?key=`, `?apiKey=`), and their credential is never
+ * decrypted where the redactor sees it. The path stays, so the simulator can tell servers apart.
+ */
+export function redactMcpUrl(url: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return url.split('?')[0];
+	}
+	parsed.username = '';
+	parsed.password = '';
+	for (const name of new Set(parsed.searchParams.keys()))
+		parsed.searchParams.set(name, PLACEHOLDER);
+	return parsed.toString();
+}

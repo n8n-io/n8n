@@ -136,6 +136,12 @@ export interface BuildFromJsonOptions {
 	 */
 	fallbackWebSearch?: FallbackWebSearchHandler;
 	/**
+	 * Leave out the provider's own tools (native web search and configured
+	 * `providerTools`) and attach the fallback `web_search` tool instead, so
+	 * every call goes through a tool handler.
+	 */
+	disableProviderTools?: boolean;
+	/**
 	 * Attach MCP servers whose credential is still pending instead of skipping
 	 * them. Only safe when MCP traffic cannot reach the real server — set by
 	 * the eval path when its mock MCP transport is injected.
@@ -265,7 +271,9 @@ export async function buildFromJson(
 	agent.skills(configuredSkillSource);
 
 	// Provider tools
-	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
+	const providerTools = options.disableProviderTools
+		? undefined
+		: getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
 	if (providerTools) {
 		for (const [name, args] of Object.entries(providerTools)) {
 			const resolved = resolveProviderToolName(name);
@@ -277,6 +285,7 @@ export async function buildFromJson(
 		options.credentialProvider,
 		options.webSearchFetch,
 		options.fallbackWebSearch,
+		options.disableProviderTools,
 	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
@@ -356,11 +365,18 @@ function buildFallbackWebSearchTool(
 	credentialProvider: CredentialProvider & Partial<AiGatewaySearchCredentialResolver>,
 	webSearchFetch?: FetchFn,
 	fallbackWebSearch?: FallbackWebSearchHandler,
+	disableProviderTools = false,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
-	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (
+		!disableProviderTools &&
+		isNativeWebSearchRequested(config) &&
+		hasNativeWebSearchProvider(config.model)
+	) {
+		return null;
+	}
 	if (fallbackWebSearch) {
 		return {
 			name: WEB_SEARCH_TOOL_NAME,

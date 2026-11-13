@@ -20,7 +20,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard';
 import { nodeSimulationGap } from './non-http-node-types';
-import { OutboundRedactor } from './outbound-redaction';
+import { OutboundRedactor, redactMcpUrl } from './outbound-redaction';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -235,7 +235,10 @@ export class SimulationSession {
 		return {
 			toolCallInterceptor: this.interceptor,
 			mcpFetch: this.mcpFetch,
-			...(this.capabilities.has(WEB_SEARCH_TOOL_NAME) ? { webSearch: this.webSearch } : {}),
+			// Provider tools (native web search included) would run for real where no seam
+			// sees them. The fallback search tool runs through the interceptor instead.
+			webSearch: this.webSearch,
+			disableProviderTools: true,
 			configureToolAdditionalData: (additionalData, context) => {
 				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
@@ -347,10 +350,9 @@ export class SimulationSession {
 		const rawBody =
 			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
 		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
-		const reply = await this.ask(
-			{ protocol: 'mcp', method, url, body },
-			{ mcpServerName: this.mcpServerForUrl(url) },
-		);
+		// Named from the real URL; the simulator only sees the URL without its query values.
+		const request = this.redactor.redact({ protocol: 'mcp', method, url: redactMcpUrl(url), body });
+		const reply = await this.ask(request, { mcpServerName: this.mcpServerForUrl(url) });
 		if (reply.outcome !== 'served') throw new Error('Unexpected MCP reply');
 		const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
 		return new Response(reply.status === 204 ? null : payload, {

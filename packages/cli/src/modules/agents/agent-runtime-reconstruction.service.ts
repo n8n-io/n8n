@@ -825,6 +825,7 @@ export class AgentRuntimeReconstructionService {
 				this.knowledgeUsageTracker.startToolCall(runId, 'vector_store_search'),
 			modelFetch: credentialProvider.createAiGatewayTokenRefreshFetch?.(modelFetch) ?? modelFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
+			disableProviderTools: instrumentation?.disableProviderTools,
 			// Only the mock MCP transport makes attaching auth-pending servers safe.
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
@@ -1419,8 +1420,11 @@ export class AgentRuntimeReconstructionService {
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
 					: {}),
+				// Provider tools run inside the provider's call, out of the test run's reach.
 				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
-					buildProviderToolsForModel(config, modelConfig),
+					instrumentation?.disableProviderTools
+						? []
+						: buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });

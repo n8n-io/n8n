@@ -20,6 +20,7 @@ import { AgentExecutionThreadRepository } from '../repositories/agent-execution-
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { nodeSimulationGap } from './non-http-node-types';
+import { redactMcpUrl } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
@@ -162,15 +163,30 @@ export class SimulationSessionService {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
 			const server =
 				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
+			// A server without a description is described by its URL, which can carry a key.
+			const description =
+				server && tool.description
+					? tool.description.split(server.url).join(redactMcpUrl(server.url))
+					: tool.description;
 			tools.push({
 				toolName: tool.name,
 				kind,
-				...(tool.description ? { description: tool.description } : {}),
+				...(description ? { description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
-				...(server ? { url: server.url } : {}),
+				// The simulator matches requests to servers by this URL, redacted the same way.
+				...(server ? { url: redactMcpUrl(server.url) } : {}),
 			});
 			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
+		}
+		// Test runs leave out the provider's native search and attach the fallback tool,
+		// which summarizeTools does not list when native search is configured.
+		if (config.config?.webSearch?.enabled && !tools.some((tool) => tool.kind === 'web_search')) {
+			tools.push({
+				toolName: 'web_search',
+				kind: 'web_search',
+				description: 'Web search returning {title, url, snippet} result lists',
+			});
 		}
 		for (const ref of config.tools ?? []) {
 			if (ref.type !== 'node' || ref.enabled === false) continue;
