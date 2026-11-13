@@ -184,6 +184,21 @@ describe('OutboundRedactor', () => {
 		},
 	);
 
+	it('removes a numeric value inside a custom auth JSON credential', async () => {
+		const { redactor } = await redactorWithCredential({
+			json: JSON.stringify({ headers: { 'X-Pin': 123456 } }),
+		});
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://api.example.com/data?pin=123456',
+			headers: { 'X-Pin': '123456' },
+		});
+
+		expect(JSON.stringify(request)).not.toContain('123456');
+	});
+
 	it('removes short values inside a custom auth JSON credential', async () => {
 		const { redactor } = await redactorWithCredential({
 			json: JSON.stringify({ headers: { 'X-Pin': 'p1n9' } }),
@@ -263,6 +278,10 @@ describe('redactMcpUrl', () => {
 			'https://mcp.zapier.com/api/mcp/s/[REDACTED]/mcp',
 		);
 		expect(redactMcpUrl('https://api.example.com/v2/sse')).toBe('https://api.example.com/v2/sse');
+		expect(redactMcpUrl('https://mcp.example.com/s/xqjvnmksrptzbcdfghwy/mcp')).toBe(
+			'https://mcp.example.com/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://tools.acme.dev/acme/mcp')).toBe('https://tools.acme.dev/acme/mcp');
 	});
 
 	it('leaves a URL without a query as it is', () => {
