@@ -51,6 +51,7 @@ import {
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
 import { buildVectorStore } from '@/modules/knowledge/vector-stores/factory';
+import { createVectorStoreErrorSanitizer } from '@/modules/knowledge/vector-stores/error-sanitizer';
 import type { FinishKnowledgeToolCall } from '../agent-knowledge-usage-tracker';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
@@ -152,9 +153,10 @@ export interface BuildFromJsonOptions {
 	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall;
 }
 
-function countVectorStoreSearches(
+function wrapVectorStoreSearch(
 	searchTool: BuiltTool,
-	onVectorStoreSearch: (runId: string | undefined) => FinishKnowledgeToolCall,
+	sanitizeError: (error: unknown) => Error,
+	onVectorStoreSearch?: (runId: string | undefined) => FinishKnowledgeToolCall,
 ): BuiltTool {
 	const searchHandler = searchTool.handler;
 	if (!searchHandler) {
@@ -164,16 +166,17 @@ function countVectorStoreSearches(
 	return {
 		...searchTool,
 		async handler(input, ctx) {
-			const finishSearch = onVectorStoreSearch(ctx.runId);
+			const finishSearch = onVectorStoreSearch?.(ctx.runId);
 			const startedAt = Date.now();
 			let output: unknown;
 			try {
 				output = await searchHandler.call(searchTool, input, ctx);
 			} catch (error) {
 				const errorType = error instanceof Error ? error.name : typeof error;
-				finishSearch({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
-				throw error;
+				finishSearch?.({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
+				throw sanitizeError(error);
 			}
+			if (!finishSearch) return output;
 
 			const searchDurationMs = Date.now() - startedAt;
 
@@ -252,13 +255,19 @@ export async function buildFromJson(
 			// Draft connections may not have a credential (or embedding credential)
 			// selected yet — skip them rather than failing the whole agent build.
 			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
-			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
-			const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
-			agent.tool(
-				options.onVectorStoreSearch
-					? countVectorStoreSearches(searchTool, options.onVectorStoreSearch)
-					: searchTool,
+			const sanitizer = createVectorStoreErrorSanitizer(
+				options.credentialProvider,
+				vectorStoreConfig,
 			);
+			try {
+				const vectorStore = await buildVectorStore(vectorStoreConfig, sanitizer.credentialProvider);
+				const searchTool = vectorStore.asTool({ description: vectorStoreConfig.useWhen }).build();
+				agent.tool(
+					wrapVectorStoreSearch(searchTool, sanitizer.sanitize, options.onVectorStoreSearch),
+				);
+			} catch (error) {
+				throw sanitizer.sanitize(error);
+			}
 		}
 	}
 

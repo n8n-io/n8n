@@ -114,11 +114,11 @@ describe('Agent vector-store connection tests', () => {
 	});
 
 	it.each([
-		['postgres-cred', 'user'],
-		['postgres-cred', 'project'],
-		['embed-cred', 'user'],
-		['embed-cred', 'project'],
-	])('rejects %s outside the %s scope before decrypting it', async (credentialId, scope) => {
+		['postgres-cred', 'user', 'credential'],
+		['postgres-cred', 'project', 'credential'],
+		['embed-cred', 'user', 'embedding credential'],
+		['embed-cred', 'project', 'embedding credential'],
+	])('rejects %s outside the %s scope before decrypting it', async (credentialId, scope, role) => {
 		if (scope === 'user') {
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				accessibleCredentials.filter(({ id }) => id !== credentialId),
@@ -132,7 +132,7 @@ describe('Agent vector-store connection tests', () => {
 
 		await expect(controller.testConnection(request, response, { vectorStore })).resolves.toEqual({
 			success: false,
-			message: `Credential "${credentialId}" not found or not accessible`,
+			message: `Could not resolve the ${role} of vector store "product_docs"`,
 		});
 
 		expect(credentialsHelper.getDecrypted).not.toHaveBeenCalledWith(
