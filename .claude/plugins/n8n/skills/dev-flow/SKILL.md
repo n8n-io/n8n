@@ -41,7 +41,8 @@ agents; fall back to the generic equivalents only if one isn't available:**
 | Review: frontend/Vue (only if diff touches frontend) | `n8n:autodev-vue-reviewer` | `expert-vue3-developer` + `n8n:design-system` |
 
 Confirm availability at runtime (the Agent tool lists available agent types) and use the fallback
-when a preferred agent is missing.
+when a preferred agent is missing. If no fallback exists either, do that step inline in this session
+and say so.
 
 There is **no live browser-testing phase** — it's too environment-fragile to automate reliably.
 Instead, correctness is enforced by strong automated tests plus a dedicated testing review lens
@@ -109,7 +110,8 @@ Every loop in this skill is **bounded** to avoid spinning forever:
 - If a loop hasn't converged after its cap — plan or implementation reviews keep finding
   `[BLOCKER]`/`[MAJOR]` issues, or CI won't go green — **stop and escalate to the user** with a
   crisp summary of what's unresolved and why. Don't loop silently or lower the bar to "pass".
-- Track loop state in the todo list so the flow is resumable after an interruption.
+- Track the phase and round counters in the state block at the top of the plan file (see Resuming
+  mid-flow). The todo list mirrors it but does not survive a new session.
 
 ---
 
@@ -248,9 +250,10 @@ skip it rather than dispatch a no-op reviewer:
    could be inlined or deleted. Tag `[MINOR]`–`[MAJOR]` and feed valid findings
    into the fix loop.
 
-**Always add an independent automated second-opinion pass when one is available** (e.g. `codex review`,
-or a `cubic` / `/run-review` pass) as another lens — treat its findings like any other reviewer's and
-verify them rather than accepting blindly. If none is available, note that and continue.
+Add an independent automated second-opinion pass on the diff, **once**, after the lenses have
+converged in Phase 5 and before Phase 6 (e.g. `codex review`, or a `cubic` / `/run-review` pass).
+Do not run it every round. Verify each finding rather than accepting it blindly. If none is
+available, note that and continue.
 
 Collect all findings, dedupe across lenses (any second-opinion pass included), and triage by severity.
 
@@ -264,6 +267,8 @@ smallest change that resolves the finding — never gold-plate or add scope in r
 After fixing, **re-run the affected review lenses** on the new diff. Repeat fix → re-review until
 **no `[BLOCKER]` or `[MAJOR]` findings remain** and the package test suite is green — or the
 3-round cap is hit, then escalate with the unresolved findings. Commit fixes atomically.
+When the loop is clean, run the one second-opinion pass on the diff (Phase 4), fix real findings,
+then continue to Phase 6.
 
 ## Phase 6 — Open the PR (automatic, ready for review)
 
@@ -311,9 +316,16 @@ final merge to the user unless they explicitly asked you to land it.
 
 ## Resuming mid-flow
 
-If invoked when work is already underway (branch exists, plan file present, PR open), infer the
-current phase from git state + the todo list and continue from there rather than restarting. The
-plan file at `.claude/plans/<TICKET-ID>.md` is the durable context anchor.
+If invoked when work is already underway (branch exists, plan file present, PR open), read the
+state block at the top of `.claude/plans/<TICKET-ID>.md` first, check it against git state (branch,
+commits, open PR), and continue from there rather than restarting. Keep the block current at each
+phase change and each loop round:
+
+```
+state: phase=<n> round=<n> total_rounds=<n> pr=<number or none> second_opinion_diff=<done|todo>
+```
+
+The todo list is a convenience only. The plan file is the durable context anchor.
 
 ## When NOT to use this
 
