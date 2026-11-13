@@ -1,0 +1,19 @@
+packages/@n8n/utils/src/__tests__/diff-text.test.ts
+  s_b46fafce860919::t_2d4f227a038dd6 36-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "856dfc298e21c753233fb40f444d2485f5d5f68f",
+  "prompts": {},
+  "sessions": {
+    "s_b46fafce860919": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c01f-899b-7ed0-beb0-f0a848e364ae",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

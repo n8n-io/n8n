@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_61f75705d5c0fa::t_6708c959c82381 1192,1227-1231
+packages/cli/test/integration/instance-ai/assistant-agent-eval.api.test.ts
+  s_61f75705d5c0fa::t_3c03f89174844b 161-163
+  s_61f75705d5c0fa::t_4e1cd136cb2336 108,114,120,224-277,280,287
+packages/cli/src/modules/instance-ai/__tests__/restorable-messages.test.ts
+  s_61f75705d5c0fa::t_6708c959c82381 6,19,24-29,33-43
+packages/cli/src/modules/instance-ai/restorable-messages.ts
+  s_61f75705d5c0fa::t_dacba8b155c67e 3,31-32,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "15bd584d64d60073512fd9e2db441b7243ac19ce",
+  "prompts": {},
+  "sessions": {
+    "s_61f75705d5c0fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f470bf4-6651-4727-9790-05cc11eb4434",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

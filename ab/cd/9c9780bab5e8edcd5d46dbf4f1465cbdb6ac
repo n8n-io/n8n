@@ -1,0 +1,60 @@
+packages/modules/code-sandbox/backend/tsconfig.build.json
+  h_8fb27e0cdf6d1e 1-10
+packages/cli/package.json
+  h_8fb27e0cdf6d1e 167
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 5002-5004,7569-7620,7835
+packages/modules/code-sandbox/backend/README.md
+  h_8fb27e0cdf6d1e 1-17
+packages/modules/code-sandbox/backend/src/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 1-27
+packages/cli/src/commands/base-command.ts
+  h_8fb27e0cdf6d1e 101-102,203,582-611
+packages/cli/src/commands/worker.ts
+  h_8fb27e0cdf6d1e 51
+packages/modules/code-sandbox/backend/src/code-sandbox-backend.ts
+  h_8fb27e0cdf6d1e 1-20
+packages/modules/code-sandbox/backend/package.json
+  h_8fb27e0cdf6d1e 1-53
+packages/modules/code-sandbox/backend/src/__tests__/code-sandbox.module.test.ts
+  h_8fb27e0cdf6d1e 1-36
+packages/modules/code-sandbox/backend/oxlint.config.mts
+  h_8fb27e0cdf6d1e 1-8
+packages/modules/code-sandbox/backend/vitest.config.ts
+  h_8fb27e0cdf6d1e 1-3
+packages/cli/src/commands/start.ts
+  h_8fb27e0cdf6d1e 74,216
+packages/modules/code-sandbox/backend/src/errors/invalid-code-sandbox-config.error.ts
+  h_8fb27e0cdf6d1e 3,5
+packages/cli/src/commands/engine.ts
+  h_8fb27e0cdf6d1e 28
+packages/modules/code-sandbox/backend/src/index.ts
+  h_8fb27e0cdf6d1e 1-2
+packages/cli/src/commands/__tests__/execute.test.ts
+  h_8fb27e0cdf6d1e 2,41,143-181
+packages/cli/src/commands/execute-batch.ts
+  h_8fb27e0cdf6d1e 138
+packages/cli/tsconfig.json
+  h_8fb27e0cdf6d1e 45
+packages/modules/code-sandbox/backend/src/__tests__/validate-code-sandbox-config.test.ts
+  h_8fb27e0cdf6d1e 1,3-4,6-7,9,11-13,16-17,19,25-26,28-29,34,36,38-39
+packages/modules/code-sandbox/backend/src/__tests__/code-sandbox-backend.test.ts
+  h_8fb27e0cdf6d1e 1-17
+packages/modules/code-sandbox/backend/src/validate-code-sandbox-config.ts
+  h_8fb27e0cdf6d1e 1,4,7-8,10,19,21
+packages/modules/code-sandbox/backend/tsconfig.json
+  h_8fb27e0cdf6d1e 1-17
+packages/cli/src/commands/execute.ts
+  h_8fb27e0cdf6d1e 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "abcd9c9780bab5e8edcd5d46dbf4f1465cbdb6ac",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
