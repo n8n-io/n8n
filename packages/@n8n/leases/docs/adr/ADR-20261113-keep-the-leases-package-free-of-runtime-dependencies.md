@@ -24,10 +24,6 @@ consumer can use a different handle.
 `@n8n/leases` has no runtime dependencies. It imports no database, dependency injection,
 scheduler, or other n8n code. Its source imports only its own files.
 
-Every type that touches a transaction takes the transaction handle of the consumer as the type
-parameter `TTransaction`. The package passes the handle through and never looks inside it. The cli
-binds `TTransaction` to its `OperationContext`.
-
 The main reason is that consumers and backends can change independently of each other.
 
 ## Alternatives Considered
@@ -40,12 +36,14 @@ The main reason is that consumers and backends can change independently of each 
 
 ## Consequences
 
-1. A test can run the contracts against an in-memory provider, with no database.
+1. The package cannot name the transaction type of the consumer. Every type that touches a
+   transaction takes the handle as the type parameter `TTransaction`, and the package never looks
+   inside it. The cli binds `TTransaction` to its `OperationContext`.
 2. A consumer and a backend must agree on one `TTransaction` type. The compiler checks that they
    agree.
 3. The package cannot hold logic that needs a database. That logic lives in the backend.
 4. A test of the package checks that its manifest has no runtime dependencies and that its source
-   imports only relative paths.
+   imports only files inside the package source.
 
 ## Links
 
