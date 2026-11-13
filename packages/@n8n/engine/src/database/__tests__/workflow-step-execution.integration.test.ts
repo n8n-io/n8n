@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type {
+	ExecutionStatus,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -43,7 +44,7 @@ describe('workflow_step_execution table (integration)', () => {
 
 	/** Steps FK to an execution, so create a parent row first. */
 	async function createExecution(
-		overrides: { workflowId?: string; status?: 'running' | 'completed' | 'failed' } = {},
+		overrides: { workflowId?: string; status?: ExecutionStatus } = {},
 	): Promise<string> {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const execution = repo.create({
@@ -86,6 +87,19 @@ describe('workflow_step_execution table (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowStepExecution);
 		const row = await repo.save(repo.create(record));
 		return { id: row.id };
+	}
+
+	async function waitUntilQueryBlocksOnLock(queryFragment: string): Promise<void> {
+		for (let attempt = 0; attempt < 500; attempt++) {
+			const [{ blocked }] = await dataSource.query<Array<{ blocked: number }>>(
+				`SELECT count(*)::int AS blocked FROM pg_stat_activity
+				 WHERE wait_event_type = 'Lock' AND pid <> pg_backend_pid() AND query LIKE $1`,
+				[`%${queryFragment}%`],
+			);
+			if (blocked > 0) return;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+		}
+		throw new Error(`No query containing "${queryFragment}" blocked on a lock`);
 	}
 
 	it('persists and retrieves a step row', async () => {
@@ -438,6 +452,61 @@ describe('workflow_step_execution table (integration)', () => {
 			.findOneOrFail({ where: { id } });
 		expect(found.status).toBe('queued');
 		expect(found.waitDeclaration).toBeNull();
+	});
+
+	it.each<[ExecutionStatus, StepStatus, boolean]>([
+		['running', 'waiting', true],
+		['waiting', 'waiting', true],
+		['completed', 'cancelled', false],
+		['failed', 'cancelled', false],
+		['cancelled', 'cancelled', false],
+	])(
+		'TypeOrmStepStore.suspendStep in a %s execution moves a running step to %s',
+		async (executionStatus, stepStatus, recorded) => {
+			const executionId = await createExecution({ status: executionStatus });
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+			const wait = { resumeAt: '2099-01-01T00:00:00.000Z', outputsAtDeadline: [] };
+			expect(await store.suspendStep(id, wait)).toBe(recorded);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(stepStatus);
+			// the declaration of an unrecorded wait is not written
+			expect(found.waitDeclaration !== null).toBe(recorded);
+			expect(found.waitTill !== null).toBe(recorded);
+		},
+	);
+
+	it('TypeOrmStepStore.suspendStep waits out a concurrently committing cancellation and cancels the step', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+
+		// A cancelExecution mid-transaction, with the row lock held and the status
+		// uncommitted. Without the lock, the suspension would read `running`.
+		const cancellation = dataSource.createQueryRunner();
+		await cancellation.connect();
+		await cancellation.startTransaction();
+		await cancellation.query("UPDATE workflow_execution SET status = 'cancelled' WHERE id = $1", [
+			executionId,
+		]);
+
+		const suspend = store.suspendStep(id, { resumeBinding: 'execution' });
+		try {
+			await waitUntilQueryBlocksOnLock('FOR SHARE');
+			await cancellation.commitTransaction();
+		} finally {
+			// An open transaction keeps its lock, and `suspend` would never settle.
+			if (cancellation.isTransactionActive) await cancellation.rollbackTransaction();
+			await cancellation.release();
+			await Promise.allSettled([suspend]);
+		}
+
+		expect(await suspend).toBe(false);
+		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
 	it('TypeOrmStepStore.countSettledSteps does not count a waiting step', async () => {

@@ -1,11 +1,13 @@
-import { In, type Repository } from '@n8n/typeorm';
+import { In, type EntityManager, type Repository } from '@n8n/typeorm';
 
 import { WorkflowStepExecution } from './entities';
 import { generateId } from './generate-id';
 import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
+	isLiveExecutionStatus,
 	stepKeyId,
+	type ExecutionStatus,
 	type ResumeCause,
 	type WaitDeclaration,
 	type StepError,
@@ -191,9 +193,37 @@ export class TypeOrmStepStore implements StepStore {
 		// `wait_till` is derived from the declaration in the same statement that
 		// writes it, so the column the sweep reads can never disagree with the
 		// declaration it fires.
-		return await this.transition(id, 'running', 'waiting', {
-			waitDeclaration,
-			waitTill: waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+		//
+		// The execution-row lock orders the suspension with the write that ends
+		// the execution. A wait that lands first is cancelled by
+		// `cancelPendingSteps`, which runs after the end. A wait that comes after
+		// the end cancels the step here, because nothing resumes a wait in an
+		// ended execution.
+		return await this.repo.manager.transaction(async (manager) => {
+			const [execution] = await manager.query<Array<{ status: ExecutionStatus }>>(
+				`SELECT status FROM workflow_execution
+				 WHERE id = (SELECT execution_id FROM workflow_step_execution WHERE id = $1)
+				 FOR SHARE`,
+				[id],
+			);
+			if (!execution) return false;
+
+			if (!isLiveExecutionStatus(execution.status)) {
+				await this.transition(id, 'running', 'cancelled', {}, manager);
+				return false;
+			}
+
+			return await this.transition(
+				id,
+				'running',
+				'waiting',
+				{
+					waitDeclaration,
+					waitTill:
+						waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+				},
+				manager,
+			);
 		});
 	}
 
@@ -301,8 +331,13 @@ export class TypeOrmStepStore implements StepStore {
 			waitTill?: Date | null;
 			resumeCause?: ResumeCause;
 		} = {},
+		manager: EntityManager = this.repo.manager,
 	): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
+		const result = await manager.update(
+			WorkflowStepExecution,
+			{ id, status: from },
+			{ ...fields, status: to },
+		);
 		return result.affected === 1;
 	}
 
