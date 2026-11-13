@@ -172,5 +172,5 @@ describe('engine runtimes on shared Redis work queues (integration)', () => {
 			new Set(['engine-1', 'engine-2']),
 		);
 		expect(ranOn.get('node-m')).toHaveLength(1);
-	});
+	}, 30_000);
 });

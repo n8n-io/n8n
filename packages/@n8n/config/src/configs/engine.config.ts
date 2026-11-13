@@ -27,8 +27,8 @@ export class EngineConfig {
 	 *
 	 * In `in-process` mode, execution responses stay in memory. In `remote`
 	 * mode, they go through Redis, and engine processes that use the same Redis
-	 * share the work. Set the `QUEUE_BULL_REDIS_*` variables on this instance
-	 * and on each engine process.
+	 * and the same `N8N_REDIS_KEY_PREFIX` share the work. Set the
+	 * `QUEUE_BULL_REDIS_*` variables on this instance and on each engine process.
 	 */
 	@Env('N8N_ENGINE_MODE', engineModeSchema)
 	mode: EngineMode = 'in-process';
