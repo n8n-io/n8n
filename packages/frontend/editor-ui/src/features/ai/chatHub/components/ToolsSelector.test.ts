@@ -308,20 +308,22 @@ describe('ToolsSelector', () => {
 			).not.toBeInTheDocument();
 		});
 
-		it.each([
-			['checked', ['tool-1']],
-			['unchecked', []],
-		])(
-			'does not toggle a restricted tool that is %s, and keeps the menu open',
-			async (_state, checkedToolIds) => {
-				const { emitted } = await openDropdown(checkedToolIds);
+		it('does not check a restricted tool, and keeps the menu open', async () => {
+			const { emitted } = await openDropdown([]);
 
-				await userEvent.click(findMenuItemByText('Restricted Tool')!);
+			await userEvent.click(findMenuItemByText('Restricted Tool')!);
 
-				expect(emitted('toggle')).toBeUndefined();
-				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
-			},
-		);
+			expect(emitted('toggle')).toBeUndefined();
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('unchecks a restricted tool that is checked', async () => {
+			const { emitted } = await openDropdown(['tool-1']);
+
+			await userEvent.click(findMenuItemByText('Restricted Tool')!);
+
+			expect(emitted('toggle')?.[0]).toEqual(['tool-1']);
+		});
 
 		it('opens the settings of a restricted tool', async () => {
 			await openDropdown([]);

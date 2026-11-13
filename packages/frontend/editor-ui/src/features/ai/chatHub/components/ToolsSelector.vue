@@ -113,6 +113,11 @@ type ToolMenuItem = DropdownMenuItemProps<
 
 const CREATE_NEW_TOOL_ID = 'action::create-new';
 
+// A checked restricted tool fails every message, so the user can always uncheck it.
+function isToggleLocked(restriction: TypeRestriction | undefined, checked?: boolean) {
+	return !!restriction && !checked;
+}
+
 const menuItems = computed<ToolMenuItem[]>(() => {
 	const query = searchQuery.value.toLowerCase();
 
@@ -132,8 +137,8 @@ const menuItems = computed<ToolMenuItem[]>(() => {
 				id: `tool::${tool.definition.id}`,
 				label: tool.definition.name,
 				checked,
-				// A restricted tool cannot be checked or unchecked, so a click keeps the menu open.
-				keepOpen: !!restriction,
+				// A click that cannot check the tool does nothing, so the menu stays open.
+				keepOpen: isToggleLocked(restriction, checked),
 				class: restriction ? $style.restricted : undefined,
 				data: {
 					nodeType: nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion),
@@ -164,7 +169,7 @@ function handleSelect(id: string) {
 	if (command !== 'tool') return;
 
 	const item = menuItems.value.find((i) => i.id === id);
-	if (item?.data?.restriction) return;
+	if (item && isToggleLocked(item.data?.restriction, item.checked)) return;
 
 	emit('toggle', toolId);
 }
