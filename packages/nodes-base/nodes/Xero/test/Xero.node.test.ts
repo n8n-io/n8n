@@ -9,6 +9,20 @@ import type {
 
 import { Xero } from '../Xero.node';
 
+function createExecuteFunctions(params: IDataObject, typeVersion = 1.1) {
+	const executeFunctions = mockDeep<IExecuteFunctions>();
+	executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+	executeFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+	executeFunctions.getNodeParameter.mockImplementation((name: string) => params[name]);
+	executeFunctions.helpers.constructExecutionMetaData.mockImplementation(
+		(data) => data as NodeExecutionWithMetadata[],
+	);
+	executeFunctions.helpers.returnJsonArray.mockImplementation((data) =>
+		(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
+	);
+	return executeFunctions;
+}
+
 describe('Xero Node', () => {
 	describe('loadOptions', () => {
 		describe('getCurrencies', () => {
@@ -53,7 +67,9 @@ describe('Xero Node', () => {
 					'xeroOAuth2Api',
 					expect.objectContaining({
 						method: 'GET',
-						uri: 'https://api.xero.com/api.xro/2.0/Currencies',
+						uri: expect.objectContaining({
+							value: 'https://api.xero.com/api.xro/2.0/Currencies',
+						}),
 						headers: expect.objectContaining({
 							'Xero-tenant-id': 'test-org-id',
 						}),
@@ -89,24 +105,13 @@ describe('Xero Node', () => {
 	])('%s getAll with returnAll', (resource, propertyName) => {
 		it('should send the Xero-tenant-id header on every page', async () => {
 			const xero = new Xero();
-			const executeFunctions = mockDeep<IExecuteFunctions>();
-			const params: IDataObject = {
+			const executeFunctions = createExecuteFunctions({
 				resource,
 				operation: 'getAll',
 				organizationId: 'test-org-id',
 				returnAll: true,
 				options: {},
-			};
-
-			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-			executeFunctions.getNode.mockReturnValue(mock<INode>());
-			executeFunctions.getNodeParameter.mockImplementation((name: string) => params[name]);
-			executeFunctions.helpers.constructExecutionMetaData.mockImplementation(
-				(data) => data as NodeExecutionWithMetadata[],
-			);
-			executeFunctions.helpers.returnJsonArray.mockImplementation((data) =>
-				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
-			);
+			});
 			executeFunctions.helpers.requestOAuth2
 				.mockResolvedValueOnce({ [propertyName]: [{ id: 1 }] })
 				.mockResolvedValueOnce({ [propertyName]: [{ id: 2 }] })
@@ -124,5 +129,45 @@ describe('Xero Node', () => {
 				expect(options.qs).toEqual(expect.objectContaining({ page: index + 1 }));
 			});
 		});
+	});
+
+	describe.each([
+		['invoice', 'invoiceId', 'Invoices'],
+		['contact', 'contactId', 'Contacts'],
+	])('%s get', (resource, idParameter, propertyName) => {
+		it.each([
+			[1, 'INV%2F2024%2F01', 'INV%2F2024%2F01'],
+			[1, 'INV/2024/01', 'INV%2F2024%2F01'],
+			[1, 'A+B', 'A%2BB'],
+			[1.1, 'INV%2F2024%2F01', 'INV%252F2024%252F01'],
+			[1.1, 'INV/2024/01', 'INV%2F2024%2F01'],
+			[1.1, 'A+B', 'A%2BB'],
+		])(
+			'should send ID at version %s and value %s in the path as %s',
+			async (typeVersion, id, expectedId) => {
+				const xero = new Xero();
+				const executeFunctions = createExecuteFunctions(
+					{
+						resource,
+						operation: 'get',
+						organizationId: 'test-org-id',
+						[idParameter]: id,
+					},
+					typeVersion,
+				);
+				executeFunctions.helpers.requestOAuth2.mockResolvedValue({ [propertyName]: [] });
+
+				await xero.execute.call(executeFunctions);
+
+				expect(executeFunctions.helpers.requestOAuth2).toHaveBeenCalledWith(
+					'xeroOAuth2Api',
+					expect.objectContaining({
+						uri: expect.objectContaining({
+							value: `https://api.xero.com/api.xro/2.0/${propertyName}/${expectedId}`,
+						}),
+					}),
+				);
+			},
+		);
 	});
 });

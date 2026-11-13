@@ -1,20 +1,29 @@
 import type { PromotionReviewRemoteError, PromotionReviewState } from '@n8n/api-types';
 import {
+	LockedError,
 	ResponseError,
 	ServiceUnavailableError,
 	TooManyRequestsError,
 	UserError,
 } from '@n8n/errors';
 
+import {
+	PromotionLockLostError,
+	PromotionLockUnavailableError,
+} from './promotion-environment-lock.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 
 /** What the host reported when a user closed a review: its state, or why it gave none. */
 export type ClosedHostStatus = PromotionReviewState | PromotionReviewRemoteError;
 
-export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected';
+export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected' | 'busy';
 
 /** Maps a thrown error to a coarse kind. It never reads the message, which can hold secrets. */
 export function classifyPromotionFailure(error: unknown): PromotionFailureKind {
+	// Before the 4xx and 503 rules, which would otherwise match these first.
+	if (error instanceof LockedError) return 'busy';
+	if (error instanceof PromotionLockLostError) return 'unexpected';
+	if (error instanceof PromotionLockUnavailableError) return 'unexpected';
 	if (
 		error instanceof PromotionGitError ||
 		error instanceof ServiceUnavailableError ||

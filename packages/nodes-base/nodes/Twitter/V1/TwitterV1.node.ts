@@ -10,7 +10,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
 import {
@@ -137,7 +137,7 @@ export class TwitterV1 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							'/direct_messages/events/new.json',
+							requestPath`/direct_messages/events/new.json`,
 							{ event: body },
 						);
 
@@ -192,7 +192,7 @@ export class TwitterV1 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							'/statuses/update.json',
+							requestPath`/statuses/update.json`,
 							{},
 							body as unknown as IDataObject,
 						);
@@ -204,7 +204,7 @@ export class TwitterV1 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/statuses/destroy/${tweetId}.json`,
+							requestPath`/statuses/destroy/${tweetId}.json`,
 							{},
 							{},
 						);
@@ -251,7 +251,7 @@ export class TwitterV1 implements INodeType {
 								this,
 								'statuses',
 								'GET',
-								'/search/tweets.json',
+								requestPath`/search/tweets.json`,
 								{},
 								qs,
 							);
@@ -260,7 +260,7 @@ export class TwitterV1 implements INodeType {
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',
-								'/search/tweets.json',
+								requestPath`/search/tweets.json`,
 								{},
 								qs,
 							);
@@ -283,7 +283,7 @@ export class TwitterV1 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							'/favorites/create.json',
+							requestPath`/favorites/create.json`,
 							{},
 							qs,
 						);
@@ -304,7 +304,7 @@ export class TwitterV1 implements INodeType {
 						responseData = await twitterApiRequest.call(
 							this,
 							'POST',
-							`/statuses/retweet/${tweetId}.json`,
+							requestPath`/statuses/retweet/${tweetId}.json`,
 							{},
 							qs,
 						);

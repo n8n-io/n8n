@@ -29,6 +29,7 @@ const props = defineProps<{
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 	publishedVersionId?: string;
+	pendingVersionId?: string | null;
 	isWorkflowDiffsEnabled?: boolean;
 }>();
 
@@ -218,6 +219,7 @@ const pruneTimeDisplay = computed(() => {
 					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
 					:is-published="versionEntry.item.versionId === props.publishedVersionId"
+					:is-pending="versionEntry.item.versionId === props.pendingVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
 					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
@@ -236,6 +238,7 @@ const pruneTimeDisplay = computed(() => {
 				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-published="entry.item.versionId === props.publishedVersionId"
+				:is-pending="entry.item.versionId === props.pendingVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
 				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"

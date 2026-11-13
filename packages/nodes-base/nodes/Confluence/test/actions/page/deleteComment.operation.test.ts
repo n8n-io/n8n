@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/page/deleteComment.operation';
@@ -21,14 +21,20 @@ describe('page:deleteComment', () => {
 	it('deletes the comment and returns a deletion report', async () => {
 		const result = await execute.call(mockExecuteCtx({ commentId: '555' }), 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/wiki/api/v2/footer-comments/555`,
+		);
 		expect(result).toEqual({ deleted: true, commentId: '555' });
 	});
 
 	it('trims and URL-encodes the comment ID', async () => {
 		const result = await execute.call(mockExecuteCtx({ commentId: ' 555/6 ' }), 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555%2F6');
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			requestPath`/wiki/api/v2/footer-comments/555%2F6`,
+		);
 		expect(result).toEqual({ deleted: true, commentId: '555/6' });
 	});
 

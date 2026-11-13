@@ -5,10 +5,10 @@ import type {
 	IHttpRequestMethods,
 	INode,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { nextCloudApiRequest } from '../GenericFunctions';
+import { nextCloudApiRequest, webDavPath } from '../GenericFunctions';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
@@ -45,8 +45,9 @@ function buildFunctions(authentication: Authentication = 'accessToken') {
 	return { functions, getCredentials, getNodeParameter, requestWithAuthentication };
 }
 
-function requestOptions(requestWithAuthentication: Mock, callIndex = 0) {
-	return requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
+function requestOptions(requestWithAuthentication: Mock, callIndex = 0): IDataObject {
+	const options = requestWithAuthentication.mock.calls[callIndex][1] as IDataObject;
+	return { ...options, uri: String(options.uri) };
 }
 
 describe('NextCloud GenericFunctions', () => {
@@ -59,7 +60,12 @@ describe('NextCloud GenericFunctions', () => {
 			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			const response = await nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			const response = await nextCloudApiRequest.call(
+				functions,
+				'GET',
+				webDavPath('/test.txt'),
+				'',
+			);
 
 			expect(response).toEqual({ status: 'ok' });
 			expect(getCredentials).toHaveBeenCalledWith('nextCloudApi');
@@ -67,7 +73,7 @@ describe('NextCloud GenericFunctions', () => {
 				'nextCloudApi',
 				expect.objectContaining({
 					method: 'GET',
-					uri: `${webDavUrl}//test.txt`,
+					uri: requestUrl`${webDavUrl}//test.txt`,
 					body: '',
 					headers: undefined,
 					qs: {},
@@ -88,7 +94,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'GET',
-				'/test.txt',
+				webDavPath('/test.txt'),
 				'',
 				undefined,
 				undefined,
@@ -106,14 +112,14 @@ describe('NextCloud GenericFunctions', () => {
 			const { functions, getCredentials, requestWithAuthentication } = buildFunctions('oAuth2');
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			await nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			await nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
 
 			expect(getCredentials).toHaveBeenCalledWith('nextCloudOAuth2Api');
 			expect(requestWithAuthentication).toHaveBeenCalledWith(
 				'nextCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					uri: `${webDavUrl}//test.txt`,
+					uri: requestUrl`${webDavUrl}//test.txt`,
 				}),
 			);
 		});
@@ -125,7 +131,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'POST',
-				'ocs/v1.php/cloud/users',
+				requestPath`ocs/v1.php/cloud/users`,
 				'userid=alice',
 				{ 'OCS-APIRequest': true },
 				undefined,
@@ -155,7 +161,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'POST',
-				'ocs/v1.php/cloud/users',
+				requestPath`ocs/v1.php/cloud/users`,
 				'',
 				{},
 				undefined,
@@ -178,7 +184,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'PROPFIND' as IHttpRequestMethods,
-				'/test.txt',
+				webDavPath('/test.txt'),
 				body,
 				headers,
 				null,
@@ -201,7 +207,12 @@ describe('NextCloud GenericFunctions', () => {
 			const { functions, requestWithAuthentication } = buildFunctions();
 			requestWithAuthentication.mockResolvedValue({});
 
-			await nextCloudApiRequest.call(functions, 'GET', '/folder name/test file.txt', '');
+			await nextCloudApiRequest.call(
+				functions,
+				'GET',
+				webDavPath('/folder name/test file.txt'),
+				'',
+			);
 
 			expect(requestOptions(requestWithAuthentication).uri).toBe(
 				`${webDavUrl}//folder%20name/test%20file.txt`,
@@ -212,10 +223,31 @@ describe('NextCloud GenericFunctions', () => {
 			const { functions, requestWithAuthentication } = buildFunctions();
 			requestWithAuthentication.mockResolvedValue('<b>Fatal error</b> broken response');
 
-			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			const promise = nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
 
 			await expect(promise).rejects.toThrow(NodeOperationError);
 			await expect(promise).rejects.toThrow("NextCloud responded with a 'Fatal error'");
+		});
+
+		it('should encode path values in OCS requests', async () => {
+			const { functions, requestWithAuthentication } = buildFunctions();
+			requestWithAuthentication.mockResolvedValue('<ocs />');
+
+			const userId = 'alice/groups';
+			await nextCloudApiRequest.call(
+				functions,
+				'GET',
+				requestPath`ocs/v1.php/cloud/users/${userId}`,
+				'',
+				{},
+				undefined,
+				undefined,
+				false,
+			);
+
+			expect(requestOptions(requestWithAuthentication).uri).toBe(
+				'https://nextcloud.example.com/ocs/v1.php/cloud/users/alice%2Fgroups',
+			);
 		});
 
 		it('strips standard remote.php/webdav path for OCS requests', async () => {
@@ -225,7 +257,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'POST',
-				'ocs/v1.php/cloud/users',
+				requestPath`ocs/v1.php/cloud/users`,
 				'',
 				{},
 				undefined,
@@ -247,7 +279,7 @@ describe('NextCloud GenericFunctions', () => {
 			await nextCloudApiRequest.call(
 				functions,
 				'GET',
-				'/test.txt',
+				webDavPath('/test.txt'),
 				'',
 				undefined,
 				undefined,
@@ -262,13 +294,36 @@ describe('NextCloud GenericFunctions', () => {
 		});
 	});
 
+	describe('webDavPath', () => {
+		it.each([
+			['/invoices/2024/report Q1.pdf', '//invoices/2024/report%20Q1.pdf'],
+			['projects/file1.txt', '/projects/file1.txt'],
+			['a//b/', '/a//b/'],
+			['', '/'],
+			['notes/a?b#c;d.txt', '/notes/a%3Fb%23c%3Bd.txt'],
+		])('builds the WebDAV path for "%s"', (path, expected) => {
+			expect(webDavPath(path).toString()).toBe(expected);
+		});
+
+		it.each([
+			['..%2F..%2Focs/x', '/..%252F..%252Focs/x'],
+			['%2e%2e/ocs', '/%252e%252e/ocs'],
+		])('sends "%s" as entered', (path, expected) => {
+			expect(webDavPath(path).toString()).toBe(expected);
+		});
+
+		it.each(['a/../../ocs/x', 'a/./b', '../ocs'])('rejects a relative segment in "%s"', (path) => {
+			expect(() => webDavPath(path)).toThrow('Invalid identifier');
+		});
+	});
+
 	describe('webDavUrl validation', () => {
 		it('throws NodeOperationError when webDavUrl is empty', async () => {
 			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
 			getCredentials.mockResolvedValue({ webDavUrl: '' });
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			const promise = nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
 			await expect(promise).rejects.toThrow(NodeOperationError);
 			await expect(promise).rejects.toThrow(
 				'Invalid WebDAV URL in credentials: "". The URL must start with https:// or http://.',
@@ -280,7 +335,7 @@ describe('NextCloud GenericFunctions', () => {
 			getCredentials.mockResolvedValue({ webDavUrl: 'http:/localhost:8080/remote.php/webdav' });
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			const promise = nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
 			await expect(promise).rejects.toThrow(NodeOperationError);
 			await expect(promise).rejects.toThrow(
 				'Invalid WebDAV URL in credentials: "http:/localhost:8080/remote.php/webdav". The URL must start with https:// or http://.',
@@ -292,7 +347,7 @@ describe('NextCloud GenericFunctions', () => {
 			getCredentials.mockResolvedValue({ webDavUrl: 'not-a-url' });
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			const promise = nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), '');
 			await expect(promise).rejects.toThrow(NodeOperationError);
 			await expect(promise).rejects.toThrow(
 				'Invalid WebDAV URL in credentials: "not-a-url". The URL must start with https:// or http://.',
@@ -306,7 +361,9 @@ describe('NextCloud GenericFunctions', () => {
 			});
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			await expect(nextCloudApiRequest.call(functions, 'GET', '/test.txt', '')).resolves.toEqual({
+			await expect(
+				nextCloudApiRequest.call(functions, 'GET', webDavPath('/test.txt'), ''),
+			).resolves.toEqual({
 				status: 'ok',
 			});
 		});

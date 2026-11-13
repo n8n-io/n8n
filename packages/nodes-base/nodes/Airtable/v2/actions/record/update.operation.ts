@@ -5,6 +5,7 @@ import type {
 	NodeApiError,
 	IExecuteFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { UpdateRecord } from '../../helpers/interfaces';
@@ -62,7 +63,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const endpoint = `${base}/${table}`;
+	const endpoint = requestPath`${base}/${table}`;
 
 	const dataMode = this.getNodeParameter('columns.mappingMode', 0) as string;
 

@@ -1,16 +1,11 @@
-import {
-	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
-	type AgentFileDto,
-} from '@n8n/api-types';
+import type { AgentFileDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { isUniqueConstraintError, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { formatMbOrGb } from '@n8n/utils/number/bytes';
 import { InstanceSettings } from 'n8n-core';
 import { createReadStream } from 'node:fs';
 import { unlink } from 'node:fs/promises';
@@ -18,9 +13,12 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 import type { KnowledgeFile } from '../entities/knowledge-file.entity';
+import { KnowledgeConfig } from '../knowledge.config';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { createKnowledgeTelemetryHmac } from '../telemetry/helpers';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
+import { KnowledgeMirrorService } from '../retrieval/mirror.service';
 import { KnowledgeFileStore, type StoredKnowledgeFile } from './knowledge-file-store';
 import { KnowledgeUploadError, type KnowledgeUploadFailureReason } from './knowledge-upload.error';
 import { extractPdfText } from './pdf-text';
@@ -34,17 +32,22 @@ export interface UploadedKnowledgeFile {
 }
 
 /**
- * Runs the insert of one knowledge file row. The consumer wraps it in the
- * fence its own writes need: the agents module holds its project-deletion lock
- * for the duration of the write. The context the fence hands over carries its
- * transaction and reaches the repository.
+ * The fence that the consumer puts around its knowledge writes: the agents
+ * module holds its project-deletion lock for the duration of the write. The
+ * fence rejects when the consumer no longer accepts writes. The context it
+ * hands over carries its transaction and reaches the repository.
+ *
+ * An upload inserts each file row through the fence. An upload and a delete
+ * also run an empty write through it before and after the background refresh
+ * of the sandbox mirror.
  */
 export type KnowledgeWriteRunner = <T>(write: (ctx: OperationContext) => Promise<T>) => Promise<T>;
 
 /**
  * Upload, listing and deletion of the knowledge files of one consumer scope.
- * The caller owns the availability and ownership checks, and the retrieval
- * side effects (sandbox warm-up and teardown).
+ * An upload or a delete also refreshes the sandbox mirror of the scope, and
+ * the delete of the last file removes the sandbox. The caller owns the
+ * availability and ownership checks.
  */
 @Service()
 export class KnowledgeFileService {
@@ -53,8 +56,11 @@ export class KnowledgeFileService {
 	constructor(
 		private readonly fileRepository: KnowledgeFileRepository,
 		private readonly fileStore: KnowledgeFileStore,
+		private readonly mirrorService: KnowledgeMirrorService,
+		private readonly sandboxProvider: KnowledgeSandboxProviderRegistry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
+		private readonly config: KnowledgeConfig,
 		logger: Logger,
 	) {
 		this.logger = logger.scoped('knowledge');
@@ -64,7 +70,7 @@ export class KnowledgeFileService {
 	async uploadFiles(
 		scope: KnowledgeConsumerScope,
 		files: Express.Multer.File[],
-		reserveRow: KnowledgeWriteRunner,
+		writeFence: KnowledgeWriteRunner,
 	): Promise<UploadedKnowledgeFile[]> {
 		try {
 			this.validateUploadMetadata(files);
@@ -75,7 +81,7 @@ export class KnowledgeFileService {
 			try {
 				for (const file of files) {
 					const contentHash = await this.hashUploadedFile(file.path);
-					const storedFile = await this.storeFile(scope, file, reserveRow);
+					const storedFile = await this.storeFile(scope, file, writeFence);
 					uploadedFiles.push(storedFile);
 					results.push({ file: toAgentFileDto(storedFile), contentHash });
 				}
@@ -83,6 +89,8 @@ export class KnowledgeFileService {
 				await this.cleanupUploadedFiles(uploadedFiles);
 				throw error;
 			}
+
+			this.prewarmMirror(scope, writeFence);
 
 			return results;
 		} finally {
@@ -95,12 +103,15 @@ export class KnowledgeFileService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async hasFiles(scope: KnowledgeConsumerScope): Promise<boolean> {
-		return await this.fileRepository.hasFilesForAgent(scope.agentId, {});
-	}
-
-	/** Returns false when the scope has no file with this id, so nothing was deleted. */
-	async deleteFile(scope: KnowledgeConsumerScope, fileId: string): Promise<boolean> {
+	/**
+	 * Returns false when the scope has no file with this id, so nothing was deleted.
+	 * The fence guards only the mirror refresh that follows. The row delete does not run through it.
+	 */
+	async deleteFile(
+		scope: KnowledgeConsumerScope,
+		fileId: string,
+		writeFence: KnowledgeWriteRunner,
+	): Promise<boolean> {
 		const file = await this.fileRepository.findByIdAndAgentId(fileId, scope.agentId, {});
 		if (!file) {
 			return false;
@@ -116,6 +127,12 @@ export class KnowledgeFileService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
+
+		if (await this.fileRepository.hasFilesForAgent(scope.agentId, {})) {
+			this.prewarmMirror(scope, writeFence);
+		} else {
+			await this.sandboxProvider.destroy(scope);
+		}
 
 		return true;
 	}
@@ -139,6 +156,14 @@ export class KnowledgeFileService {
 					});
 				});
 		}
+	}
+
+	private prewarmMirror(scope: KnowledgeConsumerScope, writeFence: KnowledgeWriteRunner): void {
+		// An empty write through the fence rejects when the consumer no longer accepts writes.
+		this.mirrorService.prewarmMirrorInBackground(
+			scope,
+			async () => await writeFence(async () => {}),
+		);
 	}
 
 	private async hashUploadedFile(filePath: string): Promise<string | undefined> {
@@ -165,7 +190,7 @@ export class KnowledgeFileService {
 	private async storeFile(
 		scope: KnowledgeConsumerScope,
 		file: Express.Multer.File,
-		reserveRow: KnowledgeWriteRunner,
+		writeFence: KnowledgeWriteRunner,
 	): Promise<KnowledgeFile> {
 		const fileId = generateNanoId();
 		const storageFileName = storageFileNameForOriginalFileName(file.originalname);
@@ -177,7 +202,7 @@ export class KnowledgeFileService {
 		});
 
 		try {
-			return await reserveRow(
+			return await writeFence(
 				async (ctx) => await this.saveFileRow(scope, fileId, file, stored, ctx),
 			);
 		} catch (error) {
@@ -219,9 +244,9 @@ export class KnowledgeFileService {
 		if (extension === '.pdf') {
 			const extractedText = Buffer.from(await extractPdfText(file.path), 'utf-8');
 			// Extracted text can be larger than the compressed PDF, and the sandbox rejects files above the limit.
-			if (extractedText.byteLength > MAX_AGENT_FILE_SIZE_BYTES) {
+			if (extractedText.byteLength > this.config.maxFileSizeBytes) {
 				throw new KnowledgeUploadError(
-					`The text in "${file.originalname}" is larger than ${MAX_AGENT_FILE_SIZE_MB} MB`,
+					`The text in "${file.originalname}" is larger than ${this.config.maxFileSizeMb} MB`,
 					'file_size',
 				);
 			}
@@ -255,9 +280,9 @@ export class KnowledgeFileService {
 			0,
 		);
 		const uploadTotalSizeBytes = files.reduce((total, file) => total + file.size, 0);
-		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > this.config.maxTotalSizeBytes) {
 			throw new KnowledgeUploadError(
-				`Knowledge base limit reached. The total size can't be larger than ${MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB} GB.`,
+				`Knowledge base limit reached. The total size can't be larger than ${formatMbOrGb(this.config.maxTotalSizeBytes)}.`,
 				'total_limit',
 			);
 		}

@@ -68,7 +68,7 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		const opened = await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(vi.fn());
 
 		expect(opened).toBe(true);
-		expect(mcpStore.getMcpEligibleAgents).toHaveBeenCalledWith({ take: 1 });
+		expect(mcpStore.getMcpEligibleAgents).toHaveBeenCalledWith({ limit: 1 });
 		expect(uiStore.openModalWithData).toHaveBeenCalled();
 	});
 

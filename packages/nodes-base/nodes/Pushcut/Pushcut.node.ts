@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { pushcutApiRequest } from './GenericFunctions';
 
@@ -140,7 +140,7 @@ export class Pushcut implements INodeType {
 			// select them easily
 			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const devices = await pushcutApiRequest.call(this, 'GET', '/devices');
+				const devices = await pushcutApiRequest.call(this, 'GET', requestPath`/devices`);
 				for (const device of devices) {
 					returnData.push({
 						name: device.id,
@@ -153,7 +153,11 @@ export class Pushcut implements INodeType {
 			// select them easily
 			async getNotifications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const notifications = await pushcutApiRequest.call(this, 'GET', '/notifications');
+				const notifications = await pushcutApiRequest.call(
+					this,
+					'GET',
+					requestPath`/notifications`,
+				);
 				for (const notification of notifications) {
 					returnData.push({
 						name: notification.title,
@@ -186,7 +190,7 @@ export class Pushcut implements INodeType {
 					responseData = await pushcutApiRequest.call(
 						this,
 						'POST',
-						`/notifications/${encodeURI(notificationName)}`,
+						requestPath`/notifications/${notificationName}`,
 						body,
 					);
 				}

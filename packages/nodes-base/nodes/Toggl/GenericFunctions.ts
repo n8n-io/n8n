@@ -8,8 +8,11 @@ import type {
 	IRequestOptions,
 	ITriggerFunctions,
 	JsonObject,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function togglApiRequest(
 	this:
@@ -19,15 +22,15 @@ export async function togglApiRequest(
 		| IExecuteFunctions
 		| ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	query?: IDataObject,
-	uri?: string,
+	uri?: RequestUrl,
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs: query,
-		uri: uri || `https://api.track.toggl.com/api/v9/me${resource}`,
+		uri: uri ?? requestUrl`https://api.track.toggl.com/api/v9/me${resource}`,
 		body,
 		json: true,
 	};

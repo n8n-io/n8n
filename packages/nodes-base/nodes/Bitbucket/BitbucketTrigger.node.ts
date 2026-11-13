@@ -12,6 +12,7 @@ import {
 	type IWebhookResponseData,
 	type IRequestOptions,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { bitbucketApiRequest, bitbucketApiRequestAllItems } from './GenericFunctions';
@@ -242,7 +243,7 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/hook_events/workspace',
+					requestPath`/hook_events/workspace`,
 				);
 				for (const event of events) {
 					returnData.push({
@@ -259,7 +260,7 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/hook_events/repository',
+					requestPath`/hook_events/repository`,
 				);
 				for (const event of events) {
 					returnData.push({
@@ -277,7 +278,7 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					`/repositories/${workspace}`,
+					requestPath`/repositories/${workspace}`,
 				);
 				for (const repository of repositories) {
 					returnData.push({
@@ -294,7 +295,7 @@ export class BitbucketTrigger implements INodeType {
 					this,
 					'values',
 					'GET',
-					'/user/workspaces',
+					requestPath`/user/workspaces`,
 				);
 				for (const { workspace } of workspaces) {
 					returnData.push({
@@ -310,17 +311,17 @@ export class BitbucketTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				let endpoint = '';
+				let endpoint = requestPath``;
 				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				if (resource === 'workspace') {
-					endpoint = `/workspaces/${workspace}/hooks`;
+					endpoint = requestPath`/workspaces/${workspace}/hooks`;
 				}
 				if (resource === 'repository') {
 					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${workspace}/${repository}/hooks`;
+					endpoint = requestPath`/repositories/${workspace}/${repository}/hooks`;
 				}
 				const { values: hooks } = await bitbucketApiRequest.call(this, 'GET', endpoint);
 				for (const hook of hooks) {
@@ -332,7 +333,7 @@ export class BitbucketTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let endpoint = '';
+				let endpoint = requestPath``;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
@@ -340,11 +341,11 @@ export class BitbucketTrigger implements INodeType {
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 
 				if (resource === 'workspace') {
-					endpoint = `/workspaces/${workspace}/hooks`;
+					endpoint = requestPath`/workspaces/${workspace}/hooks`;
 				}
 				if (resource === 'repository') {
 					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${workspace}/${repository}/hooks`;
+					endpoint = requestPath`/repositories/${workspace}/${repository}/hooks`;
 				}
 				const body: IDataObject = {
 					description: 'n8n webhook',
@@ -357,18 +358,18 @@ export class BitbucketTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				let endpoint = '';
+				let endpoint = requestPath``;
 				const webhookData = this.getWorkflowStaticData('node');
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 				const resource = this.getNodeParameter('resource', 0);
-				if (resource === 'workspace') {
-					endpoint = `/workspaces/${workspace}/hooks/${webhookData.webhookId}`;
-				}
-				if (resource === 'repository') {
-					const repository = this.getNodeParameter('repository', 0) as string;
-					endpoint = `/repositories/${workspace}/${repository}/hooks/${webhookData.webhookId}`;
-				}
 				try {
+					if (resource === 'workspace') {
+						endpoint = requestPath`/workspaces/${workspace}/hooks/${webhookData.webhookId}`;
+					}
+					if (resource === 'repository') {
+						const repository = this.getNodeParameter('repository', 0) as string;
+						endpoint = requestPath`/repositories/${workspace}/${repository}/hooks/${webhookData.webhookId}`;
+					}
 					await bitbucketApiRequest.call(this, 'DELETE', endpoint);
 				} catch (error) {
 					return false;

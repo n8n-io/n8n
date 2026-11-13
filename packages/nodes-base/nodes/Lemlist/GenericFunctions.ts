@@ -6,7 +6,13 @@ import type {
 	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { decodePathValue, requestUrl } from 'n8n-workflow';
+
+export const toPathValue = (version: number, value: string) =>
+	version < 2.1 ? decodePathValue(value) : value;
 
 /**
  * Make an authenticated API request to Lemlist.
@@ -14,15 +20,14 @@ import type {
 export async function lemlistApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
-		uri: `https://api.lemlist.com/api${endpoint}`,
+		uri: requestUrl`https://api.lemlist.com/api${endpoint}`,
 		qs,
 		body,
 		json: true,
@@ -36,10 +41,6 @@ export async function lemlistApiRequest(
 		delete options.qs;
 	}
 
-	if (Object.keys(option)) {
-		Object.assign(options, option);
-	}
-
 	return await this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
@@ -49,7 +50,7 @@ export async function lemlistApiRequest(
 export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];

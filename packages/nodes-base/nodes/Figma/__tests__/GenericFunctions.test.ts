@@ -1,4 +1,4 @@
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { figmaApiRequest } from '../GenericFunctions';
 
@@ -23,14 +23,18 @@ describe('Figma > GenericFunctions', () => {
 		it('should send X-FIGMA-TOKEN header and use the figmaApi credential', async () => {
 			mockFunctions.helpers.request.mockResolvedValue({ ok: true });
 
-			const result = await figmaApiRequest.call(mockFunctions, 'GET', '/v2/teams/123/webhooks');
+			const result = await figmaApiRequest.call(
+				mockFunctions,
+				'GET',
+				requestPath`/v2/teams/123/webhooks`,
+			);
 
 			expect(result).toEqual({ ok: true });
 			expect(mockFunctions.getCredentials).toHaveBeenCalledWith('figmaApi');
 			expect(mockFunctions.helpers.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.figma.com/v2/teams/123/webhooks',
+					uri: expect.objectContaining({ value: 'https://api.figma.com/v2/teams/123/webhooks' }),
 					headers: { 'X-FIGMA-TOKEN': 'test-token' },
 				}),
 			);
@@ -41,9 +45,24 @@ describe('Figma > GenericFunctions', () => {
 			mockFunctions.helpers.request.mockRejectedValue({ message: 'fail' });
 
 			await expect(
-				figmaApiRequest.call(mockFunctions, 'GET', '/v2/teams/123/webhooks'),
+				figmaApiRequest.call(mockFunctions, 'GET', requestPath`/v2/teams/123/webhooks`),
 			).rejects.toThrow(NodeApiError);
 		});
+	});
+
+	it('should encode path values in the request URL', async () => {
+		mockFunctions.helpers.request.mockResolvedValue({ ok: true });
+
+		const teamId = '123/webhooks?x=1';
+		await figmaApiRequest.call(mockFunctions, 'GET', requestPath`/v2/teams/${teamId}/webhooks`);
+
+		expect(mockFunctions.helpers.request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				uri: expect.objectContaining({
+					value: 'https://api.figma.com/v2/teams/123%2Fwebhooks%3Fx=1/webhooks',
+				}),
+			}),
+		);
 	});
 
 	describe('with OAuth2 authentication', () => {
@@ -53,7 +72,7 @@ describe('Figma > GenericFunctions', () => {
 		});
 
 		it('should route through requestWithAuthentication using the figmaOAuth2Api credential', async () => {
-			const result = await figmaApiRequest.call(mockFunctions, 'POST', '/v2/webhooks', {
+			const result = await figmaApiRequest.call(mockFunctions, 'POST', requestPath`/v2/webhooks`, {
 				event_type: 'FILE_UPDATE',
 			});
 
@@ -62,7 +81,7 @@ describe('Figma > GenericFunctions', () => {
 				'figmaOAuth2Api',
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://api.figma.com/v2/webhooks',
+					uri: expect.objectContaining({ value: 'https://api.figma.com/v2/webhooks' }),
 					body: { event_type: 'FILE_UPDATE' },
 				}),
 			);
@@ -71,7 +90,7 @@ describe('Figma > GenericFunctions', () => {
 		});
 
 		it('should not attach the X-FIGMA-TOKEN header for OAuth2 requests', async () => {
-			await figmaApiRequest.call(mockFunctions, 'GET', '/v2/teams/123/webhooks');
+			await figmaApiRequest.call(mockFunctions, 'GET', requestPath`/v2/teams/123/webhooks`);
 
 			const callArgs = mockFunctions.helpers.requestWithAuthentication.mock.calls[0][1];
 			expect(callArgs.headers).toBeUndefined();
@@ -81,7 +100,7 @@ describe('Figma > GenericFunctions', () => {
 			mockFunctions.helpers.requestWithAuthentication.mockRejectedValue({ message: 'fail' });
 
 			await expect(
-				figmaApiRequest.call(mockFunctions, 'GET', '/v2/teams/123/webhooks'),
+				figmaApiRequest.call(mockFunctions, 'GET', requestPath`/v2/teams/123/webhooks`),
 			).rejects.toThrow(NodeApiError);
 		});
 	});

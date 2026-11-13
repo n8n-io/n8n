@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems } from '../../../transport';
@@ -14,7 +15,7 @@ export async function members(
 	const body = {} as IDataObject;
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
-	const endpoint = `channels/${channelId}/members`;
+	const endpoint = requestPath`channels/${channelId}/members`;
 
 	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
@@ -35,7 +36,7 @@ export async function members(
 				userIds.push(data.user_id as string);
 			}
 			if (userIds.length > 0) {
-				responseData = await apiRequest.call(this, 'POST', 'users/ids', userIds, qs);
+				responseData = await apiRequest.call(this, 'POST', requestPath`users/ids`, userIds, qs);
 			}
 		}
 	}

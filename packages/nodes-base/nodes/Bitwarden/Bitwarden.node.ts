@@ -1,6 +1,6 @@
 import isEmpty from 'lodash/isEmpty';
 import partialRight from 'lodash/partialRight';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -125,7 +125,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('collectionId', i);
-					const endpoint = `/public/collections/${id}`;
+					const endpoint = requestPath`/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ success: true }),
@@ -139,7 +139,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('collectionId', i);
-					const endpoint = `/public/collections/${id}`;
+					const endpoint = requestPath`/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -152,7 +152,7 @@ export class Bitwarden implements INodeType {
 					//       collection: getAll
 					// ----------------------------------
 
-					const endpoint = '/public/collections';
+					const endpoint = requestPath`/public/collections`;
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -191,7 +191,7 @@ export class Bitwarden implements INodeType {
 					}
 
 					const id = this.getNodeParameter('collectionId', i);
-					const endpoint = `/public/collections/${id}`;
+					const endpoint = requestPath`/public/collections/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -212,7 +212,7 @@ export class Bitwarden implements INodeType {
 
 					const filters = this.getNodeParameter('filters', i);
 					const qs = isEmpty(filters) ? {} : filters;
-					const endpoint = '/public/events';
+					const endpoint = requestPath`/public/events`;
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, qs, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -252,7 +252,7 @@ export class Bitwarden implements INodeType {
 						body.externalId = externalId;
 					}
 
-					const endpoint = '/public/groups';
+					const endpoint = requestPath`/public/groups`;
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -266,7 +266,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
+					const endpoint = requestPath`/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ success: true }),
@@ -280,7 +280,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}`;
+					const endpoint = requestPath`/public/groups/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -293,7 +293,7 @@ export class Bitwarden implements INodeType {
 					//       group: getAll
 					// ----------------------------------
 
-					const endpoint = '/public/groups';
+					const endpoint = requestPath`/public/groups`;
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -307,7 +307,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${id}/member-ids`;
+					const endpoint = requestPath`/public/groups/${id}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((memberId: string) => ({ memberId }));
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -341,7 +341,7 @@ export class Bitwarden implements INodeType {
 						responseData = (await bitwardenApiRequest.call(
 							this,
 							'GET',
-							`/public/groups/${groupId}`,
+							requestPath`/public/groups/${groupId}`,
 							{},
 							{},
 						)) as { name: string };
@@ -370,7 +370,7 @@ export class Bitwarden implements INodeType {
 						body.externalId = externalId;
 					}
 
-					const endpoint = `/public/groups/${groupId}`;
+					const endpoint = requestPath`/public/groups/${groupId}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -390,7 +390,7 @@ export class Bitwarden implements INodeType {
 					};
 
 					const groupId = this.getNodeParameter('groupId', i);
-					const endpoint = `/public/groups/${groupId}/member-ids`;
+					const endpoint = requestPath`/public/groups/${groupId}/member-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ success: true }),
@@ -431,7 +431,7 @@ export class Bitwarden implements INodeType {
 						body.externalId = externalId;
 					}
 
-					const endpoint = '/public/members/';
+					const endpoint = requestPath`/public/members/`;
 					responseData = await bitwardenApiRequest.call(this, 'POST', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -445,7 +445,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}`;
+					const endpoint = requestPath`/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -460,7 +460,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}`;
+					const endpoint = requestPath`/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -473,7 +473,7 @@ export class Bitwarden implements INodeType {
 					//       member: getAll
 					// ----------------------------------
 
-					const endpoint = '/public/members';
+					const endpoint = requestPath`/public/members`;
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, {}, {});
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -487,7 +487,7 @@ export class Bitwarden implements INodeType {
 					// ----------------------------------
 
 					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}/group-ids`;
+					const endpoint = requestPath`/public/members/${id}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.map((groupId: string) => ({ groupId }));
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -534,7 +534,7 @@ export class Bitwarden implements INodeType {
 					}
 
 					const id = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${id}`;
+					const endpoint = requestPath`/public/members/${id}`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
@@ -553,7 +553,7 @@ export class Bitwarden implements INodeType {
 					};
 
 					const memberId = this.getNodeParameter('memberId', i);
-					const endpoint = `/public/members/${memberId}/group-ids`;
+					const endpoint = requestPath`/public/members/${memberId}/group-ids`;
 					responseData = await bitwardenApiRequest.call(this, 'PUT', endpoint, {}, body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ success: true }),

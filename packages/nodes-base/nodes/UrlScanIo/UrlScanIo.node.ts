@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { scanFields, scanOperations } from './descriptions';
 import { handleListing, normalizeId, urlScanIoApiRequest } from './GenericFunctions';
@@ -73,7 +73,11 @@ export class UrlScanIo implements INodeType {
 						// ----------------------------------------
 
 						const scanId = this.getNodeParameter('scanId', i) as string;
-						responseData = await urlScanIoApiRequest.call(this, 'GET', `/result/${scanId}`);
+						responseData = await urlScanIoApiRequest.call(
+							this,
+							'GET',
+							requestPath`/result/${scanId}`,
+						);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//             scan: getAll
@@ -89,7 +93,7 @@ export class UrlScanIo implements INodeType {
 							qs.q = filters.query;
 						}
 
-						responseData = await handleListing.call(this, '/search', qs);
+						responseData = await handleListing.call(this, requestPath`/search`, qs);
 						responseData = responseData.map(normalizeId);
 					} else if (operation === 'perform') {
 						// ----------------------------------------
@@ -123,7 +127,7 @@ export class UrlScanIo implements INodeType {
 							body.tags = tags;
 						}
 
-						responseData = await urlScanIoApiRequest.call(this, 'POST', '/scan', body);
+						responseData = await urlScanIoApiRequest.call(this, 'POST', requestPath`/scan`, body);
 						responseData = normalizeId(responseData as IDataObject);
 					}
 				}

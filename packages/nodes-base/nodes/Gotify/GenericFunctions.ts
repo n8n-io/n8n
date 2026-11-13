@@ -5,13 +5,15 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function gotifyApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
@@ -20,7 +22,7 @@ export async function gotifyApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: {
 			'X-Gotify-Key': method === 'POST' ? credentials.appApiToken : credentials.clientApiToken,
@@ -28,7 +30,7 @@ export async function gotifyApiRequest(
 		},
 		body,
 		qs,
-		uri: uri || `${credentials.url}${path}`,
+		uri: requestUrl`${credentials.url}${path}`,
 		json: true,
 		rejectUnauthorized: !credentials.ignoreSSLIssues,
 	};
@@ -37,7 +39,7 @@ export async function gotifyApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.request.call(this, uri ? { ...options, uri } : options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -47,7 +49,7 @@ export async function gotifyApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

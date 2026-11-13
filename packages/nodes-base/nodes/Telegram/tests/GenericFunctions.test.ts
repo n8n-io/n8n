@@ -1,5 +1,6 @@
 import {
 	NodeApiError,
+	requestUrl,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHookFunctions,
@@ -11,6 +12,7 @@ import {
 import {
 	addAdditionalFields,
 	apiRequest,
+	fileUrl,
 	getPropertyName,
 	getSecretToken,
 } from '../GenericFunctions';
@@ -40,7 +42,7 @@ describe('Telegram > GenericFunctions', () => {
 			const endpoint = 'sendMessage';
 			const body: IDataObject = { text: 'Hello, world!' };
 			const query: IDataObject = { chat_id: '12345' };
-			const option: IDataObject = { headers: { 'Custom-Header': 'value' } };
+			const option = { json: false };
 
 			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
 			(mockThis.helpers.request as Mock).mockResolvedValue({ success: true });
@@ -49,12 +51,12 @@ describe('Telegram > GenericFunctions', () => {
 
 			expect(mockThis.getCredentials).toHaveBeenCalledWith('telegramApi');
 			expect(mockThis.helpers.request).toHaveBeenCalledWith({
-				headers: { 'Custom-Header': 'value' },
+				headers: {},
 				method: 'POST',
-				uri: 'https://api.telegram.org/bottestToken/sendMessage',
+				uri: requestUrl`https://api.telegram.org/bottestToken/sendMessage`,
 				body: { text: 'Hello, world!' },
 				qs: { chat_id: '12345' },
-				json: true,
+				json: false,
 			});
 			expect(result).toEqual({ success: true });
 		});
@@ -74,7 +76,7 @@ describe('Telegram > GenericFunctions', () => {
 			expect(mockThis.helpers.request).toHaveBeenCalledWith({
 				headers: {},
 				method: 'GET',
-				uri: 'https://api.telegram.org/bottestToken/getMe',
+				uri: requestUrl`https://api.telegram.org/bottestToken/getMe`,
 				json: true,
 			});
 			expect(result).toEqual({ success: true });
@@ -94,7 +96,7 @@ describe('Telegram > GenericFunctions', () => {
 			expect(mockThis.helpers.request).toHaveBeenCalledWith({
 				headers: {},
 				method: 'POST',
-				uri: 'https://api.telegram.org/bottestToken/sendMessage',
+				uri: requestUrl`https://api.telegram.org/bottestToken/sendMessage`,
 				body: { text: 'Hello, world!' },
 				json: true,
 			});
@@ -115,10 +117,70 @@ describe('Telegram > GenericFunctions', () => {
 			expect(mockThis.helpers.request).toHaveBeenCalledWith({
 				headers: {},
 				method: 'POST',
-				uri: 'https://api.telegram.org/bottestToken/sendMessage',
+				uri: requestUrl`https://api.telegram.org/bottestToken/sendMessage`,
 				body: { text: 'Hello, world!' },
 				json: true,
 			});
+		});
+
+		it('should keep the colon of the access token unencoded', async () => {
+			(mockThis.getCredentials as Mock).mockResolvedValue({
+				baseUrl: 'https://api.telegram.org',
+				accessToken: '123456789:AAH-fake_Token',
+			});
+
+			await apiRequest.call(mockThis, 'POST', 'getMe', {});
+
+			expect(String((mockThis.helpers.request as Mock).mock.calls[0][0].uri)).toBe(
+				'https://api.telegram.org/bot123456789:AAH-fake_Token/getMe',
+			);
+		});
+
+		it('should encode an endpoint that contains a slash', async () => {
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+
+			await apiRequest.call(mockThis, 'POST', 'getMe/close', {});
+
+			expect(String((mockThis.helpers.request as Mock).mock.calls[0][0].uri)).toBe(
+				'https://api.telegram.org/bottestToken/getMe%2Fclose',
+			);
+		});
+
+		it('should use a given file URL', async () => {
+			(mockThis.getCredentials as Mock).mockResolvedValue(credentials);
+			const uri = fileUrl(credentials.baseUrl, credentials.accessToken, 'documents/file_1.pdf');
+
+			await apiRequest.call(mockThis, 'GET', '', {}, {}, { json: false }, uri);
+
+			expect((mockThis.helpers.request as Mock).mock.calls[0][0].uri).toBe(uri);
+		});
+	});
+
+	describe('fileUrl', () => {
+		it('should keep the URL of a normal file path', () => {
+			expect(
+				String(
+					fileUrl('https://api.telegram.org', '123456789:AAH-fake_Token', 'photos/file_1.jpg'),
+				),
+			).toBe('https://api.telegram.org/file/bot123456789:AAH-fake_Token/photos/file_1.jpg');
+		});
+
+		it('should keep empty parts of the file path', () => {
+			expect(String(fileUrl('https://api.telegram.org', 'testToken', '/var/lib/file_1.jpg'))).toBe(
+				'https://api.telegram.org/file/bottestToken//var/lib/file_1.jpg',
+			);
+		});
+
+		it('should encode special characters in each part of the file path', () => {
+			expect(
+				String(fileUrl('https://api.telegram.org', 'testToken', 'documents/file 1?x#y.pdf')),
+			).toBe('https://api.telegram.org/file/bottestToken/documents/file%201%3Fx%23y.pdf');
+		});
+
+		it('should reject relative parts in the file path', () => {
+			expect(() => fileUrl('https://api.telegram.org', 'testToken', 'documents/../getMe')).toThrow(
+				'Invalid identifier',
+			);
 		});
 	});
 	describe('addAdditionalFields', () => {

@@ -2,7 +2,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { GlobalConfig } from '@n8n/config';
-import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -307,20 +306,6 @@ describe('PollTriggerJobRegistrar', () => {
 			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
 
 			expect(jobProvisioner.deprovisionOwnerTaskType).toHaveBeenCalledWith(
-				OWNER_REF,
-				POLL_TRIGGER_TASK_TYPE,
-			);
-		});
-	});
-
-	describe('removeWorkflowInTransaction', () => {
-		it('removes the poll jobs of a workflow within the given transaction', async () => {
-			const manager = mock<EntityManager>();
-
-			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
-
-			expect(jobProvisioner.deprovisionOwnerTaskTypeInTransaction).toHaveBeenCalledWith(
-				manager,
 				OWNER_REF,
 				POLL_TRIGGER_TASK_TYPE,
 			);

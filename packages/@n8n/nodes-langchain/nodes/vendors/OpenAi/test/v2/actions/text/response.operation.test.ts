@@ -1,7 +1,7 @@
 import type { Tool } from '@langchain/classic/tools';
 import { createToolFromNode } from '@n8n/ai-utilities';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mocked, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -113,7 +113,7 @@ describe('OpenAI Response Operation', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', requestPath`/responses`, {
 				body: expect.any(Object),
 			});
 		});
@@ -315,7 +315,7 @@ describe('OpenAI Response Operation', () => {
 				{ json: finalResponse, pairedItem: { item: 0 } },
 			]);
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', requestPath`/responses`, {
 				body: expect.objectContaining({
 					input: expect.arrayContaining([
 						{ type: 'function_call_output', call_id: 'call_123', output: 'Matched document' },
@@ -644,7 +644,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [
@@ -732,7 +732,7 @@ describe('OpenAI Response Operation', () => {
 
 			expect(mockTool.invoke).toHaveBeenCalledWith('test input');
 			expect(mockApiRequest).toHaveBeenCalledTimes(2);
-			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', '/responses', {
+			expect(mockApiRequest).toHaveBeenNthCalledWith(2, 'POST', requestPath`/responses`, {
 				body: {
 					model: 'gpt-4o',
 					input: [

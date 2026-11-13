@@ -98,7 +98,7 @@ export function useProjectResourceSearch({
 
 	async function searchAgents(project: string, query: string): Promise<ProjectResource[]> {
 		const { data } = await listAgentsPage(rootStore.restApiContext, project, {
-			take: takeFor('agent'),
+			limit: takeFor('agent'),
 			sortBy: 'updatedAt:desc',
 			filter: query ? { query } : undefined,
 		});

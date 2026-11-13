@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { ERROR_MESSAGES } from '../../constants';
 import { validateAirtopApiResponse, validateSessionAndWindowId } from '../../GenericFunctions';
@@ -82,7 +82,7 @@ export async function execute(
 	const response = await apiRequest.call(
 		this,
 		'GET',
-		`/sessions/${sessionId}/windows/${windowId}`,
+		requestPath`/sessions/${sessionId}/windows/${windowId}`,
 		undefined,
 		queryParams,
 	);

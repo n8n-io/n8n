@@ -278,12 +278,15 @@ vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
+	getAgentConfigValidation: getAgentConfigValidationMock,
+	getAgentWriteLock: getAgentWriteLockMock,
+}));
+
+vi.mock('../composables/useKnowledgeApi', () => ({
 	listAgentFiles: listAgentFilesMock,
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
-	getAgentConfigValidation: getAgentConfigValidationMock,
-	getAgentWriteLock: getAgentWriteLockMock,
 }));
 
 const generateDraftCasesMock = vi.fn();

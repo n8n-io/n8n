@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -18,7 +19,7 @@ vi.mock('../../transport', async () => {
 
 const SITE_ID = 'contoso.sharepoint.com,g1,g2';
 const SEARCH_PATH = (q: string) =>
-	`/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/root/search(q='${q}')`;
+	requestPath`/v1.0/sites/${SITE_ID}/drives/b!drive1/root/search(q='${q}')`;
 const BOOK = { id: 'wb1', name: 'Budget.xlsx', webUrl: 'https://c.sharepoint.com/b', file: {} };
 const NOISE = [
 	{ id: 'doc1', name: 'Notes.docx', file: {} },
@@ -66,12 +67,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Get Many', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequest).toHaveBeenCalledWith(
-			'GET',
-			SEARCH_PATH('.xlsx%20OR%20.xlsm'),
-			{},
-			{ $top: 50 },
-		);
+		expect(apiRequest).toHaveBeenCalledWith('GET', SEARCH_PATH('.xlsx OR .xlsm'), {}, { $top: 50 });
 		expect(result[0].map((item) => item.json)).toEqual([BOOK]);
 	});
 
@@ -82,6 +78,17 @@ describe('Microsoft Excel (SharePoint) — Workbook: Get Many', () => {
 		await node.execute.call(ctx);
 
 		expect(apiRequest).toHaveBeenCalledWith('GET', SEARCH_PATH('budget'), {}, { $top: 50 });
+	});
+
+	it('accepts dot-only search text', async () => {
+		setParams({ ...baseParams, filter: '..', returnAll: false, limit: 50 });
+		apiRequest.mockResolvedValue({ value: [] });
+
+		await node.execute.call(ctx);
+
+		expect(String(apiRequest.mock.calls[0][1])).toBe(
+			`/v1.0/sites/${SITE_ID}/drives/b!drive1/root/search(q='..')`,
+		);
 	});
 
 	it('follows nextLink past filtered-out pages until the limit of workbooks is met', async () => {
@@ -100,7 +107,14 @@ describe('Microsoft Excel (SharePoint) — Workbook: Get Many', () => {
 
 		// Page one is all noise; page two fills the limit, so page three is never fetched
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, 'https://graph.test/page2');
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			expect.anything(),
+			{},
+			{},
+			'https://graph.test/page2',
+		);
 		expect(result[0].map((item) => item.json)).toEqual([BOOK, BOOK2]);
 	});
 
@@ -110,7 +124,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Get Many', () => {
 
 		const result = await node.execute.call(ctx);
 
-		expect(apiRequestAllItems).toHaveBeenCalledWith(SEARCH_PATH('.xlsx%20OR%20.xlsm'), {});
+		expect(apiRequestAllItems).toHaveBeenCalledWith(SEARCH_PATH('.xlsx OR .xlsm'), {});
 		expect(result[0].map((item) => item.json)).toEqual([BOOK, { ...BOOK, id: 'wb2' }]);
 	});
 
@@ -122,7 +136,7 @@ describe('Microsoft Excel (SharePoint) — Workbook: Get Many', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			SEARCH_PATH('.xlsx%20OR%20.xlsm'),
+			SEARCH_PATH('.xlsx OR .xlsm'),
 			{},
 			{ $select: 'id,webUrl,name,file', $top: 50 },
 		);

@@ -1,11 +1,11 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequestAllItems } from '../transport';
 
 // Get all the available channels
 export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'channels';
+	const endpoint = requestPath`channels`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData === undefined) {
@@ -47,7 +47,7 @@ export async function getChannelsInTeam(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const teamId = this.getCurrentNodeParameter('teamId');
-	const endpoint = `users/me/teams/${teamId}/channels`;
+	const endpoint = requestPath`users/me/teams/${teamId}/channels`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData === undefined) {
@@ -90,7 +90,7 @@ export async function getChannelsInTeam(
 }
 
 export async function getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'users/me/teams';
+	const endpoint = requestPath`users/me/teams`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData === undefined) {
@@ -126,7 +126,7 @@ export async function getTeams(this: ILoadOptionsFunctions): Promise<INodeProper
 }
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const endpoint = 'users';
+	const endpoint = requestPath`users`;
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData === undefined) {

@@ -173,6 +173,7 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
+			preferencesNoteVariant: 'control',
 		});
 		const res = createRes();
 
@@ -202,6 +203,7 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
+			'$feature/140_mcp_empty_preferences_note': 'control',
 		});
 	});
 

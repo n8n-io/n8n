@@ -49,6 +49,7 @@ let exportDir: string;
 
 /** Reimporting the package it just produced must put everything back where it was. */
 const importPolicy: Omit<ImportRequest, 'user'> = {
+	publicApi: false,
 	projectConflictPolicy: 'overwrite',
 	conflictPolicy: 'new-version',
 	idPolicy: 'source',

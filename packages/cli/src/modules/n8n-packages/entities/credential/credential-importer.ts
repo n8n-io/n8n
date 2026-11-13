@@ -99,6 +99,7 @@ export class CredentialImporter {
 		const requirementsById = new Map(
 			(request.requirements ?? []).map((requirement) => [requirement.id, requirement]),
 		);
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		const destinations = new Map<string, CredentialsEntity | null>();
 		const inScope: Array<{
 			match: CredentialMatch;
@@ -130,7 +131,10 @@ export class CredentialImporter {
 					targetName: destination.name,
 					usedBy: mergeRequirementConsumers(requirementsById.get(sourceId)?.usedBy ?? []),
 				},
-				packageCredential,
+				// With descriptions off, the description decides nothing: no difference, no conflict.
+				packageCredential: descriptionsEnabled
+					? packageCredential
+					: { ...packageCredential, description: undefined },
 				destination,
 				ownerProjectId,
 			});
@@ -162,11 +166,18 @@ export class CredentialImporter {
 				ownerProjectId,
 				name: packageCredential.name,
 				...(packageCredential.data !== undefined ? { data: packageCredential.data } : {}),
+				...(packageCredential.description !== undefined
+					? { description: packageCredential.description }
+					: {}),
 			};
 			candidates.push(candidate);
 
 			const differs = credentialDiffers(
-				{ name: destination.name, data: await this.readStoredData(destination) },
+				{
+					name: destination.name,
+					description: destination.description,
+					data: await this.readStoredData(destination),
+				},
 				packageCredential,
 			);
 			if (differs) updates.push(candidate);
@@ -246,6 +257,12 @@ export class CredentialImporter {
 			? packageDataBySourceId(request.requirements)
 			: new Map<string, ICredentialDataDecryptedObject>();
 
+		const packageDescriptions = new Map(
+			(request.requirements ?? [])
+				.filter(({ packageDescription }) => packageDescription !== undefined)
+				.map(({ id, packageDescription }) => [id, packageDescription]),
+		);
+
 		for (const credential of credentialsToStub(request.missingMode, resolution)) {
 			const { sourceId, type, name } = credential;
 			const targetId = resolution.stubIds.get(sourceId);
@@ -263,6 +280,9 @@ export class CredentialImporter {
 					type,
 					projectId: context.projectId,
 					...(data !== undefined ? { data } : {}),
+					...(packageDescriptions.has(sourceId)
+						? { description: packageDescriptions.get(sourceId) }
+						: {}),
 				},
 				context.user,
 			);
@@ -299,14 +319,15 @@ export class CredentialImporter {
 			if (prepared === null) continue;
 
 			// Like the credential UI route. `createEncryptedData` sets only the id, name, type and
-			// data, and the update writes only the set columns: sharing, `isGlobal`,
-			// `isResolvable` and the description stay.
+			// data, and the update writes only the set columns: sharing, `isGlobal` and
+			// `isResolvable` stay. The description changes only when the package decides it.
 			const encrypted = await this.credentialsService.createEncryptedData({
 				id: targetId,
 				name: prepared.name,
 				type: prepared.type,
 				data: prepared.data,
 			});
+			if (prepared.description !== undefined) encrypted.description = prepared.description;
 			const saved = await this.credentialsService.update(
 				targetId,
 				encrypted,
@@ -357,7 +378,12 @@ export class CredentialImporter {
 	private async prepareUpdate(
 		user: User,
 		update: CredentialUpdateCandidate,
-	): Promise<{ name: string; type: string; data: ICredentialDataDecryptedObject } | null> {
+	): Promise<{
+		name: string;
+		type: string;
+		data: ICredentialDataDecryptedObject;
+		description?: string | null;
+	} | null> {
 		// `prepareUpdateData` reads the owner project from the `shared` relation.
 		const credential = await this.credentialsFinder.findById(update.targetId, {
 			includeSharedProject: true,
@@ -365,7 +391,14 @@ export class CredentialImporter {
 		if (!credential) throw credentialNotFound(update);
 
 		const stored = await this.readStoredData(credential);
-		if (!credentialDiffers({ name: credential.name, data: stored }, update)) return null;
+		if (
+			!credentialDiffers(
+				{ name: credential.name, description: credential.description, data: stored },
+				update,
+			)
+		) {
+			return null;
+		}
 
 		const merged = mergeIntoStored(stored, update.data ?? {});
 		delete merged.oauthTokenData;
@@ -375,14 +408,25 @@ export class CredentialImporter {
 		// the stored values.
 		const prepared = await this.credentialsService.prepareUpdateData(
 			user,
-			{ name: update.name, type: credential.type, data: merged },
+			{
+				name: update.name,
+				type: credential.type,
+				data: merged,
+				...(update.description !== undefined ? { description: update.description } : {}),
+			},
 			credential,
 		);
 		if (!isCredentialData(prepared.data)) {
 			throw new UnexpectedError(`Prepared data of credential "${credential.id}" is not an object`);
 		}
 
-		return { name: prepared.name, type: credential.type, data: prepared.data };
+		return {
+			name: prepared.name,
+			type: credential.type,
+			data: prepared.data,
+			// Undefined when the package does not decide it or the instance has descriptions off.
+			...(prepared.description !== undefined ? { description: prepared.description } : {}),
+		};
 	}
 
 	/**

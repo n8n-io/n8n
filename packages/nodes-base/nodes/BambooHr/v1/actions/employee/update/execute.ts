@@ -1,7 +1,7 @@
 import { capitalCase } from 'change-case';
 import moment from 'moment-timezone';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -16,7 +16,7 @@ export async function update(
 	const id = this.getNodeParameter('employeeId', index) as string;
 
 	//endpoint
-	const endpoint = `employees/${id}`;
+	const endpoint = requestPath`employees/${id}`;
 
 	//body parameters
 	body = this.getNodeParameter('updateFields', index);

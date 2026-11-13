@@ -4,6 +4,7 @@ import type {
 	IHookFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { beeminderApiRequest, beeminderApiRequestAllItems } from './GenericFunctions';
 
@@ -25,7 +26,7 @@ export async function createDatapoint(
 		requestid?: string;
 	},
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {});
 }
@@ -34,7 +35,7 @@ export async function getAllDatapoints(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string; count?: number; sort?: string; page?: number; per?: number },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints.json`;
 
 	if (data.count !== undefined) {
 		return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
@@ -53,7 +54,7 @@ export async function updateDatapoint(
 		timestamp?: number;
 	},
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
 	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {});
 }
@@ -62,7 +63,7 @@ export async function deleteDatapoint(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string; datapointId: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
 	return await beeminderApiRequest.call(this, 'DELETE', endpoint);
 }
@@ -71,7 +72,7 @@ export async function createCharge(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { amount: number; note?: string; dryrun?: boolean },
 ) {
-	const endpoint = '/charges.json';
+	const endpoint = requestPath`/charges.json`;
 
 	const body = {
 		user_id: 'me',
@@ -87,7 +88,7 @@ export async function uncleGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/uncleme.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/uncleme.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint);
 }
@@ -96,7 +97,7 @@ export async function createAllDatapoints(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string; datapoints: Datapoint[] },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints/create_all.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints/create_all.json`;
 
 	const body = {
 		datapoints: data.datapoints,
@@ -109,7 +110,7 @@ export async function getSingleDatapoint(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string; datapointId: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/datapoints/${data.datapointId}.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint);
 }
@@ -119,7 +120,7 @@ export async function getGoal(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string; datapoints?: boolean; emaciated?: boolean },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 }
@@ -128,7 +129,7 @@ export async function getAllGoals(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data?: { emaciated?: boolean },
 ) {
-	const endpoint = '/users/me/goals.json';
+	const endpoint = requestPath`/users/me/goals.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data || {});
 }
@@ -137,7 +138,7 @@ export async function getArchivedGoals(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data?: { emaciated?: boolean },
 ) {
-	const endpoint = '/users/me/goals/archived.json';
+	const endpoint = requestPath`/users/me/goals/archived.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data || {});
 }
@@ -160,7 +161,7 @@ export async function createGoal(
 		tags?: string[];
 	},
 ) {
-	const endpoint = '/users/me/goals.json';
+	const endpoint = requestPath`/users/me/goals.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint, data, {});
 }
@@ -180,7 +181,7 @@ export async function updateGoal(
 		tags?: string[];
 	},
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}.json`;
 
 	return await beeminderApiRequest.call(this, 'PUT', endpoint, data, {});
 }
@@ -189,7 +190,7 @@ export async function refreshGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/refresh_graph.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/refresh_graph.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint);
 }
@@ -198,7 +199,7 @@ export async function shortCircuitGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/shortcircuit.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/shortcircuit.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint);
 }
@@ -207,7 +208,7 @@ export async function stepDownGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/stepdown.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/stepdown.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint);
 }
@@ -216,7 +217,7 @@ export async function cancelStepDownGoal(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	data: { goalName: string },
 ) {
-	const endpoint = `/users/me/goals/${data.goalName}/cancel_stepdown.json`;
+	const endpoint = requestPath`/users/me/goals/${data.goalName}/cancel_stepdown.json`;
 
 	return await beeminderApiRequest.call(this, 'POST', endpoint);
 }
@@ -232,7 +233,7 @@ export async function getUser(
 		datapoints_count?: number;
 	},
 ) {
-	const endpoint = '/users/me.json';
+	const endpoint = requestPath`/users/me.json`;
 
 	return await beeminderApiRequest.call(this, 'GET', endpoint, {}, data);
 }
