@@ -4706,6 +4706,8 @@ export interface IUserSettings {
 		impressions: number;
 		lastShownAt?: number;
 	};
+	/** Personal UI locale. When unset, the instance default applies. */
+	locale?: string;
 }
 
 export interface IProcessedDataConfig {

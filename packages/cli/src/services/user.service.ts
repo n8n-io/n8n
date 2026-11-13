@@ -37,6 +37,7 @@ import {
 import type { IUserSettings } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
+import { LocaleService } from './locale.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
@@ -72,6 +73,11 @@ export const INVITE_ROLE_MANAGED_MESSAGE =
 	'Instance roles are managed by single sign-on. Invite users with the member role.';
 
 /** The system as the actor of a user deletion that no user asked for. */
+/** `locale: null` clears the personal locale. */
+export type UserSettingsUpdate = Omit<Partial<IUserSettings>, 'locale'> & {
+	locale?: string | null;
+};
+
 export type SystemDeletionActor = Extract<PolicyActor, { kind: 'system' }> & { reason: 'scim' };
 
 @Service()
@@ -96,6 +102,7 @@ export class UserService {
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
+		private readonly localeService: LocaleService,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -125,15 +132,34 @@ export class UserService {
 		}
 	}
 
-	/** Both kinds of account have settings. Returns the merged settings. */
-	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
+	/**
+	 * Both kinds of account have settings. Returns the merged settings.
+	 * A `null` locale removes the personal locale, so the instance default applies.
+	 */
+	async updateSettings(userId: string, newSettings: UserSettingsUpdate) {
+		const { locale, ...rest } = newSettings;
+		if (typeof locale === 'string') this.assertLocaleCanBeSet(locale);
+
 		const account = await this.userRepository.findOneBy({ id: userId });
 		if (!account) throw new NotFoundError('User not found');
 
-		account.settings = { ...account.settings, ...newSettings };
+		const settings: IUserSettings = { ...account.settings, ...rest };
+		if (typeof locale === 'string') settings.locale = locale;
+		else if (locale === null) delete settings.locale;
+
+		account.settings = settings;
 		await this.userRepository.save(account);
 
 		return account.settings;
+	}
+
+	private assertLocaleCanBeSet(locale: string) {
+		if (!this.globalConfig.locales.userOverride) {
+			throw new BadRequestError('Choosing a personal UI language is turned off on this instance');
+		}
+		if (!this.localeService.isAvailable(locale)) {
+			throw new BadRequestError(`Unknown locale: "${locale}"`);
+		}
 	}
 
 	async findUserWithAuthIdentities(userId: string): Promise<Person> {

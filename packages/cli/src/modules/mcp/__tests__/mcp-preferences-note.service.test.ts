@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { UrlService } from '@n8n/backend-services';
 import { User } from '@n8n/db';
+import type { IUserSettings } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { UserService } from '@/services/user.service';
@@ -16,7 +17,7 @@ const userWithImpressions = (impressions?: number) =>
 
 const createService = () => {
 	const userService = mock<UserService>();
-	userService.updateSettings.mockImplementation(async (_id, settings) => settings);
+	userService.updateSettings.mockImplementation(async (_id, settings) => settings as IUserSettings);
 	const urlService = mock<UrlService>();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://acme.n8n.cloud');
 	const service = new McpPreferencesNoteService(userService, urlService, mockLogger());

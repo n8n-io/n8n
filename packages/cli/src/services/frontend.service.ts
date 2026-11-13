@@ -14,6 +14,7 @@ import path from 'path';
 import { UrlService } from '@n8n/backend-services';
 
 import { AiUsageService } from './ai-usage.service';
+import { LocaleService } from './locale.service';
 import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
 
 import config from '@/config';
@@ -148,6 +149,7 @@ export class FrontendService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly inboxService: InboxService,
+		private readonly localeService: LocaleService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		credentialsOverwrites.registerReloadHandler(async () => await this.generateTypes());
@@ -270,6 +272,8 @@ export class FrontendService {
 			personalizationSurveyEnabled:
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
+			availableLocales: this.localeService.getAvailableLocales(),
+			localeUserOverride: this.globalConfig.locales.userOverride,
 			userManagement: {
 				// oxlint-disable-next-line typescript/no-deprecated
 				quota: this.license.getUsersLimit(),

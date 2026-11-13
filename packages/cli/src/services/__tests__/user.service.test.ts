@@ -37,6 +37,7 @@ import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { OwnershipTransferService } from '../ownership-transfer/ownership-transfer.service';
+import type { LocaleService } from '../locale.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
@@ -76,6 +77,7 @@ describe('UserService', () => {
 	const scimSwitchReader = mock<ScimSwitchReader>();
 	const transactions = mock<TransactionRunner>();
 	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	const localeService = mock<LocaleService>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -96,6 +98,7 @@ describe('UserService', () => {
 		personRepository,
 		scimSwitchReader,
 		transactions,
+		localeService,
 	);
 
 	const commonMockPerson = Object.assign(new Person(), {
@@ -343,6 +346,59 @@ describe('UserService', () => {
 
 			await expect(userService.updateSettings('missing', {})).rejects.toThrow(NotFoundError);
 			expect(userRepository.save).not.toHaveBeenCalled();
+		});
+
+		describe('locale', () => {
+			beforeEach(() => {
+				globalConfig.locales = { available: {}, userOverride: true };
+				localeService.isAvailable.mockReset();
+			});
+
+			it('rejects a locale when the user override is turned off', async () => {
+				globalConfig.locales.userOverride = false;
+
+				await expect(userService.updateSettings('1234', { locale: 'de' })).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(userRepository.findOneBy).not.toHaveBeenCalled();
+			});
+
+			it('rejects an unknown locale', async () => {
+				localeService.isAvailable.mockReturnValue(false);
+
+				await expect(userService.updateSettings('1234', { locale: 'xx' })).rejects.toThrow(
+					'Unknown locale: "xx"',
+				);
+				expect(userRepository.findOneBy).not.toHaveBeenCalled();
+			});
+
+			it('stores an available locale', async () => {
+				localeService.isAvailable.mockReturnValue(true);
+				const person = Object.assign(new Person(), {
+					id: '1234',
+					settings: { userActivated: true },
+				});
+				userRepository.findOneBy.mockResolvedValueOnce(person);
+
+				const settings = await userService.updateSettings('1234', { locale: 'de' });
+
+				expect(localeService.isAvailable).toHaveBeenCalledWith('de');
+				expect(settings).toEqual({ userActivated: true, locale: 'de' });
+			});
+
+			it('removes the locale on null, even when the user override is turned off', async () => {
+				globalConfig.locales.userOverride = false;
+				const person = Object.assign(new Person(), {
+					id: '1234',
+					settings: { userActivated: true, locale: 'de' },
+				});
+				userRepository.findOneBy.mockResolvedValueOnce(person);
+
+				const settings = await userService.updateSettings('1234', { locale: null });
+
+				expect(settings).toEqual({ userActivated: true });
+				expect(userRepository.save).toHaveBeenCalledWith(person);
+			});
 		});
 	});
 
