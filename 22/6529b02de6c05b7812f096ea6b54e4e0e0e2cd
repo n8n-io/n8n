@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2329,2372-2402,2405,7826,23059-23061,43237-43238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "226529b02de6c05b7812f096ea6b54e4e0e0e2cd",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
