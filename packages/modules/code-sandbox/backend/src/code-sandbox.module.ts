@@ -22,6 +22,8 @@ export class CodeSandboxModule {
 
 		Container.set(CodeExecutionBackend, Container.get(CodeSandboxBackend));
 
-		this.logger.info('Code tasks run on the code sandbox service');
+		this.logger.warn(
+			'The code sandbox backend is experimental and cannot run code tasks yet. Code nodes fail until it is complete.',
+		);
 	}
 }
