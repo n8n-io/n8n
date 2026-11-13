@@ -159,6 +159,7 @@ function notifyResultClosed(
 	before: SelfHealingResultDetail,
 	after: SelfHealingResultDetail,
 	onItemChange: (change: InboxItemChange) => void,
+	advance = false,
 ) {
 	if (before.reviewState === 'open' && after.reviewState !== 'open') {
 		onItemChange({
@@ -166,8 +167,26 @@ function notifyResultClosed(
 			id: after.resultId,
 			state: 'closed',
 			updatedAt: after.updatedAt,
+			advance,
 		});
 	}
+}
+
+function showPublished(result: SelfHealingResultActionResponse) {
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: result.workflowId },
+	});
+	showMessage({
+		type: 'success',
+		title: i18n.baseText('inbox.selfHealing.action.published.title', {
+			adjustToNumber: result.suggestions.length,
+			interpolate: { count: String(result.suggestions.length) },
+		}),
+		message: i18n.baseText('inbox.selfHealing.action.published.message', {
+			interpolate: { url: href },
+		}),
+	});
 }
 
 async function openEditor(workflowId: string) {
@@ -250,7 +269,6 @@ async function onAction(action: SelfHealingResultAction) {
 		reviewAction = action;
 	}
 	const closedState = reviewAction === 'dismiss' ? 'dismissed' : 'applied';
-
 	/**
 	 * Without a response, the saved state does not show which request closed the result.
 	 * So the chat waits for an explicit start, and publication stays unconfirmed.
@@ -261,13 +279,24 @@ async function onAction(action: SelfHealingResultAction) {
 	) {
 		// An outdated or concurrently discarded suggestion leaves nothing to continue with.
 		const closed = result.reviewState === closedState;
-		if (!isSelected(target.id) || !closed) return false;
+		if (!isSelected(target.id) || !closed) return { continued: false, advance: false };
 
-		if (action === 'chat') {
+		// A confirmed publish or dismissal stays in the Inbox and moves on to the next item.
+		let advance = false;
+		if (action === 'dismiss') {
+			advance = !responseLost;
+		} else if (action === 'chat') {
 			const request = { target, projectId: target.projectId, result };
 			if (responseLost) chatRetry.value = { ...request, reason: 'unconfirmed' };
 			else await startChat(request);
-		} else if (action !== 'dismiss') {
+		} else if (
+			!responseLost &&
+			action === 'approve-and-publish' &&
+			result.publishError === undefined
+		) {
+			showPublished(result);
+			advance = true;
+		} else {
 			if (responseLost && action === 'approve-and-publish') {
 				showMessage({
 					type: 'warning',
@@ -304,7 +333,7 @@ async function onAction(action: SelfHealingResultAction) {
 
 			await openEditor(result.workflowId);
 		}
-		return true;
+		return { continued: true, advance };
 	}
 
 	try {
@@ -315,13 +344,13 @@ async function onAction(action: SelfHealingResultAction) {
 			ORIGINAL_ACTIONS[action],
 		);
 
-		await continueAfterClose(result, false);
+		const { advance } = await continueAfterClose(result, false);
 		store.acceptResult(result);
-		notifyResultClosed(before, result, onItemChange);
+		notifyResultClosed(before, result, onItemChange, advance);
 	} catch (cause) {
 		// Refresh saved state before the user retries a request with a lost response.
 		const reconcile = async (current: SelfHealingResultDetail) => {
-			const continued = !isRejected(cause) && (await continueAfterClose(current, true));
+			const continued = !isRejected(cause) && (await continueAfterClose(current, true)).continued;
 			notifyResultClosed(before, current, onItemChange);
 			return continued;
 		};

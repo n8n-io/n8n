@@ -3,6 +3,7 @@ import type {
 	SelfHealingOriginalAction,
 	SelfHealingResultActionResponse,
 	SelfHealingResultDetail,
+	SelfHealingStatusDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -47,4 +48,10 @@ export async function fetchResultWorkflow(
 	workflowId: string,
 ): Promise<SelfHealingResultWorkflowMetadata> {
 	return await makeRestApiRequest(context, 'GET', `/workflows/${encodeURIComponent(workflowId)}`);
+}
+
+export async function fetchSelfHealingStatus(
+	context: IRestApiContext,
+): Promise<SelfHealingStatusDto> {
+	return await makeRestApiRequest(context, 'GET', '/self-healing/status');
 }
