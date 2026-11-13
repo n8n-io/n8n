@@ -622,7 +622,8 @@ export class WorkflowPublicationApplier {
 		// The lone error keeps its class: the reporter checks it for a policy refusal.
 		if (failures.length === 1) return failures[0].error;
 
-		return new Error(
+		return new AggregateError(
+			failures.map(({ error }) => error),
 			formatFailedActivationError(
 				failures.map(({ nodeName, error }) => ({ nodeName, message: error.message })),
 			),

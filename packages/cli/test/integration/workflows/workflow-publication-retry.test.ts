@@ -12,6 +12,7 @@ import {
 } from '@n8n/db';
 import type { Project, WorkflowEntity, WorkflowPublicationRetryState } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 import type {
@@ -107,11 +108,15 @@ const LONG_AGO = new Date('2000-01-01T00:00:00.000Z');
 
 const FIRST_RETRY_DELAY_SECONDS = 60;
 
+const MAX_RETRY_DELAY_SECONDS = 14400;
+
 const DOUBLING_CURVE = [60, 120, 240, 480, 960, 1920, 3840, 7680, 14400, 14400];
 
 const POLICY_REFUSAL = new PolicyViolationError([
 	{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
 ]);
+
+const USER_ERROR = new UserError('The polling interval is too short.');
 
 let reconciler: WorkflowPublicationReconciler;
 let consumer: WorkflowPublicationOutboxConsumer;
@@ -144,6 +149,19 @@ async function makeRetryDue(workflowId: string, failedAt = LONG_AGO): Promise<vo
 		.createQueryBuilder()
 		.update()
 		.set({ updatedAt: failedAt })
+		.where({ workflowId })
+		.execute();
+}
+
+async function setRetryNote(
+	workflowId: string,
+	failedAt: Date,
+	retryDelaySeconds: number,
+): Promise<void> {
+	await retryStateRepository
+		.createQueryBuilder()
+		.update()
+		.set({ updatedAt: failedAt, retryDelaySeconds })
 		.where({ workflowId })
 		.execute();
 }
@@ -275,7 +293,17 @@ describe('Workflow publication retry (integration)', () => {
 
 	test('a UserError wrapped by trigger activation is not retried', async () => {
 		const workflow = await createPublishedWorkflow(flakyNode('wrapped'));
-		fixture.failure = POLICY_REFUSAL;
+		fixture.failure = USER_ERROR;
+		await publish(workflow);
+
+		await reconciler.reconcile('startup');
+
+		expect(await retryDelay(workflow.id)).toBeNull();
+	});
+
+	test('two triggers that both fail with a UserError are not retried', async () => {
+		const workflow = await createPublishedWorkflow(flakyNode('first'), flakyNode('second'));
+		fixture.failure = USER_ERROR;
 		await publish(workflow);
 
 		await reconciler.reconcile('startup');
@@ -355,21 +383,29 @@ describe('Workflow publication retry (integration)', () => {
 	test('an interval pass retries at most the publication concurrency, oldest due first', async () => {
 		Container.get(WorkflowsConfig).workflowPublicationConcurrency = 2;
 		const workflows = [
-			await failReconcileWhileUnreachable(flakyNode('newest')),
-			await failReconcileWhileUnreachable(flakyNode('oldest')),
-			await failReconcileWhileUnreachable(flakyNode('middle')),
+			await failReconcileWhileUnreachable(flakyNode('last-due')),
+			await failReconcileWhileUnreachable(flakyNode('first-due')),
+			await failReconcileWhileUnreachable(flakyNode('second-due')),
 		];
-		const [newest, oldest, middle] = workflows;
-		await makeRetryDue(newest.id, new Date('2000-01-03T00:00:00.000Z'));
-		await makeRetryDue(oldest.id, new Date('2000-01-01T00:00:00.000Z'));
-		await makeRetryDue(middle.id, new Date('2000-01-02T00:00:00.000Z'));
+		const [lastDue, firstDue, secondDue] = workflows;
+		await setRetryNote(lastDue.id, new Date('2000-01-01T00:00:00.000Z'), MAX_RETRY_DELAY_SECONDS);
+		await setRetryNote(
+			firstDue.id,
+			new Date('2000-01-01T01:00:00.000Z'),
+			FIRST_RETRY_DELAY_SECONDS,
+		);
+		await setRetryNote(
+			secondDue.id,
+			new Date('2000-01-01T02:00:00.000Z'),
+			FIRST_RETRY_DELAY_SECONDS,
+		);
 		const recordsBefore = await Promise.all(workflows.map(async (w) => await countRecords(w.id)));
 
 		await reconciler.reconcile('reconcile');
 
 		const recordsAfter = await Promise.all(workflows.map(async (w) => await countRecords(w.id)));
 		const retried = workflows.filter((_, i) => recordsAfter[i] > recordsBefore[i]).map((w) => w.id);
-		expect(retried).toEqual([oldest.id, middle.id]);
+		expect(retried).toEqual([firstDue.id, secondDue.id]);
 	});
 
 	test('doubles the retry delay after each failed retry, capped at four hours', async () => {

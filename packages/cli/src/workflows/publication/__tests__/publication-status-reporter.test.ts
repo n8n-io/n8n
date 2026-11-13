@@ -801,6 +801,17 @@ describe('PublicationStatusReporter', () => {
 			},
 		],
 		[
+			'a webhook path conflict next to an unreachable host',
+			{
+				type: 'failed',
+				error: new AggregateError(
+					[new WebhookPathTakenError('Webhook'), unreachable()],
+					'Triggers failed to activate',
+				),
+				triggerStatuses: [failedRow('persisted'), failedRow('in-memory')],
+			},
+		],
+		[
 			'an auth failure from the server',
 			{
 				type: 'failed',

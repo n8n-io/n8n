@@ -7,7 +7,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type TableColumn } from '@n8n/typeorm';
 
 const MIGRATION_NAME = 'AddRetryDelayToWorkflowPublicationRetryState1794320866222';
 
@@ -125,6 +125,15 @@ describe('AddRetryDelayToWorkflowPublicationRetryState Migration', () => {
 		});
 	}
 
+	async function readRetryDelayColumn(): Promise<TableColumn | undefined> {
+		return await withContext(async (context) => {
+			const table = await context.queryRunner.getTable(
+				`${context.tablePrefix}workflow_publication_retry_state`,
+			);
+			return table?.findColumnByName('retryDelaySeconds');
+		});
+	}
+
 	beforeAll(async () => {
 		await Container.get(DbConnection).init();
 		dataSource = Container.get(DataSource);
@@ -166,5 +175,6 @@ describe('AddRetryDelayToWorkflowPublicationRetryState Migration', () => {
 			'wf-failed-webhook',
 			'wf-other-version',
 		]);
+		expect(await readRetryDelayColumn()).toBeUndefined();
 	});
 });

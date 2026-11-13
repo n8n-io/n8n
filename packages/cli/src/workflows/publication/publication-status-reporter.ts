@@ -12,6 +12,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { OperationalError, UserError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { errorChain } from '@n8n/utils/errors/error-chain';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -29,14 +30,16 @@ import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service
 import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import type { TriggerTeardownFailure } from '@/workflows/triggers/workflow-trigger-activator';
 
-/** A failure that only a user change can fix, so automatic retries never run it again. */
+/** A failure that only a user change can fix, for every failed trigger, so automatic retries never run it again. */
 function isPermanentFailure(error: Error): boolean {
-	return errorChain(error).some(
-		(level) =>
-			level instanceof UserError ||
-			isPolicyRefusal(level) ||
-			(level instanceof Error && !isTransientActivationError(level)),
-	);
+	return error instanceof AggregateError
+		? error.errors.every((triggerError) => isPermanentFailure(ensureError(triggerError)))
+		: errorChain(error).some(
+				(level) =>
+					level instanceof UserError ||
+					isPolicyRefusal(level) ||
+					(level instanceof Error && !isTransientActivationError(level)),
+			);
 }
 
 /**
