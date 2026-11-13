@@ -7,7 +7,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
-import pgPromise from 'pg-promise';
 
 import type {
 	ColumnInfo,
@@ -21,7 +20,6 @@ import type {
 	QueryWithValues,
 	SortRule,
 	StartAfter,
-	StartAfterColumnInfo,
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
@@ -299,164 +297,6 @@ export function getStartAfterSortRules(
 		itemIndex,
 		description: `Start After pages by "${column}", so "${column}" must be the first sort rule. ${fix}`,
 	});
-}
-
-// Each function and table is schema-qualified, and each operator compares two values of one type,
-// so objects in other schemas cannot take their place.
-// indnkeyatts exists from PostgreSQL 11. Before 11, an index has no INCLUDE columns.
-// From PostgreSQL 18, a NOT NULL constraint can be NOT VALID, and then the column can hold nulls.
-// A domain has the output function of its base type, at every level.
-const START_AFTER_COLUMN_QUERY = `
-SELECT
-	c.relkind,
-	a.attnum IS NOT NULL AS column_exists,
-	a.attnotnull AND NOT EXISTS (
-		SELECT 1
-		FROM pg_catalog.pg_constraint k
-		WHERE k.conrelid = c.oid AND k.contype = 'n' AND k.conkey[1] = a.attnum AND NOT k.convalidated
-	) AS not_null,
-	pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
-	t.typoutput::pg_catalog.oid IN (
-		'pg_catalog.timestamp_out'::pg_catalog.regproc::pg_catalog.oid,
-		'pg_catalog.timestamptz_out'::pg_catalog.regproc::pg_catalog.oid
-	) AS is_timestamp,
-	t.typoutput::pg_catalog.oid IN (
-		'pg_catalog.byteaout'::pg_catalog.regproc::pg_catalog.oid,
-		'pg_catalog.interval_out'::pg_catalog.regproc::pg_catalog.oid,
-		'pg_catalog.jsonb_out'::pg_catalog.regproc::pg_catalog.oid,
-		'pg_catalog.array_out'::pg_catalog.regproc::pg_catalog.oid,
-		'pg_catalog.record_out'::pg_catalog.regproc::pg_catalog.oid
-	) AS outputs_object,
-	t.typoutput::pg_catalog.oid = 'pg_catalog.numeric_out'::pg_catalog.regproc::pg_catalog.oid
-		AS is_numeric,
-	EXISTS (
-		SELECT 1
-		FROM pg_catalog.pg_index i
-		WHERE i.indrelid = c.oid
-			AND (i.indisprimary OR i.indisunique)
-			AND i.indisvalid
-			AND i.indpred IS NULL
-			AND i.indkey[0] = a.attnum
-			AND i.indcollation[0] = a.attcollation
-			AND COALESCE(
-				(pg_catalog.to_jsonb(i) ->> 'indnkeyatts'::pg_catalog.text)::pg_catalog.int4,
-				i.indnatts
-			) = 1
-	) AS is_unique,
-	c.relkind = 'r' AND EXISTS (
-		SELECT 1 FROM pg_catalog.pg_inherits h WHERE h.inhparent = c.oid
-	) AS has_child_tables
-FROM pg_catalog.pg_class c
-JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-LEFT JOIN pg_catalog.pg_attribute a
-	ON a.attrelid = c.oid AND a.attname = $3 AND a.attnum > 0 AND NOT a.attisdropped
-LEFT JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
-WHERE n.nspname = $1 AND c.relname = $2`;
-
-/** Returns why the column cannot be a Start After column, or undefined if it can. */
-export function getStartAfterColumnProblem(
-	info: StartAfterColumnInfo | null,
-	schema: string,
-	table: string,
-	column: string,
-	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'] = 'text',
-): { message: string; description: string } | undefined {
-	const tableName = `${schema}.${table}`;
-
-	if (info === null) {
-		return {
-			message: `Table "${tableName}" does not exist`,
-			description: 'Check the schema and the table name.',
-		};
-	}
-	if (info.relkind === 'v') {
-		return {
-			message: `Start After cannot page the view "${tableName}"`,
-			description: `A view has no indexes, so the node cannot check that "${column}" is unique. Page the table that the view reads, or use the Execute Query operation.`,
-		};
-	}
-	if (info.relkind === 'm') {
-		return {
-			message: `Start After cannot page the materialized view "${tableName}"`,
-			description: `A column of a materialized view can always be null, so the node cannot check that "${column}" is never null. Page the table that the view reads, or use the Execute Query operation.`,
-		};
-	}
-	if (info.relkind === 'f') {
-		return {
-			message: `Start After cannot page the foreign table "${tableName}"`,
-			description: `A foreign table has no indexes, so the node cannot check that "${column}" is unique. Use the Execute Query operation.`,
-		};
-	}
-	if (!info.column_exists) {
-		return {
-			message: `Column "${column}" does not exist in "${tableName}"`,
-			description: 'Choose a column of the table in Start After.',
-		};
-	}
-	if (info.is_timestamp) {
-		return {
-			message: `Start After does not support the timestamp column "${column}"`,
-			description: `"${column}" has the type ${info.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
-		};
-	}
-	if (info.outputs_object) {
-		return {
-			message: `Start After does not support the column "${column}" of type ${info.data_type}`,
-			description:
-				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
-		};
-	}
-	if (info.is_numeric && largeNumbersOutput === 'numbers') {
-		return {
-			message: `Set Output Large-Format Numbers As to Text to page by "${column}"`,
-			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
-		};
-	}
-	if (!info.is_unique) {
-		return {
-			message: `Column "${column}" has no unique index that Start After can use`,
-			description:
-				'Start After needs a primary key or a valid unique index on this column alone. A unique index on more than one column, with a WHERE condition, on an expression or with another collation does not count. If values repeat, a page skips the rows that share the last value.',
-		};
-	}
-	if (info.has_child_tables) {
-		return {
-			message: `Values of "${column}" can repeat in the child tables of "${tableName}"`,
-			description: `The unique index of "${tableName}" does not include the rows of its child tables. Page each table on its own, or use the Execute Query operation.`,
-		};
-	}
-	if (!info.not_null) {
-		return {
-			message: `Column "${column}" can be null`,
-			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
-		};
-	}
-
-	return undefined;
-}
-
-export async function checkStartAfterColumn(
-	db: PgpDatabase,
-	node: INode,
-	itemIndex: number,
-	schema: string,
-	table: string,
-	column: string,
-	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
-) {
-	const info = await db.oneOrNone<StartAfterColumnInfo>(
-		new pgPromise.ParameterizedQuery({
-			text: START_AFTER_COLUMN_QUERY,
-			values: [schema, table, column],
-		}),
-	);
-	const problem = getStartAfterColumnProblem(info, schema, table, column, largeNumbersOutput);
-	if (problem) {
-		throw new NodeOperationError(node, problem.message, {
-			itemIndex,
-			description: problem.description,
-		});
-	}
 }
 
 export function addSortRules(
@@ -885,6 +725,107 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 		[schema, table],
 	);
 	return unique as IDataObject[];
+}
+
+/** Whether a valid primary key or unique index covers this column alone, with no WHERE condition */
+export async function isUniqueColumn(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+): Promise<boolean> {
+	const { is_unique } = await db.one<{ is_unique: boolean }>(
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_index i
+			JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
+			WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
+				AND (i.indisprimary OR i.indisunique)
+				AND i.indisvalid
+				AND i.indpred IS NULL
+				AND i.indnatts = 1
+				AND a.attname = $3
+		) AS is_unique;
+		`,
+		[schema, table, column],
+	);
+	return is_unique;
+}
+
+const TIMESTAMP_TYPES = ['timestamp without time zone', 'timestamp with time zone'];
+// n8n outputs values of these types as objects, so they cannot be a Start After value
+const OBJECT_TYPES = ['bytea', 'interval', 'json', 'jsonb', 'ARRAY'];
+
+async function getStartAfterColumnProblem(
+	db: PgpDatabase,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
+): Promise<{ message: string; description: string } | undefined> {
+	const columnInfo = (await getTableSchema(db, schema, table)).find(
+		({ column_name }) => column_name === column,
+	);
+
+	if (!columnInfo) {
+		return {
+			message: `Column "${column}" does not exist in "${schema}.${table}"`,
+			description: 'Choose a column of the table in Start After.',
+		};
+	}
+	if (TIMESTAMP_TYPES.includes(columnInfo.data_type)) {
+		return {
+			message: `Start After does not support the timestamp column "${column}"`,
+			description: `"${column}" has the type ${columnInfo.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
+		};
+	}
+	if (OBJECT_TYPES.includes(columnInfo.data_type)) {
+		return {
+			message: `Start After does not support the column "${column}" of type ${columnInfo.data_type}`,
+			description:
+				'n8n outputs these values as objects, so they cannot be the Start After value. Use a unique column with text or numbers.',
+		};
+	}
+	if (columnInfo.data_type === 'numeric' && largeNumbersOutput === 'numbers') {
+		return {
+			message: `Set Output Large-Format Numbers As to Text to page by "${column}"`,
+			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
+		};
+	}
+	if (!(await isUniqueColumn(db, schema, table, column))) {
+		return {
+			message: `Column "${column}" has no unique index that Start After can use`,
+			description:
+				'Start After needs a primary key or a unique index on this column alone. A unique index on more than one column, with a WHERE condition or on an expression does not count, and a view has no indexes. If values repeat, a page skips the rows that share the last value.',
+		};
+	}
+	if (columnInfo.is_nullable === 'YES') {
+		return {
+			message: `Column "${column}" can be null`,
+			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,
+		};
+	}
+
+	return undefined;
+}
+
+export async function checkStartAfterColumn(
+	db: PgpDatabase,
+	node: INode,
+	itemIndex: number,
+	schema: string,
+	table: string,
+	column: string,
+	largeNumbersOutput?: PostgresNodeOptions['largeNumbersOutput'],
+) {
+	const problem = await getStartAfterColumnProblem(db, schema, table, column, largeNumbersOutput);
+	if (problem) {
+		throw new NodeOperationError(node, problem.message, {
+			itemIndex,
+			description: problem.description,
+		});
+	}
 }
 
 export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {

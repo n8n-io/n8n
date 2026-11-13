@@ -13,17 +13,6 @@ export type WhereClause = { column: string; condition: string; value: string | n
 export type SortRule = { column: string; direction: string };
 /** An empty `value` asks for the first page. */
 export type StartAfter = { column: string; value?: string };
-export type StartAfterColumnInfo = {
-	relkind: string;
-	column_exists: boolean;
-	not_null: boolean | null;
-	data_type: string | null;
-	is_timestamp: boolean | null;
-	outputs_object: boolean | null;
-	is_numeric: boolean | null;
-	is_unique: boolean;
-	has_child_tables: boolean;
-};
 export type ColumnInfo = {
 	column_name: string;
 	data_type: string;
