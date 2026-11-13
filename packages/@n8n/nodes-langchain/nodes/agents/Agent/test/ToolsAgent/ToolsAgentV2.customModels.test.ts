@@ -105,7 +105,8 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 			chatModel.description,
 		);
 		const supplyContext = mock<ISupplyDataFunctions>({
-			helpers: mock<ISupplyDataFunctions['helpers']>(),
+			helpers: mock<ISupplyDataFunctions['helpers']>({ getTraceHeaders: () => ({}) }),
+			logger: mock<ISupplyDataFunctions['logger']>(),
 		});
 		supplyContext.getNode.mockReturnValue(modelNode);
 		supplyContext.getCredentials.mockResolvedValue(credential);
