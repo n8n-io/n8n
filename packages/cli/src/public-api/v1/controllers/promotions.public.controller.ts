@@ -109,7 +109,7 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Body input: CreatePromotionProviderDto,
 	): Promise<PromotionProviderCreatedPublicDto> {
-		return await (await this.providersService()).create(input, req.user);
+		return await (await this.providersService()).create(input, req.user, req.ctx);
 	}
 
 	@Get('/providers')
@@ -180,7 +180,12 @@ export class PromotionsPublicController {
 		promotionProviderId: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).update(promotionProviderId, input, req.user);
+		return await (await this.providersService()).update(
+			promotionProviderId,
+			input,
+			req.user,
+			req.ctx,
+		);
 	}
 
 	@Delete('/providers/:promotionProviderId')
@@ -200,7 +205,7 @@ export class PromotionsPublicController {
 		@Param('promotionProviderId', promotionProviderIdParamSchema)
 		promotionProviderId: string,
 	): Promise<void> {
-		await (await this.providersService()).delete(promotionProviderId, req.user);
+		await (await this.providersService()).delete(promotionProviderId, req.user, req.ctx);
 	}
 
 	@Get('/providers/:promotionProviderId/repositories')
@@ -290,7 +295,7 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Body input: CreatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).create(input, req.user);
+		return await (await this.environmentsService()).create(input, req.user, req.ctx);
 	}
 
 	@Get('/environments')
@@ -367,7 +372,12 @@ export class PromotionsPublicController {
 		promotionEnvironmentId: string,
 		@Body input: UpdatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).update(promotionEnvironmentId, input, req.user);
+		return await (await this.environmentsService()).update(
+			promotionEnvironmentId,
+			input,
+			req.user,
+			req.ctx,
+		);
 	}
 
 	@Delete('/environments/:promotionEnvironmentId')
@@ -390,7 +400,7 @@ export class PromotionsPublicController {
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<void> {
-		await (await this.environmentsService()).delete(promotionEnvironmentId, req.user);
+		await (await this.environmentsService()).delete(promotionEnvironmentId, req.user, req.ctx);
 	}
 
 	// -- Local checkouts -----------------------------------------------------
@@ -602,6 +612,7 @@ export class PromotionsPublicController {
 			req.user,
 			input.expectedSource,
 			req.publicApiClient,
+			req.ctx,
 		);
 	}
 
@@ -633,6 +644,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
+			req.ctx,
 		);
 	}
 
@@ -757,6 +769,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
+			req.ctx,
 		);
 	}
 
@@ -788,6 +801,7 @@ export class PromotionsPublicController {
 			req.user,
 			input,
 			req.publicApiClient,
+			req.ctx,
 		);
 	}
 

@@ -1,7 +1,15 @@
 import type { SerializedCredential } from '@n8n/api-types';
 import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
-import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, User } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	ICredentialsDb,
+	OperationContext,
+	Project,
+	SharedCredentials,
+	User,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -918,6 +926,23 @@ describe('CredentialImporter', () => {
 					accessToken: EXPRESSION,
 					server: 'https://api.github.com',
 				});
+			});
+
+			it('adds the login of the operation context to the update event', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await importer.applyUpdates(
+					{ ...context, ctx },
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialId: 'cred-1', loginId: 'login-1' }),
+				);
 			});
 
 			it('reports external secrets in the written data', async () => {

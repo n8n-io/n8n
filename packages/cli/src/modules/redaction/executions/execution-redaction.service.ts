@@ -19,6 +19,7 @@ import {
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
 
+import { loginIdOf } from '@/events/login-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -136,6 +137,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'Not the executing user of a private-credential execution',
 					});
@@ -148,6 +150,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User cannot use a credential referenced by this execution',
 					});
@@ -171,6 +174,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 						workflowId: execution.workflowId,
 						ipAddress: options.ipAddress ?? '',
 						userAgent: options.userAgent ?? '',
+						loginId: loginIdOf(options.ctx),
 						redactionPolicy: this.resolvePolicy(execution),
 						rejectionReason: 'User lacks execution:reveal scope for this workflow',
 					});
@@ -253,6 +257,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',
 					userAgent: options.userAgent ?? '',
+					loginId: loginIdOf(options.ctx),
 					redactionPolicy: this.resolvePolicy(execution),
 				});
 			}

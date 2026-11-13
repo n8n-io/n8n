@@ -274,10 +274,23 @@ export class AgentImporter {
 		agent: ProjectAgent,
 	): Promise<ProjectAgent> {
 		if (item.archiveTransition === 'archive') {
-			return await this.publishService.archiveAgent(agent.id, context.projectId, context.user);
+			return await this.publishService.archiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				undefined,
+				context.ctx,
+			);
 		}
 		if (item.archiveTransition === 'unarchive') {
-			return await this.publishService.unarchiveAgent(agent.id, context.projectId, context.user);
+			return await this.publishService.unarchiveAgent(
+				agent.id,
+				context.projectId,
+				context.user,
+				undefined,
+				context.ctx,
+			);
 		}
 		return agent;
 	}

@@ -86,6 +86,7 @@ import { WorkflowValidationError } from '@/errors/response-errors/workflow-valid
 import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import type { SystemDeactivationReason, WorkflowActionSource } from '@/events/maps/relay.event-map';
+import { loginIdOf } from '@/events/login-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -163,6 +164,8 @@ export type PreparedWorkflowUpdate = {
 	tagsDisabled: boolean;
 	versionIdToPublish: string | null;
 	settingsChanged: boolean;
+	/** The caller's context, for the audit events after the save. */
+	ctx: OperationContext;
 	options: WorkflowUpdateOptions &
 		Required<
 			Pick<WorkflowUpdateOptions, 'autosaved' | 'source' | 'publicApi' | 'aiBuilderAssisted'>
@@ -565,8 +568,9 @@ export class WorkflowService {
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		options: WorkflowUpdateOptions = {},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
+		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options, ctx);
 		const saved = await this.savePreparedUpdate(prepared);
 		return await this.finishUpdate(prepared, saved);
 	}
@@ -578,6 +582,7 @@ export class WorkflowService {
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
 		options: WorkflowUpdateOptions = {},
+		ctx: OperationContext = {},
 	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
@@ -905,6 +910,7 @@ export class WorkflowService {
 			tagsDisabled: this.globalConfig.tags.disabled,
 			versionIdToPublish,
 			settingsChanged,
+			ctx,
 			options: {
 				tagIds,
 				autosaved,
@@ -965,7 +971,7 @@ export class WorkflowService {
 
 	/** Run once after the save transaction commits. */
 	async finishUpdate(prepared: PreparedWorkflowUpdate, updatedWorkflow: WorkflowEntity) {
-		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged } = prepared;
+		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged, ctx } = prepared;
 		const workflowId = workflow.id;
 		const { tagIds, source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
 
@@ -993,6 +999,7 @@ export class WorkflowService {
 			aiBuilderAssisted,
 			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (versionIdToPublish) {
@@ -1004,22 +1011,32 @@ export class WorkflowService {
 				await this.assertMayPublishOnSave(user, workflowId, apiKeyScopes, versionIdToPublish);
 			}
 
-			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
-				versionId: versionIdToPublish,
-				source,
-				publicApi,
-			});
+			const publishedWorkflow = await this.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId: versionIdToPublish,
+					source,
+					publicApi,
+				},
+				ctx,
+			);
 			// oxlint-disable-next-line typescript/no-deprecated
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
 			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
 		} else if (settingsChanged && workflow.activeVersionId) {
-			await this.activateWorkflow(user, workflowId, {
-				versionId: workflow.activeVersionId,
-				source,
-				publicApi,
-				publishHistory: 'none',
-			});
+			await this.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId: workflow.activeVersionId,
+					source,
+					publicApi,
+					publishHistory: 'none',
+				},
+				ctx,
+			);
 		}
 		return updatedWorkflow;
 	}
@@ -1065,6 +1082,7 @@ export class WorkflowService {
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
 		options: { source: WorkflowActionSource; publicApi?: PublicApiCaller } = { source: 'ui' },
+		ctx: OperationContext = {},
 	): Promise<void> {
 		let didPublish = false;
 		try {
@@ -1134,6 +1152,7 @@ export class WorkflowService {
 					workflow,
 					publicApi: options.publicApi ?? false,
 					source: options.source,
+					loginId: loginIdOf(ctx),
 				});
 			}
 		}
@@ -1202,9 +1221,11 @@ export class WorkflowService {
 			publicApi?: PublicApiCaller;
 			publishHistory?: PublishHistoryScope;
 		},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = options?.publicApi ?? false;
+		const loginId = loginIdOf(ctx);
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
@@ -1351,6 +1372,7 @@ export class WorkflowService {
 					publicApi,
 					deactivatedVersionId: previousActiveVersionId,
 					source,
+					loginId,
 				});
 			}
 
@@ -1369,6 +1391,7 @@ export class WorkflowService {
 				workflow: activatedWorkflow,
 				publicApi,
 				source,
+				loginId,
 			});
 		} else {
 			if (previousActiveVersionId) {
@@ -1381,6 +1404,7 @@ export class WorkflowService {
 					publicApi,
 					deactivatedVersionId: previousActiveVersionId,
 					source,
+					loginId,
 				});
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
@@ -1414,6 +1438,7 @@ export class WorkflowService {
 				workflowForActivation,
 				activationMode,
 				{ source, publicApi },
+				ctx,
 			);
 		}
 
@@ -1476,6 +1501,7 @@ export class WorkflowService {
 			source?: WorkflowActionSource;
 			publicApi?: PublicApiCaller;
 		},
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
 		const source = options?.source ?? 'ui';
 		const publicApi = options?.publicApi ?? false;
@@ -1541,6 +1567,7 @@ export class WorkflowService {
 			publicApi,
 			deactivatedVersionId,
 			source,
+			loginId: loginIdOf(ctx),
 		});
 
 		return workflow;
@@ -1745,6 +1772,7 @@ export class WorkflowService {
 		workflowId: string,
 		force = false,
 		options?: { publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
@@ -1816,7 +1844,7 @@ export class WorkflowService {
 		//
 		// All three writes commit together. A deprovision of its own would leave a workflow
 		// whose delete then failed alive with its schedules stripped.
-		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, trxCtx) => {
 			await this.durableJobProvisioner.deprovisionOwnerInTransaction(
 				trx,
 				this.workflowScheduledJobOwner.ref(workflowId),
@@ -1824,7 +1852,7 @@ export class WorkflowService {
 
 			// A new workflow can be created at this id once the row is gone, so allowlists lose
 			// the entry in the same transaction.
-			await this.workflowRepository.removeFromCallerAllowlists([workflowId], ctx);
+			await this.workflowRepository.removeFromCallerAllowlists([workflowId], trxCtx);
 
 			await trx.delete(WorkflowEntity, { id: workflowId });
 		});
@@ -1841,6 +1869,7 @@ export class WorkflowService {
 			workflowName: workflow.name,
 			projectId: owningProject?.id,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterDelete', [
 			workflowId,
@@ -1854,6 +1883,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1902,6 +1932,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterArchive', [
 			workflowId,
@@ -1915,6 +1946,7 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		options?: { publicApi?: PublicApiCaller },
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -1940,6 +1972,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			publicApi: options?.publicApi ?? false,
+			loginId: loginIdOf(ctx),
 		});
 		await this.externalHooks.run('workflow.afterUnarchive', [
 			workflowId,
@@ -1953,25 +1986,28 @@ export class WorkflowService {
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
-		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client });
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: client }, ctx);
 	}
 
 	async unarchiveForPublicApi(
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
-		return await this.unarchive(user, workflowId, { publicApi: client });
+		return await this.unarchive(user, workflowId, { publicApi: client }, ctx);
 	}
 
 	async deleteForPublicApi(
 		user: User,
 		workflowId: string,
 		client: PublicApiClient,
+		ctx: OperationContext = {},
 	): Promise<WorkflowEntity | undefined> {
 		// The public API deletes without requiring the workflow to be archived first.
-		return await this.delete(user, workflowId, true, { publicApi: client });
+		return await this.delete(user, workflowId, true, { publicApi: client }, ctx);
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {

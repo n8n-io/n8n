@@ -19,7 +19,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { isPerson, ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
+import {
+	isPerson,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
@@ -809,8 +815,9 @@ export class PromotionsService {
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(environmentId, actor, publicApi, expectedSource);
+		return await this.applyFromSource(environmentId, actor, publicApi, expectedSource, false, ctx);
 	}
 
 	async continueApply(
@@ -818,6 +825,7 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplyPackageDto,
 		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
 			environmentId,
@@ -825,6 +833,7 @@ export class PromotionsService {
 			publicApi,
 			request.expectedSource,
 			request.confirmDestructiveChanges === true,
+			ctx,
 		);
 	}
 
@@ -833,12 +842,19 @@ export class PromotionsService {
 		actor: User,
 		request: ApplySelectionDto,
 		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applySelectionFromSource(projectId, actor, toApplySelection(request), {
-			publicApi,
-			expectedSource: request.expectedSource,
-			expectedPreviewRevision: request.expectedPreviewRevision,
-		});
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			toApplySelection(request),
+			{
+				publicApi,
+				expectedSource: request.expectedSource,
+				expectedPreviewRevision: request.expectedPreviewRevision,
+			},
+			ctx,
+		);
 	}
 
 	async continueApplyProjectSelection(
@@ -846,13 +862,20 @@ export class PromotionsService {
 		actor: User,
 		request: ContinueApplySelectionDto,
 		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applySelectionFromSource(projectId, actor, toApplySelection(request), {
-			publicApi,
-			expectedSource: request.expectedSource,
-			expectedPreviewRevision: request.expectedPreviewRevision,
-			confirmDestructiveChanges: request.confirmDestructiveChanges === true,
-		});
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			toApplySelection(request),
+			{
+				publicApi,
+				expectedSource: request.expectedSource,
+				expectedPreviewRevision: request.expectedPreviewRevision,
+				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
+			},
+			ctx,
+		);
 	}
 
 	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
@@ -948,6 +971,7 @@ export class PromotionsService {
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
 		},
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.trackApply(
@@ -969,6 +993,7 @@ export class PromotionsService {
 							confirmDestructiveChanges,
 							signal,
 							expectedPreviewRevision,
+							ctx,
 						),
 				),
 		);
@@ -984,6 +1009,7 @@ export class PromotionsService {
 		confirmDestructiveChanges: boolean,
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
 
@@ -1017,7 +1043,7 @@ export class PromotionsService {
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
 			reader,
 			selection,
 			'enforce',
@@ -1062,6 +1088,7 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		return await this.trackApply(
@@ -1080,6 +1107,7 @@ export class PromotionsService {
 							expectedSource,
 							confirmDestructiveChanges,
 							signal,
+							ctx,
 						),
 				),
 		);
@@ -1092,6 +1120,7 @@ export class PromotionsService {
 		expectedSource: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
 		signal: AbortSignal,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -1105,7 +1134,11 @@ export class PromotionsService {
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
 			// Both Apply flows share the policies of a selection.
-			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges) },
+			{
+				...IMPORT_POLICY,
+				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+				ctx,
+			},
 			reader,
 			'enforce',
 		);
@@ -1132,6 +1165,7 @@ export class PromotionsService {
 			publicApi,
 			importedProjectIds,
 			confirmedProjectIds,
+			ctx,
 		);
 
 		return {
@@ -1640,6 +1674,7 @@ export class PromotionsService {
 		publicApi: PublicApiCaller,
 		importedProjectIds: string[],
 		confirmedProjectIds: string[],
+		ctx: OperationContext = {},
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
 		const confirmed = new Set(confirmedProjectIds);
@@ -1649,7 +1684,7 @@ export class PromotionsService {
 		);
 
 		for (const projectId of removedProjectIds) {
-			await this.projectService.deleteProject(actor, projectId, { publicApi });
+			await this.projectService.deleteProject(actor, projectId, { publicApi }, ctx);
 		}
 
 		return { deletedProjectIds: removedProjectIds };

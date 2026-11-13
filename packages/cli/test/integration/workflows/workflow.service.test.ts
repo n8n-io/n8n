@@ -319,11 +319,16 @@ describe('update()', () => {
 		expect(updatedWorkflow.activeVersionId).toBe(updatedWorkflow.versionId);
 		expect(updatedWorkflow.activeVersionId).not.toBe(previousActiveVersionId);
 		expect(updatedWorkflow.activeVersion?.versionId).toBe(updatedWorkflow.versionId);
-		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
-			versionId: updatedWorkflow.versionId,
-			source: 'api',
-			publicApi: 'other',
-		});
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: updatedWorkflow.versionId,
+				source: 'api',
+				publicApi: 'other',
+			},
+			{},
+		);
 	});
 
 	test('saves the API update as a draft when an open review blocks re-publication', async () => {
@@ -384,12 +389,17 @@ describe('update()', () => {
 			{ forceSave: true, publicApi: 'editor_ui', source: 'api' },
 		);
 
-		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
-			versionId: workflow.activeVersionId,
-			source: 'api',
-			publicApi: 'editor_ui',
-			publishHistory: 'none',
-		});
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: workflow.activeVersionId,
+				source: 'api',
+				publicApi: 'editor_ui',
+				publishHistory: 'none',
+			},
+			{},
+		);
 	});
 
 	test('should save workflow history version with backfilled data when nodes change', async () => {

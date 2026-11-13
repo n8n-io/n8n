@@ -16,6 +16,8 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userEmail?: string;
 	firstName?: string;
 	lastName?: string;
+	/** Login of the service account that acted. Absent for people. */
+	loginId?: string;
 	credentialName?: string;
 	credentialType?: string;
 	credentialId?: string | null;

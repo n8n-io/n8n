@@ -87,7 +87,7 @@ export class RateLimitsPublicController {
 			);
 		}
 
-		const saved = await this.settingsService.saveSettings(body, req.user);
+		const saved = await this.settingsService.saveSettings(body, req.user, req.ctx);
 		return toRateLimitSettingsResponse(saved);
 	}
 }

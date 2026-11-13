@@ -243,6 +243,9 @@ describe('Instance MCP authentication through the trusted-source pipeline', () =
 			expect.anything(),
 			expect.anything(),
 			{ caller: { authType: 'oauth', clientId: CLIENT_ID }, grantedScopes: ['workflow:read'] },
+			{
+				security: expect.objectContaining({ subject: expect.objectContaining({ id: member.id }) }),
+			},
 		);
 	});
 
