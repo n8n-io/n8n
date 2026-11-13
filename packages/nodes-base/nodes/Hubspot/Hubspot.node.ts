@@ -13,7 +13,7 @@ export class Hubspot extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume HubSpot API',
-			defaultVersion: 2.2,
+			defaultVersion: 2.3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -21,6 +21,7 @@ export class Hubspot extends VersionedNodeType {
 			2: new HubspotV2(baseDescription),
 			2.1: new HubspotV2(baseDescription),
 			2.2: new HubspotV2(baseDescription),
+			2.3: new HubspotV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

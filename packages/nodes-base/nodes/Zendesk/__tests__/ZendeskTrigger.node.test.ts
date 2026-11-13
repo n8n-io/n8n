@@ -1,4 +1,5 @@
 import type { IHookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { ZendeskTrigger } from '../ZendeskTrigger.node';
 import * as GenericFunctions from '../GenericFunctions';
 import * as ZendeskTriggerHelpers from '../ZendeskTriggerHelpers';
@@ -80,7 +81,10 @@ describe('ZendeskTrigger Node', () => {
 			const trigger = new ZendeskTrigger();
 			await trigger.webhookMethods.default.create.call(mockThis);
 
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/webhooks/webhook-789/signing_secret');
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/webhooks/webhook-789/signing_secret`,
+			);
 		});
 
 		it('should reuse the existing Zendesk webhook and skip POST /webhooks when targetId is already stored', async () => {
@@ -103,7 +107,7 @@ describe('ZendeskTrigger Node', () => {
 
 			// POST /webhooks must not be called when a webhook already exists
 			const postWebhookCalls = apiRequestSpy.mock.calls.filter(
-				([method, path]) => method === 'POST' && path === '/webhooks',
+				([method, path]) => method === 'POST' && String(path) === '/webhooks',
 			);
 			expect(postWebhookCalls).toHaveLength(0);
 		});
@@ -183,8 +187,7 @@ describe('ZendeskTrigger Node', () => {
 
 			// DELETE /webhooks must not have been called
 			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
-				([method, path]) =>
-					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+				([method, path]) => method === 'DELETE' && String(path).startsWith('/webhooks'),
 			);
 			expect(deleteWebhookCalls).toHaveLength(0);
 		});

@@ -238,6 +238,24 @@ describe('AgentIntegrationSchema', () => {
 		});
 	});
 
+	describe('webhook channel', () => {
+		it('accepts a webhook without settings, which is a copied draft', () => {
+			expect(
+				AgentIntegrationConfigSchema.safeParse({ type: 'webhook', credentialId: '' }).success,
+			).toBe(true);
+		});
+
+		it('rejects an unknown authentication', () => {
+			expect(
+				AgentIntegrationConfigSchema.safeParse({
+					type: 'webhook',
+					credentialId: '',
+					settings: { authentication: 'basicAuth' },
+				}).success,
+			).toBe(false);
+		});
+	});
+
 	describe('WhatsApp settings', () => {
 		const parse = (settings: Record<string, unknown>) =>
 			AgentIntegrationSchema.safeParse({ type: 'whatsapp', credentialId: 'cred-123', settings });

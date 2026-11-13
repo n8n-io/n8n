@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import { requestPath } from 'n8n-workflow';
 import type {
 	IDataObject,
 	INode,
@@ -498,7 +499,7 @@ describe('Microsoft SharePoint Trigger', () => {
 			const send = vi.fn().mockResolvedValue({ value: [] });
 			ctx.helpers[helper] = send;
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/root`);
 
 			expect(send).toHaveBeenCalledTimes(1);
 			expect(ctx.getCredentials).toHaveBeenCalledWith(authentication);
@@ -521,7 +522,9 @@ describe('Microsoft SharePoint Trigger', () => {
 				.fn()
 				.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 }));
 
-			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root')).rejects.toMatchObject({
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/root`),
+			).rejects.toMatchObject({
 				httpCode: '403',
 				message: expect.stringContaining(wording),
 			});
@@ -535,7 +538,7 @@ describe('Microsoft SharePoint Trigger', () => {
 			const send = vi.fn().mockResolvedValue({ value: [] });
 			ctx.helpers.requestOAuth2 = send;
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/root`);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 		});
@@ -545,7 +548,7 @@ describe('Microsoft SharePoint Trigger', () => {
 			const send = vi.fn().mockResolvedValue({ value: [] });
 			ctx.helpers.requestOAuth2 = send;
 
-			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+			await microsoftApiRequest.call(ctx, 'GET', requestPath`/v1.0/sites/root`);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
 		});

@@ -1,4 +1,8 @@
-import { convertNETDates } from './GenericFunctions';
+import { mockDeep } from 'vitest-mock-extended';
+import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+import { convertNETDates, unleashedApiRequest } from './GenericFunctions';
 
 describe('UnleashedSoftware Node: Generic Functions', () => {
 	describe('convertNETDates', () => {
@@ -31,6 +35,25 @@ describe('UnleashedSoftware Node: Generic Functions', () => {
 			convertNETDates(item, true);
 
 			expect(item.name).toBe('Product 1');
+		});
+	});
+
+	describe('unleashedApiRequest', () => {
+		it('should encode a path value that contains a slash', async () => {
+			const context = mockDeep<IExecuteFunctions>();
+			context.getCredentials.mockResolvedValue({ apiId: 'fake-api-id', apiKey: 'fake-api-key' });
+			context.helpers.request.mockResolvedValue({});
+
+			const productId = 'COFFEE01/SalesOrders?x=1';
+			await unleashedApiRequest.call(context, 'GET', requestPath`/StockOnHand/${productId}`);
+
+			expect(context.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: expect.objectContaining({
+						value: 'https://api.unleashedsoftware.com///StockOnHand/COFFEE01%2FSalesOrders%3Fx=1',
+					}),
+				}),
+			);
 		});
 	});
 });

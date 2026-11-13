@@ -5,7 +5,7 @@ import type {
 	INode,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/getComments.operation';
@@ -64,7 +64,7 @@ describe('Confluence page:getComments operation', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/123/footer-comments',
+			requestPath`/wiki/api/v2/pages/123/footer-comments`,
 			{},
 			{ 'body-format': 'storage', limit: 50 },
 		);
@@ -86,7 +86,7 @@ describe('Confluence page:getComments operation', () => {
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('page', 0, '', { extractValue: true });
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/456/footer-comments',
+			requestPath`/wiki/api/v2/pages/456/footer-comments`,
 			{},
 			{ 'body-format': 'storage', limit: 50 },
 		);
@@ -103,7 +103,7 @@ describe('Confluence page:getComments operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/wiki/api/v2/pages/123/footer-comments',
+			requestPath`/wiki/api/v2/pages/123/footer-comments`,
 			{},
 			{ 'body-format': 'storage', limit: 50, sort: '-created-date' },
 		);
@@ -128,14 +128,14 @@ describe('Confluence page:getComments operation', () => {
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/wiki/api/v2/pages/123/footer-comments',
+				requestPath`/wiki/api/v2/pages/123/footer-comments`,
 				{},
 				{ 'body-format': 'storage', limit: 250 },
 			);
 			expect(apiRequest).toHaveBeenNthCalledWith(
 				2,
 				'GET',
-				'/wiki/api/v2/pages/123/footer-comments',
+				requestPath`/wiki/api/v2/pages/123/footer-comments`,
 				{},
 				{ 'body-format': 'storage', limit: 250, cursor: 'abc==' },
 			);

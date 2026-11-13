@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /** Thrown when another app already uses the namespace of a new app. */
 export class AppNamespaceTakenError extends UserError {

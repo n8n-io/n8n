@@ -2,7 +2,10 @@ operationId: listDataTableColumns
 tags:
   - DataTable
 summary: List columns of a data table
-description: Retrieve all columns for a specific data table.
+description: |-
+  Retrieve all columns for a specific data table.
+
+  Requires the `dataTableColumn:read` API key scope.
 x-required-scope: dataTableColumn:read
 parameters:
   - schema:

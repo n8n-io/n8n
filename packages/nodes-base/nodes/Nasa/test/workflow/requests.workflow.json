@@ -1,0 +1,198 @@
+{
+	"name": "NASA Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "astronomyPictureOfTheDay",
+				"download": false,
+				"additionalFields": {
+					"date": "2024-01-15"
+				}
+			},
+			"id": "nasa-0",
+			"name": "APOD Get",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "astronomyPictureOfTheDay",
+				"download": true,
+				"additionalFields": {
+					"date": "2024-01-16"
+				}
+			},
+			"id": "nasa-1",
+			"name": "APOD Download",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "asteroidNeoLookup",
+				"asteroidId": "3542519",
+				"additionalFields": {}
+			},
+			"id": "nasa-2",
+			"name": "Asteroid Lookup",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "asteroidNeoBrowse",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2
+			},
+			"id": "nasa-3",
+			"name": "Asteroid Browse",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "donkiCoronalMassEjection",
+				"additionalFields": {
+					"startDate": "2024-01-01",
+					"endDate": "2024-01-31"
+				}
+			},
+			"id": "nasa-4",
+			"name": "DONKI CME",
+			"type": "n8n-nodes-base.nasa",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"nasaApi": {
+					"id": "1",
+					"name": "NASA account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"APOD Get": [
+			{
+				"json": {
+					"date": "2024-01-15",
+					"media_type": "image",
+					"title": "Horsehead Nebula",
+					"hdurl": "https://apod.nasa.gov/apod/image/2401/orion_hd.jpg"
+				}
+			}
+		],
+		"APOD Download": [
+			{
+				"json": {
+					"date": "2024-01-16",
+					"media_type": "image",
+					"title": "Orion Nebula",
+					"hdurl": "https://apod.nasa.gov/apod/image/2401/orion_hd.jpg"
+				}
+			}
+		],
+		"Asteroid Lookup": [
+			{
+				"json": {
+					"id": "3542519",
+					"name": "(2010 PK9)"
+				}
+			}
+		],
+		"Asteroid Browse": [
+			{
+				"json": {
+					"id": "2000433",
+					"name": "433 Eros"
+				}
+			},
+			{
+				"json": {
+					"id": "2000719",
+					"name": "719 Albert"
+				}
+			}
+		],
+		"DONKI CME": [
+			{
+				"json": {
+					"activityID": "2024-01-03T14:48:00-CME-001"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "APOD Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "APOD Download",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Asteroid Lookup",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Asteroid Browse",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "DONKI CME",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

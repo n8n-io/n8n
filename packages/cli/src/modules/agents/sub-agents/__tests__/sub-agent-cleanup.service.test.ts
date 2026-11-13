@@ -78,7 +78,9 @@ describe('SubAgentCleanupService', () => {
 		expect(parent.schema?.subAgents?.maxChildren).toBe(5);
 		// markAgentDraftDirty bumps versionId away from the published version.
 		expect(parent.versionId).not.toBe('v1');
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(parent, {});
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(parent, {}, undefined, {
+			allowArchivedUpdate: true,
+		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-1');
 	});
 

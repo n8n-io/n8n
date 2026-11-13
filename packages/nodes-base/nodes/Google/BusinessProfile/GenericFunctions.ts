@@ -1,6 +1,8 @@
 import {
 	NodeApiError,
 	NodeOperationError,
+	requestPath,
+	requestUrl,
 	type DeclarativeRestApiSettings,
 	type IDataObject,
 	type IExecutePaginationFunctions,
@@ -14,6 +16,9 @@ import {
 	type INodeListSearchResult,
 	type IPollFunctions,
 	type JsonObject,
+	type RequestPath,
+	type RequestUrl,
+	type WithRequestTarget,
 } from 'n8n-workflow';
 
 import type { ITimeInterval } from './Interfaces';
@@ -315,19 +320,19 @@ export async function handleErrorsReplyToReview(
 export async function googleApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	url?: string,
+	url?: RequestUrl,
 ): Promise<IDataObject> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		url: url ?? `https://mybusiness.googleapis.com/v4${resource}`,
+		url: url ?? requestUrl`https://mybusiness.googleapis.com/v4${resource}`,
 		json: true,
 	};
 	try {
@@ -343,6 +348,80 @@ export async function googleApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+type NameContext = ILoadOptionsFunctions | IPollFunctions | IExecuteSingleFunctions;
+
+function resourceNamePath(this: NameContext, name: string, format: string): RequestPath {
+	const parts = name.split('/');
+	const expected = format.split('/');
+	const matches =
+		parts.length === expected.length &&
+		expected.every((part, index) => (part === '*' ? parts[index] !== '' : part === parts[index]));
+	if (!matches) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The resource name "${name}" must have the form "${format}"`,
+		);
+	}
+	return parts.reduce((path, part) => requestPath`${path}/${part}`, requestPath``);
+}
+
+export function locationPath(this: NameContext, account: string, location: string): RequestPath {
+	const accountPath = resourceNamePath.call(this, account, 'accounts/*');
+	return requestPath`${accountPath}${resourceNamePath.call(this, location, 'locations/*')}`;
+}
+
+function locationFromParameters(this: IExecuteSingleFunctions): RequestPath {
+	const account = this.getNodeParameter('account', '', { extractValue: true }) as string;
+	const location = this.getNodeParameter('location', '', { extractValue: true }) as string;
+	return locationPath.call(this, account, location);
+}
+
+function reviewFromParameters(this: IExecuteSingleFunctions): RequestPath {
+	const review = this.getNodeParameter('review', '', { extractValue: true }) as string;
+	const reviewId = review.split('reviews/').pop()!.split('/reply')[0];
+	return requestPath`${locationFromParameters.call(this)}/reviews/${reviewId}`;
+}
+
+function withPath(opts: IHttpRequestOptions, path: RequestPath): IHttpRequestOptions {
+	return { ...opts, url: path.toString() };
+}
+
+export async function postNamePresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const post = this.getNodeParameter('post', '', { extractValue: true }) as string;
+	return withPath(opts, resourceNamePath.call(this, post, 'accounts/*/locations/*/localPosts/*'));
+}
+
+export async function localPostsPresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	return withPath(opts, requestPath`${locationFromParameters.call(this)}/localPosts`);
+}
+
+export async function reviewsPresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	return withPath(opts, requestPath`${locationFromParameters.call(this)}/reviews`);
+}
+
+export async function reviewPresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	return withPath(opts, reviewFromParameters.call(this));
+}
+
+export async function reviewReplyPresend(
+	this: IExecuteSingleFunctions,
+	opts: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	return withPath(opts, requestPath`${reviewFromParameters.call(this)}/reply`);
 }
 
 /* listSearch methods */
@@ -362,13 +441,13 @@ export async function searchAccounts(
 	const responseData: IDataObject = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{
 			pageSize: 20,
 			...query,
 		},
-		'https://mybusinessaccountmanagement.googleapis.com/v1/accounts',
+		requestUrl`https://mybusinessaccountmanagement.googleapis.com/v1/accounts`,
 	);
 
 	const accounts = responseData.accounts as Array<{ name: string; accountName: string }>;
@@ -406,18 +485,19 @@ export async function searchLocations(
 	}
 
 	const account = (this.getNodeParameter('account') as IDataObject).value as string;
+	const accountPath = resourceNamePath.call(this, account, 'accounts/*');
 
 	const responseData: IDataObject = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{
 			readMask: 'name',
 			pageSize: 100,
 			...query,
 		},
-		`https://mybusinessbusinessinformation.googleapis.com/v1/${account}/locations`,
+		requestUrl`https://mybusinessbusinessinformation.googleapis.com/v1${accountPath}/locations`,
 	);
 
 	const locations = responseData.locations as Array<{ name: string }>;
@@ -453,7 +533,7 @@ export async function searchReviews(
 	const responseData: IDataObject = await googleApiRequest.call(
 		this,
 		'GET',
-		`/${account}/${location}/reviews`,
+		requestPath`${locationPath.call(this, account, location)}/reviews`,
 		{},
 		{
 			pageSize: 50,
@@ -494,7 +574,7 @@ export async function searchPosts(
 	const responseData: IDataObject = await googleApiRequest.call(
 		this,
 		'GET',
-		`/${account}/${location}/localPosts`,
+		requestPath`${locationPath.call(this, account, location)}/localPosts`,
 		{},
 		{
 			pageSize: 100,

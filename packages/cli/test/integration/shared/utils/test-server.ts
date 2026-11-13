@@ -1,4 +1,5 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { isPerson, type APIRequest, type User } from '@n8n/db';
@@ -16,7 +17,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { packagedModules } from '@/modules/modules.manifest';
 import { NodeTypes } from '@/node-types';
@@ -284,6 +284,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'oauth-server':
+						await import('@/modules/oauth-server/oauth-server.module.js');
 						break;
 
 					case 'jwks':

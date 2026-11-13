@@ -1,0 +1,57 @@
+{
+	"name": "Twake Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"channelId": "8f2c0a1e-6b7d-4c3e-9a5f-1d2e3f4a5b6c",
+				"content": "Build finished",
+				"additionalFields": {}
+			},
+			"id": "twake-0",
+			"name": "Message Send",
+			"type": "n8n-nodes-base.twake",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"twakeCloudApi": {
+					"id": "1",
+					"name": "Twake account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Message Send": [
+			{
+				"json": {
+					"id": "b4f0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Message Send",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

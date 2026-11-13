@@ -1,5 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { searchDriveItems } from '../../helpers/graphSearch';
 import { resolveSiteId } from '../../site';
@@ -46,7 +46,7 @@ export async function getFiles(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let endpoint = '';
+	let endpoint = requestPath``;
 	if (!paginationToken) {
 		// resolveSiteId validates the site field itself, including the empty case
 		const siteId = await resolveSiteId.call(this, 0);
@@ -58,7 +58,7 @@ export async function getFiles(
 				description: 'Choose a folder before selecting a file.',
 			});
 		}
-		endpoint = `/v1.0/sites/${encodeURIComponent(siteId)}/drive/items/${encodeURIComponent(folderId)}/children`;
+		endpoint = requestPath`/v1.0/sites/${siteId}/drive/items/${folderId}/children`;
 	}
 
 	return await searchDriveItems.call(this, {

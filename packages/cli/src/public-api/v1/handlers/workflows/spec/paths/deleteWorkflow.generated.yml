@@ -2,7 +2,10 @@ operationId: deleteWorkflow
 tags:
   - Workflow
 summary: Delete a workflow
-description: Delete a workflow.
+description: |-
+  Delete a workflow.
+
+  Requires the `workflow:delete` API key scope.
 x-required-scope: workflow:delete
 parameters:
   - schema:

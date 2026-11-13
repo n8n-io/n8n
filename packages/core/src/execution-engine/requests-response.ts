@@ -1,18 +1,18 @@
 import { Container } from '@n8n/di';
-import {
-	type IConnection,
-	type IDataObject,
-	type IExecuteData,
-	type INode,
-	type INodeExecutionData,
-	type IRunData,
-	type IRunNodeResponse,
-	type ITaskMetadata,
-	type EngineRequest,
-	type Workflow,
-	type EngineResponse,
-	UnexpectedError,
+import type {
+	IConnection,
+	IDataObject,
+	IExecuteData,
+	INode,
+	INodeExecutionData,
+	IRunData,
+	IRunNodeResponse,
+	ITaskMetadata,
+	EngineRequest,
+	Workflow,
+	EngineResponse,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ErrorReporter } from '../errors/error-reporter';
 

@@ -110,6 +110,7 @@ function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): Pr
 			...config,
 		}),
 		availableInMCP: false,
+		isArchived: false,
 		tools: {},
 		tasks: {},
 		metadata: { versionId: 'source-version', publishedVersionId: null },
@@ -123,7 +124,7 @@ function input(sources: PreparedAgent[], projectId = project.id): ImportOrchestr
 		conflictPolicy: 'new-version',
 	});
 	return {
-		context: { user, projectId, folderId: null },
+		context: { user, projectId, folderId: null, publicApi: false },
 		agents: sources,
 		folders: [],
 		workflows: [],

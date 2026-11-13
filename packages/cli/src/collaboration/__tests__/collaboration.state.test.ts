@@ -267,4 +267,75 @@ describe('CollaborationState', () => {
 			);
 		});
 	});
+
+	describe('write lock owner check', () => {
+		const lockOf = (userId: string) => JSON.stringify({ clientId: 'clientId', userId });
+
+		const writeOps = [
+			[
+				'acquireWriteLock',
+				async () => await collaborationState.acquireWriteLock(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'renewWriteLock',
+				async () => await collaborationState.renewWriteLock(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'acquireAgentWriteLock',
+				async () => await collaborationState.acquireAgentWriteLock('agent-1', 'clientId', 'userId'),
+			],
+			[
+				'renewAgentWriteLock',
+				async () => await collaborationState.renewAgentWriteLock('agent-1', 'clientId', 'userId'),
+			],
+		] as const;
+
+		const releaseOps = [
+			[
+				'releaseWriteLockIfHolder',
+				async () =>
+					await collaborationState.releaseWriteLockIfHolder(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'releaseAgentWriteLockIfHolder',
+				async () =>
+					await collaborationState.releaseAgentWriteLockIfHolder('agent-1', 'clientId', 'userId'),
+			],
+		] as const;
+
+		it.each(writeOps)('%s keeps a lock of another user with the same client id', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('otherUser'));
+
+			await act();
+
+			expect(mockCacheService.set).not.toHaveBeenCalled();
+		});
+
+		it.each(releaseOps)(
+			'%s keeps a lock of another user with the same client id',
+			async (_, act) => {
+				mockCacheService.get.mockResolvedValueOnce(lockOf('otherUser'));
+
+				await act();
+
+				expect(mockCacheService.delete).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(writeOps)('%s writes the lock of its holder', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('userId'));
+
+			await act();
+
+			expect(mockCacheService.set).toHaveBeenCalled();
+		});
+
+		it.each(releaseOps)('%s deletes the lock of its holder', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('userId'));
+
+			await act();
+
+			expect(mockCacheService.delete).toHaveBeenCalled();
+		});
+	});
 });

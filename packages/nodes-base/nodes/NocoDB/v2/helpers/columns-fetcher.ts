@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, ResourceMapperField } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -170,7 +171,7 @@ export class ColumnsFetcher {
 		baseId: string;
 		tableId: string;
 	}) {
-		const url = `/api/v3/meta/bases/${baseId}/tables/${tableId}`;
+		const url = requestPath`/api/v3/meta/bases/${baseId}/tables/${tableId}`;
 		const response = await apiRequest.call(this.loadOptionsFunctions, 'GET', url, {}, {});
 		return response.fields;
 	}

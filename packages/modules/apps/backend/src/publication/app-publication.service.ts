@@ -1,10 +1,11 @@
 import { appSchema, appVersionSchema, type PublishAppDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { DbLock, DbLockService } from '@n8n/db';
+import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AppActor } from '../app-events';
+import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppHostService } from '../serving/app-host.service';
 import { appStorageLockSubKey } from '../storage/app-storage-lock';
@@ -21,6 +22,13 @@ export class AppPublicationService {
 		private readonly events: EventService,
 	) {}
 
+	async assertCanPublish(projectId: string, appId: string, versionId: string) {
+		this.assertValidIds(appId, versionId);
+		const app = await this.apps.findInProject(projectId, appId);
+		if (!app) throw new NotFoundError('App not found.');
+		await this.assertPublishable(app, versionId);
+	}
+
 	async publish(
 		projectId: string,
 		appId: string,
@@ -28,22 +36,14 @@ export class AppPublicationService {
 		details: Partial<Omit<PublishAppDto, 'versionId'>> = {},
 		actor?: AppActor,
 	) {
-		if (
-			!appSchema.shape.id.safeParse(appId).success ||
-			(versionId !== null && !appVersionSchema.shape.id.safeParse(versionId).success)
-		) {
-			throw new NotFoundError('App or version not found.');
-		}
+		this.assertValidIds(appId, versionId);
 		const before = await this.locks.withLockContext(
 			DbLock.APPS_STORAGE,
 			async (ctx) => {
 				const app = await this.apps.findInProject(projectId, appId, ctx);
 				if (!app) throw new NotFoundError('App not found.');
 				if (versionId !== null) {
-					if (!this.hosts.origin(app.namespace)) {
-						throw new BadRequestError('Use a valid app namespace before publishing this app.');
-					}
-					assertBuiltVersion(await this.versions.findVersionById(versionId, ctx), appId);
+					await this.assertPublishable(app, versionId, ctx);
 					if (details.label !== undefined) {
 						await this.versions.setDetails(
 							versionId,
@@ -78,5 +78,21 @@ export class AppPublicationService {
 				isFirstPublish: before.publishedVersionId === null,
 			});
 		}
+	}
+
+	private assertValidIds(appId: string, versionId: string | null) {
+		if (
+			!appSchema.shape.id.safeParse(appId).success ||
+			(versionId !== null && !appVersionSchema.shape.id.safeParse(versionId).success)
+		) {
+			throw new NotFoundError('App or version not found.');
+		}
+	}
+
+	private async assertPublishable(app: App, versionId: string, ctx?: OperationContext) {
+		if (!this.hosts.origin(app.namespace)) {
+			throw new BadRequestError('Use a valid app namespace before publishing this app.');
+		}
+		assertBuiltVersion(await this.versions.findVersionById(versionId, ctx), app.id);
 	}
 }

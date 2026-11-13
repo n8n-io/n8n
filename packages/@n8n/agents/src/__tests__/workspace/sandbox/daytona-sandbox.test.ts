@@ -846,6 +846,54 @@ describe('DaytonaSandbox (creation strategies)', () => {
 	});
 });
 
+describe('DaytonaSandbox (quick start)', () => {
+	const quickOptions = {
+		id: 'sandbox-id',
+		name: 'sandbox-name',
+		apiKey: 'api-key',
+		snapshot: 'n8n/instance-ai:1.123.0',
+		timeout: 300_000,
+		quickStart: true,
+	};
+
+	it('waits a few seconds for a provisioning sandbox and keeps it', async () => {
+		const provisioning = makeMockSandbox('remote-provisioning', 'building_snapshot');
+		provisioning.waitUntilStarted.mockRejectedValue(new DaytonaTimeoutError('not ready'));
+		queuedGetResults.push(provisioning);
+
+		const sandbox = new DaytonaSandbox(quickOptions);
+
+		await expect(sandbox.start()).rejects.toMatchObject({ name: 'SandboxNotReadyError' });
+		expect(provisioning.waitUntilStarted.mock.calls[0][0]).toBeLessThanOrEqual(5);
+		expect(provisioning.delete).not.toHaveBeenCalled();
+		expect(clientLog[0].create).not.toHaveBeenCalled();
+	});
+
+	it('resumes a stopped sandbox but waits only a few seconds for it', async () => {
+		const stopped = makeMockSandbox('remote-stopped', 'stopped');
+		stopped.start.mockRejectedValue(new DaytonaTimeoutError('not ready'));
+		queuedGetResults.push(stopped);
+
+		const sandbox = new DaytonaSandbox(quickOptions);
+
+		await expect(sandbox.start()).rejects.toMatchObject({ name: 'SandboxNotReadyError' });
+		expect(stopped.start.mock.calls[0][0]).toBeLessThanOrEqual(5);
+	});
+
+	it('gives a later recovery of the acquired sandbox the full budget', async () => {
+		const failing = makeMockSandbox('remote-started', 'started');
+		failing.process.executeCommand = vi.fn().mockRejectedValue(new DaytonaError('gone', 403));
+		const resumed = makeMockSandbox('remote-resumed', 'stopped');
+		// get order: start() → started; recovery probe → stopped; recovery start() → resumed.
+		queuedGetResults.push(failing, makeMockSandbox('probe', 'stopped'), resumed);
+
+		const sandbox = new DaytonaSandbox(quickOptions);
+		await sandbox.executeCommand('echo', ['hi']);
+
+		expect(resumed.start.mock.calls[0][0]).toBeGreaterThan(100);
+	});
+});
+
 describe('DaytonaSandbox (fresh creation)', () => {
 	function makeSandbox(): DaytonaSandbox {
 		return new DaytonaSandbox({ id: 'sandbox-id', name: 'sandbox-name', apiKey: 'api-key' });

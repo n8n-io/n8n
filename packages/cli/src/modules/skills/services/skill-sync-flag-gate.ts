@@ -1,9 +1,8 @@
 import { SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
-
-import { PostHogClient } from '@/posthog';
 
 import { SkillsGate } from './skills-gate';
 

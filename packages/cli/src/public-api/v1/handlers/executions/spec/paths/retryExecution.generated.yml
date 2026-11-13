@@ -2,7 +2,10 @@ operationId: retryExecution
 tags:
   - Executions
 summary: Retry an execution
-description: Retry an execution from your instance.
+description: |-
+  Retry an execution from your instance.
+
+  Requires the `execution:retry` API key scope.
 x-required-scope: execution:retry
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

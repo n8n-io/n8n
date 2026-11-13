@@ -16,7 +16,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => event:getAll', () => {
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/user%40example.com/calendars/AAMkADlhOTA0-calendar-id=/events')
+			.get('/v1.0/users/user@example.com/calendars/AAMkADlhOTA0-calendar-id=/events')
 			.query({
 				$select: 'id,subject,bodyPreview,start,end,organizer,attendees,webLink',
 				$top: 10,

@@ -43,6 +43,9 @@ export interface NodeViewEventBusEvents {
 
 	/** Command to unpublish current workflow */
 	unpublishWorkflow: never;
+
+	/** Command to replace the node with this id, from a surface outside the canvas */
+	replaceNode: string;
 }
 
 export const nodeViewEventBus = createEventBus<NodeViewEventBusEvents>();

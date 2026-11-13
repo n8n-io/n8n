@@ -101,7 +101,12 @@ describe('AgentVersionHistoryPanel — RBAC gating of row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const actions = list.props('actions') as Array<{ value: string }>;
-		expect(actions.map((a) => a.value)).toEqual(['edit', 'revert', 'publish']);
+		expect(actions.map((a) => a.value)).toEqual(['revert', 'publish', 'edit']);
+		expect(actions).toMatchObject([
+			{ label: 'agents.versionHistory.item.actions.revert' },
+			{ label: 'agents.versionHistory.item.actions.publish' },
+			{ label: 'agents.versionHistory.metadata.editTitle' },
+		]);
 	});
 
 	it('omits the revert action when the user cannot update', async () => {
@@ -121,7 +126,7 @@ describe('AgentVersionHistoryPanel — RBAC gating of row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const actions = list.props('actions') as Array<{ value: string }>;
-		expect(actions.map((a) => a.value)).toEqual(['edit', 'revert']);
+		expect(actions.map((a) => a.value)).toEqual(['revert', 'edit']);
 	});
 
 	it('exposes no row actions for a read-only viewer', async () => {
@@ -161,7 +166,7 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const activeActions = list.props('activeActions') as Array<{ value: string }>;
-		expect(activeActions.map((a) => a.value)).toEqual(['edit', 'revert', 'unpublish']);
+		expect(activeActions.map((a) => a.value)).toEqual(['revert', 'unpublish', 'edit']);
 	});
 
 	it('disables Revert when the draft already matches the published version', async () => {
@@ -195,7 +200,7 @@ describe('AgentVersionHistoryPanel — published-row actions', () => {
 
 		const list = wrapper.findComponent({ name: 'AgentVersionList' });
 		const activeActions = list.props('activeActions') as Array<{ value: string }>;
-		expect(activeActions.map((a) => a.value)).toEqual(['edit', 'revert']);
+		expect(activeActions.map((a) => a.value)).toEqual(['revert', 'edit']);
 	});
 
 	it('omits Revert on the published row when the user cannot update', async () => {

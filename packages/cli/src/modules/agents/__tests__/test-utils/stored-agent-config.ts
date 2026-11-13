@@ -120,6 +120,16 @@ export function createAgentSkillRefsService(
 		versionPins.set(agentVersionId, Object.fromEntries(pins));
 	});
 	service.findOutdatedSkillIds.mockResolvedValue([]);
+	// Every attached ref runs a version, as in the real seam. Pinned refs keep
+	// their pin; the fake has no published versions to report.
+	service.findSkillVersions.mockImplementation(async (_agent, refs) =>
+		Object.fromEntries(
+			(refs ?? []).map((ref) => [
+				ref.id,
+				{ draft: 1, published: null, latest: 1, pinned: ref.versionId !== undefined },
+			]),
+		),
+	);
 	service.findSkillVersionsForAgents.mockResolvedValue(new Map());
 	service.matchesVersion.mockResolvedValue(true);
 	return service;

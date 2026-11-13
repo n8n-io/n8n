@@ -5,8 +5,9 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	RequestUrl,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import {
 	dropboxApiRequest,
@@ -698,7 +699,7 @@ export class Dropbox implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
-		let endpoint = '';
+		let endpoint!: RequestUrl;
 		let requestMethod: IHttpRequestMethods = 'GET';
 		let returnAll = false;
 		let property = '';
@@ -741,7 +742,7 @@ export class Dropbox implements INodeType {
 							path: this.getNodeParameter('path', i) as string,
 						});
 
-						endpoint = 'https://content.dropboxapi.com/2/files/download';
+						endpoint = requestUrl`https://content.dropboxapi.com/2/files/download`;
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
@@ -755,7 +756,7 @@ export class Dropbox implements INodeType {
 							path: this.getNodeParameter('path', i) as string,
 						});
 
-						endpoint = 'https://content.dropboxapi.com/2/files/upload';
+						endpoint = requestUrl`https://content.dropboxapi.com/2/files/upload`;
 
 						options = { json: false };
 
@@ -779,7 +780,7 @@ export class Dropbox implements INodeType {
 							path: this.getNodeParameter('path', i) as string,
 						};
 
-						endpoint = 'https://api.dropboxapi.com/2/files/create_folder_v2';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/create_folder_v2`;
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
@@ -804,7 +805,7 @@ export class Dropbox implements INodeType {
 
 						Object.assign(body, filters);
 
-						endpoint = 'https://api.dropboxapi.com/2/files/list_folder';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/list_folder`;
 					}
 				} else if (resource === 'search') {
 					if (operation === 'query') {
@@ -839,7 +840,7 @@ export class Dropbox implements INodeType {
 							Object.assign(body.options!, { max_results: limit });
 						}
 
-						endpoint = 'https://api.dropboxapi.com/2/files/search_v2';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/search_v2`;
 					}
 				}
 				if (['file', 'folder', 'search'].includes(resource)) {
@@ -854,7 +855,7 @@ export class Dropbox implements INodeType {
 							to_path: this.getNodeParameter('toPath', i) as string,
 						};
 
-						endpoint = 'https://api.dropboxapi.com/2/files/copy_v2';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/copy_v2`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -865,7 +866,7 @@ export class Dropbox implements INodeType {
 							path: this.getNodeParameter('path', i) as string,
 						};
 
-						endpoint = 'https://api.dropboxapi.com/2/files/delete_v2';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/delete_v2`;
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
@@ -877,7 +878,7 @@ export class Dropbox implements INodeType {
 							to_path: this.getNodeParameter('toPath', i) as string,
 						};
 
-						endpoint = 'https://api.dropboxapi.com/2/files/move_v2';
+						endpoint = requestUrl`https://api.dropboxapi.com/2/files/move_v2`;
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {

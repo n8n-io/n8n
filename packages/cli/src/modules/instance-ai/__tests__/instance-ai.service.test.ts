@@ -1589,6 +1589,8 @@ describe('InstanceAiService — self-healing launcher', () => {
 			workflowId: 'workflow-1',
 			projectId: 'project-1',
 		}),
+		configurationId: 1,
+		includeSubWorkflows: false,
 		executionId: 'execution-1',
 	};
 	const lifecycle = {
@@ -1685,6 +1687,21 @@ describe('InstanceAiService — self-healing launcher', () => {
 		expect(service.createExecutionEnvironment).not.toHaveBeenCalled();
 		expect(service.executeRun).not.toHaveBeenCalled();
 		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
+	});
+
+	it('requests the proxy token with the self-healing billing user ID', async () => {
+		const createProxyRunConfig = vi.fn(async () => ({}));
+		const service = Object.assign(createLauncher(), {
+			turnEnvironment: { createProxyRunConfig },
+		});
+		service.selfHealingAgent.execute.mockImplementation(async (_input, options) => {
+			await options.createProxyRunConfig();
+			return completedRun(options);
+		});
+
+		await service.startSelfHealingRun(input, lifecycle);
+
+		expect(createProxyRunConfig).toHaveBeenCalledWith({ id: 'self_healing' });
 	});
 
 	it('applies concurrency admission before registering an internal run', async () => {
@@ -5141,7 +5158,7 @@ describe('InstanceAiService run input gates', () => {
 				context?: InstanceAiHandoffContext,
 				messageGroupId?: string,
 				timeZone?: string,
-				resumeReason?: 'background_task_completed',
+				resumeReason?: 'workflow_setup',
 			) => Promise<void>;
 		};
 		attachTurnInput(service);
@@ -5178,7 +5195,7 @@ describe('InstanceAiService run input gates', () => {
 			undefined,
 			undefined,
 			undefined,
-			'background_task_completed',
+			'workflow_setup',
 		);
 
 		const input = vi.mocked(streamAgentRun).mock.lastCall?.[1];

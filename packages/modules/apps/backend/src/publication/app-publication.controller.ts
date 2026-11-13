@@ -36,6 +36,13 @@ export class AppPublicationController {
 		return versions.map(toVersionResponse);
 	}
 
+	@Get('/versions/:versionId/publish-preview')
+	@ProjectScope('app:read')
+	async getPublishPreview(req: VersionRequest) {
+		const { projectId, appId, versionId } = req.params;
+		return await this.bindings.getPublishPreview(req.user, projectId, appId, versionId);
+	}
+
 	@Post('/versions/:versionId/restore')
 	@ProjectScope('app:update')
 	async restoreVersion(req: VersionRequest, _res: Response, @Body dto: RestoreAppVersionDto) {
@@ -54,7 +61,11 @@ export class AppPublicationController {
 	@ProjectScope('app:update')
 	async publish(req: AppRequest, _res: Response, @Body dto: PublishAppDto) {
 		const { projectId, appId } = req.params;
-		const { versionId, ...details } = dto;
+		const { versionId, publishResources, ...details } = dto;
+		if (publishResources) {
+			await this.publication.assertCanPublish(projectId, appId, versionId);
+			await this.bindings.publishResources(req.user, projectId, appId, versionId);
+		}
 		await this.publication.publish(projectId, appId, versionId, details, { userId: req.user.id });
 		return await this.apps.getApp(projectId, appId);
 	}

@@ -1,5 +1,5 @@
 import { Container, Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	ENFORCEMENT_POINT_METHODS,

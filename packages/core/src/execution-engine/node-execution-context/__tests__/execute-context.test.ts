@@ -16,7 +16,6 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
@@ -25,6 +24,7 @@ import {
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 

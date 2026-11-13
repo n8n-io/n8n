@@ -1,34 +1,48 @@
 <script setup lang="ts">
-import type { CredentialTypeAvailability } from '@n8n/api-types';
 import {
 	RestrictedNodePopover,
 	type ContactAudience,
+	type RestrictedTypeKind,
+	type TypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { computed, useTemplateRef } from 'vue';
 
-defineProps<{
-	name: string;
-	restriction: CredentialTypeAvailability;
-}>();
+const props = withDefaults(
+	defineProps<{
+		name: string;
+		restriction: TypeRestriction;
+		/** `node` when the nodes that use the type are restricted, so the contact goes to their admin. */
+		kind?: RestrictedTypeKind;
+		scopeLabel?: string;
+		description?: string;
+		/** `row` opens the popover on hover of the select option around it, `field` on the marker itself. */
+		placement?: 'row' | 'field';
+	}>(),
+	{ kind: 'credential', scopeLabel: undefined, description: undefined, placement: 'row' },
+);
 
 const emit = defineEmits<{ contactAdmin: [audience: ContactAudience] }>();
 
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
 // The popover opens on hover of the whole option row, which the option slot does not hand over.
-const row = computed(
-	() => rootRef.value?.closest<HTMLElement>('.el-select-dropdown__item') ?? undefined,
+const anchor = computed(() =>
+	props.placement === 'field'
+		? (rootRef.value ?? undefined)
+		: (rootRef.value?.closest<HTMLElement>('.el-select-dropdown__item') ?? undefined),
 );
 </script>
 
 <template>
-	<span ref="rootRef" :class="$style.root">
+	<span ref="rootRef" :class="placement === 'field' ? $style.field : $style.root">
 		<RestrictedNodePopover
-			kind="credential"
+			:kind="kind"
 			side="right"
-			marker-size="xsmall"
+			:marker-size="placement === 'field' ? 'small' : 'xsmall'"
 			:node-type-name="name"
 			:restriction="restriction"
-			:anchor="row"
+			:scope-label="scopeLabel"
+			:description="description"
+			:anchor="anchor"
 			@contact-admin="(audience) => emit('contactAdmin', audience)"
 		/>
 	</span>
@@ -37,5 +51,10 @@ const row = computed(
 <style lang="scss" module>
 .root {
 	display: contents;
+}
+
+.field {
+	display: inline-flex;
+	padding-left: var(--spacing--4xs);
 }
 </style>

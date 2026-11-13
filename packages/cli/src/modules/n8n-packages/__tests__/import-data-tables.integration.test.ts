@@ -1637,7 +1637,7 @@ describe('workflow package import — with data tables', () => {
 				dataTableSchemaConflictPolicy?: 'overwrite-non-destructive',
 			) =>
 				await service.importPackageSelection(
-					{ user: owner, packageBuffer, dataTableSchemaConflictPolicy },
+					{ user: owner, publicApi: false, packageBuffer, dataTableSchemaConflictPolicy },
 					{ selectedProjectId: 'P1', selectedWorkflowIds: ['wf-0'] },
 				);
 			const email = { name: 'email', type: 'string', index: 0 } as const;

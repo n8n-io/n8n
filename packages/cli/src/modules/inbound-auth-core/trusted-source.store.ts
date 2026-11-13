@@ -46,9 +46,11 @@ export class SystemTrustedSourceModificationError extends UserError {
 	}
 }
 
-const idKey = (id: string) => `trusted-source:id:${id}`;
-const issuerKey = (issuer: string) => `trusted-source:issuer:${issuer}`;
-const ALL_KEY = 'trusted-source:all';
+// One hash tag keeps every key of this cache in one cluster slot, so the multi-key DEL in
+// invalidateCache is valid on cluster-mode Redis.
+const idKey = (id: string) => `{trusted-source}:id:${id}`;
+const issuerKey = (issuer: string) => `{trusted-source}:issuer:${issuer}`;
+const ALL_KEY = '{trusted-source}:all';
 // Reads are look-aside, so a read that started before a concurrent write can re-cache the old
 // row after the write invalidated it. We accept that; this TTL caps the stale window at 5 minutes.
 const CACHE_TTL = 5 * Time.minutes.toMilliseconds;
@@ -158,7 +160,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			{},
 		);
 		if (!claimed) return null;
-		await this.invalidateCache(source);
+		// The lease is committed. A failed invalidation must not fail the run that holds it.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('Discovery lease taken but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
 		return token;
 	}
 
@@ -300,7 +310,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			);
 			// `orIgnore` also drops the insert when an admin row holds the name or the issuer.
 			if (!(await this.trustedSourceRepository.findById(id, {}))) return 'conflict';
-			await this.invalidateCache({ id, issuer });
+			await this.invalidateCacheAfterSeed({ id, issuer });
 			return 'inserted';
 		}
 
@@ -332,8 +342,23 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			if (!winner) throw error;
 			return winner.id === id ? 'unchanged' : 'conflict';
 		}
-		await this.invalidateCache(existing, issuer);
+		await this.invalidateCacheAfterSeed(existing, issuer);
 		return 'issuer-updated';
+	}
+
+	/** The seed row is committed, and the seeder runs at boot: a cache failure must not stop it. */
+	private async invalidateCacheAfterSeed(
+		row: Pick<TrustedSourceEntity, 'id' | 'issuer'>,
+		newIssuer?: string,
+	) {
+		try {
+			await this.invalidateCache(row, newIssuer);
+		} catch (error) {
+			this.logger.warn('System trusted source seeded but the cache could not be invalidated', {
+				id: row.id,
+				error,
+			});
+		}
 	}
 
 	/**

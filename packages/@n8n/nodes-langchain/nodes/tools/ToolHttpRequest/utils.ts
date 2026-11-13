@@ -71,6 +71,17 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
+	if (genericType === 'httpBearerAuth') {
+		const bearerAuth = await ctx.getCredentials('httpBearerAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, bearerAuth, options);
+			if (!options.headers) options.headers = {};
+			options.headers.Authorization = `Bearer ${String(bearerAuth.token)}`;
+			return await ctx.helpers.httpRequest(options);
+		};
+	}
+
 	if (genericType === 'httpHeaderAuth') {
 		const headerAuth = await ctx.getCredentials('httpHeaderAuth', itemIndex);
 

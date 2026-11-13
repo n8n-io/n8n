@@ -135,7 +135,7 @@ export class CollaborationService {
 		}
 
 		// If the user closing the workflow holds the write lock, release it
-		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId);
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId, userId);
 		if (released) {
 			await this.sendWriteAccessReleasedMessage(workflowId);
 		}
@@ -194,13 +194,13 @@ export class CollaborationService {
 	}
 
 	private async handleWriteAccessReleaseRequested(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: WriteAccessReleaseRequestedMessage,
 	) {
 		const { workflowId } = msg;
 
-		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId);
+		const released = await this.state.releaseWriteLockIfHolder(workflowId, clientId, userId);
 		if (!released) {
 			return;
 		}
@@ -209,14 +209,14 @@ export class CollaborationService {
 	}
 
 	private async handleWriteAccessHeartbeat(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: WriteAccessHeartbeatMessage,
 	) {
 		const { workflowId } = msg;
 
 		// Renew the write lock TTL if the client holds it
-		await this.state.renewWriteLock(workflowId, clientId);
+		await this.state.renewWriteLock(workflowId, clientId, userId);
 	}
 
 	private async sendWriteAccessAcquiredMessage(
@@ -468,7 +468,7 @@ export class CollaborationService {
 		}
 
 		// If the user closing the agent holds the write lock, release it
-		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId);
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId, userId);
 		if (released) {
 			await this.sendAgentWriteAccessReleasedMessage(agentId);
 		}
@@ -525,13 +525,13 @@ export class CollaborationService {
 	}
 
 	private async handleAgentWriteAccessReleaseRequested(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: AgentWriteAccessReleaseRequestedMessage,
 	) {
 		const { agentId } = msg;
 
-		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId);
+		const released = await this.state.releaseAgentWriteLockIfHolder(agentId, clientId, userId);
 		if (!released) {
 			return;
 		}
@@ -540,14 +540,14 @@ export class CollaborationService {
 	}
 
 	private async handleAgentWriteAccessHeartbeat(
-		_userId: User['id'],
+		userId: User['id'],
 		clientId: string,
 		msg: AgentWriteAccessHeartbeatMessage,
 	) {
 		const { agentId } = msg;
 
 		// Renew the write lock TTL if the client holds it
-		await this.state.renewAgentWriteLock(agentId, clientId);
+		await this.state.renewAgentWriteLock(agentId, clientId, userId);
 	}
 
 	private async sendAgentWriteAccessAcquiredMessage(

@@ -4,7 +4,7 @@ import type {
 	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { type AWSRegion } from './common/aws/regions';
 import { type AwsAssumeRoleCredentialsType } from './common/aws/types';

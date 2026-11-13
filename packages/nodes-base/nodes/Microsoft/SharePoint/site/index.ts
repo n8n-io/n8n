@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { type GraphSearchReply } from '../helpers/utils';
 import {
@@ -27,6 +27,8 @@ export const SITE_ID_REGEX = `^(?:root|${GUID}|[a-zA-Z0-9][a-zA-Z0-9.-]*(?:,${GU
 const SITE_ID_PATTERN = new RegExp(SITE_ID_REGEX);
 const SITE_ID_FORMATS_HINT =
 	'Use the ID from the site picker or Graph (hostname,GUID,GUID), a site GUID, a hostname, or "root". For a site address, switch the field to URL mode.';
+const SITE_URL_HINT =
+	'Paste the full site address, e.g. https://contoso.sharepoint.com/sites/mysite';
 
 export const siteRLC: INodeProperties = {
 	displayName: 'Site',
@@ -96,7 +98,7 @@ export async function getSites(
 			? ((await microsoftApiRequest.call(
 					this,
 					'GET',
-					'',
+					requestPath`/v1.0/sites`,
 					{},
 					{},
 					paginationToken,
@@ -104,7 +106,7 @@ export async function getSites(
 			: ((await microsoftApiRequest.call(
 					this,
 					'GET',
-					'/v1.0/sites',
+					requestPath`/v1.0/sites`,
 					{},
 					{
 						search: filter ?? '*',
@@ -185,27 +187,30 @@ export async function resolveSiteId(
 		parsed = new URL(value);
 	} catch {
 		throw new NodeOperationError(this.getNode(), 'The site URL is not valid', {
-			description: 'Paste the full site address, e.g. https://contoso.sharepoint.com/sites/mysite',
+			description: SITE_URL_HINT,
 		});
 	}
-	// Re-encode each segment so a raw ':' can't escape the `{host}:{path}` shape;
-	// decoding first keeps already-encoded segments from being encoded twice.
-	const path = parsed.pathname
-		.replace(/\/+$/, '')
+	// Decoding first keeps already-encoded segments from being encoded twice.
+	const segments = parsed.pathname
 		.split('/')
+		.filter(Boolean)
 		.map((segment) => {
 			try {
-				segment = decodeURIComponent(segment);
+				return decodeURIComponent(segment);
 			} catch {
-				// Malformed escape sequence — encode the raw segment as-is
+				return segment;
 			}
-			return encodeURIComponent(segment);
-		})
-		.join('/');
+		});
 	const endpoint =
-		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
+		segments.length === 0
+			? requestPath`/v1.0/sites/${parsed.hostname}`
+			: segments.reduce(
+					(path, segment) => requestPath`${path}/${requestPath`${segment}`}`,
+					requestPath`/v1.0/sites/${parsed.hostname}:`,
+				);
+	const cacheKey = endpoint.toString();
 
-	const cached = siteIdCache?.get(endpoint);
+	const cached = siteIdCache?.get(cacheKey);
 	if (cached !== undefined) {
 		return cached;
 	}
@@ -226,6 +231,6 @@ export async function resolveSiteId(
 	}
 
 	const siteId = String(response.id);
-	siteIdCache?.set(endpoint, siteId);
+	siteIdCache?.set(cacheKey, siteId);
 	return siteId;
 }

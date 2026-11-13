@@ -45,6 +45,7 @@
     "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

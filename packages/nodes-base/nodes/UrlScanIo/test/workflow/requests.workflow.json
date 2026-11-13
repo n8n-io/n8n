@@ -1,0 +1,125 @@
+{
+	"name": "urlscan.io Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "scan",
+				"operation": "get",
+				"scanId": "68e26c59-2eae-437b-aeb1-cf750fafe7d7"
+			},
+			"id": "urlScanIo-0",
+			"name": "Scan Get",
+			"type": "n8n-nodes-base.urlScanIo",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"urlScanIoApi": {
+					"id": "1",
+					"name": "urlscan.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "scan",
+				"operation": "getAll",
+				"limit": 2,
+				"filters": {
+					"query": "domain:example.com"
+				}
+			},
+			"id": "urlScanIo-1",
+			"name": "Scan Get Many",
+			"type": "n8n-nodes-base.urlScanIo",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"urlScanIoApi": {
+					"id": "1",
+					"name": "urlscan.io account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "scan",
+				"operation": "perform",
+				"url": "https://example.com",
+				"additionalFields": {}
+			},
+			"id": "urlScanIo-2",
+			"name": "Scan Perform",
+			"type": "n8n-nodes-base.urlScanIo",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"urlScanIoApi": {
+					"id": "1",
+					"name": "urlscan.io account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Scan Get": [
+			{
+				"json": {
+					"task": {
+						"uuid": "68e26c59-2eae-437b-aeb1-cf750fafe7d7"
+					}
+				}
+			}
+		],
+		"Scan Get Many": [
+			{
+				"json": {
+					"scanId": "68e26c59-2eae-437b-aeb1-cf750fafe7d7",
+					"sort": [1, "68e26c59-2eae-437b-aeb1-cf750fafe7d7"]
+				}
+			}
+		],
+		"Scan Perform": [
+			{
+				"json": {
+					"scanId": "68e26c59-2eae-437b-aeb1-cf750fafe7d7",
+					"message": "Submission successful"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Scan Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Scan Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Scan Perform",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

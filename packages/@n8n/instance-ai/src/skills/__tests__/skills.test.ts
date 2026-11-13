@@ -184,6 +184,16 @@ describe('Instance AI skills', () => {
 		expect(skill?.instructions).toContain('`action: "open"` and the returned `app.id`');
 	});
 
+	it('builds the layout of a new app before it creates resources', async () => {
+		const skill = await loadInstanceAiSkills().loadSkill('app-builder');
+
+		expect(skill?.instructions).toContain('## Build order for a new app');
+		expect(skill?.instructions).toContain('build and commit the app layout with empty data first.');
+		expect(skill?.instructions).toContain(
+			'Create data tables, workflows and agents only after that commit.',
+		);
+	});
+
 	it('loads every reference file as a reference skill with a description', () => {
 		const source = loadInstanceAiSkills();
 		const referenceFiles = skillMarkdownFiles().filter((file) => file.includes('/references/'));
@@ -515,7 +525,7 @@ describe('Instance AI skills', () => {
 		const source = loadInstanceAiSkills();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
-		expect(skill?.description).toContain('workflow-verification-follow-up');
+		expect(skill?.description).toContain('workflow-setup-required');
 		expect(skill?.parents).toEqual(['workflow-builder']);
 
 		const loaded = await source.loadSkill('post-build-flow');

@@ -25,7 +25,7 @@ const REQUIRED_COLLECTIONS: Record<N8NProcessUrl['role'], string[]> = {
 test.describe(
 	'Process internals',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('should report in-memory state counts for every n8n process', async ({ processUrls }) => {

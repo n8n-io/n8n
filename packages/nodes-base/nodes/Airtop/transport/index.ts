@@ -4,7 +4,11 @@ import type {
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import type { IAirtopResponse } from './types';
 import { BASE_URL, N8N_VERSION } from '../constants';
@@ -15,19 +19,23 @@ const defaultHeaders = {
 	'x-airtop-sdk-version': N8N_VERSION,
 };
 
+function isRequestUrl(endpoint: RequestPath | RequestUrl): endpoint is RequestUrl {
+	return endpoint.toString().startsWith('http');
+}
+
 export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath | RequestUrl,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ): Promise<T> {
-	const options: IHttpRequestOptions = {
+	const options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: defaultHeaders,
 		method,
 		body,
 		qs: query,
-		url: endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`,
+		url: isRequestUrl(endpoint) ? endpoint : requestUrl`${BASE_URL}${endpoint}`,
 		json: true,
 	};
 
@@ -35,9 +43,5 @@ export async function apiRequest<T extends IAirtopResponse = IAirtopResponse>(
 		delete options.body;
 	}
 
-	return await this.helpers.httpRequestWithAuthentication.call<
-		IExecuteFunctions | ILoadOptionsFunctions,
-		[string, IHttpRequestOptions],
-		Promise<T>
-	>(this, 'airtopApi', options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, 'airtopApi', options);
 }

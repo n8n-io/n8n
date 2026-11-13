@@ -1,7 +1,7 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost, toRequestPath } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -26,14 +26,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (additionalFields.pageSize !== undefined) queryParams.page_size = additionalFields.pageSize;
 	if (additionalFields.pageToken) queryParams.page_token = additionalFields.pageToken;
 
-	const response = await databricksApiRequest(this, credentialType, {
-		method: 'GET',
-		url: directoryPath
-			? `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`
-			: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}`,
-		qs: queryParams,
-		json: true,
-	});
+	const response = await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}${directoryPath ? toRequestPath(directoryPath, this.getNode().typeVersion) : requestPath``}`,
+		{
+			method: 'GET',
+			qs: queryParams,
+			json: true,
+		},
+	);
 
 	return [{ json: response, pairedItem: { item: i } }];
 }

@@ -113,6 +113,7 @@ export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-s
 export type * from './interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
+export { toHttpRequestOptions } from './node-execution-context/utils/request-helpers/request-target';
 export { NoOpPollJobManager } from './noop-poll-job-manager';
 export * from './partial-execution-utils';
 export { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';

@@ -5,16 +5,17 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function deepLApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
 	headers: IDataObject = {},
 ) {
 	const proApiEndpoint = 'https://api.deepl.com/v2';
@@ -22,14 +23,14 @@ export async function deepLApiRequest(
 
 	const credentials = await this.getCredentials('deepLApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
 		form: body,
 		qs,
-		uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
+		uri: requestUrl`${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
 		json: true,
 	};
 

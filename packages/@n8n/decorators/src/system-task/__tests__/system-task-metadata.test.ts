@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { SystemTaskClass } from '../system-task';
 import { SystemTaskMetadata } from '../system-task-metadata';

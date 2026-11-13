@@ -1,5 +1,5 @@
 import type { IBinaryData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { description, execute } from '../../../actions/attachment/upload.operation';
 import { confluenceApiRequestUpload } from '../../../transport';
@@ -12,7 +12,7 @@ vi.mock('../../../transport', () => ({
 
 const apiRequestUpload = vi.mocked(confluenceApiRequestUpload);
 
-const ENDPOINT = '/wiki/rest/api/content/9/child/attachment';
+const ENDPOINT = requestPath`/wiki/rest/api/content/9/child/attachment`;
 
 const baseParams: Record<string, unknown> = {
 	resource: 'attachment',
@@ -57,7 +57,7 @@ describe('attachment:upload', () => {
 
 		expect(apiRequestUpload).toHaveBeenCalledTimes(1);
 		const [endpoint, formData] = apiRequestUpload.mock.calls[0];
-		expect(endpoint).toBe(ENDPOINT);
+		expect(endpoint).toEqual(ENDPOINT);
 		expect(formData.getHeaders()['content-type']).toMatch(/^multipart\/form-data/);
 		expect(result).toEqual({ id: 'att1', title: 'notes.txt' });
 	});

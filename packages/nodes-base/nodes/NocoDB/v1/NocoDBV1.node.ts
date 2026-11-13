@@ -9,7 +9,13 @@ import type {
 	INodeTypeBaseDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	decodePathValue,
+	requestPath,
+} from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 import { operationFields } from './OperationDescription';
@@ -212,7 +218,7 @@ export class NocoDBV1 implements INodeType {
 			async getWorkspaces(this: ILoadOptionsFunctions) {
 				try {
 					const requestMethod = 'GET';
-					const endpoint = '/api/v1/workspaces/';
+					const endpoint = requestPath`/api/v1/workspaces/`;
 					const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 					return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 				} catch (e) {
@@ -225,12 +231,15 @@ export class NocoDBV1 implements INodeType {
 				try {
 					if (workspaceId && workspaceId !== 'none') {
 						const requestMethod = 'GET';
-						const endpoint = `/api/v1/workspaces/${workspaceId}/bases/`;
+						const endpoint = requestPath`/api/v1/workspaces/${workspaceId}/bases/`;
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					} else {
 						const requestMethod = 'GET';
-						const endpoint = version === 3 ? '/api/v2/meta/bases/' : '/api/v1/db/meta/projects/';
+						const endpoint =
+							version === 3
+								? requestPath`/api/v2/meta/bases/`
+								: requestPath`/api/v1/db/meta/projects/`;
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					}
@@ -255,8 +264,8 @@ export class NocoDBV1 implements INodeType {
 						const requestMethod = 'GET';
 						const endpoint =
 							version === 3
-								? `/api/v2/meta/bases/${baseId}/tables`
-								: `/api/v1/db/meta/projects/${baseId}/tables`;
+								? requestPath`/api/v2/meta/bases/${baseId}/tables`
+								: requestPath`/api/v1/db/meta/projects/${baseId}/tables`;
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					} catch (e) {
@@ -297,21 +306,21 @@ export class NocoDBV1 implements INodeType {
 
 		let qs: IDataObject = {};
 
-		let endPoint = '';
+		let endPoint = requestPath``;
 
 		const baseId = this.getNodeParameter('projectId', 0) as string;
-		const table = this.getNodeParameter('table', 0) as string;
+		const table = decodePathValue(String(this.getNodeParameter('table', 0)));
 
 		if (resource === 'row') {
 			if (operation === 'create') {
 				requestMethod = 'POST';
 
 				if (version === 1) {
-					endPoint = `/nc/${baseId}/api/v1/${table}/bulk`;
+					endPoint = requestPath`/nc/${baseId}/api/v1/${table}/bulk`;
 				} else if (version === 2) {
-					endPoint = `/api/v1/db/data/bulk/noco/${baseId}/${table}`;
+					endPoint = requestPath`/api/v1/db/data/bulk/noco/${baseId}/${table}`;
 				} else if (version === 3) {
-					endPoint = `/api/v2/tables/${table}/records`;
+					endPoint = requestPath`/api/v2/tables/${table}/records`;
 				}
 
 				const body: IDataObject[] = [];
@@ -362,13 +371,13 @@ export class NocoDBV1 implements INodeType {
 									}),
 								};
 
-								let postUrl = '';
+								let postUrl = requestPath``;
 								if (version === 1) {
-									postUrl = '/dashboard';
+									postUrl = requestPath`/dashboard`;
 								} else if (version === 2) {
-									postUrl = '/api/v1/db/storage/upload';
+									postUrl = requestPath`/api/v1/db/storage/upload`;
 								} else if (version === 3) {
-									postUrl = '/api/v2/storage/upload';
+									postUrl = requestPath`/api/v2/storage/upload`;
 								}
 
 								responseData = await apiRequest.call(
@@ -377,7 +386,6 @@ export class NocoDBV1 implements INodeType {
 									postUrl,
 									{},
 									version === 3 ? { base_id: baseId } : { project_id: baseId },
-									undefined,
 									{
 										formData,
 									},
@@ -421,16 +429,16 @@ export class NocoDBV1 implements INodeType {
 				let primaryKey = 'id';
 
 				if (version === 1) {
-					endPoint = `/nc/${baseId}/api/v1/${table}/bulk`;
+					endPoint = requestPath`/nc/${baseId}/api/v1/${table}/bulk`;
 				} else if (version === 2) {
-					endPoint = `/api/v1/db/data/bulk/noco/${baseId}/${table}`;
+					endPoint = requestPath`/api/v1/db/data/bulk/noco/${baseId}/${table}`;
 
 					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 					if (primaryKey === 'custom') {
 						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
 					}
 				} else if (version === 3) {
-					endPoint = `/api/v2/tables/${table}/records`;
+					endPoint = requestPath`/api/v2/tables/${table}/records`;
 
 					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 					if (primaryKey === 'custom') {
@@ -491,11 +499,11 @@ export class NocoDBV1 implements INodeType {
 						requestMethod = 'GET';
 
 						if (version === 1) {
-							endPoint = `/nc/${baseId}/api/v1/${table}`;
+							endPoint = requestPath`/nc/${baseId}/api/v1/${table}`;
 						} else if (version === 2) {
-							endPoint = `/api/v1/db/data/noco/${baseId}/${table}`;
+							endPoint = requestPath`/api/v1/db/data/noco/${baseId}/${table}`;
 						} else if (version === 3) {
-							endPoint = `/api/v2/tables/${table}/records`;
+							endPoint = requestPath`/api/v2/tables/${table}/records`;
 						}
 
 						returnAll = this.getNodeParameter('returnAll', 0);
@@ -565,14 +573,14 @@ export class NocoDBV1 implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const id = this.getNodeParameter('id', i) as string;
+						const id = decodePathValue(String(this.getNodeParameter('id', i)));
 
 						if (version === 1) {
-							endPoint = `/nc/${baseId}/api/v1/${table}/${id}`;
+							endPoint = requestPath`/nc/${baseId}/api/v1/${table}/${id}`;
 						} else if (version === 2) {
-							endPoint = `/api/v1/db/data/noco/${baseId}/${table}/${id}`;
+							endPoint = requestPath`/api/v1/db/data/noco/${baseId}/${table}/${id}`;
 						} else if (version === 3) {
-							endPoint = `/api/v2/tables/${table}/records/${id}`;
+							endPoint = requestPath`/api/v2/tables/${table}/records/${id}`;
 						}
 
 						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
@@ -645,17 +653,17 @@ export class NocoDBV1 implements INodeType {
 				let primaryKey = 'id';
 
 				if (version === 1) {
-					endPoint = `/nc/${baseId}/api/v1/${table}/bulk`;
+					endPoint = requestPath`/nc/${baseId}/api/v1/${table}/bulk`;
 					requestMethod = 'PUT';
 				} else if (version === 2) {
-					endPoint = `/api/v1/db/data/bulk/noco/${baseId}/${table}`;
+					endPoint = requestPath`/api/v1/db/data/bulk/noco/${baseId}/${table}`;
 
 					primaryKey = this.getNodeParameter('primaryKey', 0) as string;
 					if (primaryKey === 'custom') {
 						primaryKey = this.getNodeParameter('customPrimaryKey', 0) as string;
 					}
 				} else if (version === 3) {
-					endPoint = `/api/v2/tables/${table}/records`;
+					endPoint = requestPath`/api/v2/tables/${table}/records`;
 				}
 
 				const body: IDataObject[] = [];
@@ -706,13 +714,13 @@ export class NocoDBV1 implements INodeType {
 										args: {},
 									}),
 								};
-								let postUrl = '';
+								let postUrl = requestPath``;
 								if (version === 1) {
-									postUrl = '/dashboard';
+									postUrl = requestPath`/dashboard`;
 								} else if (version === 2) {
-									postUrl = '/api/v1/db/storage/upload';
+									postUrl = requestPath`/api/v1/db/storage/upload`;
 								} else if (version === 3) {
-									postUrl = '/api/v2/storage/upload';
+									postUrl = requestPath`/api/v2/storage/upload`;
 								}
 
 								responseData = await apiRequest.call(
@@ -721,7 +729,6 @@ export class NocoDBV1 implements INodeType {
 									postUrl,
 									{},
 									version === 3 ? { base_id: baseId } : { project_id: baseId },
-									undefined,
 									{
 										formData,
 									},

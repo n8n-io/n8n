@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.folder_tag](public.folder_tag.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [public.agents_tags](public.agents_tags.md) [public.folder_tag](public.folder_tag.md) [public.workflows_tags](public.workflows_tags.md) |  |  |
 | name | varchar(24) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -32,6 +32,7 @@
 ```mermaid
 erDiagram
 
+"public.agents_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 "public.folder_tag" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -40,6 +41,10 @@ erDiagram
   varchar_36_ id
   varchar_24_ name
   timestamp_3__with_time_zone updatedAt
+}
+"public.agents_tags" {
+  varchar_36_ agentId FK
+  varchar_36_ tagId FK
 }
 "public.folder_tag" {
   varchar_36_ folderId FK

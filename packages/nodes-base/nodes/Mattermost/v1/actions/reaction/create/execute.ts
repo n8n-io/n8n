@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
@@ -8,7 +9,7 @@ export async function create(
 ): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'reactions';
+	const endpoint = requestPath`reactions`;
 	const body = {
 		user_id: this.getNodeParameter('userId', index),
 		post_id: this.getNodeParameter('postId', index),

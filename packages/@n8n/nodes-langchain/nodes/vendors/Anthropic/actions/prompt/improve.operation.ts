@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { Message, PromptResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
@@ -109,10 +109,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		system: options.system,
 		feedback: options.feedback,
 	};
-	const response = (await apiRequest.call(this, 'POST', '/v1/experimental/improve_prompt', {
-		body,
-		enableAnthropicBetas: { promptTools: true },
-	})) as PromptResponse;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1/experimental/improve_prompt`,
+		{
+			body,
+			enableAnthropicBetas: { promptTools: true },
+		},
+	)) as PromptResponse;
 
 	if (simplify) {
 		return [
