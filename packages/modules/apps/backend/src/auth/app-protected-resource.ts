@@ -23,9 +23,10 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 		private readonly projectScope: ProjectScopeService,
 	) {}
 
-	forApp(app: App): ProtectedResource {
+	forApp(app: App, { revalidate = true }: { revalidate?: boolean } = {}): ProtectedResource {
 		const url = this.hosts.callbackUrl(app);
 		const currentApp = async () => {
+			if (!revalidate) return app;
 			const current = await this.apps.findById(app.id);
 			return current?.publishedVersionId && current.namespace === app.namespace ? current : null;
 		};

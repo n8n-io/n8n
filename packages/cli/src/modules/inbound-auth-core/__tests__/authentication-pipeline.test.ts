@@ -81,11 +81,12 @@ describe('InboundAuthPipeline', () => {
 			identity.identify.mockResolvedValue({ ok: true, value: context });
 		});
 
-		it('logs one info line with surface, resource, source, auth method and user id', async () => {
+		it('logs one debug line with surface, resource, source, auth method and user id', async () => {
 			await pipeline.run(extracted);
 
-			expect(logger.info).toHaveBeenCalledTimes(1);
-			expect(logger.info).toHaveBeenCalledWith(expect.any(String), {
+			expect(logger.info).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledTimes(1);
+			expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
 				surface: 'instance-mcp',
 				resource: RESOURCE,
 				sourceId: SOURCE_ID,
@@ -97,7 +98,7 @@ describe('InboundAuthPipeline', () => {
 		it('never writes the bearer token, the external subject or the email', async () => {
 			await pipeline.run(extracted);
 
-			const written = JSON.stringify(logger.info.mock.calls);
+			const written = JSON.stringify(logger.debug.mock.calls);
 			expect(written).not.toContain(TOKEN);
 			expect(written).not.toContain('alice');
 		});
