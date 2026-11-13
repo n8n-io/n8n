@@ -388,7 +388,8 @@ Use `--json` to get the full preview:
 - `resources` and `dependencies`: as for `list-changes`.
 - `check`: what blocks the Apply. A team project that Apply deletes is a
   `project-deletion` conflict. `movedWorkflows` and `movedFolders` list the
-  workflows and folders that move within their project.
+  workflows and folders that the branch and this instance hold in different
+  projects. Apply can't move them between projects, so it refuses them.
 - `revision`: the value to pass to `--expected-preview-revision`.
 
 ## `promotion-environment promote-selection`
